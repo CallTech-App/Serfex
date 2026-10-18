@@ -9,7 +9,7 @@
             ['sites.index', 'globe', 'Siteler'],
             [null, 'layers', 'Laravel'],
             ['dns.index', 'network', 'Alan Adları ve DNS'],
-            [null, 'mail', 'E-posta'],
+            ['mail.index', 'mail', 'E-posta'],
             [null, 'database', 'Veritabanları'],
             ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
         ]],
@@ -26,7 +26,10 @@
     ];
     $user = auth()->user();
     // Problem counts shown next to menu items.
-    $alerts = $user ? ['ssl.index' => \App\Models\Certificate::attentionCount()] : [];
+    $alerts = $user ? [
+        'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
+        'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
+    ] : [];
 @endphp
 <!DOCTYPE html>
 <html lang="tr">
@@ -63,8 +66,8 @@
                                         <a href="{{ route($route) }}" wire:navigate @if ($on) aria-current="page" @endif
                                            class="flex h-9 items-center gap-3 rounded-md px-3 {{ $on ? 'bg-nav-active font-medium text-white' : 'text-nav-fg/80 hover:bg-nav-active hover:text-white' }}">
                                             <x-icon :name="$icon" @class(['text-accent' => $on]) />{{ $label }}
-                                            @if ($alerts[$route] ?? 0)
-                                                <span class="num ml-auto min-w-5 rounded-full bg-warn px-1.5 text-center text-2xs leading-5 font-semibold text-nav" title="İlgilenmeniz gereken {{ $alerts[$route] }} sertifika">{{ $alerts[$route] }}</span>
+                                            @if ($alerts[$route][0] ?? 0)
+                                                <span class="num ml-auto min-w-5 rounded-full bg-warn px-1.5 text-center text-2xs leading-5 font-semibold text-nav" title="İlgilenmeniz gereken {{ $alerts[$route][0] }} {{ $alerts[$route][1] }}">{{ $alerts[$route][0] }}</span>
                                             @endif
                                         </a>
                                     @else

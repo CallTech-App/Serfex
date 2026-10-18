@@ -15,8 +15,9 @@ class DnsSettings
     /**
      * Records every new zone starts with, besides its NS records (which come
      * from the name server setting). <domain>, <ip4> and <ip6> are replaced
-     * per zone; rows whose placeholder has no value are skipped. The e-mail
-     * milestone adds mail, MX, SPF, DKIM and DMARC rows here.
+     * per zone; rows whose placeholder has no value are skipped. Mail
+     * records (MX, SPF, DKIM, DMARC) are not template rows: they are written
+     * when mail is turned on for the domain (App\Services\Mail\MailDns).
      */
     public const DEFAULT_TEMPLATE = [
         ['name' => '@', 'type' => 'A', 'content' => '<ip4>', 'priority' => null, 'ttl' => null],

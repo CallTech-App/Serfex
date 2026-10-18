@@ -16,7 +16,8 @@ return new class extends Migration
         Schema::create('certificates', function (Blueprint $table) {
             $table->id();
             $table->foreignId('site_id')->nullable()->constrained()->cascadeOnDelete();
-            // "site" or "panel" (the panel's own address).
+            // "site", "panel" (the panel's own address) or "mail" (the mail
+            // server's name).
             $table->string('kind', 8)->default('site');
             $table->string('name', 210)->unique();
             // "letsencrypt" or "custom".

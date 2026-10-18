@@ -41,4 +41,19 @@ return [
         'renew_days' => 30,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | E-mail
+    |--------------------------------------------------------------------------
+    |
+    | Mail domain pages look the domain's records up in public DNS to show
+    | whether MX, SPF, DKIM and DMARC have propagated. Turn the lookups off
+    | for local development and tests.
+    |
+    */
+
+    'mail' => [
+        'check_dns' => (bool) env('SERVIK_MAIL_CHECK_DNS', true),
+    ],
+
 ];

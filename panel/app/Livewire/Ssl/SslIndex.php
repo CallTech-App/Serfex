@@ -95,6 +95,7 @@ class SslIndex extends Component
             'busy' => $sites->getCollection()->contains(fn (Site $s) => $s->sslState()->isBusy()),
             'attention' => Certificate::attentionCount(),
             'panel' => $panel,
+            'mail' => Certificate::where('kind', 'mail')->first(),
         ]);
     }
 }

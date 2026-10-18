@@ -87,7 +87,7 @@ class Certificate extends Model
     public static function attentionCount(): int
     {
         return self::query()->needsAttention()
-            ->where(fn (Builder $q) => $q->where('kind', 'panel')->orWhereHas('users')->orWhereNull('not_after'))
+            ->where(fn (Builder $q) => $q->whereIn('kind', ['panel', 'mail'])->orWhereHas('users')->orWhereNull('not_after'))
             ->count();
     }
 

@@ -2,7 +2,7 @@
     $ssl = $site->sslState();
     $certificate = $site->certificate;
     // Site tools, grouped by job. Only the ones with a link work in this
-    // version; the rest show what is coming. [icon, name, status, link]
+    // version; the rest show what is coming. [icon, name, status, link, opens in a new tab]
     $groups = [
         ['Dosya ve veri', 'folder', [
             ['folder', 'Dosya Yöneticisi', null],
@@ -29,8 +29,12 @@
             ['link', 'Ek alan adları', $site->aliases ? implode(', ', $site->aliases) : 'Yok'],
             ['corner-up-right', 'Yönlendirmeler', null],
         ]],
-        ['E-posta', 'mail', [
-            ['mail', 'Posta kutuları', null],
+        ['E-posta', 'mail', $mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting ? [
+            ['mail', 'Posta kutuları', $mail->mailboxes_count.' kutu', route('mail.show', $mail)],
+            ['forward', 'Yönlendiriciler', $mail->forwarders_count ?: 'Yok', route('mail.show', [$mail, 'tab' => 'yonlendiriciler'])],
+            ['inbox', 'Webmail', $webmail ? 'Roundcube' : 'Kapalı', $webmail, true],
+        ] : [
+            ['mail', 'Posta kutuları', 'E-posta kapalı', route('mail.index', ['ac' => $site->domain])],
             ['forward', 'Yönlendiriciler', null],
             ['inbox', 'Webmail', null],
         ]],
@@ -139,14 +143,14 @@
                     <h3 class="flex h-11 items-center gap-2 border-b border-line px-4 text-[13.5px] font-semibold"><x-icon :name="$groupIcon" class="text-accent" />{{ $group }}</h3>
                     <ul class="p-1.5">
                         @foreach ($tools as $tool)
-                            @php [$icon, $name, $state, $link] = $tool + [3 => null]; @endphp
+                            @php [$icon, $name, $state, $link, $external] = $tool + [3 => null, 4 => false]; @endphp
                             <li x-show="!q || @js(mb_strtolower($group.' '.$name)).includes(q.toLocaleLowerCase('tr'))">
                                 @if ($link)
-                                    <a href="{{ $link }}" wire:navigate class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px] hover:bg-surface-2">
+                                    <a href="{{ $link }}" @if ($external) target="_blank" rel="noopener" @else wire:navigate @endif class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px] hover:bg-surface-2">
                                         <x-icon :name="$icon" class="text-muted" />
                                         <span class="truncate">{{ $name }}</span>
                                         <span class="ml-auto truncate text-2xs whitespace-nowrap text-muted">{{ $state }}</span>
-                                        <x-icon name="chevron-right" class="size-3.5 text-muted" />
+                                        <x-icon :name="$external ? 'external-link' : 'chevron-right'" class="size-3.5 text-muted" />
                                     </a>
                                 @else
                                     <div class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px]">
@@ -178,6 +182,12 @@
                 <label class="mt-3 flex items-center gap-2 text-[13px]">
                     <input type="checkbox" wire:model="removeZone" class="size-4 accent-accent">
                     <span>DNS bölgesini de sil ({{ $zone->records_count }} kayıt)</span>
+                </label>
+            @endif
+            @if ($mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting)
+                <label class="mt-3 flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" wire:model="removeMail" class="size-4 accent-accent">
+                    <span>E-postayı da kapat ({{ $mail->mailboxes_count }} posta kutusu ve içindeki postalar silinir)</span>
                 </label>
             @endif
             <label for="confirmDomain" class="mt-4 block text-[13px]">Onaylamak için alan adını yazın</label>

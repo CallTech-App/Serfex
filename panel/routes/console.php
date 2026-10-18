@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('servik:ssl-renew')->hourly()->withoutOverlapping();
+Schedule::command('servik:mail-usage')->everyThirtyMinutes()->withoutOverlapping();

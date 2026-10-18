@@ -7,6 +7,7 @@ use App\Enums\SiteStatus;
 use App\Enums\ZoneStatus;
 use App\Jobs\DeleteCertificate;
 use App\Jobs\IssueCertificate;
+use App\Jobs\IssueMailCertificate;
 use App\Jobs\IssuePanelCertificate;
 use App\Jobs\ProvisionSite;
 use App\Models\Certificate;
@@ -176,6 +177,26 @@ class Certificates
         }
         $certificate->fill(['status' => CertificateStatus::Issuing, 'last_error' => null])->save();
         IssuePanelCertificate::dispatch($certificate);
+
+        return $certificate;
+    }
+
+    /**
+     * Request (or renew) the certificate of the mail server's name, shared
+     * by SMTP, IMAP, POP3 and webmail and kept apart from site certificates.
+     */
+    public function issueMail(string $hostname): Certificate
+    {
+        $certificate = Certificate::firstOrNew(['kind' => 'mail'], [
+            'name' => 'mail',
+            'source' => Certificate::LETS_ENCRYPT,
+            'challenge' => 'http-01',
+        ]);
+        if (! $certificate->isInstalled()) {
+            $certificate->domains = [$hostname];
+        }
+        $certificate->fill(['status' => CertificateStatus::Issuing, 'last_error' => null])->save();
+        IssueMailCertificate::dispatch($certificate);
 
         return $certificate;
     }

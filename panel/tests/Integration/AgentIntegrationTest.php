@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Mail\MailPassword;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -188,5 +189,53 @@ class AgentIntegrationTest extends TestCase
         }
 
         $this->assertTrue($client->call('dns.zone.delete', ['zone' => 'kahveatolyesi.com.tr'], 30)['deleted']);
+    }
+
+    public function test_mail_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+
+        try {
+            $client->call('mail.domain.apply', ['domain' => 'kahveatolyesi.com.tr'], 30);
+            $this->fail('expected the mail server to be missing');
+        } catch (AgentException $e) {
+            $this->assertSame(-32002, $e->getCode());
+        }
+
+        $setup = $client->call('mail.setup', ['hostname' => 'mail.servik.net.tr', 'certificate' => '', 'hourly_limit' => 500, 'webmail' => true], 60);
+        $this->assertTrue($setup['installed']);
+        $this->assertSame('https://mail.servik.net.tr/', $setup['webmail_url']);
+        $status = $client->call('mail.status');
+        $this->assertTrue($status['configured']);
+
+        // The same shape MailDomain::agentSpec() sends.
+        $spec = [
+            'domain' => 'kahveatolyesi.com.tr',
+            'spam_filter' => true,
+            'mailboxes' => [
+                ['name' => 'siparis', 'password_hash' => MailPassword::hash('Kahve-fincan-7'), 'quota_mb' => 1024, 'forward_to' => [], 'keep_copy' => true,
+                    'autoreply' => ['subject' => 'İzindeyim', 'body' => 'Pazartesi dönüyorum.', 'until' => '']],
+            ],
+            'aliases' => [['name' => 'satis', 'to' => ['siparis@kahveatolyesi.com.tr']]],
+            'catch_all' => ['siparis@kahveatolyesi.com.tr'],
+        ];
+        $applied = $client->call('mail.domain.apply', $spec, 30);
+        $this->assertSame('servik._domainkey', $applied['dkim']['name']);
+        $this->assertStringStartsWith('v=DKIM1; k=rsa; p=', $applied['dkim']['record']);
+        $this->assertFalse($client->call('mail.domain.apply', $spec, 30)['changed'], 'apply must be idempotent');
+        $this->assertStringContainsString('siparis@kahveatolyesi.com.tr:{SHA512-CRYPT}', file_get_contents($this->root.'/etc/dovecot/servik/users'));
+
+        $this->assertSame(['siparis' => 0], $client->call('mail.usage', ['domain' => 'kahveatolyesi.com.tr'])['mailboxes']);
+        $login = $client->call('mail.webmail.login', ['address' => 'siparis@kahveatolyesi.com.tr']);
+        $this->assertStringStartsWith('https://mail.servik.net.tr/?_task=login&_action=servik-sso&_token=', $login['url']);
+
+        try {
+            $client->call('mail.domain.apply', [...$spec, 'mailboxes' => [[...$spec['mailboxes'][0], 'password_hash' => 'plain']]], 30);
+            $this->fail('expected a plain password to be rejected');
+        } catch (AgentException $e) {
+            $this->assertSame(AgentException::INVALID_PARAMS, $e->getCode());
+        }
+
+        $this->assertTrue($client->call('mail.domain.delete', ['domain' => 'kahveatolyesi.com.tr', 'remove_files' => true], 30)['deleted']);
     }
 }
