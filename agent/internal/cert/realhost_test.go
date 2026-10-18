@@ -72,6 +72,21 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 	return "", nil
 }
 
+// start makes sure a service runs: through systemd where it is PID 1, so
+// the agent's "systemctl reload" works, and directly otherwise.
+func start(t *testing.T, unit, pidFile, bin string) {
+	t.Helper()
+	cmd := exec.Command(bin)
+	if hasSystemd() {
+		cmd = exec.Command("systemctl", "start", unit)
+	} else if fileExists(pidFile) {
+		return
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("start %s: %v: %s", unit, err, out)
+	}
+}
+
 func TestRealHost(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("needs root")
@@ -90,11 +105,7 @@ func TestRealHost(t *testing.T) {
 
 	h := serviceHost{t: t}
 	ctx := context.Background()
-	if !fileExists("/run/nginx.pid") {
-		if out, err := exec.Command("nginx").CombinedOutput(); err != nil {
-			t.Fatalf("start nginx: %v: %s", err, out)
-		}
-	}
+	start(t, "nginx", "/run/nginx.pid", "nginx")
 
 	// PowerDNS answers for the test zone, so Pebble's validation finds this
 	// machine and the DNS-01 records.
@@ -122,11 +133,7 @@ func TestRealHost(t *testing.T) {
 	if err != nil || len(versions) == 0 {
 		t.Fatalf("no PHP-FPM installed: %v", err)
 	}
-	if !fileExists("/run/php/php" + versions[0] + "-fpm.pid") {
-		if out, err := exec.Command("php-fpm" + versions[0]).CombinedOutput(); err != nil {
-			t.Fatalf("start php-fpm: %v: %s", err, out)
-		}
-	}
+	start(t, "php"+versions[0]+"-fpm", "/run/php/php"+versions[0]+"-fpm.pid", "php-fpm"+versions[0])
 	spec := site.Spec{Domain: zone, User: "servikssl", PHPVersion: versions[0], Aliases: []string{"www." + zone}}
 	t.Cleanup(func() {
 		_, _ = sites.Delete(ctx, site.DeleteSpec{Domain: spec.Domain, User: spec.User, RemoveFiles: true, RemoveUser: true})
@@ -237,17 +244,26 @@ func waitForTLS(t *testing.T, name string) *x509.Certificate {
 func assertRedirect(t *testing.T, name string) {
 	t.Helper()
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	req, _ := http.NewRequest("GET", "http://127.0.0.1/yol?a=1", nil)
-	req.Host = name
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
+	want := "https://" + name + "/yol?a=1"
+	var status int
+	var location string
+	// Old Nginx workers may answer for a moment after a reload.
+	for i := 0; i < 50; i++ {
+		req, _ := http.NewRequest("GET", "http://127.0.0.1/yol?a=1", nil)
+		req.Host = name
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+		status, location = resp.StatusCode, resp.Header.Get("Location")
+		if status == 301 && location == want {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != 301 || resp.Header.Get("Location") != "https://"+name+"/yol?a=1" {
-		t.Fatalf("redirect = %d %s", resp.StatusCode, resp.Header.Get("Location"))
-	}
+	t.Fatalf("redirect = %d %s", status, location)
 }
 
 func waitFor(t *testing.T, ok func() bool) {
