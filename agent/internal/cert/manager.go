@@ -580,10 +580,19 @@ func (s *solver) PresentHTTP(ctx context.Context, name, token, keyAuth string) e
 }
 
 // waitServed polls the local Nginx for up to ten seconds until it answers
-// path for host with want. It does not fail: the certificate authority's
-// own request decides, and reports a clearer error.
+// path for host with want several times in a row, each on a new
+// connection: right after a reload, workers still running the old
+// configuration keep accepting connections for a moment. It does not
+// fail: the certificate authority's own request decides, and reports a
+// clearer error.
 func (m *Manager) waitServed(ctx context.Context, host, path, want string) {
-	client := &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	const inARow = 3
+	client := &http.Client{
+		Timeout:       2 * time.Second,
+		Transport:     &http.Transport{DisableKeepAlives: true},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	good := 0
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.localWeb+path, nil)
@@ -595,8 +604,15 @@ func (m *Manager) waitServed(ctx context.Context, host, path, want string) {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK && string(body) == want {
-				return
+				good++
+			} else {
+				good = 0
 			}
+		} else {
+			good = 0
+		}
+		if good == inARow {
+			return
 		}
 		select {
 		case <-ctx.Done():
