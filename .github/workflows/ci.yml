@@ -37,6 +37,28 @@ jobs:
       - name: Build static binary
         run: CGO_ENABLED=0 go build -trimpath -o bin/servik-agent ./cmd/servik-agent
 
+  agent-realhost:
+    name: Agent on real Nginx and PHP-FPM
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx and PHP-FPM
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nginx php8.3-fpm
+
+      # Creates a real system user, vhost and pool, serves PHP through them,
+      # then removes everything again.
+      - name: Provision a site for real
+        run: sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)" go test -tags realhost -run TestRealHost -v ./internal/site
+
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
