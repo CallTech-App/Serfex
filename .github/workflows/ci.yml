@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent:
+    name: Agent (Go)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+      - run: go vet ./...
+
+      - run: go test -race ./...
+
+      - name: Build static binary
+        run: CGO_ENABLED=0 go build -trimpath -o bin/servik-agent ./cmd/servik-agent
+
+  panel:
+    name: Panel (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: servik
+          POSTGRES_PASSWORD: servik
+          POSTGRES_DB: servik_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U servik"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: panel
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: servik
+      DB_PASSWORD: servik
+      SERVIK_AGENT_BIN: ${{ github.workspace }}/agent/bin/servik-agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql
+          coverage: none
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+
+      - name: Build agent for integration tests
+        working-directory: agent
+        run: CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - run: npm ci && npm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - run: vendor/bin/pint --test
+
+      - run: php artisan test

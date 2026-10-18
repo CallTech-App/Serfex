@@ -1,0 +1,123 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Laravel</h1>
+        <p class="mt-1 text-[13px] text-muted">Sunucudaki Laravel uygulamaları. Dağıtım, kuyruk, zamanlanmış görevler ve .env için bir uygulamaya tıklayın.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+          <button id="newBtn" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Laravel uygulaması kur</button>
+          <button id="scanBtn" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="scan-search" class="w-4 h-4"></i>Mevcut uygulamaları bul</button>
+          <label class="ml-auto relative w-full sm:w-64">
+            <span class="sr-only">Uygulama ara</span>
+            <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="q" type="search" placeholder="Uygulama ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+          </label>
+        </div>
+        <div class="relative overflow-x-auto scroll-thin">
+          <table class="w-full text-[13.5px] min-w-[720px]">
+            <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Uygulama</th><th class="font-medium px-3 py-2.5">Laravel</th><th class="font-medium px-3 py-2.5">PHP</th><th class="font-medium px-3 py-2.5">Dal</th><th class="font-medium px-3 py-2.5">Son dağıtım</th><th class="font-medium px-3 py-2.5">Kuyruk</th></tr></thead>
+            <tbody id="rows" class="divide-y divide-line">
+              <tr class="hover:bg-surface-2/60 cursor-pointer" data-name="api.hizlikargo.app"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">api.hizlikargo.app</a><div class="text-2xs text-muted mt-0.5">Hızlı Kargo A.Ş.</div></td><td class="px-3 py-3 whitespace-nowrap">12.33</td><td class="px-3 py-3 whitespace-nowrap">8.5</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">main</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Bugün 23:38</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>4 işçi</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="panel.ozkanlojistik.com"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">panel.ozkanlojistik.com</a><div class="text-2xs text-muted mt-0.5">Özkan Lojistik</div></td><td class="px-3 py-3 whitespace-nowrap">12.30</td><td class="px-3 py-3 whitespace-nowrap">8.4</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">release/2.8</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-info-soft text-info"><i class="w-1.5 h-1.5 rounded-full bg-info"></i>Dağıtılıyor</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-warn-soft text-warn"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>1.204 bekleyen</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="ozkanlojistik.com"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">ozkanlojistik.com</a><div class="text-2xs text-muted mt-0.5">Özkan Lojistik</div></td><td class="px-3 py-3 whitespace-nowrap">12.30</td><td class="px-3 py-3 whitespace-nowrap">8.4</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">main</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Dün 17:02</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-warn-soft text-warn"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>Takılı iş var</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="bulten.atlasyayin.com"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">bulten.atlasyayin.com</a><div class="text-2xs text-muted mt-0.5">Atlas Yayıncılık</div><div class="text-2xs text-warn mt-0.5 flex items-center gap-1"><i data-lucide="triangle-alert" class="w-3 h-3"></i>composer.lock PHP ^8.4 istiyor, site PHP 8.3</div></td><td class="px-3 py-3 whitespace-nowrap">11.45</td><td class="px-3 py-3 whitespace-nowrap">8.3</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">main</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Dün 18:20</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>3 işçi</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="staging.hizlikargo.app"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">staging.hizlikargo.app</a><div class="text-2xs text-muted mt-0.5">Hızlı Kargo A.Ş.</div></td><td class="px-3 py-3 whitespace-nowrap">12.33</td><td class="px-3 py-3 whitespace-nowrap">8.5</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">develop</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-crit-soft text-crit"><i class="w-1.5 h-1.5 rounded-full bg-crit"></i>Başarısız 21:47</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>1 işçi</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="hizlikargo.app"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">hizlikargo.app</a><div class="text-2xs text-muted mt-0.5">Hızlı Kargo A.Ş.</div></td><td class="px-3 py-3 whitespace-nowrap">12.33</td><td class="px-3 py-3 whitespace-nowrap">8.5</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">main</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>14 Eki</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="text-muted">Yok</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="atlasyayin.com"><td class="px-5 py-3"><a href="laravel-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">atlasyayin.com</a><div class="text-2xs text-muted mt-0.5">Atlas Yayıncılık</div></td><td class="px-3 py-3 whitespace-nowrap">11.45</td><td class="px-3 py-3 whitespace-nowrap">8.3</td><td class="px-3 py-3 whitespace-nowrap"><span class="font-mono">main</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>9 Eki</span></td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>1 işçi</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count">7 / 7 uygulama</p>
+      </section>
+
+      <!-- Kurulum -->
+      <div id="newModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="newForm" class="w-full max-w-2xl max-h-[calc(100vh-2rem)] flex flex-col rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+          <h2 id="newTitle" class="px-5 h-12 shrink-0 flex items-center border-b border-line text-[14.5px] font-semibold">Laravel uygulaması kur</h2>
+          <div class="p-5 overflow-y-auto scroll-thin grid grid-cols-1 sm:grid-cols-[170px_1fr] gap-x-5 gap-y-4 text-[13.5px]">
+            <p class="sm:pt-1 font-medium">Kaynak</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="srcs">
+              <label class="flex items-start gap-2.5 p-3 rounded-lg border border-line cursor-pointer has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"><input type="radio" name="src" value="new" checked class="mt-0.5 w-4 h-4 accent-[rgb(var(--accent))]"><span><span class="font-medium">Yeni proje</span><span class="block text-2xs text-muted">Laravel'in son sürümüyle boş uygulama</span></span></label>
+              <label class="flex items-start gap-2.5 p-3 rounded-lg border border-line cursor-pointer has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"><input type="radio" name="src" value="git" class="mt-0.5 w-4 h-4 accent-[rgb(var(--accent))]"><span><span class="font-medium">Git deposundan</span><span class="block text-2xs text-muted">GitHub, GitLab, Bitbucket veya başka bir adres</span></span></label>
+            </div>
+
+            <p data-for="new" class="sm:pt-1 font-medium">Başlangıç kiti</p>
+            <div data-for="new" class="flex flex-wrap gap-2" id="kits"></div>
+
+            <p data-for="git" hidden class="sm:pt-2 font-medium">Depo</p>
+            <div data-for="git" hidden class="space-y-2">
+              <div class="flex flex-wrap gap-2">
+                <span class="h-8 px-2.5 rounded-md border border-ok/40 bg-ok-soft text-ok text-[13px] flex items-center gap-1.5"><i data-lucide="github" class="w-4 h-4"></i>GitHub bağlı · hizlikargo</span>
+                <button type="button" data-toast="GitLab bağlantısı için yetkilendirme sayfası açılır." class="h-8 px-2.5 rounded-md border border-line hover:bg-surface-2 text-[13px] flex items-center gap-1.5"><i data-lucide="gitlab" class="w-4 h-4"></i>GitLab bağla</button>
+                <button type="button" data-toast="Bitbucket bağlantısı için yetkilendirme sayfası açılır." class="h-8 px-2.5 rounded-md border border-line hover:bg-surface-2 text-[13px]">Bitbucket bağla</button>
+              </div>
+              <input id="repo" list="repos" placeholder="hizlikargo/ depolarından seçin veya adres yapıştırın" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+              <datalist id="repos"><option>hizlikargo/api</option><option>hizlikargo/kurye-panel</option><option>hizlikargo/website</option></datalist>
+              <div class="flex gap-2"><input id="branch" value="main" aria-label="Dal" class="w-40 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]"><p class="text-2xs text-muted self-center">Özel depo başka bir sağlayıcıdaysa kurulumda size bir dağıtım anahtarı gösterilir.</p></div>
+            </div>
+
+            <label for="site" class="sm:pt-2 font-medium">Site</label>
+            <div><select id="site" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Yeni alt alan adı oluştur</option><option>hizlikargo.app</option><option>kahveatolyesi.com.tr</option><option>klinikmavi.com</option></select><p class="mt-1 text-2xs text-muted">Site kökü otomatik olarak <span class="font-mono">public/</span> yapılır.</p></div>
+
+            <label for="php" class="sm:pt-2 font-medium">PHP sürümü</label>
+            <div><select id="php" class="w-48 h-9 px-2.5 rounded-md border border-line bg-surface"><option>8.5</option><option>8.4</option><option>8.3</option></select></div>
+
+            <label for="db" class="sm:pt-2 font-medium">Veritabanı</label>
+            <div><select id="db" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Yeni MySQL veritabanı oluştur</option><option>Yeni PostgreSQL veritabanı oluştur</option><option>Var olanı kullan</option><option>Veritabanı yok</option></select><p class="mt-1 text-2xs text-muted">Bilgiler <span class="font-mono">.env</span> dosyasına otomatik yazılır.</p></div>
+
+            <p class="sm:pt-1 font-medium">Ön yüz</p>
+            <div class="flex flex-wrap items-center gap-3"><label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Kurulumda bağımlılıkları yükle ve derle</label><select aria-label="Paket yöneticisi" class="h-8 px-2 rounded-md border border-line bg-surface text-[13px] font-mono"><option>npm</option><option>pnpm</option><option>yarn</option><option>bun</option></select></div>
+
+            <p class="sm:pt-1 font-medium">Hemen kur</p>
+            <div class="space-y-1.5">
+              <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Kuyruk işçisi (Redis)</label>
+              <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Zamanlayıcı</label>
+              <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Let's Encrypt SSL</label>
+            </div>
+          </div>
+          <div class="px-5 py-3 shrink-0 border-t border-line flex justify-end gap-2">
+            <button type="button" id="newCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kur</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tarama -->
+      <div id="scanModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-2xl rounded-xl border border-line bg-surface shadow-xl min-w-0" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+          <h2 id="scanTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Mevcut Laravel uygulamaları</h2>
+          <p class="px-5 pt-4 text-[13px] text-muted">24 site tarandı, Servik'e bağlı olmayan 2 Laravel uygulaması bulundu.</p>
+          <ul class="px-5 py-3 divide-y divide-line text-[13.5px]" id="found"></ul>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kapat</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  const rows = document.getElementById('rows');
+  rows.addEventListener('click', e => { if (e.target.closest('a,button,input')) return; const tr = e.target.closest('tr'); if (tr) location.href = 'laravel-detay.html'; });
+  document.getElementById('q').oninput = e => {
+    const q = e.target.value.trim().toLowerCase(); let n = 0;
+    rows.querySelectorAll('tr').forEach(tr => { const show = tr.dataset.name.includes(q); tr.hidden = !show; n += show; });
+    document.getElementById('count').textContent = q ? `${n} uygulama` : '7 / 7 uygulama';
+  };
+  const nm = document.getElementById('newModal');
+  document.getElementById('newBtn').onclick = () => { nm.hidden = false; nm.querySelector('input,select').focus(); };
+  document.getElementById('newCancel').onclick = () => nm.hidden = true;
+  document.getElementById('newForm').addEventListener('submit', e => { e.preventDefault(); nm.hidden = true; toast('Kurulum başladı. Adımları uygulamanın Dağıtımlar bölümünden izleyebilirsiniz.'); });
+  const kits = ['Yok', 'React', 'Vue', 'Livewire'];
+  document.getElementById('kits').innerHTML = kits.map((k, i) => `<label class="h-9 px-3 rounded-md border border-line flex items-center gap-2 cursor-pointer has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"><input type="radio" name="kit" ${i === 0 ? 'checked' : ''} class="w-4 h-4 accent-[rgb(var(--accent))]">${k}</label>`).join('');
+  document.getElementById('srcs').onchange = e => document.querySelectorAll('[data-for]').forEach(el => el.hidden = el.dataset.for !== e.target.value);
+  const found = [
+    ['klinikmavi.com/randevu', 'Laravel 11.45 · PHP 8.3', 'Site kökü public/ değil, bağlarken düzeltilir.', 'warn'],
+    ['eski.ozkanlojistik.com', 'Laravel 10.48 · PHP 8.1', 'composer.lock PHP ^8.1 istiyor; PHP 8.1 güvenlik desteği bitti.', 'crit'],
+  ];
+  const sm = document.getElementById('scanModal');
+  document.getElementById('found').innerHTML = found.map(([n, v, note, k]) => `<li class="py-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+    <div class="min-w-0"><p class="font-mono text-[13px] font-medium">${n}</p><p class="text-2xs text-muted">${v}</p><p class="text-2xs ${k === 'crit' ? 'text-crit' : 'text-warn'}">${note}</p></div>
+    <button type="button" data-toast="${n} Servik'e bağlandı." class="ml-auto h-8 px-3 rounded-md bg-accent text-accent-fg text-[13px] font-medium">Bağla</button></li>`).join('');
+  document.getElementById('scanBtn').onclick = () => { sm.hidden = false; };
+  sm.querySelector('[data-close]').onclick = () => sm.hidden = true;
+</script>

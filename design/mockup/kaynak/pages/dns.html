@@ -1,0 +1,149 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Alan Adları ve DNS</h1>
+        <p class="mt-1 text-[13px] text-muted">Sunucuda barındırılan alan adları. Kayıtlarını görmek için bir alan adına tıklayın.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+          <button id="newDom" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Alan adı ekle</button>
+          <button id="delSel" disabled class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] disabled:opacity-40 disabled:cursor-not-allowed">Sil</button>
+          <div class="ml-auto flex gap-2 w-full sm:w-auto">
+            <select id="fstate" aria-label="Durum" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option value="">Tümü</option><option value="warn">Sorunlu olanlar</option></select>
+            <label class="relative flex-1 sm:w-60">
+              <span class="sr-only">Alan adı ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="Alan adı ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+        </div>
+        <div class="relative overflow-x-auto scroll-thin">
+          <table class="w-full text-[13.5px] min-w-[720px]">
+            <thead>
+              <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                <th class="w-10 pl-5 py-2.5"><input id="all" type="checkbox" aria-label="Tümünü seç" class="w-4 h-4 accent-[rgb(var(--accent))]"></th>
+                <th class="font-medium px-3 py-2.5">Alan adı</th>
+                <th class="font-medium px-3 py-2.5">Müşteri</th>
+                <th class="font-medium px-3 py-2.5 text-right">Kayıt</th>
+                <th class="font-medium px-3 py-2.5">DNS durumu</th>
+                <th class="font-medium px-3 py-2.5">DNSSEC</th>
+                <th class="font-medium px-3 py-2.5">Son değişiklik</th>
+              </tr>
+            </thead>
+            <tbody id="rows" class="divide-y divide-line"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center gap-3 px-5 py-3 border-t border-line text-[13px]">
+          <span class="text-2xs text-muted num" id="count"></span>
+          <div class="ml-auto flex gap-2">
+            <button disabled class="h-8 px-3 rounded-md border border-line text-[13px] disabled:opacity-40">Önceki</button>
+            <button data-toast="Örnek tasarımda yalnızca ilk sayfa gösteriliyor." class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Sonraki</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alan adı ekle -->
+      <div id="domModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="domForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="domTitle">
+          <h2 id="domTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Alan adı ekle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="d1" class="block mb-1.5">Alan adı</label>
+              <input id="d1" required placeholder="ornek.com.tr" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+            </div>
+            <div>
+              <label for="d2" class="block mb-1.5">Müşteri</label>
+              <select id="d2" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Kahve Atölyesi</option><option>Hızlı Kargo A.Ş.</option><option>Atlas Yayıncılık</option><option>Özkan Lojistik</option><option>Mağaza Online</option><option>Klinik Mavi</option></select>
+            </div>
+            <div>
+              <label for="d3" class="block mb-1.5">Başlangıç kayıtları</label>
+              <select id="d3" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Varsayılan Servik şablonu (A, www, posta, SPF, DKIM)</option><option>Boş bölge (yalnızca NS ve SOA)</option></select>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" id="domCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Ekle</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Silme onayı -->
+      <div id="delModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+          <p id="delTitle" class="font-semibold">Seçili DNS bölgeleri silinsin mi?</p>
+          <p class="mt-1 text-[13px] text-muted" id="delText"></p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="delCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="delOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium">Sil</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  // [alan adı, müşteri, kayıt sayısı, durum, durum metni, dnssec, son değişiklik]
+  const doms = [
+    ['kahveatolyesi.com.tr', 'Kahve Atölyesi', 12, 'warn', '1 kayıt uyarısı', true, 'Bugün 22:15'],
+    ['magazaonline.com.tr', 'Mağaza Online', 14, 'ok', 'Bu sunucuda', true, '12 Eki'],
+    ['hizlikargo.app', 'Hızlı Kargo A.Ş.', 16, 'ok', 'Bu sunucuda', true, '9 Eki'],
+    ['atlasyayin.com', 'Atlas Yayıncılık', 12, 'warn', 'DMARC kaydı yok', false, '3 Eki'],
+    ['ozkanlojistik.com', 'Özkan Lojistik', 15, 'ok', 'Bu sunucuda', false, '28 Eyl'],
+    ['klinikmavi.com', 'Klinik Mavi', 9, 'ok', 'Bu sunucuda', true, '21 Eyl'],
+    ['ankaradis.com.tr', 'Ankara Diş', 8, 'warn', 'Başka ad sunucusunda', false, '19 Eyl'],
+    ['atolyekahve.com', 'Kahve Atölyesi', 6, 'ok', 'Bu sunucuda', false, '2 Eyl'],
+    ['hizlikargo.com.tr', 'Hızlı Kargo A.Ş.', 7, 'ok', 'Bu sunucuda', true, '30 Ağu'],
+    ['adapansiyon.com', 'Ada Pansiyon', 10, 'ok', 'Bu sunucuda', false, '14 Ağu'],
+    ['pixelajans.com.tr', 'Pixel Ajans', 13, 'ok', 'Bu sunucuda', true, '2 Ağu'],
+    ['ozkanlojistik.com.tr', 'Özkan Lojistik', 5, 'ok', 'Bu sunucuda', false, '18 Tem'],
+  ];
+  const rows = document.getElementById('rows');
+  const draw = () => {
+    const q = document.getElementById('q').value.trim().toLowerCase(), st = document.getElementById('fstate').value;
+    const list = doms.filter(d => d[0].includes(q) && (!st || d[3] === st));
+    rows.innerHTML = list.map(([n, c, r, s, sTxt, sec, when]) => `<tr class="hover:bg-surface-2/60 cursor-pointer" data-href="dns-detay.html">
+        <td class="pl-5 py-3"><input type="checkbox" class="sel w-4 h-4 accent-[rgb(var(--accent))]" data-n="${n}" aria-label="${n} seç"></td>
+        <td class="px-3 py-3"><a href="dns-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">${n}</a></td>
+        <td class="px-3 py-3 text-muted">${c}</td>
+        <td class="px-3 py-3 text-right num">${r}</td>
+        <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${s === 'ok' ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'}"><i class="w-1.5 h-1.5 rounded-full ${s === 'ok' ? 'bg-ok' : 'bg-warn'}"></i>${sTxt}</span></td>
+        <td class="px-3 py-3 ${sec ? '' : 'text-muted'}">${sec ? 'Açık' : 'Kapalı'}</td>
+        <td class="px-3 py-3 text-muted whitespace-nowrap">${when}</td>
+      </tr>`).join('');
+    document.getElementById('count').textContent = `${list.length ? '1–' + list.length : '0'} / ${st || q ? list.length : 61} alan adı`;
+    sync();
+  };
+  const delSel = document.getElementById('delSel'), all = document.getElementById('all');
+  const sync = () => { const n = rows.querySelectorAll('.sel:checked').length; delSel.disabled = !n; delSel.textContent = n ? `Sil (${n})` : 'Sil'; };
+  rows.addEventListener('change', sync);
+  rows.addEventListener('click', e => {
+    if (e.target.closest('input, a')) return;
+    const tr = e.target.closest('tr[data-href]'); if (tr) location.href = tr.dataset.href;
+  });
+  all.onchange = () => { rows.querySelectorAll('.sel').forEach(c => c.checked = all.checked); sync(); };
+  document.getElementById('q').oninput = draw;
+  document.getElementById('fstate').onchange = draw;
+  draw();
+
+  const dm = document.getElementById('domModal');
+  document.getElementById('newDom').onclick = () => { dm.hidden = false; document.getElementById('d1').focus(); };
+  document.getElementById('domCancel').onclick = () => dm.hidden = true;
+  document.getElementById('domForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const n = document.getElementById('d1').value.trim().toLowerCase();
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(n)) { toast('Geçerli bir alan adı yazın, örneğin ornek.com.tr'); return; }
+    doms.unshift([n, document.getElementById('d2').value, document.getElementById('d3').selectedIndex ? 2 : 9, 'ok', 'Bu sunucuda', false, 'Şimdi']);
+    draw(); dm.hidden = true; e.target.reset(); toast(`${n} eklendi.`);
+  });
+
+  const xm = document.getElementById('delModal');
+  delSel.onclick = () => {
+    const names = [...rows.querySelectorAll('.sel:checked')].map(c => c.dataset.n);
+    document.getElementById('delText').textContent = `${names.join(', ')} için DNS bölgesi ve tüm kayıtları silinir. Bu alan adlarındaki siteler ve posta çalışmaz hâle gelir.`;
+    xm.hidden = false;
+  };
+  document.getElementById('delCancel').onclick = () => xm.hidden = true;
+  document.getElementById('delOk').onclick = () => {
+    const names = new Set([...rows.querySelectorAll('.sel:checked')].map(c => c.dataset.n));
+    for (let i = doms.length - 1; i >= 0; i--) if (names.has(doms[i][0])) doms.splice(i, 1);
+    all.checked = false; draw(); xm.hidden = true; toast(`${names.size} DNS bölgesi silindi.`);
+  };
+</script>

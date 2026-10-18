@@ -1,0 +1,624 @@
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5" aria-label="Konum"><a href="laravel.html" class="hover:text-accent">Laravel</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="font-mono text-fg">api.hizlikargo.app</span></nav>
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-3 justify-between">
+          <div class="flex items-center gap-3 min-w-0">
+            <h1 class="text-[22px] font-semibold tracking-tight font-mono truncate">api.hizlikargo.app</h1>
+            <span id="liveBadge" class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Yayında</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="laravel.html" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="arrow-left" class="w-4 h-4"></i>Listeye dön</a>
+            <button data-go="s-cmd" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="terminal" class="w-4 h-4"></i>Komut çalıştır</button>
+            <button id="deployOpen" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4"></i>Dağıt</button>
+          </div>
+        </div>
+        <p class="mt-1 text-[13px] text-muted">Depo <span class="font-mono">github.com/hizlikargo/api</span> · dal <span class="font-mono">main</span> · Laravel <span class="font-mono">12.33</span> · PHP <span class="font-mono">8.5</span> · Hızlı Kargo A.Ş.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0 grid grid-cols-1 md:grid-cols-[210px_1fr]">
+        <nav id="sub" class="flex md:flex-col gap-0.5 p-2 border-b md:border-b-0 md:border-r border-line text-[13.5px] overflow-x-auto scroll-thin" aria-label="Uygulama bölümleri"></nav>
+
+        <div class="min-w-0">
+
+        <!-- Genel bakış -->
+        <div id="s-ov" class="sec">
+          <div class="grid grid-cols-2 xl:grid-cols-4 border-b border-line text-[13px] [&>div]:p-4 [&>div]:border-line [&>div:nth-child(odd)]:border-r xl:[&>div:not(:last-child)]:border-r [&>div:nth-child(-n+2)]:border-b xl:[&>div]:border-b-0">
+            <div><p class="text-2xs text-muted">Sağlık (<span class="font-mono">/up</span>)</p><p class="mt-1 font-medium text-ok">200 · 41 ms</p><span class="text-2xs text-muted">1 dk önce kontrol edildi</span></div>
+            <div><p class="text-2xs text-muted">Yayındaki sürüm</p><p class="mt-1 font-medium font-mono">#148 · 8f3c2a1</p><span class="text-2xs text-muted">Bugün 23:38</span></div>
+            <div><p class="text-2xs text-muted">Kuyruk</p><p class="mt-1 font-medium">15 bekleyen · 9 işçi</p><button data-go="s-q" class="text-2xs text-crit hover:underline">3 başarısız iş</button></div>
+            <div><p class="text-2xs text-muted">Kaynak (bu uygulama)</p><p class="mt-1 font-medium num">CPU %12 · 410 MB</p><a href="canli-izleme.html" class="text-2xs text-accent hover:underline">Canlı izlemede aç</a></div>
+          </div>
+          <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-6 text-[13.5px]">
+            <div>
+              <h2 class="font-semibold mb-2">Uygulama bilgileri</h2>
+              <dl class="divide-y divide-line text-[13px]">
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Laravel / PHP</dt><dd>12.33 / 8.5 <span class="text-ok">· uyumlu</span></dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">composer.lock PHP isteği</dt><dd class="font-mono">^8.3</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Site kökü</dt><dd class="font-mono">current/public</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Paylaşılan dizinler</dt><dd class="font-mono">storage/, .env</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Node.js / paket yöneticisi</dt><dd>22 LTS / pnpm</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Veritabanı</dt><dd><a href="veritabanlari.html" class="font-mono text-accent hover:underline">hizlikargo_api</a> · MySQL 8.4</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Önbellek ve kuyruk</dt><dd>Redis</dd></div>
+              </dl>
+            </div>
+            <div>
+              <h2 class="font-semibold mb-2 flex items-center gap-2">Pulse özeti <span class="text-2xs font-normal text-muted">son 1 saat</span></h2>
+              <dl class="divide-y divide-line text-[13px]">
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">İstek</dt><dd class="num">48.210</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Yavaş istek (&gt; 1 sn)</dt><dd class="num text-warn">37 · <span class="font-mono">GET /v1/manifests/{id}</span></dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">İstisna</dt><dd class="num">12 · <span class="font-mono">ConnectionException</span></dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Yavaş sorgu</dt><dd class="num">4</dd></div>
+                <div class="flex justify-between gap-3 py-2"><dt class="text-muted">Önbellek isabeti</dt><dd class="num">%94</dd></div>
+              </dl>
+              <button data-go="s-log" class="mt-2 text-[13px] text-accent hover:underline">Hataları günlükte gör</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dağıtımlar -->
+        <div id="s-dep" class="sec" hidden>
+          <dl class="px-5 py-2 divide-y divide-line text-[13.5px]">
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Kaynak</dt><dd class="flex flex-wrap items-center gap-2"><i data-lucide="github" class="w-4 h-4"></i><span class="font-mono">hizlikargo/api</span><span class="text-muted">· GitHub bağlantısıyla</span><button id="keyOpen" class="text-[13px] text-accent hover:underline">Dağıtım anahtarı</button></dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Otomatik dağıtım</dt><dd class="space-y-1"><label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Otomatik dağıtım ayarı değişti." class="w-4 h-4 accent-[rgb(var(--accent))]"><span><span class="font-mono">main</span> dalına push gelince</span></label><p class="text-2xs text-muted">Webhook: <span class="font-mono">https://srv-ist-01.servik.net:8443/hooks/deploy/7Hk2qP</span> <button data-toast="Webhook adresi kopyalandı." class="text-accent hover:underline">Kopyala</button></p></dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Sıfır kesintili dağıtım</dt><dd>Açık <span class="text-muted">· her sürüm <span class="font-mono">releases/</span> altına kurulur, <span class="font-mono">current</span> bağlantısı tek adımda değişir · son 5 sürüm saklanır</span></dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Güvenlik ağı</dt><dd class="space-y-1.5">
+              <label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Ayar değişti." class="w-4 h-4 accent-[rgb(var(--accent))]">Sağlık kontrolü başarısızsa önceki sürüme otomatik dön <span class="text-muted font-mono">/up</span></label>
+              <label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Ayar değişti." class="w-4 h-4 accent-[rgb(var(--accent))]">Dağıtımdan önce veritabanını yedekle</label></dd></div>
+          </dl>
+          <div class="relative overflow-x-auto scroll-thin border-t border-line">
+            <table class="w-full text-[13.5px] min-w-[720px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Commit</th><th class="font-medium px-3 py-2.5">Tetikleyen</th><th class="font-medium px-3 py-2.5">Süre</th><th class="font-medium px-3 py-2.5">Durum</th><th class="px-3"></th></tr></thead>
+              <tbody id="depRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <details class="px-5 py-4 border-t border-line text-[13px]">
+            <summary class="cursor-pointer text-accent">Dağıtım adımları ve kancalar</summary>
+            <div class="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-4" id="hooks"></div>
+            <p class="mt-2 text-2xs text-muted">Kodu çekme, <span class="font-mono">storage</span> ve <span class="font-mono">.env</span> bağlama, <span class="font-mono">current</span> geçişi ve PHP-FPM yenileme Servik tarafından yapılır; burada yalnızca kendi adımlarınızı yazarsınız. SSH izni gerekmez.</p>
+            <button data-toast="Dağıtım adımları kaydedildi." class="mt-2 h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Adımları kaydet</button>
+          </details>
+        </div>
+
+        <!-- Önizleme ortamları -->
+        <div id="s-prev" class="sec" hidden>
+          <dl class="px-5 py-2 divide-y divide-line text-[13.5px]">
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Pull request önizlemeleri</dt><dd><label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Önizleme ayarı değişti." class="w-4 h-4 accent-[rgb(var(--accent))]">Açık</label></dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Adres kalıbı</dt><dd class="font-mono text-[13px]">pr-{numara}.api.hizlikargo.app</dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Veritabanı</dt><dd><select class="h-8 px-2 rounded-md border border-line bg-surface text-[13px]"><option>Boş veritabanı + seed</option><option>staging verisinin kopyası</option></select></dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Temizlik</dt><dd>PR kapanınca ya da birleşince ortam, alt alan adı ve veritabanı silinir.</dd></div>
+          </dl>
+          <div class="relative overflow-x-auto scroll-thin border-t border-line">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5">Pull request</th><th class="font-medium px-3 py-2.5">Adres</th><th class="font-medium px-3 py-2.5">Durum</th><th class="px-3"></th></tr></thead>
+              <tbody id="prRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ortam (.env) -->
+        <form id="s-env" class="sec" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button type="button" id="envAdd" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Değişken ekle</button>
+            <button type="button" id="diffBtn" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="git-compare" class="w-4 h-4"></i>.env.example ile karşılaştır <span class="text-2xs font-medium px-1.5 rounded-full bg-warn-soft text-warn">2</span></button>
+            <button type="button" id="histBtn" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="history" class="w-4 h-4"></i>Geçmiş</button>
+            <label class="ml-auto relative w-full sm:w-56">
+              <span class="sr-only">Değişken ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="envQ" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <div id="diffBox" hidden class="px-5 py-3 border-b border-line bg-warn-soft/40 text-[13px] space-y-1">
+            <p><span class="font-medium">.env içinde eksik:</span> <span class="font-mono">SENTRY_LARAVEL_DSN</span>, <span class="font-mono">REVERB_SCALING_ENABLED</span> <button type="button" id="diffAdd" class="ml-1 text-accent hover:underline">Boş olarak ekle</button></p>
+            <p class="text-muted"><span class="font-medium text-fg">Yalnızca .env içinde:</span> <span class="font-mono">CARRIER_GATEWAY_TOKEN</span> (.env.example dosyasına eklemeyi unutmayın)</p>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13px] min-w-[560px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5 w-[38%]">Anahtar</th><th class="font-medium px-3 py-2.5">Değer</th><th class="px-3"></th></tr></thead>
+              <tbody id="envRows" class="divide-y divide-line font-mono"></tbody>
+            </table>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex flex-wrap items-center gap-2">
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+            <button type="button" id="envReset" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <span class="text-2xs text-muted">Gizli değerler maskelenir. Kaydedince <span class="font-mono">config:cache</span> yenilenir ve önceki hâli geçmişe yazılır.</span>
+          </div>
+        </form>
+
+        <!-- Komutlar -->
+        <div id="s-cmd" class="sec" hidden>
+          <div class="px-5 py-3 border-b border-line flex flex-wrap items-center gap-2">
+            <div id="cmdTool" class="inline-flex rounded-md border border-line p-0.5 text-[13px]" role="tablist"></div>
+            <select id="pm" class="h-8 px-2 rounded-md border border-line bg-surface text-[13px] font-mono" aria-label="Paket yöneticisi" hidden><option>pnpm</option><option>npm</option><option>yarn</option><option>bun</option></select>
+          </div>
+          <form id="cmdForm" class="p-5 space-y-3 text-[13.5px]">
+            <div class="flex rounded-md border border-line focus-within:border-accent overflow-hidden">
+              <span id="cmdPre" class="px-3 grid place-items-center bg-surface-2 text-muted font-mono text-[13px] border-r border-line whitespace-nowrap">php artisan</span>
+              <input id="cmd" autocomplete="off" class="flex-1 min-w-0 h-9 px-3 bg-surface outline-none font-mono text-[13px]">
+              <button class="px-3.5 bg-accent text-accent-fg text-[13px] font-medium">Çalıştır</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5"><span class="text-2xs text-muted mr-1">Kayıtlı:</span><span id="saved" class="contents"></span><button type="button" id="saveCmd" class="h-7 px-2 rounded-md text-[12px] text-accent hover:underline">+ Bu komutu kaydet</button></div>
+            <pre id="out" class="h-72 overflow-auto scroll-thin p-3 rounded-md bg-[#0f1a1c] text-[#d7e4e4] font-mono text-[12.5px] whitespace-pre-wrap"></pre>
+            <p class="text-2xs text-muted">Komutlar uygulamanın sistem kullanıcısıyla, <span class="font-mono">current/</span> dizininde çalışır. Çıktı canlı akar; uzun komutlar sayfadan çıkınca da sürer.</p>
+          </form>
+        </div>
+
+        <!-- Kuyruklar -->
+        <div id="s-q" class="sec" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button data-toast="İşçiler yeniden başlatıldı (queue:restart)." class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="rotate-cw" class="w-4 h-4"></i>Yeniden başlat</button>
+            <button id="failOpen" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2">Başarısız işler <span id="failN" class="text-2xs font-medium px-1.5 rounded-full bg-crit-soft text-crit num">3</span></button>
+            <span class="ml-auto text-[13px] text-muted flex items-center gap-2">Bağlantı <select class="h-8 px-2 rounded-md border border-line bg-surface text-[13px] text-fg"><option>redis</option><option>database</option><option>sqs</option></select></span>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[760px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5">Kuyruk</th><th class="font-medium px-3 py-2.5">İşçi</th><th class="font-medium px-3 py-2.5">Bekleyen</th><th class="font-medium px-3 py-2.5">Zaman aşımı</th><th class="font-medium px-3 py-2.5">En çok iş / süre</th><th class="font-medium px-3 py-2.5">Durum</th><th class="px-3"></th></tr></thead>
+              <tbody id="qRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Her işçi ayrı bir systemd hizmeti olarak sürekli çalışır, çökerse yeniden başlar. Dağıtımdan sonra <span class="font-mono">queue:restart</span> otomatik çalışır. Composer paketi gerekmez.</p>
+        </div>
+
+        <!-- Zamanlayıcı -->
+        <div id="s-cron" class="sec" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[800px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5 w-10"><span class="sr-only">Açık</span></th><th class="font-medium px-3 py-2.5">Komut</th><th class="font-medium px-3 py-2.5">Zamanlama</th><th class="font-medium px-3 py-2.5">Son çalışma</th><th class="font-medium px-3 py-2.5">Süre</th><th class="font-medium px-3 py-2.5">Durum</th><th class="px-3"></th></tr></thead>
+              <tbody id="cronRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Görevler <span class="font-mono">routes/console.php</span> içinden okunur. Servik <span class="font-mono">schedule:run</span> komutunu her dakika bir systemd zamanlayıcısıyla çalıştırır ve kaçırılan çalışmaları bildirir.</p>
+        </div>
+
+        <!-- Süreçler -->
+        <div id="s-proc" class="sec" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[700px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5">Süreç</th><th class="font-medium px-3 py-2.5">Ayrıntı</th><th class="font-medium px-3 py-2.5">Durum</th><th class="px-3"></th></tr></thead>
+              <tbody id="procRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Süreçler systemd ile yönetilir. Nginx ters vekil ve WebSocket ayarları otomatik yazılır; dağıtımdan sonra <span class="font-mono">octane:reload</span>, <span class="font-mono">horizon:terminate</span> ve <span class="font-mono">reverb:restart</span> gerektiğinde çalışır.</p>
+        </div>
+
+        <!-- Günlükler -->
+        <div id="s-log" class="sec" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <select id="logFile" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13px] font-mono" aria-label="Günlük dosyası"><option>laravel-2026-10-18.log</option><option>laravel-2026-10-17.log</option><option>laravel-2026-10-16.log</option></select>
+            <select id="logLvl" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]" aria-label="Düzey"><option value="">Tüm düzeyler</option><option value="error">Hata ve üstü</option><option value="warning">Uyarı ve üstü</option><option value="info">Bilgi ve üstü</option></select>
+            <label class="flex items-center gap-2 text-[13.5px] ml-1"><input id="tail" type="checkbox" class="w-4 h-4 accent-[rgb(var(--accent))]">Canlı takip</label>
+            <label class="ml-auto relative w-full sm:w-56">
+              <span class="sr-only">Günlükte ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="logQ" type="search" placeholder="Günlükte ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <ul id="logRows" class="divide-y divide-line text-[13px] max-h-[480px] overflow-auto scroll-thin"></ul>
+          <div class="px-5 py-3 border-t border-line flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+            <span class="text-muted">Günlük düzeni <span class="font-mono text-fg">daily</span>, 14 gün saklanır.</span>
+            <span class="text-muted">Hata düzeyinde uyarı: <span class="text-fg">e-posta ve webhook</span></span>
+            <button data-toast="Uyarı ayarları Bildirimler'de." class="text-accent hover:underline">Değiştir</button>
+          </div>
+        </div>
+
+        <!-- Bakım modu -->
+        <form id="s-maint" class="sec" hidden>
+          <div class="px-5 py-4 border-b border-line flex flex-wrap items-center gap-3 text-[13.5px]">
+            <span id="mState" class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Uygulama açık</span>
+            <span class="text-muted text-[13px]">Sıfır kesintili dağıtımda bakım moduna gerek yoktur.</span>
+          </div>
+          <div class="p-5 grid grid-cols-1 md:grid-cols-[230px_1fr] gap-x-6 gap-y-4 text-[13.5px]">
+            <p class="font-medium md:pt-2">Atlama bağlantısı</p>
+            <div class="max-w-xl">
+              <div class="flex gap-2"><input readonly value="https://api.hizlikargo.app/bakim-a7f3k9" class="flex-1 min-w-0 h-9 px-3 rounded-md border border-line bg-surface-2 font-mono text-[13px]"><button type="button" data-toast="Bağlantı kopyalandı." class="h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Kopyala</button><button type="button" data-toast="Yeni gizli anahtar üretildi." class="h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Yenile</button></div>
+              <p class="mt-1 text-2xs text-muted">Bu bağlantıyı açan ekip üyeleri bakım sırasında uygulamayı normal görür (<span class="font-mono">--secret</span>).</p>
+            </div>
+            <label for="mIps" class="font-medium md:pt-2">İzin verilen IP adresleri</label>
+            <div class="max-w-xl"><textarea id="mIps" rows="3" class="w-full px-3 py-2 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">78.186.41.12
+10.0.0.0/24</textarea><p class="mt-1 text-2xs text-muted">Her satıra bir adres veya ağ.</p></div>
+            <label for="mTpl" class="font-medium md:pt-2">Ziyaretçinin göreceği sayfa</label>
+            <div class="max-w-xl"><select id="mTpl" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Uygulamanın kendi sayfası (resources/views/errors/503.blade.php)</option><option>Servik bakım sayfası, marka renkleriyle</option><option>Özel HTML</option></select></div>
+            <label for="mRetry" class="font-medium md:pt-2">Tekrar deneme süresi</label>
+            <div class="max-w-xl flex items-center gap-2"><input id="mRetry" value="60" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"><span class="text-muted text-[13px]">saniye (Retry-After)</span></div>
+            <div class="md:col-start-2"><button id="mBtn" class="h-9 px-3.5 rounded-md bg-warn text-white text-[13.5px] font-medium">Bakım moduna al</button></div>
+          </div>
+        </form>
+
+        <!-- Yedekler -->
+        <div id="s-bak" class="sec" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button data-toast="Uygulama yedeği alınıyor: kod, .env, storage ve veritabanı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4"></i>Şimdi yedekle</button>
+            <span class="ml-auto text-[13px] text-muted">Her gün 03:00 · 14 gün saklanır · <a href="yedekler.html" class="text-accent hover:underline">Yedek ayarları</a></span>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5">Zaman</th><th class="font-medium px-3 py-2.5">Tür</th><th class="font-medium px-3 py-2.5">İçerik</th><th class="font-medium px-3 py-2.5 text-right">Boyut</th><th class="px-3"></th></tr></thead>
+              <tbody id="bakRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Bu uygulama müşterinin diğer sitelerinden bağımsız olarak geri yüklenebilir.</p>
+        </div>
+
+        <!-- Erişim ve API -->
+        <div id="s-acc" class="sec" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button data-toast="Davet e-postası gönderildi." class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i>Kişi ekle</button>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[560px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium pl-5 pr-3 py-2.5">Kişi</th><th class="font-medium px-3 py-2.5">Rol</th><th class="font-medium px-3 py-2.5">Yapabilecekleri</th></tr></thead>
+              <tbody id="accRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <div class="p-5 border-t border-line grid grid-cols-1 md:grid-cols-[230px_1fr] gap-x-6 gap-y-4 text-[13.5px]">
+            <p class="font-medium md:pt-2">Dağıtım anahtarı (API)</p>
+            <div class="max-w-xl"><div class="flex gap-2"><input readonly type="password" value="svk_dep_9f2Lq7xVt3Kp8Zr1" class="flex-1 min-w-0 h-9 px-3 rounded-md border border-line bg-surface-2 font-mono text-[13px]"><button data-toast="Anahtar kopyalandı." class="h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Kopyala</button><button data-toast="Anahtar yenilendi; eskisi artık çalışmaz." class="h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Yenile</button></div><p class="mt-1 text-2xs text-muted">Yalnızca bu uygulamayı dağıtabilir. Son kullanım: bugün 23:38, GitHub Actions.</p></div>
+            <p class="font-medium md:pt-2">Komut satırından</p>
+            <pre class="max-w-xl p-3 rounded-md bg-surface-2 border border-line font-mono text-[12.5px] overflow-x-auto scroll-thin">servik deploy api.hizlikargo.app --branch=main</pre>
+            <p class="font-medium md:pt-2">CI'dan (GitHub Actions)</p>
+            <pre class="max-w-xl p-3 rounded-md bg-surface-2 border border-line font-mono text-[12.5px] overflow-x-auto scroll-thin">- name: Servik ile dağıt
+  run: curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.SERVIK_TOKEN }}" \
+    https://srv-ist-01.servik.net:8443/api/v1/apps/api.hizlikargo.app/deploy</pre>
+          </div>
+        </div>
+
+        </div>
+      </section>
+
+      <!-- Dağıt -->
+      <div id="depModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="depForm" class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="depTitle">
+          <h2 id="depTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Dağıt</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div><label for="depRef" class="block mb-1.5">Dal veya etiket</label><input id="depRef" list="refs" value="main" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]"><datalist id="refs"><option>main</option><option>develop</option><option>v2.14.0</option><option>v2.13.2</option></datalist></div>
+            <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Veritabanı geçişlerini çalıştır (<span class="font-mono text-[13px]">migrate --force</span>)</label>
+            <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Ön yüzü derle (<span class="font-mono text-[13px]">pnpm build</span>)</label>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Dağıt</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Dağıtım günlüğü -->
+      <div id="logModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-2xl rounded-xl border border-line bg-surface shadow-xl min-w-0" role="dialog" aria-modal="true" aria-labelledby="lmTitle">
+          <h2 id="lmTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold"></h2>
+          <pre id="lmOut" class="m-5 h-80 overflow-auto scroll-thin p-3 rounded-md bg-[#0f1a1c] text-[#d7e4e4] font-mono text-[12.5px] whitespace-pre-wrap"></pre>
+          <div class="px-5 py-3 border-t border-line flex justify-end"><button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kapat</button></div>
+        </div>
+      </div>
+
+      <!-- Genel amaçlı küçük pencere -->
+      <div id="infoModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl min-w-0" role="dialog" aria-modal="true" aria-labelledby="imTitle">
+          <h2 id="imTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold"></h2>
+          <div id="imBody" class="p-5 text-[13.5px]"></div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2" id="imFoot"></div>
+        </div>
+      </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const BK = { ok: ['bg-ok-soft text-ok', 'bg-ok'], warn: ['bg-warn-soft text-warn', 'bg-warn'], crit: ['bg-crit-soft text-crit', 'bg-crit'], info: ['bg-info-soft text-info', 'bg-info'], muted: ['bg-surface-2 text-muted', 'bg-muted'] };
+  const badge = (k, t) => `<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${BK[k][0]}"><i class="w-1.5 h-1.5 rounded-full ${BK[k][1]}"></i>${t}</span>`;
+  const lnk = 'text-[13px] text-muted hover:text-fg whitespace-nowrap';
+  const closeBtn = '<button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kapat</button>';
+  const info = (title, body, foot = closeBtn) => { $('imTitle').textContent = title; $('imBody').innerHTML = body; $('imFoot').innerHTML = foot; $('infoModal').hidden = false; bindClose(); };
+
+  // ---- Alt menü ----
+  const SECS = [
+    ['Uygulama', [['s-ov', 'Genel bakış'], ['s-dep', 'Dağıtımlar'], ['s-prev', 'Önizleme ortamları'], ['s-env', 'Ortam (.env)']]],
+    ['Çalıştırma', [['s-cmd', 'Komutlar'], ['s-q', 'Kuyruklar'], ['s-cron', 'Zamanlayıcı'], ['s-proc', 'Süreçler']]],
+    ['Bakım', [['s-log', 'Günlükler'], ['s-maint', 'Bakım modu'], ['s-bak', 'Yedekler'], ['s-acc', 'Erişim ve API']]],
+  ];
+  $('sub').innerHTML = SECS.map(([g, list], i) => `<p class="hidden md:block px-3 ${i ? 'mt-3' : 'mt-1'} mb-1 text-2xs uppercase tracking-[.08em] text-muted font-medium">${g}</p>` + list.map(([id, n]) => `<button data-sec="${id}" class="sub">${n}</button>`).join('')).join('');
+  const show = id => {
+    document.querySelectorAll('.sub').forEach(b => {
+      const on = b.dataset.sec === id;
+      b.setAttribute('aria-current', on ? 'page' : 'false');
+      b.className = 'sub text-left h-9 px-3 rounded-md whitespace-nowrap shrink-0 ' + (on ? 'bg-accent-soft text-accent font-medium' : 'text-muted hover:bg-surface-2 hover:text-fg');
+    });
+    document.querySelectorAll('.sec').forEach(s => s.hidden = s.id !== id);
+    history.replaceState(null, '', '#' + id.slice(2));
+  };
+  document.addEventListener('click', e => { const b = e.target.closest('[data-sec],[data-go]'); if (b) show(b.dataset.sec || b.dataset.go); });
+
+  // ---- Dağıtımlar ----
+  const deps = [
+    ['#148', '8f3c2a1', 'Kargo takip uç noktasına önbellek eklendi', 'Sercan Yılmaz', 'Bugün 23:38', '1 dk 12 sn', 'ok'],
+    ['#147', 'a19d07e', 'Sipariş özetinde N+1 düzeltmesi', 'GitHub webhook', 'Bugün 18:12', '58 sn', 'ok'],
+    ['#146', '3d0b8c4', 'Laravel 12.33 yükseltmesi', 'GitHub Actions', 'Dün 16:05', '2 dk 03 sn', 'ok'],
+    ['#145', '77e1f2a', 'Manifest PDF üretimi kuyruğa taşındı', 'GitHub webhook', '15 Eki 11:47', '1 dk 20 sn', 'ok'],
+    ['#144', 'b5c9e03', 'Reverb ile canlı kargo takibi', 'Sercan Yılmaz', '14 Eki 22:30', '1 dk 41 sn', 'rb'],
+  ];
+  const drawDeps = () => $('depRows').innerHTML = deps.map(([v, c, msg, who, t, d, s], i) => `<tr class="hover:bg-surface-2/60">
+    <td class="pl-5 pr-3 py-3 font-mono text-[13px] whitespace-nowrap">${v}${i === 0 ? ' <span class="ml-1 font-sans text-2xs text-accent">yayında</span>' : ''}<div class="font-sans text-2xs text-muted">${t}</div></td>
+    <td class="px-3 py-3"><span class="font-mono text-[13px] text-accent">${c}</span> <span class="text-muted">${msg}</span></td>
+    <td class="px-3 py-3 whitespace-nowrap">${who}</td>
+    <td class="px-3 py-3 whitespace-nowrap num text-muted">${d}</td>
+    <td class="px-3 py-3">${s === 'ok' ? badge('ok', 'Başarılı') : s === 'run' ? badge('info', 'Sürüyor') : badge('crit', 'Sağlık kontrolü başarısız, geri dönüldü')}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap space-x-3"><button data-log="${i}" class="${lnk}">Günlük</button>${i && s === 'ok' ? `<button data-rb="${v}" class="${lnk}">Bu sürüme dön</button>` : ''}</td></tr>`).join('');
+  drawDeps();
+  const DEPLOG = (v, ref) => [
+    `▸ ${v} başladı · ${ref} · github.com/hizlikargo/api`,
+    '▸ Veritabanı yedeği alındı: hizlikargo_api (182 MB, 4 sn)',
+    `▸ Kod çekildi → releases/20261018-2351`,
+    '$ composer install --no-dev --optimize-autoloader',
+    '  Installing dependencies from lock file · 112 paket · 9 sn',
+    '$ pnpm install --frozen-lockfile && pnpm build',
+    '  vite v6.3 building for production… ✓ 214 modül, 3,1 sn',
+    '▸ storage/ ve .env paylaşılan dizinden bağlandı',
+    '$ php artisan migrate --force',
+    '  INFO  Nothing to migrate.',
+    '$ php artisan optimize',
+    '▸ current → releases/20261018-2351 (atomik geçiş)',
+    '▸ PHP-FPM yenilendi · queue:restart · reverb:restart',
+    '▸ Sağlık kontrolü: GET /up → 200 (38 ms) ✓',
+    `✓ ${v} yayında. Toplam 1 dk 09 sn. Son 5 sürüm saklanıyor.`,
+  ];
+  const stream = (el, lines, done) => { el.textContent = ''; let i = 0; const t = setInterval(() => { el.textContent += lines[i++] + '\n'; el.scrollTop = el.scrollHeight; if (i >= lines.length) { clearInterval(t); done && done(); } }, 260); };
+  $('depRows').onclick = e => {
+    const l = e.target.closest('[data-log]'), r = e.target.closest('[data-rb]');
+    if (l) {
+      const d = deps[l.dataset.log]; $('lmTitle').textContent = `Dağıtım ${d[0]} günlüğü`; $('logModal').hidden = false;
+      $('lmOut').textContent = d[6] === 'rb' ? DEPLOG(d[0], 'main').slice(0, 12).join('\n') + '\n▸ Sağlık kontrolü: GET /up → 500 (3 deneme)\n✗ Sürüm geri alındı: current → #143. Kesinti olmadı.' : DEPLOG(d[0], 'main').join('\n');
+    }
+    if (r) info(`${r.dataset.rb} sürümüne dönülsün mü?`, '<p class="text-muted">Kod bu sürüme döner, PHP-FPM yenilenir ve işçiler yeniden başlar. Bu işlem birkaç saniye sürer ve kesinti olmaz. Veritabanı geçişleri geri alınmaz; gerekirse dağıtım öncesi alınan yedeği <button data-sec="s-bak" data-close class="text-accent hover:underline">Yedekler</button> bölümünden geri yükleyin.</p>',
+      `<button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button><button data-close data-toast="${r.dataset.rb} sürümüne dönüldü." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Sürüme dön</button>`);
+  };
+  $('deployOpen').onclick = () => { $('depModal').hidden = false; $('depRef').focus(); };
+  $('depForm').addEventListener('submit', e => {
+    e.preventDefault(); $('depModal').hidden = true; show('s-dep');
+    const ref = $('depRef').value.trim() || 'main';
+    deps.unshift(['#149', '—', `${ref} dalının son hâli`, 'Sercan Yılmaz', 'Şimdi', '…', 'run']); drawDeps();
+    $('lmTitle').textContent = 'Dağıtım #149 · canlı'; $('logModal').hidden = false;
+    stream($('lmOut'), DEPLOG('#149', ref), () => { deps[0] = ['#149', 'c7d1e90', `${ref} dalının son hâli`, 'Sercan Yılmaz', 'Şimdi', '1 dk 09 sn', 'ok']; drawDeps(); toast('#149 yayında.'); });
+  });
+  $('keyOpen').onclick = () => info('Dağıtım anahtarı', '<p class="text-muted mb-2">Depo GitHub bağlantısıyla eklendi, anahtar otomatik yüklendi. Elle eklemek isterseniz bu açık anahtarı deponun Deploy keys bölümüne salt okunur olarak ekleyin.</p><pre class="p-3 rounded-md bg-surface-2 border border-line font-mono text-[12px] whitespace-pre-wrap break-all">ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK7q2mXv9pQ1sLr4Tz8NcYw0eJb3hGd5fU6aRkP2xVt servik@api.hizlikargo.app</pre>', `${closeBtn}<button data-toast="Açık anahtar kopyalandı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Kopyala</button>`);
+  const hooks = [
+    ['Derlemeden önce', 'Kod çekildikten sonra', ''],
+    ['Derleme', 'Bağımlılıklar ve ön yüz', 'composer install --no-dev --optimize-autoloader\npnpm install --frozen-lockfile\npnpm build'],
+    ['Yayına almadan önce', 'current değişmeden hemen önce', 'php artisan migrate --force\nphp artisan optimize'],
+  ];
+  $('hooks').innerHTML = hooks.map(([t, d, v]) => `<label class="block"><span class="font-medium">${t}</span> <span class="text-2xs text-muted">${d}</span><textarea rows="5" spellcheck="false" placeholder="# komut yok" class="mt-1.5 w-full p-3 rounded-md border border-line bg-surface-2 font-mono text-[12.5px] focus:border-accent outline-none">${v}</textarea></label>`).join('');
+
+  // ---- Önizleme ortamları ----
+  let prs = [
+    ['#212', 'Teslimat fotoğrafı yükleme', 'feature/delivery-photo', 'pr-212', 'ok', 'Hazır'],
+    ['#209', 'Kurye rota optimizasyonu', 'feature/route-opt', 'pr-209', 'info', 'Derleniyor'],
+    ['#204', 'Fatura PDF şablonu yenilendi', 'fix/invoice-pdf', 'pr-204', 'crit', 'Dağıtım başarısız'],
+  ];
+  const drawPr = () => $('prRows').innerHTML = prs.map(([n, t, b, sub, k, st], i) => `<tr class="hover:bg-surface-2/60">
+    <td class="pl-5 pr-3 py-3"><span class="font-mono text-[13px]">${n}</span> ${t}<div class="text-2xs text-muted font-mono">${b}</div></td>
+    <td class="px-3 py-3"><a href="#" class="font-mono text-[13px] text-accent hover:underline">${sub}.api.hizlikargo.app</a></td>
+    <td class="px-3 py-3">${badge(k, st)}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap"><button data-prdel="${i}" class="${lnk} hover:text-crit">Sil</button></td></tr>`).join('');
+  drawPr();
+  $('prRows').onclick = e => { const b = e.target.closest('[data-prdel]'); if (!b) return; const p = prs.splice(b.dataset.prdel, 1)[0]; drawPr(); toast(`${p[3]}.api.hizlikargo.app ve veritabanı silindi.`); };
+
+  // ---- Ortam (.env) ----
+  const env0 = [
+    ['APP_NAME', 'HizliKargoAPI'], ['APP_ENV', 'production'], ['APP_KEY', 'base64:Hc2Lq9Zt1Vx8Mn5Rb7Yp0sWk3dGfA6uJ4eQoTiXy2Lm=', 1],
+    ['APP_DEBUG', 'false'], ['APP_URL', 'https://api.hizlikargo.app'], ['DB_CONNECTION', 'mysql'], ['DB_DATABASE', 'hizlikargo_api'],
+    ['DB_USERNAME', 'hizlikargo_api'], ['DB_PASSWORD', 'N7#qv2Lx!9sRk4Tz', 1], ['QUEUE_CONNECTION', 'redis'], ['CACHE_STORE', 'redis'],
+    ['REDIS_HOST', '/run/redis/hizlikargo.sock'], ['REVERB_APP_KEY', 'hk_reverb_k8s2', 1], ['MAIL_FROM_ADDRESS', 'bildirim@hizlikargo.app'], ['CARRIER_GATEWAY_TOKEN', 'cgw_live_51Hc8f0aT2mQ9vB7', 1],
+  ];
+  let env = env0.map(r => [...r]);
+  const inp = 'w-full h-8 px-2.5 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13px]';
+  const drawEnv = (q = '') => {
+    $('envRows').innerHTML = env.map(([k, v, s], i) => k.toLowerCase().includes(q.toLowerCase()) ? `<tr>
+      <td class="pl-5 pr-3 py-2">${k ? k : `<input data-k="${i}" placeholder="YENI_ANAHTAR" class="${inp} uppercase">`}</td>
+      <td class="px-3 py-2"><div class="flex items-center gap-2"><input data-v="${i}" type="${s ? 'password' : 'text'}" value="${v.replace(/"/g, '&quot;')}" class="${inp} min-w-0">${s ? `<button type="button" data-show="${i}" aria-label="Göster" class="text-muted hover:text-fg"><i data-lucide="eye" class="w-4 h-4"></i></button>` : ''}</div></td>
+      <td class="px-3 py-2 text-right font-sans"><button type="button" data-del="${i}" class="text-[13px] text-muted hover:text-crit">Sil</button></td></tr>` : '').join('');
+    lucide.createIcons();
+  };
+  $('envRows').addEventListener('input', e => { const t = e.target; if (t.dataset.v) env[t.dataset.v][1] = t.value; if (t.dataset.k) env[t.dataset.k][3] = t.value.toUpperCase(); });
+  $('envRows').addEventListener('click', e => {
+    const s = e.target.closest('[data-show]'), d = e.target.closest('[data-del]');
+    if (s) { const f = $('envRows').querySelector(`[data-v="${s.dataset.show}"]`); f.type = f.type === 'password' ? 'text' : 'password'; }
+    if (d) { const k = env[d.dataset.del][0]; env.splice(d.dataset.del, 1); drawEnv($('envQ').value); toast(`${k || 'Değişken'} kaldırıldı (kaydedince geçerli).`); }
+  });
+  $('envAdd').onclick = () => { env.push(['', '']); $('envQ').value = ''; drawEnv(); $('envRows').querySelector('tr:last-child input').focus(); };
+  $('envQ').oninput = e => drawEnv(e.target.value);
+  $('envReset').onclick = () => { env = env0.map(r => [...r]); drawEnv(); };
+  $('diffBtn').onclick = () => $('diffBox').hidden = !$('diffBox').hidden;
+  $('diffAdd').onclick = () => { env.push(['SENTRY_LARAVEL_DSN', '', 1], ['REVERB_SCALING_ENABLED', 'false']); drawEnv(); $('diffBox').hidden = true; toast('2 değişken eklendi; değerlerini girip kaydedin.'); };
+  $('histBtn').onclick = () => info('.env geçmişi', `<ul class="divide-y divide-line text-[13px] -my-2">${[
+      ['Bugün 22:10', 'Sercan Yılmaz', 'CARRIER_GATEWAY_TOKEN değişti'],
+      ['14 Eki 21:58', 'Emre Kaya', 'REVERB_APP_KEY eklendi, BROADCAST_CONNECTION değişti'],
+      ['2 Eki 10:15', 'Sercan Yılmaz', 'MAIL_MAILER değişti'],
+    ].map(([t, w, c], i) => `<li class="py-2.5 flex items-center gap-3"><div class="min-w-0"><p>${c}</p><p class="text-2xs text-muted">${t} · ${w}</p></div>${i ? `<button data-close data-toast=".env, ${t} öncesindeki hâline döndürüldü." data-undo="1" class="ml-auto ${lnk}">Bu hâline dön</button>` : '<span class="ml-auto text-2xs text-muted">Şu anki</span>'}</li>`).join('')}</ul><p class="mt-3 text-2xs text-muted">Gizli değerler geçmişte de maskeli tutulur.</p>`);
+  $('s-env').addEventListener('submit', e => { e.preventDefault(); env.forEach(r => { if (!r[0] && r[3]) r[0] = r[3]; }); env = env.filter(r => r[0]); drawEnv(); toast('.env kaydedildi, yapılandırma önbelleği yenilendi.', true); });
+  drawEnv();
+
+  // ---- Komutlar ----
+  const TOOLS = {
+    artisan: ['Artisan', 'php artisan', 'migrate:status', ['migrate:status', 'optimize:clear', 'schedule:list', 'route:list --path=v1']],
+    composer: ['Composer', 'composer', 'outdated --direct', ['outdated --direct', 'show laravel/framework', 'audit']],
+    node: ['Node.js', 'pnpm', 'run build', ['run build', 'outdated', 'audit']],
+    tinker: ['Tinker', '>>>', 'App\\Models\\Shipment::where(\'status\', \'delayed\')->count()', ['App\\Models\\Shipment::count()', 'config(\'queue.default\')']],
+  };
+  const OUT = {
+    'migrate:status': '  Migration name .............................................. Batch / Status\n  2026_09_02_101500_create_shipments_table ........................ [1] Ran\n  2026_10_14_183000_add_reverb_channel_to_shipments ............... [7] Ran\n  2026_10_18_201200_add_cache_index_to_tracking ................... [8] Ran',
+    'optimize:clear': '  INFO  Clearing cached bootstrap files.\n\n  config ............................................................ 2ms DONE\n  cache ............................................................. 9ms DONE\n  route ............................................................. 1ms DONE\n  view .............................................................. 4ms DONE',
+    'schedule:list': '  */5 * * * *  php artisan shipments:sync-carriers ...... Next Due: 3 minutes from now\n  0   2 * * *  php artisan reports:daily ................. Next Due: 2 hours from now\n  30  3 * * *  php artisan manifests:prune --days=90 ..... Next Due: 3 hours from now',
+    'outdated --direct': 'Color legend:\n! patch or minor release available\nlaravel/horizon   v5.36.0 ! v5.36.2  Dashboard and code-driven configuration for Laravel queues.\nsentry/sentry-laravel 4.13.0 ! 4.15.1 Laravel SDK for Sentry',
+    'audit': 'No security vulnerability advisories found.',
+    'run build': '> vite build\nvite v6.3.5 building for production...\n✓ 214 modules transformed.\npublic/build/assets/app-Bq3x.js  148.20 kB │ gzip: 48.11 kB\n✓ built in 3.12s',
+    "App\\Models\\Shipment::where('status', 'delayed')->count()": '= 47',
+    'App\\Models\\Shipment::count()': '= 1400412',
+    "config('queue.default')": '= "redis"',
+  };
+  let tool = 'artisan';
+  const saved = { artisan: ['migrate:status', 'optimize:clear'], composer: ['audit'], node: ['run build'], tinker: [] };
+  const drawTool = () => {
+    const [, pre, ph] = TOOLS[tool];
+    $('cmdTool').innerHTML = Object.entries(TOOLS).map(([k, [n]]) => `<button type="button" data-tool="${k}" class="h-7 px-3 rounded ${k === tool ? 'bg-accent-soft text-accent font-medium' : 'text-muted hover:text-fg'}">${n}</button>`).join('');
+    $('cmdPre').textContent = tool === 'node' ? $('pm').value : pre;
+    $('pm').hidden = tool !== 'node';
+    $('cmd').placeholder = ph;
+    $('saved').innerHTML = (saved[tool].length ? saved[tool] : TOOLS[tool][3].slice(0, 2)).map(c => `<button type="button" data-c="${c.replace(/"/g, '&quot;')}" class="h-7 px-2.5 rounded-md border border-line hover:bg-surface-2 font-mono text-[12px]">${c}</button>`).join('');
+    $('out').textContent = tool === 'tinker' ? 'Psy Shell v0.12.8 (PHP 8.5.1 — cli) by Justin Hileman\nUygulama: api.hizlikargo.app (production). Yazma işlemleri gerçek veritabanını etkiler.\n' : 'Komut çıktısı burada canlı akar.';
+  };
+  $('cmdTool').onclick = e => { const b = e.target.closest('[data-tool]'); if (b) { tool = b.dataset.tool; drawTool(); $('cmd').focus(); } };
+  $('pm').onchange = () => { $('cmdPre').textContent = $('pm').value; };
+  $('saved').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { $('cmd').value = b.dataset.c; $('cmd').focus(); } };
+  $('saveCmd').onclick = () => { const c = $('cmd').value.trim(); if (!c) { toast('Önce bir komut yazın.'); return; } if (!saved[tool].includes(c)) saved[tool].push(c); drawTool(); $('cmd').value = c; toast('Komut kaydedildi.'); };
+  $('cmdForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const c = $('cmd').value.trim() || $('cmd').placeholder, o = $('out');
+    const res = (OUT[c] || (tool === 'tinker' ? '= null' : `  ${c} tamamlandı.`)).split('\n');
+    if (tool === 'tinker') { o.textContent += `>>> ${c}\n${res.join('\n')}\n`; o.scrollTop = o.scrollHeight; $('cmd').value = ''; return; }
+    stream(o, [`$ ${$('cmdPre').textContent} ${c}`, '', ...res]);
+  });
+  drawTool();
+
+  // ---- Kuyruklar ----
+  const qs = [
+    ['default', 4, 12, 60, '1000 / 1 sa', 'ok', 'Çalışıyor', false],
+    ['manifests', 2, 3, 300, '200 / 1 sa', 'ok', 'Çalışıyor', false],
+    ['notifications', 2, 0, 30, '— / —', 'ok', 'Çalışıyor', false],
+    ['reports', 1, 0, 900, '— / —', 'muted', 'Boşta, iş gelince başlar', true],
+  ];
+  const drawQ = () => $('qRows').innerHTML = qs.map(([n, w, p, to, mx, k, st, swe], i) => `<tr class="hover:bg-surface-2/60">
+    <td class="pl-5 pr-3 py-3 font-mono text-[13px]">${n}${swe ? '<div class="font-sans text-2xs text-muted">boşalınca durur</div>' : ''}</td>
+    <td class="px-3 py-3"><div class="inline-flex items-center rounded-md border border-line"><button data-w="${i}" data-d="-1" class="w-7 h-7 grid place-items-center text-muted hover:text-fg" aria-label="Azalt">−</button><span class="w-7 text-center num">${w}</span><button data-w="${i}" data-d="1" class="w-7 h-7 grid place-items-center text-muted hover:text-fg" aria-label="Artır">+</button></div></td>
+    <td class="px-3 py-3 num">${p}</td>
+    <td class="px-3 py-3 num text-muted">${to} sn</td>
+    <td class="px-3 py-3 text-muted whitespace-nowrap">${mx}</td>
+    <td class="px-3 py-3">${badge(k, st)}</td>
+    <td class="px-3 py-3 text-right"><button data-qset="${i}" class="${lnk}">Ayarlar</button></td></tr>`).join('');
+  drawQ();
+  $('qRows').onclick = e => {
+    const b = e.target.closest('[data-w]'), s = e.target.closest('[data-qset]');
+    if (b) { const q = qs[b.dataset.w]; q[1] = Math.max(0, Math.min(16, q[1] + +b.dataset.d)); drawQ(); toast(`${q[0]} kuyruğu ${q[1]} işçiyle çalışıyor.`); }
+    if (s) { const q = qs[s.dataset.qset]; info(`${q[0]} işçi ayarları`, `<div class="grid grid-cols-[160px_1fr] gap-x-4 gap-y-3 items-center">${[['Zaman aşımı (sn)', q[3]], ['En çok iş', '1000'], ['En uzun süre (sn)', '3600'], ['Deneme sayısı', '3'], ['Bekleme (sn)', '3']].map(([l, v]) => `<label class="text-muted">${l}</label><input value="${v}" class="h-9 w-32 px-3 rounded-md border border-line bg-surface num">`).join('')}<span></span><label class="flex items-center gap-2"><input type="checkbox" ${q[7] ? 'checked' : ''} class="w-4 h-4 accent-[rgb(var(--accent))]">Kuyruk boşalınca dur</label></div>`, `<button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button><button data-close data-toast="${q[0]} işçi ayarları kaydedildi, işçiler yeniden başlatıldı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Kaydet</button>`); }
+  };
+  let fails = [
+    ['SyncCarrierStatus', 'Bağlantı zaman aşımı: carrier-gateway.internal', '23:12'],
+    ['GenerateManifestPdf', 'Allowed memory size of 268435456 bytes exhausted', '22:47'],
+    ['ImportShipments', "Duplicate entry '1400412' for key 'shipments_tracking_no_unique'", '21:05'],
+  ];
+  const failBody = () => fails.length ? `<table class="w-full text-[13px]"><tbody class="divide-y divide-line">${fails.map(([j, err, t], i) => `<tr><td class="py-2.5 pr-3"><span class="font-mono text-[12.5px]">${j}</span><div class="text-2xs text-muted truncate max-w-[300px]" title="${err.replace(/"/g, '&quot;')}">${err}</div></td><td class="py-2.5 px-2 text-muted num">${t}</td><td class="py-2.5 text-right whitespace-nowrap space-x-3"><button data-retry="${i}" class="${lnk}">Yeniden dene</button><button data-fdel="${i}" class="${lnk} hover:text-crit">Sil</button></td></tr>`).join('')}</tbody></table>` : '<p class="py-6 text-center text-muted">Başarısız iş yok.</p>';
+  const openFails = () => info('Başarısız işler', failBody(), `<button id="fFlush" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px] mr-auto">Tümünü temizle</button>${closeBtn}<button id="fRetry" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Tümünü yeniden dene</button>`);
+  const syncFails = () => { $('failN').textContent = fails.length; $('failN').hidden = !fails.length; if (!$('infoModal').hidden && $('imTitle').textContent === 'Başarısız işler') $('imBody').innerHTML = failBody(); };
+  $('failOpen').onclick = openFails;
+  $('infoModal').addEventListener('click', e => {
+    const r = e.target.closest('[data-retry]'), d = e.target.closest('[data-fdel]');
+    if (r) { const j = fails.splice(r.dataset.retry, 1)[0]; syncFails(); toast(`${j[0]} yeniden kuyruğa alındı.`); }
+    if (d) { const j = fails.splice(d.dataset.fdel, 1)[0]; syncFails(); toast(`${j[0]} silindi.`, true); }
+    if (e.target.closest('#fRetry')) { const n = fails.length; fails = []; syncFails(); toast(`${n} iş yeniden kuyruğa alındı (queue:retry all).`); }
+    if (e.target.closest('#fFlush')) { const n = fails.length; fails = []; syncFails(); toast(`${n} başarısız iş temizlendi (queue:flush).`, true); }
+  });
+
+  // ---- Zamanlayıcı ----
+  const crons = [
+    ['shipments:sync-carriers', 'Her 5 dakika', '23:45', '6,2 sn', 'ok', 'Başarılı', 1],
+    ['reports:daily', 'Her gün 02:00', 'Bugün 02:00', '1 dk 48 sn', 'ok', 'Başarılı', 1],
+    ['manifests:prune --days=90', 'Her gün 03:30', 'Bugün 03:30', '14 sn', 'ok', 'Başarılı', 1],
+    ['invoices:remind', 'Pazartesi 09:00', '13 Eki 09:00', '3 sn', 'warn', 'Çıkış kodu 1', 1],
+    ['carriers:refresh-tokens', 'Her saat', '22:00', '—', 'crit', '23:00 çalışması kaçırıldı', 1],
+    ['telescope:prune', 'Her gün 04:00', '—', '—', 'muted', 'Kapalı', 0],
+  ];
+  $('cronRows').innerHTML = crons.map(([c, z, l, d, k, st, on]) => `<tr class="hover:bg-surface-2/60">
+    <td class="pl-5 pr-3 py-3"><input type="checkbox" ${on ? 'checked' : ''} data-toast="${c} ${on ? 'kapatıldı' : 'açıldı'}." aria-label="${c} açık" class="w-4 h-4 accent-[rgb(var(--accent))]"></td>
+    <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap">${c}</td>
+    <td class="px-3 py-3 whitespace-nowrap">${z}</td>
+    <td class="px-3 py-3 whitespace-nowrap text-muted">${l}</td>
+    <td class="px-3 py-3 whitespace-nowrap num text-muted">${d}</td>
+    <td class="px-3 py-3">${badge(k, st)}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap space-x-3"><button data-cout="${c}" class="${lnk}">Çıktı</button><button data-toast="${c} çalıştırıldı." class="${lnk}">Şimdi çalıştır</button></td></tr>`).join('');
+  $('cronRows').addEventListener('click', e => { const b = e.target.closest('[data-cout]'); if (!b) return; const c = b.dataset.cout;
+    info(`${c} · son çıktı`, `<pre class="p-3 rounded-md bg-surface-2 border border-line font-mono text-[12px] whitespace-pre-wrap">${c === 'invoices:remind' ? '  ERROR  SMTP sunucusu yanıt vermedi: smtp.hizlikargo.app:587\n  12 hatırlatmadan 0 tanesi gönderildi.' : '  INFO  ' + c + ' tamamlandı.\n  Taşıyıcı: 6 · güncellenen gönderi: 1.284'}</pre>`); });
+
+  // ---- Süreçler ----
+  const procs = [
+    ['Horizon', 'Kuyruk panosu · supervisor-1, supervisor-2', 'muted', 'Kapalı', 'Aç', 'Açılırsa kuyruk işçilerini Horizon yönetir.'],
+    ['Octane', 'Sunucu: FrankenPHP · 4 işçi · :8000', 'muted', 'Kapalı', 'Etkinleştir', 'Nginx ters vekil ayarı otomatik yazılır.'],
+    ['Reverb', 'WebSocket · wss://api.hizlikargo.app/app · 1.240 bağlantı', 'ok', 'Çalışıyor', 'Yeniden başlat', 'Nginx WebSocket vekili otomatik.'],
+    ['Pulse', 'Metrikler panelde Genel bakış bölümünde gösteriliyor', 'ok', 'Bağlı', 'Pulse panosunu aç', ''],
+    ['Telescope', 'Yalnızca önizleme ortamlarında', 'muted', 'Yayında kapalı', '', ''],
+  ];
+  const drawProc = () => $('procRows').innerHTML = procs.map(([n, d, k, st, act, note], i) => `<tr class="hover:bg-surface-2/60">
+    <td class="pl-5 pr-3 py-3 font-medium">${n}</td>
+    <td class="px-3 py-3 text-muted">${d}${note ? `<div class="text-2xs">${note}</div>` : ''}</td>
+    <td class="px-3 py-3">${badge(k, st)}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap">${act ? `<button data-proc="${i}" class="text-[13px] ${k === 'ok' ? 'text-muted hover:text-fg' : 'text-accent hover:underline'}">${act}</button>` : ''}</td></tr>`).join('');
+  drawProc();
+  $('procRows').onclick = e => {
+    const b = e.target.closest('[data-proc]'); if (!b) return; const p = procs[b.dataset.proc];
+    if (p[0] === 'Pulse') { toast('Pulse panosu panel oturumunuzla açılıyor.'); return; }
+    if (p[2] === 'ok') { toast(`${p[0]} yeniden başlatıldı.`); return; }
+    p[2] = 'ok'; p[3] = 'Çalışıyor'; p[4] = p[0] === 'Horizon' ? 'Horizon panosunu aç' : 'Yeniden başlat';
+    if (p[0] === 'Horizon') p[5] = 'Pano, panel oturumunuzla açılır; ayrı parola gerekmez.';
+    drawProc(); toast(`${p[0]} systemd hizmeti olarak başlatıldı.`, true);
+  };
+
+  // ---- Günlükler ----
+  const LV = { emergency: 0, alert: 1, critical: 2, error: 3, warning: 4, notice: 5, info: 6, debug: 7 };
+  const LK = { error: 'crit', critical: 'crit', warning: 'warn', info: 'info', debug: 'muted', notice: 'muted' };
+  let logs = [
+    ['23:47:12', 'error', 'Illuminate\\Http\\Client\\ConnectionException: cURL error 28: Connection timed out after 10001 ms (carrier-gateway.internal)', 'at vendor/laravel/framework/src/Illuminate/Http/Client/PendingRequest.php:1567\n#0 app/Services/Carrier/GatewayClient.php(84): PendingRequest->send()\n#1 app/Jobs/SyncCarrierStatus.php(41): GatewayClient->status()'],
+    ['23:45:03', 'info', 'shipments:sync-carriers tamamlandı: 1.284 gönderi güncellendi', ''],
+    ['23:38:41', 'info', 'Dağıtım #148 yayında (8f3c2a1)', ''],
+    ['22:47:55', 'error', 'Allowed memory size of 268435456 bytes exhausted (tried to allocate 20480 bytes)', 'at app/Pdf/ManifestRenderer.php:212'],
+    ['22:31:09', 'warning', 'Yavaş sorgu (1.840 ms): select * from shipments where carrier_id = ? and status in (...)', ''],
+    ['21:05:44', 'error', "SQLSTATE[23000]: Duplicate entry '1400412' for key 'shipments_tracking_no_unique'", 'at app/Jobs/ImportShipments.php:77'],
+    ['20:12:30', 'debug', 'Reverb: 1.240 aktif bağlantı', ''],
+  ];
+  const drawLog = () => {
+    const lv = $('logLvl').value, q = $('logQ').value.trim().toLowerCase();
+    const list = logs.filter(([, l, m]) => (!lv || LV[l] <= LV[lv]) && (!q || m.toLowerCase().includes(q)));
+    $('logRows').innerHTML = list.length ? list.map(([t, l, m, st]) => `<li class="px-5 py-2.5">
+      <details ${st ? '' : 'class="pointer-events-none"'}><summary class="flex items-start gap-3 list-none ${st ? 'cursor-pointer' : ''}"><span class="font-mono text-2xs text-muted pt-0.5 shrink-0">${t}</span><span class="shrink-0 w-[72px]">${badge(LK[l], l)}</span><span class="font-mono text-[12.5px] break-all">${m}</span></summary>
+      ${st ? `<pre class="mt-2 ml-[136px] p-2.5 rounded-md bg-surface-2 border border-line font-mono text-[12px] whitespace-pre-wrap text-muted">${st}</pre>` : ''}</details></li>`).join('') : '<li class="px-5 py-8 text-center text-muted">Eşleşen kayıt yok.</li>';
+  };
+  ['logLvl', 'logQ', 'logFile'].forEach(id => $(id).addEventListener('input', drawLog));
+  let tailT;
+  $('tail').onchange = e => {
+    clearInterval(tailT);
+    if (e.target.checked) tailT = setInterval(() => { const d = new Date(); logs.unshift([d.toTimeString().slice(0, 8), 'info', `GET /v1/shipments/HK${Math.floor(Math.random() * 9e6 + 1e6)} 200 ${Math.floor(Math.random() * 80 + 20)} ms`, '']); drawLog(); }, 1500);
+  };
+  drawLog();
+
+  // ---- Bakım modu ----
+  let down = false;
+  $('s-maint').addEventListener('submit', e => {
+    e.preventDefault(); down = !down;
+    $('mState').outerHTML = `<span id="mState" class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full ${down ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'}"><i class="w-1.5 h-1.5 rounded-full ${down ? 'bg-warn' : 'bg-ok'}"></i>${down ? 'Bakım modunda' : 'Uygulama açık'}</span>`;
+    $('liveBadge').outerHTML = `<span id="liveBadge" class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full ${down ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'}"><i class="w-1.5 h-1.5 rounded-full ${down ? 'bg-warn' : 'bg-ok'}"></i>${down ? 'Bakımda' : 'Yayında'}</span>`;
+    $('mBtn').textContent = down ? 'Uygulamayı aç' : 'Bakım moduna al';
+    $('mBtn').className = 'h-9 px-3.5 rounded-md text-[13.5px] font-medium ' + (down ? 'bg-accent text-accent-fg' : 'bg-warn text-white');
+    toast(down ? 'Bakım modu açık. Atlama bağlantısı ve izinli IP\'ler uygulamayı görür.' : 'Uygulama yeniden açıldı (artisan up).', down);
+  });
+
+  // ---- Yedekler ----
+  $('bakRows').innerHTML = [
+    ['Bugün 23:37', 'Dağıtım #148 öncesi', 'Veritabanı', '182 MB'],
+    ['Bugün 18:11', 'Dağıtım #147 öncesi', 'Veritabanı', '181 MB'],
+    ['Bugün 03:00', 'Günlük', 'Kod, .env, storage, veritabanı', '1,4 GB'],
+    ['Dün 03:00', 'Günlük', 'Kod, .env, storage, veritabanı', '1,4 GB'],
+    ['15 Eki 14:20', 'Elle', 'Kod, .env, storage, veritabanı', '1,3 GB'],
+  ].map(([t, k, c, s]) => `<tr class="hover:bg-surface-2/60"><td class="pl-5 pr-3 py-3 whitespace-nowrap">${t}</td><td class="px-3 py-3 whitespace-nowrap">${k}</td><td class="px-3 py-3 text-muted">${c}</td><td class="px-3 py-3 text-right num whitespace-nowrap">${s}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap space-x-3"><button data-toast="Yedek indiriliyor." class="${lnk}">İndir</button><button data-bak="${t}|${c}" class="${lnk}">Geri yükle</button></td></tr>`).join('');
+  $('bakRows').onclick = e => { const b = e.target.closest('[data-bak]'); if (!b) return; const [t, c] = b.dataset.bak.split('|');
+    info(`${t} yedeği geri yüklensin mi?`, `<p class="text-muted">Geri yüklenecek: ${c}. Önce şu anki hâlin yedeği alınır, sonra yalnızca bu uygulama geri yüklenir; müşterinin diğer siteleri etkilenmez.</p>`, `<button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button><button data-close data-toast="Geri yükleme başladı. Bitince bildirim alacaksınız." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Geri yükle</button>`); };
+
+  // ---- Erişim ----
+  $('accRows').innerHTML = [
+    ['Sercan Yılmaz', 'sercan@hizlikargo.app', 'Sahip', 'Her şey, kişi ekleme ve silme dahil'],
+    ['Emre Kaya', 'emre@hizlikargo.app', 'Geliştirici', 'Dağıtım, komutlar, .env, kuyruklar, günlükler'],
+    ['Ayşe Demir', 'ayse@hizlikargo.app', 'Salt okunur', 'Durumu ve günlükleri görür; gizli değerleri göremez'],
+  ].map(([n, m, r, d], i) => `<tr><td class="pl-5 pr-3 py-3">${n}<div class="text-2xs text-muted">${m}</div></td>
+    <td class="px-3 py-3"><select ${i ? '' : 'disabled'} data-toast="${n} için rol değişti." class="h-8 px-2 rounded-md border border-line bg-surface text-[13px] disabled:opacity-60">${['Sahip', 'Geliştirici', 'Salt okunur'].map(o => `<option ${o === r ? 'selected' : ''}>${o}</option>`).join('')}</select></td>
+    <td class="px-3 py-3 text-muted">${d}</td></tr>`).join('');
+
+  // ---- Pencereler ----
+  const bindClose = () => document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.fixed').hidden = true);
+  bindClose();
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.fixed.inset-0').forEach(m => m.hidden = true); });
+
+  const H = { ov: 's-ov', dep: 's-dep', prev: 's-prev', env: 's-env', cmd: 's-cmd', q: 's-q', cron: 's-cron', proc: 's-proc', log: 's-log', maint: 's-maint', bak: 's-bak', acc: 's-acc' };
+  show(H[location.hash.slice(1)] || 's-ov');
+</script>

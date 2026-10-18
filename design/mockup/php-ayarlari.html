@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Servik PHP ve Web Sunucusu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Yerleşim: koyu petrol kenar menüsü + açık çalışma alanı; özet üstte, ayrıntı altta. 4px ızgara. */
+  :root {
+    --bg: 245 247 247; --surface: 255 255 255; --surface-2: 240 243 243; --line: 222 228 229;
+    --fg: 17 25 28; --muted: 90 104 109;
+    --accent: 13 116 121; --accent-fg: 255 255 255; --accent-soft: 223 240 240;
+    --ok: 21 128 76; --ok-soft: 224 243 232;
+    --warn: 176 104 0; --warn-soft: 252 241 220;
+    --crit: 196 38 46; --crit-soft: 252 231 231; --on-crit: 255 255 255;
+    --info: 37 99 185; --info-soft: 226 236 251;
+    --nav: 14 31 34; --nav-fg: 222 233 234; --nav-muted: 132 157 161; --nav-line: 33 54 58; --nav-active: 26 52 56;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: 11 16 18; --surface: 18 25 27; --surface-2: 25 33 36; --line: 38 50 53;
+      --fg: 228 235 236; --muted: 140 156 160;
+      --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
+      --ok: 76 200 132; --ok-soft: 17 46 32;
+      --warn: 236 170 62; --warn-soft: 55 39 14;
+      --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+      --info: 112 162 240; --info-soft: 21 36 62;
+      --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: 11 16 18; --surface: 18 25 27; --surface-2: 25 33 36; --line: 38 50 53;
+    --fg: 228 235 236; --muted: 140 156 160;
+    --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
+    --ok: 76 200 132; --ok-soft: 17 46 32;
+    --warn: 236 170 62; --warn-soft: 55 39 14;
+    --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+    --info: 112 162 240; --info-soft: 21 36 62;
+    --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  html, body { overflow-x: clip; }
+  body { background: rgb(var(--bg)); color: rgb(var(--fg)); font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  .num { font-variant-numeric: tabular-nums; }
+  h1, h2, h3 { text-wrap: balance; }
+  :focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; border-radius: 6px; }
+  .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; }
+  .drawer { transition: transform .22s ease; }
+  @media (prefers-reduced-motion: reduce) { .drawer, .toast { transition: none !important; } }
+  main > .fixed { margin-top: 0 !important; }
+  [hidden] { display: none !important; }
+  .toast { transition: opacity .2s ease, transform .2s ease; }
+</style>
+
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  const v = n => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        bg: v('bg'), surface: v('surface'), 'surface-2': v('surface-2'), line: v('line'),
+        fg: v('fg'), muted: v('muted'),
+        accent: v('accent'), 'accent-fg': v('accent-fg'), 'accent-soft': v('accent-soft'),
+        ok: v('ok'), 'ok-soft': v('ok-soft'), warn: v('warn'), 'warn-soft': v('warn-soft'),
+        crit: v('crit'), 'on-crit': v('on-crit'), 'crit-soft': v('crit-soft'), info: v('info'), 'info-soft': v('info-soft'),
+        nav: v('nav'), 'nav-fg': v('nav-fg'), 'nav-muted': v('nav-muted'), 'nav-line': v('nav-line'), 'nav-active': v('nav-active'),
+      },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      fontSize: { '2xs': ['11px', '16px'] },
+    } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+
+</head>
+<body>
+<div class="flex min-h-full">
+
+  <!-- Kenar menüsü -->
+  <aside id="sidebar" class="drawer fixed inset-y-0 left-0 z-40 w-64 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 bg-nav text-nav-fg flex flex-col border-r border-nav-line">
+    <div class="h-14 flex items-center gap-2.5 px-5 border-b border-nav-line">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <rect width="26" height="26" rx="6" fill="rgb(var(--accent))"/>
+        <rect x="6" y="6.5" width="14" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
+        <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))" opacity=".75"/>
+        <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
+      </svg>
+      <span class="text-[17px] font-semibold tracking-tight">servik</span>
+      <span class="ml-auto text-2xs font-mono text-nav-muted">v1.4.1</span>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto scroll-thin px-3 py-4 space-y-6 text-[13.5px]" aria-label="Ana menü">
+      <div>
+        <div class="space-y-0.5">
+          <a href="index.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="layout-dashboard" class="w-4 h-4"></i>Genel Bakış</a>
+          <a href="canli-izleme.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="activity" class="w-4 h-4"></i>Canlı İzleme<span class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-crit text-on-crit text-2xs font-semibold grid place-items-center num">2</span></a>
+          <a href="ai-asistan.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="sparkles" class="w-4 h-4"></i>Servik AI</a>
+        </div>
+      </div>
+      <div>
+        <p class="px-3 mb-1.5 text-2xs uppercase tracking-[.08em] text-nav-muted font-medium">Barındırma</p>
+        <div class="space-y-0.5">
+          <a href="siteler.html" aria-current="page" class="flex items-center gap-3 px-3 h-9 rounded-md bg-nav-active text-white font-medium"><i data-lucide="globe" class="w-4 h-4 text-accent"></i>Siteler<span class="ml-auto text-2xs text-nav-muted num">24</span></a>
+          <a href="laravel.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="layers" class="w-4 h-4"></i>Laravel<span class="ml-auto text-2xs text-nav-muted num">7</span></a>
+          <a href="dns.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="network" class="w-4 h-4"></i>Alan Adları ve DNS</a>
+          <a href="eposta.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="mail" class="w-4 h-4"></i>E-posta</a>
+          <a href="veritabanlari.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="database" class="w-4 h-4"></i>Veritabanları</a>
+          <a href="ssl.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="shield-check" class="w-4 h-4"></i>SSL Sertifikaları</a>
+        </div>
+      </div>
+      <div>
+        <p class="px-3 mb-1.5 text-2xs uppercase tracking-[.08em] text-nav-muted font-medium">Hesaplar</p>
+        <div class="space-y-0.5">
+          <a href="musteriler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="users" class="w-4 h-4"></i>Müşteriler ve Paketler</a>
+        </div>
+      </div>
+      <div>
+        <p class="px-3 mb-1.5 text-2xs uppercase tracking-[.08em] text-nav-muted font-medium">Sunucu</p>
+        <div class="space-y-0.5">
+          <a href="guvenlik.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="shield-alert" class="w-4 h-4"></i>Güvenlik</a>
+          <a href="yedekler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="archive" class="w-4 h-4"></i>Yedekler</a>
+          <a href="hizmetler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="server-cog" class="w-4 h-4"></i>Hizmetler</a>
+          <a href="bilesenler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="package-plus" class="w-4 h-4"></i>Yazılım Yönetimi</a>
+          <a href="ayarlar.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="settings" class="w-4 h-4"></i>Araçlar ve Ayarlar</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="p-3 border-t border-nav-line space-y-3">
+      <a href="guncellemeler.html" class="flex items-center gap-2 rounded-md bg-nav-active px-3 h-9 text-[13px] hover:text-white"><i data-lucide="download" class="w-4 h-4 text-accent"></i>Servik 1.4.2 hazır<span class="ml-auto text-2xs text-accent font-medium">Güncelle</span></a>
+      <a href="tasarim-sistemi.html" class="block px-3 text-2xs text-nav-muted hover:text-white">Tasarım sistemi (taslak)</a>
+      <div class="flex items-center gap-3 px-1">
+        <div class="w-8 h-8 rounded-full bg-accent/20 text-accent grid place-items-center text-xs font-semibold">SY</div>
+        <div class="min-w-0 leading-tight">
+          <p class="text-[13px] font-medium truncate">Sercan Yılmaz</p>
+          <p class="text-2xs text-nav-muted">Sunucu yöneticisi</p>
+        </div>
+        <button class="ml-auto text-nav-muted hover:text-white" aria-label="Çıkış yap"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+  </aside>
+  <div id="scrim" class="fixed inset-0 z-30 bg-black/40 hidden lg:hidden"></div>
+
+  <!-- Çalışma alanı -->
+  <div class="flex-1 min-w-0 flex flex-col">
+    <header class="sticky top-0 z-20 h-14 bg-surface/90 backdrop-blur border-b border-line flex items-center gap-3 px-4 lg:px-8">
+      <button id="menuBtn" class="lg:hidden -ml-1 p-2 rounded-md hover:bg-surface-2" aria-label="Menüyü aç"><i data-lucide="menu" class="w-5 h-5"></i></button>
+
+      <button class="hidden sm:flex items-center gap-2 h-9 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">
+        <span class="w-2 h-2 rounded-full bg-ok"></span>
+        <span class="font-mono">srv-ist-01</span>
+        <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-muted"></i>
+      </button>
+
+      <label class="flex-1 max-w-xl relative">
+        <span class="sr-only">Ara</span>
+        <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+        <input id="search" type="search" placeholder="Site, alan adı, e-posta veya komut ara" class="w-full h-9 pl-9 pr-14 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px] placeholder:text-muted">
+        <kbd class="hidden md:block absolute right-2.5 top-1/2 -translate-y-1/2 text-2xs font-mono text-muted border border-line rounded px-1.5 py-0.5 bg-surface">Ctrl K</kbd>
+      </label>
+
+      <div class="ml-auto flex items-center gap-1">
+        <button id="aiBtn" class="flex items-center gap-2 h-9 px-3 rounded-md bg-accent-soft text-accent hover:bg-accent/15 text-[13px] font-medium">
+          <i data-lucide="sparkles" class="w-4 h-4"></i><span class="hidden md:inline">Servik AI</span>
+        </button>
+        <button class="relative p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Bildirimler">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crit ring-2 ring-surface"></span>
+        </button>
+        <button id="themeBtn" class="p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Temayı değiştir">
+          <i data-lucide="sun-moon" class="w-[18px] h-[18px]"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 lg:px-8 py-6 lg:py-8 space-y-6 max-w-[1440px] w-full mx-auto">
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5 flex-wrap" aria-label="Konum"><a href="siteler.html" class="hover:text-accent">Siteler</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><a href="site-detay.html" class="font-mono hover:text-accent">kahveatolyesi.com.tr</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="text-fg">PHP ve Web Sunucusu</span></nav>
+        <div class="mt-2 flex flex-wrap items-center gap-3 justify-between">
+          <h1 class="text-[22px] font-semibold tracking-tight">PHP ve Web Sunucusu</h1>
+          <a href="site-detay.html" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="arrow-left" class="w-4 h-4"></i>Siteye dön</a>
+        </div>
+        <p class="mt-1 text-[13px] text-muted max-w-3xl">Bu ayarlar yalnızca <span class="font-mono text-fg">kahveatolyesi.com.tr</span> için geçerlidir. Varsayılan bırakılan değerler sunucunun PHP ayarlarından gelir. Sitedeki <span class="font-mono">.user.ini</span> veya <span class="font-mono">.htaccess</span> dosyaları bu değerleri ezebilir.</p>
+      </div>
+
+      <form id="phpForm" class="rounded-xl border border-line bg-surface min-w-0">
+        <!-- Sürüm ve çalıştırma -->
+        <div class="p-5 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-4 text-[13.5px] border-b border-line">
+          <label for="ver" class="md:pt-2 font-medium">PHP sürümü</label>
+          <div class="flex flex-wrap items-center gap-3">
+            <select id="ver" class="h-9 px-2.5 rounded-md border border-line bg-surface w-56"><option>8.5.1</option><option>8.4.14</option><option selected>8.3.27</option></select>
+            <a href="#" data-toast="phpinfo() sayfası yeni sekmede açılır." class="text-[13px] text-accent hover:underline flex items-center gap-1"><i data-lucide="info" class="w-3.5 h-3.5"></i>phpinfo() sayfasını görüntüle</a>
+          </div>
+
+          <label for="handler" class="md:pt-2 font-medium">Web sunucusu ve PHP</label>
+          <div class="max-w-xl">
+            <select id="handler" class="h-9 px-2.5 rounded-md border border-line bg-surface w-full">
+              <optgroup label="Yalnızca Nginx">
+                <option value="fpm-nginx" selected>Nginx + PHP-FPM (önerilen)</option>
+                <option value="dfpm-nginx">Nginx + PHP-FPM, siteye özel havuz</option>
+              </optgroup>
+              <optgroup label="Apache ile (.htaccess desteği)">
+                <option value="fpm-apache">Nginx + Apache + PHP-FPM</option>
+                <option value="dfpm-apache">Nginx + Apache + PHP-FPM, siteye özel havuz</option>
+                <option value="fcgi-apache">Nginx + Apache + FastCGI (eski uygulamalar)</option>
+              </optgroup>
+            </select>
+            <p id="handlerHint" class="mt-1.5 text-[13px] text-muted"></p>
+          </div>
+        </div>
+
+        <div id="groups"></div>
+
+        <!-- Ek yönergeler -->
+        <div class="p-5 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-2 text-[13.5px] border-t border-line">
+          <label for="extra" class="font-medium">Ek yönergeler<span class="block text-2xs text-muted font-normal mt-0.5">php.ini biçiminde</span></label>
+          <div class="max-w-xl">
+            <textarea id="extra" rows="4" spellcheck="false" class="w-full px-3 py-2 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]" placeholder="opcache.revalidate_freq = 60"></textarea>
+            <p class="mt-1.5 text-2xs text-muted">Değerlerde şunları kullanabilirsiniz: <span class="font-mono">{DOCROOT}</span> site kökü (<span class="font-mono">/var/www/kahveatolyesi/httpdocs</span>), <span class="font-mono">{TMP}</span> geçici dizin.</p>
+          </div>
+        </div>
+
+        <div class="px-5 py-3 border-t border-line flex flex-wrap items-center gap-3 sticky bottom-0 bg-surface rounded-b-xl">
+          <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+          <a href="site-detay.html" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px] grid place-items-center">Vazgeç</a>
+          <span id="dirty" class="text-[13px] text-muted"></span>
+        </div>
+      </form>
+
+<script>
+  // Site PHP ayarları: soldaki etiket, sağda düzenlenebilir değer + açıklama. [ad, varsayılan, öneriler, açıklama, mevcut değer]
+  const G = [
+    ['Performans ve güvenlik', [
+      ['memory_limit', '128M', ['128M', '256M', '512M', '1G'], 'Bir betiğin kullanabileceği en fazla bellek.', '256M'],
+      ['max_execution_time', '30', ['30', '60', '120', '300'], 'Bir betiğin sonlandırılmadan önce çalışabileceği süre (saniye).', ''],
+      ['max_input_time', '60', ['60', '120', '300'], 'Gelen verinin işlenmesi için izin verilen süre (saniye).', ''],
+      ['post_max_size', '8M', ['8M', '32M', '64M', '128M'], 'POST ile gönderilebilecek en büyük veri. upload_max_filesize değerinden büyük, memory_limit değerinden küçük olmalı.', '64M'],
+      ['upload_max_filesize', '2M', ['2M', '16M', '32M', '64M'], 'Yüklenebilecek en büyük dosya.', '32M'],
+      ['max_input_vars', '1000', ['1000', '3000', '5000'], 'Bir istekte kabul edilen en fazla değişken. Büyük WooCommerce formlarında artırın.', '3000'],
+      ['opcache.enable', 'on', ['on', 'off'], 'Derlenmiş PHP kodunu bellekte tutar, siteyi belirgin hızlandırır.', ''],
+      ['disable_functions', 'exec,passthru,shell_exec,system', [], 'Kapatılacak PHP işlevleri, virgülle ayrılır.', ''],
+    ]],
+    ['Genel ayarlar', [
+      ['open_basedir', '{DOCROOT}:{TMP}', [], 'PHP\'nin erişebileceği dizinler. Sitenin diğer müşterilerin dosyalarını okumasını engeller.', ''],
+      ['date.timezone', 'Europe/Istanbul', ['Europe/Istanbul', 'UTC'], 'Tarih işlevlerinin kullandığı saat dilimi.', ''],
+      ['session.save_path', '/var/lib/php/sessions', [], 'Oturum dosyalarının saklandığı dizin.', ''],
+      ['short_open_tag', 'off', ['on', 'off'], '&lt;? kısa açılış etiketine izin verir.', ''],
+      ['display_errors', 'off', ['on', 'off'], 'Hataları ziyaretçiye gösterir. Yayındaki sitelerde kapalı olmalı.', ''],
+      ['log_errors', 'on', ['on', 'off'], 'Hataları sitenin hata günlüğüne yazar.', ''],
+      ['error_reporting', 'E_ALL & ~E_DEPRECATED', ['E_ALL', 'E_ALL & ~E_DEPRECATED', 'E_ALL & ~E_NOTICE'], 'Hangi hata türlerinin raporlanacağı.', ''],
+    ]],
+  ];
+  const vals = {};
+  document.getElementById('groups').innerHTML = G.map(([g, list]) => `
+    <div class="p-5 ${g === G[0][0] ? '' : 'border-t border-line'}">
+      <h2 class="text-[14.5px] font-semibold mb-4">${g}</h2>
+      <div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-4 text-[13.5px]">
+        ${list.map(([n, def, opts, desc, cur]) => { vals[n] = cur; return `
+          <label for="f-${n}" class="md:pt-2 font-mono text-[13px] break-all">${n}</label>
+          <div class="max-w-xl">
+            <div class="flex items-center gap-3">
+              <input id="f-${n}" data-n="${n}" data-def="${def}" list="l-${n}" value="${cur}" placeholder="${def} (varsayılan)" autocomplete="off" class="pv h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px] w-full ${opts.length ? 'sm:w-80' : ''}">
+              <datalist id="l-${n}">${opts.map(o => `<option value="${o}">`).join('')}</datalist>
+              <button type="button" data-reset="${n}" class="text-[13px] text-accent hover:underline whitespace-nowrap ${cur ? '' : 'invisible'}">Varsayılana dön</button>
+            </div>
+            <p class="mt-1 text-2xs text-muted">${desc}</p>
+          </div>`; }).join('')}
+      </div>
+    </div>`).join('');
+
+  const H = {
+    'fpm-nginx': 'Nginx PHP isteklerini doğrudan PHP-FPM\'e iletir. En hızlı seçenek; .htaccess dosyaları çalışmaz.',
+    'dfpm-nginx': 'Bu siteye ayrı bir PHP-FPM havuzu ayrılır. Yoğun sitelerin diğerlerini yavaşlatmasını önler.',
+    'fpm-apache': 'Nginx statik dosyaları sunar, PHP istekleri Apache üzerinden gider. .htaccess dosyaları çalışır.',
+    'dfpm-apache': 'Apache ile ve bu siteye ayrılmış bir PHP-FPM havuzuyla çalışır. .htaccess dosyaları çalışır.',
+    'fcgi-apache': 'Eski uygulamalar için. FPM\'e göre daha fazla bellek kullanır.',
+  };
+  const handler = document.getElementById('handler'), hint = document.getElementById('handlerHint');
+  const showHint = () => {
+    hint.innerHTML = H[handler.value] + (handler.value.includes('apache') ? ' Apache bu sunucuda kurulu ve 5 sitede kullanılıyor. <a href="bilesenler.html" class="text-accent hover:underline">Yazılım Yönetimi</a>' : '');
+  };
+  handler.onchange = () => { showHint(); markDirty(); };
+  showHint();
+
+  const dirty = document.getElementById('dirty');
+  const markDirty = () => dirty.textContent = 'Kaydedilmemiş değişiklikler var.';
+  const form = document.getElementById('phpForm');
+  form.addEventListener('input', e => {
+    if (e.target.matches('.pv')) form.querySelector(`[data-reset="${e.target.dataset.n}"]`).classList.toggle('invisible', !e.target.value);
+    markDirty();
+  });
+  form.addEventListener('click', e => {
+    const b = e.target.closest('[data-reset]'); if (!b) return;
+    const i = document.getElementById('f-' + b.dataset.reset); i.value = ''; b.classList.add('invisible'); markDirty();
+  });
+  document.getElementById('ver').onchange = markDirty;
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const up = form.querySelector('#f-upload_max_filesize').value || '2M', post = form.querySelector('#f-post_max_size').value || '8M';
+    const mb = v => parseFloat(v) * (/g/i.test(v) ? 1024 : 1);
+    if (mb(post) < mb(up)) { toast('post_max_size, upload_max_filesize değerinden küçük olamaz.'); return; }
+    dirty.textContent = '';
+    toast(handler.value.includes('apache') ? 'Kaydedildi. Site artık Apache ile çalışıyor, yapılandırma test edildi.' : 'PHP ayarları kaydedildi, PHP-FPM yeniden yüklendi.', true);
+  });
+</script>
+
+</main>
+  </div>
+</div>
+
+<!-- AI asistan çekmecesi -->
+<aside id="ai" class="drawer invisible fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] translate-x-full bg-surface border-l border-line shadow-2xl flex flex-col" aria-label="Servik AI" aria-hidden="true">
+  <div class="h-14 flex items-center gap-2.5 px-4 border-b border-line">
+    <span class="w-7 h-7 rounded-md bg-accent-soft text-accent grid place-items-center"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+    <div class="leading-tight">
+      <p class="font-semibold text-[14px]">Servik AI</p>
+      <p class="text-2xs text-muted">Claude ile çalışır · sunucuya kök erişimi yok</p>
+    </div>
+    <button id="aiClose" class="ml-auto p-2 rounded-md hover:bg-surface-2 text-muted" aria-label="Kapat"><i data-lucide="x" class="w-4 h-4"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto scroll-thin p-4 space-y-4 text-[13.5px]">
+    <div class="flex justify-end"><p class="max-w-[85%] rounded-lg rounded-br-sm bg-surface-2 px-3.5 py-2.5">magazaonline neden bu kadar yavaş?</p></div>
+    <div class="space-y-3">
+      <p>Site saldırı altında. 23:28'den beri üç IP adresi <span class="font-mono text-[12.5px]">/wp-login.php</span> adresine saniyede ortalama 1.240 istek gönderiyor. Bu istekler 12 PHP işçisinin hepsini meşgul ettiği için gerçek ziyaretçiler sırada bekliyor.</p>
+      <div class="rounded-lg border border-line overflow-hidden">
+        <table class="w-full text-[12.5px] num">
+          <thead class="bg-surface-2 text-muted text-left"><tr><th class="font-medium px-3 py-1.5">IP</th><th class="font-medium px-3 py-1.5">Ülke</th><th class="font-medium px-3 py-1.5 text-right">İstek/sn</th></tr></thead>
+          <tbody class="divide-y divide-line font-mono">
+            <tr><td class="px-3 py-1.5">45.155.205.233</td><td class="px-3 py-1.5 font-sans">Hollanda</td><td class="px-3 py-1.5 text-right">612</td></tr>
+            <tr><td class="px-3 py-1.5">193.42.33.117</td><td class="px-3 py-1.5 font-sans">Rusya</td><td class="px-3 py-1.5 text-right">418</td></tr>
+            <tr><td class="px-3 py-1.5">103.153.79.6</td><td class="px-3 py-1.5 font-sans">Vietnam</td><td class="px-3 py-1.5 text-right">210</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>İki adım öneriyorum. Birincisi bu IP'leri engellemek, ikincisi sitede giriş sayfasına hız sınırı koymak.</p>
+
+      <div id="approval" class="rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
+        <p class="text-2xs uppercase tracking-[.08em] text-accent font-semibold">Onayınızı bekliyor</p>
+        <p class="mt-1.5 font-medium">Giriş sayfasına hız sınırı koy</p>
+        <p class="mt-1 text-[12.5px] text-muted">magazaonline.com.tr için <span class="font-mono">/wp-login.php</span> adresine IP başına dakikada en fazla 10 istek. Nginx yapılandırması değişir, yeniden yükleme kesinti yapmaz.</p>
+        <details class="mt-2 text-[12.5px]">
+          <summary class="cursor-pointer text-accent">Değişikliği göster</summary>
+          <pre class="mt-2 p-2.5 rounded bg-surface border border-line font-mono text-[11.5px] overflow-x-auto"><span class="text-ok">+ limit_req_zone $binary_remote_addr zone=wplogin:10m rate=10r/m;</span>
+<span class="text-ok">+ location = /wp-login.php {</span>
+<span class="text-ok">+     limit_req zone=wplogin burst=5 nodelay;</span>
+<span class="text-ok">+ }</span></pre>
+        </details>
+        <div class="mt-3 flex gap-2">
+          <button id="approveBtn" class="h-8 px-3 rounded-md bg-accent text-accent-fg text-[13px] font-medium hover:brightness-110">Onayla ve uygula</button>
+          <button id="rejectBtn" class="h-8 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">Vazgeç</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form id="aiForm" class="p-3 border-t border-line">
+    <div class="flex items-end gap-2 rounded-lg border border-line bg-surface-2 focus-within:border-accent p-2">
+      <label for="aiInput" class="sr-only">Mesaj</label>
+      <textarea id="aiInput" rows="1" placeholder="Sunucunuz hakkında bir şey sorun" class="flex-1 resize-none bg-transparent outline-none text-[13.5px] px-1.5 py-1 placeholder:text-muted"></textarea>
+      <button class="w-8 h-8 rounded-md bg-accent text-accent-fg grid place-items-center" aria-label="Gönder"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+    </div>
+    <p class="mt-1.5 px-1 text-2xs text-muted">IP engelleme ve geçici sınırlar dışındaki her eylem onayınızla yapılır.</p>
+  </form>
+</aside>
+
+<!-- Bildirim -->
+<div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 translate-y-3 opacity-0 pointer-events-none z-[60] flex items-center gap-3 rounded-lg bg-fg text-bg px-4 h-11 text-[13.5px] shadow-xl max-w-[calc(100vw-32px)]" role="status" aria-live="polite">
+  <i data-lucide="circle-check" class="w-4 h-4 shrink-0"></i><span id="toastText" class="truncate"></span>
+  <button id="toastUndo" class="font-semibold underline underline-offset-2 shrink-0" hidden>Geri al</button>
+</div>
+
+<script>
+  // Mini grafikler: <svg class="spark" data-values="1,2,3" data-color="accent" viewBox="0 0 200 48" preserveAspectRatio="none">
+  window.renderSparks = (rootEl = document) => rootEl.querySelectorAll('.spark').forEach(svg => {
+    const vals = svg.dataset.values.split(',').map(Number);
+    const min = Math.min(...vals), max = Math.max(...vals), W = 200, H = 48, pad = 4;
+    const x = i => (i / (vals.length - 1)) * W;
+    const y = v => H - pad - ((v - min) / (max - min || 1)) * (H - pad * 2);
+    const line = vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const c = `rgb(var(--${svg.dataset.color}))`;
+    const lx = x(vals.length - 1), ly = y(vals[vals.length - 1]);
+    svg.innerHTML = `
+      <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="rgb(var(--line))" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>
+      <path d="${line} L${W},${H} L0,${H} Z" fill="${c}" fill-opacity=".12"/>
+      <path d="${line}" fill="none" stroke="${c}" stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      <circle cx="${lx - 2}" cy="${ly}" r="2.5" fill="${c}"/>`;
+  });
+  renderSparks();
+
+  // Tema
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('servik-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('servik-theme', root.dataset.theme); } catch (e) {}
+  });
+
+  // Menü ve AI çekmecesi
+  const sb = document.getElementById('sidebar'), scrim = document.getElementById('scrim');
+  const setMenu = open => { sb.classList.toggle('-translate-x-full', !open); scrim.classList.toggle('hidden', !open); };
+  document.getElementById('menuBtn').onclick = () => setMenu(true);
+  scrim.onclick = () => setMenu(false);
+  const ai = document.getElementById('ai');
+  const setAi = open => { ai.classList.toggle('translate-x-full', !open); ai.classList.toggle('invisible', !open); ai.setAttribute('aria-hidden', String(!open)); if (open) document.getElementById('aiInput').focus(); };
+  document.getElementById('aiBtn').onclick = () => setAi(true);
+  document.getElementById('aiClose').onclick = () => setAi(false);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { setAi(false); setMenu(false); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); document.getElementById('search').focus(); }
+  });
+  document.getElementById('aiForm').addEventListener('submit', e => { e.preventDefault(); });
+
+  // Bildirim
+  let tt;
+  const toast = (msg, undo) => {
+    const el = document.getElementById('toast');
+    document.getElementById('toastText').textContent = msg;
+    document.getElementById('toastUndo').hidden = !undo;
+    el.classList.remove('opacity-0', 'translate-y-3');
+    clearTimeout(tt); tt = setTimeout(() => el.classList.add('opacity-0', 'translate-y-3'), 4200);
+  };
+  document.getElementById('toastUndo').onclick = () => toast('Eylem geri alındı.');
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-toast]');
+    if (b && !b.disabled) toast(b.dataset.toast, b.dataset.undo === '1');
+  });
+  document.getElementById('approveBtn').onclick = () => {
+    document.getElementById('approval').innerHTML = '<p class="flex items-center gap-2 text-ok font-medium"><i data-lucide="circle-check" class="w-4 h-4"></i>Uygulandı: giriş sayfası hız sınırı etkin</p><p class="mt-1 text-[12.5px] text-muted">Nginx yeniden yüklendi, kesinti olmadı. Ayarlar &gt; Değişiklik geçmişi bölümünden geri alabilirsiniz.</p>';
+    lucide.createIcons(); toast('Hız sınırı uygulandı.', true);
+  };
+  document.getElementById('rejectBtn').onclick = () => {
+    document.getElementById('approval').innerHTML = '<p class="text-muted">Öneri reddedildi. Hiçbir değişiklik yapılmadı.</p>';
+  };
+
+  lucide.createIcons();
+</script>
+</body>
+</html>

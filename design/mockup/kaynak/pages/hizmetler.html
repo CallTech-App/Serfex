@@ -1,0 +1,170 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Hizmetler</h1>
+        <p class="mt-1 text-[13px] text-muted">Sunucu hizmetlerini yeniden başlatın, durdurun ve PHP sürümlerini yönetin. Yeni yazılım kurmak için <a href="bilesenler.html" class="text-accent hover:underline">Yazılım Yönetimi</a>.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-svc" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Hizmetler</button>
+          <button role="tab" data-tab="t-php" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">PHP sürümleri</button>
+        </div>
+
+        <!-- Hizmetler -->
+        <div id="t-svc" class="panel">
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[600px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Hizmet</th>
+                  <th class="font-medium px-3 py-2.5">Sürüm</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                  <th class="font-medium px-3 py-2.5">Çalışma süresi</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="svc" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PHP sürümleri -->
+        <div id="t-php" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[600px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Sürüm</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Kullanan site</th>
+                  <th class="font-medium px-3 py-2.5">Güvenlik desteği</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="php" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Kullanılan bir sürümü kaldırmak için önce siteleri başka bir sürüme taşıyın.</p>
+        </div>
+      </section>
+
+      <!-- Durdurma onayı -->
+      <div id="stopModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="stopTitle">
+          <p id="stopTitle" class="font-semibold"></p>
+          <p id="stopText" class="mt-1 text-[13px] text-muted"></p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="stopCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="stopOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium">Durdur</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  // ad, systemd birimi, sürüm, durum (ok|warn|off), not, çalışma süresi, durdurulunca etki
+  const groups = [
+    ['Barındırma hizmetleri', [
+      ['Nginx', 'nginx.service', '1.26.2', 'ok', '', '41 gün', '24 sitenin tamamı erişilemez olur.'],
+      ['PHP-FPM', 'php8.3/8.4/8.5-fpm', '8.3 · 8.4 · 8.5', 'ok', '', '6 gün', 'PHP ile çalışan 23 site hata verir.'],
+      ['MySQL', 'mysql.service', '8.4.3', 'ok', '', '41 gün', 'Veritabanı kullanan tüm siteler hata verir.'],
+      ['Redis', 'redis-server.service', '7.4.1', 'ok', '', '41 gün', 'Önbellek ve Laravel kuyrukları durur.'],
+      ['PowerDNS', 'pdns.service', '4.9.2', 'ok', '', '41 gün', '61 DNS bölgesi bu sunucudan yanıtlanmaz.'],
+      ['Postfix', 'postfix@-.service', '3.8.6', 'warn', 'Kuyrukta 312 ileti', '41 gün', 'Posta gönderimi ve alımı durur.'],
+      ['Dovecot', 'dovecot.service', '2.3.21', 'ok', '', '41 gün', 'Kullanıcılar posta kutularına bağlanamaz.'],
+      ['Rspamd', 'rspamd.service', '3.10', 'ok', '', '41 gün', 'Gelen postalar spam taramasından geçmez.'],
+      ['Pure-FTPd', 'pure-ftpd.service', '1.0.51', 'off', '', '—', ''],
+    ]],
+    ['Servik paneli', [
+      ['Servik Agent', 'servik-agent.service', '1.4.1', 'ok', '', '41 gün', 'Panel sunucuyu yönetemez, izleme durur.'],
+      ['Panel PHP', 'servik-php.service', '8.5.1', 'ok', '', '6 gün', 'Panele erişilemez. Yeniden başlatmak için SSH gerekir.'],
+      ['Panel PostgreSQL', 'servik-postgresql.service', '17.2', 'ok', '', '41 gün', 'Panel çalışmaz. Siteler etkilenmez.'],
+      ['Panel Nginx', 'servik-nginx.service', '1.26.2', 'ok', '', '41 gün', ':8443 üzerinden panele erişilemez.'],
+    ]],
+  ];
+  const ST = {
+    ok: ['bg-ok-soft text-ok', 'bg-ok', 'Çalışıyor'],
+    warn: ['bg-warn-soft text-warn', 'bg-warn', 'Çalışıyor'],
+    off: ['bg-surface-2 text-muted', 'bg-muted', 'Durduruldu'],
+  };
+  const ib = 'w-8 h-8 grid place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg';
+  const svc = document.getElementById('svc');
+  const draw = () => {
+    svc.innerHTML = groups.map(([g, list], gi) => `<tr class="bg-surface-2/60"><td colspan="5" class="px-5 py-2 text-2xs uppercase tracking-[.06em] text-muted font-medium">${g}</td></tr>` +
+      list.map(([n, unit, v, st, note, up], i) => {
+        const b = ST[st];
+        return `<tr class="hover:bg-surface-2/60">
+          <td class="px-5 py-2.5 whitespace-nowrap"><span>${n}</span> <span class="ml-1 font-mono text-[12px] text-muted">${unit}</span></td>
+          <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap">${v}</td>
+          <td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full ${b[0]}"><i class="w-1.5 h-1.5 rounded-full ${b[1]}"></i>${b[2]}</span>${note ? `<span class="ml-2 text-2xs text-warn">${note}</span>` : ''}</td>
+          <td class="px-3 py-3 num text-muted whitespace-nowrap">${up}</td>
+          <td class="px-3 py-3"><div class="flex justify-end gap-1">${st === 'off'
+            ? `<button data-start="${gi}-${i}" class="${ib}" title="Başlat" aria-label="${n} başlat"><i data-lucide="play" class="w-4 h-4"></i></button>`
+            : `<button data-restart="${gi}-${i}" class="${ib}" title="Yeniden başlat" aria-label="${n} yeniden başlat"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
+               <button data-stop="${gi}-${i}" class="${ib} hover:text-crit" title="Durdur" aria-label="${n} durdur"><i data-lucide="square" class="w-4 h-4"></i></button>`}</div></td>
+        </tr>`;
+      }).join('')).join('');
+    lucide.createIcons();
+  };
+  const get = k => { const [g, i] = k.split('-'); return groups[g][1][i]; };
+  const m = document.getElementById('stopModal');
+  let cur;
+  svc.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.restart) toast(`${get(b.dataset.restart)[0]} yeniden başlatıldı.`);
+    if (b.dataset.start) { const s = get(b.dataset.start); s[3] = 'ok'; s[5] = 'şimdi'; draw(); toast(`${s[0]} başlatıldı.`); }
+    if (b.dataset.stop) {
+      cur = get(b.dataset.stop);
+      document.getElementById('stopTitle').textContent = `${cur[0]} durdurulsun mu?`;
+      document.getElementById('stopText').textContent = cur[6];
+      m.hidden = false;
+    }
+  });
+  document.getElementById('stopCancel').onclick = () => m.hidden = true;
+  document.getElementById('stopOk').onclick = () => {
+    cur[3] = 'off'; cur[5] = '—'; draw(); m.hidden = true;
+    toast(`${cur[0]} durduruldu.`, true);
+  };
+  draw();
+
+  // PHP sürümleri
+  const php = [
+    ['8.5', '8.5.1', 9, '31 Ara 2029', 1],
+    ['8.4', '8.4.14', 12, '31 Ara 2028', 0],
+    ['8.3', '8.3.27', 3, '31 Ara 2027', 0],
+    ['8.2', '', 0, '31 Ara 2026', 0],
+    ['8.1', '', 0, 'Sona erdi', 0],
+  ];
+  const phpEl = document.getElementById('php');
+  const drawPhp = () => {
+    phpEl.innerHTML = php.map(([v, full, n, eol, def], i) => `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3 whitespace-nowrap"><span class="font-mono text-[13px]">PHP ${full || v}</span>${def ? '<span class="ml-2 text-2xs font-medium px-2 py-0.5 rounded-full bg-accent-soft text-accent">Varsayılan</span>' : ''}</td>
+      <td class="px-3 py-3">${full
+        ? '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kurulu</span>'
+        : '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-muted"><i class="w-1.5 h-1.5 rounded-full bg-muted"></i>Kurulu değil</span>'}</td>
+      <td class="px-3 py-3 text-right num">${full ? n : '—'}</td>
+      <td class="px-3 py-3 num whitespace-nowrap ${eol === 'Sona erdi' ? 'text-warn' : 'text-muted'}">${eol}</td>
+      <td class="px-3 py-3 text-right">${full
+        ? `<button data-rm="${i}" ${n || def ? 'disabled' : ''} class="text-[13px] text-muted hover:text-crit disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted">Kaldır</button>`
+        : `<button data-in="${i}" class="text-[13px] text-accent hover:underline">Kur</button>`}</td>
+    </tr>`).join('');
+  };
+  phpEl.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    if (b.dataset.in) { const p = php[b.dataset.in]; p[1] = p[0] + '.0'; drawPhp(); toast(`PHP ${p[0]} kuruluyor. Yaklaşık 1 dk sürer.`); }
+    if (b.dataset.rm) { const p = php[b.dataset.rm]; p[1] = ''; drawPhp(); toast(`PHP ${p[0]} kaldırıldı.`, true); }
+  });
+  drawPhp();
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-svc');
+</script>

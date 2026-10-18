@@ -1,0 +1,229 @@
+      <!-- Başlık -->
+      <div class="flex flex-wrap items-end gap-4 justify-between">
+        <div>
+          <h1 class="text-[22px] font-semibold tracking-tight">Yedekler</h1>
+          <p class="mt-1 text-[13px] text-muted">Sunucu ve site yedeklerini alın, geri yükleyin ve yedekleme hedeflerini yönetin.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="goSched" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="calendar-clock" class="w-4 h-4"></i>Zamanlama</button>
+          <button id="backupNow" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4"></i>Şimdi yedekle</button>
+        </div>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-list" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Yedekler</button>
+          <button role="tab" data-tab="t-dest" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Hedefler</button>
+          <button role="tab" data-tab="t-sched" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Zamanlama</button>
+        </div>
+
+        <!-- Yedekler -->
+        <div id="t-list" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <select id="scope" aria-label="Kapsam" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]">
+              <option value="">Tüm yedekler</option><option value="srv">Tüm sunucu</option><option value="site">Site yedekleri</option>
+            </select>
+            <span class="ml-auto text-2xs text-muted">Son yedek bugün 03:00 · sonraki yarın 03:00</span>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[720px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Tarih</th>
+                  <th class="font-medium px-3 py-2.5">Tür</th>
+                  <th class="font-medium px-3 py-2.5">Kapsam</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Boyut</th>
+                  <th class="font-medium px-3 py-2.5">Hedef</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="rows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+        </div>
+
+        <!-- Hedefler -->
+        <div id="t-dest" class="panel" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button data-toast="Hedef ekleme formu açıldı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Hedef ekle</button>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[680px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Hedef</th>
+                  <th class="font-medium px-3 py-2.5">Adres</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Kullanılan</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="dest" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Zamanlama -->
+        <form id="t-sched" class="panel px-5 py-5 max-w-3xl" hidden>
+          <div class="divide-y divide-line">
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <span class="text-[13.5px]">Otomatik yedekleme</span>
+              <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Açık</label>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="z1" class="text-[13.5px]">Sıklık</label>
+              <select id="z1" class="w-full sm:w-64 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>Her gün (pazar tam, diğer günler artımlı)</option><option>Her gün tam</option><option>Haftada bir</option></select>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="z2" class="text-[13.5px]">Başlangıç saati</label>
+              <input id="z2" type="time" value="03:00" class="w-32 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num">
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <span class="text-[13.5px]">Saklama</span>
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13.5px]">
+                <label class="flex items-center gap-2"><input id="z3" value="7" inputmode="numeric" class="w-16 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num">günlük</label>
+                <label class="flex items-center gap-2"><input id="z4" value="4" inputmode="numeric" class="w-16 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num">haftalık</label>
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="z5" class="text-[13.5px]">Hedef</label>
+              <select id="z5" class="w-full sm:w-64 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>S3 uyumlu (Wasabi)</option><option>Yerel disk</option><option>SFTP</option></select>
+            </div>
+          </div>
+          <div class="mt-5 flex gap-2">
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+            <button type="reset" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+          </div>
+          <details class="mt-6 text-[13px]">
+            <summary class="cursor-pointer text-accent">Gelişmiş</summary>
+            <div class="mt-3 divide-y divide-line">
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+                <span class="text-[13.5px]">Şifreleme</span>
+                <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Yedekleri AES-256 ile şifrele</label>
+              </div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+                <span class="text-[13.5px]">Hariç tutulanlar</span>
+                <input value="staging.hizlikargo.app, */cache/*" class="w-full sm:w-80 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]" aria-label="Hariç tutulanlar">
+              </div>
+            </div>
+          </details>
+        </form>
+      </section>
+
+      <!-- Geri yükle -->
+      <div id="resModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="resForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+          <h2 id="resTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Yedeği geri yükle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <p class="text-[13px] text-muted">Yedek: <span id="resWhen" class="text-fg num"></span></p>
+            <div>
+              <label for="r1" class="block mb-1.5">Site</label>
+              <select id="r1" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface font-mono text-[13px]"></select>
+            </div>
+            <fieldset>
+              <legend class="mb-1.5">Geri yüklenecekler</legend>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center gap-2.5"><input type="checkbox" checked class="rc w-4 h-4 accent-[rgb(var(--accent))]">Dosyalar</label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" checked class="rc w-4 h-4 accent-[rgb(var(--accent))]">Veritabanları</label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" class="rc w-4 h-4 accent-[rgb(var(--accent))]">E-posta</label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" class="rc w-4 h-4 accent-[rgb(var(--accent))]">DNS</label>
+              </div>
+            </fieldset>
+            <p class="text-[13px] text-muted">Seçilen öğelerin şu anki hali yedektekiyle değiştirilir. Servik başlamadan önce mevcut hali ayrıca yedekler.</p>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" id="resCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" id="resOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium disabled:opacity-40 disabled:cursor-not-allowed">Geri yükle</button>
+          </div>
+        </form>
+      </div>
+
+<script>
+  const sites = ['magazaonline.com.tr', 'kahveatolyesi.com.tr', 'api.hizlikargo.app', 'ozkanlojistik.com', 'panel.ozkanlojistik.com', 'bulten.atlasyayin.com', 'klinikmavi.com', 'eski.kahveatolyesi.com.tr'];
+  // tarih, tür, kapsam (null = tüm sunucu), boyut, hedef
+  const bk = [
+    ['Bugün 21:14', 'Tam', 'magazaonline.com.tr', '7,4 GB', 'Yerel disk'],
+    ['Bugün 03:00', 'Artımlı', null, '1,9 GB', 'S3 uyumlu'],
+    ['17 Eki 03:00', 'Artımlı', null, '1,7 GB', 'S3 uyumlu'],
+    ['16 Eki 18:40', 'Tam', 'staging.hizlikargo.app', '410 MB', 'Yerel disk'],
+    ['16 Eki 03:00', 'Artımlı', null, '2,2 GB', 'S3 uyumlu'],
+    ['15 Eki 03:00', 'Artımlı', null, '1,6 GB', 'S3 uyumlu'],
+    ['14 Eki 03:00', 'Artımlı', null, '1,8 GB', 'S3 uyumlu'],
+    ['13 Eki 03:00', 'Artımlı', null, '1,5 GB', 'S3 uyumlu'],
+    ['12 Eki 03:00', 'Tam', null, '17,7 GB', 'S3 uyumlu'],
+    ['10 Eki 11:02', 'Tam', 'kahveatolyesi.com.tr', '3,1 GB', 'SFTP'],
+    ['5 Eki 03:00', 'Tam', null, '17,2 GB', 'S3 uyumlu'],
+  ];
+  const rows = document.getElementById('rows');
+  let scope = '';
+  const draw = () => {
+    const list = bk.filter(b => !scope || (scope === 'srv' ? !b[2] : b[2]));
+    rows.innerHTML = list.map(([d, t, s, size, dst]) => `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3 num whitespace-nowrap">${d}</td>
+      <td class="px-3 py-3"><span class="text-2xs font-medium px-2 py-0.5 rounded-full ${t === 'Tam' ? 'bg-info-soft text-info' : 'bg-surface-2 text-muted'}">${t}</span></td>
+      <td class="px-3 py-3 ${s ? 'font-mono text-[13px]' : ''}">${s || 'Tüm sunucu'}</td>
+      <td class="px-3 py-3 text-right num whitespace-nowrap">${size}</td>
+      <td class="px-3 py-3 text-muted whitespace-nowrap">${dst}</td>
+      <td class="px-3 py-3 text-right"><button data-res="${bk.findIndex(x => x[0] === d && x[2] === s)}" class="text-[13px] text-accent hover:underline whitespace-nowrap">Geri yükle</button></td>
+    </tr>`).join('');
+    document.getElementById('count').textContent = `${list.length} yedek · toplam 74,6 GB`;
+  };
+  document.getElementById('scope').onchange = e => { scope = e.target.value; draw(); };
+  draw();
+
+  // Hedefler
+  const dest = [
+    ['Yerel disk', '/var/backups/servik', '38,2 GB / 120 GB', 'ok', 'Bağlı'],
+    ['S3 uyumlu (Wasabi)', 's3.eu-central-2.wasabisys.com · servik-srv-ist-01', '412 GB', 'ok', 'Bağlı'],
+    ['SFTP', 'yedek@yedek.atlasyayin.com:/srv-ist-01', '96 GB', 'warn', 'Son test başarısız'],
+  ];
+  const TONE = { ok: ['bg-ok-soft text-ok', 'bg-ok'], warn: ['bg-warn-soft text-warn', 'bg-warn'] };
+  const destEl = document.getElementById('dest');
+  destEl.innerHTML = dest.map(([n, a, u, c, s], i) => `<tr class="hover:bg-surface-2/60">
+    <td class="px-5 py-3 whitespace-nowrap">${n}</td>
+    <td class="px-3 py-3 font-mono text-[12.5px] text-muted">${a}</td>
+    <td class="px-3 py-3 text-right num whitespace-nowrap">${u}</td>
+    <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${TONE[c][0]}"><i class="w-1.5 h-1.5 rounded-full ${TONE[c][1]}"></i>${s}</span></td>
+    <td class="px-3 py-3 text-right"><button data-test="${i}" class="h-8 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px] whitespace-nowrap">Test et</button></td>
+  </tr>`).join('');
+  destEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-test]'); if (!b) return;
+    const d = dest[b.dataset.test];
+    toast(d[3] === 'ok' ? `${d[0]}: bağlantı ve yazma testi başarılı.` : `${d[0]}: bağlantı reddedildi. SSH anahtarını hedef sunucunun authorized_keys dosyasına ekleyin.`);
+  });
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-list');
+  document.getElementById('goSched').onclick = () => setTab('t-sched');
+  document.getElementById('t-sched').addEventListener('submit', e => { e.preventDefault(); toast('Yedekleme zamanlaması kaydedildi.'); });
+  document.getElementById('backupNow').onclick = () => toast('Tam sunucu yedeği başladı. Yaklaşık 40 dk sürer.');
+
+  // Geri yükle penceresi
+  const m = document.getElementById('resModal'), r1 = document.getElementById('r1'), ok = document.getElementById('resOk');
+  let cur;
+  rows.addEventListener('click', e => {
+    const b = e.target.closest('[data-res]'); if (!b) return;
+    cur = bk[b.dataset.res];
+    document.getElementById('resWhen').textContent = `${cur[0]} · ${cur[1].toLowerCase()} · ${cur[2] || 'tüm sunucu'}`;
+    const opts = cur[2] ? [cur[2]] : sites;
+    r1.innerHTML = opts.map(s => `<option>${s}</option>`).join('');
+    m.hidden = false;
+  });
+  m.addEventListener('change', () => ok.disabled = !m.querySelectorAll('.rc:checked').length);
+  document.getElementById('resCancel').onclick = () => m.hidden = true;
+  document.getElementById('resForm').addEventListener('submit', e => {
+    e.preventDefault(); m.hidden = true;
+    toast(`${r1.value} geri yükleniyor (${cur[0]} yedeği).`);
+  });
+</script>

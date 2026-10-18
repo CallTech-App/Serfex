@@ -1,0 +1,174 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">SSL/TLS Sertifikaları</h1>
+        <p class="mt-1 text-[13px] text-muted">Sitelerin sertifikalarını alın, yenileyin ve HTTPS ayarlarını yönetin.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-cert" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Sertifikalar</button>
+          <button role="tab" data-tab="t-set" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Ayarlar</button>
+        </div>
+
+        <!-- Sertifikalar -->
+        <div id="t-cert" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newCert" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Sertifika al</button>
+            <button data-toast="Sertifika yükleme formu açıldı." class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="upload" class="w-4 h-4"></i>Sertifika yükle</button>
+            <label class="ml-auto relative w-full sm:w-64">
+              <span class="sr-only">Alan adı ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[700px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Alan adı</th>
+                  <th class="font-medium px-3 py-2.5">Sağlayıcı</th>
+                  <th class="font-medium px-3 py-2.5">Bitiş</th>
+                  <th class="font-medium px-3 py-2.5">Otomatik yenileme</th>
+                  <th class="px-3 pr-5"></th>
+                </tr>
+              </thead>
+              <tbody id="rows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+        </div>
+
+        <!-- Ayarlar -->
+        <form id="t-set" class="panel px-5 py-5 max-w-3xl" hidden>
+          <div class="divide-y divide-line">
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="s0" class="text-[13.5px]">Site</label>
+              <select id="s0" class="w-full sm:w-72 h-9 px-2.5 rounded-md border border-line bg-surface font-mono text-[13px]"><option>Tüm siteler (varsayılan)</option><option>kahveatolyesi.com.tr</option><option>magazaonline.com.tr</option><option>api.hizlikargo.app</option></select>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <span class="text-[13.5px]">HTTP yönlendirmesi</span>
+              <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">HTTP isteklerini HTTPS'e kalıcı olarak yönlendir (301)</label>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
+              <span class="text-[13.5px] sm:pt-0.5">HSTS</span>
+              <div class="text-[13.5px]">
+                <label class="flex items-center gap-2.5"><input id="hsts" type="checkbox" class="w-4 h-4 accent-[rgb(var(--accent))]">Tarayıcıya yalnızca HTTPS kullanmasını söyle</label>
+                <p class="text-2xs text-muted mt-1 ml-[26px]">Açtıktan sonra sertifika biterse ziyaretçiler siteye giremez.</p>
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="s3" class="text-[13.5px]">En düşük TLS sürümü</label>
+              <select id="s3" class="w-full sm:w-48 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>TLS 1.2</option><option>TLS 1.3</option><option>TLS 1.0 (önerilmez)</option></select>
+            </div>
+          </div>
+          <details class="mt-2 text-[13.5px]">
+            <summary class="cursor-pointer text-accent py-2 text-[13px]">Gelişmiş</summary>
+            <div class="divide-y divide-line">
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+                <label for="s4" class="text-[13.5px]">HSTS süresi</label>
+                <select id="s4" class="w-full sm:w-48 h-9 px-2.5 rounded-md border border-line bg-surface"><option>6 ay</option><option>1 yıl</option><option>2 yıl</option></select>
+              </div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+                <span class="text-[13.5px]">OCSP stapling</span>
+                <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Açık</label>
+              </div>
+            </div>
+          </details>
+          <div class="mt-5 flex gap-2">
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+            <button type="reset" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Sertifika al -->
+      <div id="certModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="certForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="certTitle">
+          <h2 id="certTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Let's Encrypt sertifikası al</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="c1" class="block mb-1.5">Alan adı</label>
+              <select id="c1" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface font-mono text-[13px]"><option>randevu.klinikmavi.com</option><option>forum.mavitur.com.tr</option><option>b2b.ankaramotor.com</option><option>eski.kahveatolyesi.com.tr</option></select>
+            </div>
+            <label class="flex items-center gap-2.5"><input id="c2" type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">www alt alan adını da kapsa</label>
+            <div>
+              <label class="flex items-center gap-2.5"><input id="c3" type="checkbox" class="w-4 h-4 accent-[rgb(var(--accent))]">Joker (*.) sertifika</label>
+              <p class="text-2xs text-muted mt-1 ml-[26px]">Tüm alt alan adlarını kapsar; DNS kaydıyla otomatik doğrulanır.</p>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" id="certCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Sertifikayı al</button>
+          </div>
+        </form>
+      </div>
+
+<script>
+  // [alan adı, sağlayıcı, bitiş tarihi, kalan gün, otomatik yenileme]
+  const certs = [
+    ['eski.kahveatolyesi.com.tr', "Let's Encrypt", '24.10.2026', 6, true],
+    ['magazaonline.com.tr', "Let's Encrypt", '02.12.2026', 45, true],
+    ['ozkanlojistik.com', "Let's Encrypt", '19.12.2026', 62, true],
+    ['panel.ozkanlojistik.com', "Let's Encrypt", '19.12.2026', 62, true],
+    ['api.hizlikargo.app', "Let's Encrypt", '28.12.2026', 71, true],
+    ['staging.hizlikargo.app', "Let's Encrypt", '28.12.2026', 71, true],
+    ['*.hizlikargo.app', 'ZeroSSL', '11.01.2027', 85, true],
+    ['atlasyayin.com', 'Sectigo', '14.06.2027', 239, false],
+    ['bulten.atlasyayin.com', "Let's Encrypt", '05.01.2027', 79, true],
+    ['kahveatolyesi.com.tr', "Let's Encrypt", '08.01.2027', 82, true],
+    ['klinikmavi.com', "Let's Encrypt", '30.12.2026', 73, true],
+  ];
+  const rows = document.getElementById('rows'), q = document.getElementById('q');
+  const badge = d => d <= 14
+    ? `<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-warn-soft text-warn whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>${d} gün kaldı</span>`
+    : `<span class="text-muted num">${d} gün</span>`;
+  const draw = () => {
+    const s = q.value.toLowerCase();
+    const list = certs.filter(c => c[0].includes(s));
+    rows.innerHTML = list.map(([d, p, end, days, auto], i) => `<tr class="hover:bg-surface-2/60">
+        <td class="px-5 py-3 font-mono text-[13px] whitespace-nowrap">${d}</td>
+        <td class="px-3 py-3 whitespace-nowrap">${p}</td>
+        <td class="px-3 py-3 whitespace-nowrap"><span class="num">${end}</span> <span class="ml-1.5">${badge(days)}</span></td>
+        <td class="px-3 py-3 whitespace-nowrap ${auto ? '' : 'text-muted'}">${auto ? 'Açık' : 'Kapalı (ücretli)'}</td>
+        <td class="px-3 pr-5 py-3 text-right">${days <= 14 ? `<button data-renew="${d}" class="h-8 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px] font-medium">Yenile</button>` : ''}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="px-5 py-8 text-center text-muted">Eşleşen sertifika yok.</td></tr>';
+    document.getElementById('count').textContent = `${certs.length} sertifika · Let's Encrypt yenilemesi bitişten 30 gün önce`;
+  };
+  q.oninput = draw;
+  rows.addEventListener('click', e => {
+    const b = e.target.closest('[data-renew]'); if (!b) return;
+    const c = certs.find(x => x[0] === b.dataset.renew);
+    c[2] = '16.01.2027'; c[3] = 90; draw();
+    toast(`${c[0]} sertifikası yenilendi.`);
+  });
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  document.getElementById('t-set').addEventListener('submit', e => { e.preventDefault(); toast('HTTPS ayarları kaydedildi. Nginx yeniden yüklendi.'); });
+
+  // Sertifika al
+  const cm = document.getElementById('certModal');
+  document.getElementById('newCert').onclick = () => { cm.hidden = false; document.getElementById('c1').focus(); };
+  document.getElementById('certCancel').onclick = () => cm.hidden = true;
+  document.getElementById('certForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const d = document.getElementById('c1').value, w = document.getElementById('c3').checked;
+    const name = w ? '*.' + d : d;
+    const i = certs.findIndex(c => c[0] === name);
+    const row = [name, "Let's Encrypt", '16.01.2027', 90, true];
+    if (i >= 0) certs[i] = row; else certs.push(row);
+    draw(); cm.hidden = true; e.target.reset();
+    toast(`${name} için sertifika alındı${w ? ' (DNS ile doğrulandı)' : ''}.`);
+  });
+
+  draw(); setTab('t-cert');
+</script>

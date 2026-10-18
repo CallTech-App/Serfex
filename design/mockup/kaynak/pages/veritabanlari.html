@@ -1,0 +1,230 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Veritabanları</h1>
+        <p class="mt-1 text-[13px] text-muted">MySQL veritabanlarını ve veritabanı kullanıcılarını yönetin.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-db" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Veritabanları</button>
+          <button role="tab" data-tab="t-usr" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Veritabanı Kullanıcıları</button>
+        </div>
+
+        <!-- Veritabanları -->
+        <div id="t-db" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newDb" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Veritabanı oluştur</button>
+            <label class="ml-auto relative w-full sm:w-64">
+              <span class="sr-only">Veritabanı ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[700px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Ad</th>
+                  <th class="font-medium px-3 py-2.5">Site</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Boyut</th>
+                  <th class="font-medium px-3 py-2.5">Kullanıcılar</th>
+                  <th class="px-3 pr-5"></th>
+                </tr>
+              </thead>
+              <tbody id="dbRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="dbCount"></p>
+        </div>
+
+        <!-- Kullanıcılar -->
+        <div id="t-usr" class="panel" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newUsr" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Kullanıcı ekle</button>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Kullanıcı</th>
+                  <th class="font-medium px-3 py-2.5">Bağlantı</th>
+                  <th class="font-medium px-3 py-2.5">Veritabanı</th>
+                  <th class="font-medium px-3 py-2.5">Yetki</th>
+                  <th class="px-3 pr-5"></th>
+                </tr>
+              </thead>
+              <tbody id="usrRows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Veritabanı oluştur -->
+      <div id="dbModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="dbForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="dbTitle">
+          <h2 id="dbTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Veritabanı oluştur</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="d0" class="block mb-1.5">Site</label>
+              <select id="d0" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface font-mono text-[13px]"><option value="kahve">kahveatolyesi.com.tr</option><option value="ozkan">ozkanlojistik.com</option><option value="hizlikargo">api.hizlikargo.app</option><option value="atlas">atlasyayin.com</option><option value="klinik">klinikmavi.com</option></select>
+            </div>
+            <div>
+              <label for="d1" class="block mb-1.5">Veritabanı adı</label>
+              <div class="flex rounded-md border border-line focus-within:border-accent overflow-hidden">
+                <span class="pfx px-3 grid place-items-center bg-surface-2 text-muted font-mono text-[13px] border-r border-line">kahve_</span>
+                <input id="d1" required pattern="[a-z0-9_]+" placeholder="ad" class="flex-1 min-w-0 h-9 px-3 bg-surface outline-none font-mono text-[13px]">
+              </div>
+            </div>
+            <div>
+              <label for="d2" class="block mb-1.5">Kullanıcı</label>
+              <div class="flex rounded-md border border-line focus-within:border-accent overflow-hidden">
+                <span class="pfx px-3 grid place-items-center bg-surface-2 text-muted font-mono text-[13px] border-r border-line">kahve_</span>
+                <input id="d2" required pattern="[a-z0-9_]+" placeholder="kullanıcı" class="flex-1 min-w-0 h-9 px-3 bg-surface outline-none font-mono text-[13px]">
+              </div>
+            </div>
+            <div>
+              <label for="d3" class="block mb-1.5">Parola</label>
+              <div class="flex gap-2">
+                <input id="d3" type="text" value="Tq4-demlik-Fincan-73" class="flex-1 min-w-0 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+                <button type="button" class="gen h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]" data-for="d3">Oluştur</button>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Oluştur</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Kullanıcı ekle -->
+      <div id="usrModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="usrForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="usrTitle">
+          <h2 id="usrTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Kullanıcı ekle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="u1" class="block mb-1.5">Kullanıcı adı</label>
+              <input id="u1" required pattern="[a-z0-9_]+" placeholder="kahve_rapor" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+            </div>
+            <div>
+              <label for="u2" class="block mb-1.5">Parola</label>
+              <div class="flex gap-2">
+                <input id="u2" type="text" value="Mh8-kavanoz-Telve-19" class="flex-1 min-w-0 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+                <button type="button" class="gen h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]" data-for="u2">Oluştur</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="u3" class="block mb-1.5">Veritabanı</label>
+                <select id="u3" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface font-mono text-[13px]"></select>
+              </div>
+              <div>
+                <label for="u4" class="block mb-1.5">Yetki</label>
+                <select id="u4" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Tam yetki</option><option>Okuma-yazma</option><option>Salt okunur</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kullanıcıyı ekle</button>
+          </div>
+        </form>
+      </div>
+
+<script>
+  const dbs = [
+    ['magazaonline_wp', 'magazaonline.com.tr', 3180, ['magaza_wp']],
+    ['ozkanlojistik_app', 'ozkanlojistik.com', 2410, ['ozkan_app', 'ozkan_rapor']],
+    ['ozkanlojistik_panel', 'panel.ozkanlojistik.com', 1980, ['ozkan_panel', 'ozkan_rapor']],
+    ['bulten_atlas', 'bulten.atlasyayin.com', 1520, ['atlas_bulten']],
+    ['kahveatolyesi_wc', 'kahveatolyesi.com.tr', 1080, ['kahve_wc']],
+    ['atlasyayin_cms', 'atlasyayin.com', 710, ['atlas_cms', 'atlas_bi']],
+    ['hizlikargo_api', 'api.hizlikargo.app', 298, ['hizlikargo_api', 'hizlikargo_ro']],
+    ['kahve_eski', 'eski.kahveatolyesi.com.tr', 240, ['kahve_eski']],
+    ['hizlikargo_staging', 'staging.hizlikargo.app', 140, ['hizlikargo_stg']],
+    ['hizlikargo_web', 'hizlikargo.app', 48, ['hizlikargo_web']],
+    ['klinikmavi_randevu', 'klinikmavi.com', 36, ['klinik_randevu']],
+  ];
+  const users = [
+    ['hizlikargo_api', 'localhost', 'hizlikargo_api', 'Tam yetki'],
+    ['hizlikargo_ro', '78.186.44.12', 'hizlikargo_api', 'Salt okunur'],
+    ['hizlikargo_stg', 'localhost', 'hizlikargo_staging', 'Tam yetki'],
+    ['ozkan_app', 'localhost', 'ozkanlojistik_app', 'Tam yetki'],
+    ['ozkan_panel', 'localhost', 'ozkanlojistik_panel', 'Tam yetki'],
+    ['ozkan_rapor', '10.8.0.%', 'ozkanlojistik_app, ozkanlojistik_panel', 'Salt okunur'],
+    ['magaza_wp', 'localhost', 'magazaonline_wp', 'Okuma-yazma'],
+    ['atlas_bi', '88.247.120.0/28', 'atlasyayin_cms', 'Salt okunur'],
+    ['kahve_wc', 'localhost', 'kahveatolyesi_wc', 'Okuma-yazma'],
+  ];
+  const mb = n => n >= 1024 ? (n / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' GB' : n.toLocaleString('tr-TR') + ' MB';
+  const btn = 'text-[13px] text-muted hover:text-crit';
+  const dbRows = document.getElementById('dbRows'), usrRows = document.getElementById('usrRows'), q = document.getElementById('q');
+  const drawDb = () => {
+    const s = q.value.toLowerCase();
+    const list = dbs.filter(d => (d[0] + d[1]).includes(s));
+    dbRows.innerHTML = list.map(([n, site, size, us]) => `<tr class="hover:bg-surface-2/60">
+        <td class="px-5 py-3 font-mono text-[13px]">${n}</td>
+        <td class="px-3 py-3 font-mono text-[13px] text-muted whitespace-nowrap">${site}</td>
+        <td class="px-3 py-3 text-right num whitespace-nowrap">${mb(size)}</td>
+        <td class="px-3 py-3 font-mono text-[12.5px] text-muted whitespace-nowrap">${us.join(', ')}</td>
+        <td class="px-3 pr-5 py-3 text-right"><a href="#" data-toast="phpMyAdmin yeni sekmede açılıyor: ${n}" class="inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline whitespace-nowrap">phpMyAdmin<i data-lucide="external-link" class="w-3.5 h-3.5"></i></a></td>
+      </tr>`).join('') || '<tr><td colspan="5" class="px-5 py-8 text-center text-muted">Eşleşen veritabanı yok.</td></tr>';
+    const tot = dbs.reduce((a, d) => a + d[2], 0);
+    document.getElementById('dbCount').textContent = `${dbs.length} veritabanı · toplam ${mb(tot)} · MySQL 8.4.3`;
+    document.getElementById('u3').innerHTML = dbs.map(d => `<option>${d[0]}</option>`).join('');
+    lucide.createIcons();
+  };
+  const drawUsr = () => {
+    usrRows.innerHTML = users.map(([u, host, db, role], i) => `<tr class="hover:bg-surface-2/60">
+        <td class="px-5 py-3 font-mono text-[13px]">${u}</td>
+        <td class="px-3 py-3 font-mono text-[12.5px] text-muted">${host}</td>
+        <td class="px-3 py-3 font-mono text-[12.5px]">${db}</td>
+        <td class="px-3 py-3 text-muted whitespace-nowrap">${role}</td>
+        <td class="px-3 pr-5 py-3 text-right"><button data-del="${i}" class="${btn}">Sil</button></td>
+      </tr>`).join('');
+  };
+  q.oninput = drawDb;
+  usrRows.addEventListener('click', e => {
+    const b = e.target.closest('[data-del]'); if (!b) return;
+    const [u] = users.splice(+b.dataset.del, 1); drawUsr(); toast(`${u} kullanıcısı silindi.`, true);
+  });
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+
+  // Pencereler
+  const open = id => { document.getElementById(id).hidden = false; };
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.fixed').hidden = true);
+  document.querySelectorAll('.gen').forEach(b => b.onclick = () => { document.getElementById(b.dataset.for).value = Math.random().toString(36).slice(2, 8) + '-Servik-' + Math.floor(Math.random() * 90 + 10); });
+  const d0 = document.getElementById('d0');
+  d0.onchange = () => document.querySelectorAll('.pfx').forEach(p => p.textContent = d0.value + '_');
+  document.getElementById('newDb').onclick = () => { open('dbModal'); document.getElementById('d1').focus(); };
+  document.getElementById('newUsr').onclick = () => { open('usrModal'); document.getElementById('u1').focus(); };
+  document.getElementById('dbForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const p = d0.value + '_', n = p + document.getElementById('d1').value.trim(), u = p + document.getElementById('d2').value.trim();
+    dbs.unshift([n, d0.options[d0.selectedIndex].text, 0, [u]]);
+    users.unshift([u, 'localhost', n, 'Tam yetki']);
+    drawDb(); drawUsr(); e.target.closest('.fixed').hidden = true; e.target.reset();
+    document.querySelectorAll('.pfx').forEach(x => x.textContent = 'kahve_');
+    toast(`${n} veritabanı ve ${u} kullanıcısı oluşturuldu.`);
+  });
+  document.getElementById('usrForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const u = document.getElementById('u1').value.trim();
+    users.unshift([u, 'localhost', document.getElementById('u3').value, document.getElementById('u4').value]);
+    drawUsr(); e.target.closest('.fixed').hidden = true; e.target.reset();
+    toast(`${u} kullanıcısı eklendi.`);
+  });
+
+  drawDb(); drawUsr(); setTab('t-db');
+</script>

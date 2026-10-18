@@ -1,0 +1,216 @@
+      <!-- Başlık -->
+      <div class="flex flex-wrap items-end gap-4 justify-between">
+        <div>
+          <div class="flex items-center gap-3">
+            <h1 class="text-[22px] font-semibold tracking-tight">Canlı İzleme</h1>
+            <span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Canlı</span>
+          </div>
+          <p class="mt-1 text-[13px] text-muted">Sitelerin anlık kaynak kullanımını izleyin, sorunlu siteye tek tıkla müdahale edin.</p>
+        </div>
+        <label class="flex items-center gap-2 text-[13px]">
+          <span class="text-muted">Aralık</span>
+          <select id="range" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13px] focus:border-accent outline-none">
+            <option>Son 5 dk</option><option>Son 1 sa</option><option>Son 24 sa</option>
+          </select>
+        </label>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-site" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Siteler</button>
+          <button role="tab" data-tab="t-atk" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Saldırılar <span class="ml-1 text-2xs num px-1.5 py-0.5 rounded-full bg-crit-soft text-crit">3</span></button>
+        </div>
+
+        <!-- Siteler -->
+        <div id="t-site" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <span class="text-[13px] text-muted">CPU kullanımına göre sıralı · satıra tıklayıp müdahale edin</span>
+            <label class="ml-auto relative w-full sm:w-64">
+              <span class="sr-only">Site ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[700px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Site</th>
+                  <th class="font-medium px-3 py-2.5 text-right">CPU</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Bellek</th>
+                  <th class="font-medium px-3 py-2.5 text-right">PHP işçisi</th>
+                  <th class="font-medium px-3 py-2.5 text-right">İstek/sn</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                </tr>
+              </thead>
+              <tbody id="rows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+        </div>
+
+        <!-- Saldırılar -->
+        <div id="t-atk" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[720px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">IP</th>
+                  <th class="font-medium px-3 py-2.5">Ülke</th>
+                  <th class="font-medium px-3 py-2.5">Hedef site</th>
+                  <th class="font-medium px-3 py-2.5 text-right">İstek/sn</th>
+                  <th class="font-medium px-3 py-2.5">Kural</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="atk" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Müdahale -->
+      <div id="actModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-xl rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="actTitle">
+          <h2 id="actTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold"><span class="font-mono" id="actSite"></span>&nbsp;için müdahale</h2>
+          <dl class="px-5 py-3 border-b border-line text-[13px] grid grid-cols-[110px_1fr] gap-y-1.5" id="actSum"></dl>
+          <ul class="divide-y divide-line text-[13.5px]" id="acts"></ul>
+          <div class="px-5 py-3 border-t border-line flex justify-end">
+            <button id="actClose" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kapat</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  const fmt = (n, d = 0) => n.toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const mb = v => v >= 1024 ? fmt(v / 1024, 1) + ' GB' : fmt(v) + ' MB';
+  // ad, cpu %, bellek MB, php meşgul, php toplam, istek/sn, durum
+  const sites = [
+    ['magazaonline.com.tr', 97, 2150, 12, 12, 1318, 'atk'],
+    ['ozkanlojistik.com', 92, 1640, 5, 8, 46, 'cpu'],
+    ['hizlikargo.app', 64, 910, 5, 8, 420, ''],
+    ['api.hizlikargo.app', 48, 1430, 6, 16, 540, ''],
+    ['panel.ozkanlojistik.com', 34, 980, 3, 8, 18, ''],
+    ['bulten.atlasyayin.com', 31, 640, 2, 8, 14, ''],
+    ['kahveatolyesi.com.tr', 22, 860, 4, 8, 96, ''],
+    ['atlasyayin.com', 12, 420, 2, 8, 38, ''],
+    ['cicekdunyasi.com.tr', 7, 380, 1, 4, 36, ''],
+    ['karadenizbalik.com', 6, 340, 1, 4, 31, ''],
+    ['egezeytin.com.tr', 5, 300, 1, 4, 24, ''],
+    ['klinikmavi.com', 3, 96, 1, 4, 6, ''],
+    ['staging.hizlikargo.app', 2, 210, 0, 4, 0.4, ''],
+    ['eski.kahveatolyesi.com.tr', 1, 120, 0, 4, 0.2, ''],
+  ];
+  const ST = {
+    atk: ['bg-crit-soft text-crit', 'bg-crit', 'Saldırı'],
+    cpu: ['bg-warn-soft text-warn', 'bg-warn', 'Yüksek CPU'],
+    '': ['bg-ok-soft text-ok', 'bg-ok', 'Normal'],
+  };
+  const tone = (v, w, c) => v >= c ? 'text-crit font-medium' : v >= w ? 'text-warn font-medium' : '';
+  const rows = document.getElementById('rows');
+  let q = '';
+  const draw = () => {
+    const list = sites.filter(s => s[0].includes(q)).sort((a, b) => b[1] - a[1]);
+    rows.innerHTML = list.map(([n, cpu, ram, pb, pt, rps, st]) => {
+      const b = ST[st];
+      return `<tr data-site="${n}" class="hover:bg-surface-2/60 cursor-pointer">
+        <td class="px-5 py-3 font-mono text-[13px]">${n}</td>
+        <td class="px-3 py-3 text-right num ${tone(cpu, 70, 95)}">%${fmt(cpu)}</td>
+        <td class="px-3 py-3 text-right num">${mb(ram)}</td>
+        <td class="px-3 py-3 text-right num ${tone(pb / pt * 100, 75, 100)}">${pb}/${pt}</td>
+        <td class="px-3 py-3 text-right num ${tone(rps, 600, 1000)}">${fmt(rps, rps < 1 ? 1 : 0)}</td>
+        <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${b[0]}"><i class="w-1.5 h-1.5 rounded-full ${b[1]}"></i>${b[2]}</span></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('count').textContent = `${list.length} site gösteriliyor · 24 site · her 2 saniyede güncellenir`;
+  };
+  document.getElementById('q').oninput = e => { q = e.target.value.toLowerCase().trim(); draw(); };
+  draw();
+
+  // Küçük canlı güncelleme
+  const jit = (v, p) => Math.max(0, v + v * p * (Math.random() * 2 - 1));
+  setInterval(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    sites.forEach(s => {
+      s[1] = Math.min(s[6] === 'atk' ? 99 : 96, Math.round(jit(s[1], .05)));
+      s[2] = Math.round(jit(s[2], .02));
+      s[5] = +jit(s[5], .06).toFixed(s[5] < 1 ? 1 : 0);
+    });
+    draw();
+  }, 2000);
+
+  // Saldırılar
+  const atk = [
+    ['45.155.205.233', 'Rusya', 'magazaonline.com.tr', 612, 'wp-login kaba kuvvet', 0],
+    ['193.42.33.117', 'Hollanda', 'magazaonline.com.tr', 408, 'xmlrpc.php seli', 0],
+    ['103.153.79.6', 'Vietnam', 'magazaonline.com.tr', 214, 'Sepet uç noktası seli', 0],
+    ['185.220.101.47', 'Almanya', 'magazaonline.com.tr', 0, 'Tor çıkışı · WAF 942100', 1],
+  ];
+  const atkEl = document.getElementById('atk');
+  const drawAtk = () => {
+    atkEl.innerHTML = atk.map(([ip, c, s, r, rule, blk], i) => `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3 font-mono text-[13px]">${ip}</td>
+      <td class="px-3 py-3">${c}</td>
+      <td class="px-3 py-3 font-mono text-[13px]">${s}</td>
+      <td class="px-3 py-3 text-right num ${blk ? 'text-muted' : tone(r, 200, 500)}">${blk ? '—' : fmt(r)}</td>
+      <td class="px-3 py-3 text-muted">${rule}</td>
+      <td class="px-3 py-3">${blk
+        ? '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Engellendi</span>'
+        : '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-warn-soft text-warn whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>İzleniyor</span>'}</td>
+      <td class="px-3 py-3 text-right">${blk ? '<span class="text-2xs text-muted whitespace-nowrap">Servik AI · 23:41</span>' : `<button data-blk="${i}" class="text-[13px] text-accent hover:underline">Engelle</button>`}</td>
+    </tr>`).join('');
+  };
+  atkEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-blk]'); if (!b) return;
+    const a = atk[b.dataset.blk]; a[5] = 1; drawAtk();
+    toast(`${a[0]} 1 saat engellendi.`, true);
+  });
+  drawAtk();
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-site');
+
+  // Müdahale penceresi
+  const m = document.getElementById('actModal');
+  const acts = [
+    ['IP\'leri engelle', 'Saldıran 3 IP adresi nftables ile engellenir.', ['1 saat', '24 saat', 'Kalıcı'], 'Engelle', 'Saldıran 3 IP engellendi'],
+    ['Geçici CPU sınırı', 'Site 1 çekirdekle sınırlanır, diğer siteler etkilenmez.', ['15 dk', '30 dk', '1 saat'], 'Sınırla', 'CPU sınırı uygulandı'],
+    ['PHP işçisini sınırla', 'Bu sitenin PHP-FPM havuzu 6 işçiye düşürülür.', ['15 dk', '30 dk', '1 saat'], 'Sınırla', 'PHP işçisi 6 ile sınırlandı'],
+    ['Siteyi bakım moduna al', 'Ziyaretçiler 503 bakım sayfası görür.', ['15 dk', '1 saat', 'Elle kapatılana dek'], 'Bakıma al', 'Site bakım modunda'],
+  ];
+  const sel = 'h-8 px-2 rounded-md border border-line bg-surface text-[13px] focus:border-accent outline-none';
+  rows.addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-site]'); if (!tr) return;
+    const s = sites.find(x => x[0] === tr.dataset.site);
+    document.getElementById('actSite').textContent = s[0];
+    document.getElementById('actSum').innerHTML = `
+      <dt class="text-muted">Kaynak</dt><dd class="num">CPU %${fmt(s[1])} · ${mb(s[2])} bellek · PHP ${s[3]}/${s[4]}</dd>
+      <dt class="text-muted">Trafik</dt><dd class="num">${fmt(s[5], s[5] < 1 ? 1 : 0)} istek/sn${s[6] === 'atk' ? ', %71\'i 3 IP adresinden' : ''}</dd>
+      <dt class="text-muted">Durum</dt><dd>${s[6] === 'atk' ? 'Saldırı altında, PHP havuzu dolu' : s[6] === 'cpu' ? 'Yüksek CPU, kuyruk işçisi takılı' : 'Normal'}</dd>`;
+    document.getElementById('acts').innerHTML = acts.map(([t, d, opts, btn, msg], i) => `<li class="px-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div class="flex-1 min-w-[200px]"><p class="font-medium">${t}</p><p class="text-2xs text-muted mt-0.5">${d}</p></div>
+      <select aria-label="${t} süresi" class="${sel}">${opts.map(o => `<option>${o}</option>`).join('')}</select>
+      <button data-act="${i}" class="h-8 px-3 rounded-md ${i === 3 ? 'border border-line bg-surface hover:bg-surface-2' : 'bg-fg text-bg hover:opacity-90'} text-[13px] font-medium w-24">${btn}</button>
+    </li>`).join('');
+    m.hidden = false;
+  });
+  document.getElementById('acts').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const dur = b.previousElementSibling.value;
+    toast(`${acts[b.dataset.act][4]} (${dur}).`, true);
+    m.hidden = true;
+  });
+  document.getElementById('actClose').onclick = () => m.hidden = true;
+  m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
+</script>

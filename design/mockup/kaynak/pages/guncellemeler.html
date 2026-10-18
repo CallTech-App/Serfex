@@ -1,0 +1,130 @@
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5" aria-label="Konum"><a href="ayarlar.html" class="hover:text-accent">Ayarlar</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="text-fg">Güncellemeler</span></nav>
+        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">Güncellemeler</h1>
+        <p class="mt-1 text-[13px] text-muted">Servik panelini ve sistem paketlerini güncelleyin.</p>
+      </div>
+
+      <!-- Servik sürümü -->
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 py-5 flex flex-wrap items-start gap-4 justify-between">
+          <div class="min-w-0">
+            <p class="text-[14.5px] font-semibold">Servik <span class="font-mono">1.4.1</span> kurulu · <span class="font-mono text-accent">1.4.2</span> hazır</p>
+            <p class="mt-1 text-[13px] text-muted">16.10.2026 yayımlandı · yama sürümü · panel yaklaşık 20 saniye yeniden başlar, siteler etkilenmez.</p>
+            <ul class="mt-3 space-y-1.5 text-[13.5px] list-disc pl-5 marker:text-muted">
+              <li>Güvenlik: dosya yöneticisinde sembolik bağlantıyla site klasörü dışı okuma kapatıldı.</li>
+              <li>Laravel dağıtımında <span class="font-mono text-[13px]">migrate</span> hatası artık tam çıktıyla gösteriliyor.</li>
+              <li>Let's Encrypt, A kaydı başka sunucuyu gösterdiğinde açık hata mesajı veriyor.</li>
+              <li>PowerDNS'te uzun DKIM TXT kayıtları doğru bölünüyor.</li>
+            </ul>
+          </div>
+          <button id="go" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"><i data-lucide="download" class="w-4 h-4"></i>Güncelle</button>
+        </div>
+
+        <div id="prog" class="px-5 pb-5" hidden>
+          <ol id="steps" class="rounded-lg border border-line divide-y divide-line text-[13.5px]"></ol>
+        </div>
+
+        <p class="px-5 pb-4 text-2xs text-muted flex items-center gap-1.5"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i>Sorun çıkarsa otomatik olarak 1.4.1'e döner.</p>
+
+        <div class="px-5 py-3 border-t border-line flex flex-wrap items-center gap-x-4 gap-y-2 text-[13.5px]">
+          <i data-lucide="package" class="w-4 h-4 text-muted"></i>
+          <span id="aptTxt">Sistem paketleri (<span class="font-mono text-[13px]">apt</span>): <span class="num">23</span> bekleyen, <span class="text-warn num">4 güvenlik</span></span>
+          <button id="apt" class="ml-auto h-8 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">Sistem paketlerini güncelle</button>
+        </div>
+      </section>
+
+      <!-- Geçmiş ve ilke -->
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-his" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Güncelleme geçmişi</button>
+          <button role="tab" data-tab="t-pol" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Güncelleme ilkesi</button>
+        </div>
+
+        <div id="t-his" class="panel relative overflow-x-auto scroll-thin">
+          <table class="w-full text-[13.5px] min-w-[620px] whitespace-nowrap">
+            <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Tarih</th><th class="font-medium px-3 py-2.5">Sonuç</th><th class="font-medium px-3 py-2.5">Not</th></tr></thead>
+            <tbody id="his" class="divide-y divide-line">
+              <tr><td class="px-5 py-3 font-mono text-[13px]">1.4.1</td><td class="px-3 py-3 num">02.10.2026 03:31</td><td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kuruldu</span></td><td class="px-3 py-3 text-muted">Otomatik, 1 dk 48 sn</td></tr>
+              <tr><td class="px-5 py-3 font-mono text-[13px]">1.4.0</td><td class="px-3 py-3 num">18.09.2026 03:30</td><td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kuruldu</span></td><td class="px-3 py-3 text-muted">Sercan Yılmaz</td></tr>
+              <tr><td class="px-5 py-3 font-mono text-[13px]">1.3.9</td><td class="px-3 py-3 num">04.09.2026 03:30</td><td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-warn-soft text-warn"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>Geri alındı</span></td><td class="px-3 py-3 text-muted">Kontrol adımı başarısız, 1.3.8'e dönüldü</td></tr>
+              <tr><td class="px-5 py-3 font-mono text-[13px]">1.3.8</td><td class="px-3 py-3 num">21.08.2026 03:30</td><td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kuruldu</span></td><td class="px-3 py-3 text-muted">Otomatik</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <form id="t-pol" class="panel px-5 py-5 max-w-3xl" hidden>
+          <div class="divide-y divide-line">
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="u1" class="text-[13.5px]">Kanal</label>
+              <select id="u1" class="w-full sm:w-64 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>Kararlı</option><option>Beta</option></select>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
+              <span class="text-[13.5px]">Otomatik güncelleme</span>
+              <div class="space-y-2 text-[13.5px]">
+                <label class="flex items-center gap-2.5"><input type="radio" name="auto" class="w-4 h-4 accent-[rgb(var(--accent))]">Kapalı</label>
+                <label class="flex items-center gap-2.5"><input type="radio" name="auto" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Yalnızca güvenlik düzeltmeleri</label>
+                <label class="flex items-center gap-2.5"><input type="radio" name="auto" class="w-4 h-4 accent-[rgb(var(--accent))]">Tüm güncellemeler</label>
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="u2" class="text-[13.5px]">Saat</label>
+              <div class="flex items-center gap-2"><input id="u2" type="time" value="03:30" class="w-32 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-[13px] text-muted">gece yedeğinden sonra</span></div>
+            </div>
+          </div>
+          <div class="mt-5 flex gap-2">
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+            <button type="reset" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+          </div>
+        </form>
+      </section>
+
+<script>
+  const names = ['İndir', 'Doğrula', 'Yedek al', 'Kur', 'Kontrol et', 'Tamam'];
+  const hints = ['38,4 MB', 'minisign imzası', 'panel veritabanı ve yapılandırma', 'servisler yeniden başlıyor', 'panel ve 24 site yanıt veriyor', 'Servik 1.4.2 çalışıyor'];
+  const steps = document.getElementById('steps');
+  const paint = cur => {
+    steps.innerHTML = names.map((n, i) => {
+      const st = i < cur ? 'done' : i === cur ? 'run' : 'wait';
+      const ic = st === 'done' ? '<i data-lucide="circle-check" class="w-4 h-4 text-ok"></i>'
+        : st === 'run' ? '<i data-lucide="loader-circle" class="w-4 h-4 text-info animate-spin"></i>'
+        : '<i data-lucide="circle" class="w-4 h-4 text-muted"></i>';
+      return `<li class="px-4 py-2.5 flex items-center gap-3 ${st === 'wait' ? 'text-muted' : ''}">${ic}<span>${n}</span><span class="ml-auto text-2xs text-muted">${hints[i]}</span></li>`;
+    }).join('');
+    lucide.createIcons();
+  };
+  const go = document.getElementById('go');
+  go.onclick = () => {
+    go.disabled = true; document.getElementById('prog').hidden = false;
+    let i = 0; paint(0);
+    const t = setInterval(() => {
+      i++;
+      if (i >= names.length - 1) {
+        clearInterval(t); paint(names.length);
+        go.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>Güncel'; lucide.createIcons();
+        document.querySelector('#go').previousElementSibling.firstElementChild.innerHTML = 'Servik <span class="font-mono">1.4.2</span> kurulu · güncel';
+        document.getElementById('his').insertAdjacentHTML('afterbegin', '<tr><td class="px-5 py-3 font-mono text-[13px]">1.4.2</td><td class="px-3 py-3 num">Bugün 23:52</td><td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kuruldu</span></td><td class="px-3 py-3 text-muted">Sercan Yılmaz</td></tr>');
+        toast('Servik 1.4.2 kuruldu.');
+      } else paint(i);
+    }, 900);
+  };
+
+  document.getElementById('apt').onclick = e => {
+    const b = e.currentTarget; b.disabled = true; b.textContent = 'Güncelleniyor…';
+    setTimeout(() => { document.getElementById('aptTxt').innerHTML = 'Sistem paketleri (<span class="font-mono text-[13px]">apt</span>): <span class="text-ok">güncel</span>'; b.hidden = true; toast('23 sistem paketi güncellendi.'); }, 1400);
+  };
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-his');
+  document.getElementById('t-pol').addEventListener('submit', e => { e.preventDefault(); toast('Güncelleme ilkesi kaydedildi.'); });
+</script>

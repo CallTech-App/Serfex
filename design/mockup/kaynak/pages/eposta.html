@@ -1,0 +1,43 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">E-posta</h1>
+        <p class="mt-1 text-[13px] text-muted">Postası açık alan adları. Posta kutularını yönetmek için bir alan adına tıklayın.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+          
+          <label class="ml-auto relative w-full sm:w-64">
+            <span class="sr-only">Alan adı ara</span>
+            <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="q" type="search" placeholder="Alan adı ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+          </label>
+        </div>
+        <div class="relative overflow-x-auto scroll-thin">
+          <table class="w-full text-[13.5px] min-w-[720px]">
+            <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Alan adı</th><th class="font-medium px-3 py-2.5 text-right">Posta kutusu</th><th class="font-medium px-3 py-2.5 text-right">Kullanılan alan</th><th class="font-medium px-3 py-2.5">Spam filtresi</th><th class="font-medium px-3 py-2.5">Durum</th></tr></thead>
+            <tbody id="rows" class="divide-y divide-line">
+              <tr class="hover:bg-surface-2/60 cursor-pointer" data-name="kahveatolyesi.com.tr"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">kahveatolyesi.com.tr</a><div class="text-2xs text-muted mt-0.5">Kahve Atölyesi</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">6 / 10</td><td class="px-3 py-3 text-right num whitespace-nowrap">3,9 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Sorunsuz</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="atlasyayin.com"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">atlasyayin.com</a><div class="text-2xs text-muted mt-0.5">Atlas Yayıncılık</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">24 / 50</td><td class="px-3 py-3 text-right num whitespace-nowrap">18,2 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-warn-soft text-warn"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>DMARC kaydı yok</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="bulten.atlasyayin.com"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">bulten.atlasyayin.com</a><div class="text-2xs text-muted mt-0.5">Atlas Yayıncılık</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">2 / 5</td><td class="px-3 py-3 text-right num whitespace-nowrap">0,4 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-warn-soft text-warn"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>Gönderim sınırına yakın</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="hizlikargo.app"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">hizlikargo.app</a><div class="text-2xs text-muted mt-0.5">Hızlı Kargo A.Ş.</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">31 / 50</td><td class="px-3 py-3 text-right num whitespace-nowrap">22,7 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Sorunsuz</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="ozkanlojistik.com"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">ozkanlojistik.com</a><div class="text-2xs text-muted mt-0.5">Özkan Lojistik</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">18 / 25</td><td class="px-3 py-3 text-right num whitespace-nowrap">11,3 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Sorunsuz</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="magazaonline.com.tr"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">magazaonline.com.tr</a><div class="text-2xs text-muted mt-0.5">Mağaza Online</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">9 / 10</td><td class="px-3 py-3 text-right num whitespace-nowrap">6,1 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Sorunsuz</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="klinikmavi.com"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">klinikmavi.com</a><div class="text-2xs text-muted mt-0.5">Klinik Mavi</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">6 / 10</td><td class="px-3 py-3 text-right num whitespace-nowrap">1,2 GB</td><td class="px-3 py-3 whitespace-nowrap">Açık</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Sorunsuz</span></td></tr>
+<tr class="hover:bg-surface-2/60 cursor-pointer" data-name="pixelajans.com.tr"><td class="px-5 py-3"><a href="eposta-detay.html" class="font-mono text-[13px] font-medium hover:text-accent">pixelajans.com.tr</a><div class="text-2xs text-muted mt-0.5">Pixel Ajans</div></td><td class="px-3 py-3 text-right num whitespace-nowrap">12 / 25</td><td class="px-3 py-3 text-right num whitespace-nowrap">8,8 GB</td><td class="px-3 py-3 whitespace-nowrap">Kapalı</td><td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Sorunsuz</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count">8 / 19 alan adı</p>
+      </section>
+
+
+<script>
+  const rows = document.getElementById('rows');
+  rows.addEventListener('click', e => { if (e.target.closest('a,button,input')) return; const tr = e.target.closest('tr'); if (tr) location.href = 'eposta-detay.html'; });
+  document.getElementById('q').oninput = e => {
+    const q = e.target.value.trim().toLowerCase(); let n = 0;
+    rows.querySelectorAll('tr').forEach(tr => { const show = tr.dataset.name.includes(q); tr.hidden = !show; n += show; });
+    document.getElementById('count').textContent = q ? `${n} alan adı` : '8 / 19 alan adı';
+  };
+</script>

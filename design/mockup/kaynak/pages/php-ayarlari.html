@@ -1,0 +1,130 @@
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5 flex-wrap" aria-label="Konum"><a href="siteler.html" class="hover:text-accent">Siteler</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><a href="site-detay.html" class="font-mono hover:text-accent">kahveatolyesi.com.tr</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="text-fg">PHP ve Web Sunucusu</span></nav>
+        <div class="mt-2 flex flex-wrap items-center gap-3 justify-between">
+          <h1 class="text-[22px] font-semibold tracking-tight">PHP ve Web Sunucusu</h1>
+          <a href="site-detay.html" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="arrow-left" class="w-4 h-4"></i>Siteye dön</a>
+        </div>
+        <p class="mt-1 text-[13px] text-muted max-w-3xl">Bu ayarlar yalnızca <span class="font-mono text-fg">kahveatolyesi.com.tr</span> için geçerlidir. Varsayılan bırakılan değerler sunucunun PHP ayarlarından gelir. Sitedeki <span class="font-mono">.user.ini</span> veya <span class="font-mono">.htaccess</span> dosyaları bu değerleri ezebilir.</p>
+      </div>
+
+      <form id="phpForm" class="rounded-xl border border-line bg-surface min-w-0">
+        <!-- Sürüm ve çalıştırma -->
+        <div class="p-5 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-4 text-[13.5px] border-b border-line">
+          <label for="ver" class="md:pt-2 font-medium">PHP sürümü</label>
+          <div class="flex flex-wrap items-center gap-3">
+            <select id="ver" class="h-9 px-2.5 rounded-md border border-line bg-surface w-56"><option>8.5.1</option><option>8.4.14</option><option selected>8.3.27</option></select>
+            <a href="#" data-toast="phpinfo() sayfası yeni sekmede açılır." class="text-[13px] text-accent hover:underline flex items-center gap-1"><i data-lucide="info" class="w-3.5 h-3.5"></i>phpinfo() sayfasını görüntüle</a>
+          </div>
+
+          <label for="handler" class="md:pt-2 font-medium">Web sunucusu ve PHP</label>
+          <div class="max-w-xl">
+            <select id="handler" class="h-9 px-2.5 rounded-md border border-line bg-surface w-full">
+              <optgroup label="Yalnızca Nginx">
+                <option value="fpm-nginx" selected>Nginx + PHP-FPM (önerilen)</option>
+                <option value="dfpm-nginx">Nginx + PHP-FPM, siteye özel havuz</option>
+              </optgroup>
+              <optgroup label="Apache ile (.htaccess desteği)">
+                <option value="fpm-apache">Nginx + Apache + PHP-FPM</option>
+                <option value="dfpm-apache">Nginx + Apache + PHP-FPM, siteye özel havuz</option>
+                <option value="fcgi-apache">Nginx + Apache + FastCGI (eski uygulamalar)</option>
+              </optgroup>
+            </select>
+            <p id="handlerHint" class="mt-1.5 text-[13px] text-muted"></p>
+          </div>
+        </div>
+
+        <div id="groups"></div>
+
+        <!-- Ek yönergeler -->
+        <div class="p-5 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-2 text-[13.5px] border-t border-line">
+          <label for="extra" class="font-medium">Ek yönergeler<span class="block text-2xs text-muted font-normal mt-0.5">php.ini biçiminde</span></label>
+          <div class="max-w-xl">
+            <textarea id="extra" rows="4" spellcheck="false" class="w-full px-3 py-2 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]" placeholder="opcache.revalidate_freq = 60"></textarea>
+            <p class="mt-1.5 text-2xs text-muted">Değerlerde şunları kullanabilirsiniz: <span class="font-mono">{DOCROOT}</span> site kökü (<span class="font-mono">/var/www/kahveatolyesi/httpdocs</span>), <span class="font-mono">{TMP}</span> geçici dizin.</p>
+          </div>
+        </div>
+
+        <div class="px-5 py-3 border-t border-line flex flex-wrap items-center gap-3 sticky bottom-0 bg-surface rounded-b-xl">
+          <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+          <a href="site-detay.html" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px] grid place-items-center">Vazgeç</a>
+          <span id="dirty" class="text-[13px] text-muted"></span>
+        </div>
+      </form>
+
+<script>
+  // Site PHP ayarları: soldaki etiket, sağda düzenlenebilir değer + açıklama. [ad, varsayılan, öneriler, açıklama, mevcut değer]
+  const G = [
+    ['Performans ve güvenlik', [
+      ['memory_limit', '128M', ['128M', '256M', '512M', '1G'], 'Bir betiğin kullanabileceği en fazla bellek.', '256M'],
+      ['max_execution_time', '30', ['30', '60', '120', '300'], 'Bir betiğin sonlandırılmadan önce çalışabileceği süre (saniye).', ''],
+      ['max_input_time', '60', ['60', '120', '300'], 'Gelen verinin işlenmesi için izin verilen süre (saniye).', ''],
+      ['post_max_size', '8M', ['8M', '32M', '64M', '128M'], 'POST ile gönderilebilecek en büyük veri. upload_max_filesize değerinden büyük, memory_limit değerinden küçük olmalı.', '64M'],
+      ['upload_max_filesize', '2M', ['2M', '16M', '32M', '64M'], 'Yüklenebilecek en büyük dosya.', '32M'],
+      ['max_input_vars', '1000', ['1000', '3000', '5000'], 'Bir istekte kabul edilen en fazla değişken. Büyük WooCommerce formlarında artırın.', '3000'],
+      ['opcache.enable', 'on', ['on', 'off'], 'Derlenmiş PHP kodunu bellekte tutar, siteyi belirgin hızlandırır.', ''],
+      ['disable_functions', 'exec,passthru,shell_exec,system', [], 'Kapatılacak PHP işlevleri, virgülle ayrılır.', ''],
+    ]],
+    ['Genel ayarlar', [
+      ['open_basedir', '{DOCROOT}:{TMP}', [], 'PHP\'nin erişebileceği dizinler. Sitenin diğer müşterilerin dosyalarını okumasını engeller.', ''],
+      ['date.timezone', 'Europe/Istanbul', ['Europe/Istanbul', 'UTC'], 'Tarih işlevlerinin kullandığı saat dilimi.', ''],
+      ['session.save_path', '/var/lib/php/sessions', [], 'Oturum dosyalarının saklandığı dizin.', ''],
+      ['short_open_tag', 'off', ['on', 'off'], '&lt;? kısa açılış etiketine izin verir.', ''],
+      ['display_errors', 'off', ['on', 'off'], 'Hataları ziyaretçiye gösterir. Yayındaki sitelerde kapalı olmalı.', ''],
+      ['log_errors', 'on', ['on', 'off'], 'Hataları sitenin hata günlüğüne yazar.', ''],
+      ['error_reporting', 'E_ALL & ~E_DEPRECATED', ['E_ALL', 'E_ALL & ~E_DEPRECATED', 'E_ALL & ~E_NOTICE'], 'Hangi hata türlerinin raporlanacağı.', ''],
+    ]],
+  ];
+  const vals = {};
+  document.getElementById('groups').innerHTML = G.map(([g, list]) => `
+    <div class="p-5 ${g === G[0][0] ? '' : 'border-t border-line'}">
+      <h2 class="text-[14.5px] font-semibold mb-4">${g}</h2>
+      <div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-4 text-[13.5px]">
+        ${list.map(([n, def, opts, desc, cur]) => { vals[n] = cur; return `
+          <label for="f-${n}" class="md:pt-2 font-mono text-[13px] break-all">${n}</label>
+          <div class="max-w-xl">
+            <div class="flex items-center gap-3">
+              <input id="f-${n}" data-n="${n}" data-def="${def}" list="l-${n}" value="${cur}" placeholder="${def} (varsayılan)" autocomplete="off" class="pv h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px] w-full ${opts.length ? 'sm:w-80' : ''}">
+              <datalist id="l-${n}">${opts.map(o => `<option value="${o}">`).join('')}</datalist>
+              <button type="button" data-reset="${n}" class="text-[13px] text-accent hover:underline whitespace-nowrap ${cur ? '' : 'invisible'}">Varsayılana dön</button>
+            </div>
+            <p class="mt-1 text-2xs text-muted">${desc}</p>
+          </div>`; }).join('')}
+      </div>
+    </div>`).join('');
+
+  const H = {
+    'fpm-nginx': 'Nginx PHP isteklerini doğrudan PHP-FPM\'e iletir. En hızlı seçenek; .htaccess dosyaları çalışmaz.',
+    'dfpm-nginx': 'Bu siteye ayrı bir PHP-FPM havuzu ayrılır. Yoğun sitelerin diğerlerini yavaşlatmasını önler.',
+    'fpm-apache': 'Nginx statik dosyaları sunar, PHP istekleri Apache üzerinden gider. .htaccess dosyaları çalışır.',
+    'dfpm-apache': 'Apache ile ve bu siteye ayrılmış bir PHP-FPM havuzuyla çalışır. .htaccess dosyaları çalışır.',
+    'fcgi-apache': 'Eski uygulamalar için. FPM\'e göre daha fazla bellek kullanır.',
+  };
+  const handler = document.getElementById('handler'), hint = document.getElementById('handlerHint');
+  const showHint = () => {
+    hint.innerHTML = H[handler.value] + (handler.value.includes('apache') ? ' Apache bu sunucuda kurulu ve 5 sitede kullanılıyor. <a href="bilesenler.html" class="text-accent hover:underline">Yazılım Yönetimi</a>' : '');
+  };
+  handler.onchange = () => { showHint(); markDirty(); };
+  showHint();
+
+  const dirty = document.getElementById('dirty');
+  const markDirty = () => dirty.textContent = 'Kaydedilmemiş değişiklikler var.';
+  const form = document.getElementById('phpForm');
+  form.addEventListener('input', e => {
+    if (e.target.matches('.pv')) form.querySelector(`[data-reset="${e.target.dataset.n}"]`).classList.toggle('invisible', !e.target.value);
+    markDirty();
+  });
+  form.addEventListener('click', e => {
+    const b = e.target.closest('[data-reset]'); if (!b) return;
+    const i = document.getElementById('f-' + b.dataset.reset); i.value = ''; b.classList.add('invisible'); markDirty();
+  });
+  document.getElementById('ver').onchange = markDirty;
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const up = form.querySelector('#f-upload_max_filesize').value || '2M', post = form.querySelector('#f-post_max_size').value || '8M';
+    const mb = v => parseFloat(v) * (/g/i.test(v) ? 1024 : 1);
+    if (mb(post) < mb(up)) { toast('post_max_size, upload_max_filesize değerinden küçük olamaz.'); return; }
+    dirty.textContent = '';
+    toast(handler.value.includes('apache') ? 'Kaydedildi. Site artık Apache ile çalışıyor, yapılandırma test edildi.' : 'PHP ayarları kaydedildi, PHP-FPM yeniden yüklendi.', true);
+  });
+</script>
