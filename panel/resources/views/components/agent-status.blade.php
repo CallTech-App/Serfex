@@ -19,15 +19,15 @@ new class extends Component
 };
 ?>
 
-<div class="flex items-center gap-3">
+<div class="flex flex-1 items-center gap-3">
     @if ($online)
-        <span class="size-2.5 rounded-full bg-green-600"></span>
+        <span class="size-2.5 rounded-full bg-ok"></span>
         <span>Sunucu ajanı bağlı</span>
     @else
-        <span class="size-2.5 rounded-full bg-red-600"></span>
+        <span class="size-2.5 rounded-full bg-crit"></span>
         <span>Sunucu ajanına ulaşılamıyor</span>
     @endif
-    <button type="button" wire:click="refresh" class="ml-auto rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+    <button type="button" wire:click="refresh" class="ml-auto h-8 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
         Yenile
     </button>
 </div>
