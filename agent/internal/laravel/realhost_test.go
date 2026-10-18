@@ -207,14 +207,27 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, 30*time.Second, func() bool { return activeState(ctx, h, states[0].Unit) == "active" })
-	job := "dispatch(function () { file_put_contents(storage_path('servik-queue-ok'), 'ok'); }); echo 'queued';"
-	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=" + job}}); err != nil || out.ExitCode != 0 {
+	// A closure defined in tinker cannot be serialized (it has no source
+	// file), so the job is a queued Artisan command with a visible effect.
+	job := "Illuminate\\Support\\Facades\\Artisan::queue('down', ['--secret' => 'servik-queued']); echo 'queued';"
+	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=" + job}}); err != nil || out.ExitCode != 0 || !strings.Contains(out.Output, "queued") {
 		t.Fatalf("dispatch: %+v %v", out, err)
 	}
-	waitFor(t, 60*time.Second, func() bool {
-		_, err := os.Stat(base + "/shared/storage/servik-queue-ok")
-		return err == nil
-	})
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		if st, _ := m.Status(ctx, app); st.Maintenance != nil && st.Maintenance.Secret == "servik-queued" {
+			break
+		}
+		if time.Now().After(deadline) {
+			failed, _ := m.Probe(ctx, ProbeSpec{App: app, Kind: "failed"})
+			qlog, _ := os.ReadFile(queueLog(realDomain))
+			t.Fatalf("the worker did not run the job\nfailed jobs: %s\nqueue.log:\n%s", failed, qlog)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if _, err := m.Maintenance(ctx, MaintenanceSpec{App: app}); err != nil {
+		t.Fatal(err)
+	}
 
 	// 5. The scheduler timer runs schedule:run.
 	sched, err := m.ApplySchedule(ctx, ScheduleSpec{App: app, Enabled: true})
