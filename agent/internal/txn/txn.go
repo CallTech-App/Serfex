@@ -130,6 +130,31 @@ func (t *Tx) WriteOwned(abs string, data []byte, mode os.FileMode, uid, gid int)
 	return nil
 }
 
+// TakeOver makes room for a managed file where the distribution put its
+// own (Postfix's main.cf, Dovecot's dovecot.conf): a file without the
+// marker is renamed to abs.before-servik, never deleted. Managed and
+// missing files are left alone.
+func (t *Tx) TakeOver(abs string) error {
+	p := t.H.Path(abs)
+	old, err := os.ReadFile(p)
+	if errors.Is(err, os.ErrNotExist) || (err == nil && HasMarker(old)) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	saved := p + ".before-servik"
+	if _, err := os.Lstat(saved); err == nil {
+		return fmt.Errorf("%s exists and is not managed by Servik, and %s.before-servik is taken; move one of them away first", abs, abs)
+	}
+	if err := os.Rename(p, saved); err != nil {
+		return err
+	}
+	t.Changed = true
+	t.OnUndo(func(context.Context) error { return os.Rename(saved, p) })
+	return nil
+}
+
 // RemoveFile deletes a managed file; missing files are fine.
 func (t *Tx) RemoveFile(abs string) error {
 	old, err := t.ReadManaged(abs)

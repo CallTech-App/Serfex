@@ -12,6 +12,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/dns"
+	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -20,11 +21,15 @@ import (
 // CodeDNSNotSetUp tells the panel to offer DNS server setup.
 const CodeDNSNotSetUp = -32001
 
+// CodeMailNotSetUp tells the panel to offer mail server setup.
+const CodeMailNotSetUp = -32002
+
 // services are the managers the methods act on.
 type services struct {
 	sites  *site.Manager
 	dns    *dns.Manager
 	certs  *cert.Manager
+	mail   *mail.Manager
 	dryRun bool
 }
 
@@ -180,8 +185,91 @@ func registerMethods(srv *rpc.Server, svc services) {
 		}
 		return res, nil
 	})
+	registerMail(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+}
+
+func registerMail(srv *rpc.Server, svc services) {
+	srv.Handle("mail.status", func(ctx context.Context, _ json.RawMessage) (any, error) {
+		return svc.mail.Status(ctx), nil
+	})
+	srv.Handle("mail.setup", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec mail.SetupSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.Setup(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("mail.domain.apply", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec mail.DomainSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.ApplyDomain(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("mail.domain.delete", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var q struct {
+			Domain      string `json:"domain"`
+			RemoveFiles bool   `json:"remove_files"`
+		}
+		if err := decode(p, &q); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.DeleteDomain(ctx, q.Domain, q.RemoveFiles)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("mail.mailbox.purge", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var q struct {
+			Domain string `json:"domain"`
+			Name   string `json:"name"`
+		}
+		if err := decode(p, &q); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.PurgeMailbox(ctx, q.Domain, q.Name)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("mail.usage", func(_ context.Context, p json.RawMessage) (any, error) {
+		var q struct {
+			Domain string `json:"domain"`
+		}
+		if err := decode(p, &q); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.Usage(q.Domain)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("mail.webmail.login", func(_ context.Context, p json.RawMessage) (any, error) {
+		var q struct {
+			Address string `json:"address"`
+		}
+		if err := decode(p, &q); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.WebmailLogin(q.Address)
 		if err != nil {
 			return nil, mapError(err)
 		}
@@ -260,16 +348,21 @@ func mapError(err error) error {
 	if errors.Is(err, dns.ErrNotSetUp) {
 		return &rpc.Error{Code: CodeDNSNotSetUp, Message: err.Error()}
 	}
+	if errors.Is(err, mail.ErrNotSetUp) {
+		return &rpc.Error{Code: CodeMailNotSetUp, Message: err.Error()}
+	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError
 	var cv *cert.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) {
+	var mv *mail.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
 	var dop *dns.OperationError
 	var cop *cert.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) {
+	var mop *mail.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err

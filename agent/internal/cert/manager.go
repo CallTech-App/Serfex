@@ -41,11 +41,20 @@ type ChallengeDNS interface {
 	ClearChallenge(ctx context.Context, zone, name string) error
 }
 
+// Consumer is a service other than Nginx that reads certificates from
+// the store (the mail server).
+type Consumer interface {
+	UsesCertificate(name string) bool
+	// ReloadCertificate makes the service read renewed files.
+	ReloadCertificate(ctx context.Context) error
+}
+
 // Manager obtains and installs certificates. Operations are serialised.
 type Manager struct {
-	h      host.Host
-	dns    ChallengeDNS
-	issuer Issuer
+	h         host.Host
+	dns       ChallengeDNS
+	issuer    Issuer
+	consumers []Consumer
 	// localWeb is where this server's Nginx answers on port 80. Before
 	// asking the certificate authority to validate, the agent waits until
 	// Nginx serves the answer there: a reload that has just been requested
@@ -277,6 +286,8 @@ func (m *Manager) Delete(name string) (DeleteResult, error) {
 	defer m.mu.Unlock()
 	if users, err := m.usedBy(name); err != nil {
 		return DeleteResult{}, &OperationError{err}
+	} else if m.consumerUses(name) {
+		return DeleteResult{}, invalid("certificate %s is used by the mail server", name)
 	} else if len(users) > 0 {
 		return DeleteResult{}, invalid("certificate %s is still used by %s", name, strings.Join(users, ", "))
 	}
@@ -289,6 +300,10 @@ func (m *Manager) Delete(name string) (DeleteResult, error) {
 	}
 	return DeleteResult{Name: name, Deleted: true}, nil
 }
+
+// AddConsumer registers a service that reloads when a certificate it
+// uses changes, and keeps that certificate from being deleted.
+func (m *Manager) AddConsumer(c Consumer) { m.consumers = append(m.consumers, c) }
 
 // IssuePanel obtains the certificate for the panel's own address. Nginx
 // (which owns port 80) answers the HTTP-01 validation through a small
@@ -427,13 +442,45 @@ func parents(dir string) []string {
 }
 
 // reloadNginxIfUsed reloads Nginx when an enabled vhost uses the
-// certificate.
+// certificate, and the other services that use it. If one of them fails,
+// the previous files come back and everything is reloaded with them.
 func (m *Manager) reloadNginxIfUsed(ctx context.Context, t *txn.Tx, name string) (bool, error) {
 	users, err := m.usedBy(name)
-	if err != nil || len(users) == 0 {
+	if err != nil {
 		return false, err
 	}
-	return true, m.reloadNginx(ctx, t)
+	reloaded := false
+	if len(users) > 0 {
+		if err := m.reloadNginx(ctx, t); err != nil {
+			return false, err
+		}
+		reloaded = true
+	}
+	for _, c := range m.consumers {
+		if !c.UsesCertificate(name) {
+			continue
+		}
+		if err := c.ReloadCertificate(ctx); err != nil {
+			bg := context.WithoutCancel(ctx)
+			rbErr := t.Rollback(bg)
+			_ = c.ReloadCertificate(bg)
+			if reloaded {
+				_, _ = m.h.Run(bg, host.Command{Name: "systemctl", Args: []string{"reload", "nginx"}})
+			}
+			return false, errors.Join(fmt.Errorf("reloading the mail server failed: %w", err), rbErr)
+		}
+		reloaded = true
+	}
+	return reloaded, nil
+}
+
+func (m *Manager) consumerUses(name string) bool {
+	for _, c := range m.consumers {
+		if c.UsesCertificate(name) {
+			return true
+		}
+	}
+	return false
 }
 
 // reloadPanel reloads the panel's web server when it is installed.

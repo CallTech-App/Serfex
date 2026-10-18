@@ -15,7 +15,8 @@ import (
 //
 // Account commands (useradd, userdel) edit Root/etc/passwd and
 // Root/etc/group. "apt-get install" creates the files Servik checks for
-// in the packages it knows (simPackages). File commands run through runuser (install -d, rm -rf,
+// in the packages it knows (simPackages) and the accounts they add
+// (simAccounts); "sqlite3 FILE" creates FILE. File commands run through runuser (install -d, rm -rf,
 // tee) are applied under Root. Everything else (nginx -t, systemctl reload)
 // succeeds without doing anything. Every command is recorded.
 type Simulator struct {
@@ -120,6 +121,11 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 		err = s.tee(inner.Args, inner.Stdin)
 	case "apt-get":
 		err = s.aptGet(inner.Args)
+	case "sqlite3":
+		// sqlite3 DB < schema: the database file appears.
+		if len(inner.Args) == 1 {
+			err = os.WriteFile(s.Path(inner.Args[0]), inner.Stdin, 0o600)
+		}
 	}
 	if err != nil {
 		return err.Error(), commandError(c, err.Error(), errors.New("exit status 1"))
@@ -139,7 +145,7 @@ func (s *Simulator) useradd(args []string) error {
 			}
 			opts[a] = args[i+1]
 			i++
-		case "--user-group", "--no-create-home":
+		case "--user-group", "--no-create-home", "--system":
 		default:
 			if strings.HasPrefix(a, "-") {
 				return fmt.Errorf("useradd: unsupported option %s", a)
@@ -263,8 +269,29 @@ func appendFile(path, data string) error {
 
 // simPackages are the files that mark a package as installed.
 var simPackages = map[string][]string{
-	"pdns-server":       {"/usr/sbin/pdns_server"},
-	"pdns-backend-lmdb": {"/usr/lib/x86_64-linux-gnu/pdns/liblmdbbackend.so"},
+	"pdns-server":          {"/usr/sbin/pdns_server"},
+	"pdns-backend-lmdb":    {"/usr/lib/x86_64-linux-gnu/pdns/liblmdbbackend.so"},
+	"postfix":              {"/usr/sbin/postfix", "/etc/postfix/master.cf"},
+	"dovecot-core":         {"/usr/sbin/dovecot", "/etc/dovecot/dovecot.conf"},
+	"dovecot-imapd":        {"/usr/lib/dovecot/imap"},
+	"dovecot-pop3d":        {"/usr/lib/dovecot/pop3"},
+	"dovecot-lmtpd":        {"/usr/lib/dovecot/lmtp"},
+	"dovecot-sieve":        {"/usr/bin/sievec"},
+	"dovecot-managesieved": {"/usr/lib/dovecot/managesieve"},
+	"rspamd":               {"/usr/bin/rspamd", "/etc/rspamd/rspamd.conf"},
+	"redis-server":         {"/usr/bin/redis-server", "/etc/redis/redis.conf"},
+	"roundcube-core":       {"/usr/share/roundcube/index.php", "/usr/share/roundcube/SQL/sqlite.initial.sql", "/etc/roundcube/defaults.inc.php", "/etc/roundcube/mimetypes.php", "/var/lib/roundcube/plugins/.keep"},
+	"roundcube-sqlite3":    {"/etc/php/8.3/mods-available/pdo_sqlite.ini"},
+	"roundcube-plugins":    {"/usr/share/roundcube/plugins/managesieve/managesieve.php"},
+	"sqlite3":              {"/usr/bin/sqlite3"},
+}
+
+// simAccounts are the system accounts packages create, as passwd lines.
+var simAccounts = map[string][]string{
+	"postfix":      {"postfix:x:104:110::/var/spool/postfix:/usr/sbin/nologin"},
+	"dovecot-core": {"dovecot:x:105:111:Dovecot mail server:/usr/lib/dovecot:/usr/sbin/nologin", "dovenull:x:106:112:Dovecot login user:/nonexistent:/usr/sbin/nologin"},
+	"rspamd":       {"_rspamd:x:107:113:rspamd:/var/lib/rspamd:/usr/sbin/nologin"},
+	"redis-server": {"redis:x:108:114::/var/lib/redis:/usr/sbin/nologin"},
 }
 
 // apt-get install [-OPTIONS] PACKAGE...
@@ -273,6 +300,9 @@ func (s *Simulator) aptGet(args []string) error {
 		return nil
 	}
 	for _, a := range args[1:] {
+		if err := s.addAccounts(simAccounts[a]); err != nil {
+			return err
+		}
 		for _, f := range simPackages[a] {
 			if err := os.MkdirAll(filepath.Dir(s.Path(f)), 0o755); err != nil {
 				return err
@@ -280,6 +310,26 @@ func (s *Simulator) aptGet(args []string) error {
 			if err := os.WriteFile(s.Path(f), nil, 0o755); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// addAccounts adds passwd lines (and a group of the same name and id)
+// for accounts that do not exist yet.
+func (s *Simulator) addAccounts(lines []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, line := range lines {
+		f := strings.Split(line, ":")
+		if _, err := lookupPasswd(s.Path("/etc/passwd"), f[0]); err == nil {
+			continue
+		}
+		if err := appendFile(s.Path("/etc/passwd"), line+"\n"); err != nil {
+			return err
+		}
+		if err := appendFile(s.Path("/etc/group"), fmt.Sprintf("%s:x:%s:\n", f[0], f[3])); err != nil {
+			return err
 		}
 	}
 	return nil

@@ -31,6 +31,13 @@ Methods so far:
 | `ssl.delete` | `name` | removes a certificate no enabled site uses; returns `deleted` |
 | `ssl.panel.issue` | `hostname`, `email` | obtains the certificate of the panel's own address |
 | `ssl.panel.get` | | the panel's certificate, or `null` |
+| `mail.status` | | `installed`, `configured`, `running`, per-service `services`, `hostname`, `webmail_url` |
+| `mail.setup` | `hostname`, `certificate`, `hourly_limit`, `webmail` | installs the mail server if missing, configures and (re)starts it; returns `installed`, `changed`, `hostname`, `webmail_url` |
+| `mail.domain.apply` | `domain`, `spam_filter`, `mailboxes`, `aliases`, `catch_all` | serves exactly these mailboxes and forwarders; returns `changed` and the domain's `dkim` record |
+| `mail.domain.delete` | `domain`, `remove_files` | stops serving the domain's mail; returns `deleted`, `files_removed` |
+| `mail.mailbox.purge` | `domain`, `name` | deletes the stored mail of a removed mailbox |
+| `mail.usage` | `domain` | bytes stored per mailbox |
+| `mail.webmail.login` | `address` | a one-time `url` (valid one minute) that opens the mailbox in webmail |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate.
@@ -39,7 +46,8 @@ Errors: `-32602` means the request can never work as sent (bad domain,
 reserved account name, PHP version not installed); `-32000` means a valid
 change failed on the server, and the message says why (for example the
 output of `nginx -t`); `-32001` means the DNS server has not been set up
-yet (call `dns.setup`).
+yet (call `dns.setup`); `-32002` means the same for the mail server (call
+`mail.setup`).
 
 ## What a site looks like on the server
 
@@ -143,12 +151,73 @@ sudo SERVIK_ACME_DIRECTORY=https://localhost:14000/dir SERVIK_ACME_CA=pebble.min
     go test -tags realhost -run TestRealHost ./internal/cert
 ```
 
+## Mail
+
+`mail.setup` installs Postfix (SMTP), Dovecot (IMAP, POP3, LMTP, Sieve),
+Rspamd (spam filter, DKIM signing, sending limits) with its own Redis, and
+Roundcube for webmail, from Ubuntu's packages.
+
+```
+/etc/servik/mail/server.json             hostname, limits, webmail secrets (root 0600)
+/etc/servik/mail/domains/<domain>.json   the domain as last applied
+/etc/servik/mail/dkim/<domain>.key       DKIM private key (RSA 2048), root:_rspamd 0640
+/etc/servik/mail/tls/                    self-signed certificate until a real one is set
+/etc/postfix/servik/                     domain, mailbox, forwarder and sender maps
+/etc/dovecot/servik/users                mailboxes: password hash, quota, Sieve script
+/etc/dovecot/servik/sieve/<domain>/      per-mailbox autoreplies
+/etc/rspamd/local.d/                     DKIM signing, limits, actions, Redis
+/var/vmail/<domain>/<name>/Maildir/      the mail, owned by the vmail user
+/etc/servik/webmail/                     Roundcube's configuration (only this one is read)
+/var/lib/servik/webmail/data/            Roundcube's SQLite database
+/etc/nginx/sites-available/servik-mail.conf   webmail, autoconfig and autodiscover
+```
+
+- Mailboxes are virtual: one `vmail` system user owns all mail, so a
+  mailbox is not a shell account. The panel sends Dovecot password hashes
+  (`{SHA512-CRYPT}$6$...`); the agent never sees a password.
+- Mail is received on 25 and sent with a login on 587 (STARTTLS) and 465
+  (TLS). A mailbox may only send as itself or as a forwarder that points at
+  it. Each mailbox may send `hourly_limit` messages an hour (Rspamd
+  ratelimit; 0 is no limit). Messages scoring 15 or more are rejected, 6 or
+  more get an `X-Spam` header, and domains with `spam_filter` file them
+  into Junk.
+- Every domain signs with selector `servik`; `mail.domain.apply` returns
+  the TXT record to publish at `servik._domainkey`. The key survives
+  `mail.domain.delete` unless `remove_files` is set, so turning mail off and
+  on again keeps the record valid.
+- IMAP 993/143, POP3 995/110 and SMTP use the `certificate` from the
+  certificate store (`ssl.issue`) for the mail hostname, or a self-signed
+  one while there is none. Renewing that certificate reloads Postfix and
+  Dovecot, and it cannot be deleted while the mail server uses it.
+- Clients find their settings through `autoconfig.<domain>` (Thunderbird)
+  and `autodiscover.<domain>` (Outlook), which Nginx answers on port 80.
+- Webmail is served at `https://<hostname>/` by the customers' Nginx, with
+  its own PHP-FPM pool user `servik-webmail`. `mail.webmail.login` signs the
+  panel user in without a password, through a one-time token and a Dovecot
+  master user that only accepts connections from the server itself.
+- Removing a mailbox stops it at once; its mail stays until
+  `mail.mailbox.purge`, so the panel can undo the removal.
+- Every change is checked (`postfix check`, `doveconf`, `rspamadm
+  configtest`, `nginx -t`) before services reload; a failure restores the
+  previous files. The stock `main.cf`, `master.cf` and `dovecot.conf` are
+  kept as `*.before-servik`.
+
+```sh
+sudo go test -tags realhost -run TestRealHost ./internal/mail
+```
+
+sets up the whole stack, creates mailboxes, sends through SMTP, reads
+through IMAP, checks the DKIM signature, the limits, the autoreply and the
+webmail sign-in. It needs Nginx, PHP-FPM, `python3-dkim` and `doveadm`
+(part of Dovecot).
+
 ## Dry run
 
 `-dry-run` swaps the real system for a simulator: files go under `-root`
 (default: a new temporary directory), `useradd`/`userdel` edit
 `<root>/etc/passwd`, service commands are only logged, DNS zones are kept
-in memory and certificates come from a local "Servik Dry Run CA". The panel's integration tests and local development use this
+in memory, certificates come from a local "Servik Dry Run CA" and mail
+packages are only pretended to be installed. The panel's integration tests and local development use this
 mode.
 
 ```sh
