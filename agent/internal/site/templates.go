@@ -3,14 +3,59 @@ package site
 import (
 	"bytes"
 	"text/template"
+
+	"github.com/winchester37/servik/agent/internal/txn"
 )
 
 var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual changes are overwritten.
 # Site: {{.Domain}} (user {{.User}}, PHP {{.PHPVersion}})
+{{- define "acme"}}
+    # Let's Encrypt validation, answered by Servik whatever the site does.
+    location ^~ /.well-known/acme-challenge/ {
+        root {{.ACMERoot}};
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+{{- end}}
+{{- if .Redirect}}
 server {
     listen 80;
 {{- if .IPv6}}
     listen [::]:80;
+{{- end}}
+    server_name {{.ServerNames}};
+
+    access_log {{.LogDir}}/access.log;
+    error_log {{.LogDir}}/error.log;
+{{template "acme" .}}
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+{{- end}}
+server {
+{{- if not .Redirect}}
+    listen 80;
+{{- if .IPv6}}
+    listen [::]:80;
+{{- end}}
+{{- end}}
+{{- if .TLS}}
+    # "listen ... http2" works on the Nginx 1.24 of Ubuntu 24.04; newer
+    # versions accept it with a deprecation notice.
+    listen 443 ssl http2;
+{{- if .IPv6}}
+    listen [::]:443 ssl http2;
+{{- end}}
+    ssl_certificate {{.CertFile}};
+    ssl_certificate_key {{.KeyFile}};
+    include {{.TLSConf}};
+{{- if .Stapling}}
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver {{.Resolvers}} valid=300s;
+{{- end}}
 {{- end}}
     server_name {{.ServerNames}};
 
@@ -21,6 +66,7 @@ server {
     error_log {{.LogDir}}/error.log;
 
     client_max_body_size 64m;
+{{template "acme" .}}
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -39,6 +85,18 @@ server {
     }
 }
 `))
+
+// tlsConf is included by every HTTPS vhost: TLS 1.2 and 1.3 with Mozilla's
+// "intermediate" ciphers, which every browser of the last decade supports.
+var tlsConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
+# TLS settings shared by every HTTPS site (Mozilla "intermediate").
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+ssl_prefer_server_ciphers off;
+ssl_session_cache shared:ServikTLS:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;
+`)
 
 var fpmTmpl = template.Must(template.New("fpm").Parse(`; {{.Marker}}. Manual changes are overwritten.
 [{{.Domain}}]
@@ -88,6 +146,16 @@ type tmplData struct {
 	LogDir       string
 	PHPSocket    string
 	IPv6         bool
+	ACMERoot     string
+
+	// HTTPS, when the site has a certificate.
+	TLS       bool
+	Redirect  bool
+	CertFile  string
+	KeyFile   string
+	TLSConf   string
+	Stapling  bool
+	Resolvers string
 }
 
 func render(t *template.Template, d tmplData) []byte {

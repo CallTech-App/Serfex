@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/site"
+	hostnames "github.com/winchester37/servik/agent/internal/hostname"
 )
 
 // Limits on what a zone may hold.
@@ -171,7 +171,7 @@ func (s ZoneSpec) normalize() ([]RRSet, error) {
 
 // normalizeName validates the zone name and returns it absolute.
 func (s ZoneSpec) normalizeName() (string, error) {
-	if err := site.ValidateDomain(s.Zone); err != nil {
+	if err := hostnames.Validate(s.Zone); err != nil {
 		return "", invalid("zone: %s", err.Error())
 	}
 	return fqdn(s.Zone), nil

@@ -49,6 +49,9 @@ type Manager struct {
 	// apiWait bounds how long Setup waits for PowerDNS to answer.
 	apiWait time.Duration
 	mu      sync.Mutex
+	// challenges are the ACME TXT record sets published by SetChallenge
+	// and not yet cleared; ApplyZone leaves them in place.
+	challenges map[string]bool
 }
 
 // NewManager returns a Manager that talks to PowerDNS over its HTTP API.
@@ -104,7 +107,7 @@ func (m *Manager) ApplyZone(ctx context.Context, spec ZoneSpec) (ZoneResult, err
 			return ZoneResult{}, rejected(err)
 		}
 		res.Created, res.Changed = true, true
-	} else if changes := diff(cur, sets); len(changes) > 0 {
+	} else if changes := diff(m.withoutChallenges(cur, sets), sets); len(changes) > 0 {
 		if err := b.PatchZone(ctx, name, changes); err != nil {
 			return ZoneResult{}, rejected(err)
 		}

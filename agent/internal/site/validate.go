@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/winchester37/servik/agent/internal/hostname"
 )
 
 // ValidationError reports a request that can never succeed as given.
@@ -14,8 +16,6 @@ func (e *ValidationError) Error() string { return e.msg }
 func invalid(format string, a ...any) error { return &ValidationError{fmt.Sprintf(format, a...)} }
 
 var (
-	labelRe   = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
-	tldRe     = regexp.MustCompile(`^([a-z]{2,63}|xn--[a-z0-9-]{1,59})$`)
 	userRe    = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 	phpVerRe  = regexp.MustCompile(`^[5-9]\.[0-9]{1,2}$`)
 	maxAlias  = 20
@@ -35,23 +35,8 @@ func init() {
 // ValidateDomain checks a lowercase ASCII (punycode) host name with at
 // least two labels.
 func ValidateDomain(d string) error {
-	if d == "" {
-		return invalid("domain is required")
-	}
-	if len(d) > 253 {
-		return invalid("domain %q is too long", d)
-	}
-	labels := strings.Split(d, ".")
-	if len(labels) < 2 {
-		return invalid("domain %q needs at least two labels", d)
-	}
-	for _, l := range labels {
-		if !labelRe.MatchString(l) {
-			return invalid("domain %q is not a valid host name", d)
-		}
-	}
-	if !tldRe.MatchString(labels[len(labels)-1]) {
-		return invalid("domain %q has an invalid top-level domain", d)
+	if err := hostname.Validate(d); err != nil {
+		return invalid("%s", err.Error())
 	}
 	return nil
 }
@@ -84,6 +69,9 @@ func (s Spec) validate() error {
 	}
 	if err := ValidatePHPVersion(s.PHPVersion); err != nil {
 		return err
+	}
+	if s.TLS != nil && s.TLS.Certificate == "" {
+		return invalid("tls.certificate is required")
 	}
 	if len(s.Aliases) > maxAlias {
 		return invalid("at most %d aliases are allowed", maxAlias)

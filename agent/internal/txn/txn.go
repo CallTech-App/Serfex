@@ -101,6 +101,35 @@ func (t *Tx) WriteFileMode(abs string, data []byte, mode os.FileMode, uid, gid i
 	return nil
 }
 
+// WriteOwned atomically replaces a file in a directory that only Servik
+// writes (certificates, keys), where a marker line cannot be used. Mode and
+// owner are fixed even when the content is already right.
+func (t *Tx) WriteOwned(abs string, data []byte, mode os.FileMode, uid, gid int) error {
+	p := t.H.Path(abs)
+	old, err := os.ReadFile(p)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	existed := err == nil
+	if existed && string(old) == string(data) {
+		if err := t.H.Chown(p, uid, gid); err != nil {
+			return err
+		}
+		return os.Chmod(p, mode)
+	}
+	if err := t.atomicWrite(p, data, mode, uid, gid); err != nil {
+		return err
+	}
+	t.Changed = true
+	t.OnUndo(func(context.Context) error {
+		if !existed {
+			return removeIfExists(p)
+		}
+		return t.atomicWrite(p, old, mode, uid, gid)
+	})
+	return nil
+}
+
 // RemoveFile deletes a managed file; missing files are fine.
 func (t *Tx) RemoveFile(abs string) error {
 	old, err := t.ReadManaged(abs)
