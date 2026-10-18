@@ -148,7 +148,7 @@ func TestRealHost(t *testing.T) {
 	repo, ref := "https://github.com/laravel/laravel.git", newestBranch(t, "https://github.com/laravel/laravel.git")
 	bad := DeploySpec{Target: tg, Run: "deploy-2", Release: "2",
 		Source: Source{Type: "git", Repository: repo, Ref: ref}, Build: Build{Migrate: true},
-		Hooks:  Hooks{AfterActivate: "echo checking; exit 3"}, Health: &HealthSpec{Path: "/up"}, Rollback: true}
+		Hooks: Hooks{AfterActivate: "echo checking; exit 3"}, Health: &HealthSpec{Path: "/up"}, Rollback: true}
 	res = deployOK(t, m, bad)
 	if !res.RolledBack || m.currentRelease(tg) != "1" {
 		t.Fatalf("not rolled back: %+v", res)

@@ -297,7 +297,7 @@ func TestEnvSaveRebuildsTheConfigCache(t *testing.T) {
 	if got := read(t, sim, appDir+"/shared/.env"); got != "APP_NAME=Yeni\nAPP_KEY=x\n" {
 		t.Fatalf(".env = %q", got)
 	}
-	if !sim.Ran("runuser -u hizlikargo -- env -C " + appDir + "/current") || !strings.Contains(commands(sim), "dd of="+appDir+"/current/.env status=none") {
+	if !sim.Ran("runuser -u hizlikargo -- env -C "+appDir+"/current") || !strings.Contains(commands(sim), "dd of="+appDir+"/current/.env status=none") {
 		t.Fatalf("not written as the site user:\n%s", commands(sim))
 	}
 	for _, c := range sim.Commands() {

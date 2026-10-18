@@ -162,6 +162,43 @@ jobs:
         if: failure()
         run: sudo journalctl --no-pager -u postfix@- -u dovecot -u rspamd -u redis-server@servik-mail -n 300
 
+  agent-laravel:
+    name: Agent installs and deploys Laravel
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      # The agent downloads Composer and Node.js itself; the runner only
+      # needs Nginx, PHP-FPM and the extensions Laravel uses.
+      - name: Install Nginx and PHP-FPM
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm php8.3-cli php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip php8.3-sqlite3 php8.3-bcmath php8.3-intl git unzip
+          sudo systemctl start nginx php8.3-fpm
+
+      # Creates a new Laravel project with a frontend build, serves it,
+      # deploys a broken release that the health check rolls back, starts
+      # queue workers and the scheduler, edits .env, runs Artisan and
+      # maintenance mode, then removes everything again.
+      - name: Install and deploy a Laravel app for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 25m ./internal/laravel
+
+      - name: Laravel logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u 'servik-queue-*' -u 'servik-schedule-*' -n 200 || true
+          sudo sh -c 'tail -n 100 /var/lib/servik/laravel/*/runs/*.log' || true
+
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
