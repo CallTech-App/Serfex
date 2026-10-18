@@ -19,7 +19,7 @@
             ['code', 'PHP ve web sunucusu', 'PHP '.$site->php_version.' · Nginx'],
             $laravelTool,
             ['terminal', 'SSH terminali', null],
-            ['clock', 'Zamanlanmış görevler', $laravel ? ($laravel->scheduler ? 'Laravel zamanlayıcısı açık' : 'Kapalı') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'zamanlayici']) : null],
+            ['clock', 'Zamanlanmış görevler', $laravel ? ($laravel->scheduler ? 'Açık' : 'Kapalı') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'zamanlayici']) : null],
             ['git-branch', 'Git dağıtımı', $laravel ? ($laravel->repository ? $laravel->repositoryName() : 'Bağlı değil') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'dagitimlar']) : null],
             ['file-text', 'Günlükler', null],
         ]],

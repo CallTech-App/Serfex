@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Tools the Laravel toolkit runs as the site's user, simulated well
@@ -219,6 +220,7 @@ func (s *Simulator) php(c Command, cwd string, env map[string]string) (string, e
 
 // writeLaravelApp writes a minimal Laravel 13 application to dir.
 func (s *Simulator) writeLaravelApp(dir string) error {
+	now := time.Now().UTC()
 	files := map[string]string{
 		"artisan":                    "#!/usr/bin/env php\n<?php\n",
 		"composer.json":              `{"name":"laravel/laravel","require":{"php":"^8.3","laravel/framework":"^13.0"}}`,
@@ -238,12 +240,14 @@ func (s *Simulator) writeLaravelApp(dir string) error {
 			"[2026-10-18 23:48:03] production.WARNING: Slow query (1840 ms): select * from shipments where carrier_id = ?\n",
 		"storage/framework/views/.gitignore": "*\n",
 		".servik-sim/about.json":             `{"laravel":"13.6.0","php":"8.4.0","environment":"production","debug":false,"queue":"database","cache":"database","database":"sqlite","session":"database"}`,
-		".servik-sim/queues.json":            `{"sizes":[{"connection":"database","queue":"default","size":3}],"failed":2}`,
+		".servik-sim/queues.json":            `{"sizes":[{"connection":"","queue":"default","size":3}],"failed":2}`,
 		".servik-sim/failed.json": `[{"id":"9b2f1c3e-6a1d-4f5e-8a7b-0c9d8e7f6a5b","connection":"database","queue":"default","job":"App\\Jobs\\SyncCarrierStatus","error":"Illuminate\\Http\\Client\\ConnectionException: Connection timed out","failed_at":"2026-10-18 23:12:04"},` +
 			`{"id":"1e4a7b0c-3d6f-4a2b-9c8d-7e6f5a4b3c2d","connection":"database","queue":"default","job":"App\\Jobs\\GenerateManifestPdf","error":"Allowed memory size of 268435456 bytes exhausted","failed_at":"2026-10-18 22:47:55"}]`,
-		".servik-sim/schedule.json": `[{"command":"inspire","description":"","expression":"0 * * * *","next":"2026-10-19T00:00:00+03:00","timezone":"Europe/Istanbul"},` +
-			`{"command":"shipments:sync-carriers","description":"","expression":"*/5 * * * *","next":"2026-10-18T23:55:00+03:00","timezone":"Europe/Istanbul"},` +
-			`{"command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":"2026-10-19T02:00:00+03:00","timezone":"Europe/Istanbul"}]`,
+		".servik-sim/schedule.json": fmt.Sprintf(`[{"command":"inspire","description":"","expression":"0 * * * *","next":%q,"timezone":"UTC"},`+
+			`{"command":"shipments:sync-carriers","description":"","expression":"*/5 * * * *","next":%q,"timezone":"UTC"},`+
+			`{"command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`,
+			now.Truncate(time.Hour).Add(time.Hour).Format(time.RFC3339), now.Truncate(5*time.Minute).Add(5*time.Minute).Format(time.RFC3339),
+			time.Date(now.Year(), now.Month(), now.Day()+1, 2, 0, 0, 0, time.UTC).Format(time.RFC3339)),
 	}
 	for name, content := range files {
 		p := s.Path(filepath.Join(dir, name))

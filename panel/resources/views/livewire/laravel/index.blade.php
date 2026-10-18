@@ -247,8 +247,8 @@
 
                     <p class="font-medium sm:pt-1">Hemen kur</p>
                     <div class="space-y-1.5">
-                        <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="worker" class="{{ $check }}">Kuyruk işçisi (<span class="font-mono text-[13px]">default</span> kuyruğu)</label>
-                        <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="scheduler" class="{{ $check }}">Zamanlayıcı (her dakika <span class="font-mono text-[13px]">schedule:run</span>)</label>
+                        <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="worker" class="{{ $check }}"><span>Kuyruk işçisi (<span class="font-mono text-[13px]">default</span> kuyruğu)</span></label>
+                        <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="scheduler" class="{{ $check }}"><span>Zamanlayıcı (her dakika <span class="font-mono text-[13px]">schedule:run</span>)</span></label>
                     </div>
                 </div>
                 <div class="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">

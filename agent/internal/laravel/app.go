@@ -225,13 +225,25 @@ func (m *Manager) Scan(ctx context.Context, sites []ScanSite) ([]Found, error) {
 				continue
 			}
 			b, err := m.readFile(ctx, t, dir+"/"+c+"/composer.json", 1<<20)
-			if err != nil || !strings.Contains(string(b), `"laravel/framework"`) {
+			if err != nil || !requiresLaravel(b) {
 				continue
 			}
 			out = append(out, Found{Domain: s.Domain, Path: c, AppInfo: m.appInfo(ctx, App{Target: t, Path: c})})
 		}
 	}
 	return out, nil
+}
+
+// requiresLaravel tells whether a composer.json requires laravel/framework.
+func requiresLaravel(composerJSON []byte) bool {
+	var c struct {
+		Require map[string]any `json:"require"`
+	}
+	if json.Unmarshal(composerJSON, &c) != nil {
+		return false
+	}
+	_, ok := c.Require["laravel/framework"]
+	return ok
 }
 
 // ProbeSpec asks the application itself, through a PHP script that boots

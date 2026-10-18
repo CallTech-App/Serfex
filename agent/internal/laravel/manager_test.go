@@ -516,3 +516,17 @@ func TestSetEnv(t *testing.T) {
 		t.Fatalf("parsed %v", env)
 	}
 }
+
+func TestRequiresLaravel(t *testing.T) {
+	for in, want := range map[string]bool{
+		`{"require":{"php":"^8.2","laravel/framework":"^11.0"}}`: true,
+		`{"require":{"laravel\/framework":"^12.0"}}`:             true,
+		`{"require-dev":{"laravel/framework":"^12.0"}}`:          false,
+		`{"description":"not \"laravel/framework\" really"}`:     false,
+		`not json`: false,
+	} {
+		if got := requiresLaravel([]byte(in)); got != want {
+			t.Errorf("requiresLaravel(%s) = %v, want %v", in, got, want)
+		}
+	}
+}

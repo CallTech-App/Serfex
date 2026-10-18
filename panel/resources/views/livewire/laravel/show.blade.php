@@ -127,8 +127,8 @@
                            class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('ref') ? 'border-crit' : 'border-line' }}">
                     @error('ref')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">Boş bırakırsanız deponun varsayılan dalı dağıtılır.</p>@enderror
                 </div>
-                <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="migrate" class="{{ $check }}">Veritabanı geçişlerini çalıştır (<span class="font-mono text-[13px]">migrate --force</span>)</label>
-                <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="frontend" class="{{ $check }}">Ön yüzü derle (<span class="font-mono text-[13px]">{{ $app->package_manager ?? 'npm' }} run build</span>)</label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="migrate" class="{{ $check }}"><span>Veritabanı geçişlerini çalıştır (<span class="font-mono text-[13px]">migrate --force</span>)</span></label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="frontend" class="{{ $check }}"><span>Ön yüzü derle (<span class="font-mono text-[13px]">{{ $app->package_manager ?? 'npm' }} run build</span>)</span></label>
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('deploying', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">Vazgeç</button>
