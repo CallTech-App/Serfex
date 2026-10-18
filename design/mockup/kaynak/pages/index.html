@@ -1,0 +1,265 @@
+      <!-- Başlık -->
+      <div class="flex flex-wrap items-end gap-4 justify-between">
+        <div>
+          <h1 class="text-[22px] font-semibold tracking-tight">Genel Bakış</h1>
+          <p class="mt-1 text-[13px] text-muted">
+            <span class="font-mono text-fg">srv-ist-01</span> · Ubuntu 24.04.1 LTS · 8 çekirdek, 32 GB · <span class="num">41 gün</span> kesintisiz çalışıyor
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-accent"></i>Laravel uygulaması kur</button>
+          <button class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Yeni site</button>
+        </div>
+      </div>
+
+      <!-- Dikkat gerektirenler -->
+      <section aria-labelledby="attn" class="rounded-xl border border-line bg-surface overflow-hidden">
+        <div class="flex items-center gap-3 px-5 h-12 border-b border-line">
+          <h2 id="attn" class="text-[14.5px] font-semibold">Şu an dikkat gerektirenler</h2>
+          <span class="text-2xs font-medium px-2 py-0.5 rounded-full bg-crit-soft text-crit num">1 kritik</span>
+          <span class="text-2xs font-medium px-2 py-0.5 rounded-full bg-warn-soft text-warn num">2 uyarı</span>
+          <a href="#" class="ml-auto text-[13px] text-accent hover:underline hidden sm:inline">Canlı izlemeye git</a>
+        </div>
+
+        <ul class="divide-y divide-line">
+          <li class="relative flex flex-col md:flex-row md:items-center gap-3 md:gap-6 px-5 py-4">
+            <span class="absolute left-0 inset-y-0 w-1 bg-crit"></span>
+            <div class="flex gap-3 min-w-0 flex-1">
+              <i data-lucide="shield-alert" class="w-5 h-5 text-crit shrink-0 mt-0.5"></i>
+              <div class="min-w-0">
+                <p class="font-medium"><span class="font-mono">magazaonline.com.tr</span> saldırı altında</p>
+                <p class="mt-0.5 text-[13px] text-muted">3 IP adresinden <span class="font-mono">/wp-login.php</span> adresine saniyede <b class="text-fg num">1.240</b> istek geliyor. PHP havuzu doldu (12/12), site 4,8 sn geç yanıt veriyor.</p>
+              </div>
+            </div>
+            <div class="flex gap-2 shrink-0 pl-8 md:pl-0">
+              <button class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Ayrıntı</button>
+              <button data-toast="3 IP adresi 1 saatliğine engellendi." data-undo="1" class="h-8 px-3 rounded-md bg-crit text-on-crit hover:brightness-110 text-[13px] font-medium flex items-center gap-1.5"><i data-lucide="ban" class="w-3.5 h-3.5"></i>3 IP'yi 1 saat engelle</button>
+            </div>
+          </li>
+          <li class="relative flex flex-col md:flex-row md:items-center gap-3 md:gap-6 px-5 py-4">
+            <span class="absolute left-0 inset-y-0 w-1 bg-warn"></span>
+            <div class="flex gap-3 min-w-0 flex-1">
+              <i data-lucide="cpu" class="w-5 h-5 text-warn shrink-0 mt-0.5"></i>
+              <div class="min-w-0">
+                <p class="font-medium"><span class="font-mono">ozkanlojistik.com</span> CPU sınırının %92'sinde</p>
+                <p class="mt-0.5 text-[13px] text-muted">Kuyruk işçisi 18 dakikadır aynı işi tekrar deniyor: <span class="font-mono">App\Jobs\SendInvoiceJob</span> (412 deneme). Büyük olasılıkla hatalı bir iş.</p>
+              </div>
+            </div>
+            <div class="flex gap-2 shrink-0 pl-8 md:pl-0">
+              <button data-toast="ozkanlojistik.com kuyruğu duraklatıldı." data-undo="1" class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Kuyruğu duraklat</button>
+              <button data-toast="ozkanlojistik.com için 30 dakikalık CPU sınırı: 1 çekirdek." data-undo="1" class="h-8 px-3 rounded-md bg-fg text-bg hover:opacity-90 text-[13px] font-medium flex items-center gap-1.5"><i data-lucide="gauge" class="w-3.5 h-3.5"></i>30 dk sınır koy</button>
+            </div>
+          </li>
+          <li class="relative flex flex-col md:flex-row md:items-center gap-3 md:gap-6 px-5 py-4">
+            <span class="absolute left-0 inset-y-0 w-1 bg-warn"></span>
+            <div class="flex gap-3 min-w-0 flex-1">
+              <i data-lucide="shield-check" class="w-5 h-5 text-warn shrink-0 mt-0.5"></i>
+              <div class="min-w-0">
+                <p class="font-medium">SSL sertifikası 6 gün sonra bitiyor</p>
+                <p class="mt-0.5 text-[13px] text-muted"><span class="font-mono">eski.kahveatolyesi.com.tr</span> için Let's Encrypt yenilemesi başarısız: alan adı artık bu sunucuyu göstermiyor (A kaydı 104.21.8.17).</p>
+              </div>
+            </div>
+            <div class="flex gap-2 shrink-0 pl-8 md:pl-0">
+              <button class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">DNS'i incele</button>
+              <button data-toast="Yenileme yeniden denendi, sonuç bildirimlerde görünecek." class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px] font-medium">Yeniden dene</button>
+            </div>
+          </li>
+        </ul>
+
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 bg-accent-soft/60 border-t border-line text-[13px]">
+          <i data-lucide="sparkles" class="w-4 h-4 text-accent shrink-0"></i>
+          <p class="min-w-0 flex-1"><b class="font-medium">Servik AI</b> 23:41'de <span class="font-mono">185.220.101.47</span> adresini 1 saat engelledi. Sebep: 2 dakikada 9.300 başarısız giriş denemesi. <span class="text-muted">Bu eylem için onay istemeyecek şekilde izin verdiniz.</span></p>
+          <button data-toast="Engel kaldırıldı: 185.220.101.47" class="text-accent font-medium hover:underline flex items-center gap-1"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i>Geri al</button>
+        </div>
+      </section>
+
+      <!-- Sunucu kaynakları -->
+      <section aria-label="Sunucu kaynakları" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <div class="flex items-center gap-2 text-[13px] text-muted"><i data-lucide="cpu" class="w-4 h-4"></i>İşlemci</div>
+          <div class="mt-2 flex items-baseline gap-2"><span class="text-[26px] font-semibold tracking-tight num">%38</span><span class="text-[12.5px] text-muted num">yük 3,04 · 2,71 · 2,40</span></div>
+          <svg class="spark mt-3 w-full h-12" data-values="22,24,23,27,31,29,26,28,35,41,44,39,36,33,37,42,48,46,40,38" data-color="accent" preserveAspectRatio="none" viewBox="0 0 200 48"></svg>
+          <p class="mt-2 text-2xs text-muted">Son 60 dakika · 8 çekirdek</p>
+        </div>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <div class="flex items-center gap-2 text-[13px] text-muted"><i data-lucide="memory-stick" class="w-4 h-4"></i>Bellek</div>
+          <div class="mt-2 flex items-baseline gap-2"><span class="text-[26px] font-semibold tracking-tight num">21,4 GB</span><span class="text-[12.5px] text-muted num">/ 32 GB</span></div>
+          <div class="mt-3 h-12 flex flex-col justify-center gap-2">
+            <div class="h-2.5 rounded-full bg-surface-2 overflow-hidden flex">
+              <span class="h-full bg-accent" style="width:46%" title="Siteler"></span>
+              <span class="h-full bg-info" style="width:14%" title="Veritabanları"></span>
+              <span class="h-full bg-muted/50" style="width:7%" title="Panel"></span>
+            </div>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-2xs text-muted">
+              <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-sm bg-accent"></i>Siteler 14,7</span>
+              <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-sm bg-info"></i>Veritabanı 4,5</span>
+              <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-sm bg-muted/50"></i>Panel 2,2</span>
+            </div>
+          </div>
+          <p class="mt-2 text-2xs text-muted">Takas kullanımı 0 MB</p>
+        </div>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <div class="flex items-center gap-2 text-[13px] text-muted"><i data-lucide="hard-drive" class="w-4 h-4"></i>Disk</div>
+          <div class="mt-2 flex items-baseline gap-2"><span class="text-[26px] font-semibold tracking-tight num">312 GB</span><span class="text-[12.5px] text-muted num">/ 480 GB NVMe</span></div>
+          <svg class="spark mt-3 w-full h-12" data-values="281,283,286,288,290,291,295,297,299,301,303,304,306,308,309,312" data-color="info" preserveAspectRatio="none" viewBox="0 0 200 48"></svg>
+          <p class="mt-2 text-2xs text-muted">Son 30 gün · bu hızla 74 gün sonra dolar</p>
+        </div>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <div class="flex items-center gap-2 text-[13px] text-muted"><i data-lucide="arrow-down-up" class="w-4 h-4"></i>Ağ trafiği</div>
+          <div class="mt-2 flex items-baseline gap-2"><span class="text-[26px] font-semibold tracking-tight num">84 Mbit/sn</span><span class="text-[12.5px] text-muted num">giden 22</span></div>
+          <svg class="spark mt-3 w-full h-12" data-values="31,30,34,29,33,36,35,38,40,52,71,88,94,90,86,84" data-color="warn" preserveAspectRatio="none" viewBox="0 0 200 48"></svg>
+          <p class="mt-2 text-2xs text-muted">Son 60 dakika · 23:30'dan beri artışta</p>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- En çok tüketen siteler -->
+        <section aria-labelledby="top" class="xl:col-span-2 rounded-xl border border-line bg-surface min-w-0">
+          <div class="flex flex-wrap items-center gap-3 px-5 h-12 border-b border-line">
+            <h2 id="top" class="text-[14.5px] font-semibold">En çok kaynak kullanan siteler</h2>
+            <span class="text-2xs text-muted">son 5 dakika</span>
+            <div class="ml-auto flex rounded-md border border-line p-0.5 text-[12.5px]" role="tablist">
+              <button role="tab" aria-selected="true" class="px-2.5 h-7 rounded bg-surface-2 font-medium">CPU</button>
+              <button role="tab" class="px-2.5 h-7 rounded text-muted hover:text-fg">Bellek</button>
+              <button role="tab" class="px-2.5 h-7 rounded text-muted hover:text-fg">Veritabanı</button>
+              <button role="tab" class="px-2.5 h-7 rounded text-muted hover:text-fg">E-posta</button>
+            </div>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13px] min-w-[720px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted">
+                  <th class="font-medium px-5 py-2.5">Site</th>
+                  <th class="font-medium px-3 py-2.5 w-40">CPU (sınıra göre)</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Bellek</th>
+                  <th class="font-medium px-3 py-2.5 text-right">PHP işçisi</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Sorgu/sn</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Posta/sa</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                  <th class="px-3 py-2.5"><span class="sr-only">Eylemler</span></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line num whitespace-nowrap" id="topSites"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Hizmetler -->
+        <section aria-labelledby="svc" class="rounded-xl border border-line bg-surface">
+          <div class="flex items-center gap-3 px-5 h-12 border-b border-line">
+            <h2 id="svc" class="text-[14.5px] font-semibold">Hizmetler</h2>
+            <span class="text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok">11 / 12 sorunsuz</span>
+          </div>
+          <div class="px-5 py-3">
+            <p class="text-2xs uppercase tracking-[.06em] text-muted font-medium mb-1">Müşteri hizmetleri</p>
+            <ul class="text-[13px] divide-y divide-line" id="svcCustomer"></ul>
+            <p class="text-2xs uppercase tracking-[.06em] text-muted font-medium mt-4 mb-1">Panelin kendi hizmetleri</p>
+            <ul class="text-[13px] divide-y divide-line" id="svcPanel"></ul>
+            <p class="mt-3 text-2xs text-muted flex gap-1.5"><i data-lucide="info" class="w-3.5 h-3.5 shrink-0"></i>Panel kendi PHP, Nginx, PostgreSQL ve Redis kopyasıyla çalışır. Müşteri hizmetleri çökse bile panel açık kalır.</p>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- Laravel uygulamaları -->
+        <section aria-labelledby="lv" class="xl:col-span-2 rounded-xl border border-line bg-surface min-w-0">
+          <div class="flex items-center gap-3 px-5 h-12 border-b border-line">
+            <h2 id="lv" class="text-[14.5px] font-semibold">Laravel uygulamaları</h2>
+            <a href="#" class="ml-auto text-[13px] text-accent hover:underline">Tümü (7)</a>
+          </div>
+          <ul class="divide-y divide-line" id="apps"></ul>
+        </section>
+
+        <!-- Son etkinlik -->
+        <section aria-labelledby="act" class="rounded-xl border border-line bg-surface">
+          <div class="flex items-center gap-3 px-5 h-12 border-b border-line">
+            <h2 id="act" class="text-[14.5px] font-semibold">Son etkinlik</h2>
+            <a href="#" class="ml-auto text-[13px] text-accent hover:underline">Kayıt defteri</a>
+          </div>
+          <ol class="px-5 py-4 space-y-4 text-[13px]" id="activity"></ol>
+        </section>
+      </div>
+
+      <p class="text-2xs text-muted pb-4">Örnek veri gösteriliyor. Servik tasarım taslağı, Ekim 2026.</p>
+    
+
+<script>
+  const sites = [
+    { name: 'magazaonline.com.tr', kind: 'WordPress 6.8', cpu: 97, mem: '2,1 GB', php: [12, 12], qps: 340, mail: 12, st: ['crit', 'Saldırı'] },
+    { name: 'ozkanlojistik.com', kind: 'Laravel 12', cpu: 92, mem: '1,6 GB', php: [5, 8], qps: 2870, mail: 0, st: ['warn', 'Yüksek CPU'] },
+    { name: 'api.hizlikargo.app', kind: 'Laravel 12', cpu: 48, mem: '1,4 GB', php: [6, 16], qps: 1120, mail: 0, st: ['ok', 'Normal'] },
+    { name: 'bulten.atlasyayin.com', kind: 'Laravel 11', cpu: 31, mem: '640 MB', php: [2, 8], qps: 88, mail: 1840, st: ['warn', 'Toplu posta'] },
+    { name: 'kahveatolyesi.com.tr', kind: 'WooCommerce', cpu: 22, mem: '860 MB', php: [4, 8], qps: 210, mail: 48, st: ['ok', 'Normal'] },
+    { name: 'klinikmavi.com', kind: 'Statik + PHP 8.4', cpu: 3, mem: '96 MB', php: [1, 4], qps: 4, mail: 2, st: ['ok', 'Normal'] },
+  ];
+  const tone = { ok: ['bg-ok-soft text-ok', 'bg-ok'], warn: ['bg-warn-soft text-warn', 'bg-warn'], crit: ['bg-crit-soft text-crit', 'bg-crit'] };
+  const fmt = n => n.toLocaleString('tr-TR');
+  document.getElementById('topSites').innerHTML = sites.map(s => {
+    const bar = s.cpu >= 90 ? (s.st[0] === 'crit' ? 'bg-crit' : 'bg-warn') : 'bg-accent';
+    const phpFull = s.php[0] === s.php[1];
+    return `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3"><a href="#" class="font-mono font-medium hover:text-accent">${s.name}</a><div class="text-2xs text-muted mt-0.5 font-sans">${s.kind}</div></td>
+      <td class="px-3 py-3"><div class="flex items-center gap-2"><div class="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden"><span class="block h-full ${bar}" style="width:${s.cpu}%"></span></div><span class="w-9 text-right">%${s.cpu}</span></div></td>
+      <td class="px-3 py-3 text-right">${s.mem}</td>
+      <td class="px-3 py-3 text-right ${phpFull ? 'text-crit font-semibold' : ''}">${s.php[0]}/${s.php[1]}</td>
+      <td class="px-3 py-3 text-right">${fmt(s.qps)}</td>
+      <td class="px-3 py-3 text-right ${s.mail > 1000 ? 'text-warn font-semibold' : ''}">${fmt(s.mail)}</td>
+      <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full ${tone[s.st[0]][0]}"><i class="w-1.5 h-1.5 rounded-full ${tone[s.st[0]][1]}"></i>${s.st[1]}</span></td>
+      <td class="px-3 py-3 text-right"><button class="p-1.5 rounded hover:bg-surface-2 text-muted" aria-label="${s.name} eylemleri"><i data-lucide="ellipsis" class="w-4 h-4"></i></button></td>
+    </tr>`;
+  }).join('');
+
+  const svc = (list) => list.map(([n, v, st, note]) => `<li class="flex items-center gap-2.5 py-2">
+      <i class="w-2 h-2 rounded-full shrink-0 ${st === 'ok' ? 'bg-ok' : 'bg-warn'}"></i>
+      <span class="font-medium">${n}</span><span class="text-muted font-mono text-[12px]">${v}</span>
+      <span class="ml-auto text-2xs ${st === 'ok' ? 'text-muted' : 'text-warn font-medium'}">${note}</span></li>`).join('');
+  document.getElementById('svcCustomer').innerHTML = svc([
+    ['Nginx', '1.26.2', 'ok', 'çalışıyor'], ['PHP-FPM', '8.3 · 8.4 · 8.5', 'ok', '3 sürüm'],
+    ['MySQL', '8.4.3', 'ok', 'çalışıyor'], ['Redis', '7.4.1', 'ok', 'çalışıyor'],
+    ['PowerDNS', '4.9.2', 'ok', '61 bölge'], ['Postfix', '3.8.6', 'warn', 'kuyrukta 312 ileti'],
+    ['Dovecot', '2.3.21', 'ok', '148 posta kutusu'], ['Rspamd', '3.10', 'ok', 'çalışıyor'],
+  ]);
+  document.getElementById('svcPanel').innerHTML = svc([
+    ['Servik Agent', '1.4.1', 'ok', 'bağlı'], ['Panel PHP', '8.5.1', 'ok', 'çalışıyor'],
+    ['Panel PostgreSQL', '17.2', 'ok', 'çalışıyor'], ['Panel Nginx', '1.26.2', 'ok', 'çalışıyor'],
+  ]);
+
+  const apps = [
+    { name: 'api.hizlikargo.app', branch: 'main', commit: '8f3c2a1', msg: 'Kargo takip uç noktasına önbellek eklendi', when: '12 dk önce', st: ['ok', 'Yayında'], q: '4 işçi · 0 bekleyen', cron: 'zamanlayıcı 1 dk önce' },
+    { name: 'panel.ozkanlojistik.com', branch: 'release/2.8', commit: 'c41e9d0', msg: 'Fatura PDF şablonu güncellendi', when: 'şimdi', st: ['run', 'Dağıtılıyor · 3/5 composer install'], q: '2 işçi · 1.204 bekleyen', cron: 'zamanlayıcı 1 dk önce' },
+    { name: 'bulten.atlasyayin.com', branch: 'main', commit: '2b77e5f', msg: 'Ekim bülteni kampanyası', when: 'dün 18:20', st: ['ok', 'Yayında'], q: '3 işçi · 6.530 bekleyen', cron: 'zamanlayıcı 1 dk önce' },
+    { name: 'staging.hizlikargo.app', branch: 'develop', commit: 'e90a114', msg: 'Laravel 12.33 yükseltmesi', when: '2 sa önce', st: ['crit', 'Başarısız · migrate adımı'], q: '1 işçi · 0 bekleyen', cron: 'eski sürüm yayında kaldı' },
+  ];
+  const appTone = { ok: 'bg-ok-soft text-ok', run: 'bg-info-soft text-info', crit: 'bg-crit-soft text-crit' };
+  document.getElementById('apps').innerHTML = apps.map(a => `<li class="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="#" class="font-mono font-medium hover:text-accent">${a.name}</a>
+          <span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full ${appTone[a.st[0]]}">${a.st[0] === 'run' ? '<i data-lucide="loader-circle" class="w-3 h-3 animate-spin motion-reduce:animate-none"></i>' : ''}${a.st[1]}</span>
+        </div>
+        <p class="mt-1 text-[12.5px] text-muted flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span class="flex items-center gap-1"><i data-lucide="git-branch" class="w-3.5 h-3.5"></i><span class="font-mono">${a.branch}</span></span>
+          <span class="truncate max-w-[22rem]"><span class="font-mono">${a.commit}</span> ${a.msg}</span>
+          <span>${a.when}</span>
+        </p>
+        <p class="mt-0.5 text-2xs text-muted">Kuyruk: ${a.q} · ${a.cron}</p>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        ${a.st[0] === 'crit' ? '<button class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Günlüğü aç</button>' : '<button class="h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px] flex items-center gap-1.5"><i data-lucide="history" class="w-3.5 h-3.5"></i>Geri al</button>'}
+        <button ${a.st[0] === 'run' ? 'disabled' : ''} data-toast="${a.name} için dağıtım başladı." class="h-8 px-3 rounded-md bg-accent text-accent-fg hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-[13px] font-medium flex items-center gap-1.5"><i data-lucide="rocket" class="w-3.5 h-3.5"></i>Dağıt</button>
+      </div>
+    </li>`).join('');
+
+  const acts = [
+    ['sparkles', 'accent', '<b class="font-medium">Servik AI</b> 185.220.101.47 adresini 1 saat engelledi', '23:41'],
+    ['rocket', 'info', '<b class="font-medium">Sercan</b> api.hizlikargo.app sürümünü dağıttı', '23:38'],
+    ['network', 'muted', '<b class="font-medium">Sercan</b> kahveatolyesi.com.tr için MX kaydını değiştirdi', '22:15'],
+    ['circle-x', 'crit', 'staging.hizlikargo.app dağıtımı başarısız oldu, önceki sürüm yayında', '21:47'],
+    ['mail-plus', 'muted', '<b class="font-medium">Ayşe Kaya</b> randevu@klinikmavi.com posta kutusunu açtı', '21:02'],
+    ['archive', 'ok', 'Gece yedeği tamamlandı: 24 site, 18,6 GB, 14 dk', '03:00'],
+  ];
+  document.getElementById('activity').innerHTML = acts.map(([ic, c, t, w]) => `<li class="flex gap-3">
+      <span class="w-7 h-7 rounded-full bg-surface-2 grid place-items-center shrink-0 text-${c}"><i data-lucide="${ic}" class="w-3.5 h-3.5"></i></span>
+      <div class="min-w-0 pt-0.5"><p>${t}</p><p class="text-2xs text-muted mt-0.5 num">${w}</p></div></li>`).join('');
+
+</script>

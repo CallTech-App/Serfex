@@ -1,0 +1,214 @@
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5 flex-wrap" aria-label="Konum"><a href="siteler.html" class="hover:text-accent">Siteler</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><a href="site-detay.html" class="font-mono hover:text-accent">kahveatolyesi.com.tr</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="text-fg">Dosya Yöneticisi</span></nav>
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-3 justify-between">
+          <div class="flex items-center gap-3 min-w-0">
+            <h1 class="text-[22px] font-semibold tracking-tight truncate">Dosya Yöneticisi</h1>
+            
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="site-detay.html" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="arrow-left" class="w-4 h-4"></i>Siteye dön</a>
+          </div>
+        </div>
+        <p class="mt-1 text-[13px] text-muted"><span class="font-mono">kahveatolyesi.com.tr</span> dosyalarını yükleyin, düzenleyin ve izinlerini değiştirin. Disk: 6,8 / 20 GB</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+          <button id="up" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="upload" class="w-4 h-4"></i>Yükle</button>
+          <input id="upFile" type="file" multiple hidden>
+          <button data-new="dosya" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="file-plus" class="w-4 h-4"></i>Yeni dosya</button>
+          <button data-new="klasör" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="folder-plus" class="w-4 h-4"></i>Yeni klasör</button>
+          <button id="delSel" disabled class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] disabled:opacity-40 disabled:cursor-not-allowed">Sil</button>
+          <button id="permSel" disabled class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] disabled:opacity-40 disabled:cursor-not-allowed">İzinler</button>
+          <label class="ml-auto relative w-full sm:w-56">
+            <span class="sr-only">Bu klasörde ara</span>
+            <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+          </label>
+        </div>
+        <nav id="crumb" class="px-5 py-2.5 border-b border-line font-mono text-[12.5px] text-muted flex flex-wrap items-center gap-x-1 min-w-0" aria-label="Klasör yolu"></nav>
+        <div class="relative overflow-x-auto scroll-thin">
+          <table class="w-full text-[13.5px] min-w-[620px]">
+            <thead>
+              <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                <th class="w-10 pl-5 py-2.5"><input id="all" type="checkbox" aria-label="Tümünü seç" class="w-4 h-4 accent-[rgb(var(--accent))]"></th>
+                <th class="font-medium px-3 py-2.5">Ad</th>
+                <th class="font-medium px-3 py-2.5 text-right">Boyut</th>
+                <th class="font-medium px-3 py-2.5">Değiştirilme</th>
+                <th class="font-medium px-3 pr-5 py-2.5">İzinler</th>
+              </tr>
+            </thead>
+            <tbody id="rows" class="divide-y divide-line"></tbody>
+          </table>
+        </div>
+        <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+      </section>
+
+      <!-- Düzenleyici -->
+      <div id="edModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="edForm" class="w-full max-w-3xl rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+          <div class="px-5 h-12 flex items-center gap-3 border-b border-line">
+            <h2 id="edTitle" class="text-[14.5px] font-semibold font-mono truncate"></h2>
+            <span class="ml-auto text-2xs text-muted shrink-0">UTF-8</span>
+          </div>
+          <label for="edText" class="sr-only">Dosya içeriği</label>
+          <textarea id="edText" spellcheck="false" class="block w-full h-[50vh] p-4 bg-surface-2/50 outline-none font-mono text-[12.5px] leading-relaxed resize-none scroll-thin"></textarea>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kapat</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Yeni dosya / klasör -->
+      <div id="newModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="newForm" class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+          <h2 id="newTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold"></h2>
+          <div class="p-5 text-[13.5px]">
+            <label for="newName" class="block mb-1.5">Ad</label>
+            <input id="newName" required class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Oluştur</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- İzinler -->
+      <div id="permModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="permForm" class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="permTitle">
+          <h2 id="permTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">İzinleri değiştir</h2>
+          <div class="p-5 text-[13.5px]">
+            <label for="permVal" class="block mb-1.5">İzin (sayısal)</label>
+            <input id="permVal" required pattern="[0-7]{3}" maxlength="3" value="644" class="w-28 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+            <p class="mt-2 text-2xs text-muted">Dosyalar için genelde 644, klasörler için 755.</p>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Uygula</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Silme onayı -->
+      <div id="delModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+          <p id="delTitle" class="font-semibold"></p>
+          <p class="mt-1 text-[13px] text-muted">Silinen dosyalar geri alınamaz. Gerekirse son yedekten geri yükleyebilirsiniz.</p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="delOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium">Sil</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  // [ad, klasör mü, boyut (KB), değiştirilme, izin]
+  const tree = {
+    'httpdocs': [
+      ['.well-known', 1, 0, '02.09.2026 14:10', '755'], ['wp-admin', 1, 0, '14.10.2026 03:12', '755'],
+      ['wp-content', 1, 0, '18.10.2026 22:41', '755'], ['wp-includes', 1, 0, '14.10.2026 03:12', '755'],
+      ['.htaccess', 0, 1.2, '11.10.2026 16:05', '644'], ['index.php', 0, 0.4, '14.10.2026 03:12', '644'],
+      ['robots.txt', 0, 0.1, '03.06.2026 10:22', '644'], ['wp-config.php', 0, 3.4, '29.09.2026 11:47', '600'],
+      ['wp-cron.php', 0, 5.6, '14.10.2026 03:12', '644'], ['xmlrpc.php', 0, 3.1, '14.10.2026 03:12', '644'],
+    ],
+    'httpdocs/wp-content': [
+      ['cache', 1, 0, '18.10.2026 23:48', '755'], ['languages', 1, 0, '14.10.2026 03:12', '755'],
+      ['plugins', 1, 0, '16.10.2026 09:30', '755'], ['themes', 1, 0, '12.10.2026 18:02', '755'],
+      ['uploads', 1, 0, '18.10.2026 22:41', '755'], ['debug.log', 0, 18420, '18.10.2026 23:47', '644'],
+      ['index.php', 0, 0.03, '14.10.2026 03:12', '644'],
+    ],
+  };
+  const content = {
+    '.htaccess': '# BEGIN WordPress\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n# END WordPress',
+    'robots.txt': 'User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n\nSitemap: https://kahveatolyesi.com.tr/wp-sitemap.xml',
+    'wp-config.php': "<?php\ndefine( 'DB_NAME', 'kahveatolyesi_wc' );\ndefine( 'DB_USER', 'kahve_wc' );\ndefine( 'DB_PASSWORD', '••••••••••••' );\ndefine( 'DB_HOST', 'localhost' );\ndefine( 'DB_CHARSET', 'utf8mb4' );\n\n$table_prefix = 'wp_';\n\ndefine( 'WP_DEBUG', false );\ndefine( 'WP_CACHE', true );\n\nif ( ! defined( 'ABSPATH' ) ) {\n\tdefine( 'ABSPATH', __DIR__ . '/' );\n}\nrequire_once ABSPATH . 'wp-settings.php';",
+    'index.php': "<?php\ndefine( 'WP_USE_THEMES', true );\nrequire __DIR__ . '/wp-blog-header.php';",
+  };
+  const textExt = /\.(php|txt|log|htaccess|json|css|js|html|xml|env|ini)$|^\.htaccess$/;
+  let cwd = 'httpdocs';
+  const vroot = () => '/var/www/vhosts/kahveatolyesi.com.tr';
+  const size = k => !k ? '—' : k >= 1024 ? (k / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' MB' : k < 1 ? Math.round(k * 1024) + ' B' : k.toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' KB';
+  const rows = document.getElementById('rows'), q = document.getElementById('q');
+  const draw = () => {
+    const parts = vroot().split('/').filter(Boolean).concat(cwd.split('/'));
+    const base = vroot().split('/').filter(Boolean).length;
+    document.getElementById('crumb').innerHTML = '<span>/</span>' + parts.map((p, i) => {
+      const go = i >= base && i < parts.length - 1 ? parts.slice(base, i + 1).join('/') : '';
+      const last = i === parts.length - 1;
+      return `${go ? `<button data-go="${go}" class="hover:text-accent">${p}</button>` : `<span class="${last ? 'text-fg' : ''}">${p}</span>`}${last ? '' : '<span>/</span>'}`;
+    }).join('');
+    const list = (tree[cwd] || []).filter(r => r[0].toLowerCase().includes(q.value.toLowerCase()));
+    const up = cwd.includes('/') ? `<tr class="hover:bg-surface-2/60"><td class="pl-5 py-2.5"></td><td class="px-3 py-2.5" colspan="4"><button data-go="${cwd.split('/').slice(0, -1).join('/')}" class="flex items-center gap-2.5 text-muted hover:text-accent"><i data-lucide="corner-left-up" class="w-4 h-4"></i>Üst klasör</button></td></tr>` : '';
+    rows.innerHTML = up + list.map(([n, dir, kb, mod, perm]) => `<tr class="hover:bg-surface-2/60">
+        <td class="pl-5 py-2.5"><input type="checkbox" value="${n}" class="sel w-4 h-4 accent-[rgb(var(--accent))]" aria-label="${n} seç"></td>
+        <td class="px-3 py-2.5"><button ${dir ? `data-go="${cwd}/${n}"` : `data-open="${n}"`} class="flex items-center gap-2.5 font-mono text-[13px] hover:text-accent text-left"><i data-lucide="${dir ? 'folder' : 'file-text'}" class="w-4 h-4 shrink-0 ${dir ? 'text-accent' : 'text-muted'}"></i>${n}</button></td>
+        <td class="px-3 py-2.5 text-right num text-muted whitespace-nowrap">${dir ? '—' : size(kb)}</td>
+        <td class="px-3 py-2.5 num text-muted whitespace-nowrap">${mod}</td>
+        <td class="px-3 pr-5 py-2.5 font-mono text-[13px]">${perm}</td>
+      </tr>`).join('');
+    const d = list.filter(r => r[1]).length;
+    document.getElementById('count').textContent = `${d} klasör, ${list.length - d} dosya`;
+    lucide.createIcons(); sync();
+  };
+  const all = document.getElementById('all'), delSel = document.getElementById('delSel'), permSel = document.getElementById('permSel');
+  const checked = () => [...rows.querySelectorAll('.sel:checked')].map(c => c.value);
+  const sync = () => { const n = checked().length; delSel.disabled = permSel.disabled = !n; delSel.textContent = n ? `Sil (${n})` : 'Sil'; };
+  rows.addEventListener('change', sync);
+  all.onchange = () => { rows.querySelectorAll('.sel').forEach(c => c.checked = all.checked); sync(); };
+  q.oninput = draw;
+
+  // Pencereler
+  const show = id => { const m = document.getElementById(id); m.hidden = false; return m; };
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.fixed').hidden = true);
+  document.addEventListener('click', e => {
+    const g = e.target.closest('[data-go]'), o = e.target.closest('[data-open]');
+    if (g) { cwd = g.dataset.go; q.value = ''; all.checked = false; draw(); }
+    if (o) {
+      const n = o.dataset.open;
+      if (!textExt.test(n)) { toast(`${n} indiriliyor.`); return; }
+      document.getElementById('edTitle').textContent = `${cwd}/${n}`;
+      document.getElementById('edText').value = content[n] ?? (n.endsWith('.log') ? '[18-Oct-2026 23:47:12 UTC] PHP Notice: Function wpdb::prepare was called incorrectly.' : '');
+      show('edModal'); document.getElementById('edText').focus();
+    }
+  });
+  document.getElementById('edForm').addEventListener('submit', e => { e.preventDefault(); e.target.closest('.fixed').hidden = true; toast(`${document.getElementById('edTitle').textContent} kaydedildi.`); });
+
+  let kind = 'dosya';
+  document.querySelectorAll('[data-new]').forEach(b => b.onclick = () => {
+    kind = b.dataset.new;
+    document.getElementById('newTitle').textContent = kind === 'dosya' ? 'Yeni dosya' : 'Yeni klasör';
+    document.getElementById('newName').value = ''; show('newModal'); document.getElementById('newName').focus();
+  });
+  document.getElementById('newForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const n = document.getElementById('newName').value.trim();
+    (tree[cwd] = tree[cwd] || []).push([n, kind === 'klasör' ? 1 : 0, kind === 'dosya' ? 0.001 : 0, '18.10.2026 23:50', kind === 'klasör' ? '755' : '644']);
+    if (kind === 'klasör') tree[`${cwd}/${n}`] = [];
+    e.target.closest('.fixed').hidden = true; draw(); toast(`${n} oluşturuldu.`);
+  });
+
+  document.getElementById('up').onclick = () => document.getElementById('upFile').click();
+  document.getElementById('upFile').onchange = e => { const n = e.target.files.length; if (n) toast(`${n} dosya ${cwd}/ klasörüne yüklendi.`); e.target.value = ''; };
+
+  permSel.onclick = () => { show('permModal'); document.getElementById('permVal').select(); };
+  document.getElementById('permForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = document.getElementById('permVal').value, c = checked();
+    tree[cwd].forEach(r => { if (c.includes(r[0])) r[4] = v; });
+    e.target.closest('.fixed').hidden = true; draw(); toast(`${c.length} öğenin izni ${v} yapıldı.`);
+  });
+
+  delSel.onclick = () => {
+    const c = checked();
+    document.getElementById('delTitle').textContent = c.length === 1 ? `${c[0]} silinsin mi?` : `${c.length} öğe silinsin mi?`;
+    show('delModal');
+  };
+  document.getElementById('delOk').onclick = () => {
+    const c = checked(); tree[cwd] = tree[cwd].filter(r => !c.includes(r[0]));
+    document.getElementById('delModal').hidden = true; all.checked = false; draw(); toast(`${c.length} öğe silindi.`);
+  };
+  draw();
+</script>

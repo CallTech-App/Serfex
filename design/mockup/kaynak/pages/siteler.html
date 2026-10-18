@@ -1,0 +1,161 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Siteler</h1>
+        <p class="mt-1 text-[13px] text-muted">Sunucudaki web sitelerini ve alan adlarını yönetin.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+          <button id="newSite" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Site ekle</button>
+          <button id="delSel" disabled class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] disabled:opacity-40 disabled:cursor-not-allowed">Sil</button>
+          <div class="ml-auto flex items-center gap-2 w-full sm:w-auto">
+            <label class="shrink-0"><span class="sr-only">Uygulamaya göre süz</span>
+              <select id="f" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px] focus:border-accent outline-none"><option value="">Tümü</option><option>Laravel</option><option>WordPress</option><option>PHP</option></select>
+            </label>
+            <label class="relative flex-1 sm:w-64">
+              <span class="sr-only">Site ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+        </div>
+        <div class="relative overflow-x-auto scroll-thin">
+          <table class="w-full text-[13.5px] min-w-[760px]">
+            <thead>
+              <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                <th class="w-10 pl-5 py-2.5"><input id="all" type="checkbox" aria-label="Tümünü seç" class="w-4 h-4 accent-[rgb(var(--accent))]"></th>
+                <th class="font-medium px-3 py-2.5">Alan adı</th>
+                <th class="font-medium px-3 py-2.5">Uygulama</th>
+                <th class="font-medium px-3 py-2.5">Müşteri</th>
+                <th class="font-medium px-3 py-2.5">PHP</th>
+                <th class="font-medium px-3 py-2.5 text-right">Disk</th>
+                <th class="font-medium px-3 pr-5 py-2.5">Durum</th>
+              </tr>
+            </thead>
+            <tbody id="rows" class="divide-y divide-line"></tbody>
+          </table>
+        </div>
+        <div class="px-5 py-3 border-t border-line flex items-center gap-3 text-2xs text-muted num">
+          <span id="count"></span>
+          <span class="ml-auto flex items-center gap-1">
+            <button disabled class="h-7 px-2.5 rounded-md border border-line text-[12.5px] disabled:opacity-40">Önceki</button>
+            <span class="px-2">Sayfa 1 / 2</span>
+            <button data-toast="2. sayfa yüklendi." class="h-7 px-2.5 rounded-md border border-line hover:bg-surface-2 text-[12.5px] text-fg">Sonraki</button>
+          </span>
+        </div>
+      </section>
+
+      <!-- Site ekle -->
+      <div id="siteModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="siteForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="siteTitle">
+          <h2 id="siteTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Site ekle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="m1" class="block mb-1.5">Alan adı</label>
+              <input id="m1" required placeholder="ornek.com.tr" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+            </div>
+            <div>
+              <label for="m2" class="block mb-1.5">Müşteri</label>
+              <select id="m2" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Kahve Atölyesi</option><option>Mağaza Online</option><option>Özkan Lojistik</option><option>Hızlı Kargo A.Ş.</option><option>Atlas Yayıncılık</option><option>Klinik Mavi</option></select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="m3" class="block mb-1.5">Uygulama</label>
+                <select id="m3" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Boş site</option><option>WordPress</option><option>Laravel</option></select>
+              </div>
+              <div>
+                <label for="m4" class="block mb-1.5">PHP sürümü</label>
+                <select id="m4" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>8.4</option><option>8.3</option><option>8.5</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" id="siteCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Siteyi oluştur</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Silme onayı -->
+      <div id="delModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+          <p id="delTitle" class="font-semibold"></p>
+          <p class="mt-1 text-[13px] text-muted">Dosyalar, veritabanları, posta kutuları ve DNS bölgesi silinir. Bu işlem geri alınamaz.</p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="delCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="delOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium">Sil</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  const st = {
+    ok: ['bg-ok-soft text-ok', 'bg-ok'], warn: ['bg-warn-soft text-warn', 'bg-warn'],
+    crit: ['bg-crit-soft text-crit', 'bg-crit'], off: ['bg-surface-2 text-muted', 'bg-muted'],
+  };
+  let sites = [
+    ['magazaonline.com.tr', 'WordPress', 'Mağaza Online', '8.3', 14.2, 'crit', 'Saldırı altında'],
+    ['ozkanlojistik.com', 'Laravel', 'Özkan Lojistik', '8.4', 3.1, 'warn', 'Kuyruk takılı'],
+    ['panel.ozkanlojistik.com', 'Laravel', 'Özkan Lojistik', '8.4', 2.4, 'warn', 'Kuyruk takılı'],
+    ['api.hizlikargo.app', 'Laravel', 'Hızlı Kargo A.Ş.', '8.5', 4.8, 'ok', 'Yayında'],
+    ['staging.hizlikargo.app', 'Laravel', 'Hızlı Kargo A.Ş.', '8.5', 1.9, 'warn', 'Dağıtım başarısız'],
+    ['bulten.atlasyayin.com', 'Laravel', 'Atlas Yayıncılık', '8.3', 6.2, 'ok', 'Yayında'],
+    ['atlasyayin.com', 'WordPress', 'Atlas Yayıncılık', '8.3', 11.7, 'ok', 'Yayında'],
+    ['kahveatolyesi.com.tr', 'WordPress', 'Kahve Atölyesi', '8.3', 6.8, 'ok', 'Yayında'],
+    ['eski.kahveatolyesi.com.tr', 'PHP', 'Kahve Atölyesi', '8.3', 0.9, 'warn', 'DNS başka sunucuda'],
+    ['klinikmavi.com', 'PHP', 'Klinik Mavi', '8.4', 1.2, 'ok', 'Yayında'],
+    ['mavitur.com.tr', 'WordPress', 'Mavi Tur', '8.3', 4.4, 'ok', 'Yayında'],
+    ['forum.mavitur.com.tr', 'PHP', 'Mavi Tur', '8.3', 1.1, 'off', 'Askıda'],
+  ];
+  const gb = n => n.toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' GB';
+  const rows = document.getElementById('rows'), q = document.getElementById('q'), f = document.getElementById('f');
+  const draw = () => {
+    const s = q.value.toLowerCase(), t = f.value;
+    const list = sites.filter(r => r[0].includes(s) && (!t || r[1] === t));
+    rows.innerHTML = list.map(([d, app, cust, php, disk, k, label]) => `<tr class="hover:bg-surface-2/60">
+        <td class="pl-5 py-3"><input type="checkbox" value="${d}" class="sel w-4 h-4 accent-[rgb(var(--accent))]" aria-label="${d} seç"></td>
+        <td class="px-3 py-3 font-mono text-[13px]"><a href="site-detay.html" class="hover:text-accent">${d}</a></td>
+        <td class="px-3 py-3 text-muted">${app}</td>
+        <td class="px-3 py-3">${cust}</td>
+        <td class="px-3 py-3 font-mono text-[13px]">${php}</td>
+        <td class="px-3 py-3 text-right num whitespace-nowrap">${gb(disk)}</td>
+        <td class="px-3 pr-5 py-3"><span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${st[k][0]}"><i class="w-1.5 h-1.5 rounded-full ${st[k][1]}"></i>${label}</span></td>
+      </tr>`).join('') || '<tr><td colspan="7" class="px-5 py-8 text-center text-muted">Eşleşen site yok.</td></tr>';
+    document.getElementById('count').textContent = `1–${list.length} / 24 site`;
+    sync();
+  };
+  const delSel = document.getElementById('delSel'), all = document.getElementById('all');
+  const checked = () => [...rows.querySelectorAll('.sel:checked')].map(c => c.value);
+  const sync = () => { const n = checked().length; delSel.disabled = !n; delSel.textContent = n ? `Sil (${n})` : 'Sil'; all.checked = n && n === rows.querySelectorAll('.sel').length; };
+  rows.addEventListener('change', sync);
+  all.onchange = () => { rows.querySelectorAll('.sel').forEach(c => c.checked = all.checked); sync(); };
+  q.oninput = draw; f.onchange = draw;
+  draw();
+
+  // Silme onayı
+  const dm = document.getElementById('delModal');
+  delSel.onclick = () => {
+    const c = checked();
+    document.getElementById('delTitle').textContent = c.length === 1 ? `${c[0]} silinsin mi?` : `${c.length} site silinsin mi?`;
+    dm.hidden = false;
+  };
+  document.getElementById('delCancel').onclick = () => dm.hidden = true;
+  document.getElementById('delOk').onclick = () => {
+    const c = checked(); sites = sites.filter(r => !c.includes(r[0]));
+    dm.hidden = true; all.checked = false; draw(); toast(`${c.length} site silme kuyruğuna alındı.`);
+  };
+
+  // Site ekle
+  const sm = document.getElementById('siteModal');
+  document.getElementById('newSite').onclick = () => { sm.hidden = false; document.getElementById('m1').focus(); };
+  document.getElementById('siteCancel').onclick = () => sm.hidden = true;
+  document.getElementById('siteForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const d = document.getElementById('m1').value.trim().toLowerCase();
+    if (!d) return;
+    const app = document.getElementById('m3').value;
+    sites.unshift([d, app === 'Boş site' ? 'PHP' : app, document.getElementById('m2').value, document.getElementById('m4').value, 0, 'ok', 'Yayında']);
+    draw(); sm.hidden = true; e.target.reset();
+    toast(`${d} oluşturuldu. SSL sertifikası alınıyor.`);
+  });
+</script>

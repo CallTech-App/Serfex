@@ -1,0 +1,200 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Müşteriler ve Paketler</h1>
+        <p class="mt-1 text-[13px] text-muted">Müşteri hesaplarını ve barındırma paketlerini yönetin.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-cus" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Müşteriler</button>
+          <button role="tab" data-tab="t-pkg" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Paketler</button>
+        </div>
+
+        <!-- Müşteriler -->
+        <div id="t-cus" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newCus" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Müşteri ekle</button>
+            <button id="susSel" disabled class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] disabled:opacity-40 disabled:cursor-not-allowed">Askıya al</button>
+            <label class="ml-auto relative w-full sm:w-64">
+              <span class="sr-only">Müşteri ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[760px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="w-10 pl-5 py-2.5"><input id="all" type="checkbox" aria-label="Tümünü seç" class="w-4 h-4 accent-[rgb(var(--accent))]"></th>
+                  <th class="font-medium px-3 py-2.5">Müşteri</th>
+                  <th class="font-medium px-3 py-2.5">Paket</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Site</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Disk</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="rows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+        </div>
+
+        <!-- Paketler -->
+        <div id="t-pkg" class="panel" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newPkg" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Paket ekle</button>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[720px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                <th class="font-medium px-5 py-2.5">Paket</th><th class="font-medium px-3 py-2.5 text-right">Site</th><th class="font-medium px-3 py-2.5 text-right">Disk</th><th class="font-medium px-3 py-2.5 text-right">Trafik</th><th class="font-medium px-3 py-2.5 text-right">Posta kutusu</th><th class="font-medium px-3 py-2.5 text-right">Veritabanı</th><th class="px-3"></th>
+              </tr></thead>
+              <tbody id="pkgRows" class="divide-y divide-line num"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Müşteri ekle -->
+      <div id="cusModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="cusForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="cusTitle">
+          <h2 id="cusTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Müşteri ekle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div><label for="c1" class="block mb-1.5">Firma adı</label><input id="c1" required class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none"></div>
+            <div><label for="c2" class="block mb-1.5">Yetkili kişi</label><input id="c2" required class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none"></div>
+            <div><label for="c3" class="block mb-1.5">E-posta</label><input id="c3" type="email" required class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]"><p class="mt-1 text-2xs text-muted">Panel giriş bilgileri bu adrese gönderilir.</p></div>
+            <div><label for="c4" class="block mb-1.5">Paket</label><select id="c4" class="pkgSel w-full h-9 px-2.5 rounded-md border border-line bg-surface"></select></div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Müşteriyi ekle</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Paket ekle / düzenle -->
+      <div id="pkgModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="pkgForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="pkgTitle">
+          <h2 id="pkgTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Paket ekle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div><label for="p0" class="block mb-1.5">Paket adı</label><input id="p0" required class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none"></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div><label for="p1" class="block mb-1.5">Site</label><input id="p1" inputmode="numeric" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"></div>
+              <div><label for="p2" class="block mb-1.5">Disk (GB)</label><input id="p2" inputmode="numeric" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"></div>
+              <div><label for="p3" class="block mb-1.5">Trafik (GB/ay)</label><input id="p3" inputmode="numeric" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"></div>
+              <div><label for="p4" class="block mb-1.5">Posta kutusu</label><input id="p4" inputmode="numeric" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"></div>
+              <div><label for="p5" class="block mb-1.5">Veritabanı</label><input id="p5" inputmode="numeric" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"></div>
+            </div>
+            <p class="text-2xs text-muted">Boş bırakılan alan sınırsız sayılır.</p>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Paketi kaydet</button>
+          </div>
+        </form>
+      </div>
+
+<script>
+  const pkgs = [
+    ['Başlangıç', 1, 5, 100, 5, 2],
+    ['Profesyonel', 5, 20, 500, 25, 10],
+    ['Laravel Pro', 10, 50, 1000, 25, 20],
+    ['Kurumsal', '', 100, 2000, '', ''],
+  ];
+  const cus = [
+    ['Mağaza Online', 'Burak Şen', 'Profesyonel', 2, 18.2, 'ok'],
+    ['Özkan Lojistik', 'Mehmet Özkan', 'Laravel Pro', 3, 21.6, 'ok'],
+    ['Hızlı Kargo A.Ş.', 'Ayşe Kaya', 'Kurumsal', 4, 46.3, 'ok'],
+    ['Atlas Yayıncılık', 'Elif Arslan', 'Kurumsal', 3, 31.8, 'ok'],
+    ['Kahve Atölyesi', 'Ozan Demir', 'Profesyonel', 2, 6.8, 'ok'],
+    ['Klinik Mavi', 'Dr. Selin Aksoy', 'Başlangıç', 1, 1.9, 'ok'],
+    ['Pixel Ajans', 'Can Erdem', 'Kurumsal', 6, 38.4, 'ok'],
+    ['Ada Pansiyon', 'Hasan Yurt', 'Başlangıç', 1, 2.3, 'sus'],
+  ];
+  const gb = n => n === '' ? 'Sınırsız' : n.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+  const lim = n => n === '' ? 'Sınırsız' : n.toLocaleString('tr-TR');
+  const badge = s => s === 'sus'
+    ? '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-warn-soft text-warn"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>Askıda</span>'
+    : '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Etkin</span>';
+
+  const rows = document.getElementById('rows');
+  const draw = (q = '') => {
+    q = q.toLocaleLowerCase('tr');
+    const list = cus.map((c, i) => [c, i]).filter(([c]) => (c[0] + ' ' + c[1]).toLocaleLowerCase('tr').includes(q));
+    rows.innerHTML = list.map(([[firm, who, pkg, sites, disk, st], i]) => {
+      const quota = (pkgs.find(p => p[0] === pkg) || [])[2] || '';
+      const warn = quota && disk / quota > .85;
+      return `<tr class="hover:bg-surface-2/60">
+        <td class="pl-5 py-3"><input type="checkbox" data-i="${i}" class="sel w-4 h-4 accent-[rgb(var(--accent))]" aria-label="${firm} seç"></td>
+        <td class="px-3 py-3"><a href="#" class="font-medium hover:text-accent">${firm}</a><span class="block text-2xs text-muted">${who}</span></td>
+        <td class="px-3 py-3">${pkg}</td>
+        <td class="px-3 py-3 text-right num">${sites}</td>
+        <td class="px-3 py-3 text-right num whitespace-nowrap ${warn ? 'text-warn' : ''}">${gb(disk)} / ${quota ? gb(quota) + ' GB' : 'Sınırsız'}</td>
+        <td class="px-3 py-3">${badge(st)}</td>
+        <td class="px-3 py-3 text-right"><button data-toast="${firm} paneline giriş yapılıyor." class="text-[13px] text-accent hover:underline whitespace-nowrap">Giriş yap</button></td>
+      </tr>`;
+    }).join('');
+    const susp = cus.filter(c => c[5] === 'sus').length;
+    document.getElementById('count').textContent = `${list.length} müşteri · ${cus.length - susp} etkin, ${susp} askıda`;
+    sync();
+  };
+  const susSel = document.getElementById('susSel'), all = document.getElementById('all');
+  const sync = () => { const n = rows.querySelectorAll('.sel:checked').length; susSel.disabled = !n; susSel.textContent = n ? `Askıya al (${n})` : 'Askıya al'; all.checked = false; all.checked = n && n === rows.querySelectorAll('.sel').length; };
+  rows.addEventListener('change', sync);
+  all.onchange = () => { const v = all.checked; rows.querySelectorAll('.sel').forEach(c => c.checked = v); sync(); };
+  susSel.onclick = () => {
+    const sel = [...rows.querySelectorAll('.sel:checked')].map(c => +c.dataset.i);
+    sel.forEach(i => cus[i][5] = 'sus'); draw(document.getElementById('q').value);
+    toast(`${sel.length} müşteri askıya alındı.`, true);
+  };
+  document.getElementById('q').oninput = e => draw(e.target.value);
+
+  const pkgRows = document.getElementById('pkgRows');
+  const drawPkg = () => {
+    pkgRows.innerHTML = pkgs.map(([n, s, d, t, m, db], i) => `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3 font-medium">${n}</td><td class="px-3 py-3 text-right">${lim(s)}</td><td class="px-3 py-3 text-right">${d === '' ? 'Sınırsız' : gb(d) + ' GB'}</td><td class="px-3 py-3 text-right">${t === '' ? 'Sınırsız' : lim(t) + ' GB'}</td><td class="px-3 py-3 text-right">${lim(m)}</td><td class="px-3 py-3 text-right">${lim(db)}</td>
+      <td class="px-3 py-3 text-right"><button data-edit="${i}" class="text-[13px] text-accent hover:underline">Düzenle</button></td></tr>`).join('');
+    document.querySelectorAll('.pkgSel').forEach(s => s.innerHTML = pkgs.map(p => `<option>${p[0]}</option>`).join(''));
+  };
+  drawPkg(); draw();
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-cus');
+
+  // Pencereler
+  const cm = document.getElementById('cusModal'), pm = document.getElementById('pkgModal');
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { cm.hidden = pm.hidden = true; });
+  document.getElementById('newCus').onclick = () => { cm.hidden = false; document.getElementById('c1').focus(); };
+  document.getElementById('cusForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = id => document.getElementById(id).value.trim();
+    cus.push([v('c1'), v('c2'), v('c4'), 0, 0, 'ok']); draw(); cm.hidden = true;
+    toast(`${v('c1')} eklendi. Giriş bilgileri ${v('c3')} adresine gönderildi.`); e.target.reset();
+  });
+  let editing = -1;
+  const openPkg = i => {
+    editing = i; const p = pkgs[i] || ['', '', '', '', '', ''];
+    document.getElementById('pkgTitle').textContent = i < 0 ? 'Paket ekle' : `${p[0]} paketini düzenle`;
+    p.forEach((x, k) => document.getElementById('p' + k).value = x);
+    pm.hidden = false; document.getElementById('p0').focus();
+  };
+  document.getElementById('newPkg').onclick = () => openPkg(-1);
+  pkgRows.addEventListener('click', e => { const b = e.target.closest('[data-edit]'); if (b) openPkg(+b.dataset.edit); });
+  document.getElementById('pkgForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const p = [0, 1, 2, 3, 4, 5].map(k => { const x = document.getElementById('p' + k).value.trim(); return k && x ? +x : x; });
+    if (editing < 0) pkgs.push(p); else pkgs[editing] = p;
+    drawPkg(); draw(); pm.hidden = true; toast(`${p[0]} paketi kaydedildi.`);
+  });
+</script>

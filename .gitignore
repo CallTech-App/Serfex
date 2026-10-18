@@ -1,0 +1,9 @@
+# Editors and OS files
+.DS_Store
+Thumbs.db
+/.idea
+/.vscode
+/.zed
+
+# Agent build output
+/agent/bin/

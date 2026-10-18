@@ -1,0 +1,77 @@
+<title>{{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Yerleşim: koyu petrol kenar menüsü + açık çalışma alanı; özet üstte, ayrıntı altta. 4px ızgara. */
+  :root {
+    --bg: 245 247 247; --surface: 255 255 255; --surface-2: 240 243 243; --line: 222 228 229;
+    --fg: 17 25 28; --muted: 90 104 109;
+    --accent: 13 116 121; --accent-fg: 255 255 255; --accent-soft: 223 240 240;
+    --ok: 21 128 76; --ok-soft: 224 243 232;
+    --warn: 176 104 0; --warn-soft: 252 241 220;
+    --crit: 196 38 46; --crit-soft: 252 231 231; --on-crit: 255 255 255;
+    --info: 37 99 185; --info-soft: 226 236 251;
+    --nav: 14 31 34; --nav-fg: 222 233 234; --nav-muted: 132 157 161; --nav-line: 33 54 58; --nav-active: 26 52 56;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: 11 16 18; --surface: 18 25 27; --surface-2: 25 33 36; --line: 38 50 53;
+      --fg: 228 235 236; --muted: 140 156 160;
+      --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
+      --ok: 76 200 132; --ok-soft: 17 46 32;
+      --warn: 236 170 62; --warn-soft: 55 39 14;
+      --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+      --info: 112 162 240; --info-soft: 21 36 62;
+      --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: 11 16 18; --surface: 18 25 27; --surface-2: 25 33 36; --line: 38 50 53;
+    --fg: 228 235 236; --muted: 140 156 160;
+    --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
+    --ok: 76 200 132; --ok-soft: 17 46 32;
+    --warn: 236 170 62; --warn-soft: 55 39 14;
+    --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+    --info: 112 162 240; --info-soft: 21 36 62;
+    --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  html, body { overflow-x: clip; }
+  body { background: rgb(var(--bg)); color: rgb(var(--fg)); font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  .num { font-variant-numeric: tabular-nums; }
+  h1, h2, h3 { text-wrap: balance; }
+  :focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; border-radius: 6px; }
+  .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; }
+  .drawer { transition: transform .22s ease; }
+  @media (prefers-reduced-motion: reduce) { .drawer, .toast { transition: none !important; } }
+  main > .fixed { margin-top: 0 !important; }
+  [hidden] { display: none !important; }
+  .toast { transition: opacity .2s ease, transform .2s ease; }
+</style>
+
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  const v = n => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        bg: v('bg'), surface: v('surface'), 'surface-2': v('surface-2'), line: v('line'),
+        fg: v('fg'), muted: v('muted'),
+        accent: v('accent'), 'accent-fg': v('accent-fg'), 'accent-soft': v('accent-soft'),
+        ok: v('ok'), 'ok-soft': v('ok-soft'), warn: v('warn'), 'warn-soft': v('warn-soft'),
+        crit: v('crit'), 'on-crit': v('on-crit'), 'crit-soft': v('crit-soft'), info: v('info'), 'info-soft': v('info-soft'),
+        nav: v('nav'), 'nav-fg': v('nav-fg'), 'nav-muted': v('nav-muted'), 'nav-line': v('nav-line'), 'nav-active': v('nav-active'),
+      },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      fontSize: { '2xs': ['11px', '16px'] },
+    } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+

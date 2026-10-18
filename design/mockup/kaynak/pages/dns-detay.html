@@ -1,0 +1,233 @@
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5" aria-label="Konum"><a href="dns.html" class="hover:text-accent">Alan Adları ve DNS</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="font-mono text-fg">kahveatolyesi.com.tr</span></nav>
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-3 justify-between">
+          <div class="flex items-center gap-3 min-w-0">
+            <h1 class="text-[22px] font-semibold tracking-tight font-mono truncate">kahveatolyesi.com.tr</h1>
+            <span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>DNS bu sunucuda</span>
+          </div>
+          <a href="dns.html" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="arrow-left" class="w-4 h-4"></i>Alan adı listesi</a>
+        </div>
+        <p class="mt-1 text-[13px] text-muted">Bu alan adının DNS kayıtlarını ve bölge ayarlarını yönetin. Ad sunucuları: <span class="font-mono">ns1.servik-ornek.net</span>, <span class="font-mono">ns2.servik-ornek.net</span></p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-rec" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Kayıtlar</button>
+          <button role="tab" data-tab="t-set" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Ayarlar</button>
+        </div>
+
+        <!-- Kayıtlar -->
+        <div id="t-rec" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newRec" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Kayıt ekle</button>
+            <button id="delSel" disabled class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] disabled:opacity-40 disabled:cursor-not-allowed">Sil</button>
+            <button id="resetOpen" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px]">Varsayılana dön</button>
+            <div class="ml-auto flex gap-2 w-full sm:w-auto">
+              <select id="ftype" aria-label="Tür" class="h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option value="">Tüm türler</option><option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>CAA</option><option>NS</option></select>
+              <label class="relative flex-1 sm:w-56">
+                <span class="sr-only">Kayıt ara</span>
+                <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input id="q" type="search" placeholder="Ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+              </label>
+            </div>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[720px] table-fixed">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="w-10 pl-5 py-2.5"><input id="all" type="checkbox" aria-label="Tümünü seç" class="w-4 h-4 accent-[rgb(var(--accent))]"></th>
+                  <th class="font-medium px-3 py-2.5 w-[30%]">Ana makine</th>
+                  <th class="font-medium px-3 py-2.5 w-20">Tür</th>
+                  <th class="font-medium px-3 py-2.5">Değer</th>
+                  <th class="font-medium px-3 py-2.5 w-20">TTL</th>
+                  <th class="px-3 w-24"></th>
+                </tr>
+              </thead>
+              <tbody id="rows" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+        </div>
+
+        <!-- Ayarlar -->
+        <form id="t-set" class="panel px-5 py-5 max-w-3xl" hidden>
+          <div class="divide-y divide-line">
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <span class="text-[13.5px]">DNS hizmeti</span>
+              <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Bu alan adı için açık (PowerDNS 4.9.2)</label>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
+              <span class="text-[13.5px] sm:pt-0.5">DNSSEC</span>
+              <div class="text-[13.5px]">
+                <label class="flex items-center gap-2.5"><input type="checkbox" class="w-4 h-4 accent-[rgb(var(--accent))]">Bölgeyi imzala</label>
+                <p class="text-2xs text-muted mt-1">Açtıktan sonra DS kaydını alan adı kayıt firmanıza eklemeniz gerekir.</p>
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
+              <span class="text-[13.5px] sm:pt-0.5">Ad sunucuları</span>
+              <p class="font-mono text-[13px] leading-6">ns1.servik-ornek.net<br>ns2.servik-ornek.net</p>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="dttl" class="text-[13.5px]">Varsayılan TTL</label>
+              <select id="dttl" class="w-full sm:w-64 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>5 dakika (300)</option><option selected>1 saat (3600)</option><option>1 gün (86400)</option></select>
+            </div>
+          </div>
+          <details class="mt-2 text-[13.5px]">
+            <summary class="cursor-pointer text-accent text-[13px] py-2">Gelişmiş (SOA)</summary>
+            <div class="divide-y divide-line">
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><span>Birincil ad sunucusu</span><span class="font-mono text-[13px]">ns1.servik-ornek.net.</span></div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><label for="soa1">Yönetici e-postası</label><input id="soa1" value="hostmaster@kahveatolyesi.com.tr" class="w-full sm:w-80 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]"></div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><span>Seri numarası</span><span class="font-mono text-[13px] num">2026101808</span></div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><label for="soa2">Yenileme / Yeniden deneme</label><div class="flex items-center gap-2"><input id="soa2" value="10800" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-muted">/</span><input aria-label="Yeniden deneme" value="3600" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-[13px] text-muted">sn</span></div></div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><label for="soa3">Sona erme / Negatif TTL</label><div class="flex items-center gap-2"><input id="soa3" value="604800" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-muted">/</span><input aria-label="Negatif TTL" value="3600" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-[13px] text-muted">sn</span></div></div>
+            </div>
+          </details>
+          <div class="mt-5 flex flex-wrap gap-2">
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+            <button type="reset" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="button" data-toast="kahveatolyesi.com.tr.zone indirildi." class="sm:ml-auto h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px] flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i>Bölge dosyasını dışa aktar</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Kayıt ekle / düzenle -->
+      <div id="recModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="recForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="recTitle">
+          <h2 id="recTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Kayıt ekle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="fT" class="block mb-1.5">Kayıt türü</label>
+              <select id="fT" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>CAA</option><option>NS</option></select>
+            </div>
+            <div>
+              <label for="fH" class="block mb-1.5">Ana makine</label>
+              <div class="flex rounded-md border border-line focus-within:border-accent overflow-hidden">
+                <input id="fH" placeholder="@" class="flex-1 min-w-0 h-9 px-3 bg-surface outline-none font-mono text-[13px]">
+                <span class="px-3 grid place-items-center bg-surface-2 text-muted font-mono text-[13px] border-l border-line">.kahveatolyesi.com.tr</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-[1fr_auto] gap-3">
+              <div class="min-w-0">
+                <label for="fV" id="fVl" class="block mb-1.5">IPv4 adresi</label>
+                <input id="fV" required class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+              </div>
+              <div id="fPw" hidden>
+                <label for="fP" class="block mb-1.5">Öncelik</label>
+                <input id="fP" value="10" inputmode="numeric" class="w-20 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num">
+              </div>
+            </div>
+            <div>
+              <label for="fL" class="block mb-1.5">TTL</label>
+              <select id="fL" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option value="300">5 dakika</option><option value="3600" selected>1 saat</option><option value="14400">4 saat</option><option value="86400">1 gün</option></select>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" id="recOk" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydı ekle</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Varsayılana dön onayı -->
+      <div id="resetModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
+          <p id="rsTitle" class="font-semibold">DNS bölgesi varsayılana dönsün mü?</p>
+          <p class="mt-1 text-[13px] text-muted">Elle eklenen ve değiştirilen tüm kayıtlar silinir; Servik şablonundaki kayıtlar yeniden yazılır. Bu işlem geri alınamaz.</p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="resetOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium">Varsayılana dön</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const D = 'kahveatolyesi.com.tr';
+  let recs = [
+    ['@', 'NS', 'ns1.servik-ornek.net.', 86400],
+    ['@', 'NS', 'ns2.servik-ornek.net.', 86400],
+    ['@', 'A', '185.98.142.21', 3600],
+    ['@', 'AAAA', '2a0e:1c80:4:2a::21', 3600],
+    ['www', 'CNAME', D + '.', 3600],
+    ['mail', 'A', '185.98.142.21', 3600],
+    ['eski', 'A', '104.21.8.17', 3600],
+    ['@', 'MX', 'mail.' + D + '.', 3600, 10],
+    ['@', 'TXT', 'v=spf1 a mx ip4:185.98.142.21 ip6:2a0e:1c80:4:2a::21 ~all', 3600],
+    ['default._domainkey', 'TXT', 'v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu7x2Lq', 3600],
+    ['_dmarc', 'TXT', 'v=DMARC1; p=quarantine; rua=mailto:dmarc@' + D + '; adkim=s', 3600],
+    ['@', 'CAA', '0 issue "letsencrypt.org"', 3600],
+  ];
+  const ttl = s => s >= 86400 ? s / 86400 + ' gün' : s >= 3600 ? s / 3600 + ' saat' : s / 60 + ' dk';
+  const rows = $('rows');
+  const draw = () => {
+    const q = $('q').value.toLowerCase(), t = $('ftype').value;
+    const list = recs.map((r, i) => [r, i]).filter(([r]) => (!t || r[1] === t) && (r[0] + ' ' + r[2]).toLowerCase().includes(q));
+    rows.innerHTML = list.map(([[h, ty, v, l, p], i]) => {
+      const warn = h === 'eski' && ty === 'A' ? ' <span class="ml-1 inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-warn-soft text-warn font-sans whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-warn"></i>Bu sunucuyu göstermiyor</span>' : '';
+      return `<tr class="hover:bg-surface-2/60">
+        <td class="pl-5 py-3"><input type="checkbox" data-i="${i}" class="sel w-4 h-4 accent-[rgb(var(--accent))]" aria-label="${h} ${ty} seç"></td>
+        <td class="px-3 py-3 font-mono text-[13px] truncate" title="${h === '@' ? D : h + '.' + D}">${h === '@' ? D : h + '<span class="text-muted">.' + D + '</span>'}</td>
+        <td class="px-3 py-3"><span class="text-2xs font-medium px-2 py-0.5 rounded bg-surface-2 border border-line font-mono">${ty}</span></td>
+        <td class="px-3 py-3"><div class="flex items-center min-w-0"><span class="font-mono text-[13px] truncate" title="${v.replace(/"/g, '&quot;')}">${p != null ? '<span class="text-muted">' + p + '</span> ' : ''}${v.replace(/</g, '&lt;')}</span>${warn}</div></td>
+        <td class="px-3 py-3 text-muted num">${ttl(l)}</td>
+        <td class="px-3 py-3 text-right"><button data-edit="${i}" class="text-[13px] text-muted hover:text-fg">Düzenle</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="px-5 py-8 text-center text-muted">Eşleşen kayıt yok.</td></tr>';
+    $('count').textContent = `${list.length} / ${recs.length} kayıt · son değişiklik bugün 21:14`;
+    $('all').checked = false; sync();
+  };
+  const delSel = $('delSel');
+  const sync = () => { const n = rows.querySelectorAll('.sel:checked').length; delSel.disabled = !n; delSel.textContent = n ? `Sil (${n})` : 'Sil'; };
+  rows.addEventListener('change', sync);
+  $('all').onchange = () => { rows.querySelectorAll('.sel').forEach(c => c.checked = $('all').checked); sync(); };
+  $('q').oninput = draw; $('ftype').onchange = draw;
+  delSel.onclick = () => {
+    const ids = [...rows.querySelectorAll('.sel:checked')].map(c => +c.dataset.i);
+    recs = recs.filter((_, i) => !ids.includes(i)); draw();
+    toast(`${ids.length} kayıt silindi.`, true);
+  };
+
+  // Ekle / düzenle
+  const F = { A: ['IPv4 adresi', '185.98.142.21'], AAAA: ['IPv6 adresi', '2a0e:1c80:4:2a::21'], CNAME: ['Hedef alan adı', D + '.'], MX: ['Posta sunucusu', 'mail.' + D + '.'], TXT: ['Değer', 'v=spf1 a mx ~all'], CAA: ['Değer', '0 issue "letsencrypt.org"'], NS: ['Ad sunucusu', 'ns1.servik-ornek.net.'] };
+  const m = $('recModal'); let editing = -1;
+  const setType = () => { const t = $('fT').value; $('fVl').textContent = F[t][0]; $('fV').placeholder = F[t][1]; $('fPw').hidden = t !== 'MX'; };
+  $('fT').onchange = setType;
+  const open = i => {
+    editing = i; const r = recs[i] || ['', 'A', '', 3600];
+    $('recTitle').textContent = i < 0 ? 'Kayıt ekle' : 'Kaydı düzenle'; $('recOk').textContent = i < 0 ? 'Kaydı ekle' : 'Kaydet';
+    $('fT').value = r[1]; $('fT').disabled = i >= 0; $('fH').value = r[0] === '@' ? '' : r[0]; $('fV').value = r[2]; $('fL').value = r[3]; $('fP').value = r[4] ?? 10;
+    setType(); m.hidden = false; $(i < 0 ? 'fT' : 'fV').focus();
+  };
+  $('newRec').onclick = () => open(-1);
+  rows.addEventListener('click', e => { const b = e.target.closest('[data-edit]'); if (b) open(+b.dataset.edit); });
+  $('recForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const t = $('fT').value, h = $('fH').value.trim() || '@', v = $('fV').value.trim();
+    if (t === 'A' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) { toast('Geçerli bir IPv4 adresi yazın, örneğin 185.98.142.21.'); $('fV').focus(); return; }
+    const r = [h, t, v, +$('fL').value]; if (t === 'MX') r.push(+$('fP').value || 10);
+    if (editing < 0) recs.push(r); else recs[editing] = r;
+    draw(); m.hidden = true;
+    toast(`${t} kaydı ${editing < 0 ? 'eklendi' : 'güncellendi'}: ${h === '@' ? D : h + '.' + D}`);
+  });
+
+  $('resetOpen').onclick = () => $('resetModal').hidden = false;
+  $('resetOk').onclick = () => { recs = recs.filter(r => r[0] !== 'eski'); $('resetModal').hidden = true; draw(); toast('DNS bölgesi varsayılan şablona döndürüldü.'); };
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.fixed').hidden = true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.fixed.inset-0').forEach(x => x.hidden = true); });
+  $('t-set').addEventListener('submit', e => { e.preventDefault(); toast('DNS ayarları kaydedildi, seri numarası 2026101809 oldu.'); });
+  draw();
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-rec');
+</script>

@@ -1,0 +1,262 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Güvenlik</h1>
+        <p class="mt-1 text-[13px] text-muted">Engellenen IP adreslerini, güvenlik duvarı kurallarını ve Fail2ban hapislerini yönetin.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-ip" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Engellenen IP'ler</button>
+          <button role="tab" data-tab="t-fw" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Güvenlik duvarı</button>
+          <button role="tab" data-tab="t-f2b" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Fail2ban</button>
+          <button role="tab" data-tab="t-set" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Ayarlar</button>
+        </div>
+
+        <!-- Engellenen IP'ler -->
+        <div id="t-ip" class="panel">
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button id="newIp" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>IP engelle</button>
+            <label class="ml-auto relative w-full sm:w-64">
+              <span class="sr-only">IP ara</span>
+              <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="q" type="search" placeholder="IP veya neden ara" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px]">
+            </label>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[760px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">IP adresi</th>
+                  <th class="font-medium px-3 py-2.5">Kaynak</th>
+                  <th class="font-medium px-3 py-2.5">Neden</th>
+                  <th class="font-medium px-3 py-2.5">Bitiş</th>
+                  <th class="px-3"></th>
+                </tr>
+              </thead>
+              <tbody id="ips" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted num" id="count"></p>
+        </div>
+
+        <!-- Güvenlik duvarı -->
+        <div id="t-fw" class="panel" hidden>
+          <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-line">
+            <button data-toast="Kural ekleme formu açıldı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Kural ekle</button>
+            <span class="ml-auto text-2xs text-muted">nftables · değişiklikler hemen uygulanır</span>
+          </div>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[620px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Hizmet</th>
+                  <th class="font-medium px-3 py-2.5">Port</th>
+                  <th class="font-medium px-3 py-2.5">İzin</th>
+                  <th class="font-medium px-3 py-2.5 w-24">Durum</th>
+                </tr>
+              </thead>
+              <tbody id="fw" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Fail2ban -->
+        <div id="t-f2b" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[620px]">
+              <thead>
+                <tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line">
+                  <th class="font-medium px-5 py-2.5">Hapis</th>
+                  <th class="font-medium px-3 py-2.5">Korunan hizmet</th>
+                  <th class="font-medium px-3 py-2.5">Kural</th>
+                  <th class="font-medium px-3 py-2.5 text-right">Yasaklı IP</th>
+                  <th class="font-medium px-3 py-2.5">Durum</th>
+                </tr>
+              </thead>
+              <tbody id="f2b" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ayarlar -->
+        <form id="t-set" class="panel px-5 py-5 max-w-3xl" hidden>
+          <div class="divide-y divide-line">
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="s1" class="text-[13.5px]">SSH portu</label>
+              <input id="s1" value="2222" inputmode="numeric" class="w-28 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num font-mono">
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <label for="s2" class="text-[13.5px]">Root girişi</label>
+              <select id="s2" class="w-full sm:w-64 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>Yalnızca anahtar ile</option><option>Kapalı</option><option>Açık</option></select>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <span class="text-[13.5px]">Parola ile giriş</span>
+              <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" class="w-4 h-4 accent-[rgb(var(--accent))]">SSH'ta parola ile girişe izin ver</label>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+              <span class="text-[13.5px]">İki adımlı doğrulama</span>
+              <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Panel girişinde tüm kullanıcılar için zorunlu</label>
+            </div>
+            <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
+              <span class="text-[13.5px] sm:pt-0.5">Servik AI izinleri</span>
+              <div class="text-[13.5px] space-y-2">
+                <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">IP engelleyebilir (en fazla 1 saat)</label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Geçici kaynak sınırı koyabilir (en fazla 30 dk)</label>
+                <p class="text-2xs text-muted">Bunların dışındaki her işlem için Servik AI önce onayınızı ister.</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 flex gap-2">
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Kaydet</button>
+            <button type="reset" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+          </div>
+          <details class="mt-6 text-[13px]">
+            <summary class="cursor-pointer text-accent">Gelişmiş</summary>
+            <div class="mt-3 divide-y divide-line">
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+                <label for="s6" class="text-[13.5px]">WAF (ModSecurity/Coraza)</label>
+                <select id="s6" class="w-full sm:w-64 h-9 px-2.5 rounded-md border border-line bg-surface text-[13.5px]"><option>Engelle</option><option>Yalnızca izle</option><option>Kapalı</option></select>
+              </div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
+                <label for="s7" class="text-[13.5px]">Her zaman izinli IP'ler</label>
+                <input id="s7" value="78.186.144.0/24" class="w-full sm:w-64 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+              </div>
+            </div>
+          </details>
+        </form>
+      </section>
+
+      <!-- IP engelle -->
+      <div id="ipModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <form id="ipForm" class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="ipTitle">
+          <h2 id="ipTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">IP engelle</h2>
+          <div class="p-5 space-y-4 text-[13.5px]">
+            <div>
+              <label for="i1" class="block mb-1.5">IP adresi veya aralık</label>
+              <input id="i1" required placeholder="203.0.113.7 veya 203.0.113.0/24" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">
+            </div>
+            <div>
+              <label for="i2" class="block mb-1.5">Süre</label>
+              <select id="i2" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>1 saat</option><option>24 saat</option><option>7 gün</option><option>Kalıcı</option></select>
+            </div>
+            <div>
+              <label for="i3" class="block mb-1.5">Neden <span class="text-muted">(isteğe bağlı)</span></label>
+              <input id="i3" class="w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none">
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
+            <button type="button" id="ipCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button type="submit" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium">Engelle</button>
+          </div>
+        </form>
+      </div>
+
+<script>
+  const badge = (cls, dot, t) => `<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${cls}"><i class="w-1.5 h-1.5 rounded-full ${dot}"></i>${t}</span>`;
+  const SRC = {
+    'Servik AI': 'bg-accent-soft text-accent', 'Fail2ban': 'bg-surface-2 text-muted',
+    'WAF': 'bg-info-soft text-info', 'Elle': 'bg-surface-2 text-fg',
+  };
+  const ips = [
+    ['185.220.101.47', 'Servik AI', 'SMTP girişine 2 dk\'da 9.300 deneme', '00:41 · 50 dk kaldı'],
+    ['141.98.11.62', 'Fail2ban', 'postfix-sasl · 5 başarısız giriş', '00:38'],
+    ['45.95.169.12', 'WAF', 'SQL enjeksiyonu (CRS 942100) · api.hizlikargo.app', 'Yarın 23:31'],
+    ['92.118.39.73', 'Fail2ban', 'sshd · 6 başarısız giriş', 'Yarın 23:12'],
+    ['194.26.29.120', 'Fail2ban', 'dovecot · 8 başarısız giriş', '23:47'],
+    ['167.94.138.44', 'WAF', 'Tarayıcı (CRS 913100, Censys)', 'Yarın 22:20'],
+    ['80.82.77.139', 'Fail2ban', 'recidive · 24 saatte 3 yasak', '25 Eki 19:05'],
+    ['5.188.62.0/24', 'Elle', 'WooCommerce kart testi botları', 'Kalıcı'],
+    ['103.153.79.0/24', 'Elle', 'Spam form gönderimi', '3 Kas'],
+  ];
+  const ipEl = document.getElementById('ips');
+  let q = '';
+  const draw = () => {
+    const list = ips.filter(r => (r[0] + r[2]).toLowerCase().includes(q));
+    ipEl.innerHTML = list.map(([ip, src, why, end]) => `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3 font-mono text-[13px] whitespace-nowrap">${ip}</td>
+      <td class="px-3 py-3"><span class="text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${SRC[src]}">${src}</span></td>
+      <td class="px-3 py-3 text-muted">${why}</td>
+      <td class="px-3 py-3 num whitespace-nowrap">${end}</td>
+      <td class="px-3 py-3 text-right"><button data-del="${ip}" class="text-[13px] text-muted hover:text-crit">Kaldır</button></td>
+    </tr>`).join('');
+    document.getElementById('count').textContent = `${list.length} engelli adres`;
+  };
+  document.getElementById('q').oninput = e => { q = e.target.value.toLowerCase().trim(); draw(); };
+  ipEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-del]'); if (!b) return;
+    const i = ips.findIndex(r => r[0] === b.dataset.del);
+    ips.splice(i, 1); draw();
+    toast(`${b.dataset.del} engeli kaldırıldı.`, true);
+  });
+  draw();
+
+  // Güvenlik duvarı
+  const fw = [
+    ['Web (HTTP/HTTPS)', '80, 443/tcp', 'Herkes', 1],
+    ['SSH', '2222/tcp', 'Türkiye, Almanya + 78.186.144.0/24', 1],
+    ['Servik paneli', '8443/tcp', 'Türkiye', 1],
+    ['SMTP', '25/tcp', 'Herkes', 1],
+    ['Posta gönderimi', '465, 587/tcp', 'Herkes, hız sınırlı', 1],
+    ['IMAP / POP3', '993, 995/tcp', 'Herkes', 1],
+    ['DNS', '53/tcp+udp', 'Herkes', 1],
+    ['FTP (TLS)', '21, 49152–49352/tcp', 'Herkes', 0],
+    ['MySQL', '3306/tcp', '10.0.0.0/8', 1],
+    ['Redis, PostgreSQL', '6379, 5432/tcp', 'Yalnızca yerel', 1],
+  ];
+  const sw = 'w-9 h-5 rounded-full bg-line peer-checked:bg-accent relative transition-colors after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40';
+  document.getElementById('fw').innerHTML = fw.map(([s, p, a, on], i) => `<tr class="hover:bg-surface-2/60">
+    <td class="px-5 py-3 whitespace-nowrap">${s}</td>
+    <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap">${p}</td>
+    <td class="px-3 py-3 text-muted">${a}</td>
+    <td class="px-3 py-3"><label class="inline-flex cursor-pointer"><input type="checkbox" data-fw="${i}" class="peer sr-only" ${on ? 'checked' : ''} aria-label="${s} kuralı"><span class="${sw}"></span></label></td>
+  </tr>`).join('');
+  document.getElementById('fw').addEventListener('change', e => {
+    const r = fw[e.target.dataset.fw];
+    toast(`${r[0]} kuralı ${e.target.checked ? 'açıldı' : 'kapatıldı'}.`, true);
+  });
+
+  // Fail2ban
+  const f2b = [
+    ['sshd', 'SSH', '5 deneme / 10 dk → 24 sa', 38, 1],
+    ['postfix-sasl', 'SMTP girişi', '5 deneme / 10 dk → 1 sa', 21, 1],
+    ['dovecot', 'IMAP / POP3', '8 deneme / 10 dk → 1 sa', 9, 1],
+    ['wordpress', 'WordPress girişi', '10 deneme / 5 dk → 1 sa', 14, 1],
+    ['servik-panel', 'Servik paneli', '5 deneme / 15 dk → 24 sa', 2, 1],
+    ['recidive', 'Tekrarlayanlar', '3 yasak / 24 sa → 7 gün', 6, 1],
+    ['proftpd', 'FTP', '5 deneme / 10 dk → 1 sa', 0, 0],
+  ];
+  document.getElementById('f2b').innerHTML = f2b.map(([j, s, r, n, on]) => `<tr class="hover:bg-surface-2/60">
+    <td class="px-5 py-3 font-mono text-[13px]">${j}</td>
+    <td class="px-3 py-3">${s}</td>
+    <td class="px-3 py-3 text-muted num whitespace-nowrap">${r}</td>
+    <td class="px-3 py-3 text-right num">${n}</td>
+    <td class="px-3 py-3">${on ? badge('bg-ok-soft text-ok', 'bg-ok', 'Açık') : badge('bg-surface-2 text-muted', 'bg-muted', 'Kapalı')}</td>
+  </tr>`).join('');
+
+  // Sekmeler
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => setTab(t.dataset.tab));
+  setTab('t-ip');
+  document.getElementById('t-set').addEventListener('submit', e => { e.preventDefault(); toast('Güvenlik ayarları kaydedildi.'); });
+
+  // IP engelle penceresi
+  const m = document.getElementById('ipModal');
+  document.getElementById('newIp').onclick = () => { m.hidden = false; document.getElementById('i1').focus(); };
+  document.getElementById('ipCancel').onclick = () => m.hidden = true;
+  document.getElementById('ipForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const ip = document.getElementById('i1').value.trim(); if (!ip) return;
+    const dur = document.getElementById('i2').value;
+    ips.unshift([ip, 'Elle', document.getElementById('i3').value || '—', dur === 'Kalıcı' ? 'Kalıcı' : dur + ' sonra']);
+    draw(); m.hidden = true; e.target.reset();
+    toast(`${ip} engellendi.`, true);
+  });
+</script>

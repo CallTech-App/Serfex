@@ -1,0 +1,204 @@
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Yazılım Yönetimi</h1>
+        <p class="mt-1 text-[13px] text-muted">Sunucuya web sunucusu, veritabanı sunucusu ve diğer yazılımları kurun veya kaldırın. Bir adım başarısız olursa değişiklik otomatik geri alınır.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-web" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Web sunucusu</button>
+          <button role="tab" data-tab="t-db" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Veritabanı sunucuları</button>
+          <button role="tab" data-tab="t-other" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Diğer bileşenler</button>
+        </div>
+
+        <!-- Web sunucusu -->
+        <div id="t-web" class="panel">
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Yazılım</th><th class="font-medium px-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Durum</th><th class="font-medium px-3 py-2.5">Kullanım</th><th class="px-3"></th></tr></thead>
+              <tbody id="web" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <form id="defForm" class="px-5 py-4 border-t border-line grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-2 text-[13.5px]">
+            <label for="defH" class="md:pt-2 font-medium">Yeni siteler için varsayılan</label>
+            <div class="flex flex-wrap items-center gap-3">
+              <select id="defH" class="h-9 px-2.5 rounded-md border border-line bg-surface w-full sm:w-80">
+                <option selected>Nginx + PHP-FPM</option><option>Nginx + PHP-FPM, siteye özel havuz</option>
+                <option>Nginx + Apache + PHP-FPM</option><option>Nginx + Apache + PHP-FPM, siteye özel havuz</option>
+              </select>
+              <button class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kaydet</button>
+              <p class="w-full text-[13px] text-muted">Var olan bir sitenin web sunucusu, site sayfasındaki <a href="php-ayarlari.html" class="text-accent hover:underline">PHP ve Web Sunucusu</a> aracından değiştirilir.</p>
+            </div>
+          </form>
+        </div>
+
+        <!-- Veritabanı sunucuları -->
+        <div id="t-db" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Yazılım</th><th class="font-medium px-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Durum</th><th class="font-medium px-3 py-2.5">Kullanım</th><th class="px-3"></th></tr></thead>
+              <tbody id="db" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Panelin kendi PostgreSQL'i (<span class="font-mono">servik-postgresql</span>) ayrı çalışır. Buradaki kurulum ve kaldırma işlemleri onu etkilemez.</p>
+        </div>
+
+        <!-- Diğer bileşenler -->
+        <div id="t-other" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Bileşen</th><th class="font-medium px-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Durum</th><th class="font-medium px-3 py-2.5">Kullanım</th><th class="px-3"></th></tr></thead>
+              <tbody id="other" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">PHP sürümleri <a href="hizmetler.html" class="text-accent hover:underline">Hizmetler</a> sayfasından yönetilir.</p>
+        </div>
+      </section>
+
+      <!-- Onay -->
+      <div id="cfModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+          <p id="cfTitle" class="font-semibold"></p>
+          <p id="cfText" class="mt-1 text-[13px] text-muted"></p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="cfCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="cfOk" class="h-9 px-3.5 rounded-md text-[13.5px] font-medium"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- İlerleme -->
+      <div id="jobModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="jobTitle">
+          <p id="jobTitle" class="font-semibold"></p>
+          <ol id="jobSteps" class="mt-3 space-y-2 text-[13px]"></ol>
+          <div class="mt-4 flex justify-end"><button id="jobClose" disabled class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px] disabled:opacity-40">Kapat</button></div>
+        </div>
+      </div>
+
+<script>
+  // ---- Ortak: onay ve ilerleme pencereleri ----
+  const cf = document.getElementById('cfModal'), cfOk = document.getElementById('cfOk');
+  let cfDo;
+  const confirmBox = (title, text, okText, danger, fn) => {
+    document.getElementById('cfTitle').textContent = title;
+    document.getElementById('cfText').textContent = text;
+    cfOk.textContent = okText;
+    cfOk.className = 'h-9 px-3.5 rounded-md text-[13.5px] font-medium ' + (danger ? 'bg-crit text-on-crit' : 'bg-accent text-accent-fg hover:brightness-110');
+    cfDo = fn; cf.hidden = false;
+  };
+  document.getElementById('cfCancel').onclick = () => cf.hidden = true;
+  cfOk.onclick = () => { cf.hidden = true; cfDo(); };
+
+  const jm = document.getElementById('jobModal'), js = document.getElementById('jobSteps'), jc = document.getElementById('jobClose');
+  jc.onclick = () => jm.hidden = true;
+  const runJob = (title, steps, done) => {
+    document.getElementById('jobTitle').textContent = title;
+    jc.disabled = true; jm.hidden = false;
+    const paint = k => {
+      js.innerHTML = steps.map((s, i) => `<li class="flex items-center gap-2.5 ${i > k ? 'text-muted' : ''}">${i < k
+        ? '<i data-lucide="check" class="w-4 h-4 text-ok"></i>'
+        : i === k ? '<i data-lucide="loader-circle" class="w-4 h-4 text-accent animate-spin"></i>' : '<i data-lucide="circle" class="w-4 h-4"></i>'}<span>${s}</span></li>`).join('');
+      lucide.createIcons();
+    };
+    let k = 0; paint(0);
+    const t = setInterval(() => {
+      k++; paint(k);
+      if (k >= steps.length) { clearInterval(t); jc.disabled = false; done(); }
+    }, 700);
+  };
+  const ST = {
+    on: '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kurulu</span>',
+    off: '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-muted whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-muted"></i>Kurulu değil</span>',
+  };
+
+  // ---- Tablolar: [ad, açıklama, sürüm, kurulu, kullanım, kurulum adımları, kaldırma etkisi, kilit nedeni] ----
+  const webs = [
+    ['Nginx', 'Tüm sitelerin önünde durur, statik dosyaları sunar', '1.26.2', 1, '24 site', '', '', 'Gerekli. Servik tüm sitelerde Nginx kullanır.'],
+    ['Apache', '.htaccess kullanan siteler için, Nginx arkasında çalışır', '2.4.62', 1, '5 site', '', '', 'Kullanılıyor. Önce siteleri Nginx\'e alın.'],
+    ['Brotli sıkıştırma', 'Nginx için gzip\'ten daha iyi sıkıştırma', '1.0.0', 0, '—', 'Nginx brotli modülü kuruluyor|Yapılandırma test ediliyor', 'Siteler yeniden gzip ile sıkıştırılır.', ''],
+  ];
+  const dbs = [
+    ['MySQL', 'Varsayılan veritabanı sunucusu', '8.4.3', 1, '31 veritabanı · 19 site', '', '', 'Kullanılıyor. Önce veritabanlarını taşıyın.'],
+    ['MariaDB', 'MySQL ile uyumlu alternatif', '11.4 LTS', 0, '—', '', '', 'MySQL ile aynı anda kurulamaz. Geçiş için destek kaydı açın.'],
+    ['PostgreSQL', 'Laravel ve Django uygulamaları için', '17.2', 0, '—', 'PostgreSQL 17 kuruluyor|Müşteri kümesi oluşturuluyor (port 5433)|Yedekleme ve izlemeye ekleniyor', 'Bu sunucudaki PostgreSQL veritabanları silinir.', ''],
+    ['phpMyAdmin', 'MySQL için tarayıcı arayüzü', '5.2.2', 1, 'Site sayfalarında', '', 'Siteler phpMyAdmin\'e erişemez.', ''],
+    ['pgAdmin', 'PostgreSQL için tarayıcı arayüzü', '8.12', 0, '—', 'pgAdmin 8 kuruluyor|Panel oturumuna bağlanıyor', '', ''],
+  ];
+  const others = [
+    ['Önbellek ve kuyruk', [
+      ['Redis', 'Önbellek, oturum ve Laravel kuyrukları', '7.4.1', 1, '7 Laravel uygulaması', '', '', 'Kullanılıyor. Önce uygulamaları başka sürücüye alın.'],
+      ['Memcached', 'Basit nesne önbelleği', '1.6.29', 0, '—', 'Memcached kuruluyor|PHP memcached eklentisi etkinleştiriliyor', 'Memcached kullanan sitelerin önbelleği kapanır.', ''],
+      ['Supervisor', 'Laravel kuyruk işçilerini çalışır tutar', '4.2.5', 1, '11 işçi', '', '', 'Kullanılıyor. Laravel kuyrukları durur.'],
+    ]],
+    ['Çalışma ortamları', [
+      ['Node.js 22 LTS', 'Vite derlemeleri ve Node uygulamaları', '22.11.0', 1, '4 site', '', 'Bu sürümü kullanan derlemeler çalışmaz.', ''],
+      ['Node.js 24', 'Yeni sürüm', '24.10.0', 0, '—', 'Node.js 24 kuruluyor|Site seçeneklerine ekleniyor', '', ''],
+      ['Composer', 'PHP paket yöneticisi', '2.8.3', 1, 'Tüm PHP siteleri', '', '', 'Laravel ve PHP siteleri için gerekli.'],
+      ['Python 3.12', 'Python uygulamaları (WSGI)', '3.12.3', 0, '—', 'Python 3.12 ve Gunicorn kuruluyor', '', ''],
+    ]],
+    ['E-posta', [
+      ['Roundcube', 'Webmail', '1.6.9', 1, '19 alan adı', '', 'Kullanıcılar tarayıcıdan postalarına ulaşamaz.', ''],
+      ['SnappyMail', 'Hafif webmail alternatifi', '2.38', 0, '—', 'SnappyMail kuruluyor|Webmail adresine ekleniyor', '', ''],
+    ]],
+    ['Güvenlik', [
+      ['Fail2ban', 'Kaba kuvvet saldırılarını engeller', '1.1.0', 1, 'SSH, FTP, posta, panel', '', '', 'Servik güvenlik izlemesi için gerekli.'],
+      ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP kuralları)', '3.0.13', 0, '—', 'ModSecurity ve OWASP CRS 4 kuruluyor|Web sunucusuna bağlanıyor|Yalnızca izleme kipinde başlatılıyor', '', ''],
+      ['ClamAV', 'Posta ve dosya virüs taraması', '1.4.1', 0, '—', 'ClamAV kuruluyor (yaklaşık 300 MB)|Virüs veritabanı indiriliyor|Rspamd taramasına bağlanıyor', '', ''],
+    ]],
+  ];
+  const row = (c, key) => {
+    const [n, desc, v, on, use, inst, rmImpact, lock] = c;
+    const act = on
+      ? (lock ? `<span class="text-[13px] text-muted opacity-50 cursor-not-allowed" title="${lock}">Kaldır</span>`
+              : `<button data-rm="${key}" class="text-[13px] text-muted hover:text-crit">Kaldır</button>`)
+      : (lock ? `<span class="text-2xs text-muted">${lock}</span>`
+              : `<button data-in="${key}" class="text-[13px] text-accent hover:underline">Kur</button>`);
+    return `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3"><span class="font-medium">${n}</span><span class="block text-2xs text-muted mt-0.5">${desc}</span></td>
+      <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap ${on ? '' : 'text-muted'}">${v}</td>
+      <td class="px-3 py-3">${on ? ST.on : ST.off}</td>
+      <td class="px-3 py-3 text-muted">${use}</td>
+      <td class="px-3 py-3 text-right max-w-[180px]">${act}</td></tr>`;
+  };
+  const webEl = document.getElementById('web'), dbEl = document.getElementById('db'), otEl = document.getElementById('other');
+  const drawTables = () => {
+    webEl.innerHTML = webs.map((c, i) => row(c, 'w' + i)).join('');
+    dbEl.innerHTML = dbs.map((c, i) => row(c, 'd' + i)).join('');
+    otEl.innerHTML = others.map(([g, list], gi) => `<tr class="bg-surface-2/60"><td colspan="5" class="px-5 py-2 text-2xs uppercase tracking-[.06em] text-muted font-medium">${g}</td></tr>` + list.map((c, i) => row(c, `o${gi}-${i}`)).join('')).join('');
+  };
+  const find = k => k[0] === 'w' ? webs[+k.slice(1)] : k[0] === 'd' ? dbs[+k.slice(1)] : (([g, i]) => others[g][1][i])(k.slice(1).split('-'));
+  const onTable = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.in) {
+      const c = find(b.dataset.in);
+      confirmBox(`${c[0]} ${c[2]} kurulsun mu?`, `Servik Agent paketleri Ubuntu depolarından kurar ve hizmeti başlatır. Siteler bu sırada çalışmaya devam eder.`, 'Kur', false,
+        () => runJob(`${c[0]} kuruluyor`, (c[5] || `${c[0]} kuruluyor`).split('|').concat('Hizmet başlatılıyor ve test ediliyor'), () => {
+          c[3] = 1; c[4] = 'Henüz kullanılmıyor'; drawTables(); toast(`${c[0]} kuruldu.`);
+        }));
+    }
+    if (b.dataset.rm) {
+      const c = find(b.dataset.rm);
+      confirmBox(`${c[0]} kaldırılsın mı?`, `${c[6] || 'Bu bileşeni kullanan bir şey yok.'} Kaldırmadan önce yapılandırması yedeklenir.`, 'Kaldır', true,
+        () => runJob(`${c[0]} kaldırılıyor`, ['Yapılandırma yedekleniyor', 'Hizmet durduruluyor', 'Paketler kaldırılıyor'], () => {
+          c[3] = 0; c[4] = '—'; drawTables(); toast(`${c[0]} kaldırıldı.`, true);
+        }));
+    }
+  };
+  webEl.addEventListener('click', onTable); dbEl.addEventListener('click', onTable);
+  document.getElementById('defForm').addEventListener('submit', e => { e.preventDefault(); toast('Yeni siteler için varsayılan kaydedildi.'); }); otEl.addEventListener('click', onTable);
+  drawTables();
+
+  // ---- Sekmeler ----
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => { setTab(t.dataset.tab); history.replaceState(null, '', '#' + t.dataset.tab.slice(2)); });
+  setTab({ db: 't-db', other: 't-other' }[location.hash.slice(1)] || 't-web');
+</script>

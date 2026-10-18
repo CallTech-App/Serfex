@@ -1,0 +1,141 @@
+      <!-- Başlık -->
+      <div>
+        <nav class="text-[13px] text-muted flex items-center gap-1.5" aria-label="Konum"><a href="siteler.html" class="hover:text-accent">Siteler</a><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span class="font-mono text-fg">kahveatolyesi.com.tr</span></nav>
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-3 justify-between">
+          <div class="flex items-center gap-3 min-w-0">
+            <h1 class="text-[22px] font-semibold tracking-tight font-mono truncate"><a href="#" class="hover:text-accent">kahveatolyesi.com.tr</a></h1>
+            <div class="relative">
+              <button id="stBtn" class="inline-flex items-center gap-1.5 text-[13px] font-medium px-2 py-1 rounded-md hover:bg-surface-2"><i class="w-2 h-2 rounded-full bg-ok"></i><span id="stTxt">Yayında</span><i data-lucide="chevron-down" class="w-3.5 h-3.5 text-muted"></i></button>
+              <div id="stMenu" hidden class="absolute left-0 top-full mt-1 z-20 w-48 rounded-lg border border-line bg-surface shadow-lg py-1 text-[13.5px]">
+                <button data-toast="kahveatolyesi.com.tr askıya alındı." data-undo="1" class="w-full text-left px-3 py-2 hover:bg-surface-2">Askıya al</button>
+                <button data-toast="Site kapatıldı, ziyaretçiler bakım sayfası görüyor." data-undo="1" class="w-full text-left px-3 py-2 hover:bg-surface-2">Bakım moduna al</button>
+              </div>
+            </div>
+            <div class="relative">
+              <button id="moreBtn" class="w-8 h-8 grid place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg" aria-label="Diğer işlemler"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+              <div id="moreMenu" hidden class="absolute left-0 top-full mt-1 z-20 w-52 rounded-lg border border-line bg-surface shadow-lg py-1 text-[13.5px]">
+                <a href="#" class="block px-3 py-2 hover:bg-surface-2">Alan adını değiştir</a>
+                <a href="#" class="block px-3 py-2 hover:bg-surface-2">Başka müşteriye taşı</a>
+                <button id="delOpen" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-crit">Siteyi sil</button>
+              </div>
+            </div>
+          </div>
+          <a href="#" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="external-link" class="w-4 h-4"></i>Siteyi aç</a>
+        </div>
+      </div>
+
+      <!-- Durum şeridi -->
+      <section class="rounded-xl border border-line bg-surface grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 divide-line [&>div]:p-4 [&>div]:border-line [&>div]:border-b xl:[&>div]:border-b-0 [&>div:not(:last-child)]:border-r text-[13px]">
+        <div><p class="text-2xs text-muted">Web sunucusu</p><p class="mt-1 font-medium">Nginx · PHP 8.3</p><a href="php-ayarlari.html" class="text-2xs text-accent hover:underline">Değiştir</a></div>
+        <div><p class="text-2xs text-muted">SSL</p><p class="mt-1 font-medium text-ok">Geçerli, 82 gün</p><span class="text-2xs text-muted">Let's Encrypt, otomatik</span></div>
+        <div><p class="text-2xs text-muted">Son yedek</p><p class="mt-1 font-medium">Bugün 03:00</p><a href="yedekler.html" class="text-2xs text-accent hover:underline">Geri yükle</a></div>
+        <div><p class="text-2xs text-muted">Disk</p><p class="mt-1 font-medium num">6,8 / 20 GB</p><div class="mt-1.5 h-1.5 rounded-full bg-surface-2 overflow-hidden"><span class="block h-full bg-accent" style="width:34%"></span></div></div>
+        <div><p class="text-2xs text-muted">Trafik (Ekim)</p><p class="mt-1 font-medium num">182 / 500 GB</p><div class="mt-1.5 h-1.5 rounded-full bg-surface-2 overflow-hidden"><span class="block h-full bg-accent" style="width:36%"></span></div></div>
+        <div><p class="text-2xs text-muted">Sunucu</p><p class="mt-1 font-mono text-[12.5px]">185.98.142.21</p><span class="text-2xs text-muted font-mono">kahveatolyesi · httpdocs/</span></div>
+      </section>
+
+      <!-- Araçlar -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-[15px] font-semibold">Site araçları</h2>
+        <label class="relative w-full sm:w-64">
+          <span class="sr-only">Araç ara</span>
+          <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="tq" type="search" placeholder="Araç ara, örneğin cron" class="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-line focus:border-accent outline-none text-[13.5px]">
+        </label>
+      </div>
+      <div id="tools" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start"></div>
+      <p id="tnone" hidden class="text-[13px] text-muted">Aramanızla eşleşen araç yok.</p>
+
+      <!-- Silme onayı -->
+      <div id="delModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+          <p id="delTitle" class="font-semibold">kahveatolyesi.com.tr silinsin mi?</p>
+          <p class="mt-1 text-[13px] text-muted">Dosyalar, 2 veritabanı, 6 posta kutusu ve DNS bölgesi silinir. Son yedek bugün 03:00'te alındı.</p>
+          <label for="delInput" class="block mt-4 text-[13px]">Onaylamak için alan adını yazın</label>
+          <input id="delInput" autocomplete="off" class="mt-1.5 w-full h-9 px-3 rounded-md border border-line bg-surface focus:border-crit outline-none font-mono text-[13px]" placeholder="kahveatolyesi.com.tr">
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="delCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="delOk" disabled class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium disabled:opacity-40 disabled:cursor-not-allowed">Siteyi sil</button>
+          </div>
+        </div>
+      </div>
+
+<script>
+  // Servik site araçları: işe göre gruplanmış kartlar, her satır bir araç. [ikon, ad, durum, bağlantı, ton, arama sözcükleri]
+  const GROUPS = [
+    ['Dosya ve veri', 'folder', [
+      ['folder', 'Dosya Yöneticisi', '', 'dosyalar-detay.html'],
+      ['hard-drive-upload', 'FTP hesapları', '2 hesap', '#'],
+      ['database', 'Veritabanları', '2 veritabanı', 'veritabanlari.html'],
+      ['archive-restore', 'Yedekler', 'Bugün 03:00', 'yedekler.html'],
+      ['key-round', 'Bağlantı bilgileri', 'FTP, SSH, veritabanı', '#'],
+      ['copy', 'Siteyi kopyala', 'Hazırlık ortamı için', '#'],
+    ]],
+    ['Geliştirme', 'code', [
+      ['code', 'PHP ve web sunucusu', 'PHP 8.3 · Nginx', 'php-ayarlari.html', '', 'php ini handler apache nginx'],
+      ['terminal', 'SSH terminali', 'Tarayıcıda', '#'],
+      ['clock', 'Zamanlanmış görevler', '3 görev', '#', '', 'cron'],
+      ['git-branch', 'Git dağıtımı', 'Bağlı değil', '#'],
+      ['package', 'Composer', '', '#'],
+      ['hexagon', 'Node.js', 'Kapalı', '#'],
+      ['file-text', 'Günlükler', 'Erişim ve hata', '#', '', 'log'],
+    ]],
+    ['Uygulamalar', 'blocks', [
+      ['blocks', 'WordPress', '2 güncelleme', '#', 'warn'],
+      ['layers', 'Laravel', 'Kurulu değil', 'laravel.html'],
+      ['download', 'Başka sunucudan taşı', '', '#', '', 'import içe aktar'],
+      ['zap', 'Önbellek ve hız', 'Önbellek kapalı', '#', 'warn', 'performans cache'],
+      ['gauge', 'Kaynak kullanımı', 'Normal', 'canli-izleme.html'],
+    ]],
+    ['Alan adı ve DNS', 'network', [
+      ['network', 'DNS kayıtları', '12 kayıt', 'dns-detay.html'],
+      ['globe', 'Alt alan adları', '2', '#'],
+      ['link', 'Ek alan adları', 'atolyekahve.com', '#', '', 'alias takma'],
+      ['corner-up-right', 'Yönlendirmeler', '1', '#', '', 'redirect'],
+    ]],
+    ['E-posta', 'mail', [
+      ['mail', 'Posta kutuları', '6 / 10', 'eposta-detay.html'],
+      ['forward', 'Yönlendiriciler', '3', 'eposta-detay.html'],
+      ['inbox', 'Webmail', 'Roundcube', '#'],
+      ['badge-check', 'DKIM, SPF, DMARC', 'Tamam', 'dns-detay.html', 'ok'],
+    ]],
+    ['Güvenlik', 'shield', [
+      ['shield-check', 'SSL sertifikası', '82 gün', 'ssl.html', 'ok'],
+      ['folder-lock', 'Parola korumalı dizinler', '', '#'],
+      ['shield', 'Güvenlik duvarı (WAF)', 'İzleme kipinde', '#', '', 'modsecurity'],
+      ['scan-search', 'Kötü amaçlı yazılım taraması', 'Dün, temiz', 'guvenlik.html', '', 'virüs'],
+    ]],
+  ];
+  const TONE = { warn: 'text-warn', ok: 'text-ok' };
+  const toolsEl = document.getElementById('tools');
+  const draw = q => {
+    let any = 0;
+    toolsEl.innerHTML = GROUPS.map(([g, gic, items]) => {
+      const list = items.filter(t => !q || (t[1] + ' ' + (t[5] || '') + ' ' + g).toLocaleLowerCase('tr').includes(q));
+      if (!list.length) return '';
+      any += list.length;
+      return `<section class="rounded-xl border border-line bg-surface">
+        <h3 class="px-4 h-11 flex items-center gap-2 border-b border-line text-[13.5px] font-semibold"><i data-lucide="${gic}" class="w-4 h-4 text-accent"></i>${g}</h3>
+        <ul class="p-1.5">${list.map(([ic, name, st, href, tone]) => `
+          <li><a href="${href}" class="flex items-center gap-3 px-2.5 h-10 rounded-md hover:bg-surface-2 text-[13.5px]">
+            <i data-lucide="${ic}" class="w-4 h-4 text-muted shrink-0"></i><span class="truncate">${name}</span>
+            <span class="ml-auto text-2xs whitespace-nowrap ${TONE[tone] || 'text-muted'}">${st}</span></a></li>`).join('')}
+        </ul></section>`;
+    }).join('');
+    document.getElementById('tnone').hidden = !!any;
+    lucide.createIcons();
+  };
+  document.getElementById('tq').oninput = e => draw(e.target.value.trim().toLocaleLowerCase('tr'));
+  draw('');
+
+  // Açılır menüler
+  const pop = (b, m) => { document.getElementById(b).onclick = e => { e.stopPropagation(); const el = document.getElementById(m); const was = el.hidden; document.querySelectorAll('#stMenu,#moreMenu').forEach(x => x.hidden = true); el.hidden = !was; }; };
+  pop('stBtn', 'stMenu'); pop('moreBtn', 'moreMenu');
+  document.addEventListener('click', () => document.querySelectorAll('#stMenu,#moreMenu').forEach(x => x.hidden = true));
+
+  const dm = document.getElementById('delModal'), di = document.getElementById('delInput'), dok = document.getElementById('delOk');
+  document.getElementById('delOpen').onclick = () => { dm.hidden = false; di.value = ''; dok.disabled = true; di.focus(); };
+  document.getElementById('delCancel').onclick = () => { dm.hidden = true; };
+  di.oninput = () => { dok.disabled = di.value.trim() !== 'kahveatolyesi.com.tr'; };
+  dok.onclick = () => { dm.hidden = true; toast('Silme işlemi başladı.'); };
+</script>

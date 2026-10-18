@@ -1,0 +1,64 @@
+<div class="flex min-h-full">
+
+  <!-- Kenar menüsü -->
+  <aside id="sidebar" class="drawer fixed inset-y-0 left-0 z-40 w-64 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 bg-nav text-nav-fg flex flex-col border-r border-nav-line">
+    <div class="h-14 flex items-center gap-2.5 px-5 border-b border-nav-line">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <rect width="26" height="26" rx="6" fill="rgb(var(--accent))"/>
+        <rect x="6" y="6.5" width="14" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
+        <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))" opacity=".75"/>
+        <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
+      </svg>
+      <span class="text-[17px] font-semibold tracking-tight">servik</span>
+      <span class="ml-auto text-2xs font-mono text-nav-muted">v1.4.1</span>
+    </div>
+
+    {{NAV}}
+
+    <div class="p-3 border-t border-nav-line space-y-3">
+      <a href="guncellemeler.html" class="flex items-center gap-2 rounded-md bg-nav-active px-3 h-9 text-[13px] hover:text-white"><i data-lucide="download" class="w-4 h-4 text-accent"></i>Servik 1.4.2 hazır<span class="ml-auto text-2xs text-accent font-medium">Güncelle</span></a>
+      <a href="tasarim-sistemi.html" class="block px-3 text-2xs text-nav-muted hover:text-white">Tasarım sistemi (taslak)</a>
+      <div class="flex items-center gap-3 px-1">
+        <div class="w-8 h-8 rounded-full bg-accent/20 text-accent grid place-items-center text-xs font-semibold">SY</div>
+        <div class="min-w-0 leading-tight">
+          <p class="text-[13px] font-medium truncate">Sercan Yılmaz</p>
+          <p class="text-2xs text-nav-muted">Sunucu yöneticisi</p>
+        </div>
+        <button class="ml-auto text-nav-muted hover:text-white" aria-label="Çıkış yap"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+  </aside>
+  <div id="scrim" class="fixed inset-0 z-30 bg-black/40 hidden lg:hidden"></div>
+
+  <!-- Çalışma alanı -->
+  <div class="flex-1 min-w-0 flex flex-col">
+    <header class="sticky top-0 z-20 h-14 bg-surface/90 backdrop-blur border-b border-line flex items-center gap-3 px-4 lg:px-8">
+      <button id="menuBtn" class="lg:hidden -ml-1 p-2 rounded-md hover:bg-surface-2" aria-label="Menüyü aç"><i data-lucide="menu" class="w-5 h-5"></i></button>
+
+      <button class="hidden sm:flex items-center gap-2 h-9 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">
+        <span class="w-2 h-2 rounded-full bg-ok"></span>
+        <span class="font-mono">srv-ist-01</span>
+        <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-muted"></i>
+      </button>
+
+      <label class="flex-1 max-w-xl relative">
+        <span class="sr-only">Ara</span>
+        <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+        <input id="search" type="search" placeholder="Site, alan adı, e-posta veya komut ara" class="w-full h-9 pl-9 pr-14 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px] placeholder:text-muted">
+        <kbd class="hidden md:block absolute right-2.5 top-1/2 -translate-y-1/2 text-2xs font-mono text-muted border border-line rounded px-1.5 py-0.5 bg-surface">Ctrl K</kbd>
+      </label>
+
+      <div class="ml-auto flex items-center gap-1">
+        <button id="aiBtn" class="flex items-center gap-2 h-9 px-3 rounded-md bg-accent-soft text-accent hover:bg-accent/15 text-[13px] font-medium">
+          <i data-lucide="sparkles" class="w-4 h-4"></i><span class="hidden md:inline">Servik AI</span>
+        </button>
+        <button class="relative p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Bildirimler">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crit ring-2 ring-surface"></span>
+        </button>
+        <button id="themeBtn" class="p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Temayı değiştir">
+          <i data-lucide="sun-moon" class="w-[18px] h-[18px]"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 lg:px-8 py-6 lg:py-8 space-y-6 max-w-[1440px] w-full mx-auto">

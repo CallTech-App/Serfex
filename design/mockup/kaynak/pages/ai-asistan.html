@@ -1,0 +1,111 @@
+      <!-- Başlık -->
+      <div class="flex flex-wrap items-end gap-4 justify-between">
+        <div>
+          <h1 class="text-[22px] font-semibold tracking-tight">Servik AI</h1>
+          <p class="mt-1 text-[13px] text-muted">Sunucunuz hakkında soru sorun; değişiklikleri onayınızla yapar.</p>
+        </div>
+        <button id="newChat" class="h-9 px-3.5 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Yeni sohbet</button>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0 grid grid-cols-1 md:grid-cols-[240px_1fr] md:h-[calc(100vh-12.5rem)] md:min-h-[560px] overflow-hidden">
+        <!-- Geçmiş sohbetler -->
+        <nav class="hidden md:flex flex-col border-r border-line min-h-0" aria-label="Sohbetler">
+          <p class="px-4 h-11 flex items-center border-b border-line text-2xs uppercase tracking-[.06em] text-muted font-medium">Sohbetler</p>
+          <div id="chats" class="flex-1 overflow-y-auto scroll-thin p-2 space-y-0.5 text-[13px]"></div>
+        </nav>
+
+        <!-- Konuşma -->
+        <div class="flex flex-col min-w-0 min-h-0">
+          <div class="px-5 h-11 flex items-center gap-2 border-b border-line">
+            <h2 class="text-[14px] font-semibold truncate">magazaonline neden yavaş?</h2>
+            <span class="ml-auto text-2xs text-muted num whitespace-nowrap">Bugün 23:44</span>
+          </div>
+
+          <div id="log" class="flex-1 overflow-y-auto scroll-thin px-5 py-5 space-y-5 text-[13.5px] leading-relaxed">
+            <!-- Kullanıcı -->
+            <div class="flex justify-end">
+              <div class="max-w-[85%] sm:max-w-[70%] rounded-2xl rounded-br-md bg-surface-2 px-4 py-2.5">magazaonline neden bu kadar yavaş? Müşteri aradı, ödeme sayfası açılmıyor diyor.</div>
+            </div>
+
+            <!-- Yanıt -->
+            <div class="flex gap-3 max-w-3xl">
+              <span class="w-7 h-7 rounded-full bg-accent-soft text-accent grid place-items-center shrink-0"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></span>
+              <div class="min-w-0 space-y-3">
+                <p><span class="font-mono text-[13px]">magazaonline.com.tr</span> giriş sayfasına yönelik bir kaba kuvvet saldırısı altında ve ödeme sayfası da bundan etkileniyor. 23:28'den beri üç IP adresi <span class="font-mono text-[13px]">/wp-login.php</span> adresine saniyede ortalama <span class="num">41</span> istek gönderiyor.</p>
+                <p>Bu istekler sitenin 12 PHP işçisinin hepsini meşgul ediyor; ödeme sayfası dahil gerçek ziyaretçiler sırada bekliyor ve çoğu zaman aşımına düşüyor.</p>
+                <div class="rounded-lg border border-line overflow-x-auto scroll-thin">
+                  <table class="w-full text-[13px] min-w-[420px]">
+                    <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-3 py-2">IP adresi</th><th class="font-medium px-3 py-2">Konum</th><th class="font-medium px-3 py-1.5 text-right">İstek (30 dk)</th></tr></thead>
+                    <tbody class="divide-y divide-line">
+                      <tr><td class="px-3 py-1.5 font-mono">45.155.205.233</td><td class="px-3 py-1.5 text-muted">Hollanda · AS204428</td><td class="px-3 py-1.5 text-right num">38.420</td></tr>
+                      <tr><td class="px-3 py-1.5 font-mono">193.42.33.117</td><td class="px-3 py-1.5 text-muted">Romanya · AS48693</td><td class="px-3 py-1.5 text-right num">24.910</td></tr>
+                      <tr><td class="px-3 py-1.5 font-mono">103.153.79.6</td><td class="px-3 py-1.5 text-muted">Vietnam · AS135905</td><td class="px-3 py-1.5 text-right num">10.380</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>Bu üç adresi 1 saatliğine engelledim; bu benim onaysız yapabildiğim işlemlerden biri. Saldırının geri dönmemesi için kalıcı çözüm giriş sayfasına hız sınırı koymak. Bu bir yapılandırma değişikliği olduğu için onayınızı bekliyorum.</p>
+
+                <!-- Onay kartı -->
+                <div id="card" class="rounded-lg border border-line bg-surface">
+                  <div class="px-4 py-3 flex items-start gap-3">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-accent mt-0.5 shrink-0"></i>
+                    <div class="min-w-0">
+                      <p class="font-medium">Giriş sayfasına hız sınırı koy</p>
+                      <p class="text-[13px] text-muted">IP başına dakikada en fazla 10 giriş denemesi. Nginx kesintisiz yeniden yüklenir, istediğiniz zaman geri alınabilir.</p>
+                    </div>
+                  </div>
+                  <div id="cardFoot" class="px-4 py-3 border-t border-line flex items-center gap-2">
+                    <button id="ok" class="h-8 px-3 rounded-md bg-accent text-accent-fg hover:brightness-110 text-[13px] font-medium">Onayla</button>
+                    <button id="no" class="h-8 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">Vazgeç</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Yazma alanı -->
+          <div class="border-t border-line px-5 py-4">
+            <div class="flex gap-2 mb-3 overflow-x-auto scroll-thin">
+              <button class="chip shrink-0 whitespace-nowrap h-8 px-3 rounded-full border border-line hover:bg-surface-2 text-[13px]">Başka bir sebep var mı?</button>
+              <button class="chip shrink-0 whitespace-nowrap h-8 px-3 rounded-full border border-line hover:bg-surface-2 text-[13px]">Engellenen IP'leri göster</button>
+              <button class="chip shrink-0 whitespace-nowrap h-8 px-3 rounded-full border border-line hover:bg-surface-2 text-[13px]">Müşteriye ne söyleyeyim?</button>
+            </div>
+            <form id="compose" class="flex items-end gap-2 rounded-lg border border-line focus-within:border-accent bg-surface px-3 py-2">
+              <label for="msg" class="sr-only">Mesaj</label>
+              <textarea id="msg" rows="1" placeholder="Servik AI'a sorun" class="flex-1 min-w-0 resize-none bg-transparent outline-none text-[13.5px] py-1.5"></textarea>
+              <button type="submit" aria-label="Gönder" class="h-8 w-8 rounded-md bg-accent text-accent-fg hover:brightness-110 grid place-items-center shrink-0"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+            </form>
+            <p class="mt-2 text-2xs text-muted">IP engelleme ve geçici sınırlar dışında her işlem onayınızla yapılır · İzinler: <a href="guvenlik.html" class="text-accent hover:underline">Güvenlik &gt; Ayarlar</a></p>
+          </div>
+        </div>
+      </section>
+
+<script>
+  const chats = ['magazaonline neden yavaş?', 'staging.hizlikargo.app dağıtımı neden başarısız?', 'SendInvoiceJob kuyruğu takıldı', 'eski.kahveatolyesi SSL yenilenmiyor', 'Atlas bülteni spam klasörüne düşüyor mu?', 'Disk kullanımı neden arttı?'];
+  const cEl = document.getElementById('chats');
+  cEl.innerHTML = chats.map((t, i) => `<a href="#" class="block px-3 py-1.5 rounded-md truncate ${i ? 'text-muted hover:bg-surface-2 hover:text-fg' : 'bg-surface-2 font-medium'}">${t}</a>`).join('');
+
+  const foot = document.getElementById('cardFoot');
+  const done = (ok) => {
+    foot.innerHTML = ok
+      ? '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Uygulandı · 23:51</span><button id="undo" class="ml-auto text-[13px] text-muted hover:text-fg">Geri al</button>'
+      : '<span class="text-[13px] text-muted">Vazgeçildi. Değişiklik yapılmadı.</span>';
+    const u = document.getElementById('undo');
+    if (u) u.onclick = () => { foot.innerHTML = '<span class="text-[13px] text-muted">Geri alındı. Hız sınırı kaldırıldı.</span>'; toast('Hız sınırı kaldırıldı.'); };
+    toast(ok ? 'Giriş sayfasına hız sınırı kondu.' : 'Öneri reddedildi.');
+  };
+  document.getElementById('ok').onclick = () => done(true);
+  document.getElementById('no').onclick = () => done(false);
+
+  const msg = document.getElementById('msg'), log = document.getElementById('log');
+  log.scrollTop = log.scrollHeight;
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => { msg.value = c.textContent; msg.focus(); });
+  document.getElementById('compose').addEventListener('submit', e => {
+    e.preventDefault();
+    const t = msg.value.trim(); if (!t) return;
+    const d = document.createElement('div'); d.className = 'flex justify-end';
+    const b = document.createElement('div'); b.className = 'max-w-[85%] sm:max-w-[70%] rounded-2xl rounded-br-md bg-surface-2 px-4 py-2.5'; b.textContent = t;
+    d.appendChild(b); log.appendChild(d); msg.value = ''; log.scrollTop = log.scrollHeight;
+  });
+  document.getElementById('newChat').onclick = () => toast('Yeni sohbet başlatıldı.');
+</script>

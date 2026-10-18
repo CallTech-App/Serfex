@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Servik Yazılım Yönetimi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Yerleşim: koyu petrol kenar menüsü + açık çalışma alanı; özet üstte, ayrıntı altta. 4px ızgara. */
+  :root {
+    --bg: 245 247 247; --surface: 255 255 255; --surface-2: 240 243 243; --line: 222 228 229;
+    --fg: 17 25 28; --muted: 90 104 109;
+    --accent: 13 116 121; --accent-fg: 255 255 255; --accent-soft: 223 240 240;
+    --ok: 21 128 76; --ok-soft: 224 243 232;
+    --warn: 176 104 0; --warn-soft: 252 241 220;
+    --crit: 196 38 46; --crit-soft: 252 231 231; --on-crit: 255 255 255;
+    --info: 37 99 185; --info-soft: 226 236 251;
+    --nav: 14 31 34; --nav-fg: 222 233 234; --nav-muted: 132 157 161; --nav-line: 33 54 58; --nav-active: 26 52 56;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: 11 16 18; --surface: 18 25 27; --surface-2: 25 33 36; --line: 38 50 53;
+      --fg: 228 235 236; --muted: 140 156 160;
+      --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
+      --ok: 76 200 132; --ok-soft: 17 46 32;
+      --warn: 236 170 62; --warn-soft: 55 39 14;
+      --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+      --info: 112 162 240; --info-soft: 21 36 62;
+      --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: 11 16 18; --surface: 18 25 27; --surface-2: 25 33 36; --line: 38 50 53;
+    --fg: 228 235 236; --muted: 140 156 160;
+    --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
+    --ok: 76 200 132; --ok-soft: 17 46 32;
+    --warn: 236 170 62; --warn-soft: 55 39 14;
+    --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+    --info: 112 162 240; --info-soft: 21 36 62;
+    --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  html, body { overflow-x: clip; }
+  body { background: rgb(var(--bg)); color: rgb(var(--fg)); font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  .num { font-variant-numeric: tabular-nums; }
+  h1, h2, h3 { text-wrap: balance; }
+  :focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; border-radius: 6px; }
+  .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; }
+  .drawer { transition: transform .22s ease; }
+  @media (prefers-reduced-motion: reduce) { .drawer, .toast { transition: none !important; } }
+  main > .fixed { margin-top: 0 !important; }
+  [hidden] { display: none !important; }
+  .toast { transition: opacity .2s ease, transform .2s ease; }
+</style>
+
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  const v = n => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        bg: v('bg'), surface: v('surface'), 'surface-2': v('surface-2'), line: v('line'),
+        fg: v('fg'), muted: v('muted'),
+        accent: v('accent'), 'accent-fg': v('accent-fg'), 'accent-soft': v('accent-soft'),
+        ok: v('ok'), 'ok-soft': v('ok-soft'), warn: v('warn'), 'warn-soft': v('warn-soft'),
+        crit: v('crit'), 'on-crit': v('on-crit'), 'crit-soft': v('crit-soft'), info: v('info'), 'info-soft': v('info-soft'),
+        nav: v('nav'), 'nav-fg': v('nav-fg'), 'nav-muted': v('nav-muted'), 'nav-line': v('nav-line'), 'nav-active': v('nav-active'),
+      },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      fontSize: { '2xs': ['11px', '16px'] },
+    } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+
+</head>
+<body>
+<div class="flex min-h-full">
+
+  <!-- Kenar menüsü -->
+  <aside id="sidebar" class="drawer fixed inset-y-0 left-0 z-40 w-64 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 bg-nav text-nav-fg flex flex-col border-r border-nav-line">
+    <div class="h-14 flex items-center gap-2.5 px-5 border-b border-nav-line">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <rect width="26" height="26" rx="6" fill="rgb(var(--accent))"/>
+        <rect x="6" y="6.5" width="14" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
+        <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))" opacity=".75"/>
+        <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
+      </svg>
+      <span class="text-[17px] font-semibold tracking-tight">servik</span>
+      <span class="ml-auto text-2xs font-mono text-nav-muted">v1.4.1</span>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto scroll-thin px-3 py-4 space-y-6 text-[13.5px]" aria-label="Ana menü">
+      <div>
+        <div class="space-y-0.5">
+          <a href="index.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="layout-dashboard" class="w-4 h-4"></i>Genel Bakış</a>
+          <a href="canli-izleme.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="activity" class="w-4 h-4"></i>Canlı İzleme<span class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-crit text-on-crit text-2xs font-semibold grid place-items-center num">2</span></a>
+          <a href="ai-asistan.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="sparkles" class="w-4 h-4"></i>Servik AI</a>
+        </div>
+      </div>
+      <div>
+        <p class="px-3 mb-1.5 text-2xs uppercase tracking-[.08em] text-nav-muted font-medium">Barındırma</p>
+        <div class="space-y-0.5">
+          <a href="siteler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="globe" class="w-4 h-4"></i>Siteler<span class="ml-auto text-2xs text-nav-muted num">24</span></a>
+          <a href="laravel.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="layers" class="w-4 h-4"></i>Laravel<span class="ml-auto text-2xs text-nav-muted num">7</span></a>
+          <a href="dns.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="network" class="w-4 h-4"></i>Alan Adları ve DNS</a>
+          <a href="eposta.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="mail" class="w-4 h-4"></i>E-posta</a>
+          <a href="veritabanlari.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="database" class="w-4 h-4"></i>Veritabanları</a>
+          <a href="ssl.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="shield-check" class="w-4 h-4"></i>SSL Sertifikaları</a>
+        </div>
+      </div>
+      <div>
+        <p class="px-3 mb-1.5 text-2xs uppercase tracking-[.08em] text-nav-muted font-medium">Hesaplar</p>
+        <div class="space-y-0.5">
+          <a href="musteriler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="users" class="w-4 h-4"></i>Müşteriler ve Paketler</a>
+        </div>
+      </div>
+      <div>
+        <p class="px-3 mb-1.5 text-2xs uppercase tracking-[.08em] text-nav-muted font-medium">Sunucu</p>
+        <div class="space-y-0.5">
+          <a href="guvenlik.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="shield-alert" class="w-4 h-4"></i>Güvenlik</a>
+          <a href="yedekler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="archive" class="w-4 h-4"></i>Yedekler</a>
+          <a href="hizmetler.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="server-cog" class="w-4 h-4"></i>Hizmetler</a>
+          <a href="bilesenler.html" aria-current="page" class="flex items-center gap-3 px-3 h-9 rounded-md bg-nav-active text-white font-medium"><i data-lucide="package-plus" class="w-4 h-4 text-accent"></i>Yazılım Yönetimi</a>
+          <a href="ayarlar.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="settings" class="w-4 h-4"></i>Araçlar ve Ayarlar</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="p-3 border-t border-nav-line space-y-3">
+      <a href="guncellemeler.html" class="flex items-center gap-2 rounded-md bg-nav-active px-3 h-9 text-[13px] hover:text-white"><i data-lucide="download" class="w-4 h-4 text-accent"></i>Servik 1.4.2 hazır<span class="ml-auto text-2xs text-accent font-medium">Güncelle</span></a>
+      <a href="tasarim-sistemi.html" class="block px-3 text-2xs text-nav-muted hover:text-white">Tasarım sistemi (taslak)</a>
+      <div class="flex items-center gap-3 px-1">
+        <div class="w-8 h-8 rounded-full bg-accent/20 text-accent grid place-items-center text-xs font-semibold">SY</div>
+        <div class="min-w-0 leading-tight">
+          <p class="text-[13px] font-medium truncate">Sercan Yılmaz</p>
+          <p class="text-2xs text-nav-muted">Sunucu yöneticisi</p>
+        </div>
+        <button class="ml-auto text-nav-muted hover:text-white" aria-label="Çıkış yap"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+  </aside>
+  <div id="scrim" class="fixed inset-0 z-30 bg-black/40 hidden lg:hidden"></div>
+
+  <!-- Çalışma alanı -->
+  <div class="flex-1 min-w-0 flex flex-col">
+    <header class="sticky top-0 z-20 h-14 bg-surface/90 backdrop-blur border-b border-line flex items-center gap-3 px-4 lg:px-8">
+      <button id="menuBtn" class="lg:hidden -ml-1 p-2 rounded-md hover:bg-surface-2" aria-label="Menüyü aç"><i data-lucide="menu" class="w-5 h-5"></i></button>
+
+      <button class="hidden sm:flex items-center gap-2 h-9 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">
+        <span class="w-2 h-2 rounded-full bg-ok"></span>
+        <span class="font-mono">srv-ist-01</span>
+        <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-muted"></i>
+      </button>
+
+      <label class="flex-1 max-w-xl relative">
+        <span class="sr-only">Ara</span>
+        <i data-lucide="search" class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+        <input id="search" type="search" placeholder="Site, alan adı, e-posta veya komut ara" class="w-full h-9 pl-9 pr-14 rounded-md bg-surface-2 border border-transparent focus:border-accent focus:bg-surface outline-none text-[13.5px] placeholder:text-muted">
+        <kbd class="hidden md:block absolute right-2.5 top-1/2 -translate-y-1/2 text-2xs font-mono text-muted border border-line rounded px-1.5 py-0.5 bg-surface">Ctrl K</kbd>
+      </label>
+
+      <div class="ml-auto flex items-center gap-1">
+        <button id="aiBtn" class="flex items-center gap-2 h-9 px-3 rounded-md bg-accent-soft text-accent hover:bg-accent/15 text-[13px] font-medium">
+          <i data-lucide="sparkles" class="w-4 h-4"></i><span class="hidden md:inline">Servik AI</span>
+        </button>
+        <button class="relative p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Bildirimler">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crit ring-2 ring-surface"></span>
+        </button>
+        <button id="themeBtn" class="p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Temayı değiştir">
+          <i data-lucide="sun-moon" class="w-[18px] h-[18px]"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 lg:px-8 py-6 lg:py-8 space-y-6 max-w-[1440px] w-full mx-auto">
+      <!-- Başlık -->
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-tight">Yazılım Yönetimi</h1>
+        <p class="mt-1 text-[13px] text-muted">Sunucuya web sunucusu, veritabanı sunucusu ve diğer yazılımları kurun veya kaldırın. Bir adım başarısız olursa değişiklik otomatik geri alınır.</p>
+      </div>
+
+      <section class="rounded-xl border border-line bg-surface min-w-0">
+        <div class="px-5 flex gap-5 border-b border-line text-[13.5px] overflow-x-auto scroll-thin" role="tablist">
+          <button role="tab" data-tab="t-web" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Web sunucusu</button>
+          <button role="tab" data-tab="t-db" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Veritabanı sunucuları</button>
+          <button role="tab" data-tab="t-other" class="tab h-12 border-b-2 -mb-px whitespace-nowrap">Diğer bileşenler</button>
+        </div>
+
+        <!-- Web sunucusu -->
+        <div id="t-web" class="panel">
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Yazılım</th><th class="font-medium px-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Durum</th><th class="font-medium px-3 py-2.5">Kullanım</th><th class="px-3"></th></tr></thead>
+              <tbody id="web" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <form id="defForm" class="px-5 py-4 border-t border-line grid grid-cols-1 md:grid-cols-[220px_1fr] gap-x-6 gap-y-2 text-[13.5px]">
+            <label for="defH" class="md:pt-2 font-medium">Yeni siteler için varsayılan</label>
+            <div class="flex flex-wrap items-center gap-3">
+              <select id="defH" class="h-9 px-2.5 rounded-md border border-line bg-surface w-full sm:w-80">
+                <option selected>Nginx + PHP-FPM</option><option>Nginx + PHP-FPM, siteye özel havuz</option>
+                <option>Nginx + Apache + PHP-FPM</option><option>Nginx + Apache + PHP-FPM, siteye özel havuz</option>
+              </select>
+              <button class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kaydet</button>
+              <p class="w-full text-[13px] text-muted">Var olan bir sitenin web sunucusu, site sayfasındaki <a href="php-ayarlari.html" class="text-accent hover:underline">PHP ve Web Sunucusu</a> aracından değiştirilir.</p>
+            </div>
+          </form>
+        </div>
+
+        <!-- Veritabanı sunucuları -->
+        <div id="t-db" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Yazılım</th><th class="font-medium px-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Durum</th><th class="font-medium px-3 py-2.5">Kullanım</th><th class="px-3"></th></tr></thead>
+              <tbody id="db" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Panelin kendi PostgreSQL'i (<span class="font-mono">servik-postgresql</span>) ayrı çalışır. Buradaki kurulum ve kaldırma işlemleri onu etkilemez.</p>
+        </div>
+
+        <!-- Diğer bileşenler -->
+        <div id="t-other" class="panel" hidden>
+          <div class="relative overflow-x-auto scroll-thin">
+            <table class="w-full text-[13.5px] min-w-[640px]">
+              <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Bileşen</th><th class="font-medium px-3 py-2.5">Sürüm</th><th class="font-medium px-3 py-2.5">Durum</th><th class="font-medium px-3 py-2.5">Kullanım</th><th class="px-3"></th></tr></thead>
+              <tbody id="other" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">PHP sürümleri <a href="hizmetler.html" class="text-accent hover:underline">Hizmetler</a> sayfasından yönetilir.</p>
+        </div>
+      </section>
+
+      <!-- Onay -->
+      <div id="cfModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+          <p id="cfTitle" class="font-semibold"></p>
+          <p id="cfText" class="mt-1 text-[13px] text-muted"></p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="cfCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
+            <button id="cfOk" class="h-9 px-3.5 rounded-md text-[13.5px] font-medium"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- İlerleme -->
+      <div id="jobModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
+        <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="jobTitle">
+          <p id="jobTitle" class="font-semibold"></p>
+          <ol id="jobSteps" class="mt-3 space-y-2 text-[13px]"></ol>
+          <div class="mt-4 flex justify-end"><button id="jobClose" disabled class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px] disabled:opacity-40">Kapat</button></div>
+        </div>
+      </div>
+
+<script>
+  // ---- Ortak: onay ve ilerleme pencereleri ----
+  const cf = document.getElementById('cfModal'), cfOk = document.getElementById('cfOk');
+  let cfDo;
+  const confirmBox = (title, text, okText, danger, fn) => {
+    document.getElementById('cfTitle').textContent = title;
+    document.getElementById('cfText').textContent = text;
+    cfOk.textContent = okText;
+    cfOk.className = 'h-9 px-3.5 rounded-md text-[13.5px] font-medium ' + (danger ? 'bg-crit text-on-crit' : 'bg-accent text-accent-fg hover:brightness-110');
+    cfDo = fn; cf.hidden = false;
+  };
+  document.getElementById('cfCancel').onclick = () => cf.hidden = true;
+  cfOk.onclick = () => { cf.hidden = true; cfDo(); };
+
+  const jm = document.getElementById('jobModal'), js = document.getElementById('jobSteps'), jc = document.getElementById('jobClose');
+  jc.onclick = () => jm.hidden = true;
+  const runJob = (title, steps, done) => {
+    document.getElementById('jobTitle').textContent = title;
+    jc.disabled = true; jm.hidden = false;
+    const paint = k => {
+      js.innerHTML = steps.map((s, i) => `<li class="flex items-center gap-2.5 ${i > k ? 'text-muted' : ''}">${i < k
+        ? '<i data-lucide="check" class="w-4 h-4 text-ok"></i>'
+        : i === k ? '<i data-lucide="loader-circle" class="w-4 h-4 text-accent animate-spin"></i>' : '<i data-lucide="circle" class="w-4 h-4"></i>'}<span>${s}</span></li>`).join('');
+      lucide.createIcons();
+    };
+    let k = 0; paint(0);
+    const t = setInterval(() => {
+      k++; paint(k);
+      if (k >= steps.length) { clearInterval(t); jc.disabled = false; done(); }
+    }, 700);
+  };
+  const ST = {
+    on: '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-ok-soft text-ok whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-ok"></i>Kurulu</span>',
+    off: '<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-muted whitespace-nowrap"><i class="w-1.5 h-1.5 rounded-full bg-muted"></i>Kurulu değil</span>',
+  };
+
+  // ---- Tablolar: [ad, açıklama, sürüm, kurulu, kullanım, kurulum adımları, kaldırma etkisi, kilit nedeni] ----
+  const webs = [
+    ['Nginx', 'Tüm sitelerin önünde durur, statik dosyaları sunar', '1.26.2', 1, '24 site', '', '', 'Gerekli. Servik tüm sitelerde Nginx kullanır.'],
+    ['Apache', '.htaccess kullanan siteler için, Nginx arkasında çalışır', '2.4.62', 1, '5 site', '', '', 'Kullanılıyor. Önce siteleri Nginx\'e alın.'],
+    ['Brotli sıkıştırma', 'Nginx için gzip\'ten daha iyi sıkıştırma', '1.0.0', 0, '—', 'Nginx brotli modülü kuruluyor|Yapılandırma test ediliyor', 'Siteler yeniden gzip ile sıkıştırılır.', ''],
+  ];
+  const dbs = [
+    ['MySQL', 'Varsayılan veritabanı sunucusu', '8.4.3', 1, '31 veritabanı · 19 site', '', '', 'Kullanılıyor. Önce veritabanlarını taşıyın.'],
+    ['MariaDB', 'MySQL ile uyumlu alternatif', '11.4 LTS', 0, '—', '', '', 'MySQL ile aynı anda kurulamaz. Geçiş için destek kaydı açın.'],
+    ['PostgreSQL', 'Laravel ve Django uygulamaları için', '17.2', 0, '—', 'PostgreSQL 17 kuruluyor|Müşteri kümesi oluşturuluyor (port 5433)|Yedekleme ve izlemeye ekleniyor', 'Bu sunucudaki PostgreSQL veritabanları silinir.', ''],
+    ['phpMyAdmin', 'MySQL için tarayıcı arayüzü', '5.2.2', 1, 'Site sayfalarında', '', 'Siteler phpMyAdmin\'e erişemez.', ''],
+    ['pgAdmin', 'PostgreSQL için tarayıcı arayüzü', '8.12', 0, '—', 'pgAdmin 8 kuruluyor|Panel oturumuna bağlanıyor', '', ''],
+  ];
+  const others = [
+    ['Önbellek ve kuyruk', [
+      ['Redis', 'Önbellek, oturum ve Laravel kuyrukları', '7.4.1', 1, '7 Laravel uygulaması', '', '', 'Kullanılıyor. Önce uygulamaları başka sürücüye alın.'],
+      ['Memcached', 'Basit nesne önbelleği', '1.6.29', 0, '—', 'Memcached kuruluyor|PHP memcached eklentisi etkinleştiriliyor', 'Memcached kullanan sitelerin önbelleği kapanır.', ''],
+      ['Supervisor', 'Laravel kuyruk işçilerini çalışır tutar', '4.2.5', 1, '11 işçi', '', '', 'Kullanılıyor. Laravel kuyrukları durur.'],
+    ]],
+    ['Çalışma ortamları', [
+      ['Node.js 22 LTS', 'Vite derlemeleri ve Node uygulamaları', '22.11.0', 1, '4 site', '', 'Bu sürümü kullanan derlemeler çalışmaz.', ''],
+      ['Node.js 24', 'Yeni sürüm', '24.10.0', 0, '—', 'Node.js 24 kuruluyor|Site seçeneklerine ekleniyor', '', ''],
+      ['Composer', 'PHP paket yöneticisi', '2.8.3', 1, 'Tüm PHP siteleri', '', '', 'Laravel ve PHP siteleri için gerekli.'],
+      ['Python 3.12', 'Python uygulamaları (WSGI)', '3.12.3', 0, '—', 'Python 3.12 ve Gunicorn kuruluyor', '', ''],
+    ]],
+    ['E-posta', [
+      ['Roundcube', 'Webmail', '1.6.9', 1, '19 alan adı', '', 'Kullanıcılar tarayıcıdan postalarına ulaşamaz.', ''],
+      ['SnappyMail', 'Hafif webmail alternatifi', '2.38', 0, '—', 'SnappyMail kuruluyor|Webmail adresine ekleniyor', '', ''],
+    ]],
+    ['Güvenlik', [
+      ['Fail2ban', 'Kaba kuvvet saldırılarını engeller', '1.1.0', 1, 'SSH, FTP, posta, panel', '', '', 'Servik güvenlik izlemesi için gerekli.'],
+      ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP kuralları)', '3.0.13', 0, '—', 'ModSecurity ve OWASP CRS 4 kuruluyor|Web sunucusuna bağlanıyor|Yalnızca izleme kipinde başlatılıyor', '', ''],
+      ['ClamAV', 'Posta ve dosya virüs taraması', '1.4.1', 0, '—', 'ClamAV kuruluyor (yaklaşık 300 MB)|Virüs veritabanı indiriliyor|Rspamd taramasına bağlanıyor', '', ''],
+    ]],
+  ];
+  const row = (c, key) => {
+    const [n, desc, v, on, use, inst, rmImpact, lock] = c;
+    const act = on
+      ? (lock ? `<span class="text-[13px] text-muted opacity-50 cursor-not-allowed" title="${lock}">Kaldır</span>`
+              : `<button data-rm="${key}" class="text-[13px] text-muted hover:text-crit">Kaldır</button>`)
+      : (lock ? `<span class="text-2xs text-muted">${lock}</span>`
+              : `<button data-in="${key}" class="text-[13px] text-accent hover:underline">Kur</button>`);
+    return `<tr class="hover:bg-surface-2/60">
+      <td class="px-5 py-3"><span class="font-medium">${n}</span><span class="block text-2xs text-muted mt-0.5">${desc}</span></td>
+      <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap ${on ? '' : 'text-muted'}">${v}</td>
+      <td class="px-3 py-3">${on ? ST.on : ST.off}</td>
+      <td class="px-3 py-3 text-muted">${use}</td>
+      <td class="px-3 py-3 text-right max-w-[180px]">${act}</td></tr>`;
+  };
+  const webEl = document.getElementById('web'), dbEl = document.getElementById('db'), otEl = document.getElementById('other');
+  const drawTables = () => {
+    webEl.innerHTML = webs.map((c, i) => row(c, 'w' + i)).join('');
+    dbEl.innerHTML = dbs.map((c, i) => row(c, 'd' + i)).join('');
+    otEl.innerHTML = others.map(([g, list], gi) => `<tr class="bg-surface-2/60"><td colspan="5" class="px-5 py-2 text-2xs uppercase tracking-[.06em] text-muted font-medium">${g}</td></tr>` + list.map((c, i) => row(c, `o${gi}-${i}`)).join('')).join('');
+  };
+  const find = k => k[0] === 'w' ? webs[+k.slice(1)] : k[0] === 'd' ? dbs[+k.slice(1)] : (([g, i]) => others[g][1][i])(k.slice(1).split('-'));
+  const onTable = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.in) {
+      const c = find(b.dataset.in);
+      confirmBox(`${c[0]} ${c[2]} kurulsun mu?`, `Servik Agent paketleri Ubuntu depolarından kurar ve hizmeti başlatır. Siteler bu sırada çalışmaya devam eder.`, 'Kur', false,
+        () => runJob(`${c[0]} kuruluyor`, (c[5] || `${c[0]} kuruluyor`).split('|').concat('Hizmet başlatılıyor ve test ediliyor'), () => {
+          c[3] = 1; c[4] = 'Henüz kullanılmıyor'; drawTables(); toast(`${c[0]} kuruldu.`);
+        }));
+    }
+    if (b.dataset.rm) {
+      const c = find(b.dataset.rm);
+      confirmBox(`${c[0]} kaldırılsın mı?`, `${c[6] || 'Bu bileşeni kullanan bir şey yok.'} Kaldırmadan önce yapılandırması yedeklenir.`, 'Kaldır', true,
+        () => runJob(`${c[0]} kaldırılıyor`, ['Yapılandırma yedekleniyor', 'Hizmet durduruluyor', 'Paketler kaldırılıyor'], () => {
+          c[3] = 0; c[4] = '—'; drawTables(); toast(`${c[0]} kaldırıldı.`, true);
+        }));
+    }
+  };
+  webEl.addEventListener('click', onTable); dbEl.addEventListener('click', onTable);
+  document.getElementById('defForm').addEventListener('submit', e => { e.preventDefault(); toast('Yeni siteler için varsayılan kaydedildi.'); }); otEl.addEventListener('click', onTable);
+  drawTables();
+
+  // ---- Sekmeler ----
+  const tabs = document.querySelectorAll('.tab');
+  const setTab = id => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on);
+      t.className = 'tab h-12 border-b-2 -mb-px whitespace-nowrap ' + (on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== id);
+  };
+  tabs.forEach(t => t.onclick = () => { setTab(t.dataset.tab); history.replaceState(null, '', '#' + t.dataset.tab.slice(2)); });
+  setTab({ db: 't-db', other: 't-other' }[location.hash.slice(1)] || 't-web');
+</script>
+
+</main>
+  </div>
+</div>
+
+<!-- AI asistan çekmecesi -->
+<aside id="ai" class="drawer invisible fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] translate-x-full bg-surface border-l border-line shadow-2xl flex flex-col" aria-label="Servik AI" aria-hidden="true">
+  <div class="h-14 flex items-center gap-2.5 px-4 border-b border-line">
+    <span class="w-7 h-7 rounded-md bg-accent-soft text-accent grid place-items-center"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+    <div class="leading-tight">
+      <p class="font-semibold text-[14px]">Servik AI</p>
+      <p class="text-2xs text-muted">Claude ile çalışır · sunucuya kök erişimi yok</p>
+    </div>
+    <button id="aiClose" class="ml-auto p-2 rounded-md hover:bg-surface-2 text-muted" aria-label="Kapat"><i data-lucide="x" class="w-4 h-4"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto scroll-thin p-4 space-y-4 text-[13.5px]">
+    <div class="flex justify-end"><p class="max-w-[85%] rounded-lg rounded-br-sm bg-surface-2 px-3.5 py-2.5">magazaonline neden bu kadar yavaş?</p></div>
+    <div class="space-y-3">
+      <p>Site saldırı altında. 23:28'den beri üç IP adresi <span class="font-mono text-[12.5px]">/wp-login.php</span> adresine saniyede ortalama 1.240 istek gönderiyor. Bu istekler 12 PHP işçisinin hepsini meşgul ettiği için gerçek ziyaretçiler sırada bekliyor.</p>
+      <div class="rounded-lg border border-line overflow-hidden">
+        <table class="w-full text-[12.5px] num">
+          <thead class="bg-surface-2 text-muted text-left"><tr><th class="font-medium px-3 py-1.5">IP</th><th class="font-medium px-3 py-1.5">Ülke</th><th class="font-medium px-3 py-1.5 text-right">İstek/sn</th></tr></thead>
+          <tbody class="divide-y divide-line font-mono">
+            <tr><td class="px-3 py-1.5">45.155.205.233</td><td class="px-3 py-1.5 font-sans">Hollanda</td><td class="px-3 py-1.5 text-right">612</td></tr>
+            <tr><td class="px-3 py-1.5">193.42.33.117</td><td class="px-3 py-1.5 font-sans">Rusya</td><td class="px-3 py-1.5 text-right">418</td></tr>
+            <tr><td class="px-3 py-1.5">103.153.79.6</td><td class="px-3 py-1.5 font-sans">Vietnam</td><td class="px-3 py-1.5 text-right">210</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>İki adım öneriyorum. Birincisi bu IP'leri engellemek, ikincisi sitede giriş sayfasına hız sınırı koymak.</p>
+
+      <div id="approval" class="rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
+        <p class="text-2xs uppercase tracking-[.08em] text-accent font-semibold">Onayınızı bekliyor</p>
+        <p class="mt-1.5 font-medium">Giriş sayfasına hız sınırı koy</p>
+        <p class="mt-1 text-[12.5px] text-muted">magazaonline.com.tr için <span class="font-mono">/wp-login.php</span> adresine IP başına dakikada en fazla 10 istek. Nginx yapılandırması değişir, yeniden yükleme kesinti yapmaz.</p>
+        <details class="mt-2 text-[12.5px]">
+          <summary class="cursor-pointer text-accent">Değişikliği göster</summary>
+          <pre class="mt-2 p-2.5 rounded bg-surface border border-line font-mono text-[11.5px] overflow-x-auto"><span class="text-ok">+ limit_req_zone $binary_remote_addr zone=wplogin:10m rate=10r/m;</span>
+<span class="text-ok">+ location = /wp-login.php {</span>
+<span class="text-ok">+     limit_req zone=wplogin burst=5 nodelay;</span>
+<span class="text-ok">+ }</span></pre>
+        </details>
+        <div class="mt-3 flex gap-2">
+          <button id="approveBtn" class="h-8 px-3 rounded-md bg-accent text-accent-fg text-[13px] font-medium hover:brightness-110">Onayla ve uygula</button>
+          <button id="rejectBtn" class="h-8 px-3 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13px]">Vazgeç</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form id="aiForm" class="p-3 border-t border-line">
+    <div class="flex items-end gap-2 rounded-lg border border-line bg-surface-2 focus-within:border-accent p-2">
+      <label for="aiInput" class="sr-only">Mesaj</label>
+      <textarea id="aiInput" rows="1" placeholder="Sunucunuz hakkında bir şey sorun" class="flex-1 resize-none bg-transparent outline-none text-[13.5px] px-1.5 py-1 placeholder:text-muted"></textarea>
+      <button class="w-8 h-8 rounded-md bg-accent text-accent-fg grid place-items-center" aria-label="Gönder"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+    </div>
+    <p class="mt-1.5 px-1 text-2xs text-muted">IP engelleme ve geçici sınırlar dışındaki her eylem onayınızla yapılır.</p>
+  </form>
+</aside>
+
+<!-- Bildirim -->
+<div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 translate-y-3 opacity-0 pointer-events-none z-[60] flex items-center gap-3 rounded-lg bg-fg text-bg px-4 h-11 text-[13.5px] shadow-xl max-w-[calc(100vw-32px)]" role="status" aria-live="polite">
+  <i data-lucide="circle-check" class="w-4 h-4 shrink-0"></i><span id="toastText" class="truncate"></span>
+  <button id="toastUndo" class="font-semibold underline underline-offset-2 shrink-0" hidden>Geri al</button>
+</div>
+
+<script>
+  // Mini grafikler: <svg class="spark" data-values="1,2,3" data-color="accent" viewBox="0 0 200 48" preserveAspectRatio="none">
+  window.renderSparks = (rootEl = document) => rootEl.querySelectorAll('.spark').forEach(svg => {
+    const vals = svg.dataset.values.split(',').map(Number);
+    const min = Math.min(...vals), max = Math.max(...vals), W = 200, H = 48, pad = 4;
+    const x = i => (i / (vals.length - 1)) * W;
+    const y = v => H - pad - ((v - min) / (max - min || 1)) * (H - pad * 2);
+    const line = vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const c = `rgb(var(--${svg.dataset.color}))`;
+    const lx = x(vals.length - 1), ly = y(vals[vals.length - 1]);
+    svg.innerHTML = `
+      <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="rgb(var(--line))" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>
+      <path d="${line} L${W},${H} L0,${H} Z" fill="${c}" fill-opacity=".12"/>
+      <path d="${line}" fill="none" stroke="${c}" stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      <circle cx="${lx - 2}" cy="${ly}" r="2.5" fill="${c}"/>`;
+  });
+  renderSparks();
+
+  // Tema
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('servik-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('servik-theme', root.dataset.theme); } catch (e) {}
+  });
+
+  // Menü ve AI çekmecesi
+  const sb = document.getElementById('sidebar'), scrim = document.getElementById('scrim');
+  const setMenu = open => { sb.classList.toggle('-translate-x-full', !open); scrim.classList.toggle('hidden', !open); };
+  document.getElementById('menuBtn').onclick = () => setMenu(true);
+  scrim.onclick = () => setMenu(false);
+  const ai = document.getElementById('ai');
+  const setAi = open => { ai.classList.toggle('translate-x-full', !open); ai.classList.toggle('invisible', !open); ai.setAttribute('aria-hidden', String(!open)); if (open) document.getElementById('aiInput').focus(); };
+  document.getElementById('aiBtn').onclick = () => setAi(true);
+  document.getElementById('aiClose').onclick = () => setAi(false);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { setAi(false); setMenu(false); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); document.getElementById('search').focus(); }
+  });
+  document.getElementById('aiForm').addEventListener('submit', e => { e.preventDefault(); });
+
+  // Bildirim
+  let tt;
+  const toast = (msg, undo) => {
+    const el = document.getElementById('toast');
+    document.getElementById('toastText').textContent = msg;
+    document.getElementById('toastUndo').hidden = !undo;
+    el.classList.remove('opacity-0', 'translate-y-3');
+    clearTimeout(tt); tt = setTimeout(() => el.classList.add('opacity-0', 'translate-y-3'), 4200);
+  };
+  document.getElementById('toastUndo').onclick = () => toast('Eylem geri alındı.');
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-toast]');
+    if (b && !b.disabled) toast(b.dataset.toast, b.dataset.undo === '1');
+  });
+  document.getElementById('approveBtn').onclick = () => {
+    document.getElementById('approval').innerHTML = '<p class="flex items-center gap-2 text-ok font-medium"><i data-lucide="circle-check" class="w-4 h-4"></i>Uygulandı: giriş sayfası hız sınırı etkin</p><p class="mt-1 text-[12.5px] text-muted">Nginx yeniden yüklendi, kesinti olmadı. Ayarlar &gt; Değişiklik geçmişi bölümünden geri alabilirsiniz.</p>';
+    lucide.createIcons(); toast('Hız sınırı uygulandı.', true);
+  };
+  document.getElementById('rejectBtn').onclick = () => {
+    document.getElementById('approval').innerHTML = '<p class="text-muted">Öneri reddedildi. Hiçbir değişiklik yapılmadı.</p>';
+  };
+
+  lucide.createIcons();
+</script>
+</body>
+</html>
