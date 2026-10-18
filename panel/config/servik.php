@@ -21,6 +21,9 @@ return [
         'job_timeout' => (float) env('SERVIK_AGENT_JOB_TIMEOUT', 120),
         // Seconds to wait for a certificate, validation included.
         'ssl_timeout' => (float) env('SERVIK_AGENT_SSL_TIMEOUT', 300),
+        // Seconds to wait for a Laravel deploy or a command run from the
+        // panel; the agent stops a command after 30 minutes.
+        'deploy_timeout' => (float) env('SERVIK_AGENT_DEPLOY_TIMEOUT', 1900),
     ],
 
     /*

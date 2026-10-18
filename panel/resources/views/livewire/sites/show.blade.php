@@ -1,6 +1,10 @@
 @php
     $ssl = $site->sslState();
     $certificate = $site->certificate;
+    $laravel = $site->laravelApp;
+    $laravelTool = $laravel
+        ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
+        : ['layers', 'Laravel', 'Kurulu değil', route('laravel.index', ['site' => $site->id])];
     // Site tools, grouped by job. Only the ones with a link work in this
     // version; the rest show what is coming. [icon, name, status, link, opens in a new tab]
     $groups = [
@@ -13,14 +17,15 @@
         ]],
         ['Geliştirme', 'code', [
             ['code', 'PHP ve web sunucusu', 'PHP '.$site->php_version.' · Nginx'],
+            $laravelTool,
             ['terminal', 'SSH terminali', null],
-            ['clock', 'Zamanlanmış görevler', null],
-            ['git-branch', 'Git dağıtımı', null],
+            ['clock', 'Zamanlanmış görevler', $laravel ? ($laravel->scheduler ? 'Laravel zamanlayıcısı açık' : 'Kapalı') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'zamanlayici']) : null],
+            ['git-branch', 'Git dağıtımı', $laravel ? ($laravel->repository ? $laravel->repositoryName() : 'Bağlı değil') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'dagitimlar']) : null],
             ['file-text', 'Günlükler', null],
         ]],
         ['Uygulamalar', 'blocks', [
             ['blocks', 'WordPress', null],
-            ['layers', 'Laravel', 'Kurulu değil'],
+            $laravelTool,
             ['download', 'Başka sunucudan taşı', null],
         ]],
         ['Alan adı ve DNS', 'network', [

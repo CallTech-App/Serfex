@@ -7,7 +7,7 @@
         ]],
         ['Barındırma', [
             ['sites.index', 'globe', 'Siteler'],
-            [null, 'layers', 'Laravel'],
+            ['laravel.index', 'layers', 'Laravel'],
             ['dns.index', 'network', 'Alan Adları ve DNS'],
             ['mail.index', 'mail', 'E-posta'],
             [null, 'database', 'Veritabanları'],
@@ -29,6 +29,7 @@
     $alerts = $user ? [
         'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
         'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
+        'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
     ] : [];
 @endphp
 <!DOCTYPE html>

@@ -13,7 +13,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -29,6 +31,9 @@ type Command struct {
 	Args  []string
 	Stdin []byte
 	Env   []string
+	// Stream, when set, receives the output while the command runs (for
+	// live deploy logs). Run still returns the tail of the output.
+	Stream io.Writer
 }
 
 // String renders the command for logs and error messages.
@@ -41,9 +46,10 @@ func (c Command) String() string {
 // symlink planted by the customer can never redirect a root write.
 func AsUser(user string, c Command) Command {
 	return Command{
-		Name:  "runuser",
-		Args:  append([]string{"-u", user, "--", c.Name}, c.Args...),
-		Stdin: c.Stdin,
+		Name:   "runuser",
+		Args:   append([]string{"-u", user, "--", c.Name}, c.Args...),
+		Stdin:  c.Stdin,
+		Stream: c.Stream,
 	}
 }
 
@@ -121,4 +127,21 @@ func joinRoot(root, abs string) string {
 		return filepath.Clean(abs)
 	}
 	return filepath.Join(root, filepath.Clean("/"+abs))
+}
+
+// ExitCode returns the exit status of a failed command: 0 for no error and
+// -1 when the command did not run at all.
+func ExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		return ee.ExitCode()
+	}
+	var se *ExitStatus
+	if errors.As(err, &se) {
+		return se.Code
+	}
+	return -1
 }

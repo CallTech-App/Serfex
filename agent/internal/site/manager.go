@@ -50,7 +50,14 @@ type Spec struct {
 	Aliases    []string `json:"aliases"`
 	// TLS serves the site over HTTPS too; nil means HTTP only.
 	TLS *TLSSpec `json:"tls"`
+	// WebRoot is the directory Nginx serves, relative to the site
+	// directory: "public_html" (the default), or for example
+	// "laravel/current/public" for a Laravel application.
+	WebRoot string `json:"web_root"`
 }
+
+// DefaultWebRoot is the document root of a new site.
+const DefaultWebRoot = "public_html"
 
 // TLSSpec says which installed certificate a site uses (see package cert).
 type TLSSpec struct {
@@ -108,13 +115,16 @@ type paths struct {
 	home, siteDir, docroot, logDir, socket, nginxAvail, nginxEnabled, fpm string
 }
 
-func layout(domain, user, php string) paths {
+func layout(domain, user, php, webRoot string) paths {
 	home := "/home/" + user
 	site := home + "/web/" + domain
+	if webRoot == "" {
+		webRoot = DefaultWebRoot
+	}
 	return paths{
 		home:         home,
 		siteDir:      site,
-		docroot:      site + "/public_html",
+		docroot:      site + "/" + webRoot,
 		logDir:       "/var/log/servik/sites/" + domain,
 		socket:       "/run/php/servik-" + domain + ".sock",
 		nginxAvail:   "/etc/nginx/sites-available/" + domain + ".conf",
@@ -167,7 +177,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		return Result{}, &OperationError{fmt.Errorf("web server user %q: %w", m.webUser, err)}
 	}
 
-	p := layout(spec.Domain, spec.User, spec.PHPVersion)
+	p := layout(spec.Domain, spec.User, spec.PHPVersion, spec.WebRoot)
 	t := txn.New(m.h)
 	defer func() {
 		if err != nil {
@@ -200,9 +210,12 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	if err := t.UserDirs(ctx, u.Name, "0750", p.siteDir+"/logs"); err != nil {
 		return Result{}, err
 	}
-	_, statErr := os.Lstat(m.h.Path(p.docroot))
+	// public_html always exists; another web root (a Laravel release) is
+	// created by whatever deploys there.
+	public := p.siteDir + "/" + DefaultWebRoot
+	_, statErr := os.Lstat(m.h.Path(public))
 	newDocroot := errors.Is(statErr, os.ErrNotExist)
-	if err := t.UserDirs(ctx, u.Name, "0755", p.docroot); err != nil {
+	if err := t.UserDirs(ctx, u.Name, "0755", public); err != nil {
 		return Result{}, err
 	}
 	data := tmplData{
@@ -224,7 +237,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		return Result{}, err
 	}
 	if newDocroot {
-		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{p.docroot + "/index.html"}, Stdin: render(placeholderTmpl, data)})
+		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{public + "/index.html"}, Stdin: render(placeholderTmpl, data)})
 		if _, err := m.h.Run(ctx, index); err != nil {
 			return Result{}, err
 		}
@@ -319,7 +332,7 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 	if err != nil {
 		return DeleteResult{}, &OperationError{err}
 	}
-	p := layout(spec.Domain, spec.User, "")
+	p := layout(spec.Domain, spec.User, "", "")
 	res = DeleteResult{Domain: spec.Domain}
 
 	t := txn.New(m.h)

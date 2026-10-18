@@ -52,6 +52,22 @@ func ValidateUser(u string) error {
 	return nil
 }
 
+var relPathRe = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*$`)
+
+// ValidateRelPath checks a path inside a site directory, such as
+// "laravel/current/public": relative, no "..", no hidden first letters.
+func ValidateRelPath(p string) error {
+	if len(p) > 200 || !relPathRe.MatchString(p) {
+		return invalid("%q must be a relative path such as laravel/current/public", p)
+	}
+	for _, part := range strings.Split(p, "/") {
+		if part == "." || part == ".." {
+			return invalid("%q must not contain . or ..", p)
+		}
+	}
+	return nil
+}
+
 // ValidatePHPVersion checks the shape of a PHP version such as "8.4".
 func ValidatePHPVersion(v string) error {
 	if !phpVerRe.MatchString(v) {
@@ -69,6 +85,11 @@ func (s Spec) validate() error {
 	}
 	if err := ValidatePHPVersion(s.PHPVersion); err != nil {
 		return err
+	}
+	if s.WebRoot != "" {
+		if err := ValidateRelPath(s.WebRoot); err != nil {
+			return invalid("web_root: %s", err.Error())
+		}
 	}
 	if s.TLS != nil && s.TLS.Certificate == "" {
 		return invalid("tls.certificate is required")

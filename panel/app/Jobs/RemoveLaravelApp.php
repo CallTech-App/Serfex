@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Enums\LaravelAppStatus;
+use App\Models\LaravelApp;
+use App\Services\Agent\AgentClient;
+use App\Services\Agent\AgentException;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+
+/**
+ * Removes a Laravel application from its site: its queue workers and
+ * scheduler stop, the site serves public_html again, and with $removeFiles
+ * the releases, shared .env and storage under laravel/ are deleted. An
+ * application found on the site keeps its files where they are.
+ */
+class RemoveLaravelApp implements ShouldQueue
+{
+    use Queueable;
+
+    public int $tries = 1;
+
+    public function __construct(public LaravelApp $app, public bool $removeFiles = false) {}
+
+    public function handle(AgentClient $agent): void
+    {
+        $app = $this->app->fresh(['site.systemUser', 'site.certificate']);
+        if ($app === null) {
+            return;
+        }
+        $site = $app->site;
+        try {
+            $agent->call('laravel.remove', $app->target() + ['remove_files' => $this->removeFiles && $app->isManaged()], config('servik.agent.job_timeout'));
+            if ($site->web_root !== null) {
+                $site->update(['web_root' => null]);
+                $result = $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+                $site->update(['document_root' => $result['document_root'] ?? $site->document_root]);
+            }
+        } catch (AgentException $e) {
+            $app->update(['status' => LaravelAppStatus::Failed, 'last_error' => $e->reason ?: $e->getMessage()]);
+
+            return;
+        }
+        $app->delete();
+    }
+}

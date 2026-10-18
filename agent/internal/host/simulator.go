@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -34,7 +35,7 @@ type Simulator struct {
 // PHP-FPM pool directories for phpVersions) created where missing.
 func NewSimulator(root string, phpVersions ...string) (*Simulator, error) {
 	s := &Simulator{Root: root}
-	dirs := []string{"/etc/nginx/sites-available", "/etc/nginx/sites-enabled", "/etc/powerdns", "/etc/systemd", "/home", "/run/php", "/var/lib/powerdns", "/var/log"}
+	dirs := []string{"/etc/nginx/sites-available", "/etc/nginx/sites-enabled", "/etc/powerdns", "/etc/systemd/system", "/home", "/run/php", "/var/lib/powerdns", "/var/log"}
 	for _, v := range phpVersions {
 		dirs = append(dirs, "/etc/php/"+v+"/fpm/pool.d")
 	}
@@ -94,7 +95,10 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 
 	if s.Fail != nil {
 		if err := s.Fail(c); err != nil {
-			return err.Error(), commandError(c, err.Error(), errors.New("exit status 1"))
+			if c.Stream != nil {
+				_, _ = io.WriteString(c.Stream, err.Error()+"\n")
+			}
+			return err.Error(), commandError(c, err.Error(), &ExitStatus{Code: 1})
 		}
 	}
 
@@ -106,8 +110,37 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 		}
 		inner = Command{Name: c.Args[3], Args: c.Args[4:], Stdin: c.Stdin}
 	}
+	// env [-C DIR] [NAME=VALUE...] NAME ARGS...
+	cwd, env := "/", map[string]string{}
+	for _, kv := range c.Env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			env[k] = v
+		}
+	}
+	if inner.Name == "env" {
+		args := inner.Args
+		for len(args) > 0 {
+			if args[0] == "-C" && len(args) > 1 {
+				cwd, args = args[1], args[2:]
+				continue
+			}
+			k, v, ok := strings.Cut(args[0], "=")
+			if !ok || strings.HasPrefix(args[0], "-") {
+				break
+			}
+			env[k] = v
+			args = args[1:]
+		}
+		if len(args) == 0 {
+			return "", fmt.Errorf("simulator: env without a command: %s", c)
+		}
+		inner = Command{Name: args[0], Args: args[1:], Stdin: inner.Stdin}
+	}
 
-	var err error
+	var (
+		out string
+		err error
+	)
 	switch inner.Name {
 	case "useradd":
 		err = s.useradd(inner.Args)
@@ -118,7 +151,7 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 	case "rm":
 		err = s.rm(inner.Args)
 	case "tee":
-		err = s.tee(inner.Args, inner.Stdin)
+		err = s.tee(s.abs(cwd, inner.Args), inner.Stdin)
 	case "apt-get":
 		err = s.aptGet(inner.Args)
 	case "sqlite3":
@@ -126,11 +159,28 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 		if len(inner.Args) == 1 {
 			err = os.WriteFile(s.Path(inner.Args[0]), inner.Stdin, 0o600)
 		}
+	default:
+		out, err = s.runTool(inner, cwd, env)
+	}
+	if c.Stream != nil && out != "" {
+		_, _ = io.WriteString(c.Stream, out)
 	}
 	if err != nil {
-		return err.Error(), commandError(c, err.Error(), errors.New("exit status 1"))
+		return out + err.Error(), commandError(c, out+err.Error(), &ExitStatus{Code: 1})
 	}
-	return "", nil
+	return out, nil
+}
+
+// abs resolves relative arguments against the working directory.
+func (s *Simulator) abs(cwd string, args []string) []string {
+	out := make([]string, len(args))
+	for i, a := range args {
+		if !strings.HasPrefix(a, "-") && !filepath.IsAbs(a) {
+			a = filepath.Join(cwd, a)
+		}
+		out[i] = a
+	}
+	return out
 }
 
 func (s *Simulator) useradd(args []string) error {
@@ -247,6 +297,11 @@ func (s *Simulator) rm(args []string) error {
 	return nil
 }
 
+// ExitStatus is the error of a simulated command that failed.
+type ExitStatus struct{ Code int }
+
+func (e *ExitStatus) Error() string { return fmt.Sprintf("exit status %d", e.Code) }
+
 // tee PATH (stdin is written to PATH)
 func (s *Simulator) tee(args []string, stdin []byte) error {
 	if len(args) != 1 {
@@ -284,6 +339,8 @@ var simPackages = map[string][]string{
 	"roundcube-sqlite3":    {"/etc/php/8.3/mods-available/pdo_sqlite.ini"},
 	"roundcube-plugins":    {"/usr/share/roundcube/plugins/managesieve/managesieve.php"},
 	"sqlite3":              {"/usr/bin/sqlite3"},
+	"git":                  {"/usr/bin/git"},
+	"unzip":                {"/usr/bin/unzip"},
 }
 
 // simAccounts are the system accounts packages create, as passwd lines.
@@ -303,7 +360,11 @@ func (s *Simulator) aptGet(args []string) error {
 		if err := s.addAccounts(simAccounts[a]); err != nil {
 			return err
 		}
-		for _, f := range simPackages[a] {
+		files := simPackages[a]
+		if v, ok := strings.CutSuffix(a, "-cli"); ok && phpBinary.MatchString(v) {
+			files = []string{"/usr/bin/" + v}
+		}
+		for _, f := range files {
 			if err := os.MkdirAll(filepath.Dir(s.Path(f)), 0o755); err != nil {
 				return err
 			}

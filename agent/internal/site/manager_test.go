@@ -332,3 +332,30 @@ func TestPHPVersions(t *testing.T) {
 		t.Fatalf("versions = %v", got)
 	}
 }
+
+func TestWebRoot(t *testing.T) {
+	m, sim := newTest(t)
+	s := spec
+	s.WebRoot = "laravel/current/public"
+	res, err := m.Apply(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.DocumentRoot != "/home/kahveatolyesi/web/kahveatolyesi.com.tr/laravel/current/public" {
+		t.Fatalf("document root = %s", res.DocumentRoot)
+	}
+	if vhost := read(t, sim, res.NginxConfig); !strings.Contains(vhost, "root /home/kahveatolyesi/web/kahveatolyesi.com.tr/laravel/current/public;") {
+		t.Fatalf("vhost:\n%s", vhost)
+	}
+	// public_html is still there for the files the site had.
+	if !exists(sim, "/home/kahveatolyesi/web/kahveatolyesi.com.tr/public_html/index.html") {
+		t.Fatal("public_html missing")
+	}
+	for _, bad := range []string{"../other", "/etc", "laravel/../../x", ".hidden"} {
+		s.WebRoot = bad
+		var v *ValidationError
+		if _, err := m.Apply(context.Background(), s); !errors.As(err, &v) {
+			t.Errorf("web_root %q: %v", bad, err)
+		}
+	}
+}
