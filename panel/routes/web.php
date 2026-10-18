@@ -6,6 +6,9 @@ use App\Livewire\Dns\ZoneIndex;
 use App\Livewire\Dns\ZoneShow;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SiteShow;
+use App\Livewire\Ssl\SiteSsl;
+use App\Livewire\Ssl\SslIndex;
+use App\Livewire\Ssl\SslSettingsPage;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -19,7 +22,10 @@ Route::middleware('auth')->group(function () {
     Route::view('/', 'dashboard')->name('dashboard');
     Route::livewire('/sites', SiteIndex::class)->name('sites.index');
     Route::livewire('/sites/{site}', SiteShow::class)->whereNumber('site')->name('sites.show');
+    Route::livewire('/sites/{site}/ssl', SiteSsl::class)->whereNumber('site')->name('sites.ssl');
     Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
     Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
     Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
+    Route::livewire('/ssl', SslIndex::class)->name('ssl.index');
+    Route::livewire('/ssl/settings', SslSettingsPage::class)->name('ssl.settings');
 });

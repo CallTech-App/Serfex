@@ -6,12 +6,14 @@ use App\Enums\SiteStatus;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Ssl\Certificates;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Asks the agent to create or update a site, then records the outcome.
+ * Asks the agent to create or update a site (with HTTPS when it has a
+ * certificate), then records the outcome.
  */
 class ProvisionSite implements ShouldBeUnique, ShouldQueue
 {
@@ -26,9 +28,9 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
         return (string) $this->site->id;
     }
 
-    public function handle(AgentClient $agent): void
+    public function handle(AgentClient $agent, Certificates $certificates): void
     {
-        $site = $this->site->fresh(['systemUser']);
+        $site = $this->site->fresh(['systemUser', 'certificate']);
         if ($site === null || $site->status === SiteStatus::Deleting) {
             return;
         }
@@ -41,6 +43,7 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $firstTime = $site->provisioned_at === null;
         $site->systemUser->update(['uid' => $result['uid'] ?? null, 'home' => $result['home'] ?? null]);
         $site->update([
             'status' => SiteStatus::Active,
@@ -48,5 +51,11 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
             'last_error' => null,
             'provisioned_at' => $site->provisioned_at ?? now(),
         ]);
+
+        if ($firstTime) {
+            // Like AutoSSL: every new site gets a certificate once its DNS
+            // points here.
+            $certificates->autoIssue($site);
+        }
     }
 }

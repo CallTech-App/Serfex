@@ -11,7 +11,7 @@
             ['dns.index', 'network', 'Alan Adları ve DNS'],
             [null, 'mail', 'E-posta'],
             [null, 'database', 'Veritabanları'],
-            [null, 'shield-check', 'SSL Sertifikaları'],
+            ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
         ]],
         ['Hesaplar', [
             [null, 'users', 'Müşteriler ve Paketler'],
@@ -25,6 +25,8 @@
         ]],
     ];
     $user = auth()->user();
+    // Problem counts shown next to menu items.
+    $alerts = $user ? ['ssl.index' => \App\Models\Certificate::attentionCount()] : [];
 @endphp
 <!DOCTYPE html>
 <html lang="tr">
@@ -61,6 +63,9 @@
                                         <a href="{{ route($route) }}" wire:navigate @if ($on) aria-current="page" @endif
                                            class="flex h-9 items-center gap-3 rounded-md px-3 {{ $on ? 'bg-nav-active font-medium text-white' : 'text-nav-fg/80 hover:bg-nav-active hover:text-white' }}">
                                             <x-icon :name="$icon" @class(['text-accent' => $on]) />{{ $label }}
+                                            @if ($alerts[$route] ?? 0)
+                                                <span class="num ml-auto min-w-5 rounded-full bg-warn px-1.5 text-center text-2xs leading-5 font-semibold text-nav" title="İlgilenmeniz gereken {{ $alerts[$route] }} sertifika">{{ $alerts[$route] }}</span>
+                                            @endif
                                         </a>
                                     @else
                                         <span aria-disabled="true" title="Sonraki sürümlerde gelecek" class="flex h-9 cursor-not-allowed items-center gap-3 rounded-md px-3 text-nav-muted/70">

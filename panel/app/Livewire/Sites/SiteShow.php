@@ -97,6 +97,6 @@ class SiteShow extends Component
 
     private function site(): ?Site
     {
-        return Site::with('systemUser')->find($this->siteId);
+        return Site::with('systemUser', 'certificate', 'certificates')->find($this->siteId);
     }
 }
