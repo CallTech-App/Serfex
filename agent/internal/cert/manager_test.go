@@ -327,3 +327,49 @@ func (nopSolver) PresentHTTP(context.Context, string, string, string) error { re
 func (nopSolver) CleanupHTTP(string)                                        {}
 func (nopSolver) PresentDNS(context.Context, string, []string) error        { return nil }
 func (nopSolver) CleanupDNS(context.Context, string)                        {}
+
+// mailServer stands in for the mail server, which reads one certificate.
+type mailServer struct {
+	name    string
+	reloads int
+	fail    error
+}
+
+func (s *mailServer) UsesCertificate(name string) bool { return name == s.name }
+
+func (s *mailServer) ReloadCertificate(context.Context) error {
+	s.reloads++
+	return s.fail
+}
+
+func TestConsumersReloadAndKeepTheirCertificate(t *testing.T) {
+	m, _, _ := newTest(t)
+	ctx := context.Background()
+	mail := &mailServer{name: "mail"}
+	m.AddConsumer(mail)
+
+	first, err := m.Issue(ctx, IssueSpec{Name: "mail", Names: []string{"mail." + zone}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Reloaded || mail.reloads != 1 {
+		t.Fatalf("mail server was not reloaded: %+v, %d reloads", first, mail.reloads)
+	}
+	if _, err := m.Issue(ctx, IssueSpec{Name: zone, Names: []string{zone}}); err != nil || mail.reloads != 1 {
+		t.Fatalf("another certificate reloaded the mail server: %v, %d reloads", err, mail.reloads)
+	}
+
+	// A renewal the mail server cannot load is rolled back.
+	mail.fail = errors.New("dovecot: bad key")
+	if _, err := m.Issue(ctx, IssueSpec{Name: "mail", Names: []string{"mail." + zone}}); err == nil || !strings.Contains(err.Error(), "mail server") {
+		t.Fatalf("err = %v", err)
+	}
+	if info, _ := m.Get("mail"); info.Fingerprint != first.Fingerprint {
+		t.Fatal("files were not restored after the mail server rejected them")
+	}
+
+	var v *ValidationError
+	if _, err := m.Delete("mail"); !errors.As(err, &v) {
+		t.Fatalf("deleting the mail certificate: %v", err)
+	}
+}

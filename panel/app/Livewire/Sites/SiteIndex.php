@@ -11,6 +11,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 use App\Services\Dns\Zones;
+use App\Services\Mail\MailDomains;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -89,7 +90,7 @@ class SiteIndex extends Component
         $this->userEdited = true;
     }
 
-    public function create(AgentClient $agent, Zones $zones): void
+    public function create(AgentClient $agent, Zones $zones, MailDomains $mail): void
     {
         $this->domain = Hostnames::normalize($this->domain);
         $this->systemUser = trim($this->systemUser);
@@ -137,6 +138,7 @@ class SiteIndex extends Component
         // DNS does not wait for the web server: the zone is published even
         // if provisioning fails and is retried.
         $zones->forSite($site);
+        $mail->forSite($site);
 
         $this->creating = false;
         $this->dispatch('toast',
@@ -157,7 +159,7 @@ class SiteIndex extends Component
             return;
         }
         $site->update(['status' => SiteStatus::Deleting]);
-        DeleteSite::dispatch($site, removeUser: true, removeZone: true);
+        DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true);
         $this->dispatch('toast', message: "{$site->domain} geri alınıyor.");
     }
 

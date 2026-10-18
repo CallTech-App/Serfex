@@ -1,9 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Mail\WebmailController;
 use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Dns\ZoneIndex;
 use App\Livewire\Dns\ZoneShow;
+use App\Livewire\Mail\MailDomainShow;
+use App\Livewire\Mail\MailIndex;
+use App\Livewire\Mail\MailSettingsPage;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SiteShow;
 use App\Livewire\Ssl\SiteSsl;
@@ -26,6 +30,10 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
     Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
     Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
+    Route::livewire('/mail', MailIndex::class)->name('mail.index');
+    Route::livewire('/mail/settings', MailSettingsPage::class)->name('mail.settings');
+    Route::livewire('/mail/{domain}', MailDomainShow::class)->whereNumber('domain')->name('mail.show');
+    Route::get('/mail/mailboxes/{mailbox}/webmail', WebmailController::class)->whereNumber('mailbox')->name('mail.webmail');
     Route::livewire('/ssl', SslIndex::class)->name('ssl.index');
     Route::livewire('/ssl/settings', SslSettingsPage::class)->name('ssl.settings');
 });

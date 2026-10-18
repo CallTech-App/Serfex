@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\CertificateStatus;
+use App\Jobs\IssueMailCertificate;
 use App\Jobs\IssuePanelCertificate;
 use App\Models\Certificate;
 use App\Services\Ssl\Certificates;
@@ -45,6 +46,9 @@ class RenewCertificates extends Command
             if ($certificate->kind === 'panel') {
                 $certificate->update(['status' => CertificateStatus::Issuing]);
                 IssuePanelCertificate::dispatch($certificate);
+            } elseif ($certificate->kind === 'mail') {
+                $certificate->update(['status' => CertificateStatus::Issuing]);
+                IssueMailCertificate::dispatch($certificate);
             } elseif ($certificate->site !== null && ($certificate->users->isNotEmpty() || ! $certificate->isInstalled())) {
                 $certificates->reissue($certificate, auto: true);
             } else {

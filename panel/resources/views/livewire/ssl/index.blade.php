@@ -28,6 +28,9 @@
             @if ($panel?->state()->needsAttention())
                 <a href="{{ route('ssl.settings') }}" wire:navigate class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">Panel sertifikası</a>
             @endif
+            @if ($mail?->state()->needsAttention())
+                <a href="{{ route('mail.settings') }}" wire:navigate class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">Posta sunucusu sertifikası</a>
+            @endif
             @if ($filter !== 'problem')
                 <button type="button" wire:click="$set('filter', 'problem')" class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">Sorunlu olanları göster</button>
             @endif

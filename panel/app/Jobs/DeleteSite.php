@@ -4,10 +4,12 @@ namespace App\Jobs;
 
 use App\Enums\SiteStatus;
 use App\Models\DnsZone;
+use App\Models\MailDomain;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\Zones;
+use App\Services\Mail\MailDomains;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  * Removes a site from the server (configuration and files) and then from
  * the panel. The system account goes too when asked and no site uses it;
  * the site's DNS zone goes when asked, otherwise it stays as a DNS-only
- * domain.
+ * domain. Its mail (mailboxes and stored mail) goes when asked, otherwise
+ * the domain keeps receiving mail without the site.
  */
 class DeleteSite implements ShouldQueue
 {
@@ -24,7 +27,7 @@ class DeleteSite implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(public Site $site, public bool $removeUser = true, public bool $removeZone = false) {}
+    public function __construct(public Site $site, public bool $removeUser = true, public bool $removeZone = false, public bool $removeMail = false) {}
 
     public function handle(AgentClient $agent, Zones $zones): void
     {
@@ -58,12 +61,16 @@ class DeleteSite implements ShouldQueue
         }
 
         $zone = DnsZone::where('site_id', $site->id)->first();
+        $mailDomain = MailDomain::where('site_id', $site->id)->orWhere('name', $site->domain)->first();
         DB::transaction(function () use ($site, $user, $result) {
             $site->delete();
             if ($result['user_removed'] ?? false) {
                 $user->delete();
             }
         });
+        if ($mailDomain !== null && $this->removeMail) {
+            app(MailDomains::class)->disable($mailDomain->fresh(), purgeNow: true);
+        }
         if ($zone !== null && $this->removeZone) {
             $zones->delete($zone->fresh());
         }

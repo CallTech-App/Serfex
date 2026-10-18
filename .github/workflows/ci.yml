@@ -127,6 +127,41 @@ jobs:
         if: failure()
         run: cat "$RUNNER_TEMP/pebble/pebble.log"
 
+  agent-mail:
+    name: Agent runs a real mail server
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      # The agent installs Postfix, Dovecot, Rspamd, Redis and Roundcube
+      # itself; the test needs Nginx and PHP-FPM for webmail and dkimpy to
+      # verify signatures.
+      - name: Install Nginx, PHP-FPM and dkimpy
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm python3-dkim
+          sudo systemctl start nginx php8.3-fpm
+
+      # Sets up the mail server, creates mailboxes and a forwarder, sends
+      # through SMTP, reads through IMAP, verifies DKIM, the sender check,
+      # the hourly limit, an autoreply and the webmail sign-in.
+      - name: Send and receive mail for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 10m ./internal/mail
+
+      - name: Mail log
+        if: failure()
+        run: sudo journalctl --no-pager -u postfix@- -u dovecot -u rspamd -u redis-server@servik-mail -n 300
+
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04

@@ -166,3 +166,7 @@ func render(t *template.Template, d tmplData) []byte {
 	}
 	return b.Bytes()
 }
+
+// TLSConfig returns the shared TLS settings file every HTTPS vhost
+// includes (cert.TLSConf), for other vhosts Servik writes.
+func TLSConfig() []byte { return tlsConf }

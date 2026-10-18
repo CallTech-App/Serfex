@@ -45,6 +45,7 @@ class SslSettingsPage extends Component
                 'nullable',
                 fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir ad girin, örneğin panel.ornek.com.tr.'),
                 fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail('Bu ad bir sitede kullanılıyor; panel için ayrı bir ad seçin, örneğin panel.'.$value.'.') : null,
+                fn ($attr, $value, $fail) => $value !== '' && $value === Setting::get('mail.hostname') ? $fail('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.') : null,
             ],
         ], [], ['email' => 'e-posta', 'hostname' => 'panel adresi']);
 

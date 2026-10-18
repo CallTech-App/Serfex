@@ -1,0 +1,156 @@
+<?php
+
+namespace App\Livewire\Mail;
+
+use App\Enums\CertificateStatus;
+use App\Jobs\SetupMailServer;
+use App\Models\Setting;
+use App\Models\Site;
+use App\Services\Agent\AgentClient;
+use App\Services\Mail\MailSettings;
+use App\Services\Ssl\Certificates;
+use App\Support\Hostnames;
+use Illuminate\Contracts\View\View;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+/**
+ * Server-wide mail settings: the mail server's name, defaults for new
+ * mailboxes, the sending limit, webmail, and the server's certificate.
+ */
+#[Layout('components.layouts.app')]
+#[Title('E-posta ayarları · Servik')]
+class MailSettingsPage extends Component
+{
+    use ChecksMailServer;
+
+    public string $hostname = '';
+
+    public int $defaultQuota = 1024;
+
+    public int $hourlyLimit = 500;
+
+    public bool $webmail = true;
+
+    public bool $auto = true;
+
+    public function mount(MailSettings $settings, AgentClient $agent): void
+    {
+        $this->fill([
+            'hostname' => $settings->hostname() ?? $settings->suggestedHostname(),
+            'defaultQuota' => $settings->defaultQuotaMb(),
+            'hourlyLimit' => $settings->hourlyLimit(),
+            'webmail' => $settings->webmail(),
+            'auto' => $settings->autoEnable(),
+        ]);
+        $this->refreshServer($agent, $settings);
+    }
+
+    public function save(MailSettings $settings): void
+    {
+        $this->hostname = Hostnames::normalize($this->hostname);
+        $this->validate([
+            'hostname' => [
+                'required',
+                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) && substr_count($value, '.') >= 2 ? null : $fail('Tam bir ad girin, örneğin mail.ornek.com.tr.'),
+                fn ($attr, $value, $fail) => $value === Setting::get('panel.hostname') ? $fail('Bu ad panelin adresi; posta sunucusu için ayrı bir ad seçin, örneğin mail.'.preg_replace('/^[^.]+\./', '', $value).'.') : null,
+                fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail('Bu ad bir sitede kullanılıyor; posta sunucusu için ayrı bir ad seçin.') : null,
+            ],
+            'defaultQuota' => ['required', 'integer', Rule::in(array_keys(MailSettings::QUOTAS))],
+            'hourlyLimit' => ['required', 'integer', 'min:0', 'max:100000'],
+        ], [], [
+            'hostname' => 'posta sunucusunun adı',
+            'defaultQuota' => 'varsayılan kota',
+            'hourlyLimit' => 'saatlik gönderim sınırı',
+        ]);
+
+        $previous = $this->current($settings);
+        $settings->save([
+            'hostname' => $this->hostname,
+            'default_quota_mb' => $this->defaultQuota,
+            'hourly_limit' => $this->hourlyLimit,
+            'webmail' => $this->webmail,
+            'auto' => $this->auto,
+        ]);
+        $applied = $this->applyToServer($settings, $previous);
+
+        $this->dispatch('toast',
+            message: 'E-posta ayarları kaydedildi.'.($applied ? ' Posta sunucusu yeni ayarlarla yeniden yapılandırılıyor.' : ''),
+            source: $this->getId(),
+            undo: ['method' => 'undoSave', 'args' => [$previous]],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $previous
+     */
+    public function undoSave(array $previous, MailSettings $settings, AgentClient $agent): void
+    {
+        $now = $this->current($settings);
+        $settings->save($previous);
+        $this->applyToServer($settings, $now);
+        $this->mount($settings, $agent);
+        $this->resetValidation();
+        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+    }
+
+    public function issueCertificate(MailSettings $settings, Certificates $certificates): void
+    {
+        $hostname = $settings->hostname();
+        if ($hostname === null || $settings->certificate()?->status === CertificateStatus::Issuing) {
+            return;
+        }
+        $certificates->issueMail($hostname);
+        $this->dispatch('toast', message: 'Posta sunucusunun sertifikası alınıyor.');
+    }
+
+    public function render(MailSettings $settings): View
+    {
+        return view('livewire.mail.settings', [
+            'certificate' => $settings->certificate(),
+            'savedHostname' => $settings->hostname(),
+            'setup' => $settings->server(),
+            'quotas' => MailSettings::QUOTAS,
+        ]);
+    }
+
+    /**
+     * Reconfigure the mail server when a setting it uses changed.
+     *
+     * @param  array<string, mixed>  $previous
+     */
+    private function applyToServer(MailSettings $settings, array $previous): bool
+    {
+        $now = $this->current($settings);
+        $changed = $now['hostname'] !== $previous['hostname'] || $now['hourly_limit'] !== $previous['hourly_limit'] || $now['webmail'] !== $previous['webmail'];
+        if (! $changed || ! $settings->isSetUp() || ($settings->server()['state'] ?? null) === 'installing') {
+            return false;
+        }
+        $settings->saveServer(['state' => 'installing', 'error' => null]);
+        $this->server = ['state' => 'installing'];
+        SetupMailServer::dispatch();
+
+        return true;
+    }
+
+    /**
+     * @return array{hostname: ?string, default_quota_mb: int, hourly_limit: int, webmail: bool, auto: bool}
+     */
+    private function current(MailSettings $settings): array
+    {
+        return [
+            'hostname' => $settings->hostname(),
+            'default_quota_mb' => $settings->defaultQuotaMb(),
+            'hourly_limit' => $settings->hourlyLimit(),
+            'webmail' => $settings->webmail(),
+            'auto' => $settings->autoEnable(),
+        ];
+    }
+
+    private function usedBySite(string $hostname): bool
+    {
+        return Site::query()->get(['domain', 'aliases'])->contains(fn (Site $s) => in_array($hostname, $s->hostnames(), true));
+    }
+}
