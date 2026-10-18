@@ -25,6 +25,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
@@ -69,6 +70,7 @@ func main() {
 	svc.certs = cert.NewManager(h, svc.dns, issuer)
 	svc.mail = mail.NewManager(h, *webUser)
 	svc.certs.AddConsumer(svc.mail)
+	svc.laravel = laravel.NewManager(h)
 	if err := run(*socket, svc, log); err != nil {
 		log.Error("agent stopped", "err", err)
 		os.Exit(1)

@@ -11,8 +11,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'certificate_id', 'https_redirect', 'status', 'last_error', 'provisioned_at'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'status', 'last_error', 'provisioned_at'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -60,6 +61,16 @@ class Site extends Model
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
+    }
+
+    /**
+     * The Laravel application on the site, if any.
+     *
+     * @return HasOne<LaravelApp, $this>
+     */
+    public function laravelApp(): HasOne
+    {
+        return $this->hasOne(LaravelApp::class);
     }
 
     /**
@@ -119,6 +130,9 @@ class Site extends Model
             'php_version' => $this->php_version,
             'aliases' => array_values($this->aliases ?? []),
         ];
+        if ($this->web_root !== null) {
+            $spec['web_root'] = $this->web_root;
+        }
         if ($this->hasHttps()) {
             $spec['tls'] = ['certificate' => $this->certificate->name, 'redirect' => $this->https_redirect];
         }

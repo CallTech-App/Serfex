@@ -12,6 +12,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/dns"
+	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
@@ -26,11 +27,12 @@ const CodeMailNotSetUp = -32002
 
 // services are the managers the methods act on.
 type services struct {
-	sites  *site.Manager
-	dns    *dns.Manager
-	certs  *cert.Manager
-	mail   *mail.Manager
-	dryRun bool
+	sites   *site.Manager
+	dns     *dns.Manager
+	certs   *cert.Manager
+	mail    *mail.Manager
+	laravel *laravel.Manager
+	dryRun  bool
 }
 
 func registerMethods(srv *rpc.Server, svc services) {
@@ -186,6 +188,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 		return res, nil
 	})
 	registerMail(srv, svc)
+	registerLaravel(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -355,15 +358,76 @@ func mapError(err error) error {
 	var dv *dns.ValidationError
 	var cv *cert.ValidationError
 	var mv *mail.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) {
+	var lv *laravel.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
 	var dop *dns.OperationError
 	var cop *cert.OperationError
 	var mop *mail.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) {
+	var lop *laravel.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
+}
+
+// handle registers a method whose params decode into P.
+func handle[P any](srv *rpc.Server, method string, f func(context.Context, P) (any, error)) {
+	srv.Handle(method, func(ctx context.Context, raw json.RawMessage) (any, error) {
+		var p P
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		res, err := f(ctx, p)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+}
+
+func registerLaravel(srv *rpc.Server, svc services) {
+	l := svc.laravel
+	handle(srv, "laravel.tools", func(ctx context.Context, q struct {
+		PHPVersion string `json:"php_version"`
+	}) (any, error) {
+		return l.Tools(ctx, q.PHPVersion)
+	})
+	handle(srv, "laravel.deploy", func(ctx context.Context, p laravel.DeploySpec) (any, error) { return l.Deploy(ctx, p) })
+	handle(srv, "laravel.rollback", func(ctx context.Context, p laravel.RollbackSpec) (any, error) { return l.Rollback(ctx, p) })
+	handle(srv, "laravel.run", func(ctx context.Context, p laravel.RunSpec) (any, error) { return l.Run(ctx, p) })
+	handle(srv, "laravel.run.read", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+		Run    string `json:"run"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return l.ReadRun(q.Domain, q.Run, q.Offset)
+	})
+	handle(srv, "laravel.status", func(ctx context.Context, p laravel.App) (any, error) { return l.Status(ctx, p) })
+	handle(srv, "laravel.env.get", func(ctx context.Context, p laravel.App) (any, error) { return l.GetEnv(ctx, p) })
+	handle(srv, "laravel.env.set", func(ctx context.Context, p laravel.EnvSpec) (any, error) { return l.SetEnv(ctx, p) })
+	handle(srv, "laravel.queue.apply", func(ctx context.Context, p laravel.QueueSpec) (any, error) { return l.ApplyQueues(ctx, p) })
+	handle(srv, "laravel.queue.restart", func(ctx context.Context, p laravel.Target) (any, error) { return l.RestartQueues(ctx, p) })
+	handle(srv, "laravel.schedule.apply", func(ctx context.Context, p laravel.ScheduleSpec) (any, error) { return l.ApplySchedule(ctx, p) })
+	handle(srv, "laravel.maintenance", func(ctx context.Context, p laravel.MaintenanceSpec) (any, error) { return l.Maintenance(ctx, p) })
+	handle(srv, "laravel.logs", func(ctx context.Context, p laravel.LogsSpec) (any, error) { return l.Logs(ctx, p) })
+	handle(srv, "laravel.probe", func(ctx context.Context, p laravel.ProbeSpec) (any, error) { return l.Probe(ctx, p) })
+	handle(srv, "laravel.scan", func(ctx context.Context, q struct {
+		Sites []laravel.ScanSite `json:"sites"`
+	}) (any, error) {
+		return l.Scan(ctx, q.Sites)
+	})
+	handle(srv, "laravel.key", func(ctx context.Context, p laravel.Target) (any, error) {
+		key, err := l.DeployKey(ctx, p)
+		return map[string]string{"public_key": key}, err
+	})
+	handle(srv, "laravel.health", func(ctx context.Context, q struct {
+		Domain string `json:"domain"`
+		Path   string `json:"path"`
+	}) (any, error) {
+		return l.CheckHealth(ctx, q.Domain, q.Path)
+	})
+	handle(srv, "laravel.remove", func(ctx context.Context, p laravel.RemoveSpec) (any, error) { return l.Remove(ctx, p) })
 }

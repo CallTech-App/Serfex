@@ -39,6 +39,16 @@ class DeleteSite implements ShouldQueue
         $lastSite = $user->sites()->whereKeyNot($site->id)->doesntExist();
 
         try {
+            // Queue workers and the scheduler run as the site's account
+            // from its directory; they stop before it goes.
+            if ($site->laravelApp()->exists()) {
+                $agent->call('laravel.remove', [
+                    'domain' => $site->domain,
+                    'user' => $user->name,
+                    'php_version' => $site->php_version,
+                    'remove_files' => false,
+                ], config('servik.agent.job_timeout'));
+            }
             $result = $agent->call('site.delete', [
                 'domain' => $site->domain,
                 'user' => $user->name,

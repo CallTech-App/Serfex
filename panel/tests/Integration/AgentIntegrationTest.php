@@ -238,4 +238,65 @@ class AgentIntegrationTest extends TestCase
 
         $this->assertTrue($client->call('mail.domain.delete', ['domain' => 'kahveatolyesi.com.tr', 'remove_files' => true], 30)['deleted']);
     }
+
+    public function test_laravel_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+        $target = ['domain' => 'api.hizlikargo.app', 'user' => 'hizlikargo', 'php_version' => '8.4'];
+        $app = $target + ['path' => 'laravel/current'];
+        $client->call('site.apply', ['domain' => $target['domain'], 'user' => $target['user'], 'php_version' => '8.4'], 30);
+
+        // The same shape DeployLaravelApp sends for a first install.
+        $deploy = $client->call('laravel.deploy', $target + [
+            'run' => 'install-1', 'release' => '1',
+            'source' => ['type' => 'create', 'package' => 'laravel/laravel'],
+            'build' => ['frontend' => true, 'package_manager' => 'npm', 'migrate' => true],
+            'hooks' => ['before_build' => '', 'before_activate' => '', 'after_activate' => ''], 'env' => ['APP_ENV' => 'production', 'APP_DEBUG' => 'false'], 'health' => null, 'rollback' => false, 'keep' => 5,
+        ], 60);
+        $this->assertSame('1', $deploy['release']);
+        $this->assertFalse($deploy['rolled_back']);
+        $this->assertNotSame('', $deploy['laravel']);
+
+        $log = $client->call('laravel.run.read', ['domain' => $target['domain'], 'run' => 'install-1', 'offset' => 0]);
+        $this->assertGreaterThan(0, $log['size']);
+
+        // The site now serves the release.
+        $client->call('site.apply', ['domain' => $target['domain'], 'user' => $target['user'], 'php_version' => '8.4', 'web_root' => 'laravel/current/public'], 30);
+        $this->assertStringContainsString(
+            'root /home/hizlikargo/web/api.hizlikargo.app/laravel/current/public;',
+            file_get_contents($this->root.'/etc/nginx/sites-available/api.hizlikargo.app.conf'),
+        );
+
+        $status = $client->call('laravel.status', $app);
+        $this->assertTrue($status['exists']);
+        $this->assertSame('1', $status['current']);
+
+        $env = $client->call('laravel.env.get', $app);
+        $this->assertStringContainsString('APP_ENV=production', $env['env']);
+        $client->call('laravel.env.set', $app + ['content' => $env['env']."APP_NAME='Hızlı Kargo'\n"], 30);
+        $this->assertStringContainsString("APP_NAME='Hızlı Kargo'", $client->call('laravel.env.get', $app)['env']);
+
+        $client->call('laravel.maintenance', $app + ['down' => true, 'secret' => 'servik-bypass', 'retry' => 60], 30);
+        $this->assertSame('servik-bypass', $client->call('laravel.status', $app)['maintenance']['secret']);
+        $client->call('laravel.maintenance', $app + ['down' => false], 30);
+        $this->assertNull($client->call('laravel.status', $app)['maintenance']);
+
+        $client->call('laravel.queue.apply', $app + ['workers' => [['name' => 'default', 'connection' => '', 'queue' => 'default', 'processes' => 2, 'timeout' => 60, 'tries' => 3, 'backoff' => 0, 'sleep' => 3, 'max_jobs' => 0, 'max_time' => 3600, 'memory' => 128]]], 30);
+        $this->assertFileExists($this->root.'/etc/systemd/system/servik-queue-api.hizlikargo.app_default@.service');
+        $client->call('laravel.schedule.apply', $app + ['enabled' => true], 30);
+        $this->assertFileExists($this->root.'/etc/systemd/system/servik-schedule-api.hizlikargo.app.timer');
+
+        try {
+            $client->call('laravel.run', $app + ['run' => 'cmd-1', 'tool' => 'rm', 'args' => ['-rf', '/']], 30);
+            $this->fail('expected an unknown tool to be rejected');
+        } catch (AgentException $e) {
+            $this->assertSame(AgentException::INVALID_PARAMS, $e->getCode());
+        }
+
+        $client->call('laravel.remove', $target + ['remove_files' => true], 30);
+        $this->assertFileDoesNotExist($this->root.'/etc/systemd/system/servik-queue-api.hizlikargo.app_default@.service');
+        $this->assertFileDoesNotExist($this->root.'/etc/systemd/system/servik-schedule-api.hizlikargo.app.timer');
+        $this->assertDirectoryDoesNotExist($this->root.'/home/hizlikargo/web/api.hizlikargo.app/laravel');
+        $client->call('site.delete', ['domain' => $target['domain'], 'user' => $target['user'], 'remove_files' => true, 'remove_user' => true], 30);
+    }
 }
