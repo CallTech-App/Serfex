@@ -10,6 +10,7 @@ use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Dns\Zones;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +89,7 @@ class SiteIndex extends Component
         $this->userEdited = true;
     }
 
-    public function create(AgentClient $agent): void
+    public function create(AgentClient $agent, Zones $zones): void
     {
         $this->domain = Hostnames::normalize($this->domain);
         $this->systemUser = trim($this->systemUser);
@@ -133,6 +134,9 @@ class SiteIndex extends Component
         });
 
         ProvisionSite::dispatch($site);
+        // DNS does not wait for the web server: the zone is published even
+        // if provisioning fails and is retried.
+        $zones->forSite($site);
 
         $this->creating = false;
         $this->dispatch('toast',
@@ -143,8 +147,8 @@ class SiteIndex extends Component
     }
 
     /**
-     * Undo for "Site ekle": removes the site again, and its account when the
-     * site was the only one using it.
+     * Undo for "Site ekle": removes the site again, its account when the
+     * site was the only one using it, and the DNS zone created with it.
      */
     public function undoCreate(int $id): void
     {
@@ -153,7 +157,7 @@ class SiteIndex extends Component
             return;
         }
         $site->update(['status' => SiteStatus::Deleting]);
-        DeleteSite::dispatch($site, removeUser: true);
+        DeleteSite::dispatch($site, removeUser: true, removeZone: true);
         $this->dispatch('toast', message: "{$site->domain} geri alınıyor.");
     }
 

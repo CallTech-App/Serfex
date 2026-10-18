@@ -8,7 +8,7 @@
         ['Barındırma', [
             ['sites.index', 'globe', 'Siteler'],
             [null, 'layers', 'Laravel'],
-            [null, 'network', 'Alan Adları ve DNS'],
+            ['dns.index', 'network', 'Alan Adları ve DNS'],
             [null, 'mail', 'E-posta'],
             [null, 'database', 'Veritabanları'],
             [null, 'shield-check', 'SSL Sertifikaları'],
@@ -57,7 +57,7 @@
                             <div class="space-y-0.5">
                                 @foreach ($items as [$route, $icon, $label])
                                     @if ($route)
-                                        @php $on = request()->routeIs($route) || ($route === 'sites.index' && request()->routeIs('sites.*')); @endphp
+                                        @php $on = request()->routeIs($route) || request()->routeIs(\Illuminate\Support\Str::before($route, '.').'.*'); @endphp
                                         <a href="{{ route($route) }}" wire:navigate @if ($on) aria-current="page" @endif
                                            class="flex h-9 items-center gap-3 rounded-md px-3 {{ $on ? 'bg-nav-active font-medium text-white' : 'text-nav-fg/80 hover:bg-nav-active hover:text-white' }}">
                                             <x-icon :name="$icon" @class(['text-accent' => $on]) />{{ $label }}

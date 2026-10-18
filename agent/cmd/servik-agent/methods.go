@@ -116,9 +116,11 @@ func registerMethods(srv *rpc.Server, svc services) {
 	})
 }
 
-// addresses lists the server's public IP addresses, which the panel uses
-// for the A and AAAA records of new zones. Dry runs return documentation
-// addresses so tests are deterministic.
+// addresses lists the server's global IP addresses, public ones before
+// private ones (a cloud server behind NAT may only see a private one). The
+// panel uses the first of each family for the A and AAAA records of new
+// zones. Dry runs return documentation addresses so tests are
+// deterministic.
 func addresses(dryRun bool) (map[string][]string, error) {
 	out := map[string][]string{"ipv4": {}, "ipv6": {}}
 	if dryRun {
@@ -129,6 +131,14 @@ func addresses(dryRun bool) (map[string][]string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return nil, err
+	}
+	var private []netip.Addr
+	add := func(ip netip.Addr) {
+		if ip.Is4() {
+			out["ipv4"] = append(out["ipv4"], ip.String())
+		} else {
+			out["ipv6"] = append(out["ipv6"], ip.String())
+		}
 	}
 	for _, a := range addrs {
 		n, ok := a.(*net.IPNet)
@@ -143,11 +153,14 @@ func addresses(dryRun bool) (map[string][]string, error) {
 		if !ip.IsGlobalUnicast() || ip.IsLinkLocalUnicast() {
 			continue
 		}
-		if ip.Is4() {
-			out["ipv4"] = append(out["ipv4"], ip.String())
-		} else {
-			out["ipv6"] = append(out["ipv6"], ip.String())
+		if ip.IsPrivate() {
+			private = append(private, ip)
+			continue
 		}
+		add(ip)
+	}
+	for _, ip := range private {
+		add(ip)
 	}
 	return out, nil
 }

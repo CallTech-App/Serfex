@@ -1,6 +1,6 @@
 @php
-    // Site tools, grouped by job. Only the ones marked with a route work in
-    // this version; the rest show what is coming. [icon, name, status, route]
+    // Site tools, grouped by job. Only the ones with a link work in this
+    // version; the rest show what is coming. [icon, name, status, link]
     $groups = [
         ['Dosya ve veri', 'folder', [
             ['folder', 'Dosya Yöneticisi', null],
@@ -22,7 +22,7 @@
             ['download', 'Başka sunucudan taşı', null],
         ]],
         ['Alan adı ve DNS', 'network', [
-            ['network', 'DNS kayıtları', null],
+            ['network', 'DNS kayıtları', $zone ? $zone->records_count.' kayıt' : null, $zone ? route('dns.show', $zone) : null],
             ['globe', 'Alt alan adları', null],
             ['link', 'Ek alan adları', $site->aliases ? implode(', ', $site->aliases) : 'Yok'],
             ['corner-up-right', 'Yönlendirmeler', null],
@@ -126,12 +126,23 @@
                          x-show="!q || @js(mb_strtolower($group.' '.collect($tools)->pluck(1)->join(' '))).includes(q.toLocaleLowerCase('tr'))">
                     <h3 class="flex h-11 items-center gap-2 border-b border-line px-4 text-[13.5px] font-semibold"><x-icon :name="$groupIcon" class="text-accent" />{{ $group }}</h3>
                     <ul class="p-1.5">
-                        @foreach ($tools as [$icon, $name, $state])
-                            <li class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px]"
-                                x-show="!q || @js(mb_strtolower($group.' '.$name)).includes(q.toLocaleLowerCase('tr'))">
-                                <x-icon :name="$icon" class="text-muted" />
-                                <span class="truncate {{ $state === null ? 'text-muted' : '' }}">{{ $name }}</span>
-                                <span class="ml-auto truncate text-2xs whitespace-nowrap text-muted">{{ $state ?? 'Yakında' }}</span>
+                        @foreach ($tools as $tool)
+                            @php [$icon, $name, $state, $link] = $tool + [3 => null]; @endphp
+                            <li x-show="!q || @js(mb_strtolower($group.' '.$name)).includes(q.toLocaleLowerCase('tr'))">
+                                @if ($link)
+                                    <a href="{{ $link }}" wire:navigate class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px] hover:bg-surface-2">
+                                        <x-icon :name="$icon" class="text-muted" />
+                                        <span class="truncate">{{ $name }}</span>
+                                        <span class="ml-auto truncate text-2xs whitespace-nowrap text-muted">{{ $state }}</span>
+                                        <x-icon name="chevron-right" class="size-3.5 text-muted" />
+                                    </a>
+                                @else
+                                    <div class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px]">
+                                        <x-icon :name="$icon" class="text-muted" />
+                                        <span class="truncate {{ $state === null ? 'text-muted' : '' }}">{{ $name }}</span>
+                                        <span class="ml-auto truncate text-2xs whitespace-nowrap text-muted">{{ $state ?? 'Yakında' }}</span>
+                                    </div>
+                                @endif
                             </li>
                         @endforeach
                     </ul>
@@ -149,6 +160,12 @@
                 <label class="mt-3 flex items-center gap-2 text-[13px]">
                     <input type="checkbox" wire:model="removeUser" class="size-4 accent-accent">
                     <span>Sistem kullanıcısını da sil (<span class="font-mono">{{ $site->systemUser->name }}</span>)</span>
+                </label>
+            @endif
+            @if ($zone)
+                <label class="mt-3 flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" wire:model="removeZone" class="size-4 accent-accent">
+                    <span>DNS bölgesini de sil ({{ $zone->records_count }} kayıt)</span>
                 </label>
             @endif
             <label for="confirmDomain" class="mt-4 block text-[13px]">Onaylamak için alan adını yazın</label>

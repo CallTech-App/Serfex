@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
+use App\Jobs\SyncDnsZone;
 use App\Livewire\Sites\SiteIndex;
+use App\Models\DnsZone;
 use App\Models\Site;
 use App\Models\SystemUser;
 use App\Models\User;
@@ -34,6 +36,7 @@ class SiteIndexTest extends TestCase
         $agent->shouldReceive('ping')->andReturn($online);
         if ($online) {
             $agent->shouldReceive('call')->with('php.versions')->andReturn(['8.3', '8.4', '8.5']);
+            $agent->shouldReceive('call')->with('system.addresses')->andReturn(['ipv4' => ['203.0.113.10'], 'ipv6' => []]);
         } else {
             $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/servik-agent/agent.sock', 'No such file or directory'));
         }
@@ -87,6 +90,45 @@ class SiteIndexTest extends TestCase
         $this->assertSame('kahveatolyesi', $site->systemUser->name);
         $this->assertSame(SiteStatus::Provisioning, $site->status);
         Queue::assertPushed(ProvisionSite::class, fn ($job) => $job->site->is($site));
+
+        // Its DNS zone is opened from the template right away.
+        $zone = DnsZone::sole();
+        $this->assertSame('kahveatolyesi.com.tr', $zone->name);
+        $this->assertTrue($zone->site->is($site));
+        $this->assertEqualsCanonicalizing([
+            '@ NS ns1.kahveatolyesi.com.tr.', '@ NS ns2.kahveatolyesi.com.tr.',
+            'ns1 A 203.0.113.10', 'ns2 A 203.0.113.10',
+            '@ A 203.0.113.10', 'www CNAME kahveatolyesi.com.tr.',
+        ], $zone->records->map(fn ($r) => "{$r->name} {$r->type} {$r->content}")->all());
+        Queue::assertPushed(SyncDnsZone::class, fn ($job) => $job->zone->is($zone));
+    }
+
+    public function test_a_subdomain_site_gets_records_in_the_parent_zone(): void
+    {
+        $this->agent();
+        $parent = DnsZone::factory()->withRecords()->create(['name' => 'kahveatolyesi.com.tr']);
+
+        Livewire::test(SiteIndex::class)
+            ->call('openCreate')
+            ->set('domain', 'blog.kahveatolyesi.com.tr')
+            ->set('systemUser', 'kahve')
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, DnsZone::count());
+        $records = $parent->records()->get()->map(fn ($r) => "{$r->name} {$r->type} {$r->content}")->all();
+        $this->assertContains('blog A 203.0.113.10', $records);
+        $this->assertContains('www.blog CNAME blog.kahveatolyesi.com.tr.', $records);
+        Queue::assertPushed(SyncDnsZone::class);
+    }
+
+    public function test_undo_create_also_removes_the_zone(): void
+    {
+        $site = Site::factory()->provisioning()->create();
+
+        Livewire::test(SiteIndex::class)->call('undoCreate', $site->id);
+
+        Queue::assertPushed(DeleteSite::class, fn ($job) => $job->removeUser && $job->removeZone);
     }
 
     public function test_reuses_an_existing_system_user(): void
