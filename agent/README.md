@@ -38,9 +38,29 @@ Methods so far:
 | `mail.mailbox.purge` | `domain`, `name` | deletes the stored mail of a removed mailbox |
 | `mail.usage` | `domain` | bytes stored per mailbox |
 | `mail.webmail.login` | `address` | a one-time `url` (valid one minute) that opens the mailbox in webmail |
+| `laravel.tools` | `php_version` | installs Composer and Node.js if missing; returns their versions |
+| `laravel.deploy` | target, `run`, `release`, `source`, `build`, `hooks`, `env`, `health`, `rollback`, `keep`, `seed_from` | builds a release, switches `current` to it, checks health and rolls back on failure; returns `release`, `commit`, `laravel`, `health`, `rolled_back`, `problem` |
+| `laravel.rollback` | target, `run`, `release` | switches `current` back to an earlier release |
+| `laravel.run` | app, `run`, `tool`, `args` | runs Artisan, Composer, npm, pnpm or bun as the site's user; with `run` it writes a log instead of returning the output |
+| `laravel.run.read` | `domain`, `run`, `offset` | the next part of a run's log: `data`, `offset`, `size`, `done` |
+| `laravel.status` | app | `exists`, `current`, `releases`, `maintenance`, `workers`, `schedule` |
+| `laravel.env.get` / `laravel.env.set` | app (+ `content`) | reads or writes the shared `.env`, then rebuilds the config cache and restarts workers |
+| `laravel.queue.apply` / `laravel.queue.restart` | app, `workers` | runs exactly these queue workers / restarts them gracefully |
+| `laravel.schedule.apply` | app, `enabled` | turns the every-minute `schedule:run` timer on or off |
+| `laravel.maintenance` | app, `down`, `secret`, `retry` | `artisan down` with a bypass secret, or `artisan up` |
+| `laravel.logs` | app, `file`, `bytes` | the application's log files and the end of one of them |
+| `laravel.probe` | app, `kind` | facts read from the app itself: `about`, `queues`, `failed`, `schedule` |
+| `laravel.scan` | `sites` | Laravel applications found in these sites' directories |
+| `laravel.key` | target | the site's deploy key (ed25519), created on first use |
+| `laravel.health` | `domain`, `path` | requests the path through the site's own Nginx; returns `ok`, `status`, `ms` |
+| `laravel.remove` | target, `remove_files` | stops workers and the timer, and with `remove_files` deletes the releases |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
-to serve the site over HTTPS with a stored certificate.
+to serve the site over HTTPS with a stored certificate, and `web_root`
+(relative to the site directory, default `public_html`) for the directory
+Nginx serves. "target" in the Laravel methods is `domain`, `user` and
+`php_version`; "app" adds `path`, the application's directory inside the
+site.
 
 Errors: `-32602` means the request can never work as sent (bad domain,
 reserved account name, PHP version not installed); `-32000` means a valid
@@ -211,14 +231,60 @@ through IMAP, checks the DKIM signature, the limits, the autoreply and the
 webmail sign-in. It needs Nginx, PHP-FPM, `python3-dkim` and `doveadm`
 (part of Dovecot).
 
+## Laravel
+
+A Laravel application managed by Servik lives inside its site:
+
+```
+/home/<user>/web/<domain>/laravel/
+  releases/<n>/          one directory per deploy, the last 5 are kept
+  shared/.env            linked into every release
+  shared/storage/        linked into every release
+  shared/database/       SQLite database, when the app uses one
+  current -> releases/<n>
+```
+
+The site's web root becomes `laravel/current/public`, so switching
+`current` is the moment a release goes live. A deploy clones the
+repository (or runs `composer create-project`), runs `composer install`,
+the front-end build when there is a `package.json`, `migrate --force` and
+the caches in the new release while the old one keeps serving, then
+switches `current`, runs the health check and switches back if it fails.
+Migrations are not reverted on rollback.
+
+- Every command runs as the site's user with a clean environment, through
+  `runuser`, using the site's PHP version. Composer and Node.js 24 are
+  downloaded once into `/opt/servik` and their checksums verified.
+- Long runs (deploys, commands started from the panel) write their output
+  to `/var/lib/servik/laravel/<domain>/runs/<run>.log`; the panel follows
+  it with `laravel.run.read`. Logs older than 90 days are removed.
+- Queue workers are systemd template units
+  `servik-queue-<domain>_<worker>@<n>.service`; the scheduler is
+  `servik-schedule-<domain>.timer`, running `schedule:run` every minute.
+  Their output goes to `/var/log/servik/laravel/<domain>/`, rotated by
+  `/etc/logrotate.d/servik-laravel`.
+- Private repositories are cloned over SSH with the site's own deploy key,
+  owned by the site's account in `laravel/.ssh/id_ed25519`.
+
+```sh
+sudo go test -tags realhost -run TestRealHost -timeout 20m ./internal/laravel
+```
+
+creates a new Laravel project with its front end, serves it through
+Nginx and PHP-FPM, deploys a broken release that is rolled back, deploys
+from Git, edits `.env`, turns maintenance mode on and off, starts queue
+workers and the scheduler, and removes everything again. It needs Nginx,
+PHP-FPM with the usual Laravel extensions and network access.
+
 ## Dry run
 
 `-dry-run` swaps the real system for a simulator: files go under `-root`
 (default: a new temporary directory), `useradd`/`userdel` edit
 `<root>/etc/passwd`, service commands are only logged, DNS zones are kept
 in memory, certificates come from a local "Servik Dry Run CA" and mail
-packages are only pretended to be installed. The panel's integration tests and local development use this
-mode.
+packages are only pretended to be installed, and `git clone` or
+`composer create-project` write a small stand-in Laravel application.
+The panel's integration tests and local development use this mode.
 
 ```sh
 ./bin/servik-agent -dry-run -root /tmp/servik-root -socket /tmp/servik-agent.sock
