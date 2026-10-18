@@ -25,6 +25,15 @@ Methods so far:
 | `dns.zone.apply` | `zone`, `soa`, `records` | makes the zone serve exactly these records; returns `serial`, `created`, `changed` |
 | `dns.zone.get` | `zone` | the records being served, with `serial` and `soa` |
 | `dns.zone.delete` | `zone` | removes the zone; returns `deleted` |
+| `ssl.issue` | `name`, `names`, `challenge`, `dns_zone`, `email` | obtains a certificate from Let's Encrypt and stores it as `name`; returns names, issuer, dates, `changed`, `reloaded` |
+| `ssl.install` | `name`, `certificate`, `private_key`, `chain`, `domain` | stores an uploaded certificate after checking it |
+| `ssl.get` | `name` | the stored certificate, or `null` |
+| `ssl.delete` | `name` | removes a certificate no enabled site uses; returns `deleted` |
+| `ssl.panel.issue` | `hostname`, `email` | obtains the certificate of the panel's own address |
+| `ssl.panel.get` | | the panel's certificate, or `null` |
+
+`site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
+to serve the site over HTTPS with a stored certificate.
 
 Errors: `-32602` means the request can never work as sent (bad domain,
 reserved account name, PHP version not installed); `-32000` means a valid
@@ -91,12 +100,55 @@ pdns@servik.service              the instance; the stock pdns.service is disable
   come up, the configuration changes are rolled back; installed packages stay.
 - Zone transfers are refused (`disable-axfr=yes`); secondary servers come later.
 
+## Certificates
+
+Certificates come from Let's Encrypt through the ACME client in
+`golang.org/x/crypto/acme`, built into the agent: no certbot, lego or Python
+on the server, and the agent stays one static binary.
+
+```
+/etc/servik/ssl/certs/<name>/fullchain.pem    certificate + chain, 0644
+/etc/servik/ssl/certs/<name>/privkey.pem      private key (ECDSA P-256), root 0600
+/etc/servik/ssl/accounts/<acme server>/       ACME account key, root 0700
+/etc/servik/panel/ssl/                        the panel's own certificate
+/var/lib/servik/acme/.well-known/acme-challenge/   HTTP-01 answers
+/etc/servik/nginx/tls.conf                    TLS defaults every HTTPS site includes
+```
+
+- **HTTP-01** (default): every Servik vhost serves
+  `/.well-known/acme-challenge/` from `/var/lib/servik/acme`, also when it
+  redirects HTTP to HTTPS, so validation works whatever the site's own
+  files or framework do. Before asking Let's Encrypt to look, the agent
+  waits until the local Nginx answers the token.
+- **DNS-01** (wildcards): for zones this server's PowerDNS serves, the agent
+  writes `_acme-challenge` TXT records straight through the PowerDNS API and
+  removes them afterwards. `dns.zone.apply` leaves these records alone while
+  a validation runs.
+- Sites use a certificate by name, so renewing only replaces the two files
+  and reloads Nginx. If `nginx -t` or the reload fails, the previous files
+  come back.
+- TLS defaults follow Mozilla's "intermediate" profile: TLS 1.2 and 1.3,
+  ECDHE with AES-GCM or ChaCha20, no session tickets. OCSP stapling is on
+  for certificates that name an OCSP responder (Let's Encrypt certificates
+  no longer do).
+- The agent never renews on its own: the panel decides when (30 days
+  before expiry) and shows failures. The panel's own certificate is served
+  by the panel's web server (`servik-web`, reloaded when present); Nginx
+  only answers its validation on port 80.
+- `-acme-directory` and `-acme-ca` point the agent at another ACME server,
+  such as Let's Encrypt staging or Pebble in tests:
+
+```sh
+sudo SERVIK_ACME_DIRECTORY=https://localhost:14000/dir SERVIK_ACME_CA=pebble.minica.pem \
+    go test -tags realhost -run TestRealHost ./internal/cert
+```
+
 ## Dry run
 
 `-dry-run` swaps the real system for a simulator: files go under `-root`
 (default: a new temporary directory), `useradd`/`userdel` edit
-`<root>/etc/passwd`, service commands are only logged and DNS zones are kept
-in memory. The panel's integration tests and local development use this
+`<root>/etc/passwd`, service commands are only logged, DNS zones are kept
+in memory and certificates come from a local "Servik Dry Run CA". The panel's integration tests and local development use this
 mode.
 
 ```sh

@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Enums\ZoneStatus;
 use App\Jobs\DeleteDnsZone;
 use App\Jobs\DeleteSite;
+use App\Jobs\IssueCertificate;
 use App\Jobs\ProvisionSite;
 use App\Models\DnsZone;
 use App\Models\Site;
@@ -13,6 +14,7 @@ use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\Zones;
+use App\Services\Ssl\Certificates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
@@ -24,6 +26,7 @@ class SiteJobsTest extends TestCase
 
     public function test_provisioning_records_the_agent_result(): void
     {
+        Queue::fake();
         $site = Site::factory()->provisioning()->for(SystemUser::factory()->state(['name' => 'kahve']))
             ->create(['domain' => 'kahve.com.tr', 'aliases' => ['www.kahve.com.tr']]);
 
@@ -32,13 +35,18 @@ class SiteJobsTest extends TestCase
             ->with('site.apply', ['domain' => 'kahve.com.tr', 'user' => 'kahve', 'php_version' => '8.4', 'aliases' => ['www.kahve.com.tr']], 120.0)
             ->andReturn(['uid' => 1001, 'home' => '/home/kahve', 'document_root' => '/home/kahve/web/kahve.com.tr/public_html']);
 
-        (new ProvisionSite($site))->handle($agent);
+        (new ProvisionSite($site))->handle($agent, app(Certificates::class));
 
         $site->refresh();
         $this->assertSame(SiteStatus::Active, $site->status);
         $this->assertSame('/home/kahve/web/kahve.com.tr/public_html', $site->document_root);
         $this->assertNotNull($site->provisioned_at);
         $this->assertSame(1001, $site->systemUser->uid);
+
+        // A new site asks for its certificate.
+        $certificate = $site->certificates()->sole();
+        $this->assertSame(['kahve.com.tr', 'www.kahve.com.tr'], $certificate->domains);
+        Queue::assertPushed(IssueCertificate::class, fn ($job) => $job->certificate->is($certificate) && $job->auto);
     }
 
     public function test_provisioning_failure_is_shown_on_the_site(): void
@@ -47,7 +55,7 @@ class SiteJobsTest extends TestCase
         $agent = Mockery::mock(AgentClient::class);
         $agent->shouldReceive('call')->andThrow(AgentException::rpcError('site.apply', -32000, 'nginx rejected the configuration'));
 
-        (new ProvisionSite($site))->handle($agent);
+        (new ProvisionSite($site))->handle($agent, app(Certificates::class));
 
         $site->refresh();
         $this->assertSame(SiteStatus::Failed, $site->status);

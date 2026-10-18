@@ -8,7 +8,9 @@ import (
 	"net"
 	"net/netip"
 	"runtime"
+	"time"
 
+	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
@@ -22,6 +24,7 @@ const CodeDNSNotSetUp = -32001
 type services struct {
 	sites  *site.Manager
 	dns    *dns.Manager
+	certs  *cert.Manager
 	dryRun bool
 }
 
@@ -114,7 +117,80 @@ func registerMethods(srv *rpc.Server, svc services) {
 		}
 		return res, nil
 	})
+	srv.Handle("ssl.issue", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec cert.IssueSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(ctx, issueTimeout)
+		defer cancel()
+		res, err := svc.certs.Issue(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("ssl.install", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec cert.InstallSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		res, err := svc.certs.Install(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("ssl.get", func(_ context.Context, p json.RawMessage) (any, error) {
+		var q struct {
+			Name string `json:"name"`
+		}
+		if err := decode(p, &q); err != nil {
+			return nil, err
+		}
+		res, err := svc.certs.Get(q.Name)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("ssl.delete", func(_ context.Context, p json.RawMessage) (any, error) {
+		var q struct {
+			Name string `json:"name"`
+		}
+		if err := decode(p, &q); err != nil {
+			return nil, err
+		}
+		res, err := svc.certs.Delete(q.Name)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("ssl.panel.issue", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec cert.PanelSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(ctx, issueTimeout)
+		defer cancel()
+		res, err := svc.certs.IssuePanel(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
+	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
+		res, err := svc.certs.GetPanel()
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
 }
+
+// issueTimeout bounds one certificate request, validation included.
+const issueTimeout = 4 * time.Minute
 
 // addresses lists the server's global IP addresses, public ones before
 // private ones (a cloud server behind NAT may only see a private one). The
@@ -186,12 +262,14 @@ func mapError(err error) error {
 	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) {
+	var cv *cert.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
 	var dop *dns.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) {
+	var cop *cert.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err

@@ -97,6 +97,39 @@ class AgentIntegrationTest extends TestCase
         $this->assertDirectoryDoesNotExist($this->root.'/home/kahve');
     }
 
+    public function test_certificate_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+        $spec = ['domain' => 'kahveatolyesi.com.tr', 'user' => 'kahve', 'php_version' => '8.4', 'aliases' => ['www.kahveatolyesi.com.tr']];
+        $client->call('site.apply', $spec, 30);
+
+        // Dry runs use a simulated CA but the same challenge plumbing.
+        $issued = $client->call('ssl.issue', ['name' => 'kahveatolyesi.com.tr', 'names' => ['kahveatolyesi.com.tr', 'www.kahveatolyesi.com.tr'], 'challenge' => 'http-01'], 30);
+        $this->assertSame(['kahveatolyesi.com.tr', 'www.kahveatolyesi.com.tr'], $issued['names']);
+        $this->assertGreaterThan(time(), strtotime($issued['not_after']));
+        $this->assertFileExists($this->root.'/etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem');
+        $this->assertSame('0600', substr(sprintf('%o', fileperms($this->root.'/etc/servik/ssl/certs/kahveatolyesi.com.tr/privkey.pem')), -4));
+
+        $client->call('site.apply', [...$spec, 'tls' => ['certificate' => 'kahveatolyesi.com.tr', 'redirect' => true]], 30);
+        $vhost = file_get_contents($this->root.'/etc/nginx/sites-available/kahveatolyesi.com.tr.conf');
+        $this->assertStringContainsString('listen 443 ssl', $vhost);
+        $this->assertStringContainsString('ssl_certificate /etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem;', $vhost);
+        $this->assertStringContainsString('return 301 https://$host$request_uri;', $vhost);
+        $this->assertStringContainsString('/.well-known/acme-challenge/', $vhost);
+
+        $this->assertSame($issued['serial'], $client->call('ssl.get', ['name' => 'kahveatolyesi.com.tr'])['serial']);
+        try {
+            $client->call('ssl.delete', ['name' => 'kahveatolyesi.com.tr']);
+            $this->fail('a certificate in use must not be deleted');
+        } catch (AgentException $e) {
+            $this->assertSame(AgentException::INVALID_PARAMS, $e->getCode());
+        }
+
+        $client->call('site.apply', $spec, 30);
+        $this->assertTrue($client->call('ssl.delete', ['name' => 'kahveatolyesi.com.tr'])['deleted']);
+        $this->assertFileDoesNotExist($this->root.'/etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem');
+    }
+
     public function test_invalid_site_is_rejected_with_a_reason(): void
     {
         $client = new AgentClient($this->socket);

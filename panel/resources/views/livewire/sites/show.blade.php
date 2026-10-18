@@ -1,4 +1,6 @@
 @php
+    $ssl = $site->sslState();
+    $certificate = $site->certificate;
     // Site tools, grouped by job. Only the ones with a link work in this
     // version; the rest show what is coming. [icon, name, status, link]
     $groups = [
@@ -33,7 +35,7 @@
             ['inbox', 'Webmail', null],
         ]],
         ['Güvenlik', 'shield', [
-            ['shield-check', 'SSL sertifikası', 'Yok'],
+            ['shield-check', 'SSL sertifikası', $ssl->label(), route('sites.ssl', $site)],
             ['folder-lock', 'Parola korumalı dizinler', null],
             ['scan-search', 'Kötü amaçlı yazılım taraması', null],
         ]],
@@ -43,6 +45,8 @@
     {{-- Refresh while the agent works on a site. --}}
     @if ($site->status->isBusy())
         <div wire:poll.2s="refreshStatus" hidden></div>
+    @elseif ($ssl->isBusy())
+        <div wire:poll.3s hidden></div>
     @endif
 
     {{-- Title --}}
@@ -65,7 +69,7 @@
                 </div>
             </div>
             @if ($site->status === \App\Enums\SiteStatus::Active)
-                <a href="http://{{ $site->domain }}" target="_blank" rel="noopener" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                <a href="{{ $site->hasHttps() ? 'https' : 'http' }}://{{ $site->domain }}" target="_blank" rel="noopener" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
                     <x-icon name="external-link" />Siteyi aç
                 </a>
             @endif
@@ -87,17 +91,25 @@
     @endif
 
     {{-- Status strip --}}
-    <section class="grid grid-cols-1 rounded-xl border border-line bg-surface text-[13px] sm:grid-cols-2 xl:grid-cols-4 [&>div]:border-line [&>div]:p-4 max-sm:[&>div:not(:last-child)]:border-b sm:max-xl:[&>div:nth-child(-n+2)]:border-b sm:max-xl:[&>div:nth-child(odd)]:border-r xl:[&>div:not(:last-child)]:border-r">
+    <section class="grid grid-cols-1 rounded-xl border border-line bg-surface text-[13px] sm:grid-cols-2 xl:grid-cols-4 [&>*]:border-line [&>*]:p-4 max-sm:[&>*:not(:last-child)]:border-b sm:max-xl:[&>*:nth-child(-n+2)]:border-b sm:max-xl:[&>*:nth-child(odd)]:border-r xl:[&>*:not(:last-child)]:border-r">
         <div>
             <p class="text-2xs text-muted">Web sunucusu</p>
             <p class="mt-1 font-medium">Nginx · PHP {{ $site->php_version }}</p>
             <span class="text-2xs text-muted">PHP-FPM, siteye özel havuz</span>
         </div>
-        <div>
+        <a href="{{ route('sites.ssl', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
             <p class="text-2xs text-muted">SSL</p>
-            <p class="mt-1 font-medium text-muted">Sertifika yok</p>
-            <span class="text-2xs text-muted">Site şimdilik yalnızca http ile açılır</span>
-        </div>
+            <p class="mt-1"><x-status-badge :status="$ssl" /></p>
+            <span class="mt-1 block text-2xs text-muted">
+                @if ($certificate?->isInstalled())
+                    {{ $certificate->issuerLabel() }} · {{ $certificate->not_after->timezone(config('app.timezone'))->format('d.m.Y') }} tarihine kadar
+                @elseif ($site->pendingCertificate()?->status === \App\Enums\CertificateStatus::WaitingDns)
+                    DNS henüz bu sunucuya işaret etmiyor
+                @else
+                    Site şimdilik yalnızca http ile açılır
+                @endif
+            </span>
+        </a>
         <div>
             <p class="text-2xs text-muted">Sistem kullanıcısı</p>
             <p class="mt-1 font-mono text-[12.5px]">{{ $site->systemUser->name }}</p>

@@ -14,5 +14,14 @@
             <span class="ml-auto text-muted num">{{ \App\Models\Site::count() }} site</span>
             <x-icon name="chevron-right" class="text-muted" />
         </a>
+        @php $sslAttention = \App\Models\Certificate::attentionCount(); @endphp
+        <a href="{{ route('ssl.index', $sslAttention ? ['durum' => 'problem'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+            <x-icon name="shield-check" @class(['text-muted' => ! $sslAttention, 'text-warn' => $sslAttention]) />
+            <span>SSL sertifikaları</span>
+            <span @class(['ml-auto num', 'text-muted' => ! $sslAttention, 'font-medium text-warn' => $sslAttention])>
+                {{ $sslAttention ? $sslAttention.' sertifika ilgilenmenizi bekliyor' : 'Sorun yok' }}
+            </span>
+            <x-icon name="chevron-right" class="text-muted" />
+        </a>
     </section>
 </x-layouts.app>

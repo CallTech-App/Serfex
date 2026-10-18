@@ -48,6 +48,15 @@ class DeleteSite implements ShouldQueue
             return;
         }
 
+        // The vhost is gone, so the site's certificates can go too. One the
+        // agent refuses to delete stays on disk, readable only by root.
+        foreach ($site->certificates()->pluck('name') as $name) {
+            try {
+                $agent->call('ssl.delete', ['name' => $name], config('servik.agent.job_timeout'));
+            } catch (AgentException) {
+            }
+        }
+
         $zone = DnsZone::where('site_id', $site->id)->first();
         DB::transaction(function () use ($site, $user, $result) {
             $site->delete();

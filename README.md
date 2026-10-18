@@ -46,7 +46,14 @@ npm install && npm run build
 php artisan servik:admin   # create the administrator account
 php artisan serve
 php artisan queue:work     # in a second terminal: runs site jobs
+php artisan schedule:work  # in a third terminal: certificate renewals
 ```
+
+In production the scheduler runs from cron (`* * * * * php artisan schedule:run`).
+
+With a dry-run agent, certificates come from a simulated CA. Set
+`SERVIK_SSL_CHECK_DNS=false` in `panel/.env` so the panel does not wait for
+public DNS to point at your machine before requesting them.
 
 Without root, run the agent in dry-run mode: it keeps every server change
 under a scratch directory and only logs the commands it would run.

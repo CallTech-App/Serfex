@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
@@ -46,6 +48,16 @@ type Spec struct {
 	User       string   `json:"user"`
 	PHPVersion string   `json:"php_version"`
 	Aliases    []string `json:"aliases"`
+	// TLS serves the site over HTTPS too; nil means HTTP only.
+	TLS *TLSSpec `json:"tls"`
+}
+
+// TLSSpec says which installed certificate a site uses (see package cert).
+type TLSSpec struct {
+	Certificate string `json:"certificate"`
+	// Redirect sends plain HTTP requests to HTTPS with a 301, except for
+	// Let's Encrypt validation requests.
+	Redirect bool `json:"redirect"`
 }
 
 // Result describes a provisioned site.
@@ -206,6 +218,10 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		LogDir:       p.logDir,
 		PHPSocket:    p.socket,
 		IPv6:         m.hasIPv6(),
+		ACMERoot:     cert.Webroot,
+	}
+	if err := m.tlsData(&data, spec.TLS); err != nil {
+		return Result{}, err
 	}
 	if newDocroot {
 		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{p.docroot + "/index.html"}, Stdin: render(placeholderTmpl, data)})
@@ -218,6 +234,23 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	}
 	if err := t.RootDir(p.logDir, 0o750, 0, u.GID); err != nil {
 		return Result{}, err
+	}
+	// Every vhost answers Let's Encrypt validation from the shared webroot.
+	for _, d := range []string{"/var/lib/servik", cert.Webroot, cert.Webroot + "/.well-known", cert.ChallengeDir} {
+		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
+			return Result{}, err
+		}
+	}
+	if data.TLS {
+		if err := t.RootDir("/etc/servik", 0o755, 0, 0); err != nil {
+			return Result{}, err
+		}
+		if err := t.RootDir("/etc/servik/nginx", 0o755, 0, 0); err != nil {
+			return Result{}, err
+		}
+		if err := t.WriteFile(cert.TLSConf, tlsConf); err != nil {
+			return Result{}, err
+		}
 	}
 
 	// PHP-FPM: one pool per site. Moving to another PHP version removes the
@@ -430,6 +463,68 @@ func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []s
 		}
 	}
 	return nil
+}
+
+// tlsData fills in the HTTPS part of the vhost. The certificate must be
+// installed already (ssl.issue or ssl.install).
+func (m *Manager) tlsData(d *tmplData, spec *TLSSpec) error {
+	if spec == nil {
+		return nil
+	}
+	if err := cert.ValidateName(spec.Certificate); err != nil {
+		return err
+	}
+	full, key := cert.Files(spec.Certificate)
+	info, err := cert.ReadInfo(m.h.Path(full), spec.Certificate)
+	if errors.Is(err, os.ErrNotExist) {
+		return invalid("certificate %q is not installed", spec.Certificate)
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(m.h.Path(key)); err != nil {
+		return invalid("the private key of certificate %q is missing", spec.Certificate)
+	}
+	d.TLS, d.Redirect = true, spec.Redirect
+	d.CertFile, d.KeyFile, d.TLSConf = full, key, cert.TLSConf
+	if info.OCSP {
+		if r := m.resolvers(); r != "" {
+			d.Stapling, d.Resolvers = true, r
+		}
+	}
+	return nil
+}
+
+// resolvers returns the upstream name servers from resolv.conf, for OCSP
+// stapling. The local stub listener is skipped: Servik's DNS server may
+// have turned it off.
+func (m *Manager) resolvers() string {
+	var out []string
+	for _, f := range []string{"/run/systemd/resolve/resolv.conf", "/etc/resolv.conf"} {
+		data, err := os.ReadFile(m.h.Path(f))
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) != 2 || fields[0] != "nameserver" || strings.HasPrefix(fields[1], "127.") {
+				continue
+			}
+			ip, err := netip.ParseAddr(fields[1])
+			if err != nil || ip.Zone() != "" {
+				continue
+			}
+			if ip.Is6() {
+				out = append(out, "["+ip.String()+"]")
+			} else {
+				out = append(out, ip.String())
+			}
+		}
+		if len(out) > 0 {
+			break
+		}
+	}
+	return strings.Join(out, " ")
 }
 
 // hasIPv6 reports whether the kernel has IPv6; Nginx refuses to start when
