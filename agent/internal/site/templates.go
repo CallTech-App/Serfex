@@ -2,13 +2,8 @@ package site
 
 import (
 	"bytes"
-	"strings"
 	"text/template"
 )
-
-// marker is the first line of every file Servik manages. Files without it
-// are never overwritten or removed.
-const marker = "Managed by Servik"
 
 var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual changes are overwritten.
 # Site: {{.Domain}} (user {{.User}}, PHP {{.PHPVersion}})
@@ -102,9 +97,4 @@ func render(t *template.Template, d tmplData) []byte {
 		panic(err)
 	}
 	return b.Bytes()
-}
-
-func hasMarker(content []byte) bool {
-	first, _, _ := strings.Cut(string(content), "\n")
-	return strings.Contains(first, marker)
 }

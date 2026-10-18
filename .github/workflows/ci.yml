@@ -59,6 +59,29 @@ jobs:
       - name: Provision a site for real
         run: sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)" go test -tags realhost -run TestRealHost -v ./internal/site
 
+  agent-dns:
+    name: Agent on real PowerDNS
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install dig
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq dnsutils
+
+      # dns.setup installs PowerDNS itself, frees port 53 from
+      # systemd-resolved and starts pdns@servik; the test then checks the
+      # answers with dig.
+      - name: Set up PowerDNS and serve a zone for real
+        run: sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)" go test -tags realhost -run TestRealHost -v ./internal/dns
+
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
