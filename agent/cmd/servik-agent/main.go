@@ -8,7 +8,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,10 +16,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"syscall"
 
+	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/rpc"
+	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/version"
 )
 
@@ -29,6 +29,9 @@ const defaultSocket = "/run/servik-agent/agent.sock"
 func main() {
 	socket := flag.String("socket", defaultSocket, "path of the Unix socket to listen on")
 	showVersion := flag.Bool("version", false, "print version and exit")
+	dryRun := flag.Bool("dry-run", false, "simulate server changes: keep files under -root and only log commands")
+	root := flag.String("root", "", "with -dry-run, the directory that stands in for / (default: a new temporary directory)")
+	webUser := flag.String("web-user", "www-data", "account the web server runs as")
 	flag.Parse()
 
 	if *showVersion {
@@ -37,13 +40,41 @@ func main() {
 	}
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	if err := run(*socket, log); err != nil {
+	h, err := newHost(*dryRun, *root, log)
+	if err != nil {
+		log.Error("agent stopped", "err", err)
+		os.Exit(2)
+	}
+	if err := run(*socket, site.NewManager(h, *webUser), *dryRun, log); err != nil {
 		log.Error("agent stopped", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(socket string, log *slog.Logger) error {
+// newHost returns the real system, or a simulator for dry runs.
+func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
+	if !dryRun {
+		if root != "" {
+			return nil, errors.New("-root only works together with -dry-run")
+		}
+		return host.System{}, nil
+	}
+	if root == "" {
+		dir, err := os.MkdirTemp("", "servik-dry-run-")
+		if err != nil {
+			return nil, err
+		}
+		root = dir
+	}
+	sim, err := host.NewSimulator(root, "8.3", "8.4", "8.5")
+	if err != nil {
+		return nil, err
+	}
+	log.Warn("dry run: no real server changes are made", "root", root)
+	return sim, nil
+}
+
+func run(socket string, sites *site.Manager, dryRun bool, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -64,22 +95,8 @@ func run(socket string, log *slog.Logger) error {
 	}
 
 	srv := rpc.NewServer(log)
-	registerMethods(srv)
+	registerMethods(srv, sites, dryRun)
 
 	log.Info("agent listening", "socket", socket, "version", version.Version)
 	return srv.Serve(ctx, ln)
-}
-
-func registerMethods(srv *rpc.Server) {
-	srv.Handle("system.ping", func(context.Context, json.RawMessage) (any, error) {
-		return "pong", nil
-	})
-	srv.Handle("agent.info", func(context.Context, json.RawMessage) (any, error) {
-		return map[string]string{
-			"version": version.Version,
-			"go":      runtime.Version(),
-			"os":      runtime.GOOS,
-			"arch":    runtime.GOARCH,
-		}, nil
-	})
 }

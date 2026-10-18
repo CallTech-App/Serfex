@@ -43,7 +43,17 @@ php artisan key:generate
 # create a PostgreSQL database and user, then set DB_* in .env
 php artisan migrate
 npm install && npm run build
+php artisan servik:admin   # create the administrator account
 php artisan serve
+php artisan queue:work     # in a second terminal: runs site jobs
+```
+
+Without root, run the agent in dry-run mode: it keeps every server change
+under a scratch directory and only logs the commands it would run.
+
+```sh
+../agent/bin/servik-agent -dry-run -root /tmp/servik-root -socket /tmp/servik-agent.sock
+# and in panel/.env: SERVIK_AGENT_SOCKET=/tmp/servik-agent.sock
 ```
 
 Tests need a PostgreSQL database named `servik_test` (see `panel/phpunit.xml`):
@@ -59,6 +69,13 @@ cd agent
 go test ./...
 CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
 sudo ./bin/servik-agent -socket /run/servik-agent/agent.sock
+```
+
+The agent's provisioning test against real Nginx and PHP-FPM needs root and
+changes the machine, so run it only on a throwaway server or VM:
+
+```sh
+sudo go test -tags realhost -run TestRealHost ./internal/site
 ```
 
 To run the panel's agent integration tests against a real agent binary:

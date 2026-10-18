@@ -2,6 +2,8 @@
 
 return [
 
+    'version' => env('SERVIK_VERSION', 'dev'),
+
     /*
     |--------------------------------------------------------------------------
     | Servik Agent
@@ -15,6 +17,8 @@ return [
     'agent' => [
         'socket' => env('SERVIK_AGENT_SOCKET', '/run/servik-agent/agent.sock'),
         'timeout' => (float) env('SERVIK_AGENT_TIMEOUT', 5),
+        // Seconds to wait for changes that validate and reload services.
+        'job_timeout' => (float) env('SERVIK_AGENT_JOB_TIMEOUT', 120),
     ],
 
 ];

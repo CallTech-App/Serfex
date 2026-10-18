@@ -1,0 +1,448 @@
+// Package site provisions web sites: the system account that owns them,
+// their directories, an Nginx virtual host and a PHP-FPM pool.
+//
+// Layout on the server (Ubuntu 24.04):
+//
+//	/home/<user>/                          customer home, <user>:www-data 0710
+//	/home/<user>/tmp/                      PHP temp files and sessions
+//	/home/<user>/web/<domain>/public_html/ document root
+//	/home/<user>/web/<domain>/logs/        PHP error log
+//	/var/log/servik/sites/<domain>/        Nginx logs, root:<user> 0750
+//	/etc/nginx/sites-available/<domain>.conf (+ sites-enabled symlink)
+//	/etc/php/<version>/fpm/pool.d/<domain>.conf
+//	/run/php/servik-<domain>.sock          PHP-FPM socket
+//
+// Every operation is idempotent and transactional: running it twice gives
+// the same result, and a failure part way restores the previous state.
+package site
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+
+	"github.com/winchester37/servik/agent/internal/host"
+)
+
+// userComment marks accounts that Servik created. Accounts without it are
+// never adopted or deleted.
+const userComment = "Servik site user"
+
+// OperationError reports a valid request that failed on the server.
+type OperationError struct{ Err error }
+
+func (e *OperationError) Error() string { return e.Err.Error() }
+func (e *OperationError) Unwrap() error { return e.Err }
+
+// Spec is the desired state of a site.
+type Spec struct {
+	Domain     string   `json:"domain"`
+	User       string   `json:"user"`
+	PHPVersion string   `json:"php_version"`
+	Aliases    []string `json:"aliases"`
+}
+
+// Result describes a provisioned site.
+type Result struct {
+	Domain       string `json:"domain"`
+	User         string `json:"user"`
+	UID          int    `json:"uid"`
+	Home         string `json:"home"`
+	DocumentRoot string `json:"document_root"`
+	PHPVersion   string `json:"php_version"`
+	PHPSocket    string `json:"php_socket"`
+	NginxConfig  string `json:"nginx_config"`
+	FPMConfig    string `json:"fpm_config"`
+	UserCreated  bool   `json:"user_created"`
+	Changed      bool   `json:"changed"`
+}
+
+// DeleteSpec says what to remove with a site.
+type DeleteSpec struct {
+	Domain string `json:"domain"`
+	User   string `json:"user"`
+	// RemoveFiles deletes /home/<user>/web/<domain> and the Nginx logs.
+	RemoveFiles bool `json:"remove_files"`
+	// RemoveUser deletes the account and its home when it has no sites left.
+	RemoveUser bool `json:"remove_user"`
+}
+
+// DeleteResult describes what was removed.
+type DeleteResult struct {
+	Domain       string `json:"domain"`
+	FilesRemoved bool   `json:"files_removed"`
+	UserRemoved  bool   `json:"user_removed"`
+}
+
+// Manager applies site changes on a Host. Operations are serialised.
+type Manager struct {
+	h       host.Host
+	webUser string
+	mu      sync.Mutex
+}
+
+// NewManager returns a Manager. webUser is the account Nginx runs as.
+func NewManager(h host.Host, webUser string) *Manager {
+	return &Manager{h: h, webUser: webUser}
+}
+
+type paths struct {
+	home, siteDir, docroot, logDir, socket, nginxAvail, nginxEnabled, fpm string
+}
+
+func layout(domain, user, php string) paths {
+	home := "/home/" + user
+	site := home + "/web/" + domain
+	return paths{
+		home:         home,
+		siteDir:      site,
+		docroot:      site + "/public_html",
+		logDir:       "/var/log/servik/sites/" + domain,
+		socket:       "/run/php/servik-" + domain + ".sock",
+		nginxAvail:   "/etc/nginx/sites-available/" + domain + ".conf",
+		nginxEnabled: "/etc/nginx/sites-enabled/" + domain + ".conf",
+		fpm:          fpmPool(php, domain),
+	}
+}
+
+func fpmPool(php, domain string) string { return "/etc/php/" + php + "/fpm/pool.d/" + domain + ".conf" }
+
+// PHPVersions lists the PHP versions that have PHP-FPM installed.
+func (m *Manager) PHPVersions() ([]string, error) {
+	entries, err := os.ReadDir(m.h.Path("/etc/php"))
+	if errors.Is(err, os.ErrNotExist) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	versions := []string{}
+	for _, e := range entries {
+		if ValidatePHPVersion(e.Name()) != nil {
+			continue
+		}
+		if fi, err := os.Stat(m.h.Path("/etc/php/" + e.Name() + "/fpm/pool.d")); err == nil && fi.IsDir() {
+			versions = append(versions, e.Name())
+		}
+	}
+	sort.Strings(versions)
+	return versions, nil
+}
+
+// Apply creates or updates a site so that it matches spec.
+func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) {
+	if err := spec.validate(); err != nil {
+		return Result{}, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	versions, err := m.PHPVersions()
+	if err != nil {
+		return Result{}, &OperationError{err}
+	}
+	if !contains(versions, spec.PHPVersion) {
+		return Result{}, invalid("PHP %s is not installed (installed: %s)", spec.PHPVersion, strings.Join(versions, ", "))
+	}
+	web, err := m.h.LookupUser(m.webUser)
+	if err != nil {
+		return Result{}, &OperationError{fmt.Errorf("web server user %q: %w", m.webUser, err)}
+	}
+
+	p := layout(spec.Domain, spec.User, spec.PHPVersion)
+	t := &tx{h: m.h}
+	defer func() {
+		if err != nil {
+			if rbErr := t.rollback(context.WithoutCancel(ctx)); rbErr != nil {
+				err = fmt.Errorf("%w (rollback also failed: %v)", err, rbErr)
+			}
+			var v *ValidationError
+			if !errors.As(err, &v) {
+				err = &OperationError{err}
+			}
+		}
+	}()
+
+	u, created, err := m.ensureUser(ctx, t, spec.User, p.home)
+	if err != nil {
+		return Result{}, err
+	}
+
+	// The home directory sits in root-owned /home, so root may set it up.
+	// Everything below it is created as the customer.
+	if err := t.rootDir(p.home, 0o710, u.UID, web.GID); err != nil {
+		return Result{}, err
+	}
+	if err := t.userDirs(ctx, u.Name, "0700", p.home+"/tmp"); err != nil {
+		return Result{}, err
+	}
+	if err := t.userDirs(ctx, u.Name, "0755", p.home+"/web", p.siteDir); err != nil {
+		return Result{}, err
+	}
+	if err := t.userDirs(ctx, u.Name, "0750", p.siteDir+"/logs"); err != nil {
+		return Result{}, err
+	}
+	_, statErr := os.Lstat(m.h.Path(p.docroot))
+	newDocroot := errors.Is(statErr, os.ErrNotExist)
+	if err := t.userDirs(ctx, u.Name, "0755", p.docroot); err != nil {
+		return Result{}, err
+	}
+	data := tmplData{
+		Marker:       marker,
+		Domain:       spec.Domain,
+		User:         u.Name,
+		PHPVersion:   spec.PHPVersion,
+		WebUser:      m.webUser,
+		ServerNames:  strings.Join(append([]string{spec.Domain}, spec.Aliases...), " "),
+		Home:         p.home,
+		SiteDir:      p.siteDir,
+		DocumentRoot: p.docroot,
+		LogDir:       p.logDir,
+		PHPSocket:    p.socket,
+		IPv6:         m.hasIPv6(),
+	}
+	if newDocroot {
+		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{p.docroot + "/index.html"}, Stdin: render(placeholderTmpl, data)})
+		if _, err := m.h.Run(ctx, index); err != nil {
+			return Result{}, err
+		}
+	}
+	if err := t.rootDir("/var/log/servik/sites", 0o755, 0, 0); err != nil {
+		return Result{}, err
+	}
+	if err := t.rootDir(p.logDir, 0o750, 0, u.GID); err != nil {
+		return Result{}, err
+	}
+
+	// PHP-FPM: one pool per site. Moving to another PHP version removes the
+	// pool from the old one.
+	reload := []string{spec.PHPVersion}
+	if err := t.writeFile(p.fpm, render(fpmTmpl, data)); err != nil {
+		return Result{}, err
+	}
+	for _, v := range versions {
+		if v == spec.PHPVersion {
+			continue
+		}
+		before := t.changed
+		t.changed = false
+		if err := t.removeFile(fpmPool(v, spec.Domain)); err != nil {
+			return Result{}, err
+		}
+		if t.changed {
+			reload = append(reload, v)
+		}
+		t.changed = t.changed || before
+	}
+
+	if err := t.writeFile(p.nginxAvail, render(nginxTmpl, data)); err != nil {
+		return Result{}, err
+	}
+	if err := t.symlink(p.nginxAvail, p.nginxEnabled); err != nil {
+		return Result{}, err
+	}
+
+	res = Result{
+		Domain:       spec.Domain,
+		User:         u.Name,
+		UID:          u.UID,
+		Home:         p.home,
+		DocumentRoot: p.docroot,
+		PHPVersion:   spec.PHPVersion,
+		PHPSocket:    p.socket,
+		NginxConfig:  p.nginxAvail,
+		FPMConfig:    p.fpm,
+		UserCreated:  created,
+		Changed:      t.changed,
+	}
+	if !t.changed {
+		return res, nil
+	}
+	if err := m.checkAndReload(ctx, t, reload); err != nil {
+		return Result{}, err
+	}
+	return res, nil
+}
+
+// Delete removes a site's web server configuration and, if asked, its
+// files and its account.
+func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult, err error) {
+	if err := ValidateDomain(spec.Domain); err != nil {
+		return DeleteResult{}, err
+	}
+	if err := ValidateUser(spec.User); err != nil {
+		return DeleteResult{}, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	versions, err := m.PHPVersions()
+	if err != nil {
+		return DeleteResult{}, &OperationError{err}
+	}
+	p := layout(spec.Domain, spec.User, "")
+	res = DeleteResult{Domain: spec.Domain}
+
+	t := &tx{h: m.h}
+	fail := func(err error) (DeleteResult, error) {
+		if rbErr := t.rollback(context.WithoutCancel(ctx)); rbErr != nil {
+			err = fmt.Errorf("%w (rollback also failed: %v)", err, rbErr)
+		}
+		var v *ValidationError
+		if errors.As(err, &v) {
+			return DeleteResult{}, err
+		}
+		return DeleteResult{}, &OperationError{err}
+	}
+
+	if err := t.unlink(p.nginxEnabled); err != nil {
+		return fail(err)
+	}
+	if err := t.removeFile(p.nginxAvail); err != nil {
+		return fail(err)
+	}
+	var reload []string
+	for _, v := range versions {
+		before := t.changed
+		t.changed = false
+		if err := t.removeFile(fpmPool(v, spec.Domain)); err != nil {
+			return fail(err)
+		}
+		if t.changed {
+			reload = append(reload, v)
+		}
+		t.changed = t.changed || before
+	}
+	if t.changed {
+		if err := m.checkAndReload(ctx, t, reload); err != nil {
+			return fail(err)
+		}
+	}
+	// From here on nothing serves the site, so file removal is final.
+
+	u, err := m.h.LookupUser(spec.User)
+	userExists := err == nil
+	if err != nil && !errors.Is(err, host.ErrUserNotFound) {
+		return res, &OperationError{err}
+	}
+
+	if spec.RemoveFiles {
+		if err := os.RemoveAll(m.h.Path(p.logDir)); err != nil {
+			return res, &OperationError{err}
+		}
+		if userExists {
+			if _, err := m.h.Run(ctx, host.AsUser(u.Name, host.Command{Name: "rm", Args: []string{"-rf", "--one-file-system", p.siteDir}})); err != nil {
+				return res, &OperationError{err}
+			}
+		}
+		res.FilesRemoved = true
+	}
+
+	if spec.RemoveUser && userExists {
+		if u.Comment != userComment {
+			return res, &OperationError{fmt.Errorf("user %q was not created by Servik; not removing it", u.Name)}
+		}
+		left, err := os.ReadDir(m.h.Path(p.home + "/web"))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return res, &OperationError{err}
+		}
+		if len(left) > 0 {
+			return res, nil // other sites still use this account
+		}
+		if _, err := m.h.Run(ctx, host.Command{Name: "userdel", Args: []string{u.Name}}); err != nil {
+			return res, &OperationError{err}
+		}
+		// The account is gone, so nothing can race us inside its home.
+		if err := os.RemoveAll(m.h.Path(p.home)); err != nil {
+			return res, &OperationError{err}
+		}
+		res.UserRemoved = true
+	}
+	return res, nil
+}
+
+// ensureUser returns the site's account, creating it when missing.
+func (m *Manager) ensureUser(ctx context.Context, t *tx, name, home string) (host.User, bool, error) {
+	u, err := m.h.LookupUser(name)
+	if err == nil {
+		if u.Comment != userComment || u.UID < 1000 {
+			return host.User{}, false, invalid("user %q already exists and was not created by Servik", name)
+		}
+		if filepath.Clean(u.Home) != home {
+			return host.User{}, false, invalid("user %q has home %s, expected %s", name, u.Home, home)
+		}
+		return u, false, nil
+	}
+	if !errors.Is(err, host.ErrUserNotFound) {
+		return host.User{}, false, err
+	}
+	add := host.Command{Name: "useradd", Args: []string{
+		"--home-dir", home, "--no-create-home", "--shell", "/usr/sbin/nologin",
+		"--user-group", "--comment", userComment, name,
+	}}
+	if _, err := m.h.Run(ctx, add); err != nil {
+		return host.User{}, false, err
+	}
+	t.changed = true
+	t.onUndo(func(ctx context.Context) error {
+		_, err := m.h.Run(ctx, host.Command{Name: "userdel", Args: []string{name}})
+		return err
+	})
+	u, err = m.h.LookupUser(name)
+	if err != nil {
+		return host.User{}, false, fmt.Errorf("user %q missing after useradd: %w", name, err)
+	}
+	return u, true, nil
+}
+
+// checkAndReload validates the new configuration and reloads the services.
+// If validation fails, the caller's rollback restores the old files before
+// anything was reloaded. If a reload fails, the files are rolled back and
+// the services reloaded again with the old configuration.
+func (m *Manager) checkAndReload(ctx context.Context, t *tx, phpVersions []string) error {
+	for _, v := range phpVersions {
+		if _, err := m.h.Run(ctx, host.Command{Name: "php-fpm" + v, Args: []string{"-t"}}); err != nil {
+			return fmt.Errorf("PHP-FPM %s rejected the configuration: %w", v, err)
+		}
+	}
+	if _, err := m.h.Run(ctx, host.Command{Name: "nginx", Args: []string{"-t"}}); err != nil {
+		return fmt.Errorf("nginx rejected the configuration: %w", err)
+	}
+
+	units := []string{}
+	for _, v := range phpVersions {
+		units = append(units, "php"+v+"-fpm")
+	}
+	units = append(units, "nginx")
+	for _, unit := range units {
+		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", unit}}); err != nil {
+			rbErr := t.rollback(context.WithoutCancel(ctx))
+			for _, u := range units {
+				_, _ = m.h.Run(context.WithoutCancel(ctx), host.Command{Name: "systemctl", Args: []string{"reload", u}})
+			}
+			return errors.Join(fmt.Errorf("reloading %s failed: %w", unit, err), rbErr)
+		}
+	}
+	return nil
+}
+
+// hasIPv6 reports whether the kernel has IPv6; Nginx refuses to start when
+// asked to listen on [::] without it.
+func (m *Manager) hasIPv6() bool {
+	_, err := os.Stat(m.h.Path("/proc/net/if_inet6"))
+	return err == nil
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}

@@ -19,11 +19,14 @@ class AgentClient
     /**
      * Call a method on the agent and return its result.
      *
+     * Server changes such as site.apply validate and reload services, so
+     * callers pass a longer $timeout than the default.
+     *
      * @param  array<string, mixed>  $params
      *
      * @throws AgentException
      */
-    public function call(string $method, array $params = []): mixed
+    public function call(string $method, array $params = [], ?float $timeout = null): mixed
     {
         $id = $this->nextId++;
 
@@ -32,7 +35,7 @@ class AgentClient
             $request['params'] = $params;
         }
 
-        $response = $this->send(json_encode($request, JSON_THROW_ON_ERROR));
+        $response = $this->send(json_encode($request, JSON_THROW_ON_ERROR), $timeout ?? $this->timeout);
 
         if (($response['id'] ?? null) !== $id) {
             throw AgentException::rpcError($method, -32603, 'response id mismatch');
@@ -64,7 +67,7 @@ class AgentClient
     /**
      * @return array<string, mixed>
      */
-    private function send(string $payload): array
+    private function send(string $payload, float $timeout): array
     {
         $stream = @stream_socket_client(
             'unix://'.$this->socket,
@@ -78,7 +81,7 @@ class AgentClient
         }
 
         try {
-            stream_set_timeout($stream, (int) ceil($this->timeout));
+            stream_set_timeout($stream, (int) ceil($timeout));
             fwrite($stream, $payload."\n");
             $line = fgets($stream);
         } finally {

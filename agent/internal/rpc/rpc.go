@@ -22,6 +22,10 @@ const (
 	CodeMethodNotFound = -32601
 	CodeInvalidParams  = -32602
 	CodeInternalError  = -32603
+
+	// CodeOperationFailed is Servik's server error: the request was valid
+	// but the server change failed. The message says why.
+	CodeOperationFailed = -32000
 )
 
 // maxRequestBytes bounds a single request line.
