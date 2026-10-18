@@ -5,6 +5,7 @@ namespace App\Livewire\Sites;
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
+use App\Models\DnsZone;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -20,6 +21,8 @@ class SiteShow extends Component
     public string $confirmDomain = '';
 
     public bool $removeUser = true;
+
+    public bool $removeZone = true;
 
     /**
      * Takes the id rather than a bound model: Livewire re-runs the page's
@@ -55,7 +58,7 @@ class SiteShow extends Component
 
     public function openDelete(): void
     {
-        $this->reset('confirmDomain', 'removeUser');
+        $this->reset('confirmDomain', 'removeUser', 'removeZone');
         $this->deleting = true;
     }
 
@@ -72,7 +75,7 @@ class SiteShow extends Component
         }
 
         $site->update(['status' => SiteStatus::Deleting]);
-        DeleteSite::dispatch($site, removeUser: $this->removeUser);
+        DeleteSite::dispatch($site, removeUser: $this->removeUser, removeZone: $this->removeZone);
         $this->deleting = false;
     }
 
@@ -88,6 +91,7 @@ class SiteShow extends Component
         return view('livewire.sites.show', [
             'site' => $site,
             'otherSites' => $site->systemUser->sites()->whereKeyNot($site->id)->count(),
+            'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->first(),
         ])->title($site->domain.' · Servik');
     }
 

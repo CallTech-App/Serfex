@@ -19,7 +19,7 @@ func (System) Run(ctx context.Context, c Command) (string, error) {
 	if c.Stdin != nil {
 		cmd.Stdin = bytes.NewReader(c.Stdin)
 	}
-	cmd.Env = []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
+	cmd.Env = append([]string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}, c.Env...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return string(out), commandError(c, string(out), err)

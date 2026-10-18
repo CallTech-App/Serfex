@@ -27,6 +27,7 @@ import (
 	"sync"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/txn"
 )
 
 // userComment marks accounts that Servik created. Accounts without it are
@@ -155,10 +156,10 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	}
 
 	p := layout(spec.Domain, spec.User, spec.PHPVersion)
-	t := &tx{h: m.h}
+	t := txn.New(m.h)
 	defer func() {
 		if err != nil {
-			if rbErr := t.rollback(context.WithoutCancel(ctx)); rbErr != nil {
+			if rbErr := t.Rollback(context.WithoutCancel(ctx)); rbErr != nil {
 				err = fmt.Errorf("%w (rollback also failed: %v)", err, rbErr)
 			}
 			var v *ValidationError
@@ -175,25 +176,25 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 
 	// The home directory sits in root-owned /home, so root may set it up.
 	// Everything below it is created as the customer.
-	if err := t.rootDir(p.home, 0o710, u.UID, web.GID); err != nil {
+	if err := t.RootDir(p.home, 0o710, u.UID, web.GID); err != nil {
 		return Result{}, err
 	}
-	if err := t.userDirs(ctx, u.Name, "0700", p.home+"/tmp"); err != nil {
+	if err := t.UserDirs(ctx, u.Name, "0700", p.home+"/tmp"); err != nil {
 		return Result{}, err
 	}
-	if err := t.userDirs(ctx, u.Name, "0755", p.home+"/web", p.siteDir); err != nil {
+	if err := t.UserDirs(ctx, u.Name, "0755", p.home+"/web", p.siteDir); err != nil {
 		return Result{}, err
 	}
-	if err := t.userDirs(ctx, u.Name, "0750", p.siteDir+"/logs"); err != nil {
+	if err := t.UserDirs(ctx, u.Name, "0750", p.siteDir+"/logs"); err != nil {
 		return Result{}, err
 	}
 	_, statErr := os.Lstat(m.h.Path(p.docroot))
 	newDocroot := errors.Is(statErr, os.ErrNotExist)
-	if err := t.userDirs(ctx, u.Name, "0755", p.docroot); err != nil {
+	if err := t.UserDirs(ctx, u.Name, "0755", p.docroot); err != nil {
 		return Result{}, err
 	}
 	data := tmplData{
-		Marker:       marker,
+		Marker:       txn.Marker,
 		Domain:       spec.Domain,
 		User:         u.Name,
 		PHPVersion:   spec.PHPVersion,
@@ -212,38 +213,38 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 			return Result{}, err
 		}
 	}
-	if err := t.rootDir("/var/log/servik/sites", 0o755, 0, 0); err != nil {
+	if err := t.RootDir("/var/log/servik/sites", 0o755, 0, 0); err != nil {
 		return Result{}, err
 	}
-	if err := t.rootDir(p.logDir, 0o750, 0, u.GID); err != nil {
+	if err := t.RootDir(p.logDir, 0o750, 0, u.GID); err != nil {
 		return Result{}, err
 	}
 
 	// PHP-FPM: one pool per site. Moving to another PHP version removes the
 	// pool from the old one.
 	reload := []string{spec.PHPVersion}
-	if err := t.writeFile(p.fpm, render(fpmTmpl, data)); err != nil {
+	if err := t.WriteFile(p.fpm, render(fpmTmpl, data)); err != nil {
 		return Result{}, err
 	}
 	for _, v := range versions {
 		if v == spec.PHPVersion {
 			continue
 		}
-		before := t.changed
-		t.changed = false
-		if err := t.removeFile(fpmPool(v, spec.Domain)); err != nil {
+		before := t.Changed
+		t.Changed = false
+		if err := t.RemoveFile(fpmPool(v, spec.Domain)); err != nil {
 			return Result{}, err
 		}
-		if t.changed {
+		if t.Changed {
 			reload = append(reload, v)
 		}
-		t.changed = t.changed || before
+		t.Changed = t.Changed || before
 	}
 
-	if err := t.writeFile(p.nginxAvail, render(nginxTmpl, data)); err != nil {
+	if err := t.WriteFile(p.nginxAvail, render(nginxTmpl, data)); err != nil {
 		return Result{}, err
 	}
-	if err := t.symlink(p.nginxAvail, p.nginxEnabled); err != nil {
+	if err := t.Symlink(p.nginxAvail, p.nginxEnabled); err != nil {
 		return Result{}, err
 	}
 
@@ -258,9 +259,9 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		NginxConfig:  p.nginxAvail,
 		FPMConfig:    p.fpm,
 		UserCreated:  created,
-		Changed:      t.changed,
+		Changed:      t.Changed,
 	}
-	if !t.changed {
+	if !t.Changed {
 		return res, nil
 	}
 	if err := m.checkAndReload(ctx, t, reload); err != nil {
@@ -288,9 +289,9 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 	p := layout(spec.Domain, spec.User, "")
 	res = DeleteResult{Domain: spec.Domain}
 
-	t := &tx{h: m.h}
+	t := txn.New(m.h)
 	fail := func(err error) (DeleteResult, error) {
-		if rbErr := t.rollback(context.WithoutCancel(ctx)); rbErr != nil {
+		if rbErr := t.Rollback(context.WithoutCancel(ctx)); rbErr != nil {
 			err = fmt.Errorf("%w (rollback also failed: %v)", err, rbErr)
 		}
 		var v *ValidationError
@@ -300,25 +301,25 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		return DeleteResult{}, &OperationError{err}
 	}
 
-	if err := t.unlink(p.nginxEnabled); err != nil {
+	if err := t.Unlink(p.nginxEnabled); err != nil {
 		return fail(err)
 	}
-	if err := t.removeFile(p.nginxAvail); err != nil {
+	if err := t.RemoveFile(p.nginxAvail); err != nil {
 		return fail(err)
 	}
 	var reload []string
 	for _, v := range versions {
-		before := t.changed
-		t.changed = false
-		if err := t.removeFile(fpmPool(v, spec.Domain)); err != nil {
+		before := t.Changed
+		t.Changed = false
+		if err := t.RemoveFile(fpmPool(v, spec.Domain)); err != nil {
 			return fail(err)
 		}
-		if t.changed {
+		if t.Changed {
 			reload = append(reload, v)
 		}
-		t.changed = t.changed || before
+		t.Changed = t.Changed || before
 	}
-	if t.changed {
+	if t.Changed {
 		if err := m.checkAndReload(ctx, t, reload); err != nil {
 			return fail(err)
 		}
@@ -367,7 +368,7 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 }
 
 // ensureUser returns the site's account, creating it when missing.
-func (m *Manager) ensureUser(ctx context.Context, t *tx, name, home string) (host.User, bool, error) {
+func (m *Manager) ensureUser(ctx context.Context, t *txn.Tx, name, home string) (host.User, bool, error) {
 	u, err := m.h.LookupUser(name)
 	if err == nil {
 		if u.Comment != userComment || u.UID < 1000 {
@@ -388,8 +389,8 @@ func (m *Manager) ensureUser(ctx context.Context, t *tx, name, home string) (hos
 	if _, err := m.h.Run(ctx, add); err != nil {
 		return host.User{}, false, err
 	}
-	t.changed = true
-	t.onUndo(func(ctx context.Context) error {
+	t.Changed = true
+	t.OnUndo(func(ctx context.Context) error {
 		_, err := m.h.Run(ctx, host.Command{Name: "userdel", Args: []string{name}})
 		return err
 	})
@@ -404,7 +405,7 @@ func (m *Manager) ensureUser(ctx context.Context, t *tx, name, home string) (hos
 // If validation fails, the caller's rollback restores the old files before
 // anything was reloaded. If a reload fails, the files are rolled back and
 // the services reloaded again with the old configuration.
-func (m *Manager) checkAndReload(ctx context.Context, t *tx, phpVersions []string) error {
+func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []string) error {
 	for _, v := range phpVersions {
 		if _, err := m.h.Run(ctx, host.Command{Name: "php-fpm" + v, Args: []string{"-t"}}); err != nil {
 			return fmt.Errorf("PHP-FPM %s rejected the configuration: %w", v, err)
@@ -421,7 +422,7 @@ func (m *Manager) checkAndReload(ctx context.Context, t *tx, phpVersions []strin
 	units = append(units, "nginx")
 	for _, unit := range units {
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", unit}}); err != nil {
-			rbErr := t.rollback(context.WithoutCancel(ctx))
+			rbErr := t.Rollback(context.WithoutCancel(ctx))
 			for _, u := range units {
 				_, _ = m.h.Run(context.WithoutCancel(ctx), host.Command{Name: "systemctl", Args: []string{"reload", u}})
 			}

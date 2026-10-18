@@ -109,4 +109,51 @@ class AgentIntegrationTest extends TestCase
             $this->assertStringContainsString('at least two labels', $e->reason);
         }
     }
+
+    public function test_dns_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+
+        $this->assertFalse($client->call('dns.status')['configured']);
+        try {
+            $client->call('dns.zone.get', ['zone' => 'kahveatolyesi.com.tr']);
+            $this->fail('expected the DNS server to be missing');
+        } catch (AgentException $e) {
+            $this->assertSame(-32001, $e->getCode());
+        }
+
+        $setup = $client->call('dns.setup', [], 30);
+        $this->assertTrue($setup['installed']);
+        $this->assertSame(['installed' => true, 'configured' => true, 'running' => true, 'version' => 'simulated'], $client->call('dns.status'));
+        $this->assertStringContainsString('launch=lmdb', file_get_contents($this->root.'/etc/powerdns/pdns-servik.conf'));
+        $this->assertSame(['ipv4' => ['203.0.113.10'], 'ipv6' => ['2001:db8::10']], $client->call('system.addresses'));
+
+        $spec = [
+            'zone' => 'kahveatolyesi.com.tr',
+            'soa' => ['primary' => 'ns1.kahveatolyesi.com.tr.', 'hostmaster' => 'hostmaster@kahveatolyesi.com.tr', 'refresh' => 10800, 'retry' => 3600, 'expire' => 604800, 'minimum' => 3600, 'ttl' => 3600],
+            'records' => [
+                ['name' => '@', 'type' => 'NS', 'ttl' => 3600, 'content' => 'ns1.kahveatolyesi.com.tr.'],
+                ['name' => 'ns1', 'type' => 'A', 'ttl' => 3600, 'content' => '203.0.113.10'],
+                ['name' => '@', 'type' => 'MX', 'ttl' => 3600, 'content' => '10 mail.kahveatolyesi.com.tr.'],
+                ['name' => '@', 'type' => 'TXT', 'ttl' => 3600, 'content' => 'v=spf1 a mx ~all'],
+            ],
+        ];
+        $applied = $client->call('dns.zone.apply', $spec, 30);
+        $this->assertTrue($applied['created']);
+        $this->assertFalse($client->call('dns.zone.apply', $spec, 30)['changed'], 'apply must be idempotent');
+
+        $zone = $client->call('dns.zone.get', ['zone' => 'kahveatolyesi.com.tr']);
+        $this->assertSame($applied['serial'], $zone['serial']);
+        $this->assertContains(['name' => '@', 'type' => 'TXT', 'ttl' => 3600, 'content' => 'v=spf1 a mx ~all'], $zone['records']);
+
+        try {
+            $client->call('dns.zone.apply', [...$spec, 'records' => [...$spec['records'], ['name' => '@', 'type' => 'CNAME', 'ttl' => 3600, 'content' => 'x.example.com.']]], 30);
+            $this->fail('expected an apex CNAME to be rejected');
+        } catch (AgentException $e) {
+            $this->assertSame(AgentException::INVALID_PARAMS, $e->getCode());
+            $this->assertStringContainsString('CNAME', $e->reason);
+        }
+
+        $this->assertTrue($client->call('dns.zone.delete', ['zone' => 'kahveatolyesi.com.tr'], 30)['deleted']);
+    }
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
@@ -19,7 +20,7 @@ func TestSiteMethods(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := rpc.NewServer(nil)
-	registerMethods(srv, site.NewManager(sim, "www-data"), true)
+	registerMethods(srv, services{sites: site.NewManager(sim, "www-data"), dns: dns.NewSimulatedManager(sim, dns.NewMemory()), dryRun: true})
 
 	sock := filepath.Join(t.TempDir(), "agent.sock")
 	ln, err := net.Listen("unix", sock)
@@ -50,6 +51,8 @@ func TestSiteMethods(t *testing.T) {
 		return resp
 	}
 
+	const zone = `{"zone":"a.com","soa":{"primary":"ns1.a.com","hostmaster":"hostmaster@a.com","refresh":10800,"retry":3600,"expire":604800,"minimum":3600,"ttl":3600},` +
+		`"records":[{"name":"@","type":"NS","ttl":3600,"content":"ns1.a.com."},{"name":"ns1","type":"A","ttl":3600,"content":"203.0.113.10"}]}`
 	tests := []struct {
 		name, req string
 		code      int
@@ -59,6 +62,14 @@ func TestSiteMethods(t *testing.T) {
 		{"unknown field", `{"jsonrpc":"2.0","id":3,"method":"site.apply","params":{"domian":"a.com"}}`, rpc.CodeInvalidParams},
 		{"invalid domain", `{"jsonrpc":"2.0","id":4,"method":"site.apply","params":{"domain":"a","user":"a","php_version":"8.4"}}`, rpc.CodeInvalidParams},
 		{"delete", `{"jsonrpc":"2.0","id":5,"method":"site.delete","params":{"domain":"a.com","user":"a","remove_files":true,"remove_user":true}}`, 0},
+		{"addresses", `{"jsonrpc":"2.0","id":10,"method":"system.addresses"}`, 0},
+		{"dns status", `{"jsonrpc":"2.0","id":11,"method":"dns.status"}`, 0},
+		{"zone before setup", `{"jsonrpc":"2.0","id":12,"method":"dns.zone.apply","params":` + zone + `}`, CodeDNSNotSetUp},
+		{"dns setup", `{"jsonrpc":"2.0","id":13,"method":"dns.setup"}`, 0},
+		{"zone apply", `{"jsonrpc":"2.0","id":14,"method":"dns.zone.apply","params":` + zone + `}`, 0},
+		{"zone get", `{"jsonrpc":"2.0","id":15,"method":"dns.zone.get","params":{"zone":"a.com"}}`, 0},
+		{"zone invalid", `{"jsonrpc":"2.0","id":16,"method":"dns.zone.apply","params":{"zone":"a.com","soa":{},"records":[]}}`, rpc.CodeInvalidParams},
+		{"zone delete", `{"jsonrpc":"2.0","id":17,"method":"dns.zone.delete","params":{"zone":"a.com"}}`, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

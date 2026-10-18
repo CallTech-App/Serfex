@@ -14,7 +14,8 @@ import (
 // Simulator is a Host that keeps every file under Root and fakes commands.
 //
 // Account commands (useradd, userdel) edit Root/etc/passwd and
-// Root/etc/group. File commands run through runuser (install -d, rm -rf,
+// Root/etc/group. "apt-get install" creates the files Servik checks for
+// in the packages it knows (simPackages). File commands run through runuser (install -d, rm -rf,
 // tee) are applied under Root. Everything else (nginx -t, systemctl reload)
 // succeeds without doing anything. Every command is recorded.
 type Simulator struct {
@@ -28,11 +29,11 @@ type Simulator struct {
 }
 
 // NewSimulator returns a simulator rooted at root, with a minimal system
-// (root and www-data accounts, Nginx directories and PHP-FPM pool
-// directories for phpVersions) created where missing.
+// (root, www-data and pdns accounts, Nginx and PowerDNS directories and
+// PHP-FPM pool directories for phpVersions) created where missing.
 func NewSimulator(root string, phpVersions ...string) (*Simulator, error) {
 	s := &Simulator{Root: root}
-	dirs := []string{"/etc/nginx/sites-available", "/etc/nginx/sites-enabled", "/home", "/run/php", "/var/log"}
+	dirs := []string{"/etc/nginx/sites-available", "/etc/nginx/sites-enabled", "/etc/powerdns", "/etc/systemd", "/home", "/run/php", "/var/lib/powerdns", "/var/log"}
 	for _, v := range phpVersions {
 		dirs = append(dirs, "/etc/php/"+v+"/fpm/pool.d")
 	}
@@ -42,8 +43,8 @@ func NewSimulator(root string, phpVersions ...string) (*Simulator, error) {
 		}
 	}
 	for file, seed := range map[string]string{
-		"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\n",
-		"/etc/group":  "root:x:0:\nwww-data:x:33:\n",
+		"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\npdns:x:103:105:PowerDNS:/var/spool/powerdns:/usr/sbin/nologin\n",
+		"/etc/group":  "root:x:0:\nwww-data:x:33:\npdns:x:105:\n",
 	} {
 		if _, err := os.Stat(s.Path(file)); errors.Is(err, os.ErrNotExist) {
 			if err := os.WriteFile(s.Path(file), []byte(seed), 0o644); err != nil {
@@ -117,6 +118,8 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 		err = s.rm(inner.Args)
 	case "tee":
 		err = s.tee(inner.Args, inner.Stdin)
+	case "apt-get":
+		err = s.aptGet(inner.Args)
 	}
 	if err != nil {
 		return err.Error(), commandError(c, err.Error(), errors.New("exit status 1"))
@@ -256,4 +259,28 @@ func appendFile(path, data string) error {
 		return err
 	}
 	return f.Close()
+}
+
+// simPackages are the files that mark a package as installed.
+var simPackages = map[string][]string{
+	"pdns-server":       {"/usr/sbin/pdns_server"},
+	"pdns-backend-lmdb": {"/usr/lib/x86_64-linux-gnu/pdns/liblmdbbackend.so"},
+}
+
+// apt-get install [-OPTIONS] PACKAGE...
+func (s *Simulator) aptGet(args []string) error {
+	if len(args) == 0 || args[0] != "install" {
+		return nil
+	}
+	for _, a := range args[1:] {
+		for _, f := range simPackages[a] {
+			if err := os.MkdirAll(filepath.Dir(s.Path(f)), 0o755); err != nil {
+				return err
+			}
+			if err := os.WriteFile(s.Path(f), nil, 0o755); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

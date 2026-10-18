@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
@@ -45,7 +46,11 @@ func main() {
 		log.Error("agent stopped", "err", err)
 		os.Exit(2)
 	}
-	if err := run(*socket, site.NewManager(h, *webUser), *dryRun, log); err != nil {
+	svc := services{sites: site.NewManager(h, *webUser), dns: dns.NewManager(h), dryRun: *dryRun}
+	if *dryRun {
+		svc.dns = dns.NewSimulatedManager(h, dns.NewMemory())
+	}
+	if err := run(*socket, svc, log); err != nil {
 		log.Error("agent stopped", "err", err)
 		os.Exit(1)
 	}
@@ -74,7 +79,7 @@ func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
 	return sim, nil
 }
 
-func run(socket string, sites *site.Manager, dryRun bool, log *slog.Logger) error {
+func run(socket string, svc services, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -95,7 +100,7 @@ func run(socket string, sites *site.Manager, dryRun bool, log *slog.Logger) erro
 	}
 
 	srv := rpc.NewServer(log)
-	registerMethods(srv, sites, dryRun)
+	registerMethods(srv, svc)
 
 	log.Info("agent listening", "socket", socket, "version", version.Version)
 	return srv.Serve(ctx, ln)

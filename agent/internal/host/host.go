@@ -22,11 +22,13 @@ import (
 // ErrUserNotFound is returned by LookupUser when the account does not exist.
 var ErrUserNotFound = errors.New("user not found")
 
-// Command is a program to run, with optional standard input.
+// Command is a program to run, with optional standard input and extra
+// environment variables (NAME=value).
 type Command struct {
 	Name  string
 	Args  []string
 	Stdin []byte
+	Env   []string
 }
 
 // String renders the command for logs and error messages.

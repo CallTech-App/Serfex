@@ -3,13 +3,18 @@
 namespace Tests\Feature;
 
 use App\Enums\SiteStatus;
+use App\Enums\ZoneStatus;
+use App\Jobs\DeleteDnsZone;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
+use App\Models\DnsZone;
 use App\Models\Site;
 use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Dns\Zones;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Tests\TestCase;
 
@@ -57,7 +62,7 @@ class SiteJobsTest extends TestCase
             ->with('site.delete', Mockery::on(fn ($p) => $p['remove_files'] && $p['remove_user']), 120.0)
             ->andReturn(['user_removed' => true]);
 
-        (new DeleteSite($site, removeUser: true))->handle($agent);
+        (new DeleteSite($site, removeUser: true))->handle($agent, app(Zones::class));
 
         $this->assertSame(0, Site::count());
         $this->assertSame(0, SystemUser::count());
@@ -74,7 +79,7 @@ class SiteJobsTest extends TestCase
             ->with('site.delete', Mockery::on(fn ($p) => $p['remove_user'] === false), 120.0)
             ->andReturn(['user_removed' => false]);
 
-        (new DeleteSite($site, removeUser: true))->handle($agent);
+        (new DeleteSite($site, removeUser: true))->handle($agent, app(Zones::class));
 
         $this->assertSame(1, Site::count());
         $this->assertTrue($user->exists());
@@ -86,8 +91,38 @@ class SiteJobsTest extends TestCase
         $agent = Mockery::mock(AgentClient::class);
         $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/servik-agent/agent.sock', 'Connection refused'));
 
-        (new DeleteSite($site))->handle($agent);
+        (new DeleteSite($site))->handle($agent, app(Zones::class));
 
         $this->assertSame(SiteStatus::Failed, $site->fresh()->status);
+    }
+
+    public function test_delete_removes_the_zone_when_asked(): void
+    {
+        Queue::fake();
+        $site = Site::factory()->create(['status' => SiteStatus::Deleting]);
+        $zone = DnsZone::factory()->create(['name' => $site->domain, 'site_id' => $site->id]);
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->with('site.delete', Mockery::any(), 120.0)->andReturn(['user_removed' => true]);
+
+        (new DeleteSite($site, removeZone: true))->handle($agent, app(Zones::class));
+
+        $this->assertSame(ZoneStatus::Deleting, $zone->fresh()->status);
+        Queue::assertPushed(DeleteDnsZone::class, fn ($job) => $job->zone->is($zone));
+    }
+
+    public function test_delete_keeps_the_zone_as_dns_only_by_default(): void
+    {
+        Queue::fake();
+        $site = Site::factory()->create(['status' => SiteStatus::Deleting]);
+        $zone = DnsZone::factory()->create(['name' => $site->domain, 'site_id' => $site->id]);
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->with('site.delete', Mockery::any(), 120.0)->andReturn(['user_removed' => true]);
+
+        (new DeleteSite($site))->handle($agent, app(Zones::class));
+
+        $zone->refresh();
+        $this->assertSame(ZoneStatus::Active, $zone->status);
+        $this->assertNull($zone->site_id);
+        Queue::assertNotPushed(DeleteDnsZone::class);
     }
 }
