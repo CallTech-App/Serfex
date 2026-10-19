@@ -84,7 +84,7 @@ class CustomerUsageTest extends TestCase
         $this->assertSame('1 / 1', $report['sites']['text']);
         $this->assertSame('ok', $report['sites']['level'], 'a count at its limit is fine');
         $this->assertSame('1 / Sınırsız', $report['laravel_apps']['text']);
-        $this->assertNull($report['databases']['used']);
+        $this->assertSame('0 / '.($package->max_databases ?? 'Sınırsız'), $report['databases']['text']);
         $this->assertStringContainsString('site sınırına ulaşıldı', $quotas->refusal($customer, 'sites'));
         $this->assertNull($quotas->refusal($customer, 'laravel_apps'));
         $this->assertNull($quotas->refusal(null, 'sites'), 'sites without a customer have no limits');

@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
 use App\Livewire\Attributes\ForCustomers;
+use App\Models\Database;
 use App\Models\DnsZone;
 use App\Models\MailDomain;
 use App\Models\Site;
@@ -29,6 +30,8 @@ class SiteShow extends Component
     public bool $removeZone = true;
 
     public bool $removeMail = true;
+
+    public bool $removeDatabases = true;
 
     /**
      * Takes the id rather than a bound model: Livewire re-runs the page's
@@ -64,7 +67,7 @@ class SiteShow extends Component
 
     public function openDelete(): void
     {
-        $this->reset('confirmDomain', 'removeUser', 'removeZone', 'removeMail');
+        $this->reset('confirmDomain', 'removeUser', 'removeZone', 'removeMail', 'removeDatabases');
         $this->deleting = true;
     }
 
@@ -81,7 +84,7 @@ class SiteShow extends Component
         }
 
         $site->update(['status' => SiteStatus::Deleting]);
-        DeleteSite::dispatch($site, removeUser: $this->removeUser, removeZone: $this->removeZone, removeMail: $this->removeMail);
+        DeleteSite::dispatch($site, removeUser: $this->removeUser, removeZone: $this->removeZone, removeMail: $this->removeMail, removeDatabases: $this->removeDatabases);
         $this->deleting = false;
     }
 
@@ -98,6 +101,7 @@ class SiteShow extends Component
             'site' => $site,
             'otherSites' => $site->systemUser->sites()->whereKeyNot($site->id)->count(),
             'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->first(),
+            'databases' => Database::where('site_id', $site->id)->count(),
             'mail' => MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
             'webmail' => app(MailSettings::class)->webmailUrl(),
         ])->title($site->domain.' · Servik');

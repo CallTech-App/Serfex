@@ -55,6 +55,10 @@ type Manager struct {
 	dns       ChallengeDNS
 	issuer    Issuer
 	consumers []Consumer
+	// PanelChanged, when set, runs after the panel's certificate files
+	// changed and before the panel's web server reloads (servik-web
+	// switches from its self-signed certificate to the panel's).
+	PanelChanged func(context.Context) error
 	// localWeb is where this server's Nginx answers on port 80. Before
 	// asking the certificate authority to validate, the agent waits until
 	// Nginx serves the answer there: a reload that has just been requested
@@ -493,6 +497,11 @@ func (m *Manager) reloadPanel(ctx context.Context, t *txn.Tx, _ string) (bool, e
 	}
 	if !found {
 		return false, nil
+	}
+	if m.PanelChanged != nil {
+		if err := m.PanelChanged(ctx); err != nil {
+			return false, errors.Join(fmt.Errorf("pointing %s at the new certificate failed: %w", PanelUnit, err), t.Rollback(context.WithoutCancel(ctx)))
+		}
 	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload-or-restart", PanelUnit}}); err != nil {
 		rbErr := t.Rollback(context.WithoutCancel(ctx))

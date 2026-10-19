@@ -238,6 +238,49 @@ jobs:
           sudo nft list ruleset || true
           sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
 
+  agent-databases:
+    name: Agent runs a real ${{ matrix.product }} server
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [mysql, mariadb, postgresql]
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      # The runner image ships MySQL and PostgreSQL with its own settings;
+      # the agent installs the server itself, as on a fresh Ubuntu.
+      - name: Remove the preinstalled database servers
+        run: |
+          sudo systemctl stop mysql postgresql || true
+          sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq 'mysql-*' 'mariadb-*' 'postgresql*' || true
+          sudo rm -rf /var/lib/mysql /etc/mysql /var/log/mysql /var/lib/postgresql /etc/postgresql
+          sudo apt-get update -qq
+
+      # Installs the server, creates databases and users with each access
+      # level, connects with them, turns remote access on and off, signs in
+      # to phpMyAdmin or Adminer through servik-web and deletes a database
+      # with a backup.
+      - name: Databases, users and the web manager for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          SERVIK_DB_PRODUCT=${{ matrix.product }}
+          go test -tags realhost -run TestRealHost -v -timeout 15m ./internal/database
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u mysql -u mariadb -u 'postgresql*' -u servik-web -u servik-php -n 100 || true
+          sudo sh -c 'tail -n 30 /var/log/servik/web/*.log' || true
+
   panel-realhost:
     name: Panel suspends a customer on a real server
     runs-on: ubuntu-24.04

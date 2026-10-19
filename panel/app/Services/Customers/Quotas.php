@@ -3,6 +3,7 @@
 namespace App\Services\Customers;
 
 use App\Models\Customer;
+use App\Models\Database;
 use App\Models\LaravelApp;
 use App\Models\LaravelBackup;
 use App\Models\Mailbox;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Cache;
  * What a customer uses against their package, and whether they may create
  * one more of something.
  *
- * Counts (sites, mailboxes, Laravel applications) are refused at the
+ * Counts (sites, mailboxes, databases, Laravel applications) are refused at the
  * limit. Disk is measured, not capped by the file system: once it is full
  * nothing new is created (sites, mailboxes, applications, previews,
  * backups) but everything that exists keeps working. Traffic is reported
@@ -32,12 +33,13 @@ class Quotas
     private const KINDS = [
         'sites' => 'site sınırına',
         'mailboxes' => 'posta kutusu sınırına',
+        'databases' => 'veritabanı sınırına',
         'laravel_apps' => 'Laravel uygulaması sınırına',
     ];
 
     /**
-     * Usage in the unit limits use (bytes for disk and traffic). Databases
-     * are counted from the Databases milestone on; until then null.
+     * Usage in the unit limits use (bytes for disk and traffic). Disk is
+     * the home directories, mail, Laravel backups and databases.
      *
      * @return array<string, int|null>
      */
@@ -51,14 +53,15 @@ class Quotas
 
         $disk = (int) $customer->systemUsers()->sum('disk_bytes')
             + (int) (clone $mailboxes)->sum('usage_bytes')
-            + (int) LaravelBackup::whereIn('laravel_app_id', (clone $apps)->select('id'))->sum('size');
+            + (int) LaravelBackup::whereIn('laravel_app_id', (clone $apps)->select('id'))->sum('size')
+            + (int) Database::withTrashed()->whereIn('system_user_id', $accounts)->sum('size_bytes');
 
         return [
             'sites' => $sites->count(),
             'disk' => $disk,
             'traffic' => (int) SiteTraffic::whereIn('site_id', $siteIds)->where('month', now()->startOfMonth()->toDateString())->sum('bytes'),
             'mailboxes' => $mailboxes->count(),
-            'databases' => null,
+            'databases' => Database::whereIn('system_user_id', $accounts)->count(),
             'laravel_apps' => $apps->whereNull('preview_of_id')->count(),
         ];
     }

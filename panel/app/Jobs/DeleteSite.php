@@ -9,6 +9,7 @@ use App\Models\MailDomain;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Databases\Databases;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailDomains;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\DB;
  * the panel. The system account goes too when asked and no site uses it;
  * the site's DNS zone goes when asked, otherwise it stays as a DNS-only
  * domain. Its mail (mailboxes and stored mail) goes when asked, otherwise
- * the domain keeps receiving mail without the site.
+ * the domain keeps receiving mail without the site. Its databases go when
+ * asked (each after a backup), otherwise they stay with the account.
  */
 class DeleteSite implements ShouldQueue
 {
@@ -28,7 +30,7 @@ class DeleteSite implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(public Site $site, public bool $removeUser = true, public bool $removeZone = false, public bool $removeMail = false) {}
+    public function __construct(public Site $site, public bool $removeUser = true, public bool $removeZone = false, public bool $removeMail = false, public bool $removeDatabases = false) {}
 
     public function handle(AgentClient $agent, Zones $zones): void
     {
@@ -69,6 +71,15 @@ class DeleteSite implements ShouldQueue
             $site->update(['status' => SiteStatus::Failed, 'last_error' => $e->getMessage()]);
 
             return;
+        }
+
+        if ($this->removeDatabases) {
+            try {
+                app(Databases::class)->deleteForSite($site);
+            } catch (AgentException $e) {
+                // The site is gone already; what is left shows in the list.
+                report($e);
+            }
         }
 
         // The vhost is gone, so the site's certificates can go too. One the

@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Customers\ImpersonationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Databases\DatabaseManagerController;
 use App\Http\Controllers\Laravel\BackupDownloadController;
 use App\Http\Controllers\Laravel\DeployWebhookController;
 use App\Http\Controllers\Mail\WebmailController;
@@ -15,6 +16,9 @@ use App\Livewire\Ai\AiAudit;
 use App\Livewire\Ai\AiSettingsPage;
 use App\Livewire\Customers\CustomerIndex;
 use App\Livewire\Customers\CustomerShow;
+use App\Livewire\Databases\DatabaseIndex;
+use App\Livewire\Databases\DatabaseSettingsPage;
+use App\Livewire\Databases\DatabaseShow;
 use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Dns\ZoneIndex;
 use App\Livewire\Dns\ZoneShow;
@@ -64,6 +68,9 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         Route::livewire('/mail/{domain}', MailDomainShow::class)->whereNumber('domain')->name('mail.show');
         Route::get('/mail/mailboxes/{mailbox}/webmail', WebmailController::class)->whereNumber('mailbox')->name('mail.webmail');
         Route::livewire('/ssl', SslIndex::class)->name('ssl.index');
+        Route::livewire('/databases', DatabaseIndex::class)->name('databases.index');
+        Route::livewire('/databases/{database}', DatabaseShow::class)->whereNumber('database')->name('databases.show');
+        Route::get('/databases/{database}/yonetici', DatabaseManagerController::class)->whereNumber('database')->middleware('throttle:30,1')->name('databases.manager');
     });
 
     Route::middleware(EnsureAdmin::class)->group(function () {
@@ -74,6 +81,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
         Route::livewire('/mail/settings', MailSettingsPage::class)->name('mail.settings');
         Route::livewire('/ssl/settings', SslSettingsPage::class)->name('ssl.settings');
+        Route::livewire('/databases/settings', DatabaseSettingsPage::class)->name('databases.settings');
         Route::livewire('/musteriler', CustomerIndex::class)->name('customers.index');
         Route::livewire('/musteriler/{customer}', CustomerShow::class)->whereNumber('customer')->name('customers.show');
         Route::post('/musteriler/{customer}/giris', [ImpersonationController::class, 'store'])->whereNumber('customer')->name('customers.impersonate');

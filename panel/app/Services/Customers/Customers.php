@@ -6,6 +6,7 @@ use App\Enums\MailDomainStatus;
 use App\Enums\SiteStatus;
 use App\Jobs\ProvisionSite;
 use App\Jobs\PurgeCustomer;
+use App\Jobs\SyncDatabaseUsers;
 use App\Jobs\SyncLaravelProcesses;
 use App\Jobs\SyncMailDomain;
 use App\Models\Customer;
@@ -181,7 +182,8 @@ class Customers
 
     /**
      * Makes the server follow the customer's state: every site, mail
-     * domain and Laravel application is re-applied, suspended or not.
+     * domain, Laravel application and database user is re-applied,
+     * suspended or not.
      */
     public function apply(Customer $customer, ?SystemUser $only = null): void
     {
@@ -193,6 +195,7 @@ class Customers
 
     private function applyAccount(SystemUser $account): void
     {
+        SyncDatabaseUsers::dispatch($account->id);
         foreach (Site::with('laravelApp')->where('system_user_id', $account->id)->get() as $site) {
             if ($site->status === SiteStatus::Deleting) {
                 continue;

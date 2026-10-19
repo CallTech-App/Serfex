@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Services\Agent\AgentClient;
+use App\Services\Agent\AgentException;
+use App\Services\Databases\DatabaseServers;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+
+/**
+ * Installs (or repairs) database servers through the agent one by one,
+ * then the web database manager for them. A server the agent installed
+ * in a failed step is removed again by the agent; the ones before it
+ * stay.
+ *
+ * Progress is kept in the "databases.setup" setting (see
+ * DatabaseServers): the step running, then ready or failed with the
+ * error.
+ */
+class SetupDatabaseServers implements ShouldBeUnique, ShouldQueue
+{
+    use Queueable;
+
+    public int $tries = 1;
+
+    /** Installing packages can take a while on a slow mirror. */
+    public int $timeout = 1800;
+
+    /**
+     * @param  list<string>  $products  mysql, mariadb and/or postgresql
+     */
+    public function __construct(public array $products) {}
+
+    public function handle(AgentClient $agent, DatabaseServers $servers): void
+    {
+        $servers->saveSetup(['state' => 'installing', 'products' => $this->products, 'error' => null]);
+        try {
+            foreach ($this->products as $product) {
+                $servers->saveSetup(['step' => $product]);
+                $agent->call('db.server.install', ['product' => $product], 840);
+            }
+            $servers->saveSetup(['step' => 'manager']);
+            $agent->call('db.manager.setup', ['port' => $servers->managerPort()], 840);
+        } catch (AgentException $e) {
+            $servers->status();
+            $servers->saveSetup(['state' => 'failed', 'error' => $e->reason]);
+
+            return;
+        }
+        // Records which products are installed now.
+        $servers->status();
+        $servers->saveSetup(['state' => 'ready', 'step' => null, 'error' => null, 'setup_at' => now()->toIso8601String()]);
+    }
+}

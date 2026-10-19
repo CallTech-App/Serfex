@@ -217,10 +217,29 @@
                     <label for="lv-db" class="font-medium sm:pt-2">Veritabanı</label>
                     <div class="space-y-2">
                         <select id="lv-db" wire:model.live="database" class="{{ $field }} border-line">
+                            @if ($dbServers !== [])
+                                <option value="new">Yeni veritabanı oluştur ({{ implode(' veya ', $dbServers) }})</option>
+                            @endif
                             <option value="sqlite">SQLite dosyası (sürümler arasında paylaşılır)</option>
                             <option value="existing">Var olan MySQL, MariaDB veya PostgreSQL veritabanı</option>
                             <option value="none">Veritabanı yok</option>
                         </select>
+                        @if ($database === 'new')
+                            <div class="grid grid-cols-1 gap-2 rounded-lg border border-line p-3 {{ count($dbServers) > 1 ? 'sm:grid-cols-[10rem_1fr]' : '' }}">
+                                @if (count($dbServers) > 1)
+                                    <select wire:model="newDbServer" aria-label="Veritabanı sunucusu" class="{{ $field }} border-line">
+                                        @foreach ($dbServers as $key => $label)
+                                            <option value="{{ $key }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                                <div class="flex overflow-hidden rounded-md border focus-within:border-accent {{ $errors->has('newDbSuffix') ? 'border-crit' : 'border-line' }}">
+                                    <span class="grid place-items-center border-r border-line bg-surface-2 px-3 font-mono text-[13px] text-muted">{{ $dbPrefix }}</span>
+                                    <input wire:model="newDbSuffix" aria-label="Veritabanı adı" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
+                                </div>
+                                @error('newDbSuffix')<p class="text-[13px] text-crit sm:col-span-2">{{ $message }}</p>@enderror
+                            </div>
+                        @endif
                         @if ($database === 'existing')
                             <div class="grid grid-cols-1 gap-2 rounded-lg border border-line p-3 sm:grid-cols-[1fr_1fr]">
                                 <select wire:model.live="dbDriver" aria-label="Sürücü" class="{{ $field }} border-line">
@@ -240,7 +259,7 @@
                                 @endforeach
                             </div>
                         @endif
-                        <p class="text-2xs text-muted">Bilgiler <span class="font-mono">.env</span> dosyasına yazılır ve kurulumda <span class="font-mono">migrate</span> çalışır. Panelden yeni veritabanı oluşturma Veritabanları bölümüyle gelecek.</p>
+                        <p class="text-2xs text-muted">@if ($database === 'new')Veritabanı ve aynı adlı kullanıcısı oluşturulur, güçlü bir parolayla <span class="font-mono">.env</span> dosyasına yazılır ve kurulumda <span class="font-mono">migrate</span> çalışır.@else Bilgiler <span class="font-mono">.env</span> dosyasına yazılır ve kurulumda <span class="font-mono">migrate</span> çalışır.@endif</p>
                     </div>
 
                     <p class="font-medium sm:pt-1">Ön yüz</p>

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/firewall"
 	"github.com/winchester37/servik/agent/internal/host"
@@ -80,6 +81,13 @@ func main() {
 		svc.monitor = monitor.New(h, svc.sites, log)
 	}
 	svc.sites.MaxChildren = svc.monitor.PHPWorkers
+	if *dryRun {
+		svc.databases = database.NewSimulated(h)
+	} else {
+		svc.databases = database.NewManager(h)
+	}
+	svc.monitor.DatabaseSites = svc.databases.Sites
+	svc.certs.PanelChanged = svc.databases.PanelCertificateChanged
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
@@ -165,6 +173,7 @@ func run(socket string, svc services, log *slog.Logger) error {
 		log.Error("restoring IP blocks", "err", err)
 	}
 	go svc.monitor.Run(ctx)
+	go svc.databases.Run(ctx)
 
 	log.Info("agent listening", "socket", socket, "version", version.Version)
 	return srv.Serve(ctx, ln)

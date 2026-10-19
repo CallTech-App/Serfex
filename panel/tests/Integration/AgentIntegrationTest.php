@@ -346,4 +346,39 @@ class AgentIntegrationTest extends TestCase
 
         $client->call('site.delete', ['domain' => $site['domain'], 'user' => $site['user'], 'remove_files' => true, 'remove_user' => true], 30);
     }
+
+    public function test_database_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+
+        try {
+            $client->call('db.database.create', ['server' => 'mysql', 'name' => 'kahve_shop', 'site' => 'kahveatolyesi.com.tr'], 30);
+            $this->fail('expected a database server that is not installed to be refused');
+        } catch (AgentException $e) {
+            $this->assertSame(-32003, $e->getCode());
+        }
+
+        $this->assertSame('8.0.46', $client->call('db.server.install', ['product' => 'mysql'], 60)['version']);
+        $this->assertTrue($client->call('db.manager.setup', ['port' => 8443], 60)['phpmyadmin']);
+        $status = $client->call('db.status');
+        $this->assertTrue($status['servers']['mysql']['running']);
+        $this->assertFalse($status['servers']['postgresql']['installed']);
+
+        $client->call('db.database.create', ['server' => 'mysql', 'name' => 'kahve_shop', 'site' => 'kahveatolyesi.com.tr'], 30);
+        $client->call('db.user.apply', [
+            'server' => 'mysql', 'name' => 'kahve_app', 'password' => 'Uzun-ve-guclu-parola-42', 'hosts' => [],
+            'grants' => [['database' => 'kahve_shop', 'access' => 'all']],
+        ], 30);
+        $listing = $client->call('db.list', ['server' => 'mysql'], 30);
+        $this->assertSame(['kahve_shop'], array_column($listing['databases'], 'name'));
+        $this->assertSame(['kahve_app'], array_column($listing['users'], 'name'));
+
+        $login = $client->call('db.manager.login', ['server' => 'mysql', 'database' => 'kahve_shop'], 30);
+        $this->assertSame([8443, 'phpmyadmin'], [$login['port'], $login['tool']]);
+        $this->assertStringStartsWith('/phpmyadmin/', $login['path']);
+
+        $this->assertTrue($client->call('db.database.delete', ['server' => 'mysql', 'name' => 'kahve_shop', 'backup' => true], 60)['deleted']);
+        $client->call('db.user.delete', ['server' => 'mysql', 'name' => 'kahve_app'], 30);
+        $this->assertSame(['databases' => [], 'users' => []], $client->call('db.list', ['server' => 'mysql'], 30));
+    }
 }

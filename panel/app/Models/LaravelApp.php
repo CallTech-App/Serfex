@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
     'scheduler', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at',
     'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
     'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
-    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy'])]
+    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id'])]
 class LaravelApp extends Model
 {
     /** @use HasFactory<LaravelAppFactory> */
@@ -93,6 +93,16 @@ class LaravelApp extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * The database Servik created for the application, if any.
+     *
+     * @return BelongsTo<Database, $this>
+     */
+    public function database(): BelongsTo
+    {
+        return $this->belongsTo(Database::class);
     }
 
     /**

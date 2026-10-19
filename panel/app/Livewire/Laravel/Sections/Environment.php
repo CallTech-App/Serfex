@@ -2,11 +2,17 @@
 
 namespace App\Livewire\Laravel\Sections;
 
+use App\Models\Database;
+use App\Models\DatabaseUser;
 use App\Models\LaravelEnvVersion;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Customers\Quotas;
+use App\Services\Databases\Databases;
+use App\Services\Databases\DatabaseServers;
 use App\Services\Laravel\EnvFile;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Lazy;
 
 /**
@@ -17,6 +23,9 @@ use Livewire\Attributes\Lazy;
 class Environment extends Section
 {
     protected const ABILITY = 'operate';
+
+    /** Creating a database counts against the owner's package. */
+    protected const MANAGE_METHODS = ['createDatabase', 'undoCreateDatabase'];
 
     /** How many earlier versions are kept. */
     public const HISTORY = 30;
@@ -39,6 +48,9 @@ class Environment extends Section
     public bool $comparing = false;
 
     public bool $showingHistory = false;
+
+    /** Set while another action saves and reports on its own. */
+    private bool $quiet = false;
 
     public function mount(int $appId): void
     {
@@ -138,11 +150,109 @@ class Environment extends Section
         $this->original = $content;
         $this->missing = false;
         $this->loadContent($content);
+        if ($this->quiet) {
+            return;
+        }
         $this->dispatch('toast',
             message: ($result['cached'] ?? false) ? '.env kaydedildi, config:cache yenilendi.' : '.env kaydedildi.',
             source: $this->getId(),
             undo: ['method' => 'restore', 'args' => [$version->id]],
         );
+    }
+
+    /**
+     * Creates a database and a user for the application on the server's
+     * database server and writes them into .env (DB_CONNECTION, DB_HOST,
+     * DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD).
+     */
+    public function createDatabase(AgentClient $agent, Databases $databases, DatabaseServers $servers, Quotas $quotas): void
+    {
+        $app = $this->app();
+        $site = $app->site;
+        $server = $servers->defaultServer();
+        if ($server === null) {
+            $this->agentError = 'Bu sunucuda veritabanı sunucusu kurulu değil.';
+
+            return;
+        }
+        if (($refusal = $quotas->refusal($site->customer(), 'databases')) !== null) {
+            $this->agentError = $refusal;
+
+            return;
+        }
+        $prefix = Databases::prefix($site->systemUser);
+        $name = $prefix.'laravel';
+        for ($i = 2; Database::withTrashed()->where('server', $server)->where('name', $name)->exists()
+            || DatabaseUser::withTrashed()->where('server', $server)->where('name', Str::limit($name, Databases::MAX_USER, ''))->exists(); $i++) {
+            $name = $prefix.'laravel'.$i;
+        }
+        $user = Str::limit($name, Databases::MAX_USER, '');
+        $password = Databases::password();
+        try {
+            $database = $databases->create($site, $server, $name, $user, $password);
+        } catch (AgentException $e) {
+            $this->agentError = 'Veritabanı oluşturulamadı: '.self::agentMessage($e);
+
+            return;
+        }
+        $c = $database->connection($user, $password);
+        $this->mode = 'text';
+        $this->text = EnvFile::apply((string) $this->original, [
+            'DB_CONNECTION' => $c['driver'],
+            'DB_HOST' => $c['host'],
+            'DB_PORT' => $c['port'],
+            'DB_DATABASE' => $c['database'],
+            'DB_USERNAME' => $c['username'],
+            'DB_PASSWORD' => $c['password'],
+        ]);
+        $this->quiet = true;
+        $this->save($agent);
+        $this->quiet = false;
+        if ($this->agentError !== null) {
+            // The application cannot use it; it goes again.
+            $this->discard($database, $databases);
+
+            return;
+        }
+        $app->update(['database_id' => $database->id]);
+        $this->mode = 'rows';
+        $this->dispatch('toast',
+            message: "{$database->name} oluşturuldu ve .env dosyasına yazıldı. Tabloları oluşturmak için Komutlar'dan migrate çalıştırın.",
+            source: $this->getId(),
+            undo: ['method' => 'undoCreateDatabase', 'args' => [$database->id]],
+        );
+    }
+
+    /**
+     * Takes a database created here back: the .env as it was before, the
+     * database deleted (no backup, it was empty).
+     */
+    public function undoCreateDatabase(int $databaseId, AgentClient $agent, Databases $databases): void
+    {
+        $app = $this->app();
+        $database = Database::where('site_id', $app->site_id)->find($databaseId);
+        if ($database === null) {
+            return;
+        }
+        $version = $app->envVersions()->first();
+        if ($version !== null) {
+            $this->restore($version->id, $agent);
+        }
+        $app->update(['database_id' => null]);
+        $this->discard($database, $databases);
+    }
+
+    /**
+     * Deletes a database made here and the user made with it.
+     */
+    private function discard(Database $database, Databases $databases): void
+    {
+        foreach ($database->users()->get() as $user) {
+            if ($user->databases()->count() === 1) {
+                $databases->deleteUser($user);
+            }
+        }
+        $databases->delete($database, backup: false);
     }
 
     /**
@@ -168,6 +278,7 @@ class Environment extends Section
 
         return view('livewire.laravel.sections.environment', [
             'app' => $app,
+            'canCreateDatabase' => $app->database_id === null && app(DatabaseServers::class)->installed() !== [] && auth()->user()->canOnApp($app, 'manage') && ! $app->isPreview(),
             'diff' => EnvFile::compare($current, $this->example),
             'history' => $this->showingHistory ? $app->envVersions()->limit(self::HISTORY)->get() : collect(),
         ]);

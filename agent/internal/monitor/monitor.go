@@ -76,6 +76,10 @@ type Monitor struct {
 	// panel's monthly traffic.
 	traffic map[string]uint64
 	started time.Time
+
+	// DatabaseSites, when set, maps database names to the site that uses
+	// them; connections to other databases are attributed by name.
+	DatabaseSites func() map[string]string
 }
 
 type mark struct {
@@ -342,7 +346,20 @@ func (m *Monitor) process(now time.Time, sites []siteInfo, r raw) {
 	}
 
 	m.dbServers = r.dbServers
+	var dbSites map[string]string
+	if m.DatabaseSites != nil && len(r.db) > 0 {
+		dbSites = m.DatabaseSites()
+	}
 	for _, c := range r.db {
+		if d, ok := dbSites[c.DB]; ok && sitesSet[d] {
+			pt := get("site:" + d)
+			pt.DBConns++
+			if c.Active {
+				pt.DBActive++
+				pt.DBLong = max(pt.DBLong, c.Seconds)
+			}
+			continue
+		}
 		for acc, ds := range accounts {
 			if !ownsDatabase(acc, c.User) && !ownsDatabase(acc, c.DB) {
 				continue
