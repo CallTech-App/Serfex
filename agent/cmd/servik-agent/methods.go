@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/firewall"
 	"github.com/winchester37/servik/agent/internal/laravel"
@@ -27,16 +28,21 @@ const CodeDNSNotSetUp = -32001
 // CodeMailNotSetUp tells the panel to offer mail server setup.
 const CodeMailNotSetUp = -32002
 
+// CodeDatabaseNotInstalled tells the panel to offer installing the
+// database server.
+const CodeDatabaseNotInstalled = -32003
+
 // services are the managers the methods act on.
 type services struct {
-	sites    *site.Manager
-	dns      *dns.Manager
-	certs    *cert.Manager
-	mail     *mail.Manager
-	laravel  *laravel.Manager
-	monitor  *monitor.Monitor
-	firewall *firewall.Manager
-	dryRun   bool
+	sites     *site.Manager
+	dns       *dns.Manager
+	certs     *cert.Manager
+	mail      *mail.Manager
+	laravel   *laravel.Manager
+	monitor   *monitor.Monitor
+	firewall  *firewall.Manager
+	databases *database.Manager
+	dryRun    bool
 }
 
 func registerMethods(srv *rpc.Server, svc services) {
@@ -196,6 +202,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerMail(srv, svc)
 	registerLaravel(srv, svc)
 	registerMonitor(srv, svc)
+	registerDatabases(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -364,6 +371,9 @@ func mapError(err error) error {
 	if errors.Is(err, mail.ErrNotSetUp) {
 		return &rpc.Error{Code: CodeMailNotSetUp, Message: err.Error()}
 	}
+	if errors.Is(err, database.ErrNotInstalled) {
+		return &rpc.Error{Code: CodeDatabaseNotInstalled, Message: err.Error()}
+	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError
 	var cv *cert.ValidationError
@@ -371,7 +381,8 @@ func mapError(err error) error {
 	var lv *laravel.ValidationError
 	var fv *firewall.ValidationError
 	var monv *monitor.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) {
+	var dbv *database.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -381,7 +392,8 @@ func mapError(err error) error {
 	var lop *laravel.OperationError
 	var fop *firewall.OperationError
 	var monop *monitor.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) {
+	var dbop *database.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -518,5 +530,27 @@ func registerMonitor(srv *rpc.Server, svc services) {
 	handle(srv, "mail.queue.release", func(ctx context.Context, p domainParam) (any, error) {
 		n, err := svc.mail.ReleaseDomain(ctx, p.Domain)
 		return map[string]int{"messages": n}, err
+	})
+}
+
+func registerDatabases(srv *rpc.Server, svc services) {
+	db := svc.databases
+	handle(srv, "db.status", func(ctx context.Context, _ struct{}) (any, error) { return db.Status(ctx), nil })
+	// Installing packages outlives a panel request that gives up.
+	handle(srv, "db.server.install", func(ctx context.Context, p database.InstallSpec) (any, error) {
+		return db.Install(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "db.manager.setup", func(ctx context.Context, p database.ManagerSpec) (any, error) {
+		return db.SetupManager(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "db.manager.login", func(ctx context.Context, p database.LoginSpec) (any, error) { return db.Login(ctx, p) })
+	handle(srv, "db.database.create", func(ctx context.Context, p database.DatabaseSpec) (any, error) { return db.CreateDatabase(ctx, p) })
+	handle(srv, "db.database.delete", func(ctx context.Context, p database.DeleteSpec) (any, error) { return db.DeleteDatabase(ctx, p) })
+	handle(srv, "db.user.apply", func(ctx context.Context, p database.UserSpec) (any, error) { return db.ApplyUser(ctx, p) })
+	handle(srv, "db.user.delete", func(ctx context.Context, p database.UserRef) (any, error) { return db.DeleteUser(ctx, p) })
+	handle(srv, "db.list", func(ctx context.Context, p struct {
+		Server string `json:"server"`
+	}) (any, error) {
+		return db.List(ctx, p.Server)
 	})
 }

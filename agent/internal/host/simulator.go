@@ -341,14 +341,28 @@ var simPackages = map[string][]string{
 	"sqlite3":              {"/usr/bin/sqlite3"},
 	"git":                  {"/usr/bin/git"},
 	"unzip":                {"/usr/bin/unzip"},
+	"mysql-server":         {"/usr/sbin/mysqld", "/etc/mysql/mysql.conf.d/mysqld.cnf"},
+	"mariadb-server":       {"/usr/sbin/mariadbd", "/usr/sbin/mysqld", "/etc/mysql/mariadb.conf.d/50-server.cnf"},
+	"postgresql":           {"/usr/lib/postgresql/16/bin/postgres", "/etc/postgresql/16/main/postgresql.conf", "/etc/postgresql/16/main/conf.d/.keep"},
+	"nginx":                {"/usr/sbin/nginx"},
+	"php-fpm":              {"/usr/sbin/php-fpm8.3"},
+	"php-mbstring":         {"/etc/php/8.3/mods-available/mbstring.ini"},
+	"php-xml":              {"/etc/php/8.3/mods-available/xml.ini"},
+	"php-mysql":            {"/etc/php/8.3/mods-available/mysqli.ini"},
+	"php-pgsql":            {"/etc/php/8.3/mods-available/pgsql.ini"},
+	"phpmyadmin":           {"/usr/share/phpmyadmin/index.php", "/etc/phpmyadmin/conf.d/.keep"},
+	"adminer":              {"/usr/share/adminer/adminer.php"},
 }
 
 // simAccounts are the system accounts packages create, as passwd lines.
 var simAccounts = map[string][]string{
-	"postfix":      {"postfix:x:104:110::/var/spool/postfix:/usr/sbin/nologin"},
-	"dovecot-core": {"dovecot:x:105:111:Dovecot mail server:/usr/lib/dovecot:/usr/sbin/nologin", "dovenull:x:106:112:Dovecot login user:/nonexistent:/usr/sbin/nologin"},
-	"rspamd":       {"_rspamd:x:107:113:rspamd:/var/lib/rspamd:/usr/sbin/nologin"},
-	"redis-server": {"redis:x:108:114::/var/lib/redis:/usr/sbin/nologin"},
+	"postfix":        {"postfix:x:104:110::/var/spool/postfix:/usr/sbin/nologin"},
+	"dovecot-core":   {"dovecot:x:105:111:Dovecot mail server:/usr/lib/dovecot:/usr/sbin/nologin", "dovenull:x:106:112:Dovecot login user:/nonexistent:/usr/sbin/nologin"},
+	"rspamd":         {"_rspamd:x:107:113:rspamd:/var/lib/rspamd:/usr/sbin/nologin"},
+	"redis-server":   {"redis:x:108:114::/var/lib/redis:/usr/sbin/nologin"},
+	"mysql-server":   {"mysql:x:109:115:MySQL Server:/nonexistent:/bin/false"},
+	"mariadb-server": {"mysql:x:109:115:MariaDB Server:/nonexistent:/bin/false"},
+	"postgresql":     {"postgres:x:110:116:PostgreSQL administrator:/var/lib/postgresql:/bin/bash"},
 }
 
 // apt-get install [-OPTIONS] PACKAGE...
