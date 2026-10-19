@@ -371,6 +371,57 @@ jobs:
           sudo journalctl --no-pager -u mysql -u ssh -n 80 || true
           cat /tmp/s3.log || true
 
+  update-realhost:
+    name: Panel updates itself on a real server
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+          coverage: none
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+
+      # Three test releases of this checkout: a good one, one with a new
+      # migration, one whose panel answers 500 (see the script).
+      - name: Build test releases
+        run: scripts/ci/update-e2e.sh build "$RUNNER_TEMP/releases"
+
+      # install.sh sets up the panel's own PostgreSQL and PHP 8.5, as on a
+      # fresh Ubuntu.
+      - name: Remove the preinstalled database servers
+        run: |
+          sudo systemctl stop mysql postgresql || true
+          sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq 'mysql-*' 'mariadb-*' 'postgresql*' || true
+          sudo rm -rf /var/lib/mysql /etc/mysql /var/lib/postgresql /etc/postgresql /etc/postgresql-common
+
+      # Installs 0.1.0-ci.1 with install.sh, updates to ci.2 after a panel
+      # backup, tries ci.3 (fails its health check: Servik returns to ci.2
+      # by itself, database included), then returns to ci.1 by hand.
+      - name: Install, update, fail and roll back for real
+        run: sudo scripts/ci/update-e2e.sh run "$RUNNER_TEMP/releases"
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo tail -n 60 /var/log/servik/install.log || true
+          sudo sh -c 'tail -n 120 /var/lib/servik/updates/runs/*.log' || true
+          sudo sh -c 'tail -n 80 /var/lib/servik/panel/storage/logs/*.log' || true
+          sudo journalctl --no-pager -u servik-agent -u 'servik-update-*' -u servik-php -u servik-web -u 'servik-panel-*' -n 150 || true
+          cat /tmp/release-source.log || true
+
   panel-realhost:
     name: Panel suspends a customer on a real server
     runs-on: ubuntu-24.04

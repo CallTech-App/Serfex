@@ -18,6 +18,7 @@ use App\Models\Database;
 use App\Models\DatabaseUser;
 use App\Models\DnsZone;
 use App\Models\MailDomain;
+use App\Models\PanelUpdate;
 use App\Models\Site;
 use App\Models\SystemUser;
 use App\Models\User;
@@ -74,6 +75,9 @@ class Restores
         }
         if ($this->backups->busy()) {
             return Backups::BUSY;
+        }
+        if (PanelUpdate::running()->exists()) {
+            return Backups::UPDATING;
         }
         $site = $this->siteFor($item);
         if (($refusal = $this->refusal($user, $item, $site, $parts)) !== null) {

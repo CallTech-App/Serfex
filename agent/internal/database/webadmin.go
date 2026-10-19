@@ -16,6 +16,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/panel"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
@@ -129,6 +130,74 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if !mysql && !pg {
 		return ManagerStatus{}, invalid("install a database server first")
 	}
+	php, err := m.applyWeb(ctx, spec.Port, mysql, pg)
+	if err != nil {
+		return ManagerStatus{}, err
+	}
+	st, err := m.loadState()
+	if err != nil {
+		return ManagerStatus{}, err
+	}
+	st.Manager = &spec
+	if err := m.saveState(st); err != nil {
+		return ManagerStatus{}, err
+	}
+	return ManagerStatus{Configured: true, Port: spec.Port, PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}, nil
+}
+
+// WebStatus describes servik-web as the panel uses it.
+type WebStatus struct {
+	Port       int    `json:"port"`
+	PHPVersion string `json:"php_version"`
+	Panel      bool   `json:"panel"`
+}
+
+// SetupPanelWeb serves the installed panel on servik-web and servik-php,
+// next to the database manager when one is set up (install.sh and each
+// update run it). It changes nothing that is already right.
+func (m *Manager) SetupPanelWeb(ctx context.Context) (WebStatus, error) {
+	if !panel.Installed(m.h) {
+		return WebStatus{}, invalid("the panel is not installed in %s", panel.CurrentLink)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_, mysql := m.installedProduct(MySQL)
+	_, pg := m.installedProduct(PostgreSQL)
+	st, err := m.loadState()
+	if err != nil {
+		return WebStatus{}, opError(err)
+	}
+	if st.Manager == nil {
+		// Without a manager the tools stay off until db.manager.setup.
+		mysql, pg = false, false
+	}
+	port := m.webPort(st)
+	php, err := m.applyWeb(ctx, port, mysql, pg)
+	if err != nil {
+		return WebStatus{}, err
+	}
+	return WebStatus{Port: port, PHPVersion: php, Panel: true}, nil
+}
+
+// WebPort is the port servik-web listens on (the panel's port).
+func (m *Manager) WebPort() int {
+	st, _ := m.loadState()
+	return m.webPort(st)
+}
+
+func (m *Manager) webPort(st *state) int {
+	if st != nil && st.Manager != nil && st.Manager.Port != 0 {
+		return st.Manager.Port
+	}
+	return DefaultPort
+}
+
+// applyWeb writes servik-web's and servik-php's configuration for the
+// tools asked for and, when installed, the panel, then (re)starts what
+// changed. Called with m.mu held.
+func (m *Manager) applyWeb(ctx context.Context, port int, mysql, pg bool) (php string, err error) {
+	cfg, withPanel := panel.Load(m.h)
+	withPanel = withPanel && panel.Installed(m.h)
 
 	t := txn.New(m.h)
 	started := false
@@ -147,14 +216,39 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 		err = opError(err)
 	}()
 
-	packages := []string{"nginx", "php-fpm", "php-mbstring", "php-xml"}
-	var markers []string
+	var packages, markers []string
+	if withPanel {
+		// The tools' PHP is the panel's, so servik-php runs one version.
+		v := cfg.PHP
+		packages = []string{"nginx", "php" + v + "-fpm", "php" + v + "-mbstring", "php" + v + "-xml"}
+		if mysql {
+			packages = append(packages, "php"+v+"-mysql")
+		}
+		if pg {
+			packages = append(packages, "php"+v+"-pgsql")
+		}
+		for _, p := range packages[1:] {
+			markers = append(markers, map[string]string{
+				"fpm": "/usr/sbin/php-fpm" + v, "mbstring": "/etc/php/" + v + "/mods-available/mbstring.ini",
+				"xml": "/etc/php/" + v + "/mods-available/xml.ini", "mysql": "/etc/php/" + v + "/mods-available/mysqli.ini",
+				"pgsql": "/etc/php/" + v + "/mods-available/pgsql.ini",
+			}[strings.TrimPrefix(p, "php"+v+"-")])
+		}
+	} else {
+		packages = []string{"nginx", "php-fpm", "php-mbstring", "php-xml"}
+	}
 	if mysql {
-		packages = append(packages, "phpmyadmin", "php-mysql")
+		packages = append(packages, "phpmyadmin")
+		if !withPanel {
+			packages = append(packages, "php-mysql")
+		}
 		markers = append(markers, pmaIndex)
 	}
 	if pg {
-		packages = append(packages, "adminer", "php-pgsql")
+		packages = append(packages, "adminer")
+		if !withPanel {
+			packages = append(packages, "php-pgsql")
+		}
 		markers = append(markers, adminerIndex)
 	}
 	missing := !m.exists("/usr/sbin/nginx")
@@ -163,21 +257,22 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	}
 	if missing {
 		if err := installPackages(ctx, m.h, packages, pmaPreseed); err != nil {
-			return ManagerStatus{}, err
+			return "", err
 		}
 	}
-	php, err := m.pickPHP(mysql, pg)
-	if err != nil {
-		return ManagerStatus{}, err
+	if withPanel {
+		php = cfg.PHP
+	} else if php, err = m.pickPHP(mysql, pg); err != nil {
+		return "", err
 	}
 
 	web, err := ensureAccount(ctx, m.h, WebUser, "/nonexistent", "Servik web server")
 	if err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	admin, err := ensureAccount(ctx, m.h, AdminUser, adminDir, "Servik database manager")
 	if err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	for _, d := range []struct {
 		path     string
@@ -198,24 +293,25 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 		{adminTmp, 0o700, admin.UID, admin.GID},
 	} {
 		if err := t.RootDir(d.path, d.mode, d.uid, d.gid); err != nil {
-			return ManagerStatus{}, err
+			return "", err
 		}
 	}
 
 	certFile, keyFile, err := m.webTLS(t)
 	if err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	data := webData{
-		Marker: txn.Marker, Port: spec.Port, IPv6: m.hasIPv6(), Cert: certFile, Key: keyFile, Socket: phpSocket,
+		Marker: txn.Marker, Port: port, IPv6: m.hasIPv6(), Cert: certFile, Key: keyFile, Socket: phpSocket,
 		WWW: adminWWW, Logs: webLogs, Temp: webTemp, WebUser: WebUser, AdminUser: AdminUser, PHP: php,
 		PhpMyAdmin: mysql, Adminer: pg, Tokens: adminTokens, Sessions: adminSess, Tmp: adminTmp, TLSConf: cert.TLSConf,
+		Panel: withPanel, PanelRoot: panel.CurrentLink + "/panel/public", PanelSocket: panel.Socket, PanelUser: panel.User,
 	}
 	if err := t.RootDir("/etc/servik/nginx", 0o755, 0, 0); err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	if err := t.WriteFile(cert.TLSConf, site.TLSConfig()); err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	restart := map[string]bool{}
 	track := func(unit string, write func() error) error {
@@ -238,7 +334,7 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 		daemonReload = daemonReload || t.Changed != before
 		return nil
 	}); err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	if err := track(PHPUnit, func() error {
 		if err := t.WriteFile(phpConf, render(phpConfTmpl, data)); err != nil {
@@ -264,7 +360,7 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 		}
 		return nil
 	}); err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 
 	for _, c := range []host.Command{
@@ -272,17 +368,17 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 		{Name: "nginx", Args: []string{"-t", "-q", "-c", webConf}},
 	} {
 		if _, err := m.h.Run(ctx, c); err != nil {
-			return ManagerStatus{}, fmt.Errorf("%s rejected the configuration: %w", c.Name, err)
+			return "", fmt.Errorf("%s rejected the configuration: %w", c.Name, err)
 		}
 	}
 	started = true
 	if daemonReload {
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"daemon-reload"}}); err != nil {
-			return ManagerStatus{}, err
+			return "", err
 		}
 	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"enable", PHPUnit, WebUnit}}); err != nil {
-		return ManagerStatus{}, err
+		return "", err
 	}
 	for _, u := range []string{PHPUnit, WebUnit} {
 		verb := "start"
@@ -290,19 +386,10 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 			verb = "restart"
 		}
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{verb, u}}); err != nil {
-			return ManagerStatus{}, fmt.Errorf("%s did not start (see journalctl -u %s): %w", u, u, err)
+			return "", fmt.Errorf("%s did not start (see journalctl -u %s): %w", u, u, err)
 		}
 	}
-
-	st, err := m.loadState()
-	if err != nil {
-		return ManagerStatus{}, err
-	}
-	st.Manager = &spec
-	if err := m.saveState(st); err != nil {
-		return ManagerStatus{}, err
-	}
-	return ManagerStatus{Configured: true, Port: spec.Port, PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}, nil
+	return php, nil
 }
 
 // debconf answers that keep phpMyAdmin from configuring Apache or a

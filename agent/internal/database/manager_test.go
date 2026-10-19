@@ -6,11 +6,13 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/panel"
 )
 
 func newSim(t *testing.T) (*Manager, *host.Simulator) {
@@ -407,4 +409,61 @@ func TestMySQLUserScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	contains(t, "password", r.scripts[len(r.scripts)-1], `ALTER USER 'acme_app'@'localhost' IDENTIFIED BY 'it\'s\\x';`, "DROP USER 'acme_app'@'10.8.0.%';")
+}
+
+func TestPanelWeb(t *testing.T) {
+	m, sim := newSim(t)
+	ctx := context.Background()
+	if _, err := m.SetupPanelWeb(ctx); err == nil {
+		t.Fatal("served a panel that is not installed")
+	}
+	for abs, content := range map[string]string{
+		panel.ConfigFile: `{"php":"8.5"}`,
+		panel.ReleasesDir + "/0.1.0/panel/public/index.php": "<?php\n",
+		"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nservik:x:998:998::/var/lib/servik/panel:/usr/sbin/nologin\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(sim.Path(abs)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(sim.Path(abs), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink("releases/0.1.0", sim.Path(panel.CurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	// Without a database server, servik-web serves the panel alone.
+	res, err := m.SetupPanelWeb(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Port != DefaultPort || res.PHPVersion != "8.5" || !res.Panel {
+		t.Errorf("setup %+v", res)
+	}
+	conf := read(t, sim, webConf)
+	contains(t, "nginx", conf, "root /opt/servik/current/panel/public;", "fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;", "fastcgi_pass unix:/run/servik-php/panel.sock;")
+	if strings.Contains(conf, "phpmyadmin") || strings.Contains(conf, "return 404;\n        }\n    }") {
+		t.Errorf("nginx:\n%s", conf)
+	}
+	contains(t, "php-fpm", read(t, sim, phpConf), "[panel]", "user = servik", "listen = /run/servik-php/panel.sock")
+	contains(t, "unit", read(t, sim, phpUnitFile), "ExecStart=/usr/sbin/php-fpm8.5 --nodaemonize")
+
+	// The manager set up later keeps the panel and uses its PHP.
+	if _, err := m.Install(ctx, InstallSpec{Product: MySQL}); err != nil {
+		t.Fatal(err)
+	}
+	ms, err := m.SetupManager(ctx, ManagerSpec{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ms.PHPVersion != "8.5" {
+		t.Errorf("manager PHP %s", ms.PHPVersion)
+	}
+	contains(t, "nginx", read(t, sim, webConf), "root /opt/servik/current/panel/public;", "location = /phpmyadmin/servik-sso.php")
+	if !sim.Ran("apt-get install -y -q --no-install-recommends nginx php8.5-fpm php8.5-mbstring php8.5-xml php8.5-mysql phpmyadmin") {
+		t.Errorf("commands: %v", sim.Commands())
+	}
+	if m.WebPort() != DefaultPort {
+		t.Errorf("web port %d", m.WebPort())
+	}
 }

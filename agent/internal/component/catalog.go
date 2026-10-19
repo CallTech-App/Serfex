@@ -12,6 +12,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/panel"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
@@ -196,7 +197,9 @@ func phpComponent(v string) *component {
 					used = append(used, name)
 				}
 			}
-			if m.db.AdminPHP() == v {
+			if cfg, ok := panel.Load(m.h); ok && cfg.PHP == v {
+				used = append(used, "Servik paneli")
+			} else if m.db.AdminPHP() == v {
 				used = append(used, "phpMyAdmin / Adminer")
 			}
 			return used

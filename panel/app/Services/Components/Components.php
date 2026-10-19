@@ -8,6 +8,7 @@ use App\Models\Database;
 use App\Models\DatabaseUser;
 use App\Models\LaravelApp;
 use App\Models\Mailbox;
+use App\Models\PanelUpdate;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\User;
@@ -291,6 +292,9 @@ class Components
         }
         if (ComponentOperation::running()->exists() || $this->databaseSetupRunning()) {
             return 'Başka bir kurulum sürüyor. Bitince yeniden deneyin.';
+        }
+        if (PanelUpdate::running()->exists()) {
+            return 'Servik güncelleniyor. Bitince yeniden deneyin.';
         }
         $statuses = $this->statuses($error);
         if ($statuses === null) {

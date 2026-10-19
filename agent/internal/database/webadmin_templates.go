@@ -12,12 +12,15 @@ type webData struct {
 	PhpMyAdmin, Adminer     bool
 	Tokens, Sessions, Tmp   string
 	Secret                  string
+	// Panel serves the installed panel at / (see package panel).
+	Panel                             bool
+	PanelRoot, PanelSocket, PanelUser string
 }
 
 var webConfTmpl = template.Must(template.New("web").Parse(`# {{.Marker}}. Manual changes are overwritten.
 # servik-web: Servik's own web server. It is separate from the Nginx that
 # serves the customers' sites, so their changes and restarts never reach
-# it, and it serves only Servik's tools.
+# it, and it serves only Servik: the panel and its database tools.
 user {{.WebUser}};
 worker_processes 1;
 pid /run/servik-web.pid;
@@ -54,9 +57,36 @@ http {
         # Plain HTTP on this port goes to HTTPS.
         error_page 497 =301 https://$host:$server_port$request_uri;
 
+{{- if .Panel}}
+
+        # The panel. $realpath_root resolves the current release, so a
+        # switched release is picked up by the next request.
+        root {{.PanelRoot}};
+        index index.php;
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+        location = /index.php {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;
+            fastcgi_param DOCUMENT_ROOT $realpath_root;
+            fastcgi_param HTTPS on;
+            fastcgi_pass unix:{{.PanelSocket}};
+            fastcgi_read_timeout 300s;
+            fastcgi_buffers 16 16k;
+            fastcgi_buffer_size 32k;
+        }
+        location ~ \.php$ {
+            return 404;
+        }
+        location ~ /\.(?!well-known) {
+            deny all;
+        }
+{{- else}}
         location = / {
             return 404;
         }
+{{- end}}
 {{- if .PhpMyAdmin}}
 
         # phpMyAdmin for MySQL and MariaDB.
@@ -130,11 +160,36 @@ php_admin_value[disable_functions] = exec,passthru,shell_exec,system,proc_open,p
 php_admin_flag[expose_php] = off
 php_admin_flag[log_errors] = on
 php_admin_value[error_log] = {{.Logs}}/php-errors.log
+{{- if .Panel}}
+
+[panel]
+user = {{.PanelUser}}
+group = {{.PanelUser}}
+listen = {{.PanelSocket}}
+listen.owner = {{.WebUser}}
+listen.group = {{.WebUser}}
+listen.mode = 0660
+
+pm = dynamic
+pm.max_children = 16
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 4
+request_terminate_timeout = 900s
+
+php_admin_value[upload_max_filesize] = 256M
+php_admin_value[post_max_size] = 256M
+php_admin_value[memory_limit] = 512M
+php_admin_value[max_execution_time] = 900
+php_admin_flag[expose_php] = off
+php_admin_flag[log_errors] = on
+php_admin_value[error_log] = {{.Logs}}/panel-php-errors.log
+{{- end}}
 `))
 
 var webUnitTmpl = template.Must(template.New("webunit").Parse(`# {{.Marker}}. Manual changes are overwritten.
 [Unit]
-Description=Servik web server (database manager)
+Description=Servik web server (panel and database manager)
 After=network-online.target servik-php.service
 Wants=network-online.target
 
@@ -155,7 +210,7 @@ WantedBy=multi-user.target
 
 var phpUnitTmpl = template.Must(template.New("phpunit").Parse(`# {{.Marker}}. Manual changes are overwritten.
 [Unit]
-Description=Servik PHP-FPM (database manager)
+Description=Servik PHP-FPM (panel and database manager)
 After=network.target
 
 [Service]
