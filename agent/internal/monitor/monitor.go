@@ -217,8 +217,10 @@ func unitSite(unit string) string {
 			return d
 		}
 	}
-	if rest, ok := strings.CutPrefix(unit, "servik-schedule-"); ok {
-		return strings.TrimSuffix(rest, ".service")
+	for _, prefix := range []string{"servik-schedule-", "servik-redis-"} {
+		if rest, ok := strings.CutPrefix(unit, prefix); ok {
+			return strings.TrimSuffix(rest, ".service")
+		}
 	}
 	if rest, ok := strings.CutPrefix(unit, "servik-limit-"); ok {
 		return unescape(strings.TrimSuffix(rest, ".scope"))
@@ -729,6 +731,20 @@ func describeUnit(unit string) (string, string) {
 		return "MySQL", "shared"
 	case base == "mariadb":
 		return "MariaDB", "shared"
+	case base == "apache2":
+		return "Apache", "shared"
+	case base == "memcached":
+		return "Memcached", "shared"
+	case base == "supervisor":
+		return "Supervisor", "shared"
+	case base == "redis-server":
+		return "Redis", "shared"
+	case base == "clamav-daemon":
+		return "ClamAV", "shared"
+	case base == "clamav-freshclam":
+		return "ClamAV imza güncelleyici", "shared"
+	case base == "fail2ban":
+		return "Fail2ban", "system"
 	case base == "other":
 		return "Diğer süreçler", "system"
 	case base == "ssh":

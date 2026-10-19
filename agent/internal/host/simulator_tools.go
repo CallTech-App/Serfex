@@ -113,6 +113,16 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return s.postfixQueue(c)
 	case c.Name == "git":
 		return s.git(args, cwd)
+	case (c.Name == "pg_createcluster" || c.Name == "pg_dropcluster") && len(args) >= 2:
+		// pg_createcluster VERSION NAME, pg_dropcluster [--stop] VERSION NAME
+		dir := "/etc/postgresql/" + args[len(args)-2] + "/" + args[len(args)-1]
+		if c.Name == "pg_dropcluster" {
+			return "", os.RemoveAll(s.Path(dir))
+		}
+		if err := os.MkdirAll(s.Path(dir+"/conf.d"), 0o755); err != nil {
+			return "", err
+		}
+		return "", os.WriteFile(s.Path(dir+"/postgresql.conf"), nil, 0o644)
 	case c.Name == "dd":
 		// dd of=FILE status=none (stdin is written to FILE)
 		for _, a := range args {

@@ -8,7 +8,17 @@ import (
 )
 
 var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# Site: {{.Domain}} (user {{.User}}, PHP {{.PHPVersion}})
+# Site: {{.Domain}} (user {{.User}}, PHP {{.PHPVersion}}{{if .Apache}}, Apache{{end}})
+{{- define "apacheHeaders"}}
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 300s;
+{{- end}}
 {{- define "acme"}}
     # Let's Encrypt validation, answered by Servik whatever the site does.
     location ^~ /.well-known/acme-challenge/ {
@@ -171,6 +181,23 @@ server {
         proxy_set_header Connection $servik_connection_upgrade;
         proxy_read_timeout 120s;
     }
+{{- else if .Apache}}
+
+    # Apache serves the site (.htaccess works); Nginx sends existing static
+    # files itself and everything else to Apache.
+    location / {
+        proxy_pass http://127.0.0.1:{{.ApachePort}};
+{{- template "apacheHeaders"}}
+    }
+
+    location ~* \.(?:css|js|mjs|map|jpe?g|png|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3|pdf|txt|xml|zip|gz)$ {
+        try_files $uri @apache;
+    }
+
+    location @apache {
+        proxy_pass http://127.0.0.1:{{.ApachePort}};
+{{- template "apacheHeaders"}}
+    }
 {{- else}}
 
     location / {
@@ -279,6 +306,11 @@ type tmplData struct {
 	MaintSecret string
 	MaintRetry  int
 	MaintRoot   string
+
+	// Apache, when the site runs behind it (see apache.go).
+	Apache     bool
+	ApachePort int
+	Aliases    []string
 
 	// Suspended serves only the suspension page.
 	Suspended     bool

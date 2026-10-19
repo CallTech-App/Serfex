@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/firewall"
@@ -32,17 +33,25 @@ const CodeMailNotSetUp = -32002
 // database server.
 const CodeDatabaseNotInstalled = -32003
 
+// CodeComponentInUse refuses to remove software something still uses;
+// the message lists what.
+const CodeComponentInUse = -32004
+
+// CodeComponentBusy says another software operation is running.
+const CodeComponentBusy = -32005
+
 // services are the managers the methods act on.
 type services struct {
-	sites     *site.Manager
-	dns       *dns.Manager
-	certs     *cert.Manager
-	mail      *mail.Manager
-	laravel   *laravel.Manager
-	monitor   *monitor.Monitor
-	firewall  *firewall.Manager
-	databases *database.Manager
-	dryRun    bool
+	sites      *site.Manager
+	dns        *dns.Manager
+	certs      *cert.Manager
+	mail       *mail.Manager
+	laravel    *laravel.Manager
+	monitor    *monitor.Monitor
+	firewall   *firewall.Manager
+	databases  *database.Manager
+	components *component.Manager
+	dryRun     bool
 }
 
 func registerMethods(srv *rpc.Server, svc services) {
@@ -203,6 +212,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerLaravel(srv, svc)
 	registerMonitor(srv, svc)
 	registerDatabases(srv, svc)
+	registerComponents(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -374,6 +384,13 @@ func mapError(err error) error {
 	if errors.Is(err, database.ErrNotInstalled) {
 		return &rpc.Error{Code: CodeDatabaseNotInstalled, Message: err.Error()}
 	}
+	var inUse *component.InUseError
+	if errors.As(err, &inUse) {
+		return &rpc.Error{Code: CodeComponentInUse, Message: err.Error()}
+	}
+	if errors.Is(err, component.ErrBusy) {
+		return &rpc.Error{Code: CodeComponentBusy, Message: err.Error()}
+	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError
 	var cv *cert.ValidationError
@@ -382,7 +399,8 @@ func mapError(err error) error {
 	var fv *firewall.ValidationError
 	var monv *monitor.ValidationError
 	var dbv *database.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) {
+	var compv *component.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -393,7 +411,8 @@ func mapError(err error) error {
 	var fop *firewall.OperationError
 	var monop *monitor.OperationError
 	var dbop *database.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) {
+	var compop *component.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -552,5 +571,37 @@ func registerDatabases(srv *rpc.Server, svc services) {
 		Server string `json:"server"`
 	}) (any, error) {
 		return db.List(ctx, p.Server)
+	})
+}
+
+func registerComponents(srv *rpc.Server, svc services) {
+	c := svc.components
+	handle(srv, "component.list", func(ctx context.Context, _ struct{}) (any, error) { return c.List(ctx), nil })
+	// Package operations outlive a panel request that gives up.
+	handle(srv, "component.check", func(ctx context.Context, _ struct{}) (any, error) {
+		return c.Check(context.WithoutCancel(ctx))
+	})
+	handle(srv, "component.install", func(ctx context.Context, p component.OpSpec) (any, error) {
+		return c.Install(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "component.remove", func(ctx context.Context, p component.OpSpec) (any, error) {
+		return c.Remove(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "component.update", func(ctx context.Context, p component.OpSpec) (any, error) {
+		return c.Update(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "component.configure", func(ctx context.Context, p component.ConfigureSpec) (any, error) {
+		return c.Configure(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "component.run.read", func(_ context.Context, q struct {
+		Run    string `json:"run"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return c.ReadRun(q.Run, q.Offset)
+	})
+	handle(srv, "redis.apply", func(ctx context.Context, p component.RedisSpec) (any, error) { return c.ApplyRedis(ctx, p) })
+	handle(srv, "redis.remove", func(ctx context.Context, p domainParam) (any, error) {
+		removed, err := c.RemoveRedis(ctx, p.Domain)
+		return map[string]bool{"removed": removed}, err
 	})
 }

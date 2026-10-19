@@ -28,8 +28,9 @@ import (
 
 const (
 	composerURL = "https://getcomposer.org/download/latest-stable/composer.phar"
-	// NodeLine is the Node.js release line installed for front-end builds.
-	nodeLine = "latest-v24.x"
+	// nodeLine is the Node.js release line installed for front-end builds
+	// when none is installed yet.
+	nodeLine = "24"
 	nodeDist = "https://nodejs.org/dist/"
 )
 
@@ -103,13 +104,13 @@ func (m *Manager) ensureTools(ctx context.Context, w io.Writer, v string, node b
 	}
 	if !st.Composer {
 		fmt.Fprintln(w, "▸ Composer indiriliyor (getcomposer.org)")
-		if err := m.installComposer(ctx); err != nil {
+		if err := m.InstallComposer(ctx); err != nil {
 			return err
 		}
 	}
 	if node && st.Node == "" {
-		fmt.Fprintln(w, "▸ Node.js indiriliyor (nodejs.org, "+strings.TrimPrefix(nodeLine, "latest-")+")")
-		version, err := m.installNode(ctx)
+		fmt.Fprintln(w, "▸ Node.js indiriliyor (nodejs.org, v"+nodeLine+".x)")
+		version, err := m.InstallNode(ctx, nodeLine)
 		if err != nil {
 			return err
 		}
@@ -135,7 +136,9 @@ func (m *Manager) writeShims(v string) error {
 	return t.WriteOwned(dir+"/composer", []byte(script), 0o755, 0, 0)
 }
 
-func (m *Manager) installComposer(ctx context.Context) error {
+// InstallComposer downloads the newest stable Composer into
+// /opt/servik/composer, checked against its published SHA-256 sum.
+func (m *Manager) InstallComposer(ctx context.Context) error {
 	data := []byte("<?php // simulated composer.phar\n")
 	if !m.sim {
 		var err error
@@ -160,9 +163,14 @@ func (m *Manager) installComposer(ctx context.Context) error {
 	return t.WriteOwned(composerPhar(), data, 0o755, 0, 0)
 }
 
-// installNode downloads the newest Node.js of nodeLine for this machine
-// into /opt/servik/node/<version> and points /opt/servik/node/current at it.
-func (m *Manager) installNode(ctx context.Context) (string, error) {
+// InstallNode downloads the newest Node.js of a release line ("24") for
+// this machine into /opt/servik/node/<version>, replacing older versions
+// of the line. Builds use /opt/servik/node/current, which points at it
+// when it pointed nowhere (see pickNode).
+func (m *Manager) InstallNode(ctx context.Context, major string) (string, error) {
+	if !nodeMajorRe.MatchString(major) {
+		return "", invalid("node line %q must be a major version such as 24", major)
+	}
 	arch := map[string]string{"amd64": "x64", "arm64": "arm64"}[runtime.GOARCH]
 	if arch == "" {
 		return "", fmt.Errorf("no Node.js build for %s", runtime.GOARCH)
@@ -174,14 +182,18 @@ func (m *Manager) installNode(ctx context.Context) (string, error) {
 		}
 	}
 	if m.sim {
-		version := "v24.11.0"
+		version := simNode[major]
+		if version == "" {
+			version = "v" + major + ".0.0"
+		}
 		dir := toolsDir + "/node/" + version
 		if err := os.MkdirAll(m.h.Path(dir+"/bin"), 0o755); err != nil {
 			return "", err
 		}
-		return version, t.ReplaceSymlink(version, toolsDir+"/node/current")
+		return version, m.finishNode(t, major, version)
 	}
-	sums, err := m.Download(ctx, nodeDist+nodeLine+"/SHASUMS256.txt")
+	line := "latest-v" + major + ".x"
+	sums, err := m.Download(ctx, nodeDist+line+"/SHASUMS256.txt")
 	if err != nil {
 		return "", err
 	}
@@ -193,10 +205,10 @@ func (m *Manager) installNode(ctx context.Context) (string, error) {
 		}
 	}
 	if name == "" {
-		return "", fmt.Errorf("no linux-%s build listed in %sSHASUMS256.txt", arch, nodeDist+nodeLine+"/")
+		return "", fmt.Errorf("no linux-%s build listed in %sSHASUMS256.txt", arch, nodeDist+line+"/")
 	}
 	version := strings.TrimSuffix(strings.TrimPrefix(name, "node-"), "-linux-"+arch+".tar.gz")
-	data, err := m.Download(ctx, nodeDist+nodeLine+"/"+name)
+	data, err := m.Download(ctx, nodeDist+line+"/"+name)
 	if err != nil {
 		return "", err
 	}
@@ -214,7 +226,7 @@ func (m *Manager) installNode(ctx context.Context) (string, error) {
 	if err := os.Rename(tmp, dir); err != nil {
 		return "", err
 	}
-	return version, t.ReplaceSymlink(version, toolsDir+"/node/current")
+	return version, m.finishNode(t, major, version)
 }
 
 func verify(data []byte, want string) error {

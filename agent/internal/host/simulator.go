@@ -324,34 +324,45 @@ func appendFile(path, data string) error {
 
 // simPackages are the files that mark a package as installed.
 var simPackages = map[string][]string{
-	"pdns-server":          {"/usr/sbin/pdns_server"},
-	"pdns-backend-lmdb":    {"/usr/lib/x86_64-linux-gnu/pdns/liblmdbbackend.so"},
-	"postfix":              {"/usr/sbin/postfix", "/etc/postfix/master.cf"},
-	"dovecot-core":         {"/usr/sbin/dovecot", "/etc/dovecot/dovecot.conf"},
-	"dovecot-imapd":        {"/usr/lib/dovecot/imap"},
-	"dovecot-pop3d":        {"/usr/lib/dovecot/pop3"},
-	"dovecot-lmtpd":        {"/usr/lib/dovecot/lmtp"},
-	"dovecot-sieve":        {"/usr/bin/sievec"},
-	"dovecot-managesieved": {"/usr/lib/dovecot/managesieve"},
-	"rspamd":               {"/usr/bin/rspamd", "/etc/rspamd/rspamd.conf"},
-	"redis-server":         {"/usr/bin/redis-server", "/etc/redis/redis.conf"},
-	"roundcube-core":       {"/usr/share/roundcube/index.php", "/usr/share/roundcube/SQL/sqlite.initial.sql", "/etc/roundcube/defaults.inc.php", "/etc/roundcube/mimetypes.php", "/var/lib/roundcube/plugins/.keep"},
-	"roundcube-sqlite3":    {"/etc/php/8.3/mods-available/pdo_sqlite.ini"},
-	"roundcube-plugins":    {"/usr/share/roundcube/plugins/managesieve/managesieve.php"},
-	"sqlite3":              {"/usr/bin/sqlite3"},
-	"git":                  {"/usr/bin/git"},
-	"unzip":                {"/usr/bin/unzip"},
-	"mysql-server":         {"/usr/sbin/mysqld", "/etc/mysql/mysql.conf.d/mysqld.cnf"},
-	"mariadb-server":       {"/usr/sbin/mariadbd", "/usr/sbin/mysqld", "/etc/mysql/mariadb.conf.d/50-server.cnf"},
-	"postgresql":           {"/usr/lib/postgresql/16/bin/postgres", "/etc/postgresql/16/main/postgresql.conf", "/etc/postgresql/16/main/conf.d/.keep"},
-	"nginx":                {"/usr/sbin/nginx"},
-	"php-fpm":              {"/usr/sbin/php-fpm8.3"},
-	"php-mbstring":         {"/etc/php/8.3/mods-available/mbstring.ini"},
-	"php-xml":              {"/etc/php/8.3/mods-available/xml.ini"},
-	"php-mysql":            {"/etc/php/8.3/mods-available/mysqli.ini"},
-	"php-pgsql":            {"/etc/php/8.3/mods-available/pgsql.ini"},
-	"phpmyadmin":           {"/usr/share/phpmyadmin/index.php", "/etc/phpmyadmin/conf.d/.keep"},
-	"adminer":              {"/usr/share/adminer/adminer.php"},
+	"pdns-server":                   {"/usr/sbin/pdns_server"},
+	"pdns-backend-lmdb":             {"/usr/lib/x86_64-linux-gnu/pdns/liblmdbbackend.so"},
+	"postfix":                       {"/usr/sbin/postfix", "/etc/postfix/master.cf"},
+	"dovecot-core":                  {"/usr/sbin/dovecot", "/etc/dovecot/dovecot.conf"},
+	"dovecot-imapd":                 {"/usr/lib/dovecot/imap"},
+	"dovecot-pop3d":                 {"/usr/lib/dovecot/pop3"},
+	"dovecot-lmtpd":                 {"/usr/lib/dovecot/lmtp"},
+	"dovecot-sieve":                 {"/usr/bin/sievec"},
+	"dovecot-managesieved":          {"/usr/lib/dovecot/managesieve"},
+	"rspamd":                        {"/usr/bin/rspamd", "/etc/rspamd/rspamd.conf"},
+	"redis-server":                  {"/usr/bin/redis-server", "/etc/redis/redis.conf"},
+	"roundcube-core":                {"/usr/share/roundcube/index.php", "/usr/share/roundcube/SQL/sqlite.initial.sql", "/etc/roundcube/defaults.inc.php", "/etc/roundcube/mimetypes.php", "/var/lib/roundcube/plugins/.keep"},
+	"roundcube-sqlite3":             {"/etc/php/8.3/mods-available/pdo_sqlite.ini"},
+	"roundcube-plugins":             {"/usr/share/roundcube/plugins/managesieve/managesieve.php"},
+	"sqlite3":                       {"/usr/bin/sqlite3"},
+	"git":                           {"/usr/bin/git"},
+	"unzip":                         {"/usr/bin/unzip"},
+	"mysql-server":                  {"/usr/sbin/mysqld", "/etc/mysql/mysql.conf.d/mysqld.cnf"},
+	"mariadb-server":                {"/usr/sbin/mariadbd", "/usr/sbin/mysqld", "/etc/mysql/mariadb.conf.d/50-server.cnf"},
+	"postgresql":                    {"/usr/lib/postgresql/16/bin/postgres", "/etc/postgresql/16/main/postgresql.conf", "/etc/postgresql/16/main/conf.d/.keep"},
+	"nginx":                         {"/usr/sbin/nginx"},
+	"php-fpm":                       {"/usr/sbin/php-fpm8.3"},
+	"php-mbstring":                  {"/etc/php/8.3/mods-available/mbstring.ini"},
+	"php-xml":                       {"/etc/php/8.3/mods-available/xml.ini"},
+	"php-mysql":                     {"/etc/php/8.3/mods-available/mysqli.ini"},
+	"php-pgsql":                     {"/etc/php/8.3/mods-available/pgsql.ini"},
+	"phpmyadmin":                    {"/usr/share/phpmyadmin/index.php", "/etc/phpmyadmin/conf.d/.keep"},
+	"adminer":                       {"/usr/share/adminer/adminer.php"},
+	"apache2":                       {"/usr/sbin/apache2", "/etc/apache2/apache2.conf", "/etc/apache2/sites-available/000-default.conf", "/etc/apache2/sites-enabled/.keep", "/etc/apache2/conf-available/.keep"},
+	"memcached":                     {"/usr/bin/memcached", "/etc/memcached.conf"},
+	"supervisor":                    {"/usr/bin/supervisord", "/etc/supervisor/supervisord.conf"},
+	"fail2ban":                      {"/usr/bin/fail2ban-server", "/etc/fail2ban/jail.conf", "/etc/fail2ban/jail.d/defaults-debian.conf"},
+	"clamav-daemon":                 {"/usr/sbin/clamd", "/etc/clamav/clamd.conf"},
+	"clamav":                        {"/usr/bin/clamscan"},
+	"clamav-freshclam":              {"/usr/bin/freshclam"},
+	"python3-pip":                   {"/usr/bin/pip3"},
+	"python3-venv":                  {"/usr/lib/python3/dist-packages/venv.keep"},
+	"modsecurity-crs":               {"/usr/share/modsecurity-crs/rules/REQUEST-901-INITIALIZATION.conf", "/etc/modsecurity/crs/crs-setup.conf"},
+	"libnginx-mod-http-modsecurity": {"/usr/lib/nginx/modules/ngx_http_modsecurity_module.so", "/etc/nginx/modsecurity.conf", "/etc/nginx/modules-enabled/50-mod-http-modsecurity.conf"},
 }
 
 // simAccounts are the system accounts packages create, as passwd lines.
@@ -365,8 +376,32 @@ var simAccounts = map[string][]string{
 	"postgresql":     {"postgres:x:110:116:PostgreSQL administrator:/var/lib/postgresql:/bin/bash"},
 }
 
-// apt-get install [-OPTIONS] PACKAGE...
+// apt-get install [-OPTIONS] PACKAGE...; apt-get purge|remove PATTERN...
+// deletes the marker files of the matching packages.
 func (s *Simulator) aptGet(args []string) error {
+	if len(args) > 0 && (args[0] == "purge" || args[0] == "remove") {
+		for _, a := range args[1:] {
+			if strings.HasPrefix(a, "-") {
+				continue
+			}
+			if v, ok := strings.CutSuffix(a, "-*"); ok && phpBinary.MatchString(v) {
+				ver := strings.TrimPrefix(v, "php")
+				_ = os.Remove(s.Path("/usr/sbin/php-fpm" + ver))
+				_ = os.Remove(s.Path("/usr/bin/" + v))
+				_ = os.RemoveAll(s.Path("/etc/php/" + ver))
+				continue
+			}
+			for name, files := range simPackages {
+				if ok, _ := filepath.Match(a, name); !ok {
+					continue
+				}
+				for _, f := range files {
+					_ = os.Remove(s.Path(f))
+				}
+			}
+		}
+		return nil
+	}
 	if len(args) == 0 || args[0] != "install" {
 		return nil
 	}
@@ -377,6 +412,16 @@ func (s *Simulator) aptGet(args []string) error {
 		files := simPackages[a]
 		if v, ok := strings.CutSuffix(a, "-cli"); ok && phpBinary.MatchString(v) {
 			files = []string{"/usr/bin/" + v}
+		}
+		if v, ok := strings.CutSuffix(a, "-fpm"); ok && phpBinary.MatchString(v) {
+			ver := strings.TrimPrefix(v, "php")
+			files = []string{"/usr/sbin/php-fpm" + ver, "/etc/php/" + ver + "/fpm/pool.d/www.conf"}
+		}
+		if v, ext, ok := strings.Cut(a, "-"); ok && phpBinary.MatchString(v) && ext != "cli" && ext != "fpm" {
+			if ext == "mysql" {
+				ext = "mysqli"
+			}
+			files = []string{"/etc/php/" + strings.TrimPrefix(v, "php") + "/mods-available/" + ext + ".ini"}
 		}
 		for _, f := range files {
 			if err := os.MkdirAll(filepath.Dir(s.Path(f)), 0o755); err != nil {
@@ -408,4 +453,32 @@ func (s *Simulator) addAccounts(lines []string) error {
 		}
 	}
 	return nil
+}
+
+// PackageInstalled reports whether a simulated package's files are there.
+// Packages the simulator does not know count as installed once
+// "apt-get install" named them.
+func (s *Simulator) PackageInstalled(name string) bool {
+	files := simPackages[name]
+	if v, ok := strings.CutSuffix(name, "-fpm"); ok && phpBinary.MatchString(v) {
+		files = []string{"/usr/sbin/php-fpm" + strings.TrimPrefix(v, "php")}
+	}
+	if len(files) == 0 {
+		for _, c := range s.Commands() {
+			if c.Name == "apt-get" && len(c.Args) > 0 && c.Args[0] == "install" {
+				for _, a := range c.Args[1:] {
+					if a == name {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+	for _, f := range files {
+		if _, err := os.Stat(s.Path(f)); err != nil {
+			return false
+		}
+	}
+	return true
 }

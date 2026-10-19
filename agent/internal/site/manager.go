@@ -64,6 +64,9 @@ type Spec struct {
 	// (Let's Encrypt validation aside). Files, databases and the PHP-FPM
 	// pool stay; nothing is passed to PHP or an application server.
 	Suspended bool `json:"suspended"`
+	// WebServer is "nginx" (the default: Nginx passes PHP to PHP-FPM) or
+	// "apache" (Nginx in front of Apache, which reads .htaccess files).
+	WebServer string `json:"web_server"`
 }
 
 // DefaultWebRoot is the document root of a new site.
@@ -87,6 +90,7 @@ type Result struct {
 	PHPVersion   string `json:"php_version"`
 	PHPSocket    string `json:"php_socket"`
 	NginxConfig  string `json:"nginx_config"`
+	ApacheConfig string `json:"apache_config,omitempty"`
 	FPMConfig    string `json:"fpm_config"`
 	UserCreated  bool   `json:"user_created"`
 	Changed      bool   `json:"changed"`
@@ -208,6 +212,10 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	if !contains(versions, spec.PHPVersion) {
 		return Result{}, invalid("PHP %s is not installed (installed: %s)", spec.PHPVersion, strings.Join(versions, ", "))
 	}
+	apache := spec.WebServer == WebApache
+	if apache && !m.ApacheReady() {
+		return Result{}, invalid("Apache is not installed; install it from Yazılım Yönetimi first")
+	}
 	web, err := m.h.LookupUser(m.webUser)
 	if err != nil {
 		return Result{}, &OperationError{fmt.Errorf("web server user %q: %w", m.webUser, err)}
@@ -270,6 +278,9 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		MaxChildren:  m.maxChildren(spec.Domain),
 		IPv6:         m.hasIPv6(),
 		ACMERoot:     cert.Webroot,
+		Apache:       apache,
+		ApachePort:   ApachePort,
+		Aliases:      spec.Aliases,
 	}
 	if err := m.tlsData(&data, spec.TLS); err != nil {
 		return Result{}, err
@@ -355,6 +366,22 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		t.Changed = t.Changed || before
 	}
 
+	// Apache: the vhost exists exactly while the site runs behind it.
+	before := t.Changed
+	t.Changed = false
+	if apache {
+		if err := t.WriteFile(apacheAvail(spec.Domain), render(apacheTmpl, data)); err != nil {
+			return Result{}, err
+		}
+		if err := t.Symlink(apacheAvail(spec.Domain), apacheEnabled(spec.Domain)); err != nil {
+			return Result{}, err
+		}
+	} else if err := m.removeApacheSite(t, spec.Domain); err != nil {
+		return Result{}, err
+	}
+	apacheChanged := t.Changed
+	t.Changed = t.Changed || before
+
 	if err := t.WriteFile(p.nginxAvail, render(nginxTmpl, data)); err != nil {
 		return Result{}, err
 	}
@@ -375,13 +402,24 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		UserCreated:  created,
 		Changed:      t.Changed,
 	}
+	if apache {
+		res.ApacheConfig = apacheAvail(spec.Domain)
+	}
 	if !t.Changed {
 		return res, nil
 	}
-	if err := m.checkAndReload(ctx, t, reload); err != nil {
+	if err := m.checkAndReload(ctx, t, reload, apacheChanged); err != nil {
 		return Result{}, err
 	}
 	return res, nil
+}
+
+// removeApacheSite removes a site's Apache vhost, if it has one.
+func (m *Manager) removeApacheSite(t *txn.Tx, domain string) error {
+	if err := t.Unlink(apacheEnabled(domain)); err != nil {
+		return err
+	}
+	return t.RemoveFile(apacheAvail(domain))
 }
 
 // Delete removes a site's web server configuration and, if asked, its
@@ -427,6 +465,13 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 	if err := t.RemoveFile(suspendedPage(spec.Domain)); err != nil {
 		return fail(err)
 	}
+	before := t.Changed
+	t.Changed = false
+	if err := m.removeApacheSite(t, spec.Domain); err != nil {
+		return fail(err)
+	}
+	apacheChanged := t.Changed
+	t.Changed = t.Changed || before
 	var reload []string
 	for _, v := range versions {
 		before := t.Changed
@@ -440,7 +485,7 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		t.Changed = t.Changed || before
 	}
 	if t.Changed {
-		if err := m.checkAndReload(ctx, t, reload); err != nil {
+		if err := m.checkAndReload(ctx, t, reload, apacheChanged); err != nil {
 			return fail(err)
 		}
 	}
@@ -525,10 +570,17 @@ func (m *Manager) ensureUser(ctx context.Context, t *txn.Tx, name, home string) 
 // If validation fails, the caller's rollback restores the old files before
 // anything was reloaded. If a reload fails, the files are rolled back and
 // the services reloaded again with the old configuration.
-func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []string) error {
+func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []string, apache bool) error {
 	for _, v := range phpVersions {
 		if _, err := m.h.Run(ctx, host.Command{Name: "php-fpm" + v, Args: []string{"-t"}}); err != nil {
 			return fmt.Errorf("PHP-FPM %s rejected the configuration: %w", v, err)
+		}
+	}
+	// A vhost removed after Apache itself is gone needs no check.
+	apache = apache && m.exists("/usr/sbin/apache2")
+	if apache {
+		if _, err := m.h.Run(ctx, host.Command{Name: "apache2ctl", Args: []string{"configtest"}}); err != nil {
+			return fmt.Errorf("apache rejected the configuration: %w", err)
 		}
 	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "nginx", Args: []string{"-t"}}); err != nil {
@@ -538,6 +590,11 @@ func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []s
 	units := []string{}
 	for _, v := range phpVersions {
 		units = append(units, "php"+v+"-fpm")
+	}
+	// Apache before Nginx, so Nginx never sends a site to Apache before
+	// Apache knows it.
+	if apache {
+		units = append(units, "apache2")
 	}
 	units = append(units, "nginx")
 	for _, unit := range units {
@@ -612,6 +669,11 @@ func (m *Manager) resolvers() string {
 		}
 	}
 	return strings.Join(out, " ")
+}
+
+func (m *Manager) exists(abs string) bool {
+	_, err := os.Stat(m.h.Path(abs))
+	return err == nil
 }
 
 // hasIPv6 reports whether the kernel has IPv6; Nginx refuses to start when
