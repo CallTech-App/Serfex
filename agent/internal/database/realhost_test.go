@@ -319,7 +319,10 @@ func TestRealHost(t *testing.T) {
 		t.Fatal("status does not show remote access")
 	}
 	if out, err := client(server, ip, outside, realPassword, shop, "SELECT COUNT(*) FROM urunler"); err != nil || out != "2" {
-		t.Fatalf("remote connection: %q %v", out, err)
+		p, _ := m.installedProduct(server)
+		conf, _ := os.ReadFile(p.conf)
+		listen, _ := exec.Command("ss", "-ltnp").CombinedOutput()
+		t.Fatalf("remote connection: %q %v\nconfig:\n%s\nlistening:\n%s", out, err, conf, listen)
 	}
 	if _, err := client(server, ip, app, users[0].Password, shop, "SELECT 1"); err == nil {
 		t.Fatal("a local-only user connected from outside")
