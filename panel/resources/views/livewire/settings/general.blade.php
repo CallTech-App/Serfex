@@ -89,7 +89,7 @@
                     <label for="session" class="sm:pt-2">Oturum süresi</label>
                     <div>
                         <div class="flex items-center gap-2">
-                            <input id="session" wire:model="sessionMinutes" inputmode="numeric" class="{{ $field }} num w-24 {{ $errors->has('sessionMinutes') ? 'border-crit' : 'border-line' }}">
+                            <input id="session" wire:model="sessionMinutes" inputmode="numeric" class="{{ str_replace('w-full', 'w-24', $field) }} num {{ $errors->has('sessionMinutes') ? 'border-crit' : 'border-line' }}">
                             <span class="text-[13px] text-muted">dakika işlem yapılmazsa oturum kapanır</span>
                         </div>
                         @error('sessionMinutes') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror

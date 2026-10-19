@@ -53,15 +53,15 @@
                     @forelse ($tasks as $task)
                         <tr wire:key="cron-{{ $task->id }}" @class(['hover:bg-surface-2/60', 'text-muted' => ! $task->enabled])>
                             <td class="max-w-0 py-3 pr-3 pl-5 sm:w-[45%]">
-                                <span class="block truncate font-mono text-[13px]" title="{{ $task->command }}">{{ $task->command }}</span>
+                                <span class="block font-mono text-[13px] break-all sm:truncate sm:break-normal" title="{{ $task->command }}">{{ $task->command }}</span>
                                 @if ($task->note)
                                     <span class="mt-0.5 block text-[12.5px] text-muted">{{ $task->note }}</span>
                                 @endif
-                                <span class="mt-0.5 block text-[12.5px] text-muted sm:hidden">{{ $task->scheduleLabel() }}</span>
+                                <span @class(['mt-0.5 block text-[12.5px] text-muted sm:hidden', 'font-mono' => ! isset(CronJob::PRESETS[$task->schedule])])>{{ $task->scheduleLabel() }}</span>
                             </td>
                             <td class="hidden px-3 py-3 sm:table-cell">
                                 @if ($task->enabled)
-                                    <span>{{ $task->scheduleLabel() }}</span>
+                                    <span @class(['font-mono text-[13px]' => ! isset(CronJob::PRESETS[$task->schedule])])>{{ $task->scheduleLabel() }}</span>
                                     @if (isset(CronJob::PRESETS[$task->schedule]) === false)
                                         <span class="block text-2xs text-muted">sonraki: {{ When::withTime($task->nextRun()) }}</span>
                                     @endif
@@ -77,16 +77,18 @@
                                     <span class="text-muted">Henüz çalışmadı</span>
                                 @endif
                             </td>
-                            <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
+                            <td class="py-3 pr-5 pl-3 text-right align-top whitespace-nowrap sm:align-middle">
+                                <div class="flex flex-col items-end gap-1.5 sm:block">
                                 <button type="button" wire:click="runNow({{ $task->id }})" class="text-[13px] text-accent hover:underline">Şimdi çalıştır</button>
-                                <button type="button" wire:click="openHistory({{ $task->id }})" class="ml-3 text-[13px] text-accent hover:underline">Geçmiş</button>
+                                <button type="button" wire:click="openHistory({{ $task->id }})" class="text-[13px] text-accent hover:underline sm:ml-3">Geçmiş</button>
                                 @if ($task->enabled)
-                                    <button type="button" wire:click="pause({{ $task->id }})" class="ml-3 text-[13px] text-accent hover:underline">Duraklat</button>
+                                    <button type="button" wire:click="pause({{ $task->id }})" class="text-[13px] text-accent hover:underline sm:ml-3">Duraklat</button>
                                 @else
-                                    <button type="button" wire:click="resume({{ $task->id }})" class="ml-3 text-[13px] text-accent hover:underline">Sürdür</button>
+                                    <button type="button" wire:click="resume({{ $task->id }})" class="text-[13px] text-accent hover:underline sm:ml-3">Sürdür</button>
                                 @endif
-                                <button type="button" wire:click="openEdit({{ $task->id }})" class="ml-3 text-[13px] text-accent hover:underline">Düzenle</button>
-                                <button type="button" wire:click="confirmDelete({{ $task->id }})" class="ml-3 text-[13px] text-crit hover:underline">Sil</button>
+                                <button type="button" wire:click="openEdit({{ $task->id }})" class="text-[13px] text-accent hover:underline sm:ml-3">Düzenle</button>
+                                <button type="button" wire:click="confirmDelete({{ $task->id }})" class="text-[13px] text-crit hover:underline sm:ml-3">Sil</button>
+                                </div>
                             </td>
                         </tr>
                     @empty
