@@ -104,7 +104,6 @@ func (m *Manager) catalog() []def {
 		def{unit: "dovecot", name: "Dovecot (IMAP ve POP3)", group: GroupHosting, marker: "/usr/sbin/dovecot", test: []string{"doveconf", "-n"}, reload: true},
 		def{unit: "rspamd", name: "Rspamd (spam filtresi)", group: GroupHosting, marker: "/usr/bin/rspamd", test: []string{"rspamadm", "configtest"}, reload: true},
 		def{unit: "redis-server@servik-mail", name: "Redis (posta)", group: GroupHosting, marker: "/etc/redis/servik-mail.conf"},
-		def{unit: "redis-server", name: "Redis", group: GroupHosting, marker: "/etc/servik/redis/README"},
 		def{unit: "memcached", name: "Memcached", group: GroupHosting, marker: "/usr/bin/memcached"},
 		def{unit: "supervisor", name: "Supervisor", group: GroupHosting, marker: "/usr/bin/supervisord", reload: true},
 		def{unit: "clamav-daemon", name: "ClamAV (virüs tarayıcı)", group: GroupHosting, marker: "/usr/sbin/clamd", reload: true},
