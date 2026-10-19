@@ -328,20 +328,22 @@ func TestRealHost(t *testing.T) {
 	if _, err := sites.Apply(ctx, siteSpec); err != nil {
 		t.Fatal(err)
 	}
-	get(t, "/up", 200)
-	// PHP's server logs a request after answering it, so give the line a
-	// moment to land in the log.
+	// An Nginx reload hands over to new workers in the background, and
+	// PHP's server logs a request after answering it: ask until the request
+	// shows up in the process's log.
 	var plog RunChunk
-	logDeadline := time.Now().Add(10 * time.Second)
+	logDeadline := time.Now().Add(15 * time.Second)
 	for {
+		get(t, "/up", 200)
+		time.Sleep(300 * time.Millisecond)
 		plog, _ = m.ReadProcessLog(ProcessAction{Domain: realDomain, Name: "web"}, -1)
 		if strings.Contains(plog.Data, "GET /up") {
 			break
 		}
 		if time.Now().After(logDeadline) {
-			t.Fatalf("the request did not reach the process:\n%s", plog.Data)
+			vhost, _ := os.ReadFile("/etc/nginx/sites-available/" + realDomain + ".conf")
+			t.Fatalf("the request did not reach the process:\n%s\nvhost:\n%s", plog.Data, vhost)
 		}
-		time.Sleep(200 * time.Millisecond)
 	}
 	siteSpec.Proxy, siteSpec.WebSockets = nil, nil
 	if _, err := sites.Apply(ctx, siteSpec); err != nil {
