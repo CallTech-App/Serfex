@@ -475,15 +475,10 @@ func configureRedis(o *op) error {
 func fail2ban() *component {
 	return &component{
 		id: "fail2ban", packages: []string{"fail2ban", "python3-systemd", "nftables"}, marker: "/usr/bin/fail2ban-server", versionPkg: "fail2ban",
-		purge:  func(m *Manager) []string { return []string{"fail2ban"} },
-		units:  []string{"fail2ban"},
-		backup: []string{"/etc/fail2ban"},
-		configure: func(o *op) error {
-			if err := o.t.RootDir("/etc/fail2ban/jail.d", 0o755, 0, 0); err != nil {
-				return err
-			}
-			return o.t.WriteFile(jailConf, renderJails(o.m))
-		},
+		purge:     func(m *Manager) []string { return []string{"fail2ban"} },
+		units:     []string{"fail2ban"},
+		backup:    []string{"/etc/fail2ban"},
+		configure: func(o *op) error { return writeJails(o.t, o.m) },
 		check: func(o *op) error {
 			if _, err := o.run(host.Command{Name: "fail2ban-client", Args: []string{"--test"}}); err != nil {
 				return err
@@ -493,11 +488,46 @@ func fail2ban() *component {
 				return err
 			})
 		},
-		unconfigure: func(o *op) error { return o.t.RemoveFile(jailConf) },
+		unconfigure: func(o *op) error {
+			if err := o.t.RemoveFile(panelFilter); err != nil {
+				return err
+			}
+			return o.t.RemoveFile(jailConf)
+		},
 	}
 }
 
-const jailConf = "/etc/fail2ban/jail.d/servik.conf"
+const (
+	jailConf    = "/etc/fail2ban/jail.d/servik.conf"
+	panelFilter = "/etc/fail2ban/filter.d/servik-panel.conf"
+)
+
+// The panel logs failed logins to the journal as servik-panel.
+var panelFilterConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
+# Failed logins to the Servik panel, logged by the panel to the journal.
+[INCLUDES]
+before = common.conf
+
+[DEFAULT]
+_daemon = servik-panel
+
+[Definition]
+failregex = ^%(__prefix_line)sFailed panel login from <HOST>(?: |$)
+ignoreregex =
+journalmatch = SYSLOG_IDENTIFIER=servik-panel
+`)
+
+func writeJails(t *txn.Tx, m *Manager) error {
+	for _, d := range []string{"/etc/fail2ban/jail.d", "/etc/fail2ban/filter.d"} {
+		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
+			return err
+		}
+	}
+	if err := t.WriteFile(panelFilter, panelFilterConf); err != nil {
+		return err
+	}
+	return t.WriteFile(jailConf, renderJails(m))
+}
 
 // renderJails writes Servik's jails: SSH always, mail logins when the
 // mail server is installed, and repeat offenders for a week.
@@ -523,7 +553,17 @@ ignoreip = %s
 
 [sshd]
 enabled = true
-`, txn.Marker, strings.Join(ignore, " "))
+
+# Logins to the Servik panel: ten failures in 15 minutes close the
+# panel's port to that address for an hour.
+[servik-panel]
+enabled = true
+filter = servik-panel
+port = %d
+maxretry = 10
+findtime = 15m
+bantime = 1h
+`, txn.Marker, strings.Join(ignore, " "), m.panelPort())
 	if mail {
 		b.WriteString(`
 [dovecot]
@@ -556,7 +596,26 @@ const (
 	modsecLogDir  = "/var/log/servik/modsecurity"
 	modsecModule  = "/usr/lib/nginx/modules/ngx_http_modsecurity_module.so"
 	modsecCRSRule = "/usr/share/modsecurity-crs/rules"
+	// ModSecurityLog is the audit log: one JSON object per line for each
+	// request a rule matched (package security reads it).
+	ModSecurityLog  = modsecLogDir + "/audit.log"
+	modsecLogrotate = "/etc/logrotate.d/servik-modsecurity"
 )
+
+// The audit log is written by libmodsecurity itself, which never reopens
+// it, so it is truncated in place.
+var modsecRotate = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
+` + ModSecurityLog + ` {
+	daily
+	rotate 14
+	maxsize 100M
+	missingok
+	notifempty
+	compress
+	delaycompress
+	copytruncate
+}
+`)
 
 func modsecurity() *component {
 	return &component{
@@ -594,6 +653,19 @@ func modsecurity() *component {
 			return nil
 		},
 		unconfigure: func(o *op) error {
+			// Sites' own WAF settings use the module's directives too; the
+			// panel writes them again after a new install.
+			dirs, _ := os.ReadDir(o.m.h.Path(site.ExtraRoot))
+			for _, d := range dirs {
+				for _, name := range []string{"waf.conf", "waf.rules"} {
+					if err := o.t.RemoveFile(site.ExtraRoot + "/" + d.Name() + "/" + name); err != nil {
+						return err
+					}
+				}
+			}
+			if err := o.t.RemoveFile(modsecLogrotate); err != nil {
+				return err
+			}
 			if err := o.t.RemoveFile(modsecNginx); err != nil {
 				return err
 			}
@@ -630,17 +702,23 @@ func writeModsec(o *op, s Settings) error {
 	}
 	main := fmt.Sprintf(`# %s. Manual changes are overwritten.
 # ModSecurity with the OWASP Core Rule Set, for every site.
-# Mode: Yazılım Yönetimi > ModSecurity > Ayarlar.
+# Server mode: Güvenlik > WAF; a site can have its own (package security).
 Include /etc/nginx/modsecurity.conf
 SecRuleEngine %s
 # Responses are not inspected: it costs every page and breaks downloads.
 SecResponseBodyAccess Off
-SecAuditLog %s/audit.log
+# Requests a rule matched, as JSON lines, for Güvenlik > WAF. Request
+# bodies and responses are left out.
+SecAuditEngine RelevantOnly
+SecAuditLogParts ABHZ
+SecAuditLogFormat JSON
+SecAuditLogType Serial
+SecAuditLog %s
 SecTmpDir /tmp/
 SecDataDir /tmp/
 Include %s
 Include %s/*.conf
-`, txn.Marker, engine, modsecLogDir, modsecCRS, modsecCRSRule)
+`, txn.Marker, engine, ModSecurityLog, modsecCRS, modsecCRSRule)
 	crs := fmt.Sprintf(`# %s. Manual changes are overwritten.
 # OWASP CRS settings: anomaly scoring, paranoia level %d.
 SecDefaultAction "phase:1,log,auditlog,pass"
@@ -656,6 +734,12 @@ modsecurity_rules_file %s;
 		return err
 	}
 	if err := t.WriteFile(modsecCRS, []byte(crs)); err != nil {
+		return err
+	}
+	if err := t.RootDir("/etc/logrotate.d", 0o755, 0, 0); err != nil {
+		return err
+	}
+	if err := t.WriteFile(modsecLogrotate, modsecRotate); err != nil {
 		return err
 	}
 	if err := t.RootDir("/etc/nginx/conf.d", 0o755, 0, 0); err != nil {

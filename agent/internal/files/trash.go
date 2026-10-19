@@ -28,12 +28,15 @@ import (
 type TrashItem struct {
 	ID   string `json:"id"`
 	Path string `json:"path"`
-	// Kind is "deleted", "version" (the editor saved over it) or
-	// "replaced" (an upload replaced it).
+	// Kind is "deleted", "version" (the editor saved over it),
+	// "replaced" (an upload replaced it) or "quarantined" (the security
+	// scan took it away).
 	Kind      string `json:"kind"`
 	Type      string `json:"type"`
 	Size      int64  `json:"size"`
 	DeletedAt int64  `json:"deleted_at"`
+	// Mode is a quarantined file's permissions before it lost them.
+	Mode uint32 `json:"mode,omitempty"`
 }
 
 func newID(now int64) string {
@@ -80,6 +83,10 @@ func (s *session) toTrash(rel, abs, kind string) (string, error) {
 		return "", err
 	}
 	item := TrashItem{ID: id, Path: rel, Kind: kind, Type: typeOf(fi), Size: treeSize(abs), DeletedAt: s.req.Now}
+	quarantined := kind == "quarantined" && fi.Mode().IsRegular()
+	if quarantined {
+		item.Mode = uint32(fi.Mode().Perm())
+	}
 	if err := writeMeta(slot, item); err != nil {
 		_ = os.RemoveAll(slot)
 		return "", err
@@ -87,6 +94,10 @@ func (s *session) toTrash(rel, abs, kind string) (string, error) {
 	if err := os.Rename(abs, filepath.Join(slot, "item")); err != nil {
 		_ = os.RemoveAll(slot)
 		return "", err
+	}
+	if quarantined {
+		// Another account's file keeps its mode; it is out of reach anyway.
+		_ = os.Chmod(filepath.Join(slot, "item"), 0)
 	}
 	return id, nil
 }
@@ -240,7 +251,7 @@ func (s *session) trashRestore() (any, error) {
 		name := path.Base(rel)
 		target := filepath.Join(dirAbs, name)
 		if _, err := os.Lstat(target); err == nil {
-			if item.Kind == "deleted" {
+			if item.Kind == "deleted" || item.Kind == "quarantined" {
 				name = freeName(dirAbs, name, " (geri yüklendi)")
 				target = filepath.Join(dirAbs, name)
 			} else if _, err := s.toTrash(rel, target, "version"); err != nil {
@@ -249,6 +260,9 @@ func (s *session) trashRestore() (any, error) {
 		}
 		if err := os.Rename(filepath.Join(slot, "item"), target); err != nil {
 			return map[string]any{"restored": done}, err
+		}
+		if item.Kind == "quarantined" && item.Mode != 0 {
+			_ = os.Chmod(target, fs.FileMode(item.Mode))
 		}
 		_ = os.RemoveAll(slot)
 		done = append(done, restored{ID: id, Path: path.Join(dirRel, name)})
@@ -322,7 +336,11 @@ func (s *session) purge(days int) int {
 	n := 0
 	cutoff := s.req.Now - int64(days)*86400
 	for _, it := range items {
-		if it.DeletedAt < cutoff {
+		limit := cutoff
+		if it.Kind == "quarantined" && days < QuarantineDays {
+			limit = s.req.Now - int64(QuarantineDays)*86400
+		}
+		if it.DeletedAt < limit {
 			if removeAll(filepath.Join(s.req.Trash, it.ID)) == nil {
 				n++
 			}

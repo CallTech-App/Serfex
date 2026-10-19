@@ -22,6 +22,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/monitor"
 	"github.com/winchester37/servik/agent/internal/rpc"
+	"github.com/winchester37/servik/agent/internal/security"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -54,6 +55,9 @@ const CodeUpdateBusy = -32007
 // message starts with a stable code ("exists: ...").
 const CodeFileError = -32008
 
+// CodeWAFNotInstalled tells the panel to offer installing ModSecurity.
+const CodeWAFNotInstalled = -32009
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -69,6 +73,7 @@ type services struct {
 	updates    *update.Manager
 	files      *files.Manager
 	ftp        *ftp.Manager
+	security   *security.Manager
 	dryRun     bool
 }
 
@@ -234,6 +239,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerBackups(srv, svc)
 	registerUpdates(srv, svc)
 	registerFiles(srv, svc)
+	registerSecurity(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -419,6 +425,9 @@ func mapError(err error) error {
 	if errors.As(err, &fe) {
 		return &rpc.Error{Code: CodeFileError, Message: fe.Error()}
 	}
+	if errors.Is(err, security.ErrWAFNotInstalled) {
+		return &rpc.Error{Code: CodeWAFNotInstalled, Message: err.Error()}
+	}
 	if errors.Is(err, update.ErrBusy) {
 		return &rpc.Error{Code: CodeUpdateBusy, Message: err.Error()}
 	}
@@ -434,7 +443,8 @@ func mapError(err error) error {
 	var bv *backup.ValidationError
 	var uv *update.ValidationError
 	var ftpv *ftp.ValidationError
-	if errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var secv *security.ValidationError
+	if errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -449,7 +459,8 @@ func mapError(err error) error {
 	var bop *backup.OperationError
 	var uop *update.OperationError
 	var ftpop *ftp.OperationError
-	if errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var secop *security.OperationError
+	if errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -744,5 +755,36 @@ func registerFiles(srv *rpc.Server, svc services) {
 	srv.Handle("ftp.account.list", func(context.Context, json.RawMessage) (any, error) {
 		l, err := f.List()
 		return l, mapError(err)
+	})
+}
+
+func registerSecurity(srv *rpc.Server, svc services) {
+	sec, fw, c := svc.security, svc.firewall, svc.components
+	handle(srv, "waf.site.apply", func(ctx context.Context, p security.WAFSpec) (any, error) { return sec.ApplyWAF(ctx, p) })
+	handle(srv, "waf.events", func(_ context.Context, p security.EventsSpec) (any, error) { return sec.WAFEvents(p) })
+	handle(srv, "web.protect.apply", func(ctx context.Context, p security.ProtectSpec) (any, error) { return sec.ApplyProtect(ctx, p) })
+	handle(srv, "web.deny.apply", func(ctx context.Context, p security.DenySpec) (any, error) { return sec.ApplyDeny(ctx, p) })
+	// A whole-server scan outlives a panel request that gives up.
+	handle(srv, "scan.run", func(ctx context.Context, p security.ScanSpec) (any, error) {
+		return sec.Scan(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "scan.files", func(ctx context.Context, p security.FileSpec) (any, error) { return sec.ScanFiles(ctx, p) })
+	handle(srv, "scan.fix", func(ctx context.Context, p security.FixSpec) (any, error) { return sec.Fix(ctx, p) })
+	handle(srv, "ssh.status", func(ctx context.Context, _ struct{}) (any, error) { return sec.SSH(ctx) })
+	handle(srv, "ssh.apply", func(ctx context.Context, p security.SSHSettings) (any, error) { return sec.ApplySSH(ctx, p) })
+
+	handle(srv, "firewall.rules", func(ctx context.Context, _ struct{}) (any, error) { return fw.Rules(ctx) })
+	handle(srv, "firewall.rules.apply", func(ctx context.Context, p firewall.RulesSpec) (any, error) { return fw.ApplyRules(ctx, p) })
+
+	handle(srv, "fail2ban.status", func(ctx context.Context, _ struct{}) (any, error) { return c.Fail2ban(ctx) })
+	handle(srv, "fail2ban.refresh", func(ctx context.Context, _ struct{}) (any, error) {
+		changed, err := c.Fail2banRefresh(ctx)
+		return map[string]bool{"changed": changed}, err
+	})
+	handle(srv, "fail2ban.unban", func(ctx context.Context, p component.BanSpec) (any, error) {
+		return map[string]bool{"unbanned": true}, c.Fail2banUnban(ctx, p)
+	})
+	handle(srv, "fail2ban.ban", func(ctx context.Context, p component.BanSpec) (any, error) {
+		return map[string]bool{"banned": true}, c.Fail2banBan(ctx, p)
 	})
 }
