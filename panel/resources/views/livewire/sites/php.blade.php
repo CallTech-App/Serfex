@@ -2,7 +2,7 @@
     use App\Models\Site;
     $busy = $site->status->isBusy();
     $hints = [
-        Site::NGINX => 'Önerilen. Nginx statik dosyaları sunar, PHP isteklerini sitenin kendi PHP-FPM havuzuna gönderir. .htaccess dosyaları okunmaz.',
+        Site::NGINX => 'Nginx statik dosyaları sunar, PHP isteklerini sitenin kendi PHP-FPM havuzuna gönderir. .htaccess dosyaları okunmaz.',
         Site::APACHE => 'Nginx önde durur ve statik dosyaları sunar; diğer istekler Apache\'ye gider. .htaccess dosyaları (yönlendirme, erişim kuralları) çalışır. PHP yine sitenin kendi PHP-FPM havuzunda çalışır.',
     ];
 @endphp

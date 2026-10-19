@@ -146,6 +146,21 @@ func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Nginx and those PHP versions count as installed (Yazılım Yönetimi).
+	bins := []string{"/usr/sbin/nginx"}
+	for _, v := range []string{"8.3", "8.4", "8.5"} {
+		bins = append(bins, "/usr/sbin/php-fpm"+v, "/usr/bin/php"+v)
+	}
+	for _, bin := range bins {
+		if _, err := os.Stat(sim.Path(bin)); errors.Is(err, os.ErrNotExist) {
+			if err := os.MkdirAll(filepath.Dir(sim.Path(bin)), 0o755); err != nil {
+				return nil, err
+			}
+			if err := os.WriteFile(sim.Path(bin), nil, 0o755); err != nil {
+				return nil, err
+			}
+		}
+	}
 	log.Warn("dry run: no real server changes are made", "root", root)
 	return sim, nil
 }

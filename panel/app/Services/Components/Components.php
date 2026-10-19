@@ -265,7 +265,7 @@ class Components
         if ($used === []) {
             return null;
         }
-        $list = count($used) > 3 ? implode(', ', array_slice($used, 0, 3)).' ve '.(count($used) - 3).' diğeri' : implode(', ', $used);
+        $list = count($used) > 2 ? implode(', ', array_slice($used, 0, 2)).' ve '.(count($used) - 2).' diğeri' : implode(', ', $used);
         $hint = match (true) {
             $id === 'apache' => 'Önce bu siteleri PHP ve Web Sunucusu sayfasından Nginx + PHP-FPM\'e alın.',
             str_starts_with($id, 'php') => 'Önce bu siteleri başka bir PHP sürümüne alın.',
@@ -322,6 +322,19 @@ class Components
     }
 
     /**
+     * A package version without its epoch and build suffix:
+     * "8.4.13-1+ubuntu24.04.1+deb.sury.org+1" is "8.4.13-1".
+     */
+    public static function shortVersion(?string $version): ?string
+    {
+        if ($version === null || $version === '') {
+            return null;
+        }
+
+        return preg_replace(['/^\d+:/', '/\+.*$/', '/^v(?=\d)/'], '', $version);
+    }
+
+    /**
      * Why a component cannot be installed now, or null.
      *
      * @param  array<string, array<string, mixed>>  $statuses
@@ -369,8 +382,8 @@ class Components
             'description' => $description,
             'known' => $status !== null,
             'installed' => $installed,
-            'version' => $status['version'] ?? null,
-            'latest' => $status['latest'] ?? null,
+            'version' => self::shortVersion($status['version'] ?? null),
+            'latest' => self::shortVersion($status['latest'] ?? null),
             'running' => (bool) ($status['running'] ?? false),
             'units' => $status['units'] ?? [],
             'busy' => $busy,

@@ -28,7 +28,8 @@ var NodeLines = []string{"22", "24", "26"}
 var phpExtensions = []string{"cli", "common", "mbstring", "xml", "curl", "zip", "intl", "bcmath", "gd", "mysql", "pgsql", "sqlite3", "readline", "opcache"}
 
 func phpPackages(v string) []string {
-	out := []string{"php" + v + "-fpm"}
+	// The CLI runs Artisan, Composer and the scheduler of Laravel sites.
+	out := []string{"php" + v + "-fpm", "php" + v + "-cli"}
 	for _, e := range phpExtensions {
 		// OPcache is part of PHP itself from 8.5 on.
 		if e == "opcache" && v >= "8.5" {

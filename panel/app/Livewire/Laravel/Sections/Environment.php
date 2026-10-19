@@ -254,10 +254,13 @@ class Environment extends Section
         $this->save($agent);
         $this->quiet = false;
         if ($this->agentError !== null) {
+            // The application cannot use it; it goes again.
             try {
                 $redis->disconnect($app);
             } catch (AgentException) {
             }
+            $this->loadContent((string) $this->original);
+            $this->mode = 'rows';
 
             return;
         }
