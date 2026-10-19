@@ -51,5 +51,26 @@
                 <x-ask-ai question="İlgilenmem gereken SSL sertifikaları var. Hangileri, neden ve nasıl düzeltirim?" label="AI'ya sor" class="mr-5" />
             @endif
         </div>
+        @php
+            $backupProblems = app(\App\Services\Backups\Backups::class)->problems();
+            $lastBackup = \App\Models\Backup::where('scope', 'server')->usable()->latest('finished_at')->value('finished_at');
+        @endphp
+        <div class="flex items-center gap-2 hover:bg-surface-2/60">
+            <a href="{{ route('backups.index') }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $backupProblems ? '' : 'pr-5' }}">
+                <x-icon name="archive" @class(['text-muted' => ! $backupProblems, 'text-warn' => $backupProblems]) />
+                <span>Yedekler</span>
+                <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $backupProblems, 'font-medium text-warn' => $backupProblems])>
+                    @if ($backupProblems)
+                        {{ count($backupProblems) > 1 ? count($backupProblems).' yedekleme sorunu: ' : '' }}{{ $backupProblems[0]['text'] }}
+                    @else
+                        {{ $lastBackup ? 'Son sunucu yedeği '.\Illuminate\Support\Carbon::parse($lastBackup)->diffForHumans() : 'Henüz sunucu yedeği yok' }}
+                    @endif
+                </span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+            @if ($backupProblems)
+                <x-ask-ai question="Yedeklemede sorun var: {{ $backupProblems[0]['text'] }} Neden olmuş olabilir, nasıl düzeltirim?" label="AI'ya sor" class="mr-5" />
+            @endif
+        </div>
     </section>
 </x-layouts.app>

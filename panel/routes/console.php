@@ -14,3 +14,4 @@ Schedule::command('servik:disk-usage')->everyThirtyMinutes()->withoutOverlapping
 Schedule::command('servik:laravel-backups')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('servik:components-check')->dailyAt('04:30')->withoutOverlapping();
 Schedule::command('servik:monitor-record')->everyMinute()->withoutOverlapping();
+Schedule::command('servik:backups')->everyFiveMinutes()->withoutOverlapping();

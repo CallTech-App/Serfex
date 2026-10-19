@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Backups\BackupDownloadController as ServerBackupDownloadController;
+use App\Http\Controllers\Backups\BackupUploadController;
 use App\Http\Controllers\Customers\ImpersonationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Databases\DatabaseManagerController;
@@ -14,6 +16,7 @@ use App\Http\Middleware\EnsureHostingAccess;
 use App\Livewire\Ai\AiAssistant;
 use App\Livewire\Ai\AiAudit;
 use App\Livewire\Ai\AiSettingsPage;
+use App\Livewire\Backups\BackupIndex;
 use App\Livewire\Components\ComponentIndex;
 use App\Livewire\Customers\CustomerIndex;
 use App\Livewire\Customers\CustomerShow;
@@ -74,6 +77,8 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         Route::livewire('/databases', DatabaseIndex::class)->name('databases.index');
         Route::livewire('/databases/{database}', DatabaseShow::class)->whereNumber('database')->name('databases.show');
         Route::get('/databases/{database}/yonetici', DatabaseManagerController::class)->whereNumber('database')->middleware('throttle:30,1')->name('databases.manager');
+        Route::livewire('/yedekler', BackupIndex::class)->name('backups.index');
+        Route::get('/yedekler/arsiv/{item}', ServerBackupDownloadController::class)->whereNumber('item')->name('backups.download');
     });
 
     Route::middleware(EnsureAdmin::class)->group(function () {
@@ -86,6 +91,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         Route::livewire('/ssl/settings', SslSettingsPage::class)->name('ssl.settings');
         Route::livewire('/databases/settings', DatabaseSettingsPage::class)->name('databases.settings');
         Route::livewire('/yazilim', ComponentIndex::class)->name('components.index');
+        Route::post('/yedekler/yukle/{upload}', BackupUploadController::class)->where('upload', 'up-[a-z0-9]{20}')->name('backups.upload');
         Route::livewire('/musteriler', CustomerIndex::class)->name('customers.index');
         Route::livewire('/musteriler/{customer}', CustomerShow::class)->whereNumber('customer')->name('customers.show');
         Route::post('/musteriler/{customer}/giris', [ImpersonationController::class, 'store'])->whereNumber('customer')->name('customers.impersonate');

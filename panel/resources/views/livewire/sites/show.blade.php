@@ -6,6 +6,9 @@
     $missing = fn (string $feature) => $user->allows($feature) ? null : 'Paketinizde yok';
     $certificate = $site->certificate;
     $laravel = $site->laravelApp;
+    $lastBackup = \App\Models\BackupItem::with('backup')->where('site_id', $site->id)->where('status', 'succeeded')
+        ->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first();
+    $backupText = $lastBackup ? $lastBackup->backup->created_at->timezone(config('app.timezone'))->format('d.m.Y H:i') : 'Henüz yok';
     $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
         ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
         : ['layers', 'Laravel', 'Kurulu değil', route('laravel.index', ['site' => $site->id])]);
@@ -16,7 +19,7 @@
             ['folder', 'Dosya Yöneticisi', null],
             ['hard-drive-upload', 'FTP hesapları', null],
             ['database', 'Veritabanları', $databases ? $databases.' veritabanı' : 'Yok', route('databases.index', ['site' => $site->id])],
-            ['archive-restore', 'Yedekler', null],
+            $missing('backups') ? ['archive-restore', 'Yedekler', $missing('backups')] : ['archive-restore', 'Yedekler', $lastBackup ? 'Son: '.$backupText : 'Henüz yok', route('backups.index', ['site' => $site->id])],
             ['key-round', 'Bağlantı bilgileri', null],
         ]],
         ['Geliştirme', 'code', [
@@ -122,7 +125,7 @@
     @endif
 
     {{-- Status strip --}}
-    <section class="grid grid-cols-1 rounded-xl border border-line bg-surface text-[13px] sm:grid-cols-2 xl:grid-cols-4 [&>*]:border-line [&>*]:p-4 max-sm:[&>*:not(:last-child)]:border-b sm:max-xl:[&>*:nth-child(-n+2)]:border-b sm:max-xl:[&>*:nth-child(odd)]:border-r xl:[&>*:not(:last-child)]:border-r">
+    <section class="grid grid-cols-1 rounded-xl border border-line bg-surface text-[13px] sm:grid-cols-2 xl:grid-cols-5 [&>*]:border-line [&>*]:p-4 max-sm:[&>*:not(:last-child)]:border-b sm:max-xl:[&>*:nth-child(-n+4)]:border-b sm:max-xl:[&>*:nth-child(odd):not(:last-child)]:border-r xl:[&>*:not(:last-child)]:border-r">
         <a href="{{ route('sites.php', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
             <p class="text-2xs text-muted">Web sunucusu</p>
             <p class="mt-1 font-medium">{{ $site->web_server === \App\Models\Site::APACHE ? 'Nginx + Apache' : 'Nginx' }} · PHP {{ $site->php_version }}</p>
@@ -154,6 +157,12 @@
             <p class="mt-1 truncate font-mono text-[12.5px]" title="{{ $site->document_root }}">{{ $site->document_root ?? '—' }}</p>
             <span class="text-2xs text-muted">{{ $site->provisioned_at ? 'Oluşturuldu: '.$site->provisioned_at->format('d.m.Y H:i') : 'Henüz hazırlanmadı' }}</span>
         </div>
+        @php $backupCell = $user->allows('backups') ? route('backups.index', ['site' => $site->id]) : null; @endphp
+        <{{ $backupCell ? 'a' : 'div' }} @if ($backupCell) href="{{ $backupCell }}" wire:navigate @endif class="block hover:bg-surface-2/60 sm:col-span-2 xl:col-span-1">
+            <p class="text-2xs text-muted">Son yedek</p>
+            <p class="num mt-1 font-medium">{{ $backupText }}</p>
+            <span class="text-2xs text-muted">{{ $lastBackup ? ($lastBackup->backup->scope === 'server' ? 'Tüm sunucu yedeğiyle' : 'Site yedeği').' · '.\App\Support\Bytes::format($lastBackup->size) : ($owner?->package && ! $owner->package->allows('backups') ? 'Paketi yedekleme içermiyor' : 'Zamanlanmış yedeğe girer') }}</span>
+        </{{ $backupCell ? 'a' : 'div' }}>
     </section>
 
     {{-- Tools --}}

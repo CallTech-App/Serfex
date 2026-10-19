@@ -18,7 +18,7 @@
         ]],
         ['Sunucu', [
             [null, 'shield-alert', 'Güvenlik'],
-            [null, 'archive', 'Yedekler'],
+            ['backups.index', 'archive', 'Yedekler'],
             [null, 'server-cog', 'Hizmetler'],
             ['components.index', 'package-plus', 'Yazılım Yönetimi'],
             [null, 'settings', 'Araçlar ve Ayarlar'],
@@ -36,6 +36,7 @@
                 $user->allows('mail') ? ['mail.index', 'mail', 'E-posta'] : null,
                 ['databases.index', 'database', 'Veritabanları'],
                 ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
+                $user->allows('backups') ? ['backups.index', 'archive', 'Yedekler'] : null,
             ]))],
         ];
     } elseif ($user && ! $user->is_admin) {
@@ -50,6 +51,7 @@
             'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
             'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
             'customers.index' => [app(\App\Services\Customers\Quotas::class)->attentionCount(), 'müşteri kotası'],
+            'backups.index' => [count(app(\App\Services\Backups\Backups::class)->problems()), 'yedekleme sorunu'],
         ],
         (bool) $user?->isCustomer() => [
             'ssl.index' => [\App\Models\Certificate::attentionCount($user), 'sertifika'],
