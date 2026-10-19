@@ -193,6 +193,8 @@ type Manager struct {
 	mu      sync.Mutex
 	// now is time.Now, replaced in tests.
 	now func() time.Time
+	// wrap, when set, wraps dumps and loads (low priority for backups).
+	wrap func(host.Command) host.Command
 }
 
 // NewManager returns a Manager for the real servers.

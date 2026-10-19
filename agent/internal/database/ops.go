@@ -149,7 +149,7 @@ func (m *Manager) backup(ctx context.Context, e engine, server, name string) (st
 		return "", 0, err
 	}
 	zw := gzip.NewWriter(f)
-	err = e.dump(ctx, name, zw)
+	err = e.dump(ctx, name, zw, m.wrapped)
 	if cerr := zw.Close(); err == nil {
 		err = cerr
 	}
@@ -309,3 +309,6 @@ func (m *Manager) List(ctx context.Context, server string) (Listing, error) {
 	l, err := e.list(ctx)
 	return l, opError(err)
 }
+
+// Validate checks the database's server and name.
+func (s DatabaseSpec) Validate() error { return s.validate() }

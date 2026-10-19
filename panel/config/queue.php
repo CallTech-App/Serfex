@@ -46,6 +46,17 @@ return [
             'after_commit' => false,
         ],
 
+        // Backups and restores (Yedekler) can run for hours; they have their
+        // own worker: php artisan queue:work backups --queue=backups
+        'backups' => [
+            'driver' => env('BACKUP_QUEUE_DRIVER', env('QUEUE_CONNECTION', 'database') === 'sync' ? 'sync' : 'database'),
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'backups',
+            'retry_after' => 43500,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

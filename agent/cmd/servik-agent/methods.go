@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/winchester37/servik/agent/internal/backup"
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/database"
@@ -40,6 +41,9 @@ const CodeComponentInUse = -32004
 // CodeComponentBusy says another software operation is running.
 const CodeComponentBusy = -32005
 
+// CodeBackupBusy says another backup or restore is running.
+const CodeBackupBusy = -32006
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -51,6 +55,7 @@ type services struct {
 	firewall   *firewall.Manager
 	databases  *database.Manager
 	components *component.Manager
+	backups    *backup.Manager
 	dryRun     bool
 }
 
@@ -213,6 +218,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerMonitor(srv, svc)
 	registerDatabases(srv, svc)
 	registerComponents(srv, svc)
+	registerBackups(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -391,6 +397,9 @@ func mapError(err error) error {
 	if errors.Is(err, component.ErrBusy) {
 		return &rpc.Error{Code: CodeComponentBusy, Message: err.Error()}
 	}
+	if errors.Is(err, backup.ErrBusy) {
+		return &rpc.Error{Code: CodeBackupBusy, Message: err.Error()}
+	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError
 	var cv *cert.ValidationError
@@ -400,7 +409,8 @@ func mapError(err error) error {
 	var monv *monitor.ValidationError
 	var dbv *database.ValidationError
 	var compv *component.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) {
+	var bv *backup.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -412,7 +422,8 @@ func mapError(err error) error {
 	var monop *monitor.OperationError
 	var dbop *database.OperationError
 	var compop *component.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) {
+	var bop *backup.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -603,5 +614,66 @@ func registerComponents(srv *rpc.Server, svc services) {
 	handle(srv, "redis.remove", func(ctx context.Context, p domainParam) (any, error) {
 		removed, err := c.RemoveRedis(ctx, p.Domain)
 		return map[string]bool{"removed": removed}, err
+	})
+}
+
+func registerBackups(srv *rpc.Server, svc services) {
+	b := svc.backups
+	handle(srv, "backup.status", func(context.Context, struct{}) (any, error) { return b.Status() })
+	// Backups, restores and transfers outlive a panel request that gives up.
+	handle(srv, "backup.create", func(ctx context.Context, p backup.CreateSpec) (any, error) {
+		return b.Create(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "backup.restore", func(ctx context.Context, p backup.RestoreSpec) (any, error) {
+		return b.Restore(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "backup.fetch", func(ctx context.Context, p backup.FetchSpec) (any, error) {
+		return b.Fetch(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "backup.import", func(ctx context.Context, p backup.ImportSpec) (any, error) {
+		return b.Import(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "backup.delete", func(ctx context.Context, p backup.DeleteSpec) (any, error) {
+		return b.Delete(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "backup.target.test", func(ctx context.Context, p backup.TargetSpec) (any, error) { return b.TestTarget(ctx, p) })
+	handle(srv, "backup.scan", func(ctx context.Context, q struct {
+		Target *backup.TargetSpec `json:"target"`
+	}) (any, error) {
+		return b.Scan(ctx, q.Target)
+	})
+	handle(srv, "backup.inspect", func(_ context.Context, q struct {
+		Key  string `json:"key"`
+		Name string `json:"name"`
+	}) (any, error) {
+		return b.Inspect(q.Key, q.Name)
+	})
+	handle(srv, "backup.read", func(_ context.Context, q struct {
+		Key    string `json:"key"`
+		Name   string `json:"name"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return b.Read(q.Key, q.Name, q.Offset)
+	})
+	handle(srv, "backup.member.read", func(_ context.Context, q struct {
+		Key    string `json:"key"`
+		Name   string `json:"name"`
+		Member string `json:"member"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return b.ReadMember(q.Key, q.Name, q.Member, q.Offset)
+	})
+	handle(srv, "backup.upload.write", func(_ context.Context, q struct {
+		Upload string `json:"upload"`
+		Offset int64  `json:"offset"`
+		Data   []byte `json:"data"`
+	}) (any, error) {
+		return b.UploadWrite(q.Upload, q.Offset, q.Data)
+	})
+	handle(srv, "backup.run.read", func(_ context.Context, q struct {
+		Run    string `json:"run"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return b.ReadRun(q.Run, q.Offset)
 	})
 }

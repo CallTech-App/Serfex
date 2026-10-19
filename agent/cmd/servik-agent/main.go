@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/winchester37/servik/agent/internal/backup"
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/database"
@@ -92,6 +93,11 @@ func main() {
 	svc.components = component.NewManager(h, svc.sites, svc.databases, svc.laravel)
 	if !*dryRun {
 		svc.components.Addresses = ownAddressStrings
+	}
+	svc.backups = backup.NewManager(h, svc.databases, svc.laravel)
+	svc.backups.InstallCert = func(ctx context.Context, spec cert.InstallSpec) error {
+		_, err := svc.certs.Install(ctx, spec)
+		return err
 	}
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {

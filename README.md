@@ -46,6 +46,7 @@ npm install && npm run build
 php artisan servik:admin   # create the administrator account
 php artisan serve
 php artisan queue:work     # in a second terminal: runs site jobs
+php artisan queue:work backups --queue=backups  # backups and restores, which run for hours
 php artisan schedule:work  # in a third terminal: certificate renewals
 ```
 
@@ -78,6 +79,19 @@ measured by the agent every 30 minutes (`servik:disk-usage`) and traffic is
 added up every minute with the monitor samples, so keep the scheduler running
 (`php artisan schedule:work`) to see quotas fill.
 
+Backups (Yedekler) run on their own queue so a long backup never holds up site
+jobs; keep the `backups` worker above running. The scheduler starts scheduled
+backups (`servik:backups`, every five minutes). Archives copied to the server
+by hand go in `/var/lib/servik/backups/import/` and are listed under Yedekler →
+İçe aktar. cPanel and Plesk backups cannot be imported. To rebuild a server
+from a whole-server backup, install Servik, the same database servers and mail,
+list the backup (İçe aktar, or scan its target), then run:
+
+```sh
+php artisan servik:restore-server            # lists the whole-server backups
+php artisan servik:restore-server KEY --panel --sites
+```
+
 Tests need a PostgreSQL database named `servik_test` (see `panel/phpunit.xml`).
 The Servik AI tests answer with a fake Claude API, so they need no key:
 
@@ -99,6 +113,16 @@ changes the machine, so run it only on a throwaway server or VM:
 
 ```sh
 sudo go test -tags realhost -run TestRealHost ./internal/site
+```
+
+The backup test backs a real site (files, a MySQL database and a mailbox) up
+to local disk, S3-compatible storage and SFTP on the same machine, destroys
+it and restores it. Point it at any S3-compatible server (CI uses moto's), or
+it uses an in-process S3:
+
+```sh
+sudo env "PATH=$PATH" SERVIK_S3_ENDPOINT=http://127.0.0.1:9000 SERVIK_S3_ACCESS_KEY=... SERVIK_S3_SECRET_KEY=... \
+  go test -tags realhost -run TestRealHost ./internal/backup
 ```
 
 The panel's own real-server test (a customer's site, disk quota and

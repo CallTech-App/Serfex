@@ -103,6 +103,9 @@ func validParts(parts []string) error {
 
 func backupFile(domain, id string) string { return backupDir + "/" + domain + "/" + id + ".tar" }
 
+// BackupFile is where the backup id of the application on domain is kept.
+func BackupFile(domain, id string) string { return backupFile(domain, id) }
+
 // envPath and storagePath are where an application keeps its .env and
 // storage: shared/ for releases Servik deploys, the application directory
 // otherwise.

@@ -27,6 +27,9 @@ return [
         // Seconds to wait for an application backup or restore; the agent
         // stops one after two hours.
         'backup_timeout' => (float) env('SERVIK_AGENT_BACKUP_TIMEOUT', 7300),
+        // Seconds to wait for a whole-server backup or a site restore from
+        // Yedekler; the agent stops one after twelve hours.
+        'server_backup_timeout' => (float) env('SERVIK_AGENT_SERVER_BACKUP_TIMEOUT', 43300),
         // Seconds to wait for software installed from Yazılım Yönetimi;
         // ClamAV's first signature download alone can take minutes.
         'component_timeout' => (float) env('SERVIK_AGENT_COMPONENT_TIMEOUT', 1750),

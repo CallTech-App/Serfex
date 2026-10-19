@@ -2,6 +2,7 @@
 
 namespace App\Services\Customers;
 
+use App\Models\Backup;
 use App\Models\Customer;
 use App\Models\Database;
 use App\Models\LaravelApp;
@@ -35,6 +36,7 @@ class Quotas
         'mailboxes' => 'posta kutusu sınırına',
         'databases' => 'veritabanı sınırına',
         'laravel_apps' => 'Laravel uygulaması sınırına',
+        'backups' => 'yedek sınırına',
     ];
 
     /**
@@ -63,6 +65,8 @@ class Quotas
             'mailboxes' => $mailboxes->count(),
             'databases' => Database::whereIn('system_user_id', $accounts)->count(),
             'laravel_apps' => $apps->whereNull('preview_of_id')->count(),
+            // Backups they took themselves; scheduled ones are the server's.
+            'backups' => Backup::where('customer_id', $customer->id)->where('trigger', 'manual')->whereNotIn('status', ['failed', 'deleted'])->count(),
         ];
     }
 

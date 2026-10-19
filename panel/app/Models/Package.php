@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (features). Customers read their package live, so a change applies to
  * all of them at once.
  */
-#[Fillable(['name', 'is_default', 'max_sites', 'max_disk_mb', 'max_traffic_gb', 'max_mailboxes', 'max_databases', 'max_laravel_apps',
-    'php_versions', 'allow_laravel', 'allow_shell', 'allow_mail', 'allow_dns'])]
+#[Fillable(['name', 'is_default', 'max_sites', 'max_disk_mb', 'max_traffic_gb', 'max_mailboxes', 'max_databases', 'max_laravel_apps', 'max_backups',
+    'php_versions', 'allow_laravel', 'allow_shell', 'allow_mail', 'allow_dns', 'allow_backups'])]
 class Package extends Model
 {
     use HasFactory;
@@ -26,6 +26,7 @@ class Package extends Model
         'mailboxes' => ['max_mailboxes', 'Posta kutusu', ''],
         'databases' => ['max_databases', 'Veritabanı', ''],
         'laravel_apps' => ['max_laravel_apps', 'Laravel uygulaması', ''],
+        'backups' => ['max_backups', 'Elle alınan yedek', ''],
     ];
 
     /** Features: key => [column, label, explanation]. */
@@ -34,6 +35,7 @@ class Package extends Model
         'shell' => ['allow_shell', 'Komut ve Tinker erişimi', 'Artisan, Composer ve npm komutları, tarayıcıda Tinker'],
         'mail' => ['allow_mail', 'E-posta', 'Posta kutuları, yönlendiriciler ve webmail'],
         'dns' => ['allow_dns', 'DNS düzenleme', 'Alan adlarının DNS kayıtlarını görme ve değiştirme'],
+        'backups' => ['allow_backups', 'Yedekler', 'Sitelerin zamanlanmış yedeklere girmesi, yedek alma, geri yükleme ve indirme'],
     ];
 
     protected $attributes = [
@@ -42,6 +44,7 @@ class Package extends Model
         'allow_shell' => false,
         'allow_mail' => true,
         'allow_dns' => true,
+        'allow_backups' => true,
     ];
 
     protected function casts(): array
@@ -53,6 +56,7 @@ class Package extends Model
             'allow_shell' => 'boolean',
             'allow_mail' => 'boolean',
             'allow_dns' => 'boolean',
+            'allow_backups' => 'boolean',
         ];
     }
 
