@@ -5,11 +5,16 @@ namespace App\Livewire\Sites;
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
+use App\Livewire\Attributes\ForCustomers;
+use App\Models\Customer;
+use App\Models\DnsZone;
 use App\Models\Site;
 use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Customers\Customers;
+use App\Services\Customers\Quotas;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailDomains;
 use App\Support\Hostnames;
@@ -24,6 +29,7 @@ use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
 #[Title('Siteler · Servik')]
+#[ForCustomers]
 class SiteIndex extends Component
 {
     use WithPagination;
@@ -36,6 +42,10 @@ class SiteIndex extends Component
     public string $domain = '';
 
     public string $systemUser = '';
+
+    /** Administrators may create the site for a customer ("" for none). */
+    #[Url(as: 'musteri', except: '')]
+    public string $customerId = '';
 
     public string $phpVersion = '';
 
@@ -55,23 +65,45 @@ class SiteIndex extends Component
         $this->resetPage();
     }
 
-    public function openCreate(AgentClient $agent): void
+    public function mount(): void
+    {
+        // "Site ekle" from a customer's page.
+        if ($this->customerId !== '' && auth()->user()->is_admin && Customer::whereKey($this->customerId)->exists()) {
+            $this->openCreate(app(AgentClient::class), app(Quotas::class));
+        } else {
+            $this->customerId = '';
+        }
+    }
+
+    public function openCreate(AgentClient $agent, Quotas $quotas): void
     {
         $this->reset('domain', 'systemUser', 'phpVersion', 'wwwAlias', 'agentError', 'userEdited');
         $this->resetValidation();
         $this->creating = true;
+        $this->updatedCustomerId();
+
+        $customer = $this->customer();
+        if ($refusal = $quotas->refusal($customer, 'sites')) {
+            $this->phpVersions = [];
+            $this->agentError = $refusal;
+
+            return;
+        }
 
         try {
-            $this->phpVersions = array_values($agent->call('php.versions') ?? []);
+            $installed = array_values($agent->call('php.versions') ?? []);
         } catch (AgentException $e) {
             $this->phpVersions = [];
             $this->agentError = $this->agentMessage($e);
 
             return;
         }
+        $this->phpVersions = $customer?->package ? $customer->package->phpVersionsFrom($installed) : $installed;
 
         if ($this->phpVersions === []) {
-            $this->agentError = 'Sunucuda PHP-FPM kurulu değil. Önce bir PHP sürümü kurun.';
+            $this->agentError = $installed === []
+                ? 'Sunucuda PHP-FPM kurulu değil. Önce bir PHP sürümü kurun.'
+                : 'Paketin izin verdiği PHP sürümlerinin hiçbiri sunucuda kurulu değil.';
 
             return;
         }
@@ -90,9 +122,28 @@ class SiteIndex extends Component
         $this->userEdited = true;
     }
 
-    public function create(AgentClient $agent, Zones $zones, MailDomains $mail): void
+    /**
+     * A customer's sites go under their own account.
+     */
+    public function updatedCustomerId(): void
+    {
+        $customer = $this->customer();
+        if ($customer !== null) {
+            $this->systemUser = $customer->username;
+            $this->userEdited = true;
+        } elseif (auth()->user()->is_admin && $this->userEdited && $this->systemUser !== '' && Customer::where('username', $this->systemUser)->exists()) {
+            $this->systemUser = Hostnames::suggestUser(Hostnames::normalize($this->domain));
+            $this->userEdited = false;
+        }
+    }
+
+    public function create(AgentClient $agent, Zones $zones, MailDomains $mail, Quotas $quotas, Customers $customers): void
     {
         $this->domain = Hostnames::normalize($this->domain);
+        $customer = $this->customer();
+        if ($customer !== null) {
+            $this->systemUser = $customer->username;
+        }
         $this->systemUser = trim($this->systemUser);
 
         $this->validate([
@@ -117,14 +168,34 @@ class SiteIndex extends Component
             'phpVersion' => 'PHP sürümü',
         ]);
 
+        // An account that belongs to a customer takes the site to that
+        // customer, within their package.
+        $account = SystemUser::where('name', $this->systemUser)->first();
+        if ($account?->customer_id !== null && $customer !== null && $account->customer_id !== $customer->id) {
+            $this->addError('systemUser', 'Bu sistem kullanıcısı başka bir müşteriye ait.');
+
+            return;
+        }
+        $owner = $customer ?? $account?->customer;
+        if (auth()->user()->isCustomer() && $this->takenByOthers($owner)) {
+            $this->addError('domain', 'Bu alan adı ya da üst alan adı başka bir hesaba ait.');
+
+            return;
+        }
+        if ($refusal = $quotas->refusal($owner, 'sites')) {
+            $this->agentError = $refusal;
+
+            return;
+        }
+
         if (! $agent->ping()) {
             $this->agentError = 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.';
 
             return;
         }
 
-        $site = DB::transaction(function () {
-            $user = SystemUser::firstOrCreate(['name' => $this->systemUser]);
+        $site = DB::transaction(function () use ($customer, $customers) {
+            $user = $customer !== null ? $customers->account($customer) : SystemUser::firstOrCreate(['name' => $this->systemUser]);
 
             return $user->sites()->create([
                 'domain' => $this->domain,
@@ -138,7 +209,9 @@ class SiteIndex extends Component
         // DNS does not wait for the web server: the zone is published even
         // if provisioning fails and is retried.
         $zones->forSite($site);
-        $mail->forSite($site);
+        if ($owner === null || $owner->package->allows('mail')) {
+            $mail->forSite($site);
+        }
 
         $this->creating = false;
         $this->dispatch('toast',
@@ -149,12 +222,28 @@ class SiteIndex extends Component
     }
 
     /**
+     * True when the domain, or a domain above it, has a DNS zone that is
+     * not the customer's: their site would then live in someone else's zone.
+     */
+    private function takenByOthers(Customer $customer): bool
+    {
+        $labels = explode('.', $this->domain);
+        $names = [];
+        for ($i = 0; $i < count($labels) - 1; $i++) {
+            $names[] = implode('.', array_slice($labels, $i));
+        }
+
+        return DnsZone::with('site.systemUser')->whereIn('name', $names)->get()
+            ->contains(fn (DnsZone $zone) => $zone->site === null || ! $customer->owns($zone->site));
+    }
+
+    /**
      * Undo for "Site ekle": removes the site again, its account when the
      * site was the only one using it, and the DNS zone created with it.
      */
     public function undoCreate(int $id): void
     {
-        $site = Site::find($id);
+        $site = Site::visibleTo(auth()->user())->find($id);
         if ($site === null || $site->status === SiteStatus::Deleting) {
             return;
         }
@@ -165,8 +254,9 @@ class SiteIndex extends Component
 
     public function render(): View
     {
-        $sites = Site::query()
-            ->with('systemUser', 'preview')
+        $user = auth()->user();
+        $sites = Site::visibleTo($user)
+            ->with('systemUser.customer', 'preview')
             ->when($this->search !== '', fn ($q) => $q->where(function ($q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';
                 $q->where('domain', 'like', $term)
@@ -177,8 +267,23 @@ class SiteIndex extends Component
 
         return view('livewire.sites.index', [
             'sites' => $sites,
+            'customers' => $user->is_admin && $this->creating ? Customer::orderByRaw('lower(coalesce(company, name))')->get(['id', 'company', 'name']) : collect(),
             'busy' => $sites->getCollection()->contains(fn (Site $s) => $s->status->isBusy()),
         ]);
+    }
+
+    /**
+     * The customer the new site is for: the signed-in customer, or the one
+     * an administrator picked.
+     */
+    private function customer(): ?Customer
+    {
+        $user = auth()->user();
+        if ($user->isCustomer()) {
+            return $user->customer()->with('package')->first();
+        }
+
+        return $user->is_admin && $this->customerId !== '' ? Customer::with('package')->find((int) $this->customerId) : null;
     }
 
     private function agentMessage(AgentException $e): string

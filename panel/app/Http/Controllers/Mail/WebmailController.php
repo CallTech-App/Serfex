@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mail;
 use App\Enums\MailDomainStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Mailbox;
+use App\Models\MailDomain;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Mail\MailSettings;
@@ -18,7 +19,12 @@ class WebmailController extends Controller
 {
     public function __invoke(Mailbox $mailbox, AgentClient $agent, MailSettings $settings): RedirectResponse
     {
-        $domain = $mailbox->domain;
+        $user = auth()->user();
+        $domain = MailDomain::visibleTo($user)->find($mailbox->mail_domain_id);
+        abort_if($domain === null || ! $user->allows('mail'), 404);
+        if ($domain->site?->isSuspended()) {
+            return $this->fail($mailbox, 'Hesap askıda; web postaya girilemez.');
+        }
         if ($settings->webmailUrl() === null || $domain->status === MailDomainStatus::Deleting) {
             return $this->fail($mailbox, 'Web posta kapalı. E-posta ayarlarından açabilirsiniz.');
         }

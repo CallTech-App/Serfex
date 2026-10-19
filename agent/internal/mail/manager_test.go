@@ -231,6 +231,34 @@ func TestApplyDomainWritesMaps(t *testing.T) {
 	}
 }
 
+func TestSuspendedDomain(t *testing.T) {
+	m, sim := newTest(t)
+	setUp(t, m)
+	ctx := context.Background()
+	contains(t, "main.cf", read(t, sim, "/etc/postfix/main.cf"), "reject_unknown_recipient_domain, check_recipient_access texthash:/etc/postfix/servik/suspended, permit_mynetworks,")
+	if got := read(t, sim, postfixMaps+"/suspended"); strings.Contains(got, "450") {
+		t.Fatalf("suspended map before any domain:\n%s", got)
+	}
+
+	spec := domainSpec()
+	spec.Suspended = true
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	contains(t, "suspended", read(t, sim, postfixMaps+"/suspended"), "example.com 450 4.2.1 Mailbox temporarily unavailable\n")
+	// The mailboxes stay (mail kept, nothing bounces) but cannot sign in.
+	contains(t, "mailboxes", read(t, sim, postfixMaps+"/mailboxes"), "info@example.com example.com/info/\n")
+	contains(t, "users", read(t, sim, dovecotUsers), "info@example.com:{CRYPT}*::::::nologin=y userdb_quota_rule=*:storage=1024M")
+
+	spec.Suspended = false
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, sim, postfixMaps+"/suspended") + read(t, sim, dovecotUsers); strings.Contains(got, "450 4.2.1") || strings.Contains(got, "nologin") {
+		t.Fatalf("still suspended:\n%s", got)
+	}
+}
+
 func TestAutoreply(t *testing.T) {
 	m, sim := newTest(t)
 	setUp(t, m)

@@ -85,6 +85,31 @@ func TestRealHost(t *testing.T) {
 		t.Fatalf("PHP did not run as the site user: %q", body)
 	}
 
+	// The account's home is measured, a 3 MB file included.
+	blob := host.AsUser("servikt", host.Command{Name: "dd", Args: []string{"if=/dev/zero", "of=" + res.DocumentRoot + "/blob.bin", "bs=1M", "count=3"}})
+	if _, err := h.Run(ctx, blob); err != nil {
+		t.Fatal(err)
+	}
+	disk, err := m.DiskUsage(ctx, DiskSpec{Users: []string{"servikt"}})
+	if err != nil || disk["servikt"].Bytes < 3<<20 || disk["servikt"].Files < 3 {
+		t.Fatalf("disk usage = %+v, %v", disk, err)
+	}
+
+	// A suspended site answers 503 with the suspension page, PHP included,
+	// and serves again once the suspension is lifted.
+	suspended := spec
+	suspended.Suspended = true
+	if _, err := m.Apply(ctx, suspended); err != nil {
+		t.Fatal(err)
+	}
+	if body := getStatus(t, "servik-test.example", "/whoami.php", 503, "hizmet dışı"); strings.Contains(body, "servikt:") {
+		t.Fatalf("PHP ran on a suspended site: %q", body)
+	}
+	if _, err := m.Apply(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	get(t, "servik-test.example", "/whoami.php", "servikt")
+
 	// Applying again changes nothing.
 	again, err := m.Apply(ctx, spec)
 	if err != nil || again.Changed {
@@ -135,6 +160,25 @@ func get(t *testing.T, hostname, path, want string) string {
 		b, _ := io.ReadAll(resp.Body)
 		body = string(b)
 		return resp.StatusCode == 200 && strings.Contains(body, want)
+	})
+	return body
+}
+
+// getStatus is get for answers other than 200.
+func getStatus(t *testing.T, hostname, path string, status int, want string) string {
+	t.Helper()
+	var body string
+	waitFor(t, func() bool {
+		req, _ := http.NewRequest("GET", "http://127.0.0.1"+path, nil)
+		req.Host = hostname
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		body = string(b)
+		return resp.StatusCode == status && strings.Contains(body, want)
 	})
 	return body
 }

@@ -238,6 +238,77 @@ jobs:
           sudo nft list ruleset || true
           sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
 
+  panel-realhost:
+    name: Panel suspends a customer on a real server
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: servik
+          POSTGRES_PASSWORD: servik
+          POSTGRES_DB: servik_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U servik"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: panel
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx and PHP-FPM
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm
+          sudo systemctl start nginx php8.3-fpm
+
+      - name: Build and start the agent
+        working-directory: agent
+        run: |
+          CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
+          sudo mkdir -p /run/servik-agent
+          sudo sh -c 'nohup bin/servik-agent -socket /run/servik-agent/agent.sock > /tmp/servik-agent.log 2>&1 &'
+          for i in $(seq 50); do [ -S /run/servik-agent/agent.sock ] && break; sleep 0.1; done
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Provisions a real site, gives it to a customer, fills the customer's
+      # disk quota (measured by the agent) and checks new sites are refused,
+      # then suspends the customer (Nginx serves the suspension page) and
+      # brings them back. Root only to write into the site's home directory.
+      - name: Customer, quota and suspension for real
+        run: >-
+          sudo env "PATH=$PATH" SERVIK_REALHOST=1 SERVIK_AGENT_SOCKET=/run/servik-agent/agent.sock
+          DB_HOST=127.0.0.1 DB_PORT=5432 DB_USERNAME=servik DB_PASSWORD=servik
+          php artisan test --testsuite=RealHost
+
+      - name: Logs
+        if: failure()
+        run: |
+          cat /tmp/servik-agent.log || true
+          sudo journalctl --no-pager -u nginx -u php8.3-fpm -n 50 || true
+
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04

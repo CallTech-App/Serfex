@@ -4,6 +4,7 @@ namespace App\Livewire\Laravel\Sections;
 
 use App\Livewire\Laravel\ReadsRunLogs;
 use App\Models\LaravelBackup;
+use App\Services\Customers\Quotas;
 use App\Services\Laravel\Backups as BackupService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
@@ -64,6 +65,11 @@ class Backups extends Section
     {
         $this->validate(['parts' => ['required', 'array', 'min:1'], 'parts.*' => [Rule::in(array_keys(LaravelBackup::PARTS))]],
             ['parts.required' => 'En az bir parça seçin.', 'parts.min' => 'En az bir parça seçin.']);
+        if (($refusal = app(Quotas::class)->refusal($this->app()->site?->customer(), 'disk')) !== null) {
+            $this->addError('parts', $refusal);
+
+            return;
+        }
         $backups->create($this->app(), $this->parts, 'manual', auth()->user());
         $this->creating = false;
         $this->dispatch('toast', message: 'Yedek alınıyor.');

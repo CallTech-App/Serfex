@@ -29,6 +29,10 @@ type DomainSpec struct {
 	// CatchAll receives mail for addresses that do not exist; empty
 	// rejects them.
 	CatchAll []string `json:"catch_all"`
+	// Suspended keeps the domain's mail but stops the service: incoming
+	// mail is deferred (senders retry for days) and mailboxes cannot sign
+	// in, so they can neither read nor send.
+	Suspended bool `json:"suspended"`
 }
 
 // Mailbox is one mailbox of a domain.

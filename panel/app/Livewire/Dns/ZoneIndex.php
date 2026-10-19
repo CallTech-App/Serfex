@@ -4,6 +4,7 @@ namespace App\Livewire\Dns;
 
 use App\Enums\ZoneStatus;
 use App\Jobs\SetupDnsServer;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\DnsZone;
 use App\Models\Setting;
 use App\Services\Agent\AgentClient;
@@ -21,6 +22,7 @@ use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
 #[Title('Alan Adları ve DNS · Servik')]
+#[ForCustomers(feature: 'dns', except: ['setupServer', 'openCreate', 'create', 'undoCreate', 'confirmDelete', 'deleteSelected', 'undoDelete'])]
 class ZoneIndex extends Component
 {
     use WithPagination;
@@ -180,7 +182,7 @@ class ZoneIndex extends Component
 
     public function render(): View
     {
-        $zones = DnsZone::query()
+        $zones = DnsZone::visibleTo(auth()->user())
             ->with('site')
             ->withCount('records')
             ->when($this->search !== '', function ($q) {

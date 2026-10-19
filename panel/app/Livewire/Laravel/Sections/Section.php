@@ -32,6 +32,7 @@ abstract class Section extends Component
     {
         $app = LaravelApp::findOrFail($appId);
         abort_unless(auth()->user()->canOnApp($app, static::ABILITY), 403);
+        abort_unless(! defined(static::class.'::FEATURE') || auth()->user()->mayUseOnApp($app, static::FEATURE), 403);
         $this->appId = $appId;
     }
 

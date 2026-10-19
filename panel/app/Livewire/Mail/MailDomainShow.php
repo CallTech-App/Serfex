@@ -3,10 +3,12 @@
 namespace App\Livewire\Mail;
 
 use App\Enums\MailDomainStatus;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\Mailbox;
 use App\Models\MailDomain;
 use App\Models\MailForwarder;
 use App\Services\Agent\AgentClient;
+use App\Services\Customers\Quotas;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailDns;
 use App\Services\Mail\MailDomains;
@@ -23,6 +25,7 @@ use Livewire\Component;
  * DNS records it needs.
  */
 #[Layout('components.layouts.app')]
+#[ForCustomers(feature: 'mail', except: ['setupServer'])]
 class MailDomainShow extends Component
 {
     use ChecksMailServer;
@@ -88,7 +91,7 @@ class MailDomainShow extends Component
      */
     public function mount(int $domain, AgentClient $agent, MailSettings $settings, MailUsage $usage): void
     {
-        $model = MailDomain::findOrFail($domain);
+        $model = MailDomain::visibleTo(auth()->user())->findOrFail($domain);
         $this->domainId = $model->id;
         $this->fillSettings($model);
         $this->refreshServer($agent, $settings);
@@ -119,8 +122,13 @@ class MailDomainShow extends Component
 
     // Mailboxes
 
-    public function openCreate(MailSettings $settings): void
+    public function openCreate(MailSettings $settings, Quotas $quotas): void
     {
+        if ($refusal = $quotas->refusal($this->domain()?->site?->customer(), 'mailboxes')) {
+            $this->dispatch('toast', message: $refusal);
+
+            return;
+        }
         $this->resetMailboxForm();
         $this->mbQuota = $settings->defaultQuotaMb();
         $this->mbPassword = MailPassword::generate();
@@ -198,6 +206,11 @@ class MailDomainShow extends Component
             return;
         }
 
+        if ($mailbox === null && ($refusal = app(Quotas::class)->refusal($domain->site?->customer(), 'mailboxes'))) {
+            $this->addError('mbName', $refusal);
+
+            return;
+        }
         if ($mailbox === null) {
             $created = $domains->createMailbox($domain, $this->mbName, $this->mbPassword, $this->mbQuota);
             $this->editingMailbox = false;
@@ -478,7 +491,7 @@ class MailDomainShow extends Component
 
     private function domain(): ?MailDomain
     {
-        return MailDomain::with('site')->find($this->domainId);
+        return MailDomain::visibleTo(auth()->user())->with('site.systemUser.customer.package')->find($this->domainId);
     }
 
     private function fillSettings(MailDomain $domain): void

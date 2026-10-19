@@ -72,6 +72,10 @@ type Monitor struct {
 	mail       *mailCounter
 	limits     map[string]*Limit
 	limitUnits map[string]map[string]bool // units already limited, by site
+	// traffic counts the bytes each site sent since started, for the
+	// panel's monthly traffic.
+	traffic map[string]uint64
+	started time.Time
 }
 
 type mark struct {
@@ -130,6 +134,7 @@ func newMonitor(h host.Host, s sampler, pools poolLimiter, log *slog.Logger) *Mo
 		prev: map[int]mark{}, series: map[string][]point{}, units: map[string]int{},
 		detect: newDetector(), mail: newMailCounter(),
 		limits: map[string]*Limit{}, limitUnits: map[string]map[string]bool{},
+		traffic: map[string]uint64{}, started: time.Now().UTC(),
 	}
 }
 
@@ -314,6 +319,7 @@ func (m *Monitor) process(now time.Time, sites []siteInfo, r raw) {
 		t := newWebTick(now, lines)
 		pt := get("site:" + d)
 		pt.Requests, pt.Err4, pt.Err5 = t.requests, t.err4, t.err5
+		m.traffic[d] += t.bytes
 		m.detect.addWeb(d, t)
 	}
 	m.detect.addAuthLines(r.mailLog, r.authLog, now)
@@ -417,6 +423,9 @@ type SiteUsage struct {
 	MailPerHour  float64   `json:"mail_per_hour"`
 	TopIPs       []IPCount `json:"top_ips"`
 	Limit        *Limit    `json:"limit"`
+	// Traffic is the bytes the site sent since the snapshot's Started; it
+	// only grows while the agent runs.
+	Traffic uint64 `json:"traffic"`
 }
 
 // PHPUsage is a PHP-FPM pool's state: busy workers on average, the
@@ -456,7 +465,9 @@ type ServiceUsage struct {
 
 // Snapshot is what monitor.live returns.
 type Snapshot struct {
-	At       time.Time      `json:"at"`
+	At time.Time `json:"at"`
+	// Started is when the traffic counters began.
+	Started  time.Time      `json:"started"`
 	Window   int            `json:"window"`
 	Interval int            `json:"interval"`
 	Server   ServerUsage    `json:"server"`
@@ -509,7 +520,7 @@ func (m *Monitor) Snapshot(spec SnapshotSpec) Snapshot {
 	}
 	since := now.Add(-time.Duration(w) * time.Second)
 
-	snap := Snapshot{At: now.UTC(), Window: w, Interval: int(m.interval.Seconds()), Sites: []SiteUsage{}, Accounts: []AccountUsage{}, Services: []ServiceUsage{}, Databases: append([]string{}, m.dbServers...)}
+	snap := Snapshot{At: now.UTC(), Started: m.started, Window: w, Interval: int(m.interval.Seconds()), Sites: []SiteUsage{}, Accounts: []AccountUsage{}, Services: []ServiceUsage{}, Databases: append([]string{}, m.dbServers...)}
 	snap.Server.serverInfo = m.server
 	sa := aggregate(m.series["server"], since)
 	snap.Server.CPU, snap.Server.Memory = sa.CPU, sa.Mem
@@ -529,6 +540,7 @@ func (m *Monitor) Snapshot(spec SnapshotSpec) Snapshot {
 			MailPerHour:  round(a.mailRate*3600, 1),
 			TopIPs:       m.detect.top(si.Domain),
 			Limit:        m.activeLimit(si.Domain),
+			Traffic:      m.traffic[si.Domain],
 		}
 		su.PHP.Max = si.MaxChildren
 		snap.Sites = append(snap.Sites, su)

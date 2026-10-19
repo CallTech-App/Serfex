@@ -10,14 +10,18 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="text-[22px] font-semibold tracking-tight">E-posta</h1>
-            <p class="mt-1 text-[13px] text-muted">E-postası bu sunucuda olan alan adları. Posta kutularını görmek için bir alan adına tıklayın.</p>
+            <p class="mt-1 text-[13px] text-muted">{{ auth()->user()->is_admin ? 'E-postası bu sunucuda olan alan adları.' : 'E-postası açık alan adlarınız.' }} Posta kutularını görmek için bir alan adına tıklayın.</p>
         </div>
-        <a href="{{ route('mail.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-            <x-icon name="settings" />E-posta ayarları
-        </a>
+        @if (auth()->user()->is_admin)
+            <a href="{{ route('mail.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                <x-icon name="settings" />E-posta ayarları
+            </a>
+        @endif
     </div>
 
-    @include('livewire.mail.server-state')
+    @if (auth()->user()->is_admin)
+        @include('livewire.mail.server-state')
+    @endif
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">

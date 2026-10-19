@@ -14,7 +14,7 @@
             ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
         ]],
         ['Hesaplar', [
-            [null, 'users', 'Müşteriler ve Paketler'],
+            ['customers.index', 'users', 'Müşteriler ve Paketler'],
         ]],
         ['Sunucu', [
             [null, 'shield-alert', 'Güvenlik'],
@@ -25,17 +25,38 @@
         ]],
     ];
     $user = auth()->user();
-    // Members of Laravel applications see only their applications.
-    if ($user && ! $user->is_admin) {
+    if ($user?->isCustomer()) {
+        // A customer sees their own hosting, within their package.
+        $nav = [
+            [null, [['dashboard', 'layout-dashboard', 'Genel Bakış']]],
+            ['Barındırma', array_values(array_filter([
+                ['sites.index', 'globe', 'Siteler'],
+                $user->allows('laravel') ? ['laravel.index', 'layers', 'Laravel'] : null,
+                $user->allows('dns') ? ['dns.index', 'network', 'Alan Adları ve DNS'] : null,
+                $user->allows('mail') ? ['mail.index', 'mail', 'E-posta'] : null,
+                [null, 'database', 'Veritabanları'],
+                ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
+            ]))],
+        ];
+    } elseif ($user && ! $user->is_admin) {
+        // Members of Laravel applications see only their applications.
         $nav = [['Barındırma', [['laravel.index', 'layers', 'Laravel']]]];
     }
     // Problem counts shown next to menu items.
-    $alerts = $user?->is_admin ? [
-        'monitor.index' => [(int) \Illuminate\Support\Facades\Cache::get(\App\Services\Monitor\LiveStats::ATTENTION_KEY, 0), 'site veya saldırı'],
-        'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
-        'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
-        'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
-    ] : [];
+    $alerts = match (true) {
+        (bool) $user?->is_admin => [
+            'monitor.index' => [(int) \Illuminate\Support\Facades\Cache::get(\App\Services\Monitor\LiveStats::ATTENTION_KEY, 0), 'site veya saldırı'],
+            'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
+            'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
+            'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
+            'customers.index' => [app(\App\Services\Customers\Quotas::class)->attentionCount(), 'müşteri kotası'],
+        ],
+        (bool) $user?->isCustomer() => [
+            'ssl.index' => [\App\Models\Certificate::attentionCount($user), 'sertifika'],
+        ],
+        default => [],
+    };
+    $impersonator = \App\Support\Impersonation::administrator();
 @endphp
 <!DOCTYPE html>
 <html lang="tr">
@@ -92,7 +113,7 @@
                         <div class="grid size-8 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
                         <div class="min-w-0 leading-tight">
                             <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>
-                            <p class="text-2xs text-nav-muted">{{ $user->is_admin ? 'Sunucu yöneticisi' : 'Laravel ekibi' }}</p>
+                            <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => 'Sunucu yöneticisi', $user->isCustomer() => 'Müşteri · '.$user->customer?->package?->name, default => 'Laravel ekibi' } }}</p>
                         </div>
                         <form method="POST" action="{{ route('logout') }}" class="ml-auto">
                             @csrf
@@ -129,6 +150,16 @@
                     </div>
                 </header>
 
+                @if ($impersonator)
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-warn/30 bg-warn-soft px-4 py-2.5 text-[13px] lg:px-8">
+                        <x-icon name="user-check" class="text-warn" />
+                        <span class="min-w-0 flex-1"><b class="font-medium">{{ $user->customer?->displayName() ?? $user->name }}</b> olarak bakıyorsunuz. Müşterinin gördüğü panel budur.</span>
+                        <form method="POST" action="{{ route('impersonation.leave') }}">
+                            @csrf
+                            <button type="submit" class="flex h-8 items-center gap-1.5 rounded-md border border-line bg-surface px-3 font-medium hover:bg-surface-2"><x-icon name="undo-2" />{{ $impersonator->name }} olarak dön</button>
+                        </form>
+                    </div>
+                @endif
                 <main class="mx-auto w-full max-w-[1440px] flex-1 space-y-6 px-4 py-6 lg:px-8 lg:py-8">
                     {{ $slot }}
                 </main>

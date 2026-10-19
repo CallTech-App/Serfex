@@ -224,6 +224,10 @@ func TestTrafficAndAttacks(t *testing.T) {
 	if m.Requests != float64(total)/2 || m.ServerErrors != 5 || m.ClientErrors != 0.5 {
 		t.Errorf("traffic = %v req/s, %v 5xx/s, %v 4xx/s", m.Requests, m.ServerErrors, m.ClientErrors)
 	}
+	// Bytes sent add up from the start, the line before it not counted.
+	if m.Traffic != uint64(total)*512 || snap.Started.IsZero() {
+		t.Errorf("traffic = %d bytes since %v", m.Traffic, snap.Started)
+	}
 	if len(m.TopIPs) == 0 || m.TopIPs[0] != (IPCount{"198.51.100.7", FloodPerMinute}) {
 		t.Errorf("top = %+v", m.TopIPs)
 	}
@@ -439,7 +443,7 @@ func TestParsers(t *testing.T) {
 	if _, ok := parseAccess(`garbage`); ok {
 		t.Error("garbage parsed")
 	}
-	if a, ok := parseAccess(`192.0.2.1 - - [x] "\x16\x03\x01" 400 157 "-" "-"`); !ok || a.Status != 400 {
+	if a, ok := parseAccess(`192.0.2.1 - - [x] "\x16\x03\x01" 400 157 "-" "-"`); !ok || a.Status != 400 || a.Bytes != 157 {
 		t.Errorf("TLS on HTTP = %+v %v", a, ok)
 	}
 	for in, want := range map[string]string{

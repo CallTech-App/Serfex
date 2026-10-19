@@ -20,6 +20,10 @@ type maps struct {
 	dkim []byte
 }
 
+// suspendedHash stands in for a suspended mailbox's password: a crypt
+// hash no password can match.
+const suspendedHash = "{CRYPT}*"
+
 func mapHeader(what string) string {
 	return "# " + txn.Marker + ". Manual changes are overwritten.\n# " + what + "\n"
 }
@@ -35,7 +39,7 @@ func dkimKey(domain string) string { return dkimDir + "/" + domain + ".key" }
 func buildMaps(domains []DomainSpec) maps {
 	var (
 		doms, boxes, aliases, senders, users strings.Builder
-		dkim                                 strings.Builder
+		dkim, suspended                      strings.Builder
 	)
 	doms.WriteString(mapHeader("Mail domains (virtual_mailbox_domains)."))
 	boxes.WriteString(mapHeader("Mailboxes (virtual_mailbox_maps)."))
@@ -43,11 +47,15 @@ func buildMaps(domains []DomainSpec) maps {
 	senders.WriteString(mapHeader("Which mailbox may send as which address (smtpd_sender_login_maps)."))
 	users.WriteString(mapHeader("Mailboxes for Dovecot: address:password hash::::::extra fields."))
 	dkim.WriteString(mapHeader("DKIM signing keys of the mail domains."))
+	suspended.WriteString(mapHeader("Suspended domains: their mail is deferred (check_recipient_access)."))
 	dkim.WriteString("use_esld = false;\ntry_fallback = false;\nallow_username_mismatch = false;\ndomain {\n")
 
 	out := maps{postfix: map[string][]byte{}, sieve: map[string][]byte{}}
 	for _, d := range domains {
 		fmt.Fprintf(&doms, "%s OK\n", d.Domain)
+		if d.Suspended {
+			fmt.Fprintf(&suspended, "%s 450 4.2.1 Mailbox temporarily unavailable\n", d.Domain)
+		}
 		fmt.Fprintf(&dkim, "  %q {\n    selector = %q;\n    path = %q;\n  }\n", d.Domain, DKIMSelector, dkimKey(d.Domain))
 
 		// Mailboxes that receive mail for an address, for sender logins
@@ -76,6 +84,14 @@ func buildMaps(domains []DomainSpec) maps {
 			fmt.Fprintf(&senders, "%s %s\n", addr, addr)
 
 			fields := []string{}
+			hash := b.PasswordHash
+			if d.Suspended {
+				// No password matches while suspended, so IMAP, POP3 and
+				// SMTP AUTH all fail (nologin alone only stops the IMAP and
+				// POP3 login processes). Lifting it writes the hash back.
+				hash = suspendedHash
+				fields = append(fields, "nologin=y")
+			}
 			if b.QuotaMB > 0 {
 				fields = append(fields, fmt.Sprintf("userdb_quota_rule=*:storage=%dM", b.QuotaMB))
 			}
@@ -96,7 +112,7 @@ func buildMaps(domains []DomainSpec) maps {
 			case d.SpamFilter:
 				fields = append(fields, "userdb_sieve_before="+spamSieve)
 			}
-			fmt.Fprintf(&users, "%s:%s::::::%s\n", addr, b.PasswordHash, strings.Join(fields, " "))
+			fmt.Fprintf(&users, "%s:%s::::::%s\n", addr, hash, strings.Join(fields, " "))
 		}
 		for _, a := range d.Aliases {
 			fmt.Fprintf(&aliases, "%s %s\n", d.address(a.Name), strings.Join(a.To, ", "))
@@ -114,6 +130,7 @@ func buildMaps(domains []DomainSpec) maps {
 	out.postfix["mailboxes"] = []byte(boxes.String())
 	out.postfix["aliases"] = []byte(aliases.String())
 	out.postfix["senders"] = []byte(senders.String())
+	out.postfix["suspended"] = []byte(suspended.String())
 	out.users = []byte(users.String())
 	out.dkim = []byte(dkim.String())
 	return out

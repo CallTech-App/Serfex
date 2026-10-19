@@ -302,7 +302,7 @@ func (m *Manager) writeMaps(t *txn.Tx, built maps, dovecotGID int) (map[string]b
 	out := map[string]bool{}
 	var err error
 	if out["postfix"], err = changes(t, func() error {
-		for _, name := range []string{"domains", "mailboxes", "aliases", "senders"} {
+		for _, name := range []string{"domains", "mailboxes", "aliases", "senders", "suspended"} {
 			if err := t.WriteFile(postfixMaps+"/"+name, built.postfix[name]); err != nil {
 				return err
 			}

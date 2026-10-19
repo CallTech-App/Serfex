@@ -60,6 +60,10 @@ type Spec struct {
 	WebSockets []WebSocketSpec `json:"websockets"`
 	// Maintenance shows a maintenance page to visitors; nil serves the site.
 	Maintenance *MaintenanceSpec `json:"maintenance"`
+	// Suspended answers every request with 503 and the suspension page
+	// (Let's Encrypt validation aside). Files, databases and the PHP-FPM
+	// pool stay; nothing is passed to PHP or an application server.
+	Suspended bool `json:"suspended"`
 }
 
 // DefaultWebRoot is the document root of a new site.
@@ -309,6 +313,16 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 			return Result{}, err
 		}
 	}
+	if spec.Suspended {
+		if err := t.RootDir(SuspendedDir, 0o755, 0, 0); err != nil {
+			return Result{}, err
+		}
+		if err := t.WriteFile(suspendedPage(spec.Domain), suspendedContent(spec.Domain)); err != nil {
+			return Result{}, err
+		}
+	} else if err := t.RemoveFile(suspendedPage(spec.Domain)); err != nil {
+		return Result{}, err
+	}
 	if spec.Maintenance != nil {
 		if err := t.RootDir(MaintenanceDir, 0o755, 0, 0); err != nil {
 			return Result{}, err
@@ -408,6 +422,9 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		return fail(err)
 	}
 	if err := t.RemoveFile(maintenancePage(spec.Domain)); err != nil {
+		return fail(err)
+	}
+	if err := t.RemoveFile(suspendedPage(spec.Domain)); err != nil {
 		return fail(err)
 	}
 	var reload []string

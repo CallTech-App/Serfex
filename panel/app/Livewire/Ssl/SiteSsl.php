@@ -3,6 +3,7 @@
 namespace App\Livewire\Ssl;
 
 use App\Enums\CertificateStatus;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\Certificate;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
@@ -18,6 +19,7 @@ use Livewire\Component;
  * and the HTTP to HTTPS redirect.
  */
 #[Layout('components.layouts.app')]
+#[ForCustomers]
 class SiteSsl extends Component
 {
     public int $siteId;
@@ -40,7 +42,7 @@ class SiteSsl extends Component
 
     public function mount(int $site): void
     {
-        $this->siteId = Site::findOrFail($site)->id;
+        $this->siteId = Site::visibleTo(auth()->user())->findOrFail($site)->id;
     }
 
     public function openRequest(): void
@@ -169,7 +171,7 @@ class SiteSsl extends Component
         if ($site === null) {
             return;
         }
-        $certificate = $previous === null ? null : Certificate::find($previous);
+        $certificate = $previous === null ? null : $site->certificates()->find($previous);
         if ($previous !== null && $certificate === null) {
             $this->dispatch('toast', message: 'Önceki sertifika artık sunucuda değil; geri alınamadı.');
 
@@ -204,7 +206,7 @@ class SiteSsl extends Component
 
     private function site(): ?Site
     {
-        return Site::with('certificate')->find($this->siteId);
+        return Site::visibleTo(auth()->user())->with('certificate')->find($this->siteId);
     }
 
     private function busy(Site $site): bool

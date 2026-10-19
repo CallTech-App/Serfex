@@ -1,3 +1,4 @@
+@php $admin = auth()->user()->is_admin; @endphp
 <div class="space-y-6">
     {{-- Refresh while the agent works on a zone or installs PowerDNS. --}}
     @if ($busy)
@@ -10,15 +11,17 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="text-[22px] font-semibold tracking-tight">Alan Adları ve DNS</h1>
-            <p class="mt-1 text-[13px] text-muted">Sunucuda barındırılan alan adları. Kayıtlarını görmek için bir alan adına tıklayın.</p>
+            <p class="mt-1 text-[13px] text-muted">{{ $admin ? 'Sunucuda barındırılan alan adları.' : 'Sitelerinizin alan adları.' }} Kayıtlarını görmek için bir alan adına tıklayın.</p>
         </div>
-        <a href="{{ route('dns.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-            <x-icon name="settings" />Sunucu DNS ayarları
-        </a>
+        @if ($admin)
+            <a href="{{ route('dns.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                <x-icon name="settings" />Sunucu DNS ayarları
+            </a>
+        @endif
     </div>
 
     {{-- PowerDNS state, shown only when it needs attention. --}}
-    @if ($server['state'] !== 'ready')
+    @if ($admin && $server['state'] !== 'ready')
         @php
             [$tone, $title, $text, $action] = match ($server['state']) {
                 'installing' => ['info', 'DNS sunucusu kuruluyor', 'PowerDNS kuruluyor ve başlatılıyor. Bitince bekleyen bölgeler otomatik yayınlanır.', null],
@@ -52,13 +55,15 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-            <button type="button" wire:click="openCreate" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
-                <x-icon name="plus" />Alan adı ekle
-            </button>
-            <button type="button" wire:click="confirmDelete" @disabled($selected === [])
-                    class="h-9 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40">
-                Sil{{ $selected ? ' ('.count($selected).')' : '' }}
-            </button>
+            @if ($admin)
+                <button type="button" wire:click="openCreate" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
+                    <x-icon name="plus" />Alan adı ekle
+                </button>
+                <button type="button" wire:click="confirmDelete" @disabled($selected === [])
+                        class="h-9 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40">
+                    Sil{{ $selected ? ' ('.count($selected).')' : '' }}
+                </button>
+            @endif
             <div class="ml-auto flex w-full gap-2 sm:w-auto">
                 <select wire:model.live="filter" aria-label="Durum" class="h-9 rounded-md border border-line bg-surface px-2.5 text-[13.5px]">
                     <option value="">Tümü</option>
@@ -77,8 +82,8 @@
             <table class="w-full min-w-[720px] text-[13.5px]">
                 <thead>
                     <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                        <th class="w-10 py-2.5 pl-5"><span class="sr-only">Seç</span></th>
-                        <th class="px-3 py-2.5 font-medium">Alan adı</th>
+                        @if ($admin)<th class="w-10 py-2.5 pl-5"><span class="sr-only">Seç</span></th>@endif
+                        <th @class(['py-2.5 font-medium', 'px-3' => $admin, 'pr-3 pl-5' => ! $admin])>Alan adı</th>
                         <th class="px-3 py-2.5 font-medium">Site</th>
                         <th class="px-3 py-2.5 text-right font-medium">Kayıt</th>
                         <th class="px-3 py-2.5 font-medium">DNS durumu</th>
@@ -88,10 +93,12 @@
                 <tbody class="divide-y divide-line">
                     @forelse ($zones as $zone)
                         <tr wire:key="zone-{{ $zone->id }}" class="hover:bg-surface-2/60">
-                            <td class="py-3 pl-5">
-                                <input type="checkbox" wire:model.live="selected" value="{{ $zone->id }}" aria-label="{{ $zone->name }} seç" class="size-4 accent-accent">
-                            </td>
-                            <td class="px-3 py-3 font-mono text-[13px] font-medium">
+                            @if ($admin)
+                                <td class="py-3 pl-5">
+                                    <input type="checkbox" wire:model.live="selected" value="{{ $zone->id }}" aria-label="{{ $zone->name }} seç" class="size-4 accent-accent">
+                                </td>
+                            @endif
+                            <td @class(['py-3 font-mono text-[13px] font-medium', 'px-3' => $admin, 'pr-3 pl-5' => ! $admin])>
                                 <a href="{{ route('dns.show', $zone) }}" wire:navigate class="hover:text-accent">{{ $zone->name }}</a>
                             </td>
                             <td class="px-3 py-3 text-muted">
@@ -109,7 +116,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-12 text-center">
+                            <td colspan="{{ $admin ? 6 : 5 }}" class="px-5 py-12 text-center">
                                 @if ($search !== '' || $filter !== '')
                                     <p class="text-muted">Aramanızla eşleşen alan adı yok.</p>
                                 @else

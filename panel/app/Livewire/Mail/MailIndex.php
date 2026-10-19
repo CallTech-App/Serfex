@@ -3,6 +3,7 @@
 namespace App\Livewire\Mail;
 
 use App\Enums\MailDomainStatus;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\DnsZone;
 use App\Models\MailDomain;
 use App\Models\Site;
@@ -12,6 +13,7 @@ use App\Services\Mail\MailDomains;
 use App\Services\Mail\MailSettings;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -25,6 +27,7 @@ use Livewire\WithPagination;
  */
 #[Layout('components.layouts.app')]
 #[Title('E-posta · Servik')]
+#[ForCustomers(feature: 'mail', except: ['setupServer'])]
 class MailIndex extends Component
 {
     use ChecksMailServer, WithPagination;
@@ -45,7 +48,7 @@ class MailIndex extends Component
         $this->refreshServer($agent, $settings);
         // "E-postayı aç" from a site's page.
         $open = Hostnames::normalize((string) request()->query('ac', ''));
-        if ($open !== '' && MailDomain::where('name', $open)->doesntExist()) {
+        if ($open !== '' && MailDomain::where('name', $open)->doesntExist() && (auth()->user()->is_admin || $this->candidates()->contains($open))) {
             $this->domain = $open;
             $this->enabling = true;
         }
@@ -76,6 +79,8 @@ class MailIndex extends Component
                 'required',
                 fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir alan adı girin, örneğin ornek.com.tr.'),
                 Rule::unique('mail_domains', 'name')->where('status', '!=', MailDomainStatus::Deleting->value),
+                fn ($attr, $value, $fail) => auth()->user()->is_admin || $this->candidates(withTaken: true)->contains($value)
+                    ? null : $fail('E-postayı yalnızca kendi sitelerinizin alan adları için açabilirsiniz.'),
                 fn ($attr, $value, $fail) => $value === app(MailSettings::class)->hostname()
                     ? $fail('Bu ad posta sunucusunun kendi adı; e-postayı alan adının kendisi için açın.') : null,
             ],
@@ -86,7 +91,7 @@ class MailIndex extends Component
         ]);
 
         $existing = MailDomain::where('name', $this->domain)->first();
-        $domain = $domains->enable($this->domain);
+        $domain = $domains->enable($this->domain, Site::visibleTo(auth()->user())->where('domain', $this->domain)->first());
         $this->enabling = false;
         if ($existing !== null) {
             $this->dispatch('toast', message: "{$domain->name} için e-posta yeniden açıldı; posta kutuları geri geldi.");
@@ -102,7 +107,7 @@ class MailIndex extends Component
 
     public function undoEnable(int $id, MailDomains $domains): void
     {
-        $domain = MailDomain::find($id);
+        $domain = MailDomain::visibleTo(auth()->user())->find($id);
         if ($domain !== null) {
             $domains->disable($domain, purgeNow: $domain->mailboxes()->withTrashed()->doesntExist());
         }
@@ -110,7 +115,7 @@ class MailIndex extends Component
 
     public function render(MailDns $dns): View
     {
-        $domains = MailDomain::query()
+        $domains = MailDomain::visibleTo(auth()->user())
             ->with('site')
             ->withCount('mailboxes')
             ->withSum('mailboxes', 'usage_bytes')
@@ -124,14 +129,31 @@ class MailIndex extends Component
             ->orderBy('name')
             ->paginate(25);
 
-        $taken = MailDomain::pluck('name');
-
         return view('livewire.mail.index', [
             'domains' => $domains,
             'dnsStates' => $domains->getCollection()->mapWithKeys(fn (MailDomain $d) => [$d->id => $dns->summary($d)]),
             'busy' => $domains->getCollection()->contains(fn (MailDomain $d) => $d->status->isBusy()),
             // Domains on this server without mail yet, offered in the form.
-            'candidates' => Site::pluck('domain')->merge(DnsZone::pluck('name'))->unique()->diff($taken)->sort()->values(),
+            'candidates' => $this->candidates(),
         ]);
+    }
+
+    /**
+     * Domains that may get mail: every site and DNS zone on the server for
+     * an administrator, their own sites for a customer.
+     *
+     * @return Collection<int, string>
+     */
+    private function candidates(bool $withTaken = false): Collection
+    {
+        $user = auth()->user();
+        $names = $user->is_admin
+            ? Site::pluck('domain')->merge(DnsZone::pluck('name'))
+            : Site::visibleTo($user)->pluck('domain');
+        if (! $withTaken) {
+            $names = $names->diff(MailDomain::pluck('name'));
+        }
+
+        return $names->unique()->sort()->values();
     }
 }

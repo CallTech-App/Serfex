@@ -7,16 +7,19 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * A panel account. Administrators run the whole server; other accounts
- * work only on the Laravel applications they were added to, with the role
- * they were given there.
+ * A panel account. Administrators run the whole server; a customer's
+ * login sees the customer's own sites, mail, DNS, certificates and Laravel
+ * applications within their package; other accounts work only on the
+ * Laravel applications they were added to, with the role they were given
+ * there.
  */
-#[Fillable(['name', 'email', 'password', 'is_admin', 'invite_token', 'invited_at'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at'])]
 #[Hidden(['password', 'remember_token', 'invite_token'])]
 class User extends Authenticatable
 {
@@ -48,6 +51,43 @@ class User extends Authenticatable
     }
 
     /**
+     * The customer this login belongs to, if any.
+     *
+     * @return BelongsTo<Customer, $this>
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class)->withTrashed();
+    }
+
+    public function isCustomer(): bool
+    {
+        return ! $this->is_admin && $this->customer_id !== null;
+    }
+
+    /**
+     * Whether the account may use a package feature (see Package::FEATURES)
+     * at all: administrators always, customers when their package has it,
+     * others never.
+     */
+    public function allows(string $feature): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+
+        return (bool) $this->customer?->package?->allows($feature);
+    }
+
+    /**
+     * True when the account may see $site.
+     */
+    public function canSeeSite(Site $site): bool
+    {
+        return $this->is_admin || ($this->customer_id !== null && $site->systemUser?->customer_id === $this->customer_id);
+    }
+
+    /**
      * @return HasMany<LaravelAppMember, $this>
      */
     public function laravelMemberships(): HasMany
@@ -65,6 +105,14 @@ class User extends Authenticatable
         if ($this->is_admin) {
             return 'owner';
         }
+        // A customer owns the applications on their own sites while their
+        // package has the Laravel toolkit.
+        if ($this->customer_id !== null && $this->allows('laravel')) {
+            $root = $app->preview_of_id !== null ? LaravelApp::with('site.systemUser')->find($app->preview_of_id) : $app;
+            if ($root?->site !== null && $this->canSeeSite($root->site)) {
+                return 'owner';
+            }
+        }
 
         return $this->laravelMemberships->firstWhere('laravel_app_id', $app->preview_of_id ?? $app->id)?->role;
     }
@@ -76,6 +124,23 @@ class User extends Authenticatable
     public function canOnApp(LaravelApp $app, string $ability): bool
     {
         return (self::ROLE_RANK[$this->laravelRole($app)] ?? 0) >= self::ABILITY_RANK[$ability];
+    }
+
+    /**
+     * Whether the account may use a package feature on $app: the feature
+     * of the package of the customer who owns the application's site.
+     * Administrators always may; applications without an owner have every
+     * feature.
+     */
+    public function mayUseOnApp(LaravelApp $app, string $feature): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+        $app->loadMissing('site.systemUser.customer.package');
+        $package = $app->site?->customer()?->package;
+
+        return $package === null || $package->allows($feature);
     }
 
     /**

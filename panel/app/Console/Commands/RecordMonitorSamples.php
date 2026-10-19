@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\MonitorSample;
 use App\Models\Site;
 use App\Services\Agent\AgentException;
+use App\Services\Customers\Usage;
 use App\Services\Monitor\LiveStats;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -12,13 +13,14 @@ use Illuminate\Console\Command;
 
 /**
  * Keeps a per-minute history of what each site used (a day of it), for
- * the "last hour" and "last 24 hours" views of Canlı İzleme.
+ * the "last hour" and "last 24 hours" views of Canlı İzleme, and adds up
+ * each site's traffic for its customer's quota.
  */
 #[Signature('servik:monitor-record')]
 #[Description('Record the last minute of every site\'s resource use')]
 class RecordMonitorSamples extends Command
 {
-    public function handle(LiveStats $stats): int
+    public function handle(LiveStats $stats, Usage $usage): int
     {
         try {
             $snap = $stats->snapshot(60);
@@ -58,6 +60,7 @@ class RecordMonitorSamples extends Command
         MonitorSample::insert($rows);
         MonitorSample::where('recorded_at', '<', now()->subDay())->delete();
         LiveStats::rememberAttention($snap);
+        $usage->recordTraffic($snap);
 
         return self::SUCCESS;
     }

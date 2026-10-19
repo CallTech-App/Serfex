@@ -31,7 +31,7 @@
                 <div class="relative" x-data="{ open: false }">
                     <button type="button" @click="open = !open" class="grid size-8 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg" aria-label="Diğer işlemler"><x-icon name="ellipsis-vertical" /></button>
                     <div x-show="open" x-cloak @click.outside="open = false" class="absolute top-full left-0 z-20 mt-1 w-56 rounded-lg border border-line bg-surface py-1 text-[13.5px] shadow-lg">
-                        @if (auth()->user()->is_admin)<a href="{{ route('sites.show', $site) }}" wire:navigate class="block px-3 py-2 hover:bg-surface-2">Siteye git</a>@endif
+                        @if (auth()->user()->canSeeSite($site))<a href="{{ route('sites.show', $site) }}" wire:navigate class="block px-3 py-2 hover:bg-surface-2">Siteye git</a>@endif
                         <button type="button" wire:click="openRemove" @click="open = false" @disabled($app->status->isBusy())
                                 class="w-full px-3 py-2 text-left text-crit hover:bg-surface-2 disabled:opacity-40">{{ $app->previewOf ? 'Önizlemeyi sil' : 'Uygulamayı kaldır' }}</button>
                     </div>
