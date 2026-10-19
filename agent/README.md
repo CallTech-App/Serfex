@@ -67,6 +67,15 @@ Methods so far:
 | `mail.queue` | | Postfix's queue: counts, messages grouped by sender domain, the oldest 200 messages |
 | `mail.queue.flush` | | retries every deferred message now |
 | `mail.queue.hold` / `mail.queue.release` | `domain` | holds a sender domain's queued messages (those being delivered right now finish their attempt) or releases them (`""` for bounces); returns `messages` |
+| `db.status` | | per server (`mysql`, `postgresql`): `installed`, `product`, `running`, `version`, `remote`; and the web manager's `manager` (`configured`, `port`, `phpmyadmin`, `adminer`) |
+| `db.server.install` | `product` (`mysql`, `mariadb` or `postgresql`) | installs the server if missing, configures and starts it; a failed fresh install is removed again. MySQL and MariaDB exclude each other. Returns `server`, `product`, `installed`, `version` |
+| `db.manager.setup` | `port` | installs phpMyAdmin and/or Adminer for the installed servers and serves them from `servik-web` on `port` (default 8443) |
+| `db.manager.login` | `server`, `database` | a one-time `path` on the manager's `port` (valid one minute) that opens the database with a temporary user (removed after four hours) |
+| `db.database.create` | `server`, `name`, `site` | creates an empty UTF-8 database; `site` maps it to a site in live monitoring |
+| `db.database.delete` | `server`, `name`, `backup` | with `backup` dumps it to a gzip file first (nothing is deleted if that fails); returns `deleted`, `backup`, `backup_size` |
+| `db.user.apply` | `server`, `name`, `password`, `hosts`, `grants` | creates or changes a user: `password` (empty keeps it), remote `hosts` besides this server (`%`, an IPv4 address, `10.8.0.%`, a CIDR or an IPv6 address), `grants` (`database`, `access`: `all`, `readwrite`, `readonly`) replace the previous ones |
+| `db.user.delete` | `server`, `name` | removes a user |
+| `db.list` | `server` | the customer databases with `size` and `tables`, and the users with their remote `hosts` |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate, and `web_root`
@@ -80,7 +89,8 @@ reserved account name, PHP version not installed); `-32000` means a valid
 change failed on the server, and the message says why (for example the
 output of `nginx -t`); `-32001` means the DNS server has not been set up
 yet (call `dns.setup`); `-32002` means the same for the mail server (call
-`mail.setup`).
+`mail.setup`); `-32003` means the database server asked for is not
+installed (call `db.server.install`).
 
 ## What a site looks like on the server
 
@@ -371,6 +381,45 @@ flood, blocks and unblocks the address with nftables, caps the site's CPU
 and memory through its scope (also for workers started later), limits its
 PHP workers and restarts its pool.
 
+## Databases
+
+Customer databases run on the distribution's own servers: MySQL 8 or
+MariaDB (one of them) and PostgreSQL (its `main` cluster on port 5432).
+The panel's own database is separate and never touched by `db.*`.
+
+- Names are the panel's (`<account>_<name>`, lowercase letters, digits and
+  `_`, databases at most 54 characters, users 32). Names with a hyphen are
+  Servik's own: a PostgreSQL database is owned by the `NOLOGIN` role
+  `<db>-owner`, and users with full access act as it (so every table they
+  create belongs to the database, not to one user); `servik-s-*` are the
+  temporary users of web manager sign-ins.
+- `readwrite` is data only (no schema changes), `readonly` is `SELECT`
+  only. MySQL users always exist for `localhost` and `127.0.0.1`;
+  PostgreSQL requires passwords (`scram-sha-256`) for everyone but
+  `postgres`.
+- The servers listen on `127.0.0.1` until some user has a remote host,
+  then on every address (MySQL `bind-address`, PostgreSQL
+  `listen_addresses` plus a Servik-managed `pg_hba.conf` in
+  `/etc/servik/databases/`); they go back when the last remote host goes.
+- Backups taken before a delete go to `/var/lib/servik/backups/databases/`
+  and are removed after 30 days.
+- The web manager runs on `servik-web` (Servik's own Nginx, config
+  `/etc/servik/web/nginx.conf`) and `servik-php` (its own PHP-FPM, pool user
+  `servik-dbadmin`), never on the customers' Nginx or PHP. phpMyAdmin
+  (`/phpmyadmin/`, `signon` auth) serves MySQL/MariaDB, Adminer
+  (`/adminer/`, PostgreSQL on this server only) PostgreSQL. It uses a
+  self-signed certificate until the panel's own certificate exists, then
+  that one.
+
+```sh
+sudo SERVIK_DB_PRODUCT=mariadb go test -tags realhost -run TestRealHost ./internal/database
+```
+
+installs the server, creates databases and users with each access level,
+connects with them, turns remote access on and off, signs in to
+phpMyAdmin or Adminer through `servik-web` and deletes a database with a
+backup.
+
 ## Dry run
 
 `-dry-run` swaps the real system for a simulator: files go under `-root`
@@ -381,7 +430,8 @@ packages are only pretended to be installed, and `git clone` or
 `composer create-project` write a small stand-in Laravel application.
 Live monitoring makes up a plausible load for the sites under `-root`
 (one of them under attack, one busy), and a mail queue once the mail
-server is "installed".
+server is "installed". Database servers keep their databases and users in
+JSON files under `<root>/var/lib/servik-sim/` with made-up sizes.
 The panel's integration tests and local development use this mode.
 
 ```sh

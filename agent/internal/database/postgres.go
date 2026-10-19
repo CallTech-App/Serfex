@@ -226,12 +226,26 @@ func (e *pgEngine) list(ctx context.Context) (Listing, error) {
 		}
 		if f[0] == "d" {
 			size, _ := strconv.ParseInt(f[2], 10, 64)
-			l.Databases = append(l.Databases, DatabaseInfo{Name: f[1], Size: size, Tables: -1})
+			l.Databases = append(l.Databases, DatabaseInfo{Name: f[1], Size: size, Tables: e.tables(ctx, f[1])})
 		} else {
 			l.Users = append(l.Users, UserInfo{Name: f[1], Hosts: []string{}})
 		}
 	}
 	return l, nil
+}
+
+// tables counts the tables of a database (-1 when it cannot be read).
+func (e *pgEngine) tables(ctx context.Context, db string) int {
+	out, err := e.exec(ctx, db, "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "+
+		"WHERE c.relkind IN ('r', 'p') AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\\_toast%';")
+	if err != nil {
+		return -1
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(out))
+	if err != nil {
+		return -1
+	}
+	return n
 }
 
 func (e *pgEngine) createSession(ctx context.Context, user, password, database string, expires time.Time) error {

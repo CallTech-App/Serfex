@@ -224,12 +224,12 @@ func (e *mysqlEngine) list(ctx context.Context) (Listing, error) {
 }
 
 func (e *mysqlEngine) createSession(ctx context.Context, user, password, database string, _ time.Time) error {
-	u := mysqlUser(user, "localhost")
+	u := mysqlUser(user, "127.0.0.1")
 	_, err := e.exec(ctx, fmt.Sprintf("CREATE USER %s IDENTIFIED BY %s;\nGRANT ALL PRIVILEGES ON %s TO %s;\n", u, sqlString(password), grantTarget(database), u))
 	return err
 }
 
 func (e *mysqlEngine) dropSession(ctx context.Context, user, _ string) error {
-	_, err := e.exec(ctx, "DROP USER IF EXISTS "+mysqlUser(user, "localhost")+";")
+	_, err := e.exec(ctx, "DROP USER IF EXISTS "+mysqlUser(user, "127.0.0.1")+";")
 	return err
 }

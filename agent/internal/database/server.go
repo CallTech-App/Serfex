@@ -35,7 +35,7 @@ var products = map[string]product{
 		unit: "mysql", conf: "/etc/mysql/mysql.conf.d/zz-servik.cnf", dataDir: "/var/lib/mysql",
 	},
 	MariaDB: {
-		name: MariaDB, server: MySQL, packages: []string{"mariadb-server"}, marker: "/usr/sbin/mariadbd",
+		name: MariaDB, server: MySQL, packages: []string{"mariadb-server", "mariadb-client"}, marker: "/usr/sbin/mariadbd",
 		unit: "mariadb", conf: "/etc/mysql/mariadb.conf.d/90-servik.cnf", dataDir: "/var/lib/mysql",
 	},
 	PostgreSQL: {

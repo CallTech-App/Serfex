@@ -61,7 +61,7 @@ http {
 
         # phpMyAdmin for MySQL and MariaDB.
         location = /phpmyadmin/servik-sso.php {
-            include fastcgi_params;
+            include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME {{.WWW}}/phpmyadmin-sso.php;
             fastcgi_pass unix:{{.Socket}};
         }
@@ -76,7 +76,7 @@ http {
             }
             location ~ \.php$ {
                 try_files $uri =404;
-                include fastcgi_params;
+                include /etc/nginx/fastcgi_params;
                 fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
                 fastcgi_pass unix:{{.Socket}};
             }
@@ -89,7 +89,7 @@ http {
             add_header X-Frame-Options SAMEORIGIN always;
             add_header X-Content-Type-Options nosniff always;
             add_header Referrer-Policy same-origin always;
-            include fastcgi_params;
+            include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME {{.WWW}}/adminer.php;
             fastcgi_pass unix:{{.Socket}};
         }
@@ -174,7 +174,8 @@ var pmaConfTmpl = template.Must(template.New("pma").Parse(`<?php // {{.Marker}}.
 // phpMyAdmin as Servik serves it: signed in from the panel with a
 // temporary user, never with a password form.
 $cfg['blowfish_secret'] = sodium_hex2bin('{{.Secret}}');
-$cfg['Servers'][1]['host'] = 'localhost';
+$cfg['Servers'][1]['host'] = '127.0.0.1';
+$cfg['Servers'][1]['connect_type'] = 'tcp';
 $cfg['Servers'][1]['auth_type'] = 'signon';
 $cfg['Servers'][1]['SignonSession'] = 'ServikSignon';
 $cfg['Servers'][1]['SignonCookieParams'] = ['lifetime' => 0, 'path' => '/phpmyadmin/', 'domain' => '', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax'];
@@ -260,7 +261,7 @@ session_start();
 session_regenerate_id(true);
 $_SESSION['PMA_single_signon_user'] = $data['user'];
 $_SESSION['PMA_single_signon_password'] = $data['password'];
-$_SESSION['PMA_single_signon_host'] = 'localhost';
+$_SESSION['PMA_single_signon_host'] = '127.0.0.1';
 session_write_close();
 
 header('Location: /phpmyadmin/index.php?route=/database/structure&db=' . rawurlencode($data['database']));
@@ -282,7 +283,11 @@ if (isset($_GET['servik_token'])) {
     if ($data === null) {
         servik_page('Oturum geçersiz', 'Bu bağlantı kullanılmış ya da süresi dolmuş. Servik panelinde Veritabanları sayfasından Adminer\'ı yeniden açın.');
     }
+    // Adminer redirects to the page it was asked for; the used token
+    // must not come along.
     $_GET = [];
+    $_SERVER['REQUEST_URI'] = '/adminer/';
+    $_SERVER['QUERY_STRING'] = '';
     $_POST = ['auth' => [
         'driver' => 'pgsql',
         'server' => '127.0.0.1',
