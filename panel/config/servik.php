@@ -62,4 +62,24 @@ return [
         'check_dns' => (bool) env('SERVIK_MAIL_CHECK_DNS', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Servik AI
+    |--------------------------------------------------------------------------
+    |
+    | The assistant talks to the Claude API with the key saved on the
+    | Servik AI settings page. base_url points it at another endpoint, for
+    | example a proxy; leave it empty for api.anthropic.com.
+    |
+    */
+
+    'ai' => [
+        'base_url' => env('SERVIK_AI_BASE_URL') ?: null,
+        // Requests to Claude in one answer, tool calls included.
+        'max_steps' => 16,
+        'max_tokens' => 16000,
+        // Seconds to wait for one response from Claude.
+        'timeout' => (float) env('SERVIK_AI_TIMEOUT', 300),
+    ],
+
 ];

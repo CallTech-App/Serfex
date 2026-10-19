@@ -64,7 +64,16 @@ under a scratch directory and only logs the commands it would run.
 # and in panel/.env: SERVIK_AGENT_SOCKET=/tmp/servik-agent.sock
 ```
 
-Tests need a PostgreSQL database named `servik_test` (see `panel/phpunit.xml`):
+Servik AI, the built-in assistant, calls the Claude API with a key the
+administrator enters under Servik AI → Ayarlar; the key is stored encrypted
+with the panel's `APP_KEY`. Its answers run on the queue, so keep a worker
+running (`php artisan queue:work`) while you try it. It reads panel state
+through the panel's own services and changes things only through them; it has
+no shell and never talks to the agent directly. `SERVIK_AI_BASE_URL` points it
+at another API endpoint, for example a proxy.
+
+Tests need a PostgreSQL database named `servik_test` (see `panel/phpunit.xml`).
+The Servik AI tests answer with a fake Claude API, so they need no key:
 
 ```sh
 php artisan test
