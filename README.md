@@ -25,6 +25,33 @@ Other directories:
 
 - [`design/`](design) holds the approved HTML mockups of the panel UI.
 
+## Installing and updating
+
+On a fresh Ubuntu Server 24.04 (or newer), as root:
+
+```sh
+curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
+sudo bash install.sh --admin-email you@example.com
+```
+
+[`scripts/install.sh`](scripts/install.sh) installs the newest release into
+`/opt/servik/releases/<version>` (`/opt/servik/current` points at the running
+one), the panel's own PostgreSQL (cluster `servik`, port 5433), PHP 8.5 for the
+panel, and starts the panel on `https://<server>:8443`. `--help` lists its
+options (a specific version, the beta channel, skipping the customers' software).
+
+Later releases are installed from the panel: **Araçlar ve Ayarlar → Güncellemeler**
+checks every day at 04:30 and updates when you press **Güncelle**. The panel
+backs itself up first; a release that fails its health check is rolled back
+automatically, database included, and the previous release stays on the server
+for **Önceki sürüme dön**. Over SSH:
+`sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:update` (`--check`, `--rollback`).
+
+Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml)
+when a `v*` tag is pushed ([`scripts/build-release.sh`](scripts/build-release.sh);
+notes from [`release-notes/`](release-notes)). Tags with a suffix (`v1.2.0-beta.1`)
+are published as pre-releases and reach only the beta channel.
+
 ## Requirements
 
 - Target server: Ubuntu Server 24.04 LTS or newer.

@@ -39,7 +39,7 @@ class RestoreServer extends Command
     {
         $key = $this->argument('key');
         if ($key === null) {
-            $this->table(['Key', 'Date', 'From', 'Sites', 'Panel'], Backup::with('items')->where('scope', 'server')->usable()->latest()->limit(30)->get()
+            $this->table(['Key', 'Date', 'From', 'Sites', 'Panel'], Backup::with('items')->whereIn('scope', ['server', 'panel'])->usable()->latest()->limit(30)->get()
                 ->map(fn (Backup $b) => [$b->key, $b->created_at->format('Y-m-d H:i'), $b->source_host ?? 'this server', $b->items->where('name', '!=', 'panel')->count(), $b->items->contains('name', 'panel') ? 'yes' : 'no'])->all());
             $this->line('Run again with a key and --panel and/or --sites.');
 

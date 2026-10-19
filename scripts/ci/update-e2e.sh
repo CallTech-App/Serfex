@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# CI: Servik installs, updates itself and comes back on a real Ubuntu.
+#
+#   scripts/ci/update-e2e.sh build DIR        (as the CI user)
+#   sudo scripts/ci/update-e2e.sh run DIR     (as root)
+#
+# build packages three test releases from this checkout into DIR:
+#   0.1.0-ci.1  the checkout as it is
+#   0.1.0-ci.2  plus a migration creating the table ci_update_probe
+#   0.1.0-ci.3  plus a migration creating ci_broken_probe, and a public/
+#               index.php answering 500, so its health check fails
+# and a releases listing in GitHub's shape (DIR/api/releases).
+#
+# run serves DIR/api on 127.0.0.1:8999 as the release source, installs
+# 0.1.0-ci.1 with install.sh, updates to 0.1.0-ci.2 (servik:update), tries
+# 0.1.0-ci.3 and checks Servik returned to 0.1.0-ci.2 by itself (its
+# database too), then returns to 0.1.0-ci.1 by hand (servik:update
+# --rollback) and checks ci.2's migration was rolled back.
+set -euo pipefail
+
+cmd=${1:?usage: update-e2e.sh build|run DIR}
+dir=${2:?usage: update-e2e.sh build|run DIR}
+root=$(cd "$(dirname "$0")/../.." && pwd)
+PORT=8999
+V1=0.1.0-ci.1 V2=0.1.0-ci.2 V3=0.1.0-ci.3
+
+build() {
+	mkdir -p "$dir"
+	dir=$(cd "$dir" && pwd)
+	local base=$dir/work/panel
+	rm -rf "$dir/work" && mkdir -p "$base"
+	(cd "$root/panel" && git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf -) | tar -xf - -C "$base"
+	(cd "$base" && composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress && npm ci --no-audit --no-fund && npm run build)
+
+	SERVIK_ARCHES=amd64 SERVIK_PANEL_BUILD=$base "$root/scripts/build-release.sh" "$V1" "$dir/dl/$V1"
+
+	cp -a "$base" "$dir/work/panel-2"
+	cat > "$dir/work/panel-2/database/migrations/2099_01_01_000001_ci_update_probe.php" <<-'PHP'
+	<?php
+
+	use Illuminate\Database\Migrations\Migration;
+	use Illuminate\Database\Schema\Blueprint;
+	use Illuminate\Support\Facades\Schema;
+
+	return new class extends Migration
+	{
+	    public function up(): void
+	    {
+	        Schema::create('ci_update_probe', fn (Blueprint $t) => $t->id());
+	    }
+
+	    public function down(): void
+	    {
+	        Schema::dropIfExists('ci_update_probe');
+	    }
+	};
+	PHP
+	SERVIK_ARCHES=amd64 SERVIK_PANEL_BUILD=$dir/work/panel-2 "$root/scripts/build-release.sh" "$V2" "$dir/dl/$V2"
+
+	cp -a "$dir/work/panel-2" "$dir/work/panel-3"
+	sed -e 's/ci_update_probe/ci_broken_probe/g' "$dir/work/panel-2/database/migrations/2099_01_01_000001_ci_update_probe.php" \
+		> "$dir/work/panel-3/database/migrations/2099_01_01_000002_ci_broken_probe.php"
+	printf '<?php\nhttp_response_code(500);\necho "broken release";\n' > "$dir/work/panel-3/public/index.php"
+	SERVIK_ARCHES=amd64 SERVIK_PANEL_BUILD=$dir/work/panel-3 "$root/scripts/build-release.sh" "$V3" "$dir/dl/$V3"
+	rm -rf "$dir/work"
+
+	mkdir -p "$dir/api"
+	local releases=()
+	for v in "$V3" "$V2" "$V1"; do
+		local a=servik-$v-linux-amd64.tar.gz
+		releases+=("$(jq -n --arg v "$v" --arg a "$a" --arg url "http://127.0.0.1:$PORT/dl/$v" --argjson size "$(stat -c %s "$dir/dl/$v/$a")" '{
+			tag_name: ("v" + $v), name: ("Servik " + $v), body: ("## Servik " + $v + "\n\n- CI test release"),
+			draft: false, prerelease: false, published_at: "2026-10-19T10:00:00Z", html_url: ("https://example.invalid/" + $v),
+			assets: [
+				{name: $a, browser_download_url: ($url + "/" + $a), size: $size},
+				{name: "SHA256SUMS", browser_download_url: ($url + "/SHA256SUMS"), size: 1},
+				{name: "install.sh", browser_download_url: ($url + "/install.sh"), size: 1}
+			]}')")
+	done
+	printf '%s\n' "${releases[@]}" | jq -s . > "$dir/api/releases"
+	ln -s ../dl "$dir/api/dl"
+	echo "✓ test releases in $dir"
+}
+
+# --- run -----------------------------------------------------------------
+
+fail() { printf '\n✗ %s\n' "$*" >&2; exit 1; }
+ok() { printf '✓ %s\n' "$*"; }
+current() { basename "$(readlink /opt/servik/current)"; }
+artisan() { runuser -u servik -- env -C /opt/servik/current/panel php8.5 artisan "$@"; }
+agent() { /opt/servik/current/bin/servik-agent call "$@"; }
+sql() { runuser -u postgres -- psql -X -At -p 5433 -d servik -c "$1"; }
+has_table() { [ "$(sql "SELECT to_regclass('public.$1') IS NOT NULL")" = t ]; }
+code() { curl -sk -o /dev/null -w '%{http_code}' "https://127.0.0.1:8443$1"; }
+last_update() { sql "SELECT kind || ' ' || to_version || ' ' || status FROM panel_updates ORDER BY id DESC LIMIT 1"; }
+
+expect_running() {
+	local v=$1
+	[ "$(current)" = "$v" ] || fail "current is $(current), not $v"
+	[ "$(cat /opt/servik/current/VERSION)" = "$v" ] || fail "the release in current is not $v"
+	local st
+	st=$(agent update.status)
+	[ "$(jq -r .version <<< "$st")" = "$v" ] || fail "the agent reports $(jq -r .version <<< "$st"), not $v"
+	[ "$(jq -r .agent <<< "$st")" = "$v" ] || fail "the agent running is $(jq -r .agent <<< "$st"), not $v"
+	[ "$(code /up)" = 200 ] || fail "/up answers $(code /up) on $v"
+	[ "$(code /login)" = 200 ] || fail "/login answers $(code /login) on $v (maintenance left on?)"
+	for u in servik-panel-queue servik-panel-backups servik-panel-scheduler servik-agent; do
+		systemctl is-active --quiet "$u" || fail "$u is not running on $v"
+	done
+	ok "Servik $v runs (panel, agent, workers)"
+}
+
+run() {
+	dir=$(cd "$dir" && pwd)
+	[ "$(id -u)" -eq 0 ] || fail "run as root"
+	(cd "$dir/api" && exec python3 -m http.server "$PORT" --bind 127.0.0.1 > /tmp/release-source.log 2>&1) &
+	for i in $(seq 30); do curl -fs -o /dev/null "http://127.0.0.1:$PORT/releases" && break; sleep 0.5; done
+
+	echo "▸ install.sh --version $V1"
+	bash "$root/scripts/install.sh" --version "$V1" --source "http://127.0.0.1:$PORT" --hostname panel.ci.test \
+		--no-components --yes --admin-email ci@servik.test
+	expect_running "$V1"
+	[ "$(sql "SELECT count(*) FROM users WHERE email = 'ci@servik.test' AND is_admin")" = 1 ] || fail "no administrator"
+
+	echo "▸ servik:update --check"
+	artisan servik:update --check | tee /tmp/check.out
+	grep -q "Servik $V3 hazır" /tmp/check.out || fail "the check did not find $V3"
+
+	echo "▸ servik:update --target=$V2"
+	artisan servik:update --target="$V2" --yes || fail "the update to $V2 failed (exit $?)"
+	expect_running "$V2"
+	has_table ci_update_probe || fail "$V2's migration did not run"
+	[ "$(agent update.status | jq -r .previous)" = "$V1" ] || fail "$V1 is not kept as the previous release"
+	[ "$(last_update)" = "upgrade $V2 succeeded" ] || fail "recorded: $(last_update)"
+	[ "$(sql "SELECT count(*) FROM backups WHERE scope = 'panel' AND trigger = 'update' AND status = 'succeeded'")" = 1 ] ||
+		fail "no panel backup before the update"
+	ok "updated to $V2 after a panel backup"
+
+	echo "▸ servik:update --target=$V3 (a release that fails its health check)"
+	set +e
+	artisan servik:update --target="$V3" --yes
+	rc=$?
+	set -e
+	[ "$rc" = 2 ] || fail "servik:update exited $rc, not 2 (returned to the previous release)"
+	expect_running "$V2"
+	has_table ci_update_probe || fail "$V2's table is gone after returning from $V3"
+	! has_table ci_broken_probe || fail "$V3's migration was not undone"
+	[ ! -e "/opt/servik/releases/$V3" ] || fail "the failed release $V3 was kept"
+	[ "$(agent update.status | jq -r .previous)" = "$V1" ] || fail "$V1 is no longer the previous release"
+	[ "$(last_update)" = "upgrade $V3 rolled_back" ] || fail "recorded: $(last_update)"
+	ok "$V3 failed its health check; Servik returned to $V2 by itself, database included"
+
+	echo "▸ servik:update --rollback"
+	artisan servik:update --rollback --yes || fail "the rollback to $V1 failed"
+	expect_running "$V1"
+	! has_table ci_update_probe || fail "$V2's migration was not rolled back"
+	[ -e "/opt/servik/releases/$V2/VERSION" ] || fail "$V2 was removed while servik:update still ran its code"
+	[ "$(agent update.status | jq -r '.previous // ""')" = "" ] || fail "a previous release is still offered"
+	[ "$(last_update)" = "rollback $V1 succeeded" ] || fail "recorded: $(last_update)"
+	ok "returned to $V1 by hand, its migrations rolled back"
+}
+
+case $cmd in
+build) build ;;
+run) run ;;
+*) fail "usage: update-e2e.sh build|run DIR" ;;
+esac

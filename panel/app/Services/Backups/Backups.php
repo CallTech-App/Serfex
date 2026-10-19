@@ -9,6 +9,7 @@ use App\Models\Backup;
 use App\Models\BackupItem;
 use App\Models\BackupRestore;
 use App\Models\BackupTarget;
+use App\Models\PanelUpdate;
 use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
@@ -44,6 +45,11 @@ class Backups
     public const FAILED_DAYS = 30;
 
     public const BUSY = 'Başka bir yedekleme ya da geri yükleme sürüyor. Bitince yeniden deneyin.';
+
+    public const UPDATING = 'Servik güncelleniyor. Bitince yeniden deneyin.';
+
+    /** Days the panel backups taken before updates are kept. */
+    public const UPDATE_DAYS = 30;
 
     public function __construct(
         private readonly AgentClient $agent,
@@ -108,6 +114,9 @@ class Backups
         if ($this->busy()) {
             return self::BUSY;
         }
+        if (PanelUpdate::running()->exists()) {
+            return self::UPDATING;
+        }
         $type = 'full';
         $base = null;
         if ($trigger === 'scheduled') {
@@ -132,6 +141,9 @@ class Backups
         if ($trigger !== 'safety') {
             if ($this->busy()) {
                 return self::BUSY;
+            }
+            if (PanelUpdate::running()->exists()) {
+                return self::UPDATING;
             }
             if (($refusal = $this->refusal($user, $site)) !== null) {
                 return $refusal;
@@ -228,7 +240,8 @@ class Backups
         $call = [
             'key' => $backup->key,
             'run' => $backup->run,
-            'scope' => $backup->scope,
+            // To the agent a panel backup is a whole-server one of the panel alone.
+            'scope' => $backup->scope === 'panel' ? 'server' : $backup->scope,
             'server' => BackupTarget::serverName(),
             'incremental' => $backup->type === 'incremental',
             'chain' => $this->chained($backup),
@@ -284,6 +297,20 @@ class Backups
             $this->prune();
         }
         Quotas::forget();
+    }
+
+    /**
+     * Takes a backup of the panel alone (its database, settings and the
+     * agent's state) now, on this server, before Servik updates itself;
+     * returns it.
+     */
+    public function takePanel(?User $user): Backup
+    {
+        $backup = $this->record('panel', 'update', $user, null, 'full', null, null);
+        $backup->items()->create(['name' => 'panel', 'status' => 'pending']);
+        $this->take($backup);
+
+        return $backup->refresh();
     }
 
     /**
@@ -519,6 +546,9 @@ class Backups
             $this->purge($b);
         }
         foreach (Backup::where('trigger', 'safety')->where('created_at', '<', now()->subDays(self::SAFETY_DAYS))->whereNot('status', 'running')->get() as $b) {
+            $this->purge($b);
+        }
+        foreach (Backup::where('trigger', 'update')->where('created_at', '<', now()->subDays(self::UPDATE_DAYS))->whereNot('status', 'running')->get() as $b) {
             $this->purge($b);
         }
         foreach (Backup::where('status', 'failed')->where('created_at', '<', now()->subDays(self::FAILED_DAYS))->get() as $b) {

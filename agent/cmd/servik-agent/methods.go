@@ -21,6 +21,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/monitor"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
 )
 
@@ -44,6 +45,9 @@ const CodeComponentBusy = -32005
 // CodeBackupBusy says another backup or restore is running.
 const CodeBackupBusy = -32006
 
+// CodeUpdateBusy says an update or rollback is running.
+const CodeUpdateBusy = -32007
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -56,6 +60,7 @@ type services struct {
 	databases  *database.Manager
 	components *component.Manager
 	backups    *backup.Manager
+	updates    *update.Manager
 	dryRun     bool
 }
 
@@ -219,6 +224,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerDatabases(srv, svc)
 	registerComponents(srv, svc)
 	registerBackups(srv, svc)
+	registerUpdates(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -400,6 +406,9 @@ func mapError(err error) error {
 	if errors.Is(err, backup.ErrBusy) {
 		return &rpc.Error{Code: CodeBackupBusy, Message: err.Error()}
 	}
+	if errors.Is(err, update.ErrBusy) {
+		return &rpc.Error{Code: CodeUpdateBusy, Message: err.Error()}
+	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError
 	var cv *cert.ValidationError
@@ -410,7 +419,8 @@ func mapError(err error) error {
 	var dbv *database.ValidationError
 	var compv *component.ValidationError
 	var bv *backup.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var uv *update.ValidationError
+	if errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -423,7 +433,8 @@ func mapError(err error) error {
 	var dbop *database.OperationError
 	var compop *component.OperationError
 	var bop *backup.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var uop *update.OperationError
+	if errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -675,5 +686,27 @@ func registerBackups(srv *rpc.Server, svc services) {
 		Offset int64  `json:"offset"`
 	}) (any, error) {
 		return b.ReadRun(q.Run, q.Offset)
+	})
+}
+
+func registerUpdates(srv *rpc.Server, svc services) {
+	u := svc.updates
+	handle(srv, "update.status", func(context.Context, struct{}) (any, error) { return u.Status() })
+	handle(srv, "update.check", func(ctx context.Context, p update.CheckSpec) (any, error) { return u.Check(ctx, p) })
+	handle(srv, "update.start", func(ctx context.Context, p update.StartSpec) (any, error) {
+		return u.Start(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "update.rollback", func(ctx context.Context, p update.RollbackSpec) (any, error) {
+		return u.Rollback(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "update.run.read", func(_ context.Context, q struct {
+		Run    string `json:"run"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return u.ReadRun(q.Run, q.Offset)
+	})
+	// Installing packages for servik-php outlives a request that gives up.
+	handle(srv, "panel.setup", func(ctx context.Context, _ struct{}) (any, error) {
+		return u.Setup(context.WithoutCancel(ctx))
 	})
 }

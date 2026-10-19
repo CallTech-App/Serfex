@@ -9,6 +9,9 @@ use App\Livewire\Access;
 use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
 use App\Services\Databases\DatabaseServers;
+use Illuminate\Foundation\Events\DiagnosingHealth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Component;
@@ -39,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
         foreach (['view', 'operate', 'manage'] as $ability) {
             Gate::define('laravel.'.$ability, fn ($user, LaravelApp $app) => $user->canOnApp($app, $ability));
         }
+
+        // GET /up answers 200 only when the panel reaches its database: an
+        // update returns to the previous release when it does not.
+        Event::listen(DiagnosingHealth::class, fn () => DB::connection()->getPdo()->query('select 1'));
 
         // Every Livewire mount and call is authorized here, before the
         // component runs (see Access).

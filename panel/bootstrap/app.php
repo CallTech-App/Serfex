@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Deploy webhooks come from Git providers and CI, not from a form.
         $middleware->validateCsrfTokens(except: ['hooks/*']);
+        // The Güncellemeler page follows an update through the maintenance
+        // it puts the panel in.
+        $middleware->preventRequestsDuringMaintenance(except: ['ayarlar/guncellemeler/ilerleme/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

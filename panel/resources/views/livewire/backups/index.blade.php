@@ -90,6 +90,9 @@
                     <option value="">Tüm yedekler</option>
                     <option value="server">Tüm sunucu</option>
                     <option value="site">Site yedekleri</option>
+                    @if ($admin)
+                        <option value="panel">Panel (güncelleme öncesi)</option>
+                    @endif
                 </select>
                 @if ($admin)
                     <button type="button" wire:click="openImport" class="{{ $btn }}"><x-icon name="upload" />İçe aktar</button>
@@ -133,7 +136,9 @@
                                     <span class="mt-1 block text-2xs text-muted">{{ $b->triggerLabel() }}{{ $b->source_host ? ' · '.$b->source_host : '' }}</span>
                                 </td>
                                 <td class="px-3 py-3">
-                                    @if ($itemRows || $b->scope === 'site')
+                                    @if (! $itemRows && $b->scope === 'panel')
+                                        Panel <span class="text-2xs text-muted">· veritabanı ve ayarlar</span>
+                                    @elseif ($itemRows || $b->scope === 'site')
                                         <span class="font-mono text-[13px] break-all sm:break-normal">{{ $itemRows ? $row->name : $setSites->first()?->name }}</span>
                                     @else
                                         Tüm sunucu <span class="text-2xs text-muted">· {{ $setSites->count() }} site{{ $row->items->contains('name', 'panel') ? ' + panel' : '' }}</span>
@@ -158,7 +163,7 @@
                                     <span class="inline-flex flex-col items-end gap-y-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-4 sm:gap-y-1">
                                         @if ($b->isRunning())
                                             <button type="button" wire:click="showRun('backup', {{ $b->id }})" class="{{ $link }}">İlerleme</button>
-                                        @elseif ($b->isUsable() && (! $itemRows || $row->status === 'succeeded'))
+                                        @elseif ($b->isUsable() && $b->scope !== 'panel' && (! $itemRows || $row->status === 'succeeded'))
                                             <button type="button" wire:click="openRestore({{ $b->id }}{{ $itemRows ? ', '.$row->id : '' }})" @disabled($busy) class="{{ $link }}">Geri yükle</button>
                                         @endif
                                         @if ($itemRows && $b->isUsable() && $row->status === 'succeeded')
@@ -456,7 +461,7 @@
             <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" wire:key="detail-{{ $detail->id }}" @keydown.escape.window="$wire.closeDetail()">
                 <div class="w-full max-w-2xl rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-label="Yedek ayrıntısı" @click.outside="$wire.closeDetail()">
                     <div class="flex h-12 items-center justify-between border-b border-line px-5">
-                        <h2 class="text-[14.5px] font-semibold">{{ $detail->scope === 'server' ? 'Tüm sunucu yedeği' : 'Site yedeği' }} · <span class="num">{{ $when($detail->created_at) }}</span></h2>
+                        <h2 class="text-[14.5px] font-semibold">{{ match ($detail->scope) { 'server' => 'Tüm sunucu yedeği', 'panel' => 'Panel yedeği', default => 'Site yedeği' } }} · <span class="num">{{ $when($detail->created_at) }}</span></h2>
                         <button type="button" wire:click="closeDetail" class="text-muted hover:text-fg" aria-label="Kapat"><x-icon name="x" /></button>
                     </div>
                     <div class="space-y-3 p-5 text-[13.5px]">
@@ -735,7 +740,7 @@
         @if ($run)
             @php
                 $isRestore = $runKind === 'restore';
-                $title = $isRestore ? $run->domain.' geri yükleniyor' : ($run->scope === 'server' ? 'Tüm sunucu yedekleniyor' : $run->items->first()?->name.' yedekleniyor');
+                $title = $isRestore ? $run->domain.' geri yükleniyor' : match ($run->scope) { 'server' => 'Tüm sunucu yedekleniyor', 'panel' => 'Panel yedekleniyor', default => $run->items->first()?->name.' yedekleniyor' };
                 $doneTitle = $isRestore ? $run->domain.' geri yüklendi' : 'Yedek alındı';
             @endphp
             <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" wire:key="run-{{ $runKind }}-{{ $run->id }}">

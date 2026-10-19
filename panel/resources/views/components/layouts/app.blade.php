@@ -21,7 +21,7 @@
             ['backups.index', 'archive', 'Yedekler'],
             [null, 'server-cog', 'Hizmetler'],
             ['components.index', 'package-plus', 'Yazılım Yönetimi'],
-            [null, 'settings', 'Araçlar ve Ayarlar'],
+            ['settings.updates', 'settings', 'Araçlar ve Ayarlar'],
         ]],
     ];
     $user = auth()->user();
@@ -52,6 +52,7 @@
             'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
             'customers.index' => [app(\App\Services\Customers\Quotas::class)->attentionCount(), 'müşteri kotası'],
             'backups.index' => [count(app(\App\Services\Backups\Backups::class)->problems()), 'yedekleme sorunu'],
+            'settings.updates' => [count(app(\App\Services\Updates\Updates::class)->notices()), 'güncelleme bildirimi'],
         ],
         (bool) $user?->isCustomer() => [
             'ssl.index' => [\App\Models\Certificate::attentionCount($user), 'sertifika'],

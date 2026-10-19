@@ -2,7 +2,9 @@
 
 return [
 
-    'version' => env('SERVIK_VERSION', 'dev'),
+    // The release's VERSION file (written by scripts/build-release.sh);
+    // a checkout from git is "dev".
+    'version' => is_file(base_path('VERSION')) ? trim((string) file_get_contents(base_path('VERSION'))) : env('SERVIK_VERSION', 'dev'),
 
     /*
     |--------------------------------------------------------------------------

@@ -19,7 +19,10 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
+	"os/user"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -35,6 +38,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/monitor"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
 )
 
@@ -48,14 +52,26 @@ func main() {
 	webUser := flag.String("web-user", "www-data", "account the web server runs as")
 	acmeDir := flag.String("acme-directory", cert.LetsEncrypt, "ACME directory URL certificates are requested from")
 	acmeCA := flag.String("acme-ca", "", "PEM file with extra root certificates to trust for the ACME server (for test servers such as Pebble)")
+	socketGroup := flag.String("socket-group", "", "group that may connect to the socket (the panel's account, servik, on installed servers)")
+	updateRun := flag.String("update-run", "", "perform a started update or rollback (the agent starts this itself)")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage:\n  servik-agent [flags]                  run the agent\n  servik-agent [-socket S] call METHOD [JSON]   call a method of the running agent\n\nFlags:\n")
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(version.Version)
 		return
 	}
+	if flag.Arg(0) == "call" {
+		os.Exit(call(*socket, flag.Args()[1:]))
+	}
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	if *updateRun != "" {
+		os.Exit(runUpdate(*socket, *updateRun, log))
+	}
 	h, err := newHost(*dryRun, *root, log)
 	if err != nil {
 		log.Error("agent stopped", "err", err)
@@ -103,7 +119,19 @@ func main() {
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
 	}
-	if err := run(*socket, svc, log); err != nil {
+	svc.updates = update.NewManager(h, version.Version, runtime.GOARCH)
+	svc.updates.WebPort = svc.databases.WebPort
+	svc.updates.Web = func(ctx context.Context) (any, error) { return svc.databases.SetupPanelWeb(ctx) }
+	if *dryRun {
+		// The run stays in this process, which is not restarted.
+		svc.updates.ApplyPanel = func(ctx context.Context) error {
+			_, err := svc.updates.Setup(ctx)
+			return err
+		}
+	} else {
+		svc.updates.Spawn = spawnUpdate(h, *socket)
+	}
+	if err := run(*socket, *socketGroup, svc, log); err != nil {
 		log.Error("agent stopped", "err", err)
 		os.Exit(1)
 	}
@@ -171,7 +199,7 @@ func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
 	return sim, nil
 }
 
-func run(socket string, svc services, log *slog.Logger) error {
+func run(socket, group string, svc services, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -189,6 +217,18 @@ func run(socket string, svc services, log *slog.Logger) error {
 	if err := os.Chmod(socket, 0o660); err != nil {
 		ln.Close()
 		return err
+	}
+	if group != "" {
+		g, err := user.LookupGroup(group)
+		if err != nil {
+			ln.Close()
+			return err
+		}
+		gid, _ := strconv.Atoi(g.Gid)
+		if err := os.Chown(socket, 0, gid); err != nil {
+			ln.Close()
+			return err
+		}
 	}
 
 	srv := rpc.NewServer(log)

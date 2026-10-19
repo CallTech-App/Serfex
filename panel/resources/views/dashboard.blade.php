@@ -72,5 +72,16 @@
                 <x-ask-ai question="Yedeklemede sorun var: {{ $backupProblems[0]['text'] }} Neden olmuş olabilir, nasıl düzeltirim?" label="AI'ya sor" class="mr-5" />
             @endif
         </div>
+        @php $updateNotices = app(\App\Services\Updates\Updates::class)->notices(); @endphp
+        <div class="flex items-center gap-2 hover:bg-surface-2/60">
+            <a href="{{ route('settings.updates') }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 pr-5">
+                <x-icon name="refresh-cw" @class(['text-muted' => ! $updateNotices, 'text-warn' => ($updateNotices[0]['level'] ?? '') === 'warn', 'text-info' => ($updateNotices[0]['level'] ?? '') === 'info']) />
+                <span>Servik sürümü</span>
+                <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $updateNotices, 'font-medium text-warn' => ($updateNotices[0]['level'] ?? '') === 'warn', 'font-medium text-info' => ($updateNotices[0]['level'] ?? '') === 'info'])>
+                    {{ $updateNotices ? collect($updateNotices)->pluck('text')->join(' · ') : 'Servik '.config('servik.version') }}
+                </span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+        </div>
     </section>
 </x-layouts.app>
