@@ -297,8 +297,10 @@ func (x *execution) rollback() (err error) {
 	if err := x.check(); err != nil {
 		return err
 	}
-	_ = os.RemoveAll(x.m.h.Path(panel.ReleasesDir + "/" + s.From))
-	x.cleanup(s.To, "")
+	// The release returned from stays on disk until the next update:
+	// processes still running its code (servik:update, an open page's
+	// request) would fail on files that disappear under them.
+	x.cleanup(s.To, s.From)
 	return nil
 }
 

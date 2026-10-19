@@ -154,7 +154,7 @@ run() {
 	artisan servik:update --rollback --yes || fail "the rollback to $V1 failed"
 	expect_running "$V1"
 	! has_table ci_update_probe || fail "$V2's migration was not rolled back"
-	[ ! -e "/opt/servik/releases/$V2" ] || fail "$V2 was kept after returning from it"
+	[ -e "/opt/servik/releases/$V2/VERSION" ] || fail "$V2 was removed while servik:update still ran its code"
 	[ "$(agent update.status | jq -r '.previous // ""')" = "" ] || fail "a previous release is still offered"
 	[ "$(last_update)" = "rollback $V1 succeeded" ] || fail "recorded: $(last_update)"
 	ok "returned to $V1 by hand, its migrations rolled back"

@@ -452,8 +452,8 @@ func TestRollbackUndoesTheReleasesMigrations(t *testing.T) {
 	if status.Previous != "" || len(status.Releases) != 1 || status.Last.Kind != "rollback" {
 		t.Fatalf("status %+v", status)
 	}
-	if _, err := os.Stat(sim.Path(panel.ReleasesDir + "/0.2.0")); !os.IsNotExist(err) {
-		t.Errorf("the release rolled back from was kept: %v", err)
+	if _, err := os.Stat(sim.Path(panel.ReleasesDir + "/0.2.0/VERSION")); err != nil {
+		t.Errorf("the release rolled back from was removed while its code may still run: %v", err)
 	}
 }
 
