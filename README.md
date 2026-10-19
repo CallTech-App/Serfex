@@ -72,6 +72,12 @@ through the panel's own services and changes things only through them; it has
 no shell and never talks to the agent directly. `SERVIK_AI_BASE_URL` points it
 at another API endpoint, for example a proxy.
 
+Customers sign in to the same panel and see only their own sites, DNS, mail,
+certificates and Laravel applications, within their package. Disk usage is
+measured by the agent every 30 minutes (`servik:disk-usage`) and traffic is
+added up every minute with the monitor samples, so keep the scheduler running
+(`php artisan schedule:work`) to see quotas fill.
+
 Tests need a PostgreSQL database named `servik_test` (see `panel/phpunit.xml`).
 The Servik AI tests answer with a fake Claude API, so they need no key:
 
@@ -93,6 +99,14 @@ changes the machine, so run it only on a throwaway server or VM:
 
 ```sh
 sudo go test -tags realhost -run TestRealHost ./internal/site
+```
+
+The panel's own real-server test (a customer's site, disk quota and
+suspension) talks to an agent running as root, on the same kind of throwaway
+machine with Nginx and PHP-FPM 8.3:
+
+```sh
+sudo env "PATH=$PATH" SERVIK_REALHOST=1 SERVIK_AGENT_SOCKET=/run/servik-agent/agent.sock php artisan test --testsuite=RealHost
 ```
 
 To run the panel's agent integration tests against a real agent binary:

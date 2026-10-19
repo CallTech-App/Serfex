@@ -82,7 +82,7 @@ class CustomerUsageTest extends TestCase
 
         $report = $quotas->report($customer);
         $this->assertSame('1 / 1', $report['sites']['text']);
-        $this->assertSame('warn', $report['sites']['level']);
+        $this->assertSame('ok', $report['sites']['level'], 'a count at its limit is fine');
         $this->assertSame('1 / Sınırsız', $report['laravel_apps']['text']);
         $this->assertNull($report['databases']['used']);
         $this->assertStringContainsString('site sınırına ulaşıldı', $quotas->refusal($customer, 'sites'));

@@ -162,7 +162,11 @@
                                     </td>
                                 @endforeach
                                 <td class="px-3 py-3 text-[12.5px] text-muted">
-                                    {{ collect(Package::FEATURES)->filter(fn ($f) => $package->{$f[0]})->map(fn ($f) => $f[1])->join(', ') ?: 'Yalnızca site' }}
+                                    @forelse (collect(Package::FEATURES)->filter(fn ($f) => $package->{$f[0]})->values() as $i => $f)
+                                        <span class="whitespace-nowrap">{{ $f[1] }}{{ $loop->last ? '' : ',' }}</span>
+                                    @empty
+                                        Yalnızca site
+                                    @endforelse
                                     @if ($package->php_versions !== null)
                                         <span class="block">PHP {{ implode(', ', $package->php_versions) }}</span>
                                     @endif
@@ -194,12 +198,12 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label for="company" class="mb-1.5 block">Firma adı <span class="text-muted">(isteğe bağlı)</span></label>
-                        <input id="company" wire:model.blur="company" autocomplete="organization" class="{{ $field }} {{ $errors->has('company') ? 'border-crit' : 'border-line' }}">
+                        <input id="company" wire:model.live.debounce.400ms="company" autocomplete="organization" class="{{ $field }} {{ $errors->has('company') ? 'border-crit' : 'border-line' }}">
                         @error('company') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="name" class="mb-1.5 block">Yetkili kişi</label>
-                        <input id="name" wire:model.blur="name" required autocomplete="name" class="{{ $field }} {{ $errors->has('name') ? 'border-crit' : 'border-line' }}">
+                        <input id="name" wire:model.live.debounce.400ms="name" required autocomplete="name" class="{{ $field }} {{ $errors->has('name') ? 'border-crit' : 'border-line' }}">
                         @error('name') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     </div>
                     <div>

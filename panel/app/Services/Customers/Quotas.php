@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Cache;
  */
 class Quotas
 {
-    /** From this share of a limit on, usage shows orange. */
+    /** From this share of the disk or traffic limit on, usage shows orange. */
     public const WARN = 0.85;
 
     /** What each creation counts against. */
@@ -65,8 +65,8 @@ class Quotas
 
     /**
      * Every limit with its usage and how close it is: level ok, warn
-     * (85 % and up) or crit (at or over the limit for disk and traffic,
-     * over it for counts).
+     * (disk and traffic from 85 %) or crit (disk and traffic at or over
+     * the limit, counts over it).
      *
      * @return array<string, array{label: string, used: int|null, limit: int|null, ratio: float|null, level: string, text: string}>
      */
@@ -80,10 +80,12 @@ class Quotas
             $limit = $package->limit($key);
             $ratio = $limit === null || $used === null ? null : ($limit === 0 ? ($used > 0 ? INF : 0.0) : $used / $limit);
             $bytes = in_array($key, ['disk', 'traffic'], true);
+            // A count at its limit is the package used as bought; only
+            // more than it (after a downgrade) needs a look.
             $level = match (true) {
                 $ratio === null => 'ok',
                 $bytes && $ratio >= 1, ! $bytes && $ratio > 1 => 'crit',
-                $ratio >= self::WARN && $limit > 0 => 'warn',
+                $bytes && $ratio >= self::WARN && $limit > 0 => 'warn',
                 default => 'ok',
             };
             $out[$key] = [

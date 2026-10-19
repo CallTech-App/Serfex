@@ -329,9 +329,9 @@ class CustomersTest extends TestCase
     public function test_admins_still_see_everything_and_customers_count_on_the_dashboard(): void
     {
         Site::factory()->create(['domain' => 'sahipsiz.com.tr']);
-        $package = Package::factory()->create(['max_sites' => 1]);
+        $package = Package::factory()->create(['max_disk_mb' => 1024]);
         $customer = Customer::factory()->create(['package_id' => $package->id]);
-        $this->site($customer, 'dolu.com.tr');
+        $this->site($customer, 'dolu.com.tr')->systemUser->update(['disk_bytes' => 1000 * 1024 ** 2]);
 
         $this->get('/sites')->assertOk()->assertSee('sahipsiz.com.tr')->assertSee('dolu.com.tr');
         $this->get('/')->assertOk()->assertSee('Müşteriler')->assertSee('1 müşteri paket sınırına yaklaştı ya da aştı');

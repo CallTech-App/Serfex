@@ -45,7 +45,7 @@
                     <button type="submit" class="h-9 w-full rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">Giriş yap</button>
                 </div>
             </form>
-            <p class="mt-4 text-center text-2xs text-muted">Hesabı sunucuda <code class="font-mono">php artisan servik:admin</code> ile oluşturun.</p>
+            <p class="mt-4 text-center text-2xs text-muted">Yönetici hesabı sunucuda <code class="font-mono">php artisan servik:admin</code> ile açılır; müşteriler size iletilen giriş bağlantısıyla şifrelerini belirler.</p>
         </main>
     </body>
 </html>
