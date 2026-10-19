@@ -19,7 +19,7 @@
         ['Sunucu', [
             ['security.index', 'shield-alert', 'Güvenlik'],
             ['backups.index', 'archive', 'Yedekler'],
-            [null, 'server-cog', 'Hizmetler'],
+            ['services.index', 'server-cog', 'Hizmetler'],
             ['components.index', 'package-plus', 'Yazılım Yönetimi'],
             ['settings.updates', 'settings', 'Araçlar ve Ayarlar'],
         ]],
@@ -53,6 +53,7 @@
             'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
             'customers.index' => [app(\App\Services\Customers\Quotas::class)->attentionCount(), 'müşteri kotası'],
             'backups.index' => [count(app(\App\Services\Backups\Backups::class)->problems()), 'yedekleme sorunu'],
+            'services.index' => [count(\App\Services\System\SystemServices::problems()), 'durmuş hizmet'],
             'settings.updates' => [count(app(\App\Services\Updates\Updates::class)->notices()), 'güncelleme bildirimi'],
         ],
         (bool) $user?->isCustomer() => [

@@ -38,8 +38,14 @@ class RunComponentOperation implements ShouldQueue
         if ($database) {
             $params['port'] = $databases->managerPort();
         }
+        if (str_starts_with($op->action, 'ext-')) {
+            $method = 'component.extension';
+            $params = ['version' => substr($op->component, 3), 'name' => (string) $op->detail, 'remove' => $op->action === 'ext-remove', 'run' => $op->run];
+        } else {
+            $method = 'component.'.$op->action;
+        }
         try {
-            $agent->call('component.'.$op->action, $params, config('servik.agent.component_timeout'));
+            $agent->call($method, $params, config('servik.agent.component_timeout'));
         } catch (AgentException $e) {
             $op->update(['status' => 'failed', 'error' => $e->reason, 'finished_at' => now()]);
             $this->refresh($components, $databases, $database);

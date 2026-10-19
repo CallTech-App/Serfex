@@ -18,6 +18,7 @@ use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailDomains;
+use App\Services\Php\PhpVersions;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -108,7 +109,7 @@ class SiteIndex extends Component
 
             return;
         }
-        $this->phpVersion = in_array('8.4', $this->phpVersions, true) ? '8.4' : end($this->phpVersions);
+        $this->phpVersion = (string) app(PhpVersions::class)->default($this->phpVersions);
     }
 
     public function updatedDomain(): void

@@ -76,7 +76,7 @@ class SiteIndexTest extends TestCase
 
         Livewire::test(SiteIndex::class)
             ->call('openCreate')
-            ->assertSet('phpVersion', '8.4')
+            ->assertSet('phpVersion', '8.5')
             ->set('domain', ' Kahveatolyesi.com.tr ')
             ->assertSet('systemUser', 'kahveatolyesi')
             ->call('create')

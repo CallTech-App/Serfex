@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Customers;
 
+use App\Jobs\ApplySitePhp;
 use App\Models\Customer;
 use App\Models\Package;
 use App\Models\Site;
@@ -98,6 +99,7 @@ class CustomerShow extends Component
             'phone.regex' => 'Telefon numarası geçersiz.',
         ], ['company' => 'firma adı', 'name' => 'yetkili kişi', 'email' => 'e-posta', 'phone' => 'telefon', 'notes' => 'notlar', 'packageId' => 'paket']);
 
+        $packageChanged = $customer->package_id !== (int) $this->packageId;
         $customer->update([
             'company' => trim($this->company) ?: null,
             'name' => trim($this->name),
@@ -109,6 +111,10 @@ class CustomerShow extends Component
         // The login carries the same name and address.
         $customer->user?->update(['name' => $customer->name, 'email' => $customer->email]);
         Quotas::forget();
+        if ($packageChanged) {
+            // The new package's PHP memory limit applies to the sites.
+            ApplySitePhp::forCustomer($customer);
+        }
         $this->dispatch('toast', message: 'Müşteri bilgileri kaydedildi.');
     }
 

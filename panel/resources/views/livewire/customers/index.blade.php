@@ -295,6 +295,13 @@
                     @endunless
                     @error('pkgPhp') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     <p class="mt-2 text-2xs text-muted">Yeni sitelerde ve Laravel kurulumlarında yalnızca bu sürümler sunulur; mevcut siteler değişmez.</p>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <label for="pkg-php-memory" class="text-[13px]">PHP bellek sınırı en fazla</label>
+                        <input id="pkg-php-memory" type="text" inputmode="numeric" wire:model="pkgPhpMemory" placeholder="sınırsız" class="h-8 w-24 rounded-md border border-line bg-surface px-2 font-mono text-[13px]">
+                        <span class="text-[13px] text-muted">MB</span>
+                    </div>
+                    @error('pkgPhpMemory') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
+                    <p class="mt-1 text-2xs text-muted">Sitelerin memory_limit değeri bunu aşamaz; site kodu da yükseltemez.</p>
                 </fieldset>
                 <label class="flex items-center gap-2.5">
                     <input type="checkbox" wire:model="pkgDefault" class="size-4 accent-accent">Yeni müşterilerde varsayılan paket

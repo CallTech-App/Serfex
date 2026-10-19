@@ -22,6 +22,23 @@
                 <x-ask-ai question="Canlı İzleme'de ilgilenmem gereken siteler ya da saldırılar var. Neler oluyor, ne yapmalıyım?" label="AI'ya sor" class="mr-5" />
             @endif
         </div>
+        @php
+            $serviceProblems = \App\Services\System\SystemServices::problems();
+            $serviceNames = collect($serviceProblems)->pluck('name')->join(', ');
+        @endphp
+        <div class="flex items-center gap-2 hover:bg-surface-2/60">
+            <a href="{{ $serviceProblems && count($serviceProblems) === 1 ? route('services.show', $serviceProblems[0]['unit']) : route('services.index') }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $serviceProblems ? '' : 'pr-5' }}">
+                <x-icon name="server-cog" @class(['text-muted' => ! $serviceProblems, 'text-crit' => $serviceProblems]) />
+                <span>Hizmetler</span>
+                <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $serviceProblems, 'font-medium text-crit' => $serviceProblems])>
+                    {{ $serviceProblems ? (count($serviceProblems) === 1 ? $serviceNames.' çalışmıyor' : count($serviceProblems).' hizmet çalışmıyor: '.$serviceNames) : 'Tüm hizmetler çalışıyor' }}
+                </span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+            @if ($serviceProblems)
+                <x-ask-ai question="Sunucuda çalışmayan hizmetler var: {{ $serviceNames }}. Neden durmuş olabilir, nasıl düzeltirim?" label="AI'ya sor" class="mr-5" />
+            @endif
+        </div>
         <a href="{{ route('sites.index') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="globe" class="text-muted" />
             <span>Siteler</span>

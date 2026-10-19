@@ -101,8 +101,8 @@ class ComponentsTest extends TestCase
             ->assertSee('Güncelleme var')
             ->assertSee('1.24.0-2ubuntu7.1')
             ->assertSee('Gerekli. Servik tüm sitelerde Nginx kullanır.')
-            ->assertSee('PHP 8.4')
-            ->assertSee('1 site · webmail (Roundcube)')
+            ->assertDontSee('PHP 8.4')
+            ->assertSee('artık Hizmetler sayfasında')
             ->assertSee('Kurulu değil')
             ->assertSee('Yeni siteler için varsayılan')
             ->assertSee('Nginx + Apache + PHP-FPM (Apache kurulu değil)');
@@ -266,8 +266,8 @@ class ComponentsTest extends TestCase
             ->set('webServer', 'apache')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertDispatched('toast', fn ($name, $p) => $p['undo']['method'] === 'undo' && $p['undo']['args'] === ['8.4', 'nginx'])
-            ->call('undo', '8.4', 'nginx');
+            ->assertDispatched('toast', fn ($name, $p) => $p['undo']['method'] === 'undo' && $p['undo']['args'] === ['8.4', 'nginx', []])
+            ->call('undo', '8.4', 'nginx', []);
 
         $applied = $this->agent->called('site.apply');
         $this->assertSame(['8.3', 'apache'], [$applied[0]['php_version'], $applied[0]['web_server']]);

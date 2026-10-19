@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Customers;
 
+use App\Jobs\ApplySitePhp;
 use App\Models\Customer;
 use App\Models\Package;
 use App\Models\SystemUser;
@@ -80,6 +81,9 @@ class CustomerIndex extends Component
     public array $pkgPhp = [];
 
     public bool $pkgDefault = false;
+
+    /** Most memory_limit (MB) the package's sites get; '' for no limit. */
+    public string $pkgPhpMemory = '';
 
     /** @var list<string> */
     public array $installedPhp = [];
@@ -224,6 +228,7 @@ class CustomerIndex extends Component
         $this->allPhp = $package?->php_versions === null;
         $this->pkgPhp = $package->php_versions ?? [];
         $this->pkgDefault = (bool) $package?->is_default;
+        $this->pkgPhpMemory = $package ? (string) $package->max_php_memory_mb : '512';
         try {
             $this->installedPhp = array_values($agent->call('php.versions') ?? []);
         } catch (AgentException) {
@@ -249,10 +254,12 @@ class CustomerIndex extends Component
         $rules['features.*'] = [Rule::in(array_keys(Package::FEATURES))];
         $rules['pkgPhp'] = ['array', $this->allPhp ? 'nullable' : 'min:1'];
         $rules['pkgPhp.*'] = ['regex:/^\d+\.\d+$/'];
+        $this->pkgPhpMemory = trim($this->pkgPhpMemory);
+        $rules['pkgPhpMemory'] = ['nullable', 'integer', 'min:32', 'max:65536'];
         $this->validate($rules, [
             'pkgName.unique' => 'Bu adda bir paket zaten var.',
             'pkgPhp.min' => 'En az bir PHP sürümü seçin ya da tümüne izin verin.',
-        ], array_merge(['pkgName' => 'paket adı'], array_combine(
+        ], array_merge(['pkgName' => 'paket adı', 'pkgPhpMemory' => 'PHP bellek sınırı'], array_combine(
             array_map(fn ($k) => "limits.{$k}", array_keys(Package::LIMITS)),
             array_map(fn ($l) => mb_strtolower($l[1]), Package::LIMITS),
         )));
@@ -268,13 +275,22 @@ class CustomerIndex extends Component
         // Commands and Tinker are part of the Laravel toolkit.
         $data['allow_shell'] = $data['allow_shell'] && $data['allow_laravel'];
         $data['php_versions'] = $this->allPhp ? null : array_values($this->pkgPhp);
+        $data['max_php_memory_mb'] = $this->pkgPhpMemory === '' ? null : (int) $this->pkgPhpMemory;
 
         $package = $this->packageEditId ? Package::findOrFail($this->packageEditId) : new Package;
         if ($package->exists && $package->is_default && ! $this->pkgDefault) {
             // There is always a default package; pick another one to change it.
             $data['is_default'] = true;
         }
-        $package->fill($data)->save();
+        $package->fill($data);
+        // Sites take the package's PHP limits with their next pool write.
+        $phpChanged = $package->exists && $package->isDirty(['allow_php_settings', 'max_php_memory_mb']);
+        $package->save();
+        if ($phpChanged) {
+            foreach ($package->customers as $customer) {
+                ApplySitePhp::forCustomer($customer);
+            }
+        }
         if ($package->is_default) {
             Package::whereKeyNot($package->id)->update(['is_default' => false]);
         }

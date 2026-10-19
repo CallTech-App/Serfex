@@ -14,9 +14,7 @@ use App\Services\Databases\DatabaseServers;
 use App\Services\Mail\MailSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
-use Livewire\Attributes\Json;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -32,14 +30,13 @@ use Livewire\Component;
 #[Title('Yazılım Yönetimi · Servik')]
 class ComponentIndex extends Component
 {
+    use ShowsComponentOperations;
+
     #[Url(as: 'sekme', except: 'web')]
     public string $tab = 'web';
 
     /** @var array{id: string, action: string}|null asked to confirm */
     public ?array $confirming = null;
-
-    /** The operation whose progress is shown. */
-    public ?int $operationId = null;
 
     public string $defaultStack = Site::NGINX;
 
@@ -95,50 +92,6 @@ class ComponentIndex extends Component
             return;
         }
         $this->operationId = $result->id;
-    }
-
-    /**
-     * Shows the log of the operation running on a row.
-     */
-    public function show(int $operationId): void
-    {
-        if (ComponentOperation::whereKey($operationId)->exists()) {
-            $this->operationId = $operationId;
-        }
-    }
-
-    public function closeOperation(): void
-    {
-        $this->operationId = null;
-    }
-
-    /**
-     * The run log of the operation shown, from $offset on.
-     *
-     * @return array{data: string, offset: int, more: bool, done: bool, status: string, error?: ?string}|null
-     */
-    #[Json, Renderless]
-    public function readRun(string $run, int $offset = 0): ?array
-    {
-        $op = ComponentOperation::where('run', $run)->first();
-        if ($op === null) {
-            return null;
-        }
-        try {
-            $chunk = app(AgentClient::class)->call('component.run.read', ['run' => $run, 'offset' => max(0, $offset)]);
-        } catch (AgentException) {
-            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => ! $op->isRunning(), 'status' => $op->status, 'error' => 'Sunucu ajanına ulaşılamıyor.'];
-        }
-        $next = (int) ($chunk['offset'] ?? 0);
-
-        return [
-            'data' => (string) ($chunk['data'] ?? ''),
-            'offset' => $next,
-            'more' => $next < (int) ($chunk['size'] ?? 0),
-            'done' => ! $op->isRunning(),
-            'status' => $op->status,
-            'error' => $op->status === 'failed' ? $op->error : null,
-        ];
     }
 
     /**
@@ -231,7 +184,7 @@ class ComponentIndex extends Component
         return view('livewire.components.index', [
             'groups' => $groups ?? [],
             'operation' => $operation,
-            'operationName' => $operation ? $components->name($operation->component) : null,
+            'operationName' => $operation ? $components->operationName($operation) : null,
             'busy' => $busy || collect($groups ?? [])->flatten(1)->contains(fn ($r) => $r['busy'] !== null),
             'checkedAt' => $components->checkedAt(),
             'apacheInstalled' => $components->isInstalled('apache'),

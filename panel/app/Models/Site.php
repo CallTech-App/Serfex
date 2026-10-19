@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CertificateStatus;
 use App\Enums\SiteStatus;
+use App\Services\Php\PhpVersions;
 use App\Support\CertificateState;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -41,6 +42,7 @@ class Site extends Model
     {
         return [
             'aliases' => 'array',
+            'php_settings' => 'array',
             'status' => SiteStatus::class,
             'provisioned_at' => 'datetime',
             'https_redirect' => 'boolean',
@@ -247,6 +249,9 @@ class Site extends Model
         }
         if ($this->hasHttps()) {
             $spec['tls'] = ['certificate' => $this->certificate->name, 'redirect' => $this->https_redirect];
+        }
+        if (($php = app(PhpVersions::class)->siteSpec($this)) !== null) {
+            $spec['php'] = $php;
         }
         if ($this->isSuspended()) {
             return $spec + ['suspended' => true];
