@@ -79,19 +79,31 @@ func directive(conf []byte, name string) string {
 }
 
 // setDirective replaces the first directive name (commented out or not)
-// in an Nginx configuration.
-func setDirective(conf []byte, name, value string) ([]byte, error) {
+// in an Nginx configuration. A configuration without the line gets it at
+// the top of block ("" for the main context, "events", "http").
+func setDirective(conf []byte, block, name, value string) ([]byte, error) {
 	re := regexp.MustCompile(`(?m)^([ \t]*)(?:#[ \t]*)?` + regexp.QuoteMeta(name) + `[ \t]+[^;\n]*;`)
-	loc := re.FindSubmatchIndex(conf)
-	if loc == nil {
-		return nil, fmt.Errorf("%s has no %s line", nginxConf, name)
+	if loc := re.FindSubmatchIndex(conf); loc != nil {
+		var out bytes.Buffer
+		out.Write(conf[:loc[0]])
+		out.Write(conf[loc[2]:loc[3]])
+		fmt.Fprintf(&out, "%s %s;", name, value)
+		out.Write(conf[loc[1]:])
+		return out.Bytes(), nil
 	}
-	indent := conf[loc[2]:loc[3]]
+	at, indent := 0, ""
+	if block != "" {
+		open := regexp.MustCompile(`(?m)^([ \t]*)` + regexp.QuoteMeta(block) + `[ \t]*\{[^\n]*\n`)
+		loc := open.FindSubmatchIndex(conf)
+		if loc == nil {
+			return nil, fmt.Errorf("%s has no %s block", nginxConf, block)
+		}
+		at, indent = loc[1], string(conf[loc[2]:loc[3]])+"    "
+	}
 	var out bytes.Buffer
-	out.Write(conf[:loc[0]])
-	out.Write(indent)
-	fmt.Fprintf(&out, "%s %s;", name, value)
-	out.Write(conf[loc[1]:])
+	out.Write(conf[:at])
+	fmt.Fprintf(&out, "%s%s %s;\n", indent, name, value)
+	out.Write(conf[at:])
 	return out.Bytes(), nil
 }
 
@@ -202,12 +214,12 @@ func (m *Manager) applyNginx(ctx context.Context, t *txn.Tx, n tuning.Nginx) err
 		return err
 	}
 	if err == nil {
-		for _, kv := range [][2]string{
-			{"worker_processes", n.WorkerProcesses},
-			{"worker_connections", strconv.Itoa(n.WorkerConnections)},
-			{"keepalive_timeout", strconv.Itoa(n.KeepaliveTimeout)},
+		for _, d := range [][3]string{
+			{"", "worker_processes", n.WorkerProcesses},
+			{"events", "worker_connections", strconv.Itoa(n.WorkerConnections)},
+			{"http", "keepalive_timeout", strconv.Itoa(n.KeepaliveTimeout)},
 		} {
-			if conf, err = setDirective(conf, kv[0], kv[1]); err != nil {
+			if conf, err = setDirective(conf, d[0], d[1], d[2]); err != nil {
 				return err
 			}
 		}

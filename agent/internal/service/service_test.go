@@ -228,3 +228,27 @@ func TestDatabaseAndPostfixSettings(t *testing.T) {
 		t.Errorf("service without settings: %v", err)
 	}
 }
+
+func TestSetDirectiveAddsMissingLines(t *testing.T) {
+	conf := []byte("user www-data;\n\nevents {\n\t# multi_accept on;\n}\n\nhttp {\n    sendfile on;\n}\n")
+	for _, d := range [][3]string{
+		{"", "worker_processes", "auto"},
+		{"events", "worker_connections", "1024"},
+		{"http", "keepalive_timeout", "65"},
+	} {
+		var err error
+		if conf, err = setDirective(conf, d[0], d[1], d[2]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := "worker_processes auto;\nuser www-data;\n\nevents {\n    worker_connections 1024;\n\t# multi_accept on;\n}\n\nhttp {\n    keepalive_timeout 65;\n    sendfile on;\n}\n"
+	if string(conf) != want {
+		t.Fatalf("got:\n%s", conf)
+	}
+	if again, _ := setDirective(conf, "http", "keepalive_timeout", "30"); !strings.Contains(string(again), "    keepalive_timeout 30;\n    sendfile") {
+		t.Fatalf("second set:\n%s", again)
+	}
+	if _, err := setDirective([]byte("user www-data;\n"), "http", "keepalive_timeout", "65"); err == nil {
+		t.Fatal("a configuration without an http block was accepted")
+	}
+}
