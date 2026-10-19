@@ -82,20 +82,14 @@ func TestRealHost(t *testing.T) {
 		return m
 	}
 	call(files.Request{Op: "upload", Path: "public_html", Name: "hello.php", Upload: "up-realhost1", Data: []byte(`<?php echo "from ", posix_getpwuid(posix_geteuid())['name'];`), Final: true})
-	if got := get(t, "/hello.php"); got != "from "+owner {
-		t.Fatalf("uploaded PHP answered %q", got)
-	}
+	expect(t, "/hello.php", "from "+owner)
 	text := call(files.Request{Op: "text", Path: "public_html/hello.php"})
 	call(files.Request{Op: "save", Path: "public_html/hello.php", Data: []byte(`<?php echo "edited";`), MTime: int64(text["mtime"].(float64))})
-	if got := get(t, "/hello.php"); got != "edited" {
-		t.Fatalf("edited PHP answered %q", got)
-	}
+	expect(t, "/hello.php", "edited")
 	assertOwner(t, filepath.Join(res.DocumentRoot, "hello.php"), ownerUser.UID)
 	del := call(files.Request{Op: "delete", Paths: []string{"public_html/hello.php"}})
 	call(files.Request{Op: "trash.restore", IDs: []string{del["ids"].([]any)[0].(string)}})
-	if got := get(t, "/hello.php"); got != "edited" {
-		t.Fatalf("restored PHP answered %q", got)
-	}
+	expect(t, "/hello.php", "edited")
 	// The helper cannot read what the site's user cannot.
 	if _, err := fm.Do(ctx, files.Spec{User: owner, Domain: domain, Request: files.Request{Op: "list", Path: "../../../../root"}}); err == nil {
 		t.Fatal("the file manager left the site")
@@ -131,9 +125,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatalf("upload: %v %s", err, out)
 	}
 	assertOwner(t, filepath.Join(res.DocumentRoot, "up.php"), ownerUser.UID)
-	if got := get(t, "/up.php"); got != "sftp" {
-		t.Fatalf("SFTP upload answered %q", got)
-	}
+	expect(t, "/up.php", "sftp")
 	if fi, err := os.Stat(filepath.Join(res.DocumentRoot, "up.php")); err != nil || fi.Mode().Perm() != 0o644 {
 		t.Fatalf("upload mode %v (%v)", fi.Mode(), err)
 	}
@@ -208,17 +200,26 @@ func names(out string, err error) (string, error) {
 	return strings.Join(keep, ","), err
 }
 
-func get(t *testing.T, path string) string {
+// expect fetches path from the local Nginx until it answers want; the
+// site's vhost is loaded asynchronously after the reload.
+func expect(t *testing.T, path, want string) {
 	t.Helper()
-	req, _ := http.NewRequest("GET", "http://127.0.0.1"+path, nil)
-	req.Host = domain
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
+	var got string
+	for i := 0; i < 40; i++ {
+		req, _ := http.NewRequest("GET", "http://127.0.0.1"+path, nil)
+		req.Host = domain
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if got = strings.TrimSpace(string(b)); got == want {
+				return
+			}
+		} else {
+			got = err.Error()
+		}
+		time.Sleep(250 * time.Millisecond)
 	}
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	return strings.TrimSpace(string(b))
+	t.Fatalf("%s answered %q, not %q", path, got, want)
 }
 
 func assertOwner(t *testing.T, p string, uid int) {
