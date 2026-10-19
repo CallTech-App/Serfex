@@ -110,7 +110,14 @@ type Manager struct {
 	h       host.Host
 	webUser string
 	mu      sync.Mutex
+
+	// MaxChildren, when set, returns a temporary PHP-FPM worker limit for
+	// a site (see package monitor); 0 means DefaultMaxChildren.
+	MaxChildren func(domain string) int
 }
+
+// DefaultMaxChildren is how many PHP-FPM workers a site's pool may run.
+const DefaultMaxChildren = 10
 
 // NewManager returns a Manager. webUser is the account Nginx runs as.
 func NewManager(h host.Host, webUser string) *Manager {
@@ -118,7 +125,7 @@ func NewManager(h host.Host, webUser string) *Manager {
 }
 
 type paths struct {
-	home, siteDir, docroot, logDir, socket, nginxAvail, nginxEnabled, fpm string
+	home, siteDir, docroot, logDir, socket, status, nginxAvail, nginxEnabled, fpm string
 }
 
 func layout(domain, user, php, webRoot string) paths {
@@ -132,7 +139,8 @@ func layout(domain, user, php, webRoot string) paths {
 		siteDir:      site,
 		docroot:      site + "/" + webRoot,
 		logDir:       "/var/log/servik/sites/" + domain,
-		socket:       "/run/php/servik-" + domain + ".sock",
+		socket:       PHPSocket(domain),
+		status:       StatusSocket(domain),
 		nginxAvail:   "/etc/nginx/sites-available/" + domain + ".conf",
 		nginxEnabled: "/etc/nginx/sites-enabled/" + domain + ".conf",
 		fpm:          fpmPool(php, domain),
@@ -140,6 +148,24 @@ func layout(domain, user, php, webRoot string) paths {
 }
 
 func fpmPool(php, domain string) string { return "/etc/php/" + php + "/fpm/pool.d/" + domain + ".conf" }
+
+// PHPSocket is where a site's PHP-FPM pool listens.
+func PHPSocket(domain string) string { return "/run/php/servik-" + domain + ".sock" }
+
+// StatusSocket is where a site's PHP-FPM pool answers status requests.
+func StatusSocket(domain string) string { return "/run/php/servik-" + domain + ".status.sock" }
+
+// AccessLog is the Nginx access log of a site.
+func AccessLog(domain string) string { return "/var/log/servik/sites/" + domain + "/access.log" }
+
+func (m *Manager) maxChildren(domain string) int {
+	if m.MaxChildren != nil {
+		if n := m.MaxChildren(domain); n > 0 {
+			return n
+		}
+	}
+	return DefaultMaxChildren
+}
 
 // PHPVersions lists the PHP versions that have PHP-FPM installed.
 func (m *Manager) PHPVersions() ([]string, error) {
@@ -236,6 +262,8 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		DocumentRoot: p.docroot,
 		LogDir:       p.logDir,
 		PHPSocket:    p.socket,
+		StatusSocket: p.status,
+		MaxChildren:  m.maxChildren(spec.Domain),
 		IPv6:         m.hasIPv6(),
 		ACMERoot:     cert.Webroot,
 	}

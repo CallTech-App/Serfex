@@ -199,9 +199,13 @@ listen.group = {{.WebUser}}
 listen.mode = 0660
 
 pm = ondemand
-pm.max_children = 10
+pm.max_children = {{.MaxChildren}}
 pm.process_idle_timeout = 30s
 pm.max_requests = 500
+; Live monitoring reads the pool's status here; Nginx never passes this
+; path, and the status socket only answers root and the web server.
+pm.status_path = /servik-fpm-status
+pm.status_listen = {{.StatusSocket}}
 
 chdir = /
 php_admin_value[open_basedir] = {{.Home}}/
@@ -235,6 +239,8 @@ type tmplData struct {
 	DocumentRoot string
 	LogDir       string
 	PHPSocket    string
+	StatusSocket string
+	MaxChildren  int
 	IPv6         bool
 	ACMERoot     string
 

@@ -230,6 +230,7 @@ func TestRealHost(t *testing.T) {
 	}
 
 	webmail(t, m, veli)
+	queue(t, m)
 
 	// Removing a mailbox stops its logins at once.
 	spec.Mailboxes = spec.Mailboxes[:1]
@@ -429,5 +430,51 @@ func webmail(t *testing.T, m *Manager, address string) {
 	resp.Body.Close()
 	if strings.Contains(string(body), `"task":"mail"`) {
 		t.Fatal("a used token signed in again")
+	}
+}
+
+// queue sends a message to an unreachable address, finds it in the queue,
+// holds and releases it, then deletes it.
+func queue(t *testing.T, m *Manager) {
+	t.Helper()
+	ctx := context.Background()
+	t.Cleanup(func() { _ = exec.Command("postsuper", "-d", "ALL").Run() })
+	cmd := exec.Command("sendmail", "-f", "bilgi@kuyruk.test", "biri@[192.0.2.1]")
+	cmd.Stdin = strings.NewReader("Subject: Kuyruk\n\nBekleyecek.\n")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("sendmail: %v: %s", err, out)
+	}
+	find := func(ok func(QueueDomain) bool) QueueDomain {
+		t.Helper()
+		var last Queue
+		for i := 0; i < 180; i++ {
+			q, err := m.Queue(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			last = q
+			for _, d := range q.Domains {
+				if d.Domain == "kuyruk.test" && ok(d) {
+					return d
+				}
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		t.Fatalf("queue never got there: %+v", last)
+		return QueueDomain{}
+	}
+	find(func(d QueueDomain) bool { return d.Active+d.Deferred == 1 })
+	// A message being delivered is held once the attempt ends.
+	n, err := m.HoldDomain(ctx, "kuyruk.test")
+	if err != nil || n != 1 {
+		t.Fatalf("hold = %d, %v", n, err)
+	}
+	find(func(d QueueDomain) bool { return d.Hold == 1 })
+	if n, err := m.ReleaseDomain(ctx, "kuyruk.test"); err != nil || n != 1 {
+		t.Fatalf("release = %d, %v", n, err)
+	}
+	find(func(d QueueDomain) bool { return d.Hold == 0 })
+	if err := m.FlushQueue(ctx); err != nil {
+		t.Fatal(err)
 	}
 }

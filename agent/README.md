@@ -54,6 +54,17 @@ Methods so far:
 | `laravel.key` | target | the site's deploy key (ed25519), created on first use |
 | `laravel.health` | `domain`, `path` | requests the path through the site's own Nginx; returns `ok`, `status`, `ms` |
 | `laravel.remove` | target, `remove_files` | stops workers and the timer, and with `remove_files` deletes the releases |
+| `monitor.live` | `window`, `history` | averages over the last `window` seconds (2–600): per site CPU, memory, disk I/O, PHP-FPM pool, requests, errors, database connections, mail, top addresses and limit; accounts, system services, the server, and suspect addresses; with `history` the samples of that site |
+| `monitor.limit.apply` | `domain`, `cpu`, `memory_mb`, `php_workers`, `seconds` | caps a site for a while (replacing its limit); returns the limit with `expires_at` |
+| `monitor.limit.remove` | `domain` | ends a site's limit now; returns `removed` |
+| `monitor.limits` | | the limits in force |
+| `php.restart` | `domain` | stops the site's PHP-FPM workers (new ones start with the next request); returns `stopped` |
+| `firewall.block` | `address`, `seconds`, `reason` | drops all traffic from an address or prefix, for `seconds` (0: until removed) |
+| `firewall.unblock` | `address` | removes a block; returns `removed` |
+| `firewall.list` | | the blocks in force |
+| `mail.queue` | | Postfix's queue: counts, messages grouped by sender domain, the oldest 200 messages |
+| `mail.queue.flush` | | retries every deferred message now |
+| `mail.queue.hold` / `mail.queue.release` | `domain` | holds or releases every queued message of a sender domain (`""` for bounces); returns `messages` |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate, and `web_root`
@@ -276,6 +287,88 @@ from Git, edits `.env`, turns maintenance mode on and off, starts queue
 workers and the scheduler, and removes everything again. It needs Nginx,
 PHP-FPM with the usual Laravel extensions and network access.
 
+## Live monitoring
+
+Every two seconds the agent samples the machine and keeps the last ten
+minutes in memory; `monitor.live` returns averages over the window the
+panel asks for.
+
+- **Who uses what.** CPU time, resident anonymous memory (`RssAnon`: heap
+  and stacks, not the shared opcache) and disk I/O come from `/proc`. A
+  process belongs to a site when it is one of the site's PHP-FPM workers
+  (`php-fpm: pool <domain>`), runs in one of its Laravel units, or belongs
+  to an account with a single site. Other processes are grouped by systemd
+  unit: Servik's own services (`servik-*`, the panel's PostgreSQL), the
+  services every site shares (Nginx, PHP-FPM masters, PowerDNS, Postfix,
+  Dovecot, Rspamd, MySQL) and the rest of the system.
+- **PHP-FPM.** Each pool answers status requests on its own socket
+  (`pm.status_listen = /run/php/servik-<domain>.status.sock`), which Nginx
+  never passes; it reports busy and idle workers, the backlog and whether
+  the pool hit `pm.max_children`.
+- **Traffic.** New lines of each site's access log give requests per
+  second, 4xx and 5xx answers and the busiest addresses. A rotated log is
+  followed; a log that grows too fast is skipped ahead.
+- **Suspects.** An address is listed when, in the last minute, it sent one
+  site 300 requests, 20 POSTs to a login page (`/wp-login.php`,
+  `/xmlrpc.php`, `/login`, ...) or got 60 "404" answers, or when it failed
+  10 mail (Postfix SASL, Dovecot) or SSH logins in ten minutes. A suspect
+  stays listed for ten minutes after it goes quiet. The agent never blocks
+  on its own; the panel decides.
+- **Databases and mail.** Connections to the customers' MySQL or
+  PostgreSQL count for the account whose name the database or user starts
+  with (`<account>` or `<account>_...`). Sent mail counts for the account
+  of PHP's `mail()` (Postfix pickup's uid) or for the site of the sender's
+  domain, once per message.
+
+### Blocking addresses
+
+`firewall.block` adds the address to Servik's own nftables table, so the
+distribution's firewall stays untouched:
+
+```
+table inet servik
+  set blocked4, blocked6     addresses and prefixes, each with its own timeout
+  chain input                priority filter - 10: drops them before other rules
+/etc/servik/firewall/blocks.json   blocks as last applied (restored at start)
+```
+
+The kernel ends a timed block by itself, so it ends on time even while the
+agent or the panel is down. Loopback, multicast, the server's own
+addresses and prefixes wider than /16 (IPv4) or /48 (IPv6) are refused.
+A block covers the whole server: sites share their addresses.
+
+### Temporary limits
+
+`monitor.limit.apply` caps one site for 1 minute to 7 days:
+
+- **PHP workers** through `pm.max_children` in the site's pool (reloaded
+  after `php-fpm -t`); `site.apply` keeps the value while the limit lasts.
+- **CPU and memory** through a systemd scope,
+  `servik-limit-<domain>.scope` with `CPUQuota` and `MemoryMax`, created
+  with the site's PHP-FPM workers (`Delegate=yes`). PHP-FPM forks new
+  workers from its master, so every sample moves the site's new workers
+  into the scope. The site's Laravel units get the same caps
+  (`systemctl set-property --runtime`).
+
+Limits live in `/etc/servik/limits/<domain>.json`; the agent ends them on
+time, also after a restart. Ending one sets the caps back to unlimited and
+the pool to its usual 10 workers; workers already in the scope finish
+their requests there.
+
+`php.restart` stops a site's PHP-FPM workers (TERM, then KILL after three
+seconds) without touching other sites; PHP-FPM starts new ones with the
+next request.
+
+```sh
+sudo go test -tags realhost -run TestRealHost ./internal/monitor
+```
+
+serves a site through Nginx and PHP-FPM under systemd, measures a busy PHP
+request through `/proc` and the pool's status socket, detects a request
+flood, blocks and unblocks the address with nftables, caps the site's CPU
+and memory through its scope (also for workers started later), limits its
+PHP workers and restarts its pool.
+
 ## Dry run
 
 `-dry-run` swaps the real system for a simulator: files go under `-root`
@@ -284,6 +377,9 @@ PHP-FPM with the usual Laravel extensions and network access.
 in memory, certificates come from a local "Servik Dry Run CA" and mail
 packages are only pretended to be installed, and `git clone` or
 `composer create-project` write a small stand-in Laravel application.
+Live monitoring makes up a plausible load for the sites under `-root`
+(one of them under attack, one busy), and a mail queue once the mail
+server is "installed".
 The panel's integration tests and local development use this mode.
 
 ```sh

@@ -202,6 +202,42 @@ jobs:
           sudo sh -c 'tail -n 50 /var/log/servik/laravel/*/proc-*.log' || true
           sudo sh -c 'cat /etc/nginx/sites-enabled/*' || true
 
+  agent-monitor:
+    name: Agent monitors, blocks and limits a real site
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx, PHP-FPM and nftables
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm nftables
+          sudo systemctl start nginx php8.3-fpm
+
+      # Serves a site, measures a busy PHP request, detects a request flood,
+      # blocks the flooding address with nftables, caps the site's CPU and
+      # memory through a systemd scope, limits its PHP workers and restarts
+      # its pool.
+      - name: Monitor and intervene on a real site
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 10m ./internal/monitor
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u php8.3-fpm -u 'servik-limit-*' -n 100 || true
+          sudo nft list ruleset || true
+          sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
+
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04

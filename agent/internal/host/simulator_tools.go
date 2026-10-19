@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -108,6 +109,8 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 			}
 		}
 		return string(b), nil
+	case c.Name == "postqueue" || c.Name == "postsuper":
+		return s.postfixQueue(c)
 	case c.Name == "git":
 		return s.git(args, cwd)
 	case c.Name == "dd":
@@ -174,6 +177,51 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return b.String(), nil
 	}
 	return "", nil
+}
+
+// SimMailQueue holds the simulated Postfix queue, one "postqueue -j"
+// line per message. "postsuper -h -" and "-H -" move the messages named on
+// standard input to and from the hold queue.
+const SimMailQueue = "/var/spool/postfix/servik-sim-queue.jsonl"
+
+func (s *Simulator) postfixQueue(c Command) (string, error) {
+	b, err := os.ReadFile(s.Path(SimMailQueue))
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if c.Name == "postqueue" {
+		if len(c.Args) > 0 && c.Args[0] == "-j" {
+			return string(b), nil
+		}
+		return "", nil
+	}
+	if len(c.Args) != 2 || c.Args[1] != "-" || (c.Args[0] != "-h" && c.Args[0] != "-H") {
+		return "", fmt.Errorf("postsuper: unsupported arguments %v", c.Args)
+	}
+	ids := map[string]bool{}
+	for _, id := range strings.Fields(string(c.Stdin)) {
+		ids[id] = true
+	}
+	var out []string
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		var m map[string]any
+		if json.Unmarshal([]byte(line), &m) != nil {
+			continue
+		}
+		if id, _ := m["queue_id"].(string); ids[id] {
+			if c.Args[0] == "-h" {
+				m["queue_name"] = "hold"
+			} else {
+				m["queue_name"] = "deferred"
+			}
+		}
+		nb, _ := json.Marshal(m)
+		out = append(out, string(nb))
+	}
+	return "", os.WriteFile(s.Path(SimMailQueue), []byte(strings.Join(out, "\n")+"\n"), 0o644)
 }
 
 func (s *Simulator) git(args []string, cwd string) (string, error) {
