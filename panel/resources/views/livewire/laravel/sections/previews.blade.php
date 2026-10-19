@@ -86,7 +86,7 @@
                                 @endif
                                 <div class="font-mono text-2xs text-muted">{{ $p->branch }}@if ($p->created_by) <span class="font-sans">· {{ $p->created_by }}</span>@endif</div>
                             </td>
-                            <td class="px-3 py-3"><a href="{{ $address }}" target="_blank" rel="noopener" class="font-mono text-[13px] text-accent hover:underline">{{ $p->domain() }}</a></td>
+                            <td class="px-3 py-3 whitespace-nowrap"><a href="{{ $address }}" target="_blank" rel="noopener" class="font-mono text-[13px] text-accent hover:underline">{{ $p->domain() }}</a></td>
                             <td class="px-3 py-3"><x-status-badge :status="Previews::state($p)" />@if ($p->error)<div class="mt-0.5 max-w-xs text-2xs break-words text-crit">{{ $p->error }}</div>@endif</td>
                             <td class="space-x-3 px-3 py-3 text-right whitespace-nowrap">
                                 @if ($p->previewApp)

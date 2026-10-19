@@ -70,7 +70,7 @@
                                 @if ($b->error)<div class="text-2xs text-warn">Alınmayan: {{ $b->error }}</div>@endif
                             @endif
                         </td>
-                        <td class="num px-3 py-3 text-right whitespace-nowrap">{{ $b->size !== null ? Bytes::format($b->size) : '—' }}</td>
+                        <td class="num px-3 py-3 text-right whitespace-nowrap">{{ $b->size !== null && $b->status === 'succeeded' ? Bytes::format($b->size) : '—' }}</td>
                         <td class="space-x-3 px-3 py-3 text-right whitespace-nowrap">
                             @if ($b->status === 'succeeded')
                                 <a href="{{ route('laravel.backup.download', ['app' => $app->id, 'backup' => $b->id]) }}" class="{{ $link }}">İndir</a>

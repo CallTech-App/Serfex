@@ -102,7 +102,7 @@
                 @endforeach
                 @foreach ($custom as $p)
                     <tr wire:key="p-{{ $p->id }}" class="hover:bg-surface-2/60">
-                        <td class="py-3 pr-3 pl-5 align-top font-mono text-[13px]">{{ $p->name }}</td>
+                        <td class="py-3 pr-3 pl-5 align-top font-mono text-[13px] whitespace-nowrap">{{ $p->name }}</td>
                         <td class="px-3 py-3 font-mono text-[12.5px] break-all text-muted">{{ $p->command }}</td>
                         <td class="px-3 py-3 align-top"><x-status-badge :status="$badge($p)" /></td>
                         <td class="space-x-3 px-3 py-3 text-right align-top whitespace-nowrap">
