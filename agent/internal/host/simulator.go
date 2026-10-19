@@ -211,13 +211,13 @@ func (s *Simulator) useradd(args []string) error {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
-		case "--home-dir", "--shell", "--comment":
+		case "--home-dir", "--shell", "--comment", "--uid", "--gid", "--groups":
 			if i+1 >= len(args) {
 				return fmt.Errorf("useradd: %s needs a value", a)
 			}
 			opts[a] = args[i+1]
 			i++
-		case "--user-group", "--no-create-home", "--system":
+		case "--user-group", "--no-create-home", "--system", "--non-unique":
 		default:
 			if strings.HasPrefix(a, "-") {
 				return fmt.Errorf("useradd: unsupported option %s", a)
@@ -245,14 +245,27 @@ func (s *Simulator) useradd(args []string) error {
 			uid = n + 1
 		}
 	}
-	entry := fmt.Sprintf("%s:x:%d:%d:%s:%s:%s\n", name, uid, uid, opts["--comment"], opts["--home-dir"], opts["--shell"])
+	gid := uid
+	if v, ok := opts["--uid"]; ok {
+		// --non-unique --uid UID --gid GID: an alias of an existing
+		// account (SFTP accounts), without a group of its own.
+		uid, _ = strconv.Atoi(v)
+		gid, _ = strconv.Atoi(opts["--gid"])
+	}
+	entry := fmt.Sprintf("%s:x:%d:%d:%s:%s:%s\n", name, uid, gid, opts["--comment"], opts["--home-dir"], opts["--shell"])
 	if err := appendFile(s.Path("/etc/passwd"), entry); err != nil {
 		return err
+	}
+	if _, ok := opts["--uid"]; ok {
+		return nil
 	}
 	return appendFile(s.Path("/etc/group"), fmt.Sprintf("%s:x:%d:\n", name, uid))
 }
 
 func (s *Simulator) userdel(args []string) error {
+	if len(args) == 2 && args[0] == "-f" {
+		args = args[1:]
+	}
 	if len(args) != 1 {
 		return fmt.Errorf("userdel: expected one user, got %v", args)
 	}

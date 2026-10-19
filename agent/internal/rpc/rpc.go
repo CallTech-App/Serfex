@@ -28,8 +28,9 @@ const (
 	CodeOperationFailed = -32000
 )
 
-// maxRequestBytes bounds a single request line.
-const maxRequestBytes = 1 << 20
+// maxRequestBytes bounds a single request line: uploads arrive in
+// base64 chunks of a few megabytes.
+const maxRequestBytes = 16 << 20
 
 // Request is a JSON-RPC 2.0 request.
 type Request struct {

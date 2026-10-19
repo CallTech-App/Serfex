@@ -381,4 +381,39 @@ class AgentIntegrationTest extends TestCase
         $client->call('db.user.delete', ['server' => 'mysql', 'name' => 'kahve_app'], 30);
         $this->assertSame(['databases' => [], 'users' => []], $client->call('db.list', ['server' => 'mysql'], 30));
     }
+
+    public function test_files_and_ftp_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+        $client->call('site.apply', ['domain' => 'kahveatolyesi.com.tr', 'user' => 'kahve', 'php_version' => '8.4'], 30);
+        $site = ['user' => 'kahve', 'domain' => 'kahveatolyesi.com.tr'];
+
+        $up = $client->call('files.upload', $site + ['path' => 'public_html', 'name' => 'menu.txt', 'upload' => 'up-integration1', 'offset' => 0, 'data' => base64_encode("Türk kahvesi\n"), 'final' => true], 30);
+        $this->assertSame('public_html/menu.txt', $up['path']);
+        $this->assertSame("Türk kahvesi\n", file_get_contents($this->root.'/home/kahve/web/kahveatolyesi.com.tr/public_html/menu.txt'));
+        $this->assertContains('menu.txt', array_column($client->call('files.list', $site + ['path' => 'public_html'], 30)['entries'], 'name'));
+
+        $text = $client->call('files.text', $site + ['path' => 'public_html/menu.txt'], 30);
+        $saved = $client->call('files.save', $site + ['path' => 'public_html/menu.txt', 'data' => base64_encode("Filtre kahve\n"), 'mtime' => $text['mtime']], 30);
+        $this->assertNotSame('', $saved['trash'], 'the previous version goes to the trash');
+
+        $deleted = $client->call('files.delete', $site + ['paths' => ['public_html/menu.txt']], 30);
+        $this->assertFileDoesNotExist($this->root.'/home/kahve/web/kahveatolyesi.com.tr/public_html/menu.txt');
+        $client->call('files.trash.restore', $site + ['ids' => $deleted['ids']], 30);
+        $this->assertSame("Filtre kahve\n", file_get_contents($this->root.'/home/kahve/web/kahveatolyesi.com.tr/public_html/menu.txt'));
+
+        try {
+            $client->call('files.list', $site + ['path' => '../../../etc'], 30);
+            $this->fail('expected a path outside the site to be refused');
+        } catch (AgentException $e) {
+            $this->assertSame(-32008, $e->getCode());
+        }
+
+        $ftp = $client->call('ftp.account.apply', $site + ['name' => 'kahve_deploy', 'dir' => 'public_html', 'password' => 'Uzun-Parola-2026', 'locked' => false], 60);
+        $this->assertSame('/public_html', $ftp['folder']);
+        $this->assertFileExists($this->root.'/etc/ssh/sshd_config.d/50-servik-sftp.conf');
+        $this->assertSame(['kahve_deploy'], array_column($client->call('ftp.account.list', [], 30), 'name'));
+        $client->call('ftp.account.delete', ['name' => 'kahve_deploy'], 60);
+        $this->assertSame([], $client->call('ftp.account.list', [], 30));
+    }
 }

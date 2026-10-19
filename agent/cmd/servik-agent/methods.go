@@ -15,7 +15,9 @@ import (
 	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
+	"github.com/winchester37/servik/agent/internal/files"
 	"github.com/winchester37/servik/agent/internal/firewall"
+	"github.com/winchester37/servik/agent/internal/ftp"
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/monitor"
@@ -48,6 +50,10 @@ const CodeBackupBusy = -32006
 // CodeUpdateBusy says an update or rollback is running.
 const CodeUpdateBusy = -32007
 
+// CodeFileError is a refused or failed file manager operation; the
+// message starts with a stable code ("exists: ...").
+const CodeFileError = -32008
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -61,6 +67,8 @@ type services struct {
 	components *component.Manager
 	backups    *backup.Manager
 	updates    *update.Manager
+	files      *files.Manager
+	ftp        *ftp.Manager
 	dryRun     bool
 }
 
@@ -225,6 +233,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerComponents(srv, svc)
 	registerBackups(srv, svc)
 	registerUpdates(srv, svc)
+	registerFiles(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -406,6 +415,10 @@ func mapError(err error) error {
 	if errors.Is(err, backup.ErrBusy) {
 		return &rpc.Error{Code: CodeBackupBusy, Message: err.Error()}
 	}
+	var fe *files.Error
+	if errors.As(err, &fe) {
+		return &rpc.Error{Code: CodeFileError, Message: fe.Error()}
+	}
 	if errors.Is(err, update.ErrBusy) {
 		return &rpc.Error{Code: CodeUpdateBusy, Message: err.Error()}
 	}
@@ -420,7 +433,8 @@ func mapError(err error) error {
 	var compv *component.ValidationError
 	var bv *backup.ValidationError
 	var uv *update.ValidationError
-	if errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var ftpv *ftp.ValidationError
+	if errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -434,7 +448,8 @@ func mapError(err error) error {
 	var compop *component.OperationError
 	var bop *backup.OperationError
 	var uop *update.OperationError
-	if errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var ftpop *ftp.OperationError
+	if errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -708,5 +723,26 @@ func registerUpdates(srv *rpc.Server, svc services) {
 	// Installing packages for servik-php outlives a request that gives up.
 	handle(srv, "panel.setup", func(ctx context.Context, _ struct{}) (any, error) {
 		return u.Setup(context.WithoutCancel(ctx))
+	})
+}
+
+func registerFiles(srv *rpc.Server, svc services) {
+	for _, op := range files.Ops {
+		handle(srv, "files."+op, func(ctx context.Context, p files.Spec) (any, error) {
+			p.Op = op
+			return svc.files.Do(ctx, p)
+		})
+	}
+	f := svc.ftp
+	srv.Handle("ftp.status", func(ctx context.Context, _ json.RawMessage) (any, error) { return f.Status(ctx), nil })
+	handle(srv, "ftp.account.apply", func(ctx context.Context, p ftp.AccountSpec) (any, error) { return f.Apply(ctx, p) })
+	handle(srv, "ftp.account.delete", func(ctx context.Context, q struct {
+		Name string `json:"name"`
+	}) (any, error) {
+		return map[string]bool{"deleted": true}, f.Delete(ctx, q.Name)
+	})
+	srv.Handle("ftp.account.list", func(context.Context, json.RawMessage) (any, error) {
+		l, err := f.List()
+		return l, mapError(err)
 	})
 }

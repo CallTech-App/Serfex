@@ -8,6 +8,7 @@ use App\Jobs\ProvisionSite;
 use App\Livewire\Attributes\ForCustomers;
 use App\Models\Database;
 use App\Models\DnsZone;
+use App\Models\FtpAccount;
 use App\Models\MailDomain;
 use App\Models\Site;
 use App\Services\Mail\MailSettings;
@@ -102,6 +103,7 @@ class SiteShow extends Component
             'otherSites' => $site->systemUser->sites()->whereKeyNot($site->id)->count(),
             'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->first(),
             'databases' => Database::where('site_id', $site->id)->count(),
+            'ftpAccounts' => FtpAccount::where('site_id', $site->id)->count(),
             'mail' => MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
             'webmail' => app(MailSettings::class)->webmailUrl(),
         ])->title($site->domain.' · Servik');
