@@ -126,7 +126,7 @@
                     <label for="bk-time" class="sm:pt-2">Saat</label>
                     <div>
                         <input id="bk-time" type="time" wire:model="time" class="num h-9 w-32 rounded-md border bg-surface px-3 outline-none focus:border-accent {{ $errors->has('time') ? 'border-crit' : 'border-line' }}">
-                        @error('time')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">Sunucu saatiyle ({{ config('app.timezone') }}).</p>@enderror
+                        @error('time')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">Sunucu saatiyle ({{ config('servik.timezone') }}).</p>@enderror
                     </div>
                     <label for="bk-keep" class="sm:pt-2">Saklanan</label>
                     <div>

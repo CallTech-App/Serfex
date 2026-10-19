@@ -2,21 +2,17 @@
 
 namespace App\Livewire\Ssl;
 
-use App\Enums\CertificateStatus;
-use App\Models\Certificate;
 use App\Models\Setting;
-use App\Models\Site;
 use App\Models\User;
-use App\Services\Ssl\Certificates;
-use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Server-wide SSL settings: the Let's Encrypt account address, automatic
- * certificates for new sites, and the panel's own address and certificate.
+ * Server-wide SSL settings: the Let's Encrypt account address and
+ * automatic certificates for new sites. The panel's own address and
+ * certificate are in Araçlar ve Ayarlar → Genel.
  */
 #[Layout('components.layouts.app')]
 #[Title('SSL ayarları · Servik')]
@@ -26,46 +22,22 @@ class SslSettingsPage extends Component
 
     public bool $auto = true;
 
-    public string $hostname = '';
-
     public function mount(): void
     {
         $this->email = (string) Setting::get('ssl.email', '');
         $this->auto = (bool) Setting::get('ssl.auto', true);
-        $this->hostname = (string) Setting::get('panel.hostname', '');
     }
 
-    public function save(Certificates $certificates): void
+    public function save(): void
     {
         $this->email = trim($this->email);
-        $this->hostname = Hostnames::normalize($this->hostname);
-        $this->validate([
-            'email' => ['nullable', 'email:rfc', 'max:254'],
-            'hostname' => [
-                'nullable',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir ad girin, örneğin panel.ornek.com.tr.'),
-                fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail('Bu ad bir sitede kullanılıyor; panel için ayrı bir ad seçin, örneğin panel.'.$value.'.') : null,
-                fn ($attr, $value, $fail) => $value !== '' && $value === Setting::get('mail.hostname') ? $fail('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.') : null,
-            ],
-        ], [], ['email' => 'e-posta', 'hostname' => 'panel adresi']);
+        $this->validate(['email' => ['nullable', 'email:rfc', 'max:254']], [], ['email' => 'e-posta']);
 
         $previous = $this->current();
         Setting::put('ssl.email', $this->email ?: null);
         Setting::put('ssl.auto', $this->auto);
-        Setting::put('panel.hostname', $this->hostname ?: null);
 
-        // A new panel address gets its certificate right away; the DNS check
-        // keeps Let's Encrypt out of it until the address points here.
-        $issuing = $this->hostname !== '' && $this->hostname !== ($previous['panel.hostname'] ?? '') && ! $this->panelBusy();
-        if ($issuing) {
-            $certificates->issuePanel($this->hostname);
-        }
-
-        $this->dispatch('toast',
-            message: 'SSL ayarları kaydedildi.'.($issuing ? ' Panel sertifikası alınıyor.' : ''),
-            source: $this->getId(),
-            undo: ['method' => 'undoSave', 'args' => [$previous]],
-        );
+        $this->dispatch('toast', message: 'SSL ayarları kaydedildi.', source: $this->getId(), undo: ['method' => 'undoSave', 'args' => [$previous]]);
     }
 
     /**
@@ -73,29 +45,18 @@ class SslSettingsPage extends Component
      */
     public function undoSave(array $previous): void
     {
-        foreach (['ssl.email', 'ssl.auto', 'panel.hostname'] as $key) {
-            Setting::put($key, $previous[$key] ?? null);
-        }
+        $email = $previous['ssl.email'] ?? null;
+        Setting::put('ssl.email', is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null);
+        Setting::put('ssl.auto', (bool) ($previous['ssl.auto'] ?? true));
         $this->mount();
         $this->resetValidation();
         $this->dispatch('toast', message: 'Değişiklik geri alındı.');
     }
 
-    public function issuePanel(Certificates $certificates): void
-    {
-        $hostname = (string) Setting::get('panel.hostname', '');
-        if ($hostname === '' || $this->panelBusy()) {
-            return;
-        }
-        $certificates->issuePanel($hostname);
-        $this->dispatch('toast', message: 'Panel sertifikası alınıyor.');
-    }
-
     public function render(): View
     {
         return view('livewire.ssl.settings', [
-            'panel' => Certificate::where('kind', 'panel')->first(),
-            'savedHostname' => (string) Setting::get('panel.hostname', ''),
+            'panelHostname' => (string) Setting::get('panel.hostname', ''),
             'defaultEmail' => (string) User::query()->orderBy('id')->value('email'),
         ]);
     }
@@ -108,17 +69,6 @@ class SslSettingsPage extends Component
         return [
             'ssl.email' => Setting::get('ssl.email'),
             'ssl.auto' => Setting::get('ssl.auto', true),
-            'panel.hostname' => Setting::get('panel.hostname'),
         ];
-    }
-
-    private function panelBusy(): bool
-    {
-        return Certificate::where('kind', 'panel')->where('status', CertificateStatus::Issuing)->exists();
-    }
-
-    private function usedBySite(string $hostname): bool
-    {
-        return Site::query()->get(['domain', 'aliases'])->contains(fn (Site $s) => in_array($hostname, $s->hostnames(), true));
     }
 }

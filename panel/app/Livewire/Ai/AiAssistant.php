@@ -27,6 +27,8 @@ class AiAssistant extends Component
 
     public function mount(): void
     {
+        // Salt okunur accounts do not use Servik AI: it acts and it costs.
+        abort_if(auth()->user()->isReadOnly(), 403);
         if ($this->conversationId !== null && $this->conversation() === null) {
             $this->conversationId = null;
         }

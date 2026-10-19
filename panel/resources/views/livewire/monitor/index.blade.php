@@ -8,7 +8,7 @@
     use App\Support\Load;
     use Illuminate\Support\Carbon;
     $field = 'h-9 w-full rounded-md border border-line bg-surface px-2.5 text-[13.5px] outline-none focus:border-accent';
-    $tz = config('app.timezone');
+    $tz = config('servik.timezone');
     $hasDb = ($snap['databases'] ?? []) !== [];
     $blockedBy = function (string $ip) use ($blocks) {
         foreach ($blocks as $b) {

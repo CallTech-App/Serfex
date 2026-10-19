@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Databases\DatabaseServers;
+use App\Services\Settings\PanelSettings;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -42,7 +43,7 @@ class SetupDatabaseServers implements ShouldBeUnique, ShouldQueue
                 $agent->call('db.server.install', ['product' => $product], 840);
             }
             $servers->saveSetup(['step' => 'manager']);
-            $agent->call('db.manager.setup', ['port' => $servers->managerPort()], 840);
+            $agent->call('db.manager.setup', app(PanelSettings::class)->managerSetupParams(), 840);
         } catch (AgentException $e) {
             $servers->status();
             $servers->saveSetup(['state' => 'failed', 'error' => $e->reason]);

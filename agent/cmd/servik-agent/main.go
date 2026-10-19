@@ -30,6 +30,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/backup"
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/component"
+	"github.com/winchester37/servik/agent/internal/cron"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/files"
@@ -44,6 +45,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/security"
 	"github.com/winchester37/servik/agent/internal/service"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/system"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
 )
@@ -61,7 +63,7 @@ func main() {
 	socketGroup := flag.String("socket-group", "", "group that may connect to the socket (the panel's account, servik, on installed servers)")
 	updateRun := flag.String("update-run", "", "perform a started update or rollback (the agent starts this itself)")
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage:\n  servik-agent [flags]                  run the agent\n  servik-agent [-socket S] call METHOD [JSON]   call a method of the running agent\n\nFlags:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage:\n  servik-agent [flags]                  run the agent\n  servik-agent [-socket S] call METHOD [JSON]   call a method of the running agent\n  servik-agent cron-exec [--manual] DOMAIN ID   run a site's scheduled task (cron starts it)\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -73,6 +75,11 @@ func main() {
 	if flag.Arg(0) == "files-helper" {
 		// Started by the agent itself, as a site's user (files package).
 		os.Exit(files.Serve(os.Stdin, os.Stdout))
+	}
+	if flag.Arg(0) == "cron-exec" {
+		// Started by cron, or by the agent for a manual run, as a site's
+		// user (cron package).
+		os.Exit(cron.Exec(flag.Args()[1:]))
 	}
 	if flag.Arg(0) == "call" {
 		os.Exit(call(*socket, flag.Args()[1:]))
@@ -149,6 +156,9 @@ func main() {
 	}
 	svc.files = files.NewManager(h, exe)
 	svc.ftp = ftp.NewManager(h)
+	svc.cron = cron.NewManager(h)
+	svc.cron.Demo = *dryRun
+	svc.system = system.NewManager(h)
 	svc.security = security.NewManager(h, svc.files)
 	svc.security.WebUser = *webUser
 	svc.firewall = firewall.NewManager(h)
@@ -280,6 +290,10 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	}
 	if err := svc.firewall.RestoreRules(ctx); err != nil {
 		log.Error("restoring the port filter", "err", err)
+	}
+	// Crontab lines name the agent's path, which an update changes.
+	if err := svc.cron.Reconcile(ctx); err != nil {
+		log.Error("restoring scheduled tasks", "err", err)
 	}
 	go svc.monitor.Run(ctx)
 	go svc.databases.Run(ctx)

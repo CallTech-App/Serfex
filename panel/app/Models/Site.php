@@ -105,6 +105,14 @@ class Site extends Model
     }
 
     /**
+     * @return HasMany<CronJob, $this>
+     */
+    public function cronJobs(): HasMany
+    {
+        return $this->hasMany(CronJob::class);
+    }
+
+    /**
      * Every certificate obtained or uploaded for the site, in use or not.
      *
      * @return HasMany<Certificate, $this>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Services\Audit\AuditLog;
 use App\Support\Impersonation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class ImpersonationController extends Controller
         $admin = $request->user();
         $user = $customer->user;
         abort_unless($admin->is_admin && $user !== null && ! $user->is_admin, 403);
+        AuditLog::record($customer->displayName().' olarak panele girdi.', $admin, extra: ['section' => 'Müşteriler ve Paketler', 'url' => route('customers.show', $customer, false)]);
 
         Auth::login($user);
         $request->session()->regenerate();

@@ -11,6 +11,7 @@ use App\Services\Databases\DatabaseServers;
 use App\Services\Mail\MailSettings;
 use App\Services\Monitor\IpBlocks;
 use App\Services\Monitor\MonitorException;
+use App\Services\Settings\PanelSettings;
 use Illuminate\Support\Str;
 
 /**
@@ -67,7 +68,7 @@ class Firewall
     public function services(?array $settings = null): array
     {
         $on = ($settings ?? $this->settings())['services'];
-        $panel = app(DatabaseServers::class)->managerPort();
+        $panel = implode(', ', app(PanelSettings::class)->ports());
         $mail = app(MailSettings::class)->isSetUp();
         $dns = (Setting::get('dns.server', [])['state'] ?? null) === 'ready' || DnsZone::exists();
         $list = [

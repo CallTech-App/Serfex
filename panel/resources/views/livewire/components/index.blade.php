@@ -20,7 +20,7 @@
         </div>
         <div class="flex items-center gap-3">
             @if ($checkedAt)
-                <span class="text-2xs text-muted" title="{{ \Illuminate\Support\Carbon::parse($checkedAt)->timezone(config('app.timezone'))->format('d.m.Y H:i') }}">Son denetim {{ \Illuminate\Support\Carbon::parse($checkedAt)->diffForHumans() }}</span>
+                <span class="text-2xs text-muted" title="{{ \Illuminate\Support\Carbon::parse($checkedAt)->timezone(config('servik.timezone'))->format('d.m.Y H:i') }}">Son denetim {{ \Illuminate\Support\Carbon::parse($checkedAt)->diffForHumans() }}</span>
             @endif
             <button type="button" wire:click="check" wire:loading.attr="disabled" wire:target="check" @disabled($busy || $agentError) class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2 disabled:opacity-40">
                 <x-icon name="refresh-cw" wire:loading.class="animate-spin" wire:target="check" />Güncellemeleri denetle

@@ -4,15 +4,19 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"path/filepath"
 	"testing"
 
 	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/winchester37/servik/agent/internal/cron"
+	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/system"
 )
 
 func TestSiteMethods(t *testing.T) {
@@ -120,4 +124,114 @@ func TestDecodeTreatsMissingParamsAsNone(t *testing.T) {
 	if err := decode(json.RawMessage(`{"typo":1}`), &v); err == nil {
 		t.Error("unknown field accepted")
 	}
+}
+
+func TestSettingsAndCronMethods(t *testing.T) {
+	sim, err := host.NewSimulator(t.TempDir(), "8.4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := rpc.NewServer(nil)
+	dnsm := dns.NewSimulatedManager(sim, dns.NewMemory())
+	c := cron.NewManager(sim)
+	c.Exe = "/opt/servik/current/bin/servik-agent"
+	registerMethods(srv, services{
+		sites: site.NewManager(sim, "www-data"), dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
+		databases: database.NewSimulated(sim), cron: c, system: system.NewManager(sim), dryRun: true,
+	})
+	sock := filepath.Join(t.TempDir(), "agent.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { defer close(done); _ = srv.Serve(ctx, ln) }()
+	t.Cleanup(func() { cancel(); <-done })
+
+	id := 0
+	call := func(method, params string, code int) map[string]any {
+		t.Helper()
+		id++
+		conn, err := net.Dial("unix", sock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		fmt.Fprintf(conn, `{"jsonrpc":"2.0","id":%d,"method":%q,"params":%s}`+"\n", id, method, params)
+		line, err := bufio.NewReader(conn).ReadBytes('\n')
+		if err != nil {
+			t.Fatal(err)
+		}
+		var resp struct {
+			Result json.RawMessage `json:"result"`
+			Error  *rpc.Error      `json:"error"`
+		}
+		if err := json.Unmarshal(line, &resp); err != nil {
+			t.Fatal(err)
+		}
+		if code == 0 && resp.Error != nil {
+			t.Fatalf("%s: unexpected error %+v", method, resp.Error)
+		}
+		if code != 0 && (resp.Error == nil || resp.Error.Code != code) {
+			t.Fatalf("%s %s: error = %+v, want %d", method, params, resp.Error, code)
+		}
+		out := map[string]any{}
+		if len(resp.Result) > 0 && resp.Result[0] == '[' {
+			var list []any
+			_ = json.Unmarshal(resp.Result, &list)
+			out["list"] = list
+		} else {
+			_ = json.Unmarshal(resp.Result, &out)
+		}
+		return out
+	}
+	want := func(what string, got, wanted any) {
+		t.Helper()
+		if fmt.Sprint(got) != fmt.Sprint(wanted) {
+			t.Errorf("%s = %v, want %v", what, got, wanted)
+		}
+	}
+
+	// Scheduled tasks.
+	call("site.apply", `{"domain":"a.com","user":"a","php_version":"8.4"}`, 0)
+	tasks := `{"domain":"a.com","user":"a","php":"8.4","tasks":[{"id":1,"schedule":"*/5 * * * *","command":"php cron.php","enabled":true,"timeout":60},{"id":2,"schedule":"0 3 * * *","command":"echo hi","enabled":false}]}`
+	res := call("cron.apply", tasks, 0)
+	want("cron.apply", res, map[string]any{"tasks": 2, "enabled": 1})
+	call("cron.apply", `{"domain":"a.com","user":"a","tasks":[{"id":1,"schedule":"* * *","command":"x"}]}`, rpc.CodeInvalidParams)
+	call("cron.apply", `{"domain":"a.com","user":"a","taks":[]}`, rpc.CodeInvalidParams)
+	call("cron.run", `{"domain":"a.com","id":9}`, rpc.CodeInvalidParams)
+	want("cron.run", call("cron.run", `{"domain":"a.com","id":2}`, 0), map[string]any{"started": true})
+	runs := call("cron.runs", `{"domain":"a.com","id":2,"limit":5}`, 0)
+	if list, _ := runs["runs"].([]any); len(list) != 1 || runs["running"] != false {
+		t.Fatalf("cron.runs = %v", runs)
+	} else if r := list[0].(map[string]any); r["trigger"] != "manual" || r["exit_code"] != float64(0) || r["output"] != cron.SimulatedOutput {
+		t.Fatalf("run = %v", r)
+	}
+	want("cron.remove", call("cron.remove", `{"domain":"a.com"}`, 0), map[string]any{"removed": true})
+	call("cron.runs", `{"domain":"a.com","id":2}`, rpc.CodeInvalidParams)
+
+	// The server's settings.
+	info := call("system.info", `{}`, 0)
+	want("hostname", info["hostname"], "srv-ist-01.servik.test")
+	want("timezone", info["timezone"], "Europe/Istanbul")
+	want("cpus", info["cpus"], 8)
+	want("addresses", info["addresses"], map[string]any{"ipv4": []any{"203.0.113.10"}, "ipv6": []any{"2001:db8::10"}})
+	want("hostname.set", call("system.hostname.set", `{"hostname":"panel.example.com"}`, 0), map[string]any{"hostname": "panel.example.com"})
+	call("system.hostname.set", `{"hostname":"bad_name"}`, rpc.CodeInvalidParams)
+	want("timezone.set", call("system.timezone.set", `{"timezone":"Europe/Berlin"}`, 0), map[string]any{"timezone": "Europe/Berlin"})
+	call("system.timezone.set", `{"timezone":"../../etc/passwd"}`, rpc.CodeInvalidParams)
+	info = call("system.info", `{}`, 0)
+	want("hostname after set", info["hostname"], "panel.example.com")
+	want("timezone after set", info["timezone"], "Europe/Berlin")
+	if zones := call("system.timezones", `{}`, 0)["list"].([]any); len(zones) < 6 {
+		t.Fatalf("zones %v", zones)
+	}
+
+	// The panel's ports and certificate.
+	want("panel.web.status", call("panel.web.status", `{}`, 0), map[string]any{"ports": []any{8443}, "port": 8443})
+	want("panel.web.ports", call("panel.web.ports", `{"ports":[8443,9443]}`, 0), map[string]any{"ports": []any{8443, 9443}, "port": 8443})
+	call("panel.web.ports", `{"ports":[80]}`, rpc.CodeInvalidParams)
+	want("panel.web.ports", call("panel.web.ports", `{"ports":[9443]}`, 0), map[string]any{"ports": []any{9443}, "port": 9443})
+	call("ssl.panel.install", `{"certificate":"x","private_key":"y"}`, rpc.CodeInvalidParams)
 }

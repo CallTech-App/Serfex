@@ -47,7 +47,7 @@
                         <td class="py-3 pr-3 pl-5"><span class="font-mono text-[13px]">{{ $t['command'] }}</span>@if ($t['description'])<div class="text-2xs text-muted">{{ $t['description'] }}</div>@endif</td>
                         <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap">{{ $t['expression'] }}</td>
                         <td class="px-3 py-3 whitespace-nowrap text-muted">{{ When::withTime(Carbon::parse($t['next'])) }}</td>
-                        <td class="px-3 py-3 whitespace-nowrap text-muted">@if ($t['run']){{ When::withTime(Carbon::parse($t['run']['at'], config('app.timezone'))) }}@if ($t['run']['duration']) · {{ $t['run']['duration'] }}@endif @else—@endif</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-muted">@if ($t['run']){{ When::withTime(Carbon::parse($t['run']['at'], config('servik.timezone'))) }}@if ($t['run']['duration']) · {{ $t['run']['duration'] }}@endif @else—@endif</td>
                         <td class="px-3 py-3">
                             @if ($t['run'])
                                 <x-status-badge :status="$t['run']['ok'] ? new Badge('Başarılı', 'ok') : new Badge('Başarısız', 'crit')" />

@@ -1,5 +1,5 @@
 @php
-    $date = fn ($d) => $d?->timezone(config('app.timezone'))->format('d.m.Y');
+    $date = fn ($d) => $d?->timezone(config('servik.timezone'))->format('d.m.Y');
 @endphp
 <div class="space-y-6">
     {{-- Refresh while certificates are being issued. --}}

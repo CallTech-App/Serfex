@@ -116,7 +116,7 @@
         </div>
         @php $updateNotices = app(\App\Services\Updates\Updates::class)->notices(); @endphp
         <div class="flex items-center gap-2 hover:bg-surface-2/60">
-            <a href="{{ route('settings.updates') }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 pr-5">
+            <a @if (auth()->user()->isFullAdmin()) href="{{ route('settings.updates') }}" wire:navigate @endif class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 pr-5">
                 <x-icon name="refresh-cw" @class(['text-muted' => ! $updateNotices, 'text-warn' => ($updateNotices[0]['level'] ?? '') === 'warn', 'text-info' => ($updateNotices[0]['level'] ?? '') === 'info']) />
                 <span>Servik sürümü</span>
                 <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $updateNotices, 'font-medium text-warn' => ($updateNotices[0]['level'] ?? '') === 'warn', 'font-medium text-info' => ($updateNotices[0]['level'] ?? '') === 'info'])>

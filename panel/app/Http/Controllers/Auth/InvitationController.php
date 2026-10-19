@@ -11,9 +11,9 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
- * Accepting an invitation (a customer's login, or a place on a Laravel
- * application's team): the person sets a password and is signed in.
- * Links work for seven days.
+ * Accepting an invitation (an administrator's or a customer's login, or a
+ * place on a Laravel application's team): the person sets a password and
+ * is signed in. Links work for seven days.
  */
 class InvitationController extends Controller
 {
@@ -43,13 +43,13 @@ class InvitationController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route($user->customer_id !== null ? 'dashboard' : 'laravel.index');
+        return redirect()->route($user->is_admin || $user->customer_id !== null ? 'dashboard' : 'laravel.index');
     }
 
     private function invited(string $token): User
     {
         $user = User::where('invite_token', hash('sha256', $token))->first();
-        abort_if($user === null || $user->invited_at === null || $user->invited_at->lt(now()->subDays(self::DAYS)), 404);
+        abort_if($user === null || $user->removed_at !== null || $user->invited_at === null || $user->invited_at->lt(now()->subDays(self::DAYS)), 404);
 
         return $user;
     }

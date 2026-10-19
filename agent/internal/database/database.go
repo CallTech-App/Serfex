@@ -182,6 +182,9 @@ type state struct {
 	Sessions  []session            `json:"sessions"`
 	// Manager is the web manager's setup, once done.
 	Manager *ManagerSpec `json:"manager,omitempty"`
+	// WebPorts are the ports servik-web listens on, the primary first
+	// (panel.web.ports); empty means Manager's port, else DefaultPort.
+	WebPorts []int `json:"web_ports,omitempty"`
 }
 
 func key(server, name string) string { return server + "/" + name }
@@ -195,6 +198,9 @@ type Manager struct {
 	now func() time.Time
 	// wrap, when set, wraps dumps and loads (low priority for backups).
 	wrap func(host.Command) host.Command
+	// Listening, when set, replaces reading the TCP ports other programs
+	// listen on (ss), for tests.
+	Listening func(context.Context) (map[int]bool, error)
 }
 
 // NewManager returns a Manager for the real servers.

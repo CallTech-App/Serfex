@@ -175,7 +175,8 @@ class Certificates
         if (! $certificate->isInstalled()) {
             $certificate->domains = [$hostname];
         }
-        $certificate->fill(['status' => CertificateStatus::Issuing, 'last_error' => null])->save();
+        // An uploaded certificate is replaced by Let's Encrypt's from here on.
+        $certificate->fill(['source' => Certificate::LETS_ENCRYPT, 'challenge' => 'http-01', 'auto_renew' => true, 'status' => CertificateStatus::Issuing, 'last_error' => null])->save();
         IssuePanelCertificate::dispatch($certificate);
 
         return $certificate;

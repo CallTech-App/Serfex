@@ -529,7 +529,7 @@ class SiteFiles extends Component
             'trash' => $trash,
             'disk' => $disk,
             'ftpCount' => FtpAccount::where('site_id', $site->id)->count(),
-            'date' => fn (int $t) => Date::createFromTimestamp($t)->timezone(config('app.timezone'))->format('d.m.Y H:i'),
+            'date' => fn (int $t) => Date::createFromTimestamp($t)->timezone(config('servik.timezone'))->format('d.m.Y H:i'),
         ])->title('Dosya Yöneticisi · '.$site->domain.' · Servik');
     }
 }

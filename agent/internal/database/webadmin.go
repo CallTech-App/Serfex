@@ -91,7 +91,7 @@ func (m *Manager) managerStatus(context.Context) ManagerStatus {
 	}
 	return ManagerStatus{
 		Configured: true,
-		Port:       st.Manager.Port,
+		Port:       m.webPort(st),
 		PhpMyAdmin: m.exists(pmaIndex) && m.exists(phpConf),
 		Adminer:    m.exists(adminerIndex) && m.exists(phpConf),
 		PHPVersion: m.adminPHP(),
@@ -117,10 +117,7 @@ func (m *Manager) adminPHP() string {
 // server's tool. Configuration changes are rolled back if a service
 // rejects them.
 func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res ManagerStatus, err error) {
-	if spec.Port == 0 {
-		spec.Port = DefaultPort
-	}
-	if spec.Port < 1 || spec.Port > 65535 || spec.Port == 80 || spec.Port == 443 {
+	if spec.Port != 0 && (spec.Port < 1 || spec.Port > 65535 || spec.Port == 80 || spec.Port == 443) {
 		return ManagerStatus{}, invalid("port must be between 1 and 65535, and not 80 or 443 (the sites' ports)")
 	}
 	m.mu.Lock()
@@ -130,24 +127,34 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if !mysql && !pg {
 		return ManagerStatus{}, invalid("install a database server first")
 	}
-	php, err := m.applyWeb(ctx, spec.Port, mysql, pg)
-	if err != nil {
-		return ManagerStatus{}, err
-	}
 	st, err := m.loadState()
 	if err != nil {
+		return ManagerStatus{}, opError(err)
+	}
+	// A port given replaces servik-web's ports; without one they stay.
+	ports := m.webPorts(st)
+	if spec.Port != 0 {
+		ports = []int{spec.Port}
+	}
+	php, err := m.applyWeb(ctx, ports, mysql, pg)
+	if err != nil {
 		return ManagerStatus{}, err
 	}
-	st.Manager = &spec
+	st.Manager = &ManagerSpec{Port: ports[0]}
+	if spec.Port != 0 {
+		st.WebPorts = ports
+	}
 	if err := m.saveState(st); err != nil {
 		return ManagerStatus{}, err
 	}
-	return ManagerStatus{Configured: true, Port: spec.Port, PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}, nil
+	return ManagerStatus{Configured: true, Port: ports[0], PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}, nil
 }
 
 // WebStatus describes servik-web as the panel uses it.
 type WebStatus struct {
+	// Port is the primary port; Ports are all servik-web listens on.
 	Port       int    `json:"port"`
+	Ports      []int  `json:"ports"`
 	PHPVersion string `json:"php_version"`
 	Panel      bool   `json:"panel"`
 }
@@ -171,31 +178,42 @@ func (m *Manager) SetupPanelWeb(ctx context.Context) (WebStatus, error) {
 		// Without a manager the tools stay off until db.manager.setup.
 		mysql, pg = false, false
 	}
-	port := m.webPort(st)
-	php, err := m.applyWeb(ctx, port, mysql, pg)
+	ports := m.webPorts(st)
+	php, err := m.applyWeb(ctx, ports, mysql, pg)
 	if err != nil {
 		return WebStatus{}, err
 	}
-	return WebStatus{Port: port, PHPVersion: php, Panel: true}, nil
+	return WebStatus{Port: ports[0], Ports: ports, PHPVersion: php, Panel: true}, nil
 }
 
-// WebPort is the port servik-web listens on (the panel's port).
+// WebPort is the primary port servik-web listens on (the panel's port).
 func (m *Manager) WebPort() int {
 	st, _ := m.loadState()
 	return m.webPort(st)
 }
 
 func (m *Manager) webPort(st *state) int {
-	if st != nil && st.Manager != nil && st.Manager.Port != 0 {
-		return st.Manager.Port
+	return m.webPorts(st)[0]
+}
+
+// webPorts are the ports servik-web listens on, the primary first: the
+// ones panel.web.ports set, else the database manager's (older setups),
+// else DefaultPort.
+func (m *Manager) webPorts(st *state) []int {
+	switch {
+	case st != nil && len(st.WebPorts) > 0:
+		return append([]int(nil), st.WebPorts...)
+	case st != nil && st.Manager != nil && st.Manager.Port != 0:
+		return []int{st.Manager.Port}
 	}
-	return DefaultPort
+	return []int{DefaultPort}
 }
 
 // applyWeb writes servik-web's and servik-php's configuration for the
 // tools asked for and, when installed, the panel, then (re)starts what
-// changed. Called with m.mu held.
-func (m *Manager) applyWeb(ctx context.Context, port int, mysql, pg bool) (php string, err error) {
+// changed. servik-web listens on every port of ports. Called with m.mu
+// held.
+func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (php string, err error) {
 	cfg, withPanel := panel.Load(m.h)
 	withPanel = withPanel && panel.Installed(m.h)
 
@@ -302,7 +320,7 @@ func (m *Manager) applyWeb(ctx context.Context, port int, mysql, pg bool) (php s
 		return "", err
 	}
 	data := webData{
-		Marker: txn.Marker, Port: port, IPv6: m.hasIPv6(), Cert: certFile, Key: keyFile, Socket: phpSocket,
+		Marker: txn.Marker, Ports: ports, IPv6: m.hasIPv6(), Cert: certFile, Key: keyFile, Socket: phpSocket,
 		WWW: adminWWW, Logs: webLogs, Temp: webTemp, WebUser: WebUser, AdminUser: AdminUser, PHP: php,
 		PhpMyAdmin: mysql, Adminer: pg, Tokens: adminTokens, Sessions: adminSess, Tmp: adminTmp, TLSConf: cert.TLSConf,
 		Panel: withPanel, PanelRoot: panel.CurrentLink + "/panel/public", PanelSocket: panel.Socket, PanelUser: panel.User,
@@ -608,7 +626,7 @@ func (m *Manager) Login(ctx context.Context, spec LoginSpec) (Login, error) {
 		_ = os.Remove(p)
 		return Login{}, opError(err)
 	}
-	return Login{Path: page + token, Port: st.Manager.Port, Tool: tool, Expires: linkExpires.UTC()}, nil
+	return Login{Path: page + token, Port: m.webPort(st), Tool: tool, Expires: linkExpires.UTC()}, nil
 }
 
 // Run cleans up while the agent runs: expired sign-in users, unused

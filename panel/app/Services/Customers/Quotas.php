@@ -3,6 +3,7 @@
 namespace App\Services\Customers;
 
 use App\Models\Backup;
+use App\Models\CronJob;
 use App\Models\Customer;
 use App\Models\Database;
 use App\Models\FtpAccount;
@@ -19,9 +20,9 @@ use Illuminate\Support\Facades\Cache;
  * What a customer uses against their package, and whether they may create
  * one more of something.
  *
- * Counts (sites, mailboxes, databases, Laravel applications, FTP accounts) are refused at the
- * limit. Disk is measured, not capped by the file system: once it is full
- * nothing new is created (sites, mailboxes, applications, previews,
+ * Counts (sites, mailboxes, databases, Laravel applications, FTP accounts,
+ * scheduled tasks) are refused at the limit. Disk is measured, not capped
+ * by the file system: once it is full nothing new is created (sites, mailboxes, applications, previews,
  * backups) but everything that exists keeps working. Traffic is reported
  * only. Preview environments are not counted as sites; they have their
  * own limit per application.
@@ -39,10 +40,11 @@ class Quotas
         'laravel_apps' => 'Laravel uygulaması sınırına',
         'backups' => 'yedek sınırına',
         'ftp_accounts' => 'FTP hesabı sınırına',
+        'cron_jobs' => 'zamanlanmış görev sınırına',
     ];
 
     /** Kinds that take no disk space, so a full disk does not refuse them. */
-    private const DISKLESS = ['ftp_accounts'];
+    private const DISKLESS = ['ftp_accounts', 'cron_jobs'];
 
     /**
      * Usage in the unit limits use (bytes for disk and traffic). Disk is
@@ -73,6 +75,7 @@ class Quotas
             // Backups they took themselves; scheduled ones are the server's.
             'backups' => Backup::where('customer_id', $customer->id)->where('trigger', 'manual')->whereNotIn('status', ['failed', 'deleted'])->count(),
             'ftp_accounts' => FtpAccount::whereIn('system_user_id', $accounts)->count(),
+            'cron_jobs' => CronJob::whereIn('site_id', $siteIds)->count(),
         ];
     }
 

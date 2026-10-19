@@ -18,7 +18,7 @@
         'failed' => new Badge('Başarısız', 'crit'),
         default => null,
     };
-    $when = fn ($t) => $t?->timezone(config('app.timezone'))->isToday() ? 'Bugün '.$t->format('H:i') : ($t?->timezone(config('app.timezone'))->isYesterday() ? 'Dün '.$t->format('H:i') : $t?->format('d.m.Y H:i'));
+    $when = fn ($t) => $t?->timezone(config('servik.timezone'))->isToday() ? 'Bugün '.$t->format('H:i') : ($t?->timezone(config('servik.timezone'))->isYesterday() ? 'Dün '.$t->format('H:i') : $t?->format('d.m.Y H:i'));
 @endphp
 <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-4">
@@ -709,7 +709,7 @@
                                     @forelse ($scanResults as $f)
                                         <div class="flex items-center gap-3 px-3 py-2 text-[13px]">
                                             <span class="min-w-0 flex-1">
-                                                <span class="num block">{{ \Illuminate\Support\Carbon::parse($f['created'])->timezone(config('app.timezone'))->format('d.m.Y H:i') }} · {{ $f['scope'] === 'server' ? 'tüm sunucu' : ($f['names'][0] ?? 'site') }}</span>
+                                                <span class="num block">{{ \Illuminate\Support\Carbon::parse($f['created'])->timezone(config('servik.timezone'))->format('d.m.Y H:i') }} · {{ $f['scope'] === 'server' ? 'tüm sunucu' : ($f['names'][0] ?? 'site') }}</span>
                                                 <span class="block text-2xs text-muted"><span class="font-mono">{{ $f['server'] ?: $f['path'] }}</span> · {{ $f['incremental'] ? 'artımlı' : 'tam' }} · {{ Bytes::format((int) $f['size']) }}{{ $f['encrypted'] ? ' · şifreli' : '' }}</span>
                                             </span>
                                             @if ($f['known'])

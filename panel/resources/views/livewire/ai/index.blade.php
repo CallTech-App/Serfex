@@ -1,4 +1,4 @@
-@php $at = fn ($d) => $d?->timezone(config('app.timezone')); @endphp
+@php $at = fn ($d) => $d?->timezone(config('servik.timezone')); @endphp
 <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>

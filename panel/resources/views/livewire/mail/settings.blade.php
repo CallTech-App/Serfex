@@ -1,6 +1,6 @@
 @php
     use App\Enums\CertificateStatus;
-    $date = fn ($d) => $d?->timezone(config('app.timezone'))->format('d.m.Y');
+    $date = fn ($d) => $d?->timezone(config('servik.timezone'))->format('d.m.Y');
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
     $certBusy = $certificate?->status === CertificateStatus::Issuing;
     $certError = $certificate?->renew_error ?? $certificate?->last_error;

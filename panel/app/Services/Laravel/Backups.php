@@ -165,10 +165,12 @@ class Backups
             return false;
         }
         [$h, $m] = array_map('intval', explode(':', $app->backup_time ?: '03:00') + [1 => 0]);
-        $at = $now->copy()->setTime($h, $m);
+        // The time is the panel's (Araçlar ve Ayarlar → Genel).
+        $at = $now->copy()->timezone(config('servik.timezone'))->setTime($h, $m);
         if ($now->lt($at)) {
             $at->subDay();
         }
+        $at->utc();
         $last = $app->backups()->where('kind', 'scheduled')->whereIn('status', ['running', 'succeeded', 'failed'])->max('created_at');
         if ($last === null) {
             return true;

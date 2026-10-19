@@ -1,6 +1,6 @@
 @php
     use App\Enums\CertificateStatus;
-    $date = fn ($d) => $d?->timezone(config('app.timezone'))->format('d.m.Y');
+    $date = fn ($d) => $d?->timezone(config('servik.timezone'))->format('d.m.Y');
     $btn = 'flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40';
     $primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40';
     $siteBusy = $site->status->isBusy();

@@ -55,7 +55,7 @@
                                 <span class="mt-0.5 block font-mono text-[12.5px] text-muted sm:hidden">{{ $account->directory === '' ? '/' : $account->directory.'/' }}</span>
                             </td>
                             <td class="hidden px-3 py-3 font-mono text-[13px] sm:table-cell" title="{{ $account->path() }}">{{ $account->directory === '' ? $site->domain.'/' : $account->directory.'/' }}</td>
-                            <td class="num hidden px-3 py-3 whitespace-nowrap text-muted md:table-cell">{{ $account->password_changed_at?->timezone(config('app.timezone'))->format('d.m.Y H:i') ?? '—' }}</td>
+                            <td class="num hidden px-3 py-3 whitespace-nowrap text-muted md:table-cell">{{ $account->password_changed_at?->timezone(config('servik.timezone'))->format('d.m.Y H:i') ?? '—' }}</td>
                             <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
                                 <button type="button" wire:click="openEdit({{ $account->id }})" class="text-[13px] text-accent hover:underline">Düzenle</button>
                                 <button type="button" wire:click="confirmDelete({{ $account->id }})" class="ml-3 text-[13px] text-crit hover:underline">Sil</button>

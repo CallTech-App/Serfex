@@ -334,6 +334,27 @@ func (m *Manager) IssuePanel(ctx context.Context, spec PanelSpec) (Result, error
 	return m.store(ctx, "panel", full, keyFile, chain, key, m.reloadPanel)
 }
 
+// PanelInstallSpec installs a certificate the user brings for the panel's
+// own address.
+type PanelInstallSpec struct {
+	Certificate string `json:"certificate"`
+	PrivateKey  string `json:"private_key"`
+}
+
+// InstallPanel stores an uploaded certificate as the panel's own, with
+// the same checks as Install (the key matches, the certificate is still
+// valid), and reloads the panel's web server.
+func (m *Manager) InstallPanel(ctx context.Context, spec PanelInstallSpec) (Result, error) {
+	chain, key, err := parseUpload(InstallSpec{Name: "panel", Certificate: spec.Certificate, PrivateKey: spec.PrivateKey})
+	if err != nil {
+		return Result{}, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	full, keyFile := PanelFiles()
+	return m.store(ctx, "panel", full, keyFile, chain, key, m.reloadPanel)
+}
+
 // GetPanel returns the panel's certificate, or nil.
 func (m *Manager) GetPanel() (*Info, error) {
 	full, _ := PanelFiles()

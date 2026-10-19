@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
 use App\Livewire\Attributes\ForCustomers;
+use App\Models\CronJob;
 use App\Models\Database;
 use App\Models\DnsZone;
 use App\Models\FtpAccount;
@@ -108,6 +109,7 @@ class SiteShow extends Component
             'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->first(),
             'databases' => Database::where('site_id', $site->id)->count(),
             'ftpAccounts' => FtpAccount::where('site_id', $site->id)->count(),
+            'cronJobs' => CronJob::where('site_id', $site->id)->count(),
             'mail' => MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
             'webmail' => app(MailSettings::class)->webmailUrl(),
             'wafInstalled' => app(Components::class)->isInstalled('modsecurity'),

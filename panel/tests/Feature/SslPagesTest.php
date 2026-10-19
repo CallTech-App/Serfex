@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\CertificateStatus;
 use App\Jobs\DeleteCertificate;
 use App\Jobs\IssueCertificate;
-use App\Jobs\IssuePanelCertificate;
 use App\Jobs\ProvisionSite;
 use App\Livewire\Ssl\SiteSsl;
 use App\Livewire\Ssl\SslIndex;
@@ -221,54 +220,22 @@ class SslPagesTest extends TestCase
         $this->assertFalse($certificate->fresh()->auto_renew);
     }
 
-    public function test_settings_save_and_issue_the_panel_certificate(): void
+    public function test_settings_save_with_undo_and_point_to_the_panel_settings(): void
     {
-        $this->get(route('ssl.settings'))->assertOk()->assertSee('Panel adresi');
+        $this->get(route('ssl.settings'))->assertOk()->assertSee('Araçlar ve Ayarlar → Genel');
 
-        Livewire::test(SslSettingsPage::class)
+        $page = Livewire::test(SslSettingsPage::class)
             ->set('email', 'ssl@kahve.com.tr')
             ->set('auto', false)
-            ->set('hostname', 'Panel.Kahve.com.tr')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertDispatched('toast', message: 'SSL ayarları kaydedildi. Panel sertifikası alınıyor.');
+            ->assertDispatched('toast', message: 'SSL ayarları kaydedildi.');
 
         $this->assertSame('ssl@kahve.com.tr', Setting::get('ssl.email'));
         $this->assertFalse(Setting::get('ssl.auto'));
-        $this->assertSame('panel.kahve.com.tr', Setting::get('panel.hostname'));
-        $panel = Certificate::where('kind', 'panel')->sole();
-        $this->assertSame(['panel.kahve.com.tr'], $panel->domains);
-        Queue::assertPushed(IssuePanelCertificate::class);
-    }
 
-    public function test_settings_undo_restores_the_previous_values(): void
-    {
-        Setting::put('panel.hostname', 'panel.kahve.com.tr');
-
-        $page = Livewire::test(SslSettingsPage::class)
-            ->set('hostname', '')
-            ->call('save');
-        $this->assertNull(Setting::get('panel.hostname'));
-
-        $page->call('undoSave', ['ssl.email' => null, 'ssl.auto' => true, 'panel.hostname' => 'panel.kahve.com.tr'])
-            ->assertSet('hostname', 'panel.kahve.com.tr');
-        $this->assertSame('panel.kahve.com.tr', Setting::get('panel.hostname'));
-    }
-
-    public function test_panel_address_cannot_be_a_site(): void
-    {
-        Site::factory()->create(['domain' => 'kahve.com.tr', 'aliases' => ['www.kahve.com.tr']]);
-
-        Livewire::test(SslSettingsPage::class)
-            ->set('hostname', 'www.kahve.com.tr')
-            ->call('save')
-            ->assertHasErrors('hostname');
-
-        Livewire::test(SslSettingsPage::class)
-            ->set('hostname', 'panel')
-            ->call('save')
-            ->assertHasErrors('hostname');
-
-        $this->assertNull(Setting::get('panel.hostname'));
+        $page->call('undoSave', ['ssl.email' => null, 'ssl.auto' => true])->assertSet('email', '');
+        $this->assertNull(Setting::get('ssl.email'));
+        $this->assertTrue(Setting::get('ssl.auto'));
     }
 }

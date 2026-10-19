@@ -1,6 +1,6 @@
 {{-- One action card: a proposal waiting for approval, or what was done. --}}
 @php
-    $at = fn ($d) => $d?->timezone(config('app.timezone'))->format('H:i');
+    $at = fn ($d) => $d?->timezone(config('servik.timezone'))->format('H:i');
     $details = \App\Services\Ai\Actions::details($action);
     $pending = $action->isPending();
     $expired = $pending && $action->created_at->lt(now()->subHours(\App\Services\Ai\Actions::PROPOSAL_HOURS));

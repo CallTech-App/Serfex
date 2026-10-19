@@ -13,6 +13,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/backup"
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/component"
+	"github.com/winchester37/servik/agent/internal/cron"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/files"
@@ -26,6 +27,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/security"
 	"github.com/winchester37/servik/agent/internal/service"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/system"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
 )
@@ -78,6 +80,8 @@ type services struct {
 	security   *security.Manager
 	services   *service.Manager
 	php        *php.Manager
+	cron       *cron.Manager
+	system     *system.Manager
 	dryRun     bool
 }
 
@@ -245,6 +249,8 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerFiles(srv, svc)
 	registerSecurity(srv, svc)
 	registerServices(srv, svc)
+	registerCron(srv, svc)
+	registerSettings(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -451,7 +457,9 @@ func mapError(err error) error {
 	var secv *security.ValidationError
 	var svcv *service.ValidationError
 	var phpv *php.ValidationError
-	if errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var cronv *cron.ValidationError
+	var sysv *system.ValidationError
+	if errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -469,7 +477,9 @@ func mapError(err error) error {
 	var secop *security.OperationError
 	var svcop *service.OperationError
 	var phpop *php.OperationError
-	if errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var cronop *cron.OperationError
+	var sysop *system.OperationError
+	if errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -828,4 +838,43 @@ func registerServices(srv *rpc.Server, svc services) {
 	handle(srv, "component.extension", func(ctx context.Context, q component.ExtensionSpec) (any, error) {
 		return c.Extension(context.WithoutCancel(ctx), q)
 	})
+}
+
+func registerCron(srv *rpc.Server, svc services) {
+	c := svc.cron
+	handle(srv, "cron.apply", func(ctx context.Context, p cron.Spec) (any, error) { return c.Apply(ctx, p) })
+	handle(srv, "cron.remove", func(ctx context.Context, p domainParam) (any, error) { return c.Remove(ctx, p.Domain) })
+	// The run goes on in the background; starting it must not be cut short.
+	handle(srv, "cron.run", func(ctx context.Context, p cron.RunSpec) (any, error) {
+		return c.Run(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "cron.runs", func(ctx context.Context, p cron.RunsSpec) (any, error) { return c.Runs(ctx, p) })
+}
+
+// systemInfo is system.info's answer: the machine and its addresses.
+type systemInfo struct {
+	system.Info
+	Addresses map[string][]string `json:"addresses"`
+}
+
+func registerSettings(srv *rpc.Server, svc services) {
+	s, db := svc.system, svc.databases
+	handle(srv, "system.info", func(context.Context, struct{}) (any, error) {
+		addrs, err := addresses(svc.dryRun)
+		if err != nil {
+			return nil, err
+		}
+		return systemInfo{Info: s.Info(), Addresses: addrs}, nil
+	})
+	handle(srv, "system.hostname.set", func(ctx context.Context, p system.HostnameSpec) (any, error) { return s.SetHostname(ctx, p) })
+	handle(srv, "system.timezone.set", func(ctx context.Context, p system.TimezoneSpec) (any, error) { return s.SetTimezone(ctx, p) })
+	handle(srv, "system.timezones", func(context.Context, struct{}) (any, error) { return s.Timezones() })
+
+	handle(srv, "panel.web.status", func(context.Context, struct{}) (any, error) { return db.WebPortsStatus() })
+	// Reconfiguring servik-web (maybe installing packages) outlives a
+	// panel request that gives up.
+	handle(srv, "panel.web.ports", func(ctx context.Context, p database.WebPortsSpec) (any, error) {
+		return db.SetWebPorts(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "ssl.panel.install", func(ctx context.Context, p cert.PanelInstallSpec) (any, error) { return svc.certs.InstallPanel(ctx, p) })
 }

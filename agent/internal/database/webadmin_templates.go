@@ -3,8 +3,9 @@ package database
 import "text/template"
 
 type webData struct {
-	Marker                  string
-	Port                    int
+	Marker string
+	// Ports are servik-web's ports, the primary first.
+	Ports                   []int
 	IPv6                    bool
 	Cert, Key, TLSConf      string
 	Socket, WWW, Logs, Temp string
@@ -44,9 +45,11 @@ http {
     scgi_temp_path {{.Temp}}/scgi;
 
     server {
-        listen {{.Port}} ssl http2 default_server;
-{{- if .IPv6}}
-        listen [::]:{{.Port}} ssl http2 default_server;
+{{- range .Ports}}
+        listen {{.}} ssl http2 default_server;
+{{- if $.IPv6}}
+        listen [::]:{{.}} ssl http2 default_server;
+{{- end}}
 {{- end}}
         ssl_certificate {{.Cert}};
         ssl_certificate_key {{.Key}};

@@ -46,7 +46,7 @@
             <x-icon name="loader-circle" class="animate-spin text-info" />
             <div class="min-w-0 flex-1">
                 <p class="font-medium">Bu alan adı için e-posta kapatıldı</p>
-                <p class="mt-0.5 text-[13px] text-muted">Posta artık alınmıyor. Posta kutuları ve içindeki postalar {{ $domain->disabled_at?->addSeconds(\App\Services\Mail\MailDomains::UNDO_SECONDS)->timezone(config('app.timezone'))->format('H:i') }} sularında silinir.</p>
+                <p class="mt-0.5 text-[13px] text-muted">Posta artık alınmıyor. Posta kutuları ve içindeki postalar {{ $domain->disabled_at?->addSeconds(\App\Services\Mail\MailDomains::UNDO_SECONDS)->timezone(config('servik.timezone'))->format('H:i') }} sularında silinir.</p>
             </div>
             <button type="button" wire:click="undoDisable" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
                 <x-icon name="rotate-ccw" class="size-3.5" />Geri al

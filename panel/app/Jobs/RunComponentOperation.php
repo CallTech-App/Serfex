@@ -8,6 +8,7 @@ use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Security\Waf;
+use App\Services\Settings\PanelSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -36,7 +37,7 @@ class RunComponentOperation implements ShouldQueue
         $params = ['id' => $op->component, 'run' => $op->run];
         $database = in_array($op->component, ['mysql', 'mariadb', 'postgresql'], true);
         if ($database) {
-            $params['port'] = $databases->managerPort();
+            $params += app(PanelSettings::class)->managerSetupParams();
         }
         if (str_starts_with($op->action, 'ext-')) {
             $method = 'component.extension';

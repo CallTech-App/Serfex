@@ -52,6 +52,12 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
             'provisioned_at' => $site->provisioned_at ?? now(),
         ]);
 
+        // Scheduled tasks follow the site's PHP version and its owner's
+        // suspension.
+        if ($site->cronJobs()->exists()) {
+            SyncCronJobs::dispatch($site->id);
+        }
+
         if ($firstTime) {
             // Like AutoSSL: every new site gets a certificate once its DNS
             // points here.
