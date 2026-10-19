@@ -11,9 +11,7 @@
                 {{ $row['text'] }}
             </span>
             <div class="col-span-2 sm:col-span-1">
-                @if ($row['used'] === null)
-                    <span class="text-[12.5px] text-muted">Veritabanı yönetimi geldiğinde sayılır.</span>
-                @elseif ($pct === null)
+                @if ($pct === null)
                     <span class="text-[12.5px] text-muted">Sınırsız</span>
                 @else
                     <div class="h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ $row['label'] }}">

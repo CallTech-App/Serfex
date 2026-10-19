@@ -4,15 +4,20 @@ namespace App\Livewire\Laravel;
 
 use App\Enums\SiteStatus;
 use App\Models\Customer;
+use App\Models\Database;
+use App\Models\DatabaseUser;
 use App\Models\LaravelApp;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Customers\Quotas;
+use App\Services\Databases\Databases;
+use App\Services\Databases\DatabaseServers;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\PhpConstraint;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -77,6 +82,11 @@ class LaravelIndex extends Component
 
     public string $dbPassword = '';
 
+    /** "Yeni veritabanı": the server and the name after the account prefix. */
+    public string $newDbServer = '';
+
+    public string $newDbSuffix = 'laravel';
+
     public bool $frontend = true;
 
     public string $packageManager = 'npm';
@@ -121,9 +131,15 @@ class LaravelIndex extends Component
             return;
         }
         $this->reset('step', 'siteId', 'source', 'kit', 'provider', 'repository', 'private', 'branch', 'phpVersion', 'database', 'dbDriver', 'dbHost',
-            'dbPort', 'dbName', 'dbUser', 'dbPassword', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError');
+            'dbPort', 'dbName', 'dbUser', 'dbPassword', 'newDbSuffix', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError');
         $this->resetValidation();
         $this->installing = true;
+        // A database of its own when the server has a database server.
+        $servers = app(DatabaseServers::class);
+        $this->newDbServer = (string) $servers->defaultServer();
+        if ($this->newDbServer !== '') {
+            $this->database = 'new';
+        }
         try {
             $this->phpVersions = array_values($agent->call('php.versions') ?? []);
             if (($package = $this->customer()?->package) !== null) {
@@ -168,12 +184,27 @@ class LaravelIndex extends Component
             'dbUser' => 'kullanıcı adı',
             'dbHost' => 'sunucu',
             'dbPort' => 'port',
+            'newDbSuffix' => 'veritabanı adı',
         ]);
         $site = Site::visibleTo(auth()->user())->with('systemUser')->findOrFail($this->siteId);
         if (($refusal = $quotas->refusal($site->customer(), 'laravel_apps')) !== null) {
             $this->agentError = $refusal;
 
             return;
+        }
+        $newDb = $this->database === 'new' ? Databases::prefix($site->systemUser).$this->newDbSuffix : null;
+        if ($newDb !== null) {
+            if (($refusal = $quotas->refusal($site->customer(), 'databases')) !== null) {
+                $this->agentError = $refusal;
+
+                return;
+            }
+            if (Database::withTrashed()->where('server', $this->newDbServer)->where('name', $newDb)->exists()
+                || DatabaseUser::withTrashed()->where('server', $this->newDbServer)->where('name', Str::limit($newDb, Databases::MAX_USER, ''))->exists()) {
+                $this->addError('newDbSuffix', "{$newDb} adında bir veritabanı ya da kullanıcı zaten var; başka bir ad girin.");
+
+                return;
+            }
         }
 
         if ($this->source === 'git' && $this->private && $this->step === 'form') {
@@ -191,14 +222,31 @@ class LaravelIndex extends Component
             return;
         }
 
+        $database = null;
+        $db = ['driver' => $this->dbDriver, 'host' => $this->dbHost, 'port' => $this->dbPort, 'database' => $this->dbName, 'username' => $this->dbUser, 'password' => $this->dbPassword];
+        if ($newDb !== null) {
+            // The database and its user, created now so the first .env can
+            // carry them; the password goes only there.
+            $password = Databases::password();
+            $user = Str::limit($newDb, Databases::MAX_USER, '');
+            try {
+                $database = app(Databases::class)->create($site, $this->newDbServer, $newDb, $user, $password);
+            } catch (AgentException $e) {
+                $this->agentError = 'Veritabanı oluşturulamadı: '.$e->reason;
+
+                return;
+            }
+            $db = $database->connection($user, $password);
+        }
+
         $app = $apps->install($site, [
             'source' => $this->source,
             'kit' => $this->kit,
             'repository' => $this->repositoryUrl(),
             'branch' => $this->branch,
             'php_version' => $this->phpVersion,
-            'database' => $this->database,
-            'db' => ['driver' => $this->dbDriver, 'host' => $this->dbHost, 'port' => $this->dbPort, 'database' => $this->dbName, 'username' => $this->dbUser, 'password' => $this->dbPassword],
+            'database' => $newDb !== null ? 'existing' : $this->database,
+            'db' => $db,
             'frontend' => $this->frontend,
             'package_manager' => $this->packageManager,
             'worker' => $this->worker,
@@ -206,6 +254,9 @@ class LaravelIndex extends Component
         ], auth()->user());
         if ($this->deployKey !== null) {
             $app->update(['deploy_key' => $this->deployKey]);
+        }
+        if ($database !== null) {
+            $app->update(['database_id' => $database->id]);
         }
 
         session()->flash('toast', 'Kurulum başladı. Adımları bu sayfada canlı izleyebilirsiniz.');
@@ -317,6 +368,8 @@ class LaravelIndex extends Component
             'apps' => $apps,
             'busy' => $apps->getCollection()->contains(fn (LaravelApp $a) => $a->status->isBusy() || $a->latestDeployment?->status->isBusy()),
             'sites' => $this->installing ? $this->freeSites() : collect(),
+            'dbServers' => $this->installing ? collect(app(DatabaseServers::class)->installed())->mapWithKeys(fn ($s) => [$s => app(DatabaseServers::class)->label($s)])->all() : [],
+            'dbPrefix' => $this->installing && ($site = $this->freeSites()->firstWhere('id', $this->siteId)) ? Databases::prefix($site->systemUser) : '',
             'canInstall' => auth()->user()->is_admin || auth()->user()->isCustomer(),
         ]);
     }
@@ -365,7 +418,9 @@ class LaravelIndex extends Component
                 ! $git ? fn ($attr, $value, $fail) => PhpConstraint::allows(self::NEW_PROJECT_PHP, $value) === false
                     ? $fail('Laravel 13 PHP 8.3 veya üstünü ister.') : null : null,
             ]),
-            'database' => ['required', Rule::in(['sqlite', 'existing', 'none'])],
+            'database' => ['required', Rule::in(['sqlite', 'existing', 'none', ...(app(DatabaseServers::class)->installed() !== [] ? ['new'] : [])])],
+            'newDbServer' => ['required_if:database,new', 'nullable', Rule::in(app(DatabaseServers::class)->installed())],
+            'newDbSuffix' => ['required_if:database,new', 'nullable', 'regex:'.Databases::NAME_PATTERN, 'max:30'],
             'dbDriver' => ['required_if:database,existing', Rule::in(array_keys(LaravelApps::DB_DRIVERS))],
             'dbHost' => ['required_if:database,existing', 'nullable', 'max:255', 'regex:/^[A-Za-z0-9.:_\/-]+$/'],
             'dbPort' => ['required_if:database,existing', 'nullable', 'integer', 'between:1,65535'],

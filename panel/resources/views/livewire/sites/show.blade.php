@@ -15,7 +15,7 @@
         ['Dosya ve veri', 'folder', [
             ['folder', 'Dosya Yöneticisi', null],
             ['hard-drive-upload', 'FTP hesapları', null],
-            ['database', 'Veritabanları', null],
+            ['database', 'Veritabanları', $databases ? $databases.' veritabanı' : 'Yok', route('databases.index', ['site' => $site->id])],
             ['archive-restore', 'Yedekler', null],
             ['key-round', 'Bağlantı bilgileri', null],
         ]],
@@ -218,6 +218,12 @@
                 <label class="mt-3 flex items-center gap-2 text-[13px]">
                     <input type="checkbox" wire:model="removeMail" class="size-4 accent-accent">
                     <span>E-postayı da kapat ({{ $mail->mailboxes_count }} posta kutusu ve içindeki postalar silinir)</span>
+                </label>
+            @endif
+            @if ($databases > 0)
+                <label class="mt-3 flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" wire:model="removeDatabases" class="size-4 accent-accent">
+                    <span>Veritabanlarını da sil ({{ $databases }} veritabanı; önce yedek alınır)</span>
                 </label>
             @endif
             <label for="confirmDomain" class="mt-4 block text-[13px]">Onaylamak için alan adını yazın</label>

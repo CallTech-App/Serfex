@@ -10,7 +10,7 @@
             ['laravel.index', 'layers', 'Laravel'],
             ['dns.index', 'network', 'Alan Adları ve DNS'],
             ['mail.index', 'mail', 'E-posta'],
-            [null, 'database', 'Veritabanları'],
+            ['databases.index', 'database', 'Veritabanları'],
             ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
         ]],
         ['Hesaplar', [
@@ -34,7 +34,7 @@
                 $user->allows('laravel') ? ['laravel.index', 'layers', 'Laravel'] : null,
                 $user->allows('dns') ? ['dns.index', 'network', 'Alan Adları ve DNS'] : null,
                 $user->allows('mail') ? ['mail.index', 'mail', 'E-posta'] : null,
-                [null, 'database', 'Veritabanları'],
+                ['databases.index', 'database', 'Veritabanları'],
                 ['ssl.index', 'shield-check', 'SSL Sertifikaları'],
             ]))],
         ];

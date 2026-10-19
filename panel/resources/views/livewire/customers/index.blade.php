@@ -266,7 +266,7 @@
                             </div>
                         @endforeach
                     </div>
-                    <p class="mt-2 text-2xs text-muted">Boş bırakılan alan sınırsız sayılır. Veritabanı sınırı, veritabanı yönetimi geldiğinde uygulanır.</p>
+                    <p class="mt-2 text-2xs text-muted">Boş bırakılan alan sınırsız sayılır. Veritabanlarının boyutu disk kullanımına eklenir.</p>
                 </fieldset>
                 <fieldset>
                     <legend class="mb-2 font-medium">Özellikler</legend>

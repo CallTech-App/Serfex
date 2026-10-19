@@ -43,7 +43,7 @@ class PurgeCustomer implements ShouldQueue
             if ($customer->delete_sites) {
                 foreach (Site::where('system_user_id', $account->id)->where('status', '!=', SiteStatus::Deleting)->get() as $site) {
                     $site->update(['status' => SiteStatus::Deleting]);
-                    DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true);
+                    DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true, removeDatabases: true);
                 }
             }
             $account->update(['customer_id' => null]);

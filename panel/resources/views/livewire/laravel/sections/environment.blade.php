@@ -20,6 +20,9 @@
                 </button>
             @endif
             <button type="button" wire:click="$set('showingHistory', true)" class="{{ $btn }}"><x-icon name="history" />Geçmiş</button>
+            @if ($canCreateDatabase)
+                <button type="button" wire:click="createDatabase" wire:loading.attr="disabled" wire:target="createDatabase" class="{{ $btn }}"><x-icon name="database" />Veritabanı oluştur ve bağla</button>
+            @endif
             <div class="inline-flex rounded-md border border-line p-0.5 text-[13px]" role="tablist" aria-label="Görünüm">
                 @foreach (['rows' => 'Tablo', 'text' => 'Metin'] as $key => $label)
                     <button type="button" role="tab" wire:click="$set('mode', '{{ $key }}')" aria-selected="{{ $mode === $key ? 'true' : 'false' }}"

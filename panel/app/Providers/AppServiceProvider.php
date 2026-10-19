@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsureHostingAccess;
 use App\Livewire\Access;
 use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
+use App\Services\Databases\DatabaseServers;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Component;
@@ -22,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Remembers the agent's database status for one request or job.
+        $this->app->scoped(DatabaseServers::class);
         $this->app->singleton(AgentClient::class, fn ($app) => new AgentClient(
             socket: $app['config']->get('servik.agent.socket'),
             timeout: $app['config']->get('servik.agent.timeout'),
