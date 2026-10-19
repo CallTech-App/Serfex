@@ -60,9 +60,11 @@ APT=(apt-get -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force
 
 [ "$(id -u)" -eq 0 ] || die "Run the installer as root (sudo bash install.sh)."
 [ -r /etc/os-release ] || die "Servik runs on Ubuntu Server 24.04 or newer."
-. /etc/os-release
-if [ "${ID:-}" != ubuntu ] || ! dpkg --compare-versions "${VERSION_ID:-0}" ge 24.04; then
-	die "Servik runs on Ubuntu Server 24.04 or newer; this is ${PRETTY_NAME:-unknown}."
+# In a subshell: os-release sets VERSION, which is ours.
+read -r OS_ID OS_VERSION < <(. /etc/os-release && echo "${ID:-unknown} ${VERSION_ID:-0}")
+PRETTY_NAME=$(. /etc/os-release && echo "${PRETTY_NAME:-unknown}")
+if [ "$OS_ID" != ubuntu ] || ! dpkg --compare-versions "$OS_VERSION" ge 24.04; then
+	die "Servik runs on Ubuntu Server 24.04 or newer; this is $PRETTY_NAME."
 fi
 command -v systemctl > /dev/null && [ -d /run/systemd/system ] || die "Servik needs systemd."
 ARCH=$(dpkg --print-architecture)
