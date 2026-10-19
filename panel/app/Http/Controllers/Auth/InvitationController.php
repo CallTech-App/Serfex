@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\View\View;
+
+/**
+ * Accepting an invitation to work on Laravel applications: the person
+ * sets a password and is signed in. Links work for seven days.
+ */
+class InvitationController extends Controller
+{
+    public const DAYS = 7;
+
+    public function show(string $token): View
+    {
+        $user = $this->invited($token);
+
+        return view('auth.invitation', ['user' => $user, 'token' => $token]);
+    }
+
+    public function store(Request $request, string $token): RedirectResponse
+    {
+        $user = $this->invited($token);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'password' => ['required', 'confirmed', Password::min(10)],
+        ], [], ['name' => 'ad soyad', 'password' => 'parola']);
+        $user->forceFill([
+            'name' => $data['name'],
+            'password' => $data['password'],
+            'invite_token' => null,
+            'invited_at' => null,
+            'email_verified_at' => now(),
+        ])->save();
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('laravel.index');
+    }
+
+    private function invited(string $token): User
+    {
+        $user = User::where('invite_token', hash('sha256', $token))->first();
+        abort_if($user === null || $user->invited_at === null || $user->invited_at->lt(now()->subDays(self::DAYS)), 404);
+
+        return $user;
+    }
+}

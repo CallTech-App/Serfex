@@ -20,7 +20,10 @@ use Illuminate\Support\Str;
  */
 #[Fillable(['site_id', 'path', 'status', 'source', 'package', 'repository', 'branch', 'frontend', 'package_manager', 'migrate', 'hooks',
     'health_path', 'auto_rollback', 'keep_releases', 'auto_deploy', 'deploy_key', 'laravel_version', 'php_requirement', 'current_release',
-    'scheduler', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at'])]
+    'scheduler', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at',
+    'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
+    'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
+    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy'])]
 class LaravelApp extends Model
 {
     /** @use HasFactory<LaravelAppFactory> */
@@ -41,6 +44,20 @@ class LaravelApp extends Model
         'auto_rollback' => true,
         'keep_releases' => 5,
         'processes_state' => 'ok',
+        'preview_database' => 'sqlite',
+        'preview_seed' => true,
+        'preview_limit' => 5,
+        'maintenance_mode' => 'servik',
+        'backup_schedule' => 'off',
+        'backup_time' => '03:00',
+        'backup_keep' => 7,
+    ];
+
+    /** How visitors see maintenance: in Nginx (servik, custom) or the application's own page. */
+    public const MAINTENANCE_MODES = [
+        'servik' => 'Servik bakım sayfası',
+        'custom' => 'Özel HTML',
+        'app' => 'Uygulamanın kendi sayfası',
     ];
 
     protected static function booted(): void
@@ -63,6 +80,10 @@ class LaravelApp extends Model
             'scheduler' => 'boolean',
             'installed_at' => 'datetime',
             'install_env' => 'encrypted:array',
+            'previews_enabled' => 'boolean',
+            'preview_seed' => 'boolean',
+            'maintenance_on' => 'boolean',
+            'backup_before_deploy' => 'boolean',
         ];
     }
 
@@ -115,12 +136,87 @@ class LaravelApp extends Model
     }
 
     /**
+     * @return HasMany<LaravelProcess, $this>
+     */
+    public function processes(): HasMany
+    {
+        return $this->hasMany(LaravelProcess::class)->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<LaravelPreview, $this>
+     */
+    public function previews(): HasMany
+    {
+        return $this->hasMany(LaravelPreview::class)->latest('id');
+    }
+
+    /**
+     * @return HasMany<LaravelBackup, $this>
+     */
+    public function backups(): HasMany
+    {
+        return $this->hasMany(LaravelBackup::class)->latest('id');
+    }
+
+    /**
+     * @return HasMany<LaravelAppMember, $this>
+     */
+    public function members(): HasMany
+    {
+        return $this->hasMany(LaravelAppMember::class);
+    }
+
+    /**
+     * @return HasMany<LaravelApiToken, $this>
+     */
+    public function apiTokens(): HasMany
+    {
+        return $this->hasMany(LaravelApiToken::class)->latest('id');
+    }
+
+    /**
+     * The application a preview environment previews.
+     *
+     * @return BelongsTo<LaravelApp, $this>
+     */
+    public function previewOf(): BelongsTo
+    {
+        return $this->belongsTo(LaravelApp::class, 'preview_of_id');
+    }
+
+    public function isPreview(): bool
+    {
+        return $this->preview_of_id !== null;
+    }
+
+    /**
+     * True when Nginx shows the maintenance page (Servik's or custom HTML)
+     * rather than php artisan down.
+     */
+    public function nginxMaintenance(): bool
+    {
+        return $this->maintenance_on && $this->maintenance_mode !== 'app';
+    }
+
+    /**
+     * The IP addresses and networks let through during maintenance.
+     *
+     * @return list<string>
+     */
+    public function maintenanceAllowList(): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/[\s,]+/', (string) $this->maintenance_allow) ?: [])));
+    }
+
+    /**
      * Applications that need attention: a failed install or last deploy, or
      * workers that could not be applied. Shown next to the menu item.
      */
     public static function attentionCount(): int
     {
         return static::query()
+            ->whereNull('preview_of_id')
             ->where(fn ($q) => $q->where('status', LaravelAppStatus::Failed)
                 ->orWhere('processes_state', 'failed')
                 ->orWhereHas('latestDeployment', fn ($d) => $d->whereIn('status', [DeploymentStatus::Failed, DeploymentStatus::RolledBack, DeploymentStatus::Unhealthy])))

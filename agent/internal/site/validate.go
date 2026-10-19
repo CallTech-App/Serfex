@@ -94,6 +94,9 @@ func (s Spec) validate() error {
 	if s.TLS != nil && s.TLS.Certificate == "" {
 		return invalid("tls.certificate is required")
 	}
+	if err := s.validateWeb(); err != nil {
+		return err
+	}
 	if len(s.Aliases) > maxAlias {
 		return invalid("at most %d aliases are allowed", maxAlias)
 	}

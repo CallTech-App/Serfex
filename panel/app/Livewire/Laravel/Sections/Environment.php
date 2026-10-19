@@ -16,6 +16,8 @@ use Livewire\Attributes\Lazy;
 #[Lazy]
 class Environment extends Section
 {
+    protected const ABILITY = 'operate';
+
     /** How many earlier versions are kept. */
     public const HISTORY = 30;
 

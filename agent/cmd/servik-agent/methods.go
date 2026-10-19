@@ -430,4 +430,38 @@ func registerLaravel(srv *rpc.Server, svc services) {
 		return l.CheckHealth(ctx, q.Domain, q.Path)
 	})
 	handle(srv, "laravel.remove", func(ctx context.Context, p laravel.RemoveSpec) (any, error) { return l.Remove(ctx, p) })
+
+	handle(srv, "laravel.process.apply", func(ctx context.Context, p laravel.ProcessSpec) (any, error) { return l.ApplyProcesses(ctx, p) })
+	handle(srv, "laravel.process.restart", func(ctx context.Context, p laravel.ProcessAction) (any, error) { return l.RestartProcess(ctx, p) })
+	handle(srv, "laravel.process.log", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+		Name   string `json:"name"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return l.ReadProcessLog(laravel.ProcessAction{Domain: q.Domain, Name: q.Name}, q.Offset)
+	})
+
+	// Tinker sessions outlive the request that starts them.
+	handle(srv, "laravel.tinker.start", func(ctx context.Context, p laravel.TinkerSpec) (any, error) {
+		return l.StartTinker(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "laravel.tinker.send", func(_ context.Context, p laravel.TinkerInput) (any, error) { return l.TinkerSend(p) })
+	handle(srv, "laravel.tinker.stop", func(_ context.Context, p laravel.TinkerInput) (any, error) { return l.StopTinker(p) })
+	handle(srv, "laravel.tinker.status", func(_ context.Context, q struct {
+		Domain  string `json:"domain"`
+		Session string `json:"session"`
+	}) (any, error) {
+		return laravel.TinkerState{Running: l.TinkerRunning(q.Domain, q.Session)}, nil
+	})
+
+	handle(srv, "laravel.backup.create", func(ctx context.Context, p laravel.BackupSpec) (any, error) { return l.Backup(ctx, p) })
+	handle(srv, "laravel.backup.restore", func(ctx context.Context, p laravel.RestoreSpec) (any, error) { return l.Restore(ctx, p) })
+	handle(srv, "laravel.backup.delete", func(_ context.Context, p laravel.BackupRef) (any, error) { return l.DeleteBackup(p) })
+	handle(srv, "laravel.backup.read", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+		ID     string `json:"id"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return l.ReadBackup(laravel.BackupRef{Domain: q.Domain, ID: q.ID}, q.Offset)
+	})
 }

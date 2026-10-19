@@ -17,6 +17,8 @@ use Livewire\Attributes\Lazy;
 #[Lazy]
 class Queues extends Section
 {
+    protected const VIEW_METHODS = ['openFailed'];
+
     public const MAX_PROCESSES = 16;
 
     public bool $editing = false;
@@ -193,6 +195,8 @@ class Queues extends Section
             'pending' => $pending,
             'failedCount' => $sizes['failed'] ?? null,
             'syncing' => $app->processes_state === 'syncing',
+            'horizon' => $app->processes()->where('kind', 'horizon')->where('enabled', true)->exists(),
+            'operate' => auth()->user()->canOnApp($app, 'operate'),
         ]);
     }
 

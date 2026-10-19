@@ -13,6 +13,8 @@ use Livewire\Attributes\Lazy;
 #[Lazy]
 class Overview extends Section
 {
+    protected const VIEW_METHODS = ['checkHealth'];
+
     /** @var array<string, mixed>|null */
     public ?array $health = null;
 

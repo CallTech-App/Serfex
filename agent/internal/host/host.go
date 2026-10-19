@@ -34,6 +34,12 @@ type Command struct {
 	// Stream, when set, receives the output while the command runs (for
 	// live deploy logs). Run still returns the tail of the output.
 	Stream io.Writer
+	// Stdout, when set, receives the standard output alone (an archive or
+	// a database dump); Run then returns the standard error.
+	Stdout io.Writer
+	// Input, when set, is the standard input instead of Stdin, for data
+	// too big to hold in memory.
+	Input io.Reader
 }
 
 // String renders the command for logs and error messages.
@@ -50,7 +56,25 @@ func AsUser(user string, c Command) Command {
 		Args:   append([]string{"-u", user, "--", c.Name}, c.Args...),
 		Stdin:  c.Stdin,
 		Stream: c.Stream,
+		Stdout: c.Stdout,
+		Input:  c.Input,
 	}
+}
+
+// Process is a command started with Start that keeps running.
+type Process interface {
+	// Write sends data to the command's standard input.
+	Write(p []byte) (int, error)
+	// Wait waits for the command to exit.
+	Wait() error
+	// Kill stops the command.
+	Kill() error
+}
+
+// Starter is a Host that can start commands that keep running, writing
+// their output to a file while the caller feeds their input (Tinker).
+type Starter interface {
+	Start(c Command, output io.Writer) (Process, error)
 }
 
 // User is an entry of the system account database.

@@ -34,6 +34,17 @@ class UserFactory extends Factory
     }
 
     /**
+     * An account that is not a server administrator: it sees only the
+     * Laravel applications it is a member of.
+     */
+    public function member(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_admin' => false,
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

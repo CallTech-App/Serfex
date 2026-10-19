@@ -196,12 +196,85 @@ func TestRealHost(t *testing.T) {
 	}
 	t.Logf("log files: %+v", logs.Files)
 
+	// Maintenance in Nginx: the page for everyone, the site for listed
+	// addresses and holders of the bypass cookie.
+	siteSpec.Maintenance = &site.MaintenanceSpec{Secret: "servik-nginx-bypass", Retry: 30}
+	if _, err := sites.Apply(ctx, siteSpec); err != nil {
+		t.Fatal(err)
+	}
+	if body := get(t, "/", 503); !strings.Contains(body, "bakım") {
+		t.Fatalf("maintenance page: %.300s", body)
+	}
+	get(t, "/servik-nginx-bypass", 302)
+	siteSpec.Maintenance.Allow = []string{"127.0.0.1"}
+	if _, err := sites.Apply(ctx, siteSpec); err != nil {
+		t.Fatal(err)
+	}
+	get(t, "/up", 200)
+	siteSpec.Maintenance = nil
+	if _, err := sites.Apply(ctx, siteSpec); err != nil {
+		t.Fatal(err)
+	}
+
+	// 4. Tinker keeps its state between inputs.
+	if _, err := m.StartTinker(ctx, TinkerSpec{App: app, Session: "tinker-real"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, code := range []string{"$name = config('app.name');", "strtoupper($name)"} {
+		if st, err := m.TinkerSend(TinkerInput{Domain: realDomain, Session: "tinker-real", Code: code}); err != nil || !st.Running {
+			t.Fatalf("tinker input: %+v %v", st, err)
+		}
+	}
+	waitFor(t, 60*time.Second, func() bool {
+		chunk, _ := m.ReadRun(realDomain, "tinker-real", 0)
+		return strings.Contains(chunk.Data, "SERVIK TEST")
+	})
+	if _, err := m.StopTinker(TinkerInput{Domain: realDomain, Session: "tinker-real"}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 10*time.Second, func() bool { return !m.TinkerRunning(realDomain, "tinker-real") })
+	if out, _ := exec.Command("pgrep", "-u", tg.User, "-f", "artisan tinker").Output(); len(out) > 0 {
+		t.Fatalf("tinker still running: %s", out)
+	}
+
+	// 5. A backup brings storage, .env and the database back.
+	db := base + "/shared/database/database.sqlite"
+	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=DB::table('cache')->insert(['key' => 'servik', 'value' => 'v1', 'expiration' => 0]); echo 'ok';"}}); err != nil || !strings.Contains(out.Output, "ok") {
+		t.Fatalf("insert: %+v %v", out, err)
+	}
+	if err := os.WriteFile(base+"/shared/storage/app/servik.txt", []byte("v1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := m.Backup(ctx, BackupSpec{App: app, ID: "real", Parts: []string{"code", "env", "storage", "database"}, Run: "backup-real"})
+	if err != nil {
+		chunk, _ := m.ReadRun(realDomain, "backup-real", 0)
+		t.Fatalf("backup: %v\n%s", err, chunk.Data)
+	}
+	t.Logf("backup: %d bytes, parts %v", b.Size, b.Parts)
+	_ = os.WriteFile(base+"/shared/storage/app/servik.txt", []byte("v2"), 0o644)
+	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=DB::table('cache')->delete(); echo 'ok';"}}); err != nil || !strings.Contains(out.Output, "ok") {
+		t.Fatalf("delete: %+v %v", out, err)
+	}
+	if _, err := m.Restore(ctx, RestoreSpec{App: app, ID: "real", Parts: []string{"code", "env", "storage", "database"}, Run: "restore-real"}); err != nil {
+		chunk, _ := m.ReadRun(realDomain, "restore-real", 0)
+		t.Fatalf("restore: %v\n%s", err, chunk.Data)
+	}
+	if got, _ := os.ReadFile(base + "/shared/storage/app/servik.txt"); string(got) != "v1" {
+		t.Fatalf("storage after restore: %q", got)
+	}
+	if out, _ := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=echo DB::table('cache')->value('value');"}}); !strings.Contains(out.Output, "v1") {
+		t.Fatalf("database after restore: %+v", out)
+	}
+	assertOwner(t, db, tg.User)
+	assertOwner(t, base+"/shared/storage/app/servik.txt", tg.User)
+	get(t, "/up", 200)
+
 	if !hasSystemd() {
 		t.Log("no systemd: skipping queue workers and the scheduler")
 		return
 	}
 
-	// 4. A queue worker runs a job.
+	// 6. A queue worker runs a job.
 	states, err := m.ApplyQueues(ctx, QueueSpec{App: app, Workers: []Worker{{Name: "default", Processes: 1, Timeout: 30}}})
 	if err != nil {
 		t.Fatal(err)
@@ -229,7 +302,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 5. The scheduler timer runs schedule:run.
+	// 7. The scheduler timer runs schedule:run.
 	sched, err := m.ApplySchedule(ctx, ScheduleSpec{App: app, Enabled: true})
 	if err != nil || !sched.Enabled {
 		t.Fatalf("schedule: %+v %v", sched, err)
@@ -241,12 +314,51 @@ func TestRealHost(t *testing.T) {
 		t.Fatal("the scheduler wrote no log")
 	}
 
-	// 6. Removing the application stops its workers.
+	// 8. A long-running process behind the site: PHP's own web server
+	// stands in for Octane, so Nginx proxies to it.
+	procs, err := m.ApplyProcesses(ctx, ProcessSpec{App: app, Processes: []Process{
+		{Name: "web", Kind: "custom", Enabled: true, Command: []string{"php", "-S", "127.0.0.1:20080", "-t", "public"}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 30*time.Second, func() bool { return activeState(ctx, h, procs[0].Unit) == "active" })
+	siteSpec.Proxy = &site.ProxySpec{Port: 20080}
+	siteSpec.WebSockets = []site.WebSocketSpec{{Path: "/app/", Port: 20081}}
+	if _, err := sites.Apply(ctx, siteSpec); err != nil {
+		t.Fatal(err)
+	}
+	// An Nginx reload hands over to new workers in the background, and
+	// PHP's server logs a request after answering it: ask until the request
+	// shows up in the process's log.
+	var plog RunChunk
+	logDeadline := time.Now().Add(15 * time.Second)
+	for {
+		get(t, "/up", 200)
+		time.Sleep(300 * time.Millisecond)
+		plog, _ = m.ReadProcessLog(ProcessAction{Domain: realDomain, Name: "web"}, -1)
+		if strings.Contains(plog.Data, "GET /up") {
+			break
+		}
+		if time.Now().After(logDeadline) {
+			vhost, _ := os.ReadFile("/etc/nginx/sites-available/" + realDomain + ".conf")
+			t.Fatalf("the request did not reach the process:\n%s\nvhost:\n%s", plog.Data, vhost)
+		}
+	}
+	siteSpec.Proxy, siteSpec.WebSockets = nil, nil
+	if _, err := sites.Apply(ctx, siteSpec); err != nil {
+		t.Fatal(err)
+	}
+
+	// 9. Removing the application stops its workers and processes.
 	if _, err := m.Remove(ctx, RemoveSpec{Target: tg, RemoveFiles: true}); err != nil {
 		t.Fatal(err)
 	}
 	if s := activeState(ctx, h, states[0].Unit); s == "active" {
 		t.Fatalf("worker still %s", s)
+	}
+	if s := activeState(ctx, h, procs[0].Unit); s == "active" {
+		t.Fatalf("process still %s", s)
 	}
 	if _, err := os.Stat(base); !os.IsNotExist(err) {
 		t.Fatal("laravel/ still exists")

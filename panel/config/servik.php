@@ -24,6 +24,9 @@ return [
         // Seconds to wait for a Laravel deploy or a command run from the
         // panel; the agent stops a command after 30 minutes.
         'deploy_timeout' => (float) env('SERVIK_AGENT_DEPLOY_TIMEOUT', 1900),
+        // Seconds to wait for an application backup or restore; the agent
+        // stops one after two hours.
+        'backup_timeout' => (float) env('SERVIK_AGENT_BACKUP_TIMEOUT', 7300),
     ],
 
     /*

@@ -1,19 +1,21 @@
-@props(['run', 'class' => 'h-80'])
+@props(['run', 'class' => 'h-80', 'method' => 'readRun', 'start' => 0])
 {{--
     Output of a deploy or command, read from the agent as it is written.
-    The Livewire component it sits in must use App\Livewire\Laravel\ReadsRunLogs.
+    The Livewire component it sits in must use App\Livewire\Laravel\ReadsRunLogs
+    (or offer another reader as method, such as a process log's, read from
+    start; -1 starts at the last lines).
     When the run ends, the component is refreshed so statuses update.
 --}}
 <div wire:key="run-log-{{ $run }}" wire:ignore
      x-data="{
-        offset: 0,
+        offset: @js((int) $start),
         timer: null,
         done: false,
         error: '',
         async tick() {
             let r;
             try {
-                r = await $wire.readRun(@js($run), this.offset);
+                r = await $wire[@js($method)](@js($run), this.offset);
             } catch (e) {
                 this.timer = setTimeout(() => this.tick(), 3000);
                 return;

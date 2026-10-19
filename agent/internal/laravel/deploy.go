@@ -39,6 +39,10 @@ type DeploySpec struct {
 	Rollback bool `json:"rollback"`
 	// Keep is how many releases stay on disk (default 5, at least 2).
 	Keep int `json:"keep"`
+	// KeyFrom is another site of the same account whose deploy key this
+	// application uses when it has none (a preview environment uses the
+	// key of the application it previews).
+	KeyFrom string `json:"key_from"`
 }
 
 // Source is where a release's code comes from.
@@ -169,6 +173,11 @@ func (s DeploySpec) validate() error {
 	for _, h := range []string{s.Hooks.BeforeBuild, s.Hooks.BeforeActivate, s.Hooks.AfterActivate} {
 		if len(h) > 16<<10 {
 			return invalid("hooks must be shorter than 16 KB")
+		}
+	}
+	if s.KeyFrom != "" {
+		if err := (Target{Domain: s.KeyFrom, User: s.User}).validate(); err != nil {
+			return err
 		}
 	}
 	if s.Keep < 0 || s.Keep > 50 {
@@ -382,6 +391,9 @@ func (d *deploy) fetch(res *DeployResult) error {
 			"create-project", "--no-install", "--no-scripts", "--no-interaction", "--prefer-dist", s.Package, d.dir)
 	}
 	d.env = gitEnv(d.base)
+	if err := d.copyKey(); err != nil {
+		return err
+	}
 	if err := d.exec(d.base, "git clone --depth 1 --branch "+s.Ref+" "+s.Repository, "git",
 		"clone", "--depth", "1", "--branch", s.Ref, "--single-branch", "--recurse-submodules", "--shallow-submodules", "--", s.Repository, d.dir); err != nil {
 		return err
@@ -395,6 +407,33 @@ func (d *deploy) fetch(res *DeployResult) error {
 	if len(res.Commit) >= 7 {
 		d.step("Kod çekildi: %s %s", res.Commit[:7], res.Message)
 	}
+	return nil
+}
+
+// copyKey copies the deploy key of KeyFrom when the application has none.
+// Both sites belong to the same account, which does the copying.
+func (d *deploy) copyKey() error {
+	if d.spec.KeyFrom == "" || d.m.exists(d.base+"/.ssh/id_ed25519") {
+		return nil
+	}
+	from := baseDir(Target{Domain: d.spec.KeyFrom, User: d.spec.User}) + "/.ssh"
+	if !d.m.exists(from + "/id_ed25519") {
+		return nil
+	}
+	if err := d.user("mkdir", "-p", d.base+"/.ssh"); err != nil {
+		return err
+	}
+	if err := d.user("chmod", "700", d.base+"/.ssh"); err != nil {
+		return err
+	}
+	for _, f := range []string{"id_ed25519", "id_ed25519.pub", "known_hosts"} {
+		if d.m.exists(from + "/" + f) {
+			if err := d.user("cp", "-a", from+"/"+f, d.base+"/.ssh/"+f); err != nil {
+				return err
+			}
+		}
+	}
+	d.step("Dağıtım anahtarı %s uygulamasından alındı", d.spec.KeyFrom)
 	return nil
 }
 
@@ -589,6 +628,13 @@ func (m *Manager) afterSwitch(ctx context.Context, w io.Writer, t Target) {
 			msg += " · kuyruk işçileri yeniden başlatılamadı"
 		}
 	}
+	if len(m.enabledProcesses(t.Domain)) > 0 {
+		if m.restartProcesses(ctx, t.Domain) == nil {
+			msg += " · süreçler yeniden başlatıldı"
+		} else {
+			msg += " · süreçler yeniden başlatılamadı"
+		}
+	}
 	fmt.Fprintf(w, "▸ %s\n", msg)
 }
 
@@ -687,14 +733,20 @@ type AppInfo struct {
 	Laravel        string `json:"laravel"`
 	PHPRequirement string `json:"php_requirement"`
 	PackageManager string `json:"package_manager"`
+	// Packages are the versions of the Laravel packages Servik can run
+	// processes for (Horizon, Octane, Reverb), when installed.
+	Packages map[string]string `json:"packages"`
 }
+
+// processPackages are the packages AppInfo reports.
+var processPackages = map[string]bool{"laravel/horizon": true, "laravel/octane": true, "laravel/reverb": true, "laravel/pulse": true}
 
 // appInfo reads the Laravel version from composer.lock, the PHP
 // requirement from composer.json and the package manager from the lock
 // file the application ships.
 func (m *Manager) appInfo(ctx context.Context, a App) AppInfo {
 	dir := a.dir()
-	info := AppInfo{PackageManager: "npm"}
+	info := AppInfo{PackageManager: "npm", Packages: map[string]string{}}
 	for _, l := range []struct{ file, pm string }{{"pnpm-lock.yaml", "pnpm"}, {"yarn.lock", "yarn"}, {"bun.lock", "bun"}, {"bun.lockb", "bun"}} {
 		if m.exists(dir + "/" + l.file) {
 			info.PackageManager = l.pm
@@ -721,6 +773,9 @@ func (m *Manager) appInfo(ctx context.Context, a App) AppInfo {
 			for _, p := range lock.Packages {
 				if p.Name == "laravel/framework" {
 					info.Laravel = strings.TrimPrefix(p.Version, "v")
+				}
+				if processPackages[p.Name] {
+					info.Packages[p.Name] = strings.TrimPrefix(p.Version, "v")
 				}
 			}
 			if info.PHPRequirement == "" {

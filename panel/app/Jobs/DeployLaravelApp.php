@@ -8,6 +8,8 @@ use App\Models\LaravelApp;
 use App\Models\LaravelDeployment;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Laravel\Backups;
+use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\Processes;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -32,9 +34,9 @@ class DeployLaravelApp implements ShouldQueue
 
     public function __construct(public LaravelDeployment $deployment) {}
 
-    public function handle(AgentClient $agent, Processes $processes): void
+    public function handle(AgentClient $agent, Processes $processes, Backups $backups): void
     {
-        $deployment = $this->deployment->fresh(['app.site.systemUser', 'app.site.certificate', 'app.workers']);
+        $deployment = $this->deployment->fresh(['app.site.systemUser', 'app.site.certificate', 'app.workers', 'app.previewOf.site']);
         if ($deployment === null || $deployment->status !== DeploymentStatus::Queued) {
             return;
         }
@@ -46,6 +48,16 @@ class DeployLaravelApp implements ShouldQueue
         }
         $first = ! $app->isManaged() || $app->current_release === null;
         $deployment->update(['status' => DeploymentStatus::Running, 'started_at' => now()]);
+
+        // Safety net: the database as it was before this deploy's migrations.
+        if (! $first && $deployment->kind === 'deploy' && $app->backup_before_deploy) {
+            $backup = $backups->createNow($app, ['database'], 'deploy', note: 'Dağıtım #'.$deployment->number.' öncesi');
+            if ($backup->status !== 'succeeded') {
+                $this->fail($app, $deployment, 'Dağıtım öncesi veritabanı yedeği alınamadı: '.$backup->error);
+
+                return;
+            }
+        }
 
         try {
             $result = $agent->call('laravel.deploy', $this->spec($app, $deployment, $first), config('servik.agent.deploy_timeout'));
@@ -85,6 +97,11 @@ class DeployLaravelApp implements ShouldQueue
             'finished_at' => now(),
         ])->save();
         $app->fill(['last_error' => null, 'install_env' => null])->save();
+
+        // A new preview environment's empty database gets the seed data.
+        if ($first && $app->isPreview() && $deployment->status === DeploymentStatus::Succeeded && $app->previewOf?->preview_seed) {
+            app(LaravelApps::class)->runCommand($app, 'artisan', 'db:seed --force');
+        }
     }
 
     /**
@@ -154,6 +171,8 @@ class DeployLaravelApp implements ShouldQueue
             'health' => $first ? null : ['path' => $app->health_path],
             'rollback' => $app->auto_rollback,
             'keep' => $app->keep_releases,
+            // A preview environment pulls with its application's deploy key.
+            'key_from' => $app->isPreview() ? (string) $app->previewOf?->site?->domain : '',
         ];
     }
 

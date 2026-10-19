@@ -185,9 +185,10 @@ jobs:
           sudo systemctl start nginx php8.3-fpm
 
       # Creates a new Laravel project with a frontend build, serves it,
-      # deploys a broken release that the health check rolls back, starts
-      # queue workers and the scheduler, edits .env, runs Artisan and
-      # maintenance mode, then removes everything again.
+      # deploys a broken release that the health check rolls back, keeps
+      # state in a Tinker session, backs up and restores storage, .env and
+      # the database, starts queue workers, the scheduler and a long-running
+      # process behind Nginx, then removes everything again.
       - name: Install and deploy a Laravel app for real
         run: >-
           sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
@@ -196,8 +197,10 @@ jobs:
       - name: Laravel logs
         if: failure()
         run: |
-          sudo journalctl --no-pager -u 'servik-queue-*' -u 'servik-schedule-*' -n 200 || true
+          sudo journalctl --no-pager -u 'servik-queue-*' -u 'servik-schedule-*' -u 'servik-proc-*' -n 200 || true
           sudo sh -c 'tail -n 100 /var/lib/servik/laravel/*/runs/*.log' || true
+          sudo sh -c 'tail -n 50 /var/log/servik/laravel/*/proc-*.log' || true
+          sudo sh -c 'cat /etc/nginx/sites-enabled/*' || true
 
   panel:
     name: Panel (PHP ${{ matrix.php }})

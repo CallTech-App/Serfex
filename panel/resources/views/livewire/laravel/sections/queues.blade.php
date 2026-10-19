@@ -26,6 +26,14 @@
         </div>
     @endif
 
+    @if ($horizon)
+        <div class="flex flex-wrap items-center gap-3 border-b border-line bg-info-soft/40 px-5 py-2.5 text-[13px]">
+            <span>Kuyrukları Horizon işliyor; aşağıdaki işçiler Horizon kapanana kadar çalışmaz.</span>
+            <button type="button" wire:click="$dispatch('show-section', { section: 'surecler' })" class="ml-auto text-accent hover:underline">Süreçler</button>
+        </div>
+    @endif
+
+    @if ($operate)
     <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
         <button type="button" wire:click="openWorker" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110"><x-icon name="plus" />İşçi ekle</button>
         <button type="button" wire:click="restart" @disabled($workers->sum('processes') === 0) class="{{ $btn }} disabled:opacity-40"><x-icon name="rotate-cw" />Yeniden başlat</button>
@@ -36,6 +44,7 @@
             <span class="ml-auto flex items-center gap-2 text-[13px] text-muted"><x-icon name="loader-circle" class="animate-spin" />Sunucuya uygulanıyor</span>
         @endif
     </div>
+    @endif
 
     <div class="relative overflow-x-auto">
         <table class="w-full min-w-[760px] text-[13.5px]">
@@ -57,6 +66,7 @@
                         $waiting = collect($w->queues())->sum(fn ($q) => (int) ($pending[(string) $w->connection.'|'.$q] ?? 0));
                         $badge = match (true) {
                             $w->processes === 0 => new Badge('Durduruldu', 'muted'),
+                            $horizon => new Badge('Horizon işliyor', 'muted'),
                             $syncing => new Badge('Uygulanıyor', 'info', true),
                             $active >= $w->processes => new Badge('Çalışıyor', 'ok'),
                             $active > 0 => new Badge($active.' / '.$w->processes.' çalışıyor', 'warn'),

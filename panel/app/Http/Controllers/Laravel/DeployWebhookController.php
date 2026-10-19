@@ -5,17 +5,23 @@ namespace App\Http\Controllers\Laravel;
 use App\Http\Controllers\Controller;
 use App\Models\LaravelApp;
 use App\Services\Laravel\LaravelApps;
+use App\Services\Laravel\Previews;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * Deploys a Laravel application when its repository says so: a push
  * webhook from GitHub, GitLab or Bitbucket, or a plain POST from CI. The
  * secret token in the address identifies the application.
+ *
+ * Pull request (merge request) events open, update and remove preview
+ * environments when they are on. Pull requests from forks are ignored:
+ * their code is not the repository owner's.
  */
 class DeployWebhookController extends Controller
 {
-    public function __invoke(Request $request, string $token, LaravelApps $apps): JsonResponse
+    public function __invoke(Request $request, string $token, LaravelApps $apps, Previews $previews): JsonResponse
     {
         $app = LaravelApp::with('site')->where('webhook_token', $token)->first();
         if ($app === null || strlen($token) < 32) {
@@ -23,6 +29,10 @@ class DeployWebhookController extends Controller
         }
         if ($request->header('X-GitHub-Event') === 'ping') {
             return response()->json(['message' => 'pong']);
+        }
+        $pr = $this->pullRequest($request);
+        if ($pr !== null) {
+            return $this->preview($app, $pr, $previews);
         }
 
         $pushed = $this->pushedBranch($request);
@@ -48,6 +58,95 @@ class DeployWebhookController extends Controller
         $deployment = $apps->deploy($app, $ref, triggeredBy: $this->trigger($request));
 
         return response()->json(['message' => 'Deploy queued.', 'deployment' => $deployment->number], 202);
+    }
+
+    /**
+     * @param  array{provider: string, action: string, number: int, title: string, url: ?string, branch: string, fork: bool}  $pr
+     */
+    private function preview(LaravelApp $app, array $pr, Previews $previews): JsonResponse
+    {
+        if ($pr['action'] === 'ignore') {
+            return response()->json(['message' => 'Nothing to do for this pull request event.'], 202);
+        }
+        if (! $app->previews_enabled) {
+            return response()->json(['message' => 'Preview environments are off for this application.'], 202);
+        }
+        if ($pr['fork']) {
+            return response()->json(['message' => 'Pull requests from forks get no preview environment.'], 202);
+        }
+        $preview = $app->previews()->where('pr_number', $pr['number'])->first();
+        if ($pr['action'] === 'close') {
+            if ($preview === null) {
+                return response()->json(['message' => 'No preview environment for this pull request.'], 202);
+            }
+            $previews->delete($preview);
+
+            return response()->json(['message' => 'Preview environment removed.', 'preview' => $preview->name], 202);
+        }
+        if ($pr['action'] === 'update' && $preview === null) {
+            $pr['action'] = 'open';
+        }
+        try {
+            $preview = $previews->create($app, $pr['branch'], pr: $pr['number'], title: $pr['title'], url: $pr['url'], source: $pr['provider']);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
+
+        return response()->json(['message' => 'Preview environment queued.', 'preview' => $preview->name, 'url' => 'https://'.$preview->domain()], 202);
+    }
+
+    /**
+     * The pull request (merge request) event in the request, if it is one:
+     * action open, update or close.
+     *
+     * @return array{provider: string, action: string, number: int, title: string, url: ?string, branch: string, fork: bool}|null
+     */
+    private function pullRequest(Request $request): ?array
+    {
+        $event = null;
+        if ($request->header('X-GitHub-Event') === 'pull_request') {
+            $action = match ((string) $request->json('action')) {
+                'opened', 'reopened', 'ready_for_review' => 'open',
+                'synchronize', 'edited' => 'update',
+                'closed' => 'close',
+                default => null,
+            };
+            $event = ['provider' => 'github', 'action' => $action, 'number' => $request->json('pull_request.number'), 'title' => $request->json('pull_request.title'),
+                'url' => $request->json('pull_request.html_url'), 'branch' => $request->json('pull_request.head.ref'),
+                'fork' => $request->json('pull_request.head.repo.full_name') !== $request->json('pull_request.base.repo.full_name')];
+        } elseif ($request->header('X-Gitlab-Event') === 'Merge Request Hook') {
+            $action = match ((string) $request->json('object_attributes.action')) {
+                'open', 'reopen' => 'open',
+                'update' => 'update',
+                'close', 'merge' => 'close',
+                default => null,
+            };
+            $event = ['provider' => 'gitlab', 'action' => $action, 'number' => $request->json('object_attributes.iid'), 'title' => $request->json('object_attributes.title'),
+                'url' => $request->json('object_attributes.url'), 'branch' => $request->json('object_attributes.source_branch'),
+                'fork' => $request->json('object_attributes.source_project_id') !== $request->json('object_attributes.target_project_id')];
+        } elseif (str_starts_with((string) $request->header('X-Event-Key'), 'pullrequest:')) {
+            $action = match (substr((string) $request->header('X-Event-Key'), 12)) {
+                'created' => 'open',
+                'updated' => 'update',
+                'fulfilled', 'rejected' => 'close',
+                default => null,
+            };
+            $event = ['provider' => 'bitbucket', 'action' => $action, 'number' => $request->json('pullrequest.id'), 'title' => $request->json('pullrequest.title'),
+                'url' => $request->json('pullrequest.links.html.href'), 'branch' => $request->json('pullrequest.source.branch.name'),
+                'fork' => $request->json('pullrequest.source.repository.full_name') !== $request->json('pullrequest.destination.repository.full_name')];
+        }
+        if ($event === null) {
+            return null;
+        }
+        if ($event['action'] === null || ! is_int($event['number']) || ! is_string($event['branch'])
+            || ! preg_match('~^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$~', $event['branch']) || str_contains($event['branch'], '..')) {
+            // An event about a pull request that needs nothing from us.
+            return ['provider' => $event['provider'], 'action' => 'ignore', 'number' => 0, 'title' => '', 'url' => null, 'branch' => '', 'fork' => false];
+        }
+        $event['title'] = is_string($event['title']) ? $event['title'] : '';
+        $event['url'] = is_string($event['url']) && str_starts_with($event['url'], 'https://') ? $event['url'] : null;
+
+        return $event;
     }
 
     /**

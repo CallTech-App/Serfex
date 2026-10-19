@@ -54,6 +54,12 @@ type Spec struct {
 	// directory: "public_html" (the default), or for example
 	// "laravel/current/public" for a Laravel application.
 	WebRoot string `json:"web_root"`
+	// Proxy hands requests to a local application server (Octane).
+	Proxy *ProxySpec `json:"proxy"`
+	// WebSockets forwards paths to local WebSocket servers (Reverb).
+	WebSockets []WebSocketSpec `json:"websockets"`
+	// Maintenance shows a maintenance page to visitors; nil serves the site.
+	Maintenance *MaintenanceSpec `json:"maintenance"`
 }
 
 // DefaultWebRoot is the document root of a new site.
@@ -236,6 +242,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	if err := m.tlsData(&data, spec.TLS); err != nil {
 		return Result{}, err
 	}
+	webData(&data, spec)
 	if newDocroot {
 		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{public + "/index.html"}, Stdin: render(placeholderTmpl, data)})
 		if _, err := m.h.Run(ctx, index); err != nil {
@@ -264,6 +271,25 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		if err := t.WriteFile(cert.TLSConf, tlsConf); err != nil {
 			return Result{}, err
 		}
+	}
+
+	if data.ProxyPort != 0 || len(data.WebSockets) > 0 {
+		if err := t.RootDir("/etc/nginx/conf.d", 0o755, 0, 0); err != nil {
+			return Result{}, err
+		}
+		if err := t.WriteFile(websocketConf, wsConf); err != nil {
+			return Result{}, err
+		}
+	}
+	if spec.Maintenance != nil {
+		if err := t.RootDir(MaintenanceDir, 0o755, 0, 0); err != nil {
+			return Result{}, err
+		}
+		if err := t.WriteFile(maintenancePage(spec.Domain), pageContent(spec.Domain, spec.Maintenance.HTML)); err != nil {
+			return Result{}, err
+		}
+	} else if err := t.RemoveFile(maintenancePage(spec.Domain)); err != nil {
+		return Result{}, err
 	}
 
 	// PHP-FPM: one pool per site. Moving to another PHP version removes the
@@ -351,6 +377,9 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		return fail(err)
 	}
 	if err := t.RemoveFile(p.nginxAvail); err != nil {
+		return fail(err)
+	}
+	if err := t.RemoveFile(maintenancePage(spec.Domain)); err != nil {
 		return fail(err)
 	}
 	var reload []string

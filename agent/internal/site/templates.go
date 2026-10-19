@@ -17,6 +17,29 @@ var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual
         try_files $uri =404;
     }
 {{- end}}
+{{- if .Maint}}
+# Maintenance: everyone gets the maintenance page except these addresses,
+# browsers holding the bypass cookie, and Let's Encrypt validation.
+geo $servik_maint_ip_{{.MaintVar}} {
+    default 1;
+{{- range .MaintAllow}}
+    {{.}} 0;
+{{- end}}
+}
+map $cookie_servik_maintenance $servik_maint_c_{{.MaintVar}} {
+{{- if .MaintSecret}}
+    "{{.MaintSecret}}" 0;
+{{- end}}
+    default $servik_maint_ip_{{.MaintVar}};
+}
+map $uri $servik_maint_{{.MaintVar}} {
+{{- if .MaintSecret}}
+    "/{{.MaintSecret}}" 0;
+{{- end}}
+    "~^/\.well-known/acme-challenge/" 0;
+    default $servik_maint_c_{{.MaintVar}};
+}
+{{- end}}
 {{- if .Redirect}}
 server {
     listen 80;
@@ -67,6 +90,72 @@ server {
 
     client_max_body_size 64m;
 {{template "acme" .}}
+{{- if .Maint}}
+
+    error_page 503 @servik_maintenance;
+    location @servik_maintenance {
+        root {{.MaintRoot}};
+        try_files /{{.Domain}}.html =503;
+        add_header Cache-Control "no-store" always;
+{{- if .MaintRetry}}
+        add_header Retry-After {{.MaintRetry}} always;
+{{- end}}
+    }
+{{- if .MaintSecret}}
+
+    # The bypass link: sets the cookie, then back to the home page.
+    location = /{{.MaintSecret}} {
+        add_header Set-Cookie "servik_maintenance={{.MaintSecret}}; Path=/; Max-Age=43200; HttpOnly; SameSite=Lax{{if .TLS}}; Secure{{end}}";
+        return 302 /;
+    }
+{{- end}}
+
+    if ($servik_maint_{{.MaintVar}}) {
+        return 503;
+    }
+{{- end}}
+{{- range .WebSockets}}
+
+    # WebSocket server (Laravel Reverb).
+    location ^~ {{.Path}} {
+        proxy_pass http://127.0.0.1:{{.Port}};
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $servik_connection_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+{{- end}}
+{{- if .ProxyPort}}
+
+    # Application server (Laravel Octane); static files are served directly.
+    location / {
+        try_files $uri @app;
+    }
+
+    location ~ \.php$ {
+        try_files /servik-no-such-file @app;
+    }
+
+    location @app {
+        proxy_pass http://127.0.0.1:{{.ProxyPort}};
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Scheme $scheme;
+        proxy_set_header SERVER_PORT $server_port;
+        proxy_set_header REMOTE_ADDR $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $servik_connection_upgrade;
+        proxy_read_timeout 120s;
+    }
+{{- else}}
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -79,6 +168,7 @@ server {
         fastcgi_param DOCUMENT_ROOT $realpath_root;
         fastcgi_pass unix:{{.PHPSocket}};
     }
+{{- end}}
 
     location ~ /\.(?!well-known) {
         deny all;
@@ -156,6 +246,16 @@ type tmplData struct {
 	TLSConf   string
 	Stapling  bool
 	Resolvers string
+
+	// Octane, Reverb and maintenance (see web.go).
+	ProxyPort   int
+	WebSockets  []WebSocketSpec
+	Maint       bool
+	MaintVar    string
+	MaintAllow  []string
+	MaintSecret string
+	MaintRetry  int
+	MaintRoot   string
 }
 
 func render(t *template.Template, d tmplData) []byte {
