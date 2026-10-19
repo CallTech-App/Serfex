@@ -16,6 +16,10 @@ use Livewire\Attributes\On;
  */
 class Deployments extends Section
 {
+    protected const VIEW_METHODS = ['showLog', 'closeLog'];
+
+    protected const MANAGE_METHODS = ['openConnect', 'connect'];
+
     use ReadsRunLogs;
 
     public ?int $logId = null;
@@ -66,7 +70,7 @@ class Deployments extends Section
     {
         $app = $this->app();
         match ($name) {
-            'auto_deploy', 'auto_rollback' => $app->update([$name => (bool) $value]),
+            'auto_deploy', 'auto_rollback', 'backup_before_deploy' => $app->update([$name => (bool) $value]),
             'keep_releases' => $app->update(['keep_releases' => max(2, min(20, (int) $value))]),
             default => null,
         };

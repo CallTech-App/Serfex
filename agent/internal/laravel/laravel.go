@@ -141,13 +141,16 @@ type Manager struct {
 
 	mu    sync.Mutex
 	locks map[string]*sync.Mutex
+
+	tmu     sync.Mutex
+	tinkers map[string]*tinkerSession
 }
 
 // NewManager returns a Manager. On a simulator, health checks pass and
 // tools are not downloaded.
 func NewManager(h host.Host) *Manager {
 	_, sim := h.(*host.Simulator)
-	m := &Manager{h: h, sim: sim, locks: map[string]*sync.Mutex{}}
+	m := &Manager{h: h, sim: sim, locks: map[string]*sync.Mutex{}, tinkers: map[string]*tinkerSession{}}
 	m.Health = checkHealth
 	m.Download = download
 	if sim {

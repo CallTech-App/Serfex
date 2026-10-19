@@ -108,7 +108,7 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 		if len(c.Args) < 4 || c.Args[0] != "-u" || c.Args[2] != "--" {
 			return "", fmt.Errorf("simulator: malformed runuser: %s", c)
 		}
-		inner = Command{Name: c.Args[3], Args: c.Args[4:], Stdin: c.Stdin}
+		inner = Command{Name: c.Args[3], Args: c.Args[4:], Stdin: c.Stdin, Stdout: c.Stdout, Input: c.Input}
 	}
 	// env [-C DIR] [NAME=VALUE...] NAME ARGS...
 	cwd, env := "/", map[string]string{}
@@ -134,7 +134,7 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 		if len(args) == 0 {
 			return "", fmt.Errorf("simulator: env without a command: %s", c)
 		}
-		inner = Command{Name: args[0], Args: args[1:], Stdin: inner.Stdin}
+		inner = Command{Name: args[0], Args: args[1:], Stdin: inner.Stdin, Stdout: inner.Stdout, Input: inner.Input}
 	}
 
 	var (

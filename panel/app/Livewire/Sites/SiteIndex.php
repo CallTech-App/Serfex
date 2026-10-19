@@ -166,7 +166,7 @@ class SiteIndex extends Component
     public function render(): View
     {
         $sites = Site::query()
-            ->with('systemUser')
+            ->with('systemUser', 'preview')
             ->when($this->search !== '', fn ($q) => $q->where(function ($q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';
                 $q->where('domain', 'like', $term)

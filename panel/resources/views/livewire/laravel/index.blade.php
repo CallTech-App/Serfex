@@ -21,12 +21,14 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
+            @if (auth()->user()->is_admin)
             <button type="button" wire:click="openInstall" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                 <x-icon name="plus" />Laravel uygulaması kur
             </button>
             <button type="button" wire:click="scan" wire:loading.attr="disabled" wire:target="scan" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:opacity-60">
                 <x-icon name="scan-search" wire:loading.remove wire:target="scan" /><x-icon name="loader-circle" class="animate-spin" wire:loading wire:target="scan" />Mevcut uygulamaları bul
             </button>
+            @endif
             <label class="relative ml-auto w-full sm:w-64">
                 <span class="sr-only">Uygulama ara</span>
                 <x-icon name="search" class="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
@@ -60,6 +62,7 @@
                                 <a href="{{ route('laravel.show', $app) }}" wire:navigate class="font-mono text-[13px] font-medium hover:text-accent">{{ $site->domain }}</a>
                                 <div class="mt-0.5 text-2xs text-muted">
                                     <span class="font-mono">{{ $site->systemUser->name }}</span>@if (! $app->isManaged()) · <span class="font-mono">{{ $app->path }}</span>@endif
+                                    @if ($app->previews_count) · {{ $app->previews_count }} önizleme @endif
                                 </div>
                                 @if ($fits === false)
                                     <div class="mt-0.5 flex items-center gap-1 text-2xs text-warn"><x-icon name="triangle-alert" class="size-3" />composer.json PHP {{ $app->php_requirement }} istiyor, site PHP {{ $site->php_version }}</div>
@@ -98,7 +101,11 @@
                                     <p class="text-muted">Aramanızla eşleşen uygulama yok.</p>
                                 @else
                                     <p class="font-medium">Henüz Laravel uygulaması yok</p>
-                                    <p class="mt-1 text-[13px] text-muted">Bir sitede yeni proje başlatın ya da Git deposundan kurun. Sitelerde zaten Laravel varsa "Mevcut uygulamaları bul"a basın.</p>
+                                    @if (auth()->user()->is_admin)
+                                        <p class="mt-1 text-[13px] text-muted">Bir sitede yeni proje başlatın ya da Git deposundan kurun. Sitelerde zaten Laravel varsa "Mevcut uygulamaları bul"a basın.</p>
+                                    @else
+                                        <p class="mt-1 text-[13px] text-muted">Size henüz bir uygulama atanmadı. Sunucu yöneticisinden sizi bir uygulamaya eklemesini isteyin.</p>
+                                    @endif
                                 @endif
                             </td>
                         </tr>
@@ -122,6 +129,7 @@
     </section>
 
     {{-- Kurulum --}}
+    @if (auth()->user()->is_admin)
     <x-modal title="Laravel uygulaması kur" show="installing" size="max-w-2xl">
         <form wire:submit="install" class="flex max-h-[calc(100vh-2rem)] flex-col">
             <h2 class="flex h-12 shrink-0 items-center border-b border-line px-5 text-[14.5px] font-semibold">Laravel uygulaması kur</h2>
@@ -294,4 +302,5 @@
             <button type="button" wire:click="$set('scanning', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">Kapat</button>
         </div>
     </x-modal>
+    @endif
 </div>

@@ -31,6 +31,9 @@ class LaravelIndex extends Component
     /** Git hosts offered in the wizard: label and host name. */
     public const PROVIDERS = ['github' => ['GitHub', 'github.com'], 'gitlab' => ['GitLab', 'gitlab.com'], 'bitbucket' => ['Bitbucket', 'bitbucket.org'], 'other' => ['Başka adres', null]];
 
+    /** Only administrators install and adopt applications. */
+    public const ADMIN_METHODS = ['openInstall', 'install', 'backToForm', 'scan', 'adopt', 'undoAdopt'];
+
     /** The PHP a new project needs (Laravel 13). */
     public const NEW_PROJECT_PHP = '^8.3';
 
@@ -98,7 +101,7 @@ class LaravelIndex extends Component
     {
         // "Laravel kur" from a site's page.
         $site = Site::find((int) request()->query('site'));
-        if ($site !== null && $site->laravelApp()->doesntExist()) {
+        if ($site !== null && auth()->user()->is_admin && $site->laravelApp()->doesntExist()) {
             $this->openInstall(app(AgentClient::class), $site->id);
         }
     }
@@ -276,6 +279,10 @@ class LaravelIndex extends Component
             ->select('laravel_apps.*')
             ->with('site.systemUser', 'latestDeployment')
             ->withSum('workers', 'processes')
+            ->withCount('previews')
+            // Preview environments are listed under their application.
+            ->whereNull('preview_of_id')
+            ->when(! auth()->user()->is_admin, fn ($q) => $q->whereIn('laravel_apps.id', auth()->user()->laravelMemberships()->select('laravel_app_id')))
             ->when($this->search !== '', function ($q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';
                 $q->whereHas('site', fn ($s) => $s->where('domain', 'like', $term));
@@ -301,6 +308,7 @@ class LaravelIndex extends Component
         return Site::with('systemUser')
             ->where('status', SiteStatus::Active)
             ->whereDoesntHave('laravelApp')
+            ->whereDoesntHave('preview')
             ->orderBy('domain')
             ->get();
     }

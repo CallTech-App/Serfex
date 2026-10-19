@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\SiteStatus;
 use App\Models\DnsZone;
+use App\Models\LaravelPreview;
 use App\Models\MailDomain;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
@@ -34,6 +35,15 @@ class DeleteSite implements ShouldQueue
         $site = $this->site->fresh(['systemUser']);
         if ($site === null) {
             return;
+        }
+        // Preview environments of the site's application are sites of
+        // their own; they go first.
+        $app = $site->laravelApp;
+        if ($app !== null) {
+            foreach ($app->previews()->with('site', 'app.site')->get() as $preview) {
+                $preview->update(['status' => 'deleting']);
+                DeleteLaravelPreview::dispatchSync($preview);
+            }
         }
         $user = $site->systemUser;
         $lastSite = $user->sites()->whereKeyNot($site->id)->doesntExist();
@@ -73,6 +83,8 @@ class DeleteSite implements ShouldQueue
         $zone = DnsZone::where('site_id', $site->id)->first();
         $mailDomain = MailDomain::where('site_id', $site->id)->orWhere('name', $site->domain)->first();
         DB::transaction(function () use ($site, $user, $result) {
+            // A preview environment's site deleted from the site list.
+            LaravelPreview::where('site_id', $site->id)->where('status', '!=', 'deleting')->delete();
             $site->delete();
             if ($result['user_removed'] ?? false) {
                 $user->delete();

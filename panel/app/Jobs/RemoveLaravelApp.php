@@ -30,6 +30,16 @@ class RemoveLaravelApp implements ShouldQueue
             return;
         }
         $site = $app->site;
+        // Preview environments go first: each is a site of its own.
+        foreach ($app->previews()->with('site', 'app.site')->get() as $preview) {
+            $preview->update(['status' => 'deleting']);
+            DeleteLaravelPreview::dispatchSync($preview);
+        }
+        if ($app->previews()->exists()) {
+            $app->update(['status' => LaravelAppStatus::Failed, 'last_error' => 'Önizleme ortamları silinemedi; önce onları Önizleme ortamları bölümünden silin.']);
+
+            return;
+        }
         try {
             $agent->call('laravel.remove', $app->target() + ['remove_files' => $this->removeFiles && $app->isManaged()], config('servik.agent.job_timeout'));
             if ($site->web_root !== null) {

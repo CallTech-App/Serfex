@@ -61,7 +61,16 @@ func (m *Manager) ReadRun(domain, run string, offset int64) (RunChunk, error) {
 	if err := validateID("run", run); err != nil {
 		return RunChunk{}, err
 	}
-	f, err := os.Open(filepath.Join(m.h.Path(runDir(domain)), run+".log"))
+	return m.readChunk(runDir(domain)+"/"+run+".log", offset, false)
+}
+
+// tailStart is how much of a long log a negative offset starts with.
+const tailStart = 64 << 10
+
+// readChunk reads a root-owned log from offset on. With tail, a negative
+// offset starts near the end, at a line break.
+func (m *Manager) readChunk(abs string, offset int64, tail bool) (RunChunk, error) {
+	f, err := os.Open(m.h.Path(abs))
 	if errors.Is(err, os.ErrNotExist) {
 		return RunChunk{Offset: 0}, nil
 	}
@@ -73,7 +82,12 @@ func (m *Manager) ReadRun(domain, run string, offset int64) (RunChunk, error) {
 	if err != nil {
 		return RunChunk{}, err
 	}
-	if offset < 0 || offset > fi.Size() {
+	skipLine := false
+	switch {
+	case offset < 0 && tail && fi.Size() > tailStart:
+		offset, skipLine = fi.Size()-tailStart, true
+	case offset < 0 || offset > fi.Size():
+		// A log that was rotated (copytruncate) starts again.
 		offset = 0
 	}
 	buf := make([]byte, maxChunk)
@@ -82,6 +96,12 @@ func (m *Manager) ReadRun(domain, run string, offset int64) (RunChunk, error) {
 		return RunChunk{}, err
 	}
 	buf = buf[:n]
+	start := offset
+	if skipLine {
+		if i := strings.IndexByte(string(buf), '\n'); i >= 0 {
+			buf, start = buf[i+1:], offset+int64(i+1)
+		}
+	}
 	if n == maxChunk {
 		if i := strings.LastIndexByte(string(buf), '\n'); i >= 0 {
 			buf = buf[:i+1]
@@ -96,7 +116,7 @@ func (m *Manager) ReadRun(domain, run string, offset int64) (RunChunk, error) {
 			break
 		}
 	}
-	return RunChunk{Data: string(buf), Offset: offset + int64(len(buf)), Size: fi.Size()}, nil
+	return RunChunk{Data: string(buf), Offset: start + int64(len(buf)), Size: fi.Size()}, nil
 }
 
 // RunSpec is a command to run in an application.

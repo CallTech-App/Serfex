@@ -4,17 +4,23 @@ namespace App\Livewire\Laravel\Sections;
 
 use App\Livewire\Laravel\ReadsRunLogs;
 use App\Models\LaravelCommand;
+use App\Services\Agent\AgentClient;
+use App\Services\Agent\AgentException;
 use App\Services\Laravel\CommandLine;
 use App\Services\Laravel\LaravelApps;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
  * Artisan, Composer and Node.js commands run as the site's account in the
- * application directory, with live output and saved commands.
+ * application directory, with live output and saved commands, and Tinker
+ * sessions that keep their state between inputs.
  */
 class Commands extends Section
 {
+    protected const VIEW_METHODS = ['show'];
+
     use ReadsRunLogs;
 
     /** Offered until the user saves their own. */
@@ -24,8 +30,11 @@ class Commands extends Section
         'node' => ['run build'],
     ];
 
-    /** artisan, composer or node (with $packageManager). */
+    /** artisan, composer, node (with $packageManager) or tinker. */
     public string $tool = 'artisan';
+
+    /** Code to send to the open Tinker session. */
+    public string $code = '';
 
     public string $packageManager = 'npm';
 
@@ -49,6 +58,11 @@ class Commands extends Section
 
     public function run(): void
     {
+        if ($this->tool === 'tinker') {
+            $this->send();
+
+            return;
+        }
         $this->command = trim($this->command);
         $tool = $this->agentTool();
         $this->validate([
@@ -64,13 +78,82 @@ class Commands extends Section
             return;
         }
         $app = $this->app();
-        if ($app->commands()->whereIn('status', ['queued', 'running'])->count() >= 3) {
+        if ($app->commands()->where('tool', '!=', 'tinker')->whereIn('status', ['queued', 'running'])->count() >= 3) {
             $this->addError('command', 'Aynı anda en fazla 3 komut çalışabilir; birinin bitmesini bekleyin.');
 
             return;
         }
         $command = app(LaravelApps::class)->runCommand($app, $tool, $line, auth()->user());
         $this->shownId = $command->id;
+    }
+
+    /**
+     * Starts a Tinker session for the current account.
+     */
+    public function startTinker(AgentClient $agent): void
+    {
+        $app = $this->app();
+        if ($this->session() !== null) {
+            return;
+        }
+        $session = $app->commands()->create([
+            'user_id' => auth()->id(),
+            'tool' => 'tinker',
+            'command' => 'tinker',
+            'run' => 'tinker-'.Str::lower(Str::random(12)),
+            'status' => 'running',
+        ]);
+        try {
+            $agent->call('laravel.tinker.start', $app->agentApp() + ['session' => $session->run], config('servik.agent.job_timeout'));
+        } catch (AgentException $e) {
+            $session->update(['status' => 'failed', 'error' => $e->reason ?: $e->getMessage(), 'finished_at' => now()]);
+        }
+        $this->shownId = $session->id;
+    }
+
+    public function send(): void
+    {
+        $session = $this->session();
+        if ($session === null) {
+            return;
+        }
+        $this->validate(['code' => ['required', 'string', 'max:60000']], ['code.required' => 'Çalıştırılacak PHP kodunu yazın.']);
+        try {
+            $state = app(AgentClient::class)->call('laravel.tinker.send', ['domain' => $this->app()->site->domain, 'session' => $session->run, 'code' => $this->code]);
+        } catch (AgentException $e) {
+            $this->addError('code', self::agentMessage($e));
+
+            return;
+        }
+        if (! ($state['running'] ?? false)) {
+            $session->update(['status' => 'finished', 'finished_at' => now()]);
+            $this->addError('code', 'Oturum kapanmış; yeni bir oturum başlatın.');
+
+            return;
+        }
+        $this->code = '';
+    }
+
+    public function stopTinker(AgentClient $agent): void
+    {
+        $session = $this->session();
+        if ($session === null) {
+            return;
+        }
+        try {
+            $agent->call('laravel.tinker.stop', ['domain' => $this->app()->site->domain, 'session' => $session->run]);
+        } catch (AgentException) {
+        }
+        $session->update(['status' => 'finished', 'finished_at' => now()]);
+    }
+
+    /**
+     * The current account's open Tinker session.
+     */
+    private function session(): ?LaravelCommand
+    {
+        return LaravelCommand::where('laravel_app_id', $this->appId)->where('tool', 'tinker')
+            ->where('status', 'running')->where('user_id', auth()->id())->latest('id')->first();
     }
 
     public function show(int $id): void
@@ -91,7 +174,7 @@ class Commands extends Section
         }
         $app = $this->app();
         $saved = $this->savedCommands($app->saved_commands ?? []);
-        if (! in_array($command, $saved[$this->tool], true)) {
+        if (isset($saved[$this->tool]) && ! in_array($command, $saved[$this->tool], true)) {
             $saved[$this->tool][] = $command;
             $app->update(['saved_commands' => $saved]);
         }
@@ -126,12 +209,15 @@ class Commands extends Section
         $app = $this->app();
         $recent = $app->commands()->limit(10)->get();
 
+        $session = $this->tool === 'tinker' ? $this->session() : null;
+
         return view('livewire.laravel.sections.commands', [
             'app' => $app,
-            'saved' => $this->savedCommands($app->saved_commands ?? [])[$this->tool],
+            'session' => $session,
+            'saved' => $this->savedCommands($app->saved_commands ?? [])[$this->tool] ?? [],
             'recent' => $recent,
             'shown' => $this->shownId ? ($recent->firstWhere('id', $this->shownId) ?? LaravelCommand::find($this->shownId)) : null,
-            'busy' => $recent->contains(fn (LaravelCommand $c) => in_array($c->status, ['queued', 'running'], true)),
+            'busy' => $recent->contains(fn (LaravelCommand $c) => $c->tool !== 'tinker' && in_array($c->status, ['queued', 'running'], true)),
         ]);
     }
 

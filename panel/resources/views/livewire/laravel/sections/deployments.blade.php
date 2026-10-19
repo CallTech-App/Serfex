@@ -64,13 +64,14 @@
             <dt class="text-muted">Güvenlik ağı</dt>
             <dd class="space-y-1.5">
                 <label class="flex items-center gap-2.5"><input type="checkbox" @checked($app->auto_rollback) wire:change="setting('auto_rollback', $event.target.checked)" class="{{ $check }}">Sağlık kontrolü başarısızsa önceki sürüme otomatik dön</label>
+                <label class="flex items-center gap-2.5"><input type="checkbox" @checked($app->backup_before_deploy) wire:change="setting('backup_before_deploy', $event.target.checked)" class="{{ $check }}">Her dağıtımdan önce veritabanını yedekle</label>
                 <form wire:submit="saveHealthPath" class="flex flex-wrap items-center gap-2">
                     <span class="text-muted">Sağlık adresi</span>
                     <input wire:model="healthPath" aria-label="Sağlık adresi" class="h-8 w-40 rounded-md border bg-surface px-2.5 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('healthPath') ? 'border-crit' : 'border-line' }}">
                     <button type="submit" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">Kaydet</button>
                     @error('healthPath')<span class="text-[13px] text-crit">{{ $message }}</span>@enderror
                 </form>
-                <p class="text-2xs text-muted">Geçiş sonrası bu adres 3 kez istenir; 2xx dışında yanıt gelirse kod eski sürüme döner. Veritabanı geçişleri geri alınmaz. Dağıtım öncesi otomatik veritabanı yedeği Yedekler bölümüyle gelecek.</p>
+                <p class="text-2xs text-muted">Geçiş sonrası bu adres 3 kez istenir; 2xx dışında yanıt gelirse kod eski sürüme döner. Veritabanı geçişleri geri alınmaz; gerekirse dağıtım öncesi yedeği <button type="button" wire:click="$dispatch('show-section', { section: 'yedekler' })" class="text-accent hover:underline">Yedekler</button> bölümünden geri yükleyin. Yedek alınamazsa dağıtım başlamaz.</p>
             </dd>
         </div>
     </dl>

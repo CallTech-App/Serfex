@@ -330,7 +330,7 @@ func contains(list []string, s string) bool {
 // removeUnits stops and deletes every unit of a site.
 func (m *Manager) removeUnits(ctx context.Context, domain string) error {
 	t := txn.New(m.h)
-	units := m.enabledWorkers(domain)
+	units := append(m.enabledWorkers(domain), m.enabledProcesses(domain)...)
 	if m.exists(unitDir + "/" + scheduleUnit(domain) + ".timer") {
 		units = append(units, scheduleUnit(domain)+".timer")
 	}
@@ -340,7 +340,8 @@ func (m *Manager) removeUnits(ctx context.Context, domain string) error {
 		}
 	}
 	files, _ := filepath.Glob(m.h.Path(unitDir + "/" + unitPrefix(domain) + "*@.service"))
-	for _, f := range files {
+	procs, _ := filepath.Glob(m.h.Path(unitDir + "/" + procPrefix(domain) + "*.service"))
+	for _, f := range append(files, procs...) {
 		if err := t.RemoveFile(unitDir + "/" + filepath.Base(f)); err != nil {
 			return err
 		}

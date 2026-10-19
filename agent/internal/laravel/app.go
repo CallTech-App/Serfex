@@ -24,6 +24,7 @@ type Status struct {
 	Maintenance *MaintenanceInfo `json:"maintenance"`
 	Workers     []WorkerState    `json:"workers"`
 	Schedule    ScheduleState    `json:"schedule"`
+	Processes   []ProcessState   `json:"processes"`
 	DeployKey   string           `json:"deploy_key"`
 }
 
@@ -38,7 +39,7 @@ func (m *Manager) Status(ctx context.Context, a App) (Status, error) {
 	if err := a.validate(); err != nil {
 		return Status{}, err
 	}
-	st := Status{Releases: m.releases(a.Target), Current: m.currentRelease(a.Target), Workers: m.workerStates(ctx, a.Domain), Schedule: m.scheduleState(a.Domain)}
+	st := Status{Releases: m.releases(a.Target), Current: m.currentRelease(a.Target), Workers: m.workerStates(ctx, a.Domain), Schedule: m.scheduleState(a.Domain), Processes: m.processStates(ctx, a.Domain)}
 	st.Exists = m.exists(a.dir() + "/artisan")
 	if st.Exists {
 		st.Info = m.appInfo(ctx, a)
@@ -392,7 +393,8 @@ func (m *Manager) DeployKey(ctx context.Context, t Target) (string, error) {
 // RemoveSpec removes an application from a site.
 type RemoveSpec struct {
 	Target
-	// RemoveFiles deletes laravel/ (releases, shared .env and storage).
+	// RemoveFiles deletes laravel/ (releases, shared .env and storage)
+	// and the application's backups.
 	RemoveFiles bool `json:"remove_files"`
 }
 
@@ -410,6 +412,10 @@ func (m *Manager) Remove(ctx context.Context, spec RemoveSpec) (map[string]bool,
 	_ = os.RemoveAll(m.h.Path(stateDir + "/" + spec.Domain))
 	_ = os.RemoveAll(m.h.Path(logDir + "/" + spec.Domain))
 	removed := false
+	if spec.RemoveFiles {
+		// The application's backups go with its files.
+		_ = os.RemoveAll(m.h.Path(backupDir + "/" + spec.Domain))
+	}
 	if spec.RemoveFiles && m.exists(baseDir(spec.Target)) {
 		if _, err := m.userRun(ctx, spec.Target, "/", "rm", "-rf", "--one-file-system", baseDir(spec.Target)); err != nil {
 			return nil, failed("removing %s failed", baseDir(spec.Target))

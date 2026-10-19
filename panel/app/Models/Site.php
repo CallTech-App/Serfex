@@ -74,6 +74,16 @@ class Site extends Model
     }
 
     /**
+     * The preview environment this site was made for, if any.
+     *
+     * @return HasOne<LaravelPreview, $this>
+     */
+    public function preview(): HasOne
+    {
+        return $this->hasOne(LaravelPreview::class);
+    }
+
+    /**
      * Host names the site answers to.
      *
      * @return list<string>
@@ -137,6 +147,41 @@ class Site extends Model
             $spec['tls'] = ['certificate' => $this->certificate->name, 'redirect' => $this->https_redirect];
         }
 
-        return $spec;
+        return $spec + $this->laravelWeb();
+    }
+
+    /**
+     * What the site's Laravel application asks of Nginx: Octane behind a
+     * proxy, Reverb's WebSockets, and the maintenance page.
+     *
+     * @return array<string, mixed>
+     */
+    private function laravelWeb(): array
+    {
+        $app = $this->laravelApp;
+        if ($app === null || $this->web_root === null || $this->web_root !== $app->webRoot()) {
+            return [];
+        }
+        $web = [];
+        foreach ($app->processes->where('enabled', true) as $process) {
+            if ($process->kind === 'octane' && $process->port) {
+                $web['proxy'] = ['port' => $process->port];
+            }
+            if ($process->kind === 'reverb' && $process->port) {
+                // Clients connect to /app/<key>; the application's
+                // broadcasts go to /apps/<id>/events.
+                $web['websockets'] = [['path' => '/app/', 'port' => $process->port], ['path' => '/apps/', 'port' => $process->port]];
+            }
+        }
+        if ($app->nginxMaintenance()) {
+            $web['maintenance'] = [
+                'allow' => $app->maintenanceAllowList(),
+                'secret' => (string) $app->maintenance_secret,
+                'retry' => $app->maintenance_retry,
+                'html' => $app->maintenance_mode === 'custom' ? (string) $app->maintenance_html : '',
+            ];
+        }
+
+        return $web;
     }
 }

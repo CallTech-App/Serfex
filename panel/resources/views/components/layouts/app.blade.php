@@ -25,8 +25,12 @@
         ]],
     ];
     $user = auth()->user();
+    // Members of Laravel applications see only their applications.
+    if ($user && ! $user->is_admin) {
+        $nav = [['Barındırma', [['laravel.index', 'layers', 'Laravel']]]];
+    }
     // Problem counts shown next to menu items.
-    $alerts = $user ? [
+    $alerts = $user?->is_admin ? [
         'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
         'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
         'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
@@ -87,7 +91,7 @@
                         <div class="grid size-8 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
                         <div class="min-w-0 leading-tight">
                             <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>
-                            <p class="text-2xs text-nav-muted">Sunucu yöneticisi</p>
+                            <p class="text-2xs text-nav-muted">{{ $user->is_admin ? 'Sunucu yöneticisi' : 'Laravel ekibi' }}</p>
                         </div>
                         <form method="POST" action="{{ route('logout') }}" class="ml-auto">
                             @csrf

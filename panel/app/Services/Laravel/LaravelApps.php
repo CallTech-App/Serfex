@@ -194,12 +194,13 @@ class LaravelApps
     }
 
     /**
-     * Apply the application's queue workers and scheduler on the server.
+     * Apply the application's queue workers, scheduler and processes on the
+     * server; with $web, its Nginx configuration too.
      */
-    public function syncProcesses(LaravelApp $app): void
+    public function syncProcesses(LaravelApp $app, bool $web = false): void
     {
         $app->update(['processes_state' => 'syncing', 'processes_error' => null]);
-        SyncLaravelProcesses::dispatch($app);
+        SyncLaravelProcesses::dispatch($app, $web);
     }
 
     /**

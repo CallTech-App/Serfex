@@ -38,6 +38,7 @@
                         <tr wire:key="site-{{ $site->id }}" class="hover:bg-surface-2/60">
                             <td class="py-3 pr-3 pl-5 font-mono text-[13px]">
                                 <a href="{{ route('sites.show', $site) }}" wire:navigate class="hover:text-accent">{{ $site->domain }}</a>
+                                @if ($site->preview)<span class="ml-1.5 rounded-full bg-surface-2 px-1.5 py-0.5 font-sans text-2xs text-muted" title="Laravel önizleme ortamı">Önizleme</span>@endif
                             </td>
                             <td class="px-3 py-3 font-mono text-[13px] text-muted">{{ $site->systemUser->name }}</td>
                             <td class="px-3 py-3 font-mono text-[13px]">{{ $site->php_version }}</td>

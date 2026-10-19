@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Laravel\Sections;
 
+use App\Livewire\Laravel\GuardsAppCalls;
 use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
@@ -13,6 +14,15 @@ use Livewire\Component;
  */
 abstract class Section extends Component
 {
+    use GuardsAppCalls;
+
+    /** What the account needs on the application to open the section. */
+    protected const ABILITY = 'view';
+
+    protected const VIEW_METHODS = [];
+
+    protected const MANAGE_METHODS = [];
+
     public int $appId;
 
     /** Shown at the top of the section when the agent could not be used. */
@@ -20,7 +30,19 @@ abstract class Section extends Component
 
     public function mount(int $appId): void
     {
+        $app = LaravelApp::findOrFail($appId);
+        abort_unless(auth()->user()->canOnApp($app, static::ABILITY), 403);
         $this->appId = $appId;
+    }
+
+    /**
+     * True when the current account may do $ability on the application.
+     */
+    protected function can(string $ability): bool
+    {
+        $app = LaravelApp::find($this->appId);
+
+        return $app !== null && auth()->user()->canOnApp($app, $ability);
     }
 
     protected function app(): ?LaravelApp

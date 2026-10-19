@@ -18,6 +18,7 @@ use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\Zones;
+use App\Services\Laravel\Backups;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\Processes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,7 +37,7 @@ class LaravelJobsTest extends TestCase
 
     private function deploy(LaravelDeployment $deployment, AgentClient $agent): void
     {
-        (new DeployLaravelApp($deployment))->handle($agent, new Processes($agent));
+        (new DeployLaravelApp($deployment))->handle($agent, new Processes($agent), new Backups($agent));
     }
 
     public function test_install_creates_the_app_and_queues_its_first_deploy(): void
@@ -94,6 +95,7 @@ class LaravelJobsTest extends TestCase
             ->andReturn(['document_root' => '/home/hizlikargo/web/api.hizlikargo.app/laravel/current/public']);
         $agent->shouldReceive('call')->once()->with('laravel.queue.apply', Mockery::on(fn ($s) => $s['path'] === 'laravel/current' && $s['workers'][0]['name'] === 'default'), 120.0)->andReturn([]);
         $agent->shouldReceive('call')->once()->with('laravel.schedule.apply', Mockery::on(fn ($s) => $s['enabled'] === false), 120.0)->andReturn([]);
+        $agent->shouldReceive('call')->once()->with('laravel.process.apply', Mockery::on(fn ($s) => $s['processes'] === []), 120.0)->andReturn([]);
         $agent->shouldReceive('call')->once()->with('laravel.health', ['domain' => 'api.hizlikargo.app', 'path' => '/up'], 120.0)->andReturn(['ok' => true, 'status' => 200, 'ms' => 41]);
 
         $this->deploy($deployment, $agent);
@@ -123,6 +125,7 @@ class LaravelJobsTest extends TestCase
         $agent->shouldReceive('call')->with('site.apply', Mockery::any(), Mockery::any())->andReturn([]);
         $agent->shouldReceive('call')->with('laravel.queue.apply', Mockery::any(), Mockery::any())->andReturn([]);
         $agent->shouldReceive('call')->with('laravel.schedule.apply', Mockery::any(), Mockery::any())->andReturn([]);
+        $agent->shouldReceive('call')->with('laravel.process.apply', Mockery::any(), Mockery::any())->andReturn([]);
         $agent->shouldReceive('call')->with('laravel.health', Mockery::any(), Mockery::any())->andReturn(['ok' => false, 'status' => 500, 'ms' => 12]);
 
         $this->deploy($deployment, $agent);
@@ -166,6 +169,7 @@ class LaravelJobsTest extends TestCase
         $agent->shouldReceive('call')->with('site.apply', Mockery::on(fn ($s) => $s['web_root'] === 'laravel/current/public'), Mockery::any())->andReturn([]);
         $agent->shouldReceive('call')->with('laravel.queue.apply', Mockery::on(fn ($s) => $s['path'] === 'laravel/current'), Mockery::any())->andReturn([]);
         $agent->shouldReceive('call')->with('laravel.schedule.apply', Mockery::any(), Mockery::any())->andReturn([]);
+        $agent->shouldReceive('call')->with('laravel.process.apply', Mockery::any(), Mockery::any())->andReturn([]);
         $agent->shouldReceive('call')->with('laravel.health', Mockery::any(), Mockery::any())->andReturn(['ok' => true, 'status' => 200, 'ms' => 5]);
 
         $this->deploy($deployment, $agent);

@@ -11,12 +11,16 @@ use App\Jobs\RunLaravelCommand;
 use App\Jobs\SyncLaravelProcesses;
 use App\Livewire\Laravel\LaravelIndex;
 use App\Livewire\Laravel\LaravelShow;
+use App\Livewire\Laravel\Sections\Access;
+use App\Livewire\Laravel\Sections\Backups;
 use App\Livewire\Laravel\Sections\Commands;
 use App\Livewire\Laravel\Sections\Deployments;
 use App\Livewire\Laravel\Sections\Environment;
 use App\Livewire\Laravel\Sections\Logs;
 use App\Livewire\Laravel\Sections\Maintenance;
 use App\Livewire\Laravel\Sections\Overview;
+use App\Livewire\Laravel\Sections\Previews;
+use App\Livewire\Laravel\Sections\Processes;
 use App\Livewire\Laravel\Sections\Queues;
 use App\Livewire\Laravel\Sections\Scheduler;
 use App\Models\LaravelApp;
@@ -65,6 +69,8 @@ class LaravelPagesTest extends TestCase
                 'exists' => true, 'current' => '2', 'releases' => [['name' => '2'], ['name' => '1']],
                 'maintenance' => null, 'workers' => [['worker' => 'default', 'unit' => 'servik-queue-api.hizlikargo.app_default@1.service', 'state' => 'active']],
                 'schedule' => ['enabled' => true, 'last_run' => now()->subSeconds(30)->toIso8601String(), 'tasks' => [['command' => 'inspire', 'at' => now()->format('Y-m-d H:i:s'), 'duration' => '4.21ms', 'ok' => true]]],
+                'processes' => [['name' => 'horizon', 'unit' => 'servik-proc-api.hizlikargo.app_horizon.service', 'enabled' => true, 'state' => 'active']],
+                'info' => ['laravel' => '13.6.0', 'packages' => ['laravel/horizon' => 'v5.40.1', 'laravel/reverb' => 'v1.6.2']],
             ],
             'laravel.probe' => match ($params['kind']) {
                 'about' => ['laravel' => '13.6.0', 'environment' => 'production', 'debug' => false, 'queue' => 'database', 'cache' => 'database', 'database' => 'sqlite', 'session' => 'database'],
@@ -173,7 +179,7 @@ class LaravelPagesTest extends TestCase
         LaravelDeployment::create(['laravel_app_id' => $app->id, 'number' => 1, 'kind' => 'install', 'status' => DeploymentStatus::Succeeded, 'release' => '1', 'run' => 'install-1', 'finished_at' => now()->subDay()]);
 
         $this->get(route('laravel.show', $app))->assertOk()
-            ->assertSee('Genel bakış')->assertSee('Önizleme ortamları')->assertSee('yakında')
+            ->assertSee('Genel bakış')->assertSee('Önizleme ortamları')->assertSee('Erişim ve API')->assertDontSee('yakında')
             ->assertSee('Komut çalıştır');
 
         Livewire::withoutLazyLoading()->test(Overview::class, ['appId' => $app->id])->assertSee('200 · 41 ms')->assertSee('#2 · ccccccc')->assertSee('15 bekleyen · 1 işçi')->assertSee('3 başarısız iş');
@@ -185,6 +191,10 @@ class LaravelPagesTest extends TestCase
         Livewire::withoutLazyLoading()->test(Logs::class, ['appId' => $app->id])->assertSee('Kargo servisine ulaşılamadı')
             ->set('level', 'error')->assertDontSee('Eşitlendi');
         Livewire::withoutLazyLoading()->test(Maintenance::class, ['appId' => $app->id])->assertSee('Uygulama açık')->assertSee('Bakım moduna al');
+        Livewire::withoutLazyLoading()->test(Previews::class, ['appId' => $app->id])->assertSee('pr-{numara}.api.hizlikargo.app')->assertSee('Önizleme ortamı yok');
+        Livewire::withoutLazyLoading()->test(Processes::class, ['appId' => $app->id])->assertSee('Horizon')->assertSee('Octane')->assertSee('composer require laravel/octane');
+        Livewire::withoutLazyLoading()->test(Backups::class, ['appId' => $app->id])->assertSee('Henüz yedek yok')->assertSee('Şimdi yedekle');
+        Livewire::withoutLazyLoading()->test(Access::class, ['appId' => $app->id])->assertSee('Sercan')->assertSee('Sunucu yöneticisi')->assertSee(route('api.deploy', 'api.hizlikargo.app'));
     }
 
     public function test_install_progress_streams_the_log(): void
@@ -297,7 +307,7 @@ class LaravelPagesTest extends TestCase
 
         $this->agent->shouldReceive('call')->once()->with('laravel.maintenance', Mockery::on(fn ($p) => $p['down'] === true && $p['secret'] === 'ekip-girisi-2026' && $p['retry'] === 30), Mockery::any())
             ->andReturn(['exit_code' => 0]);
-        Livewire::withoutLazyLoading()->test(Maintenance::class, ['appId' => $app->id])->set('secret', 'ekip-girisi-2026')->set('retry', 30)->call('down')->assertHasNoErrors();
+        Livewire::withoutLazyLoading()->test(Maintenance::class, ['appId' => $app->id])->set('mode', 'app')->set('secret', 'ekip-girisi-2026')->set('retry', 30)->call('down')->assertHasNoErrors();
         $this->assertSame('ekip-girisi-2026', $app->fresh()->maintenance_secret);
     }
 
