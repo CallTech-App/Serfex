@@ -20,7 +20,7 @@
             [null, 'shield-alert', 'Güvenlik'],
             [null, 'archive', 'Yedekler'],
             [null, 'server-cog', 'Hizmetler'],
-            [null, 'package-plus', 'Yazılım Yönetimi'],
+            ['components.index', 'package-plus', 'Yazılım Yönetimi'],
             [null, 'settings', 'Araçlar ve Ayarlar'],
         ]],
     ];

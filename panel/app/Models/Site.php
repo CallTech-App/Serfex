@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'status', 'last_error', 'provisioned_at'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -24,6 +24,17 @@ class Site extends Model
         'aliases' => '[]',
         'status' => 'provisioning',
         'https_redirect' => true,
+        'web_server' => self::NGINX,
+    ];
+
+    /** Web server stacks: Nginx alone, or Nginx in front of Apache (.htaccess). */
+    public const NGINX = 'nginx';
+
+    public const APACHE = 'apache';
+
+    public const STACKS = [
+        self::NGINX => 'Nginx + PHP-FPM',
+        self::APACHE => 'Nginx + Apache + PHP-FPM',
     ];
 
     protected function casts(): array
@@ -183,6 +194,14 @@ class Site extends Model
     }
 
     /**
+     * "Nginx + PHP-FPM" or "Nginx + Apache + PHP-FPM".
+     */
+    public function stackLabel(): string
+    {
+        return self::STACKS[$this->web_server] ?? self::STACKS[self::NGINX];
+    }
+
+    /**
      * Parameters for the agent's site.apply method.
      *
      * @return array<string, mixed>
@@ -195,6 +214,9 @@ class Site extends Model
             'php_version' => $this->php_version,
             'aliases' => array_values($this->aliases ?? []),
         ];
+        if ($this->web_server === self::APACHE) {
+            $spec['web_server'] = self::APACHE;
+        }
         if ($this->web_root !== null) {
             $spec['web_root'] = $this->web_root;
         }

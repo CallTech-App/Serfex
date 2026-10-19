@@ -94,7 +94,7 @@ class CustomerAccessTest extends TestCase
             ->assertDontSee('Servik AI')
             ->assertDontSee('Müşteriler ve Paketler')
             ->assertDontSee('Yazılım Yönetimi');
-        foreach (['/monitor', '/ai', '/ai/settings', '/musteriler', '/musteriler/'.$this->customer->id, '/dns/settings', '/mail/settings', '/ssl/settings'] as $url) {
+        foreach (['/monitor', '/ai', '/ai/settings', '/musteriler', '/musteriler/'.$this->customer->id, '/dns/settings', '/mail/settings', '/ssl/settings', '/yazilim'] as $url) {
             $this->get($url)->assertForbidden();
         }
         $this->post('/musteriler/'.$this->customer->id.'/giris')->assertForbidden();

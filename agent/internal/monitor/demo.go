@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,15 @@ type demoSampler struct {
 	h       interface{ Path(string) string }
 	qid     int
 	seeded  bool
+}
+
+// installed reports whether a file of a simulated package exists.
+func (s *demoSampler) installed(abs string) bool {
+	if s.h == nil {
+		return false
+	}
+	_, err := os.Stat(s.h.Path(abs))
+	return err == nil
 }
 
 func newDemoSampler(now func() time.Time) *demoSampler {
@@ -173,6 +183,20 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 	add("dovecot", 0, "/usr/sbin/dovecot -F", "dovecot.service", 0.8, 24<<20, 2<<10)
 	add("rspamd", 115, "rspamd: normal process", "rspamd.service", 1.4*wave(5), 180<<20, 0)
 	add("sshd", 0, "sshd: /usr/sbin/sshd -D", "ssh.service", 0.2, 8<<20, 0)
+	// Software installed from Yazılım Yönetimi.
+	if s.installed("/usr/sbin/apache2") {
+		add("apache", 33, "/usr/sbin/apache2 -k start", "apache2.service", 3*wave(7), 90<<20, 20<<10)
+	}
+	if s.installed("/usr/bin/fail2ban-server") {
+		add("fail2ban", 0, "/usr/bin/python3 /usr/bin/fail2ban-server -xf start", "fail2ban.service", 0.3, 40<<20, 0)
+	}
+	if s.h != nil {
+		units, _ := filepath.Glob(s.h.Path("/etc/systemd/system/servik-redis-*.service"))
+		for i, u := range units {
+			unit := filepath.Base(u)
+			add("redis:"+unit, 1000+i, "/usr/bin/redis-server 127.0.0.1", unit, 0.4*wave(8), 12<<20, 1<<10)
+		}
+	}
 
 	for k := range s.procs {
 		if !seen[k] {

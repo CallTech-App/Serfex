@@ -76,11 +76,21 @@ Methods so far:
 | `db.user.apply` | `server`, `name`, `password`, `hosts`, `grants` | creates or changes a user: `password` (empty keeps it), remote `hosts` besides this server (`%`, an IPv4 address, `10.8.0.%`, a CIDR or an IPv6 address), `grants` (`database`, `access`: `all`, `readwrite`, `readonly`) replace the previous ones |
 | `db.user.delete` | `server`, `name` | removes a user |
 | `db.list` | `server` | the customer databases with `size` and `tables`, and the users with their remote `hosts` |
+| `component.list` | | every optional component (`id`, `installed`, `version`, `latest` when an update is available, `running`, `units`, `busy`, `used_by`, `required`, `settings`, `default`) and `checked_at` |
+| `component.check` | | refreshes the package lists and the newest Node.js and Composer versions, then lists like `component.list` |
+| `component.install` | `id`, `run`, `port` (database servers: the web manager's port) | installs or repairs a component, writing each step to the run log; a failed install is rolled back. Returns `action`, `status` |
+| `component.update` | `id`, `run` | installs the newest version; the previous configuration comes back if the service does not start |
+| `component.remove` | `id`, `run` | archives the configuration, stops and purges the component; refused with `-32004` while something uses it |
+| `component.configure` | `id`, `settings` (`modsecurity_mode`: `detect` or `block`, `modsecurity_paranoia`: 1-4) | applies new settings; the previous ones come back if Nginx refuses them |
+| `component.run.read` | `run`, `offset` | the next part of an operation's log: `data`, `offset`, `size`, `done` |
+| `redis.apply` | `domain`, `user`, `port`, `password`, `max_memory_mb` | starts or updates a site's own Redis instance |
+| `redis.remove` | `domain` | stops a site's Redis instance and deletes its data |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate, and `web_root`
 (relative to the site directory, default `public_html`) for the directory
-Nginx serves. "target" in the Laravel methods is `domain`, `user` and
+Nginx serves, and `web_server`: `nginx` (default) or `apache` for Nginx in
+front of Apache (see Software). "target" in the Laravel methods is `domain`, `user` and
 `php_version`; "app" adds `path`, the application's directory inside the
 site.
 
@@ -90,7 +100,9 @@ change failed on the server, and the message says why (for example the
 output of `nginx -t`); `-32001` means the DNS server has not been set up
 yet (call `dns.setup`); `-32002` means the same for the mail server (call
 `mail.setup`); `-32003` means the database server asked for is not
-installed (call `db.server.install`).
+installed (call `db.server.install`); `-32004` means a component is in use
+and cannot be removed (the message says by what); `-32005` means another
+component operation is running.
 
 ## What a site looks like on the server
 
@@ -419,6 +431,51 @@ installs the server, creates databases and users with each access level,
 connects with them, turns remote access on and off, signs in to
 phpMyAdmin or Adminer through `servik-web` and deletes a database with a
 backup.
+
+## Software
+
+Yazılım Yönetimi installs, updates and removes optional software with
+`apt-get` (Ubuntu's packages; PHP versions Ubuntu lacks come from
+`ppa:ondrej/php`), Node.js from nodejs.org and Composer from
+getcomposer.org, both checked against their published SHA-256 sums.
+
+| Component | What Servik sets up |
+|-----------|---------------------|
+| `nginx` | Required, never removed. |
+| `apache` | Apache 2.4 on `127.0.0.1:7080` behind Nginx, for sites with `web_server: apache`. Nginx serves existing static files and passes everything else to Apache, which reads `.htaccess` (`AllowOverride All`) and hands PHP to the site's own PHP-FPM pool (`proxy_fcgi`). `remoteip` restores the visitor's address and `HTTPS` is set behind TLS. Vhosts: `/etc/apache2/sites-available/<domain>.conf`. |
+| `php8.1` … `php8.5` | PHP-FPM with the common extensions (and `redis`/`memcached` when those are installed). In use while a site, the webmail or the web database manager uses the version. |
+| `mysql`, `mariadb`, `postgresql` | The database servers of Veritabanları (`db.server.install`), and the web manager. |
+| `redis` | `redis-server` without the stock service: every application gets its own instance, `servik-redis-<domain>.service`, running as the site's user on `127.0.0.1:<port>` with a password, 128 MB and `noeviction` (`/etc/servik/redis/<domain>.conf`, data in `/var/lib/servik/redis/<domain>`). |
+| `memcached` | `memcached` on `127.0.0.1:11211`. |
+| `supervisor` | `supervisord`; in use while `/etc/supervisor/conf.d` has programs. Laravel workers use systemd, not Supervisor. |
+| `node22`, `node24`, `node26` | Node.js under `/opt/servik/node/<version>`; Laravel builds use the line `/opt/servik/node/current` points to: the first one installed, or after it is removed the newest LTS line left. |
+| `composer` | `/opt/servik/composer/composer.phar`. |
+| `python` | `python3-pip`, `python3-venv`, `python3-dev`. |
+| `fail2ban` | Jails in `/etc/fail2ban/jail.d/servik.conf`: `sshd`, and `dovecot` and `postfix-sasl` when the mail server exists at install (install Fail2ban again to add them later); 5 failures in 10 minutes ban for an hour with nftables, `recidive` bans repeat offenders for a week. The server's own addresses are never banned. |
+| `modsecurity` | The Nginx ModSecurity module with the OWASP Core Rule Set, server-wide, in detection-only mode at paranoia level 1 until changed (`/etc/servik/modsecurity/main.conf`, audit log in `/var/log/servik/modsecurity/`). |
+| `clamav` | `clamd` and `freshclam`; the first signatures are downloaded during the install, and Rspamd rejects infected mail when the mail server is there. |
+
+- One operation runs at a time. Each writes its steps to
+  `/var/lib/servik/components/runs/<run>.log` (lines `▸` step, `$`
+  command, `↺` rollback, `✓` done, `✗` failed).
+- An install that fails removes the packages it added and puts back the
+  files it changed. An update that leaves the service broken gets the
+  previous configuration back.
+- Removing archives the component's configuration to
+  `/var/lib/servik/backups/components/<id>-<time>.tar.gz` first. MySQL and
+  MariaDB data is moved there, not deleted; PostgreSQL's packages stay
+  (the panel's own database may use them) and only the customers' `main`
+  cluster is dropped. A database server is not removed while it has
+  customer databases or users.
+
+```sh
+sudo go test -tags realhost -run TestRealHost ./internal/component
+```
+
+installs Apache, serves a site through Nginx and Apache with a `.htaccess`
+rewrite, refuses to remove Apache while the site uses it, removes it with
+a backup, rolls back a Memcached install that fails on purpose and runs a
+site's own Redis instance.
 
 ## Dry run
 

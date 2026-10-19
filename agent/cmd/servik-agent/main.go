@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/firewall"
@@ -88,6 +89,10 @@ func main() {
 	}
 	svc.monitor.DatabaseSites = svc.databases.Sites
 	svc.certs.PanelChanged = svc.databases.PanelCertificateChanged
+	svc.components = component.NewManager(h, svc.sites, svc.databases, svc.laravel)
+	if !*dryRun {
+		svc.components.Addresses = ownAddressStrings
+	}
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
@@ -141,6 +146,21 @@ func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Nginx and those PHP versions count as installed (Yazılım Yönetimi).
+	bins := []string{"/usr/sbin/nginx"}
+	for _, v := range []string{"8.3", "8.4", "8.5"} {
+		bins = append(bins, "/usr/sbin/php-fpm"+v, "/usr/bin/php"+v)
+	}
+	for _, bin := range bins {
+		if _, err := os.Stat(sim.Path(bin)); errors.Is(err, os.ErrNotExist) {
+			if err := os.MkdirAll(filepath.Dir(sim.Path(bin)), 0o755); err != nil {
+				return nil, err
+			}
+			if err := os.WriteFile(sim.Path(bin), nil, 0o755); err != nil {
+				return nil, err
+			}
+		}
+	}
 	log.Warn("dry run: no real server changes are made", "root", root)
 	return sim, nil
 }
@@ -177,6 +197,17 @@ func run(socket string, svc services, log *slog.Logger) error {
 
 	log.Info("agent listening", "socket", socket, "version", version.Version)
 	return srv.Serve(ctx, ln)
+}
+
+// ownAddressStrings are the server's addresses as text, for Fail2ban.
+func ownAddressStrings() []string {
+	var out []string
+	for _, a := range ownAddresses() {
+		if !a.IsLoopback() && !a.IsLinkLocalUnicast() {
+			out = append(out, a.String())
+		}
+	}
+	return out
 }
 
 // ownAddresses are every address of this server, which must never be

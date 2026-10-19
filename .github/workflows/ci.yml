@@ -281,6 +281,46 @@ jobs:
           sudo journalctl --no-pager -u mysql -u mariadb -u 'postgresql*' -u servik-web -u servik-php -n 100 || true
           sudo sh -c 'tail -n 30 /var/log/servik/web/*.log' || true
 
+  agent-components:
+    name: Agent installs software for real
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      # The runner image ships Apache with its own settings; the agent
+      # installs it itself, as on a fresh Ubuntu.
+      - name: Install Nginx and PHP-FPM, remove preinstalled software
+        run: |
+          sudo systemctl stop apache2 memcached redis-server || true
+          sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq 'apache2*' memcached 'redis-*' || true
+          sudo rm -rf /etc/apache2 /var/lib/apache2
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm
+          sudo systemctl start nginx php8.3-fpm
+
+      # Installs Apache and serves a site through Nginx -> Apache with a
+      # .htaccess rewrite, refuses to remove Apache while the site uses
+      # it, removes it with a backup, rolls back an install that fails
+      # (Memcached) and runs a site's own Redis instance.
+      - name: Install, use and remove components for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 20m ./internal/component
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo sh -c 'tail -n 80 /var/lib/servik/components/runs/*.log' || true
+          sudo journalctl --no-pager -u apache2 -u nginx -u 'servik-redis-*' -u memcached -n 100 || true
+
   panel-realhost:
     name: Panel suspends a customer on a real server
     runs-on: ubuntu-24.04

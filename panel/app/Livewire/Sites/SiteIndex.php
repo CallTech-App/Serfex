@@ -13,6 +13,7 @@ use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Components\Components;
 use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
 use App\Services\Dns\Zones;
@@ -201,6 +202,7 @@ class SiteIndex extends Component
                 'domain' => $this->domain,
                 'aliases' => $this->wwwAlias && ! str_starts_with($this->domain, 'www.') ? ['www.'.$this->domain] : [],
                 'php_version' => $this->phpVersion,
+                'web_server' => app(Components::class)->defaultStack(),
                 'status' => SiteStatus::Provisioning,
             ]);
         });

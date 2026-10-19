@@ -20,6 +20,11 @@
                 </button>
             @endif
             <button type="button" wire:click="$set('showingHistory', true)" class="{{ $btn }}"><x-icon name="history" />Geçmiş</button>
+            @if ($canConnectRedis)
+                <button type="button" wire:click="connectRedis" wire:loading.attr="disabled" wire:target="connectRedis" class="{{ $btn }}"><x-icon name="zap" />Redis bağla</button>
+            @elseif ($app->redis_port)
+                <span class="inline-flex h-9 items-center gap-1.5 text-[13px] text-muted" title="Uygulamanın kendi Redis örneği"><x-icon name="zap" class="size-3.5" />Redis <span class="font-mono">127.0.0.1:{{ $app->redis_port }}</span></span>
+            @endif
             @if ($canCreateDatabase)
                 <button type="button" wire:click="createDatabase" wire:loading.attr="disabled" wire:target="createDatabase" class="{{ $btn }}"><x-icon name="database" />Veritabanı oluştur ve bağla</button>
             @endif

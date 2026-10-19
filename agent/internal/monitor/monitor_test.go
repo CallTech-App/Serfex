@@ -588,3 +588,20 @@ func TestDemoProducesLoadAndAttacks(t *testing.T) {
 		t.Error("demo mail queue not seeded")
 	}
 }
+
+func TestDescribeUnit(t *testing.T) {
+	for unit, want := range map[string][2]string{
+		"apache2.service":                  {"Apache", "shared"},
+		"memcached.service":                {"Memcached", "shared"},
+		"clamav-daemon.service":            {"ClamAV", "shared"},
+		"fail2ban.service":                 {"Fail2ban", "system"},
+		"postgresql@16-main.service":       {"PostgreSQL", "shared"},
+		"postgresql.service":               {"PostgreSQL (panel veritabanı)", "servik"},
+		"redis-server@servik-mail.service": {"Redis (posta)", "shared"},
+	} {
+		name, group := describeUnit(unit)
+		if name != want[0] || group != want[1] {
+			t.Errorf("describeUnit(%q) = %q, %q; want %q, %q", unit, name, group, want[0], want[1])
+		}
+	}
+}

@@ -61,6 +61,10 @@ class DeleteSite implements ShouldQueue
                     'remove_files' => false,
                 ], config('servik.agent.job_timeout'));
             }
+            // Its Redis instance runs as the site's account too.
+            if ($app?->redis_port !== null) {
+                $agent->call('redis.remove', ['domain' => $site->domain], config('servik.agent.job_timeout'));
+            }
             $result = $agent->call('site.delete', [
                 'domain' => $site->domain,
                 'user' => $user->name,

@@ -7,10 +7,12 @@ use App\Models\DatabaseUser;
 use App\Models\LaravelEnvVersion;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Components\Components;
 use App\Services\Customers\Quotas;
 use App\Services\Databases\Databases;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Laravel\EnvFile;
+use App\Services\Laravel\Redis;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Lazy;
@@ -25,7 +27,7 @@ class Environment extends Section
     protected const ABILITY = 'operate';
 
     /** Creating a database counts against the owner's package. */
-    protected const MANAGE_METHODS = ['createDatabase', 'undoCreateDatabase'];
+    protected const MANAGE_METHODS = ['createDatabase', 'undoCreateDatabase', 'connectRedis', 'undoConnectRedis'];
 
     /** How many earlier versions are kept. */
     public const HISTORY = 30;
@@ -224,6 +226,73 @@ class Environment extends Section
     }
 
     /**
+     * Gives the application its own Redis instance and moves the cache,
+     * sessions and queues there (REDIS_*, CACHE_STORE, SESSION_DRIVER,
+     * QUEUE_CONNECTION in .env).
+     */
+    public function connectRedis(AgentClient $agent, Redis $redis, Components $components): void
+    {
+        $app = $this->app();
+        if ($app->redis_port !== null || $app->isPreview()) {
+            return;
+        }
+        if (! $components->isInstalled('redis')) {
+            $this->agentError = 'Bu sunucuda Redis kurulu değil.';
+
+            return;
+        }
+        try {
+            $env = $redis->connect($app);
+        } catch (AgentException $e) {
+            $this->agentError = 'Redis başlatılamadı: '.self::agentMessage($e);
+
+            return;
+        }
+        $this->mode = 'text';
+        $this->text = EnvFile::apply((string) $this->original, $env);
+        $this->quiet = true;
+        $this->save($agent);
+        $this->quiet = false;
+        if ($this->agentError !== null) {
+            // The application cannot use it; it goes again.
+            try {
+                $redis->disconnect($app);
+            } catch (AgentException) {
+            }
+            $this->loadContent((string) $this->original);
+            $this->mode = 'rows';
+
+            return;
+        }
+        $this->mode = 'rows';
+        $this->dispatch('toast',
+            message: "Redis 127.0.0.1:{$app->redis_port} üzerinde başlatıldı; önbellek, oturumlar ve kuyruklar Redis'e alındı. Kuyruk işçileri bir sonraki dağıtımda yeniden başlar.",
+            source: $this->getId(),
+            undo: ['method' => 'undoConnectRedis', 'args' => []],
+        );
+    }
+
+    /**
+     * Puts the .env back as it was before Redis and deletes the instance.
+     */
+    public function undoConnectRedis(AgentClient $agent, Redis $redis): void
+    {
+        $app = $this->app();
+        if ($app->redis_port === null) {
+            return;
+        }
+        $version = $app->envVersions()->first();
+        if ($version !== null) {
+            $this->restore($version->id, $agent);
+        }
+        try {
+            $redis->disconnect($app);
+        } catch (AgentException $e) {
+            $this->agentError = 'Redis durdurulamadı: '.self::agentMessage($e);
+        }
+    }
+
+    /**
      * Takes a database created here back: the .env as it was before, the
      * database deleted (no backup, it was empty).
      */
@@ -278,6 +347,7 @@ class Environment extends Section
 
         return view('livewire.laravel.sections.environment', [
             'app' => $app,
+            'canConnectRedis' => $app->redis_port === null && ! $app->isPreview() && app(Components::class)->isInstalled('redis') && auth()->user()->canOnApp($app, 'manage'),
             'canCreateDatabase' => $app->database_id === null && app(DatabaseServers::class)->installed() !== [] && auth()->user()->canOnApp($app, 'manage') && ! $app->isPreview(),
             'diff' => EnvFile::compare($current, $this->example),
             'history' => $this->showingHistory ? $app->envVersions()->limit(self::HISTORY)->get() : collect(),

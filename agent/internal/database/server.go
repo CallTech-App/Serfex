@@ -60,12 +60,12 @@ func (m *Manager) installedProduct(server string) (product, bool) {
 			continue
 		}
 		if name == PostgreSQL {
-			v := m.pgVersion()
-			if v == "" {
+			// The binaries may serve other clusters; the customers'
+			// server is the "main" cluster.
+			p, ok := m.pgProduct()
+			if !ok || !m.exists(pgClusterConf(p)) {
 				continue
 			}
-			p.unit = "postgresql@" + v + "-main"
-			p.conf = "/etc/postgresql/" + v + "/main/conf.d/servik.conf"
 			return p, true
 		}
 		if m.exists(p.marker) {
@@ -73,6 +73,24 @@ func (m *Manager) installedProduct(server string) (product, bool) {
 		}
 	}
 	return product{}, false
+}
+
+// pgProduct is PostgreSQL's product for the newest version whose
+// binaries are installed, cluster or not.
+func (m *Manager) pgProduct() (product, bool) {
+	v := m.pgVersion()
+	if v == "" {
+		return product{}, false
+	}
+	p := products[PostgreSQL]
+	p.unit = "postgresql@" + v + "-main"
+	p.conf = "/etc/postgresql/" + v + "/main/conf.d/servik.conf"
+	return p, true
+}
+
+// pgClusterConf is the main cluster's postgresql.conf.
+func pgClusterConf(p product) string {
+	return filepath.Dir(filepath.Dir(p.conf)) + "/postgresql.conf"
 }
 
 // pgVersion is the newest PostgreSQL version installed.
@@ -198,18 +216,29 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 		err = opError(err)
 	}()
 
-	if _, ok := m.installedProduct(p.server); !ok {
+	if !m.packagesPresent(p) {
 		if err := installPackages(ctx, m.h, p.packages, ""); err != nil {
 			return res, err
 		}
 		res.Installed = true
 	}
-	p, _ = m.installedProduct(p.server)
-	if p.server == PostgreSQL && !m.exists(filepath.Dir(filepath.Dir(p.conf))+"/postgresql.conf") {
-		// The cluster was dropped (or never created).
-		if _, err := m.h.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{strings.TrimSuffix(strings.TrimPrefix(p.unit, "postgresql@"), "-main"), "main"}}); err != nil {
-			return res, err
+	if p.server == PostgreSQL {
+		if p, ok = m.pgProduct(); !ok {
+			return res, errors.New("PostgreSQL's binaries are missing after the install")
 		}
+		if !m.exists(pgClusterConf(p)) {
+			// The cluster was dropped (or never created).
+			v := strings.TrimSuffix(strings.TrimPrefix(p.unit, "postgresql@"), "-main")
+			if _, err := m.h.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{v, "main"}}); err != nil {
+				return res, err
+			}
+			t.OnUndo(func(ctx context.Context) error {
+				_, err := m.h.Run(ctx, host.Command{Name: "pg_dropcluster", Args: []string{"--stop", v, "main"}})
+				return err
+			})
+		}
+	} else {
+		p, _ = m.installedProduct(p.server)
 	}
 
 	st, err := m.loadState()
@@ -239,6 +268,14 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 		return res, err
 	}
 	return res, nil
+}
+
+// packagesPresent reports whether the product's packages are installed.
+func (m *Manager) packagesPresent(p product) bool {
+	if p.name == PostgreSQL {
+		return m.pgVersion() != ""
+	}
+	return m.exists(p.marker)
 }
 
 // waitFor waits until server answers queries.

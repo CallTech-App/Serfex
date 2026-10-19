@@ -67,11 +67,12 @@ class LaravelProcess extends Model
     }
 
     /**
-     * A free port for a new Octane or Reverb process.
+     * A free port for a new Octane or Reverb process or Redis instance.
      */
     public static function freePort(): int
     {
-        $used = static::query()->whereNotNull('port')->pluck('port')->all();
+        // Applications' Redis instances take ports from the same range.
+        $used = [...static::query()->whereNotNull('port')->pluck('port')->all(), ...LaravelApp::whereNotNull('redis_port')->pluck('redis_port')->all()];
         for ($p = self::PORT_RANGE[0]; $p <= self::PORT_RANGE[1]; $p++) {
             if (! in_array($p, $used, true)) {
                 return $p;

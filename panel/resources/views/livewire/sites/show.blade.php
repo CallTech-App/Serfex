@@ -20,7 +20,7 @@
             ['key-round', 'Bağlantı bilgileri', null],
         ]],
         ['Geliştirme', 'code', [
-            ['code', 'PHP ve web sunucusu', 'PHP '.$site->php_version.' · Nginx'],
+            ['code', 'PHP ve web sunucusu', 'PHP '.$site->php_version.' · '.($site->web_server === \App\Models\Site::APACHE ? 'Apache' : 'Nginx'), route('sites.php', $site)],
             $laravelTool,
             ['terminal', 'SSH terminali', null],
             ['clock', 'Zamanlanmış görevler', $laravel ? ($laravel->scheduler ? 'Açık' : 'Kapalı') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'zamanlayici']) : null],
@@ -123,11 +123,11 @@
 
     {{-- Status strip --}}
     <section class="grid grid-cols-1 rounded-xl border border-line bg-surface text-[13px] sm:grid-cols-2 xl:grid-cols-4 [&>*]:border-line [&>*]:p-4 max-sm:[&>*:not(:last-child)]:border-b sm:max-xl:[&>*:nth-child(-n+2)]:border-b sm:max-xl:[&>*:nth-child(odd)]:border-r xl:[&>*:not(:last-child)]:border-r">
-        <div>
+        <a href="{{ route('sites.php', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
             <p class="text-2xs text-muted">Web sunucusu</p>
-            <p class="mt-1 font-medium">Nginx · PHP {{ $site->php_version }}</p>
+            <p class="mt-1 font-medium">{{ $site->web_server === \App\Models\Site::APACHE ? 'Nginx + Apache' : 'Nginx' }} · PHP {{ $site->php_version }}</p>
             <span class="text-2xs text-muted">PHP-FPM, siteye özel havuz</span>
-        </div>
+        </a>
         <a href="{{ route('sites.ssl', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
             <p class="text-2xs text-muted">SSL</p>
             <p class="mt-1"><x-status-badge :status="$ssl" /></p>
