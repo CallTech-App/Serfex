@@ -359,6 +359,50 @@ jobs:
           sudo cat /etc/ssh/sshd_config.d/50-servik-sftp.conf || true
           findmnt -R /var/lib/servik/sftp || true
 
+  agent-security:
+    name: Agent secures a real site
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx, PHP-FPM, OpenSSH and nftables
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm openssh-server nftables curl
+          sudo systemctl start nginx php8.3-fpm ssh
+
+      # Installs ModSecurity with the OWASP Core Rule Set through
+      # Yazılım Yönetimi, sends an SQL injection and sees it logged
+      # (detect), refused with 403 (block), let through under an excluded
+      # path and ignored (off); protects a folder with a password; plants
+      # a web shell, a world-writable .env, a served backup and a
+      # root-owned file, scans, blocks the backup's URL, quarantines the
+      # shell and restores it from the file manager's trash, fixes the
+      # permissions and the owner; turns the port filter on and checks
+      # it from another network namespace; hardens SSH; installs
+      # Fail2ban and bans an address after ten failed panel logins.
+      - name: WAF, scan, port filter, SSH and Fail2ban for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 15m ./internal/security
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo tail -n 20 /var/log/servik/modsecurity/audit.log || true
+          sudo ls -la /etc/servik/nginx/sites/*/ || true
+          sudo nft list ruleset || true
+          sudo journalctl --no-pager -u nginx -u fail2ban -n 100 || true
+          sudo tail -n 50 /var/log/fail2ban.log || true
+
   agent-backups:
     name: Agent backs up and restores a real site
     runs-on: ubuntu-24.04
