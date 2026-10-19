@@ -71,10 +71,10 @@ func (e *mysqlEngine) dropDatabase(ctx context.Context, name string) error {
 	return err
 }
 
-func (e *mysqlEngine) dump(ctx context.Context, name string, w io.Writer) error {
-	_, err := e.h.Run(ctx, host.Command{Name: "mysqldump", Args: []string{
+func (e *mysqlEngine) dump(ctx context.Context, name string, w io.Writer, wrap func(host.Command) host.Command) error {
+	_, err := e.h.Run(ctx, wrap(host.Command{Name: "mysqldump", Args: []string{
 		"--single-transaction", "--routines", "--triggers", "--events", "--no-tablespaces", "--default-character-set=utf8mb4", name,
-	}, Stdout: w})
+	}, Stdout: w}))
 	return err
 }
 

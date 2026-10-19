@@ -5,6 +5,8 @@ import (
 	"io"
 	"slices"
 	"time"
+
+	"github.com/winchester37/servik/agent/internal/host"
 )
 
 // engine runs one kind of database server.
@@ -15,7 +17,7 @@ type engine interface {
 	createDatabase(ctx context.Context, name string) error
 	dropDatabase(ctx context.Context, name string) error
 	// dump writes the database as SQL.
-	dump(ctx context.Context, name string, w io.Writer) error
+	dump(ctx context.Context, name string, w io.Writer, wrap func(host.Command) host.Command) error
 	// applyUser creates or changes a user: the password when not empty
 	// (required for a new user), the hosts it may connect from besides
 	// this machine, and its grants, taking back the ones in prev that are
@@ -27,6 +29,14 @@ type engine interface {
 	// database for a manager sign-in; it stops working at expires.
 	createSession(ctx context.Context, user, password, database string, expires time.Time) error
 	dropSession(ctx context.Context, user, database string) error
+	// credential returns a user's stored password, and whether the user
+	// exists.
+	credential(ctx context.Context, name string) (Credential, bool, error)
+	// createWithCredential creates a user (on this machine's hosts) with a
+	// stored password.
+	createWithCredential(ctx context.Context, name string, c Credential) error
+	// loadDump runs the SQL read from r in an empty database.
+	loadDump(ctx context.Context, name string, r io.Reader, wrap func(host.Command) host.Command) error
 }
 
 // Listing is what a server holds: customer databases with their size and

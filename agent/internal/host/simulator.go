@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -100,6 +101,27 @@ func (s *Simulator) Run(_ context.Context, c Command) (string, error) {
 			}
 			return err.Error(), commandError(c, err.Error(), &ExitStatus{Code: 1})
 		}
+	}
+
+	// Low-priority wrappers (nice -n N, ionice -c N, systemd-run ... --)
+	// run the command they wrap.
+unwrap:
+	for {
+		switch {
+		case c.Name == "nice" && len(c.Args) > 2 && c.Args[0] == "-n":
+			c = Command{Name: c.Args[2], Args: c.Args[3:], Stdin: c.Stdin, Env: c.Env, Stream: c.Stream, Stdout: c.Stdout, Input: c.Input}
+			continue
+		case c.Name == "ionice" && len(c.Args) > 2 && c.Args[0] == "-c":
+			c = Command{Name: c.Args[2], Args: c.Args[3:], Stdin: c.Stdin, Env: c.Env, Stream: c.Stream, Stdout: c.Stdout, Input: c.Input}
+			continue
+		case c.Name == "systemd-run" && slices.Contains(c.Args, "--"):
+			i := slices.Index(c.Args, "--")
+			if i+1 < len(c.Args) {
+				c = Command{Name: c.Args[i+1], Args: c.Args[i+2:], Stdin: c.Stdin, Env: c.Env, Stream: c.Stream, Stdout: c.Stdout, Input: c.Input}
+				continue
+			}
+		}
+		break unwrap
 	}
 
 	inner := c

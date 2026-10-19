@@ -77,8 +77,8 @@ func (e *pgEngine) dropDatabase(ctx context.Context, name string) error {
 	return err
 }
 
-func (e *pgEngine) dump(ctx context.Context, name string, w io.Writer) error {
-	_, err := e.h.Run(ctx, host.AsUser("postgres", host.Command{Name: "pg_dump", Args: []string{"--format=plain", "--no-acl", "-d", name}, Stdout: w}))
+func (e *pgEngine) dump(ctx context.Context, name string, w io.Writer, wrap func(host.Command) host.Command) error {
+	_, err := e.h.Run(ctx, wrap(host.AsUser("postgres", host.Command{Name: "pg_dump", Args: []string{"--format=plain", "--no-acl", "-d", name}, Stdout: w})))
 	return err
 }
 

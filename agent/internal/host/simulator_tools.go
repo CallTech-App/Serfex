@@ -443,9 +443,12 @@ func (p *simProcess) Kill() error {
 // Root, the archive is read from Input or written to Stdout.
 func (s *Simulator) tar(c Command, cwd string) (string, error) {
 	args := append([]string(nil), c.Args...)
-	for i := 0; i < len(args)-1; i++ {
-		if args[i] == "-C" {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-C" && i+1 < len(args) {
 			args[i+1] = s.Path(s.abs(cwd, args[i+1:i+2])[0])
+		}
+		if f, ok := strings.CutPrefix(args[i], "--listed-incremental="); ok && f != "/dev/null" {
+			args[i] = "--listed-incremental=" + s.Path(f)
 		}
 	}
 	cmd := exec.Command("tar", args...)

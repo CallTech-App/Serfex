@@ -85,7 +85,7 @@ func (e *simEngine) dropDatabase(_ context.Context, name string) error {
 	return e.save(d)
 }
 
-func (e *simEngine) dump(_ context.Context, name string, w io.Writer) error {
+func (e *simEngine) dump(_ context.Context, name string, w io.Writer, _ func(host.Command) host.Command) error {
 	_, err := fmt.Fprintf(w, "-- Servik dry run: dump of %s\n", name)
 	return err
 }
