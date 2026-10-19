@@ -75,10 +75,22 @@ class SystemServices
 
             return null;
         }
-        $this->list = array_values($list);
+        $this->list = array_values(array_map(fn ($s) => ($s['protected'] ?? '') === '' ? $s : ['protected' => self::protectedReason($s['unit'])] + $s, $list));
         $this->remember($this->list);
 
         return $this->list;
+    }
+
+    /**
+     * Why a service cannot be stopped, as the page says it.
+     */
+    public static function protectedReason(string $unit): string
+    {
+        return match ($unit) {
+            'ssh' => 'Sunucuya bağlanmanın yolu; durdurulursa sunucuya SSH ile giremezsiniz.',
+            'servik-agent' => 'Panel sunucuyu onunla yönetir; durdurulamaz.',
+            default => 'Panel onsuz çalışmaz; durdurulamaz.',
+        };
     }
 
     /**
@@ -124,6 +136,14 @@ class SystemServices
     public static function problems(): array
     {
         return Cache::get(self::PROBLEMS_KEY, []);
+    }
+
+    /**
+     * True once the services have been read since the cache was emptied.
+     */
+    public static function checked(): bool
+    {
+        return Cache::has(self::PROBLEMS_KEY);
     }
 
     /**
@@ -292,8 +312,23 @@ class SystemServices
 
     public static function message(AgentException $e): string
     {
-        return $e instanceof AgentUnavailableException
-            ? 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.'
-            : $e->reason;
+        if ($e instanceof AgentUnavailableException) {
+            return 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.';
+        }
+        // The agent's common refusals, in the panel's words.
+        $patterns = [
+            '/^configuration test failed, .+? was left as it is: (.*)$/s' => 'Ayar dosyası denetimden geçmedi; hizmete dokunulmadı. Hata: $1',
+            '/^the service refused the settings, nothing was changed: (.*)$/s' => 'Hizmet yeni ayarları kabul etmedi; hiçbir şey değişmedi. Hata: $1',
+            '/^(.+) is not running; start it first$/' => '$1 çalışmıyor; önce başlatın.',
+            '/^(.+) cannot be stopped: .*$/s' => '$1 durdurulamaz.',
+            '/^.+ is not a service Servik manages.*$/s' => 'Bu hizmet sunucuda yok.',
+        ];
+        foreach ($patterns as $pattern => $text) {
+            if (preg_match($pattern, $e->reason)) {
+                return preg_replace($pattern, $text, $e->reason);
+            }
+        }
+
+        return $e->reason;
     }
 }

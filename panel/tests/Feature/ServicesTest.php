@@ -60,8 +60,8 @@ class ServicesTest extends TestCase
             'mysql' => $row('mysql', 'MySQL', 'hosting', ['can_reload' => false, 'settings' => 'database']),
             'memcached' => $row('memcached', 'Memcached', 'hosting', ['state' => 'inactive', 'sub_state' => 'dead', 'enabled' => 'disabled', 'cpu' => 0, 'memory' => 0]),
             'fail2ban' => $row('fail2ban', 'Fail2ban', 'system', ['state' => 'failed', 'sub_state' => 'failed', 'cpu' => 0, 'memory' => 0]),
-            'ssh' => $row('ssh', 'SSH', 'system', ['protected' => 'Sunucuya bağlanmanın yolu; durdurulamaz.']),
-            'servik-agent' => $row('servik-agent', 'Servik Agent', 'servik', ['protected' => 'Panel onunla çalışır; durdurulamaz.']),
+            'ssh' => $row('ssh', 'SSH', 'system', ['protected' => 'x']),
+            'servik-agent' => $row('servik-agent', 'Servik Agent', 'servik', ['protected' => 'x']),
         ];
         $this->ini = [
             'memory_limit' => '256M', 'upload_max_filesize' => '64M', 'post_max_size' => '64M', 'max_execution_time' => '60',
@@ -172,11 +172,11 @@ class ServicesTest extends TestCase
 
     public function test_the_agents_refusal_is_shown(): void
     {
-        $this->agent->answers['service.action'] = AgentException::rpcError('service.action', -32602, 'configuration test failed, the service was left running: nginx: [emerg] unknown directive');
+        $this->agent->answers['service.action'] = AgentException::rpcError('service.action', -32602, 'configuration test failed, Fail2ban was left as it is: nginx: [emerg] unknown directive');
 
         Livewire::test(ServiceIndex::class)
             ->call('act', 'fail2ban', 'restart')
-            ->assertSee('configuration test failed');
+            ->assertSee('Ayar dosyası denetimden geçmedi; hizmete dokunulmadı. Hata: nginx: [emerg] unknown directive');
     }
 
     public function test_service_page_shows_logs_toggles_boot_and_changes_settings(): void
@@ -212,7 +212,7 @@ class ServicesTest extends TestCase
     public function test_protected_services_cannot_be_stopped_from_the_page(): void
     {
         $this->get('/hizmetler/servik-agent')->assertOk()
-            ->assertSee('Panel onunla çalışır; durdurulamaz.')
+            ->assertSee('Panel sunucuyu onunla yönetir; durdurulamaz.')
             ->assertDontSee('wire:click="act(&#039;stop&#039;)"', false);
     }
 
@@ -225,6 +225,7 @@ class ServicesTest extends TestCase
             ->assertSee('PHP 8.4')
             ->assertSee('Kullanılıyor: kahveatolyesi.com.tr')
             ->assertSee('Kurulu değil')
+            ->assertSee('yeni sitelerde')
             ->assertSet('defaultVersion', '8.4')
             ->set('defaultVersion', '8.3')
             ->set('disabledFunctions', 'exec, system, shell_exec')

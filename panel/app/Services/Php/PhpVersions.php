@@ -160,7 +160,8 @@ class PhpVersions
         }
         $default = $this->default(array_values(array_map(fn ($r) => substr($r['id'], 3), array_filter($groups[''] ?? [], fn ($r) => $r['installed']))));
 
-        return array_map(fn ($r) => $r + [
+        return array_map(fn ($r) => [
+            ...$r,
             'number' => substr($r['id'], 3),
             'sites' => Site::where('php_version', substr($r['id'], 3))->orderBy('domain')->pluck('domain')->all(),
             'default' => $r['installed'] && substr($r['id'], 3) === $default,

@@ -31,7 +31,7 @@
                 <x-icon name="server-cog" @class(['text-muted' => ! $serviceProblems, 'text-crit' => $serviceProblems]) />
                 <span>Hizmetler</span>
                 <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $serviceProblems, 'font-medium text-crit' => $serviceProblems])>
-                    {{ $serviceProblems ? (count($serviceProblems) === 1 ? $serviceNames.' çalışmıyor' : count($serviceProblems).' hizmet çalışmıyor: '.$serviceNames) : 'Tüm hizmetler çalışıyor' }}
+                    {{ $serviceProblems ? (count($serviceProblems) === 1 ? $serviceNames.' çalışmıyor' : count($serviceProblems).' hizmet çalışmıyor: '.$serviceNames) : (\App\Services\System\SystemServices::checked() ? 'Tüm hizmetler çalışıyor' : 'Henüz denetlenmedi') }}
                 </span>
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
