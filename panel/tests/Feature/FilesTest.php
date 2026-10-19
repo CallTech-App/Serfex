@@ -140,12 +140,16 @@ class FilesTest extends TestCase
         $page->call('restoreTrash', ['t0', 't1']);
         $this->assertSame([['user' => 'kahve', 'domain' => 'kahveatolyesi.com.tr', 'ids' => ['t0', 't1']]], $this->agent->called('files.trash.restore'));
 
-        $page->call('openPermissions', 'public_html/index.php', '644')
+        // A row's own action leaves the selection alone.
+        $page->set('selected', ['public_html/site.zip'])
+            ->call('openPermissions', 'public_html/index.php', '644')
             ->set('permMode', '600')
             ->call('chmod')
+            ->assertSet('selected', ['public_html/site.zip'])
             ->assertDispatched('toast', fn ($name, $p) => ($p['undo'] ?? null) === ['method' => 'undoChmod', 'args' => [['public_html/index.php' => '644']]]);
         $page->call('openPermissions', 'public_html/index.php')->set('permMode', '9x')->call('chmod')->assertHasErrors('permMode');
         $this->assertCount(1, $this->agent->called('files.chmod'));
+        $this->assertSame(['public_html/index.php'], $this->agent->called('files.chmod')[0]['paths']);
     }
 
     public function test_searches_below_the_folder_and_shows_the_trash(): void
@@ -270,6 +274,8 @@ class FilesTest extends TestCase
         ]], $this->agent->called('ftp.account.apply'));
         $account = FtpAccount::sole();
         $this->assertSame('public_html', $account->directory);
+        // A missing folder is made first, as the site's user.
+        $this->assertSame([['user' => 'kahve', 'domain' => 'kahveatolyesi.com.tr', 'path' => '', 'name' => 'public_html']], $this->agent->called('files.mkdir'));
         // The password is never stored.
         $this->assertStringNotContainsString('Uzun-Parola-2026', json_encode($account->getAttributes()));
 
@@ -325,6 +331,7 @@ class FilesTest extends TestCase
             ->assertSet('credentials', null)
             ->assertDispatched('toast', message: 'kahve_deploy kaydedildi.');
         $this->assertSame('public_html/uploads', $account->fresh()->directory);
+        $this->assertSame(['public_html', 'uploads'], array_column($this->agent->called('files.mkdir'), 'name'));
         $this->assertArrayNotHasKey('password', $this->agent->called('ftp.account.apply')[0]);
 
         $page->call('openEdit', $account->id)

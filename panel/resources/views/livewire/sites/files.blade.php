@@ -42,8 +42,9 @@
             if (! files.length) return;
             const folder = $wire.path, paths = [], replaced = [];
             for (const file of files) {
-                const item = { name: file.name, size: file.size, sent: 0, state: 'uploading', error: '' };
-                this.uploads.push(item);
+                this.uploads.push({ name: file.name, size: file.size, sent: 0, state: 'uploading', error: '' });
+                // The reactive copy, so the progress bar follows.
+                const item = this.uploads[this.uploads.length - 1];
                 if (file.size > this.maxUpload) { item.state = 'failed'; item.error = '2 GB üstü dosyaları SFTP ile yükleyin.'; continue; }
                 const id = this.id();
                 let offset = 0, overwrite = false;
@@ -210,9 +211,9 @@
                             <th class="w-10 py-2.5 pl-5"><input type="checkbox" aria-label="Tümünü seç" class="size-4 accent-accent"
                                    @checked($entries !== [] && count($selected) === count($entries))
                                    wire:click="$set('selected', {{ $entries !== [] && count($selected) === count($entries) ? '[]' : \Illuminate\Support\Js::from(array_column($entries, 'path')) }})"></th>
-                            <th class="px-3 py-2.5 font-medium">Ad</th>
-                            <th class="hidden px-3 py-2.5 text-right font-medium sm:table-cell">Boyut</th>
-                            <th class="hidden px-3 py-2.5 font-medium md:table-cell">Değiştirilme</th>
+                            <th class="w-full px-3 py-2.5 font-medium">Ad</th>
+                            <th class="hidden px-3 py-2.5 text-right font-medium whitespace-nowrap sm:table-cell">Boyut</th>
+                            <th class="hidden px-3 py-2.5 font-medium whitespace-nowrap md:table-cell">Değiştirilme</th>
                             <th class="px-3 py-2.5 font-medium">İzinler</th>
                             <th class="w-10 py-2.5 pr-5"></th>
                         </tr>
@@ -349,7 +350,7 @@
         <form wire:submit="chmod">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">İzinleri değiştir</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
-                <p class="text-[13px] text-muted">{{ count($selected) === 1 ? basename($selected[0] ?? '') : count($selected).' öğe' }}</p>
+                <p class="truncate font-mono text-[13px] text-muted">{{ count($targets) === 1 ? basename($targets[0] ?? '') : count($targets).' öğe' }}</p>
                 <div class="grid items-center gap-x-4 gap-y-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
                     <label for="perm">İzin</label>
                     <div>
@@ -451,12 +452,22 @@
     <x-modal title="Sil" show="deleteOpen" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold">
-                @if (count($selected) === 1)
-                    <span class="font-mono">{{ basename($selected[0]) }}</span> silinsin mi?
+                @if (count($targets) === 1)
+                    <span class="font-mono">{{ basename($targets[0]) }}</span> silinsin mi?
                 @else
-                    {{ count($selected) }} öğe silinsin mi?
+                    {{ count($targets) }} öğe silinsin mi?
                 @endif
             </p>
+            @if (count($targets) > 1)
+                <ul class="mt-2 space-y-0.5 font-mono text-[12.5px]">
+                    @foreach (array_slice($targets, 0, 5) as $t)
+                        <li class="truncate">{{ basename($t) }}</li>
+                    @endforeach
+                    @if (count($targets) > 5)
+                        <li class="font-sans text-muted">ve {{ count($targets) - 5 }} öğe daha</li>
+                    @endif
+                </ul>
+            @endif
             <p class="mt-1 text-[13px] text-muted">Silinenler {{ FileManager::TRASH_DAYS }} gün çöp kutusunda kalır; oradan ya da hemen "Geri al" ile geri getirebilirsiniz.</p>
             <div class="mt-4 flex justify-end gap-2">
                 <button type="button" wire:click="$set('deleteOpen', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">Vazgeç</button>
@@ -473,8 +484,8 @@
                 <tbody class="divide-y divide-line">
                     @forelse ($trash as $item)
                         <tr wire:key="t-{{ $item['id'] }}">
-                            <td class="max-w-0 py-2.5 pr-3 pl-5">
-                                <span class="block truncate font-mono text-[13px]">{{ $item['path'] }}</span>
+                            <td class="w-full max-w-0 py-2.5 pr-3 pl-5">
+                                <span class="block truncate font-mono text-[13px]" title="{{ $item['path'] }}">{{ $item['path'] }}</span>
                                 <span class="num block text-2xs text-muted">
                                     {{ ['deleted' => 'Silindi', 'version' => 'Düzenlemeden önceki sürüm', 'replaced' => 'Üzerine yazılan dosya'][$item['kind']] ?? $item['kind'] }}
                                     · {{ $date($item['deleted_at']) }} · {{ Bytes::format($item['size']) }}

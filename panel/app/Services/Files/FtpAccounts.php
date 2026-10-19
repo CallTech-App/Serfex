@@ -87,6 +87,7 @@ class FtpAccounts
      */
     public function create(Site $site, string $name, string $directory, string $password, ?string $note = null): FtpAccount
     {
+        $this->ensureFolder($site, $directory);
         $account = FtpAccount::create([
             'site_id' => $site->id,
             'system_user_id' => $site->system_user_id,
@@ -111,6 +112,9 @@ class FtpAccounts
      */
     public function update(FtpAccount $account, string $directory, ?string $note, ?string $password = null): void
     {
+        if ($directory !== $account->directory) {
+            $this->ensureFolder($account->site, $directory);
+        }
         $before = $account->only('directory', 'note', 'password_changed_at');
         $account->update(['directory' => $directory, 'note' => $note] + ($password !== null ? ['password_changed_at' => now()] : []));
         try {
@@ -118,6 +122,25 @@ class FtpAccounts
         } catch (AgentException $e) {
             $account->update($before);
             throw $e;
+        }
+    }
+
+    /**
+     * Creates the account's folder as the site's user when it is missing,
+     * so a new "public_html/ajans" works at once.
+     */
+    private function ensureFolder(Site $site, string $directory): void
+    {
+        $parent = '';
+        foreach ($directory === '' ? [] : explode('/', $directory) as $part) {
+            try {
+                app(FileManager::class)->call($site, 'mkdir', ['path' => $parent, 'name' => $part]);
+            } catch (AgentException $e) {
+                if (! str_starts_with($e->reason, 'exists:')) {
+                    throw $e;
+                }
+            }
+            $parent = ltrim($parent.'/'.$part, '/');
         }
     }
 

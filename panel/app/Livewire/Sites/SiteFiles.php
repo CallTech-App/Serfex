@@ -42,6 +42,14 @@ class SiteFiles extends Component
     /** @var list<string> */
     public array $selected = [];
 
+    /**
+     * What the open delete or permissions dialog acts on: the selection,
+     * or one row's entry without changing the selection.
+     *
+     * @var list<string>
+     */
+    public array $targets = [];
+
     // Yeni dosya / klasör
     public string $newKind = '';
 
@@ -238,24 +246,20 @@ class SiteFiles extends Component
 
     public function confirmDelete(?string $path = null): void
     {
-        if ($path !== null) {
-            $this->selected = [$path];
-        }
-        if ($this->selected !== []) {
-            $this->deleteOpen = true;
-        }
+        $this->targets = $path !== null ? [$path] : array_values($this->selected);
+        $this->deleteOpen = $this->targets !== [];
     }
 
     public function delete(): void
     {
         $this->deleteOpen = false;
-        $res = $this->run('delete', ['paths' => array_values($this->selected)]);
+        $res = $this->run('delete', ['paths' => $this->targets]);
         if ($res === null) {
             return;
         }
         $ids = $res['ids'] ?? [];
         $count = count($ids);
-        $this->selected = [];
+        $this->unselectTargets();
         $this->undoToast(($count === 1 ? '1 öğe' : $count.' öğe').' çöp kutusuna taşındı.', 'restoreTrash', [$ids]);
     }
 
@@ -334,10 +338,8 @@ class SiteFiles extends Component
 
     public function openPermissions(?string $path = null, ?string $mode = null): void
     {
-        if ($path !== null) {
-            $this->selected = [$path];
-        }
-        if ($this->selected === []) {
+        $this->targets = $path !== null ? [$path] : array_values($this->selected);
+        if ($this->targets === []) {
             return;
         }
         $this->resetValidation();
@@ -357,12 +359,12 @@ class SiteFiles extends Component
                 return;
             }
         }
-        $res = $this->run('chmod', ['paths' => array_values($this->selected), 'mode' => $this->permMode, 'recursive' => $this->recursive, 'dir_mode' => $this->dirMode, 'file_mode' => $this->fileMode], 600);
+        $res = $this->run('chmod', ['paths' => $this->targets, 'mode' => $this->permMode, 'recursive' => $this->recursive, 'dir_mode' => $this->dirMode, 'file_mode' => $this->fileMode], 600);
         if ($res === null) {
             return;
         }
         $this->permOpen = false;
-        $this->selected = [];
+        $this->unselectTargets();
         if ($this->recursive) {
             $this->dispatch('toast', message: 'İzinler değiştirildi ('.($res['changed'] ?? 0).' öğe).');
         } else {
@@ -373,6 +375,12 @@ class SiteFiles extends Component
     /**
      * @param  array<string, string>  $before
      */
+    private function unselectTargets(): void
+    {
+        $this->selected = array_values(array_diff($this->selected, $this->targets));
+        $this->targets = [];
+    }
+
     public function undoChmod(array $before): void
     {
         foreach ($before as $path => $mode) {
