@@ -9,7 +9,7 @@
 //	    go test -tags realhost -run TestRealHost ./internal/backup
 //
 // Without SERVIK_S3_ENDPOINT the S3 copy goes to an in-process fake; CI
-// runs MinIO. The SFTP target is this machine's own sshd, signed in to
+// runs moto's S3 server. The SFTP target is this machine's own sshd, signed in to
 // as a local "servikbak" account.
 package backup
 
@@ -117,7 +117,7 @@ func sqlAs(user, password, query string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// s3Target is MinIO when SERVIK_S3_ENDPOINT is set, else a fake.
+// s3Spec is the server at SERVIK_S3_ENDPOINT when set, else a fake.
 func s3Spec(t *testing.T) TargetSpec {
 	t.Helper()
 	spec := TargetSpec{Type: "s3", Prefix: "servik/realhost", Bucket: "servik-yedek", Region: "us-east-1", PathStyle: true,
@@ -129,7 +129,7 @@ func s3Spec(t *testing.T) TargetSpec {
 		spec.Endpoint, spec.Bucket, spec.AccessKey, spec.SecretKey = srv.URL, "yedek", "AK", "SK"
 		return spec
 	}
-	// MinIO starts empty: make the bucket.
+	// The server starts empty: make the bucket.
 	s, err := newS3(spec, nil)
 	if err != nil {
 		t.Fatal(err)

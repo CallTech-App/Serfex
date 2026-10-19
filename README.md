@@ -117,7 +117,8 @@ sudo go test -tags realhost -run TestRealHost ./internal/site
 
 The backup test backs a real site (files, a MySQL database and a mailbox) up
 to local disk, S3-compatible storage and SFTP on the same machine, destroys
-it and restores it. Point it at MinIO, or it uses an in-process S3:
+it and restores it. Point it at any S3-compatible server (CI uses moto's), or
+it uses an in-process S3:
 
 ```sh
 sudo env "PATH=$PATH" SERVIK_S3_ENDPOINT=http://127.0.0.1:9000 SERVIK_S3_ACCESS_KEY=... SERVIK_S3_SECRET_KEY=... \
