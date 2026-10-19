@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (features). Customers read their package live, so a change applies to
  * all of them at once.
  */
-#[Fillable(['name', 'is_default', 'max_sites', 'max_disk_mb', 'max_traffic_gb', 'max_mailboxes', 'max_databases', 'max_laravel_apps', 'max_backups',
+#[Fillable(['name', 'is_default', 'max_sites', 'max_disk_mb', 'max_traffic_gb', 'max_mailboxes', 'max_databases', 'max_laravel_apps', 'max_backups', 'max_ftp_accounts',
     'php_versions', 'allow_laravel', 'allow_shell', 'allow_mail', 'allow_dns', 'allow_backups'])]
 class Package extends Model
 {
@@ -27,6 +27,7 @@ class Package extends Model
         'databases' => ['max_databases', 'Veritabanı', ''],
         'laravel_apps' => ['max_laravel_apps', 'Laravel uygulaması', ''],
         'backups' => ['max_backups', 'Elle alınan yedek', ''],
+        'ftp_accounts' => ['max_ftp_accounts', 'FTP hesabı', ''],
     ];
 
     /** Features: key => [column, label, explanation]. */

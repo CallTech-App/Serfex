@@ -11,6 +11,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Databases\Databases;
 use App\Services\Dns\Zones;
+use App\Services\Files\FtpAccounts;
 use App\Services\Mail\MailDomains;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -22,7 +23,8 @@ use Illuminate\Support\Facades\DB;
  * the site's DNS zone goes when asked, otherwise it stays as a DNS-only
  * domain. Its mail (mailboxes and stored mail) goes when asked, otherwise
  * the domain keeps receiving mail without the site. Its databases go when
- * asked (each after a backup), otherwise they stay with the account.
+ * asked (each after a backup), otherwise they stay with the account. Its
+ * SFTP accounts always go.
  */
 class DeleteSite implements ShouldQueue
 {
@@ -51,6 +53,8 @@ class DeleteSite implements ShouldQueue
         $lastSite = $user->sites()->whereKeyNot($site->id)->doesntExist();
 
         try {
+            // SFTP accounts mount the site's folders; they go first.
+            app(FtpAccounts::class)->deleteForSite($site);
             // Queue workers and the scheduler run as the site's account
             // from its directory; they stop before it goes.
             if ($site->laravelApp()->exists()) {

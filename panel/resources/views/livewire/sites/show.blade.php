@@ -16,8 +16,8 @@
     // version; the rest show what is coming. [icon, name, status, link, opens in a new tab]
     $groups = [
         ['Dosya ve veri', 'folder', [
-            ['folder', 'Dosya Yöneticisi', null],
-            ['hard-drive-upload', 'FTP hesapları', null],
+            ['folder', 'Dosya Yöneticisi', '', route('sites.files', $site)],
+            ['hard-drive-upload', 'FTP hesapları', $ftpAccounts ? $ftpAccounts.' hesap' : 'Yok', route('sites.ftp', $site)],
             ['database', 'Veritabanları', $databases ? $databases.' veritabanı' : 'Yok', route('databases.index', ['site' => $site->id])],
             $missing('backups') ? ['archive-restore', 'Yedekler', $missing('backups')] : ['archive-restore', 'Yedekler', $lastBackup ? 'Son: '.$backupText : 'Henüz yok', route('backups.index', ['site' => $site->id])],
             ['key-round', 'Bağlantı bilgileri', null],

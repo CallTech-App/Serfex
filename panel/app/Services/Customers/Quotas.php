@@ -5,6 +5,7 @@ namespace App\Services\Customers;
 use App\Models\Backup;
 use App\Models\Customer;
 use App\Models\Database;
+use App\Models\FtpAccount;
 use App\Models\LaravelApp;
 use App\Models\LaravelBackup;
 use App\Models\Mailbox;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Cache;
  * What a customer uses against their package, and whether they may create
  * one more of something.
  *
- * Counts (sites, mailboxes, databases, Laravel applications) are refused at the
+ * Counts (sites, mailboxes, databases, Laravel applications, FTP accounts) are refused at the
  * limit. Disk is measured, not capped by the file system: once it is full
  * nothing new is created (sites, mailboxes, applications, previews,
  * backups) but everything that exists keeps working. Traffic is reported
@@ -37,7 +38,11 @@ class Quotas
         'databases' => 'veritabanı sınırına',
         'laravel_apps' => 'Laravel uygulaması sınırına',
         'backups' => 'yedek sınırına',
+        'ftp_accounts' => 'FTP hesabı sınırına',
     ];
+
+    /** Kinds that take no disk space, so a full disk does not refuse them. */
+    private const DISKLESS = ['ftp_accounts'];
 
     /**
      * Usage in the unit limits use (bytes for disk and traffic). Disk is
@@ -67,6 +72,7 @@ class Quotas
             'laravel_apps' => $apps->whereNull('preview_of_id')->count(),
             // Backups they took themselves; scheduled ones are the server's.
             'backups' => Backup::where('customer_id', $customer->id)->where('trigger', 'manual')->whereNotIn('status', ['failed', 'deleted'])->count(),
+            'ftp_accounts' => FtpAccount::whereIn('system_user_id', $accounts)->count(),
         ];
     }
 
@@ -140,7 +146,7 @@ class Quotas
                 return 'Paketin '.self::KINDS[$kind].' ulaşıldı ('.$report[$kind]['text'].'). Paketi yükseltin ya da kullanılmayanları silin.';
             }
         }
-        if ($report['disk']['level'] === 'crit') {
+        if ($report['disk']['level'] === 'crit' && ! in_array($kind, self::DISKLESS, true)) {
             return 'Disk kotası doldu ('.$report['disk']['text'].'). Yer açın ya da paketi yükseltin.';
         }
 
