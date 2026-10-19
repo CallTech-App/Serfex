@@ -17,3 +17,5 @@ Schedule::command('servik:monitor-record')->everyMinute()->withoutOverlapping();
 Schedule::command('servik:backups')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('servik:update-check')->dailyAt('04:30')->withoutOverlapping();
 Schedule::command('servik:files-trash')->dailyAt('03:40')->withoutOverlapping();
+Schedule::command('servik:security-scan')->weeklyOn(0, '03:20')->withoutOverlapping();
+Schedule::command('servik:fail2ban-sync')->everyMinute()->withoutOverlapping();

@@ -52,6 +52,31 @@
             @endif
         </div>
         @php
+            $securityAttention = \App\Services\Security\Scans::attentionCount();
+            $lastScan = \App\Models\SecurityScan::where('scope', 'server')->whereNotNull('finished_at')->latest('id')->value('finished_at');
+        @endphp
+        <div class="flex items-center gap-2 hover:bg-surface-2/60">
+            <a href="{{ route('security.index', ['sekme' => 'tarama']) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $securityAttention ? '' : 'pr-5' }}">
+                <x-icon name="shield-alert" @class(['text-muted' => ! $securityAttention, 'text-crit' => $securityAttention]) />
+                <span>Güvenlik</span>
+                <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $securityAttention, 'font-medium text-crit' => $securityAttention])>
+                    {{ $securityAttention ? $securityAttention.' ciddi güvenlik bulgusu var' : ($lastScan ? 'Son taramada ciddi sorun yok · '.\Illuminate\Support\Carbon::parse($lastScan)->diffForHumans() : 'Henüz tarama yapılmadı') }}
+                </span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+            @if ($securityAttention)
+                <x-ask-ai question="Güvenlik taramasında ciddi bulgular var. Hangileri, ne kadar tehlikeli ve nasıl düzeltirim?" label="AI'ya sor" class="mr-5" />
+            @endif
+        </div>
+        @if (! auth()->user()->hasTwoFactor())
+            <a href="{{ route('account.security') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+                <x-icon name="key-round" class="text-info" />
+                <span>Hesabınız</span>
+                <span class="num ml-auto truncate text-right font-medium text-info">İki adımlı doğrulama kapalı; açmanızı öneririz</span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+        @endif
+        @php
             $backupProblems = app(\App\Services\Backups\Backups::class)->problems();
             $lastBackup = \App\Models\Backup::where('scope', 'server')->usable()->latest('finished_at')->value('finished_at');
         @endphp

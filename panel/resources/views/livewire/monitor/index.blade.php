@@ -302,7 +302,7 @@
                                 <tr wire:key="block-{{ $b->id }}" class="hover:bg-surface-2/60">
                                     <td class="py-3 pr-3 pl-5 font-mono text-[13px] font-medium">{{ $b->address }}</td>
                                     <td class="px-3 py-3">
-                                        {{ $b->reason !== '' && $b->reason !== null ? $b->reason : '—' }}
+                                        {{ $b->reason !== '' && $b->reason !== null ? $b->reason : ($b->source === 'fail2ban' ? \App\Services\Security\Fail2ban::jailLabel($b->kind) : '—') }}
                                         @if ($b->site)
                                             <span class="block font-mono text-2xs text-muted">{{ $b->site->domain }}</span>
                                         @endif
@@ -321,7 +321,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="border-t border-line px-5 py-3 text-2xs text-muted">Engel bütün sunucuyu kapsar: adresten gelen hiçbir bağlantı (web, posta, SSH) kabul edilmez. Süresi dolan engel kendiliğinden kalkar.</p>
+                <p class="border-t border-line px-5 py-3 text-2xs text-muted">Engel bütün sunucuyu kapsar: adresten gelen hiçbir bağlantı (web, posta, SSH) kabul edilmez. Fail2ban engelleri yalnızca saldırılan hizmetin portunu kapatır. Süresi dolan engel kendiliğinden kalkar.</p>
             </div>
 
         {{-- Posta kuyruğu --}}

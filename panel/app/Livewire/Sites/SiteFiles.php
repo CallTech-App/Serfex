@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Services\Agent\AgentException;
 use App\Services\Customers\Quotas;
 use App\Services\Files\FileManager;
+use App\Services\Security\Scans;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
@@ -95,6 +96,9 @@ class SiteFiles extends Component
     public bool $trashOpen = false;
 
     public bool $emptyTrashOpen = false;
+
+    /** @var list<string>|null uploaded files the security scan flagged */
+    public ?array $flagged = null;
 
     public function mount(int $site): void
     {
@@ -457,6 +461,9 @@ class SiteFiles extends Component
             return;
         }
         $this->undoToast(($count === 1 ? basename($paths[0]) : $count.' dosya').' yüklendi.', 'undoUpload', [$paths, $replaced]);
+        // Uploads are checked for web shells at once; the full scan runs weekly.
+        $findings = app(Scans::class)->scanUploads($this->site(), array_values(array_slice($paths, 0, 200)));
+        $this->flagged = $findings === [] ? null : array_values(array_unique(array_map(fn ($f) => $f->path, $findings)));
     }
 
     /**

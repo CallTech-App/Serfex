@@ -61,6 +61,7 @@ class IpBlock extends Model
         return match ($this->source) {
             'ai' => 'Servik AI',
             'api' => 'API',
+            'fail2ban' => 'Fail2ban',
             default => $this->user->name ?? 'Panel',
         };
     }

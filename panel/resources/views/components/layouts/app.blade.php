@@ -17,7 +17,7 @@
             ['customers.index', 'users', 'Müşteriler ve Paketler'],
         ]],
         ['Sunucu', [
-            [null, 'shield-alert', 'Güvenlik'],
+            ['security.index', 'shield-alert', 'Güvenlik'],
             ['backups.index', 'archive', 'Yedekler'],
             [null, 'server-cog', 'Hizmetler'],
             ['components.index', 'package-plus', 'Yazılım Yönetimi'],
@@ -47,6 +47,7 @@
     $alerts = match (true) {
         (bool) $user?->is_admin => [
             'monitor.index' => [(int) \Illuminate\Support\Facades\Cache::get(\App\Services\Monitor\LiveStats::ATTENTION_KEY, 0), 'site veya saldırı'],
+            'security.index' => [\App\Services\Security\Scans::attentionCount(), 'ciddi güvenlik bulgusu'],
             'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
             'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
             'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
@@ -113,11 +114,13 @@
 
                 @if ($user)
                     <div class="flex items-center gap-3 border-t border-nav-line p-4">
-                        <div class="grid size-8 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
-                        <div class="min-w-0 leading-tight">
-                            <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>
-                            <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => 'Sunucu yöneticisi', $user->isCustomer() => 'Müşteri · '.$user->customer?->package?->name, default => 'Laravel ekibi' } }}</p>
-                        </div>
+                        <a href="{{ route('account.security') }}" wire:navigate class="flex min-w-0 items-center gap-3 hover:text-white" title="Hesap güvenliği">
+                            <div class="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
+                            <div class="min-w-0 leading-tight">
+                                <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>
+                                <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => 'Sunucu yöneticisi', $user->isCustomer() => 'Müşteri · '.$user->customer?->package?->name, default => 'Laravel ekibi' } }}</p>
+                            </div>
+                        </a>
                         <form method="POST" action="{{ route('logout') }}" class="ml-auto">
                             @csrf
                             <button type="submit" class="text-nav-muted hover:text-white" aria-label="Çıkış yap" title="Çıkış yap"><x-icon name="log-out" /></button>

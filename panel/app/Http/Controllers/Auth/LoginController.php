@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Security\LoginLog;
+use App\Services\Security\TwoFactor;
 use App\Support\Impersonation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,8 +15,19 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+/**
+ * Signing in: e-mail and password, then the authenticator app's code for
+ * accounts with two-step login. Failures are limited per account and per
+ * address, and logged for Fail2ban.
+ */
 class LoginController extends Controller
 {
+    /** Failed logins an address may make in ten minutes, over all accounts. */
+    private const PER_IP = 30;
+
+    /** How long the second step may wait after the password. */
+    private const CHALLENGE_MINUTES = 10;
+
     public function create(): View
     {
         return view('auth.login');
@@ -27,30 +41,95 @@ class LoginController extends Controller
         ], [], ['email' => 'e-posta', 'password' => 'parola']);
 
         $key = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
-        if (RateLimiter::tooManyAttempts($key, 5)) {
+        $ipKey = 'login-ip|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($key, 5) || RateLimiter::tooManyAttempts($ipKey, self::PER_IP)) {
+            $wait = max(RateLimiter::availableIn($key), RateLimiter::tooManyAttempts($ipKey, self::PER_IP) ? RateLimiter::availableIn($ipKey) : 0);
+
             throw ValidationException::withMessages([
-                'email' => 'Çok fazla deneme yapıldı. '.RateLimiter::availableIn($key).' saniye sonra tekrar deneyin.',
+                'email' => 'Çok fazla deneme yapıldı. '.$wait.' saniye sonra tekrar deneyin.',
             ]);
         }
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        $provider = Auth::guard('web')->getProvider();
+        $user = $provider->retrieveByCredentials($credentials);
+        if (! $user instanceof User || ! $provider->validateCredentials($user, $credentials)) {
             RateLimiter::hit($key, 60);
+            RateLimiter::hit($ipKey, 600);
+            LoginLog::failed($request->ip(), $credentials['email']);
 
             throw ValidationException::withMessages([
                 'email' => 'E-posta ya da parola hatalı.',
             ]);
         }
+        $provider->rehashPasswordIfRequired($user, $credentials);
 
         RateLimiter::clear($key);
-        $user = Auth::user();
         if ($user->customer_id !== null && ($user->customer === null || $user->customer->isSuspended())) {
-            Auth::guard('web')->logout();
-
             throw ValidationException::withMessages(['email' => Impersonation::SUSPENDED]);
         }
         $request->session()->regenerate();
+        if ($user->hasTwoFactor()) {
+            $request->session()->put('login.two_factor', [
+                'id' => $user->id,
+                'remember' => $request->boolean('remember'),
+                'until' => now()->addMinutes(self::CHALLENGE_MINUTES)->getTimestamp(),
+            ]);
+
+            return redirect()->route('login.two-factor');
+        }
+        Auth::guard('web')->login($user, $request->boolean('remember'));
 
         return redirect()->intended(route('dashboard'));
+    }
+
+    /**
+     * The second step: the code from the authenticator app, or a
+     * recovery code.
+     */
+    public function challenge(Request $request): View|RedirectResponse
+    {
+        if ($this->pending($request) === null) {
+            return redirect()->route('login');
+        }
+
+        return view('auth.two-factor');
+    }
+
+    public function verify(Request $request, TwoFactor $twoFactor): RedirectResponse
+    {
+        $user = $this->pending($request);
+        if ($user === null) {
+            return redirect()->route('login')->withErrors(['email' => 'Doğrulama süresi doldu; yeniden giriş yapın.']);
+        }
+        $request->validate(['code' => ['required', 'string', 'max:20']], [], ['code' => 'kod']);
+        $key = 'login-2fa|'.$user->id;
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            throw ValidationException::withMessages(['code' => 'Çok fazla deneme yapıldı. '.RateLimiter::availableIn($key).' saniye sonra tekrar deneyin.']);
+        }
+        if (! $twoFactor->verify($user, (string) $request->input('code'))) {
+            RateLimiter::hit($key, 300);
+            RateLimiter::hit('login-ip|'.$request->ip(), 600);
+            LoginLog::failed($request->ip(), $user->email, 'two-factor code');
+
+            throw ValidationException::withMessages(['code' => 'Kod doğru değil ya da süresi geçmiş.']);
+        }
+        RateLimiter::clear($key);
+        $remember = (bool) $request->session()->pull('login.two_factor')['remember'];
+        Auth::guard('web')->login($user, $remember);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
+    }
+
+    private function pending(Request $request): ?User
+    {
+        $pending = $request->session()->get('login.two_factor');
+        if (! is_array($pending) || ($pending['until'] ?? 0) < now()->getTimestamp()) {
+            return null;
+        }
+        $user = User::find($pending['id'] ?? 0);
+
+        return $user?->hasTwoFactor() ? $user : null;
     }
 
     public function destroy(Request $request): RedirectResponse

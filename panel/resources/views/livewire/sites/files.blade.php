@@ -130,6 +130,20 @@
         </p>
     </div>
 
+    @if ($flagged)
+        <div class="flex items-start gap-3 rounded-xl border border-line bg-crit-soft px-5 py-3 text-[13.5px]" role="alert">
+            <x-icon name="shield-alert" class="mt-0.5 shrink-0 text-crit" />
+            <p class="flex-1">
+                Yüklenen {{ count($flagged) === 1 ? 'dosya' : count($flagged).' dosya' }} güvenlik taramasında zararlı ya da şüpheli bulundu:
+                <span class="font-mono">{{ implode(', ', array_slice($flagged, 0, 3)) }}{{ count($flagged) > 3 ? '…' : '' }}</span>.
+                @if (auth()->user()->allows('security'))
+                    <a href="{{ route('sites.scan', $site) }}" wire:navigate class="font-medium text-accent hover:underline">Bulgulara bak ve karantinaya al</a>
+                @endif
+            </p>
+            <button type="button" wire:click="$set('flagged', null)" class="text-muted hover:text-fg" aria-label="Kapat"><x-icon name="x" /></button>
+        </div>
+    @endif
+
     <section class="relative min-w-0 rounded-xl border border-line bg-surface"
              @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="dragging = false; upload($event.dataTransfer.files)">
         <div x-show="dragging" x-cloak class="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-xl border-2 border-dashed border-accent bg-accent/5 text-[14px] font-medium text-accent">
@@ -487,7 +501,7 @@
                             <td class="w-full max-w-0 py-2.5 pr-3 pl-5">
                                 <span class="block truncate font-mono text-[13px]" title="{{ $item['path'] }}">{{ $item['path'] }}</span>
                                 <span class="num block text-2xs text-muted">
-                                    {{ ['deleted' => 'Silindi', 'version' => 'Düzenlemeden önceki sürüm', 'replaced' => 'Üzerine yazılan dosya'][$item['kind']] ?? $item['kind'] }}
+                                    {{ ['deleted' => 'Silindi', 'version' => 'Düzenlemeden önceki sürüm', 'replaced' => 'Üzerine yazılan dosya', 'quarantined' => 'Karantina (güvenlik taraması)'][$item['kind']] ?? $item['kind'] }}
                                     · {{ $date($item['deleted_at']) }} · {{ Bytes::format($item['size']) }}
                                 </span>
                             </td>

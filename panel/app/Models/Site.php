@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -44,6 +44,7 @@ class Site extends Model
             'status' => SiteStatus::class,
             'provisioned_at' => 'datetime',
             'https_redirect' => 'boolean',
+            'denied_paths' => 'array',
         ];
     }
 
@@ -109,6 +110,30 @@ class Site extends Model
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
+    }
+
+    /**
+     * @return HasMany<WafExclusion, $this>
+     */
+    public function wafExclusions(): HasMany
+    {
+        return $this->hasMany(WafExclusion::class);
+    }
+
+    /**
+     * @return HasMany<ProtectedDirectory, $this>
+     */
+    public function protectedDirectories(): HasMany
+    {
+        return $this->hasMany(ProtectedDirectory::class);
+    }
+
+    /**
+     * @return HasMany<SecurityFinding, $this>
+     */
+    public function securityFindings(): HasMany
+    {
+        return $this->hasMany(SecurityFinding::class);
     }
 
     /**
