@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CertificateStatus;
+use App\Models\Concerns\OwnedThroughSite;
 use App\Support\CertificateState;
 use Database\Factories\CertificateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,6 +19,8 @@ class Certificate extends Model
 {
     /** @use HasFactory<CertificateFactory> */
     use HasFactory;
+
+    use OwnedThroughSite;
 
     public const LETS_ENCRYPT = 'letsencrypt';
 
@@ -82,11 +85,13 @@ class Certificate extends Model
 
     /**
      * How many certificates in use (or requested) need attention; shown
-     * next to "SSL Sertifikaları" in the menu.
+     * next to "SSL Sertifikaları" in the menu. With $for, only the ones
+     * that account can see.
      */
-    public static function attentionCount(): int
+    public static function attentionCount(?User $for = null): int
     {
         return self::query()->needsAttention()
+            ->when($for !== null, fn (Builder $q) => $q->visibleTo($for))
             ->where(fn (Builder $q) => $q->whereIn('kind', ['panel', 'mail'])->orWhereHas('users')->orWhereNull('not_after'))
             ->count();
     }

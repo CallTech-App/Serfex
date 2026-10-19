@@ -36,6 +36,7 @@ type access struct {
 	Method string
 	Path   string
 	Status int
+	Bytes  uint64 // response body sent
 }
 
 func parseAccess(line string) (access, bool) {
@@ -61,6 +62,9 @@ func parseAccess(line string) (access, bool) {
 		return access{}, false
 	}
 	a := access{IP: ip, Status: status}
+	if len(after) > 1 {
+		a.Bytes, _ = strconv.ParseUint(after[1], 10, 64)
+	}
 	if len(req) >= 2 {
 		a.Method = req[0]
 		a.Path, _, _ = strings.Cut(req[1], "?")
@@ -80,6 +84,7 @@ type ipCount struct {
 type webTick struct {
 	at       time.Time
 	requests int
+	bytes    uint64
 	err4     int
 	err5     int
 	ips      map[string]*ipCount
@@ -93,6 +98,7 @@ func newWebTick(at time.Time, lines []string) webTick {
 			continue
 		}
 		t.requests++
+		t.bytes += a.Bytes
 		switch {
 		case a.Status >= 500:
 			t.err5++

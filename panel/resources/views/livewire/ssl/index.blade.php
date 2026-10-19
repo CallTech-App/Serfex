@@ -10,11 +10,13 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="text-[22px] font-semibold tracking-tight">SSL Sertifikaları</h1>
-            <p class="mt-1 text-[13px] text-muted">Sunucudaki sitelerin HTTPS sertifikaları. Ayrıntı ve işlemler için bir siteye tıklayın.</p>
+            <p class="mt-1 text-[13px] text-muted">{{ auth()->user()->is_admin ? 'Sunucudaki sitelerin' : 'Sitelerinizin' }} HTTPS sertifikaları. Ayrıntı ve işlemler için bir siteye tıklayın.</p>
         </div>
-        <a href="{{ route('ssl.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-            <x-icon name="settings" />SSL ayarları
-        </a>
+        @if (auth()->user()->is_admin)
+            <a href="{{ route('ssl.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                <x-icon name="settings" />SSL ayarları
+            </a>
+        @endif
     </div>
 
     @if ($attention > 0)

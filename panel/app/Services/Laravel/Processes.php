@@ -26,12 +26,15 @@ class Processes
     {
         $app->loadMissing('site.systemUser', 'workers', 'processes');
         $timeout = config('servik.agent.job_timeout');
+        // A suspended customer's application runs nothing; its settings
+        // stay and come back when the suspension is lifted.
+        $off = $app->site->isSuspended();
         $this->agent->call('laravel.queue.apply', $app->agentApp() + [
-            'workers' => $this->horizon($app) ? [] : $app->workers->map->agentSpec()->values()->all(),
+            'workers' => $off || $this->horizon($app) ? [] : $app->workers->map->agentSpec()->values()->all(),
         ], $timeout);
-        $this->agent->call('laravel.schedule.apply', $app->agentApp() + ['enabled' => $app->scheduler], $timeout);
+        $this->agent->call('laravel.schedule.apply', $app->agentApp() + ['enabled' => ! $off && $app->scheduler], $timeout);
         $this->agent->call('laravel.process.apply', $app->agentApp() + [
-            'processes' => $app->processes->map->agentSpec()->values()->all(),
+            'processes' => $off ? [] : $app->processes->map->agentSpec()->values()->all(),
         ], $timeout);
     }
 

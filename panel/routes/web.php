@@ -2,13 +2,19 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Customers\ImpersonationController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Laravel\BackupDownloadController;
 use App\Http\Controllers\Laravel\DeployWebhookController;
 use App\Http\Controllers\Mail\WebmailController;
+use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureHostingAccess;
 use App\Livewire\Ai\AiAssistant;
 use App\Livewire\Ai\AiAudit;
 use App\Livewire\Ai\AiSettingsPage;
+use App\Livewire\Customers\CustomerIndex;
+use App\Livewire\Customers\CustomerShow;
 use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Dns\ZoneIndex;
 use App\Livewire\Dns\ZoneShow;
@@ -36,8 +42,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store']);
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::post('/yoneticiye-don', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
 
     // Laravel pages are also for members of applications; each page
     // checks the account's role on the application.
@@ -45,23 +52,30 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/laravel/{app}', LaravelShow::class)->whereNumber('app')->name('laravel.show');
     Route::get('/laravel/{app}/yedekler/{backup}', BackupDownloadController::class)->whereNumber(['app', 'backup'])->name('laravel.backup.download');
 
-    Route::middleware(EnsureAdmin::class)->group(function () {
-        Route::view('/', 'dashboard')->name('dashboard');
-        Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
-        Route::livewire('/ai', AiAssistant::class)->name('ai.index');
-        Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
-        Route::livewire('/ai/kayit', AiAudit::class)->name('ai.audit');
+    // Hosting pages: administrators see everything, customers their own.
+    Route::middleware(EnsureHostingAccess::class)->group(function () {
+        Route::get('/', DashboardController::class)->name('dashboard');
         Route::livewire('/sites', SiteIndex::class)->name('sites.index');
         Route::livewire('/sites/{site}', SiteShow::class)->whereNumber('site')->name('sites.show');
         Route::livewire('/sites/{site}/ssl', SiteSsl::class)->whereNumber('site')->name('sites.ssl');
         Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
-        Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
         Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
         Route::livewire('/mail', MailIndex::class)->name('mail.index');
-        Route::livewire('/mail/settings', MailSettingsPage::class)->name('mail.settings');
         Route::livewire('/mail/{domain}', MailDomainShow::class)->whereNumber('domain')->name('mail.show');
         Route::get('/mail/mailboxes/{mailbox}/webmail', WebmailController::class)->whereNumber('mailbox')->name('mail.webmail');
         Route::livewire('/ssl', SslIndex::class)->name('ssl.index');
+    });
+
+    Route::middleware(EnsureAdmin::class)->group(function () {
+        Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
+        Route::livewire('/ai', AiAssistant::class)->name('ai.index');
+        Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
+        Route::livewire('/ai/kayit', AiAudit::class)->name('ai.audit');
+        Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
+        Route::livewire('/mail/settings', MailSettingsPage::class)->name('mail.settings');
         Route::livewire('/ssl/settings', SslSettingsPage::class)->name('ssl.settings');
+        Route::livewire('/musteriler', CustomerIndex::class)->name('customers.index');
+        Route::livewire('/musteriler/{customer}', CustomerShow::class)->whereNumber('customer')->name('customers.show');
+        Route::post('/musteriler/{customer}/giris', [ImpersonationController::class, 'store'])->whereNumber('customer')->name('customers.impersonate');
     });
 });

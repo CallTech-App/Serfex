@@ -3,6 +3,7 @@ package site
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 )
@@ -124,5 +125,56 @@ func TestMaintenance(t *testing.T) {
 	}
 	if maintenanceVar("a-b.com") == maintenanceVar("a.b.com") {
 		t.Error("variable names must differ")
+	}
+}
+
+func TestSuspended(t *testing.T) {
+	m, sim := newTest(t)
+	s := spec
+	s.WebRoot = "laravel/current/public"
+	s.Proxy = &ProxySpec{Port: 20001}
+	s.Maintenance = &MaintenanceSpec{Secret: "bakim-a7f3k9x2"}
+	s.Suspended = true
+	res, err := m.Apply(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vhost := read(t, sim, res.NginxConfig)
+	for _, want := range []string{
+		"error_page 503 @servik_suspended;",
+		"root /var/lib/servik/suspended;",
+		"try_files /kahveatolyesi.com.tr.html =503;",
+		"location / {\n        return 503;\n    }",
+		"location ^~ /.well-known/acme-challenge/ {",
+	} {
+		if !strings.Contains(vhost, want) {
+			t.Errorf("vhost lacks %q:\n%s", want, vhost)
+		}
+	}
+	for _, gone := range []string{"fastcgi_pass", "proxy_pass", "servik_maint", "bakim-a7f3k9x2"} {
+		if strings.Contains(vhost, gone) {
+			t.Errorf("a suspended site must not have %q:\n%s", gone, vhost)
+		}
+	}
+	page := read(t, sim, "/var/lib/servik/suspended/kahveatolyesi.com.tr.html")
+	if !strings.Contains(page, "Bu site şu anda hizmet dışı") || !strings.Contains(page, "kahveatolyesi.com.tr") {
+		t.Errorf("page:\n%s", page)
+	}
+	// The pool stays, so lifting the suspension needs no PHP-FPM changes.
+	if read(t, sim, res.FPMConfig) == "" {
+		t.Error("pool removed")
+	}
+
+	// Lifting the suspension serves the site again and removes the page.
+	s.Suspended = false
+	if res, err = m.Apply(context.Background(), s); err != nil {
+		t.Fatal(err)
+	}
+	vhost = read(t, sim, res.NginxConfig)
+	if strings.Contains(vhost, "servik_suspended") || !strings.Contains(vhost, "proxy_pass http://127.0.0.1:20001;") {
+		t.Errorf("vhost:\n%s", vhost)
+	}
+	if _, err := os.Stat(sim.Path("/var/lib/servik/suspended/kahveatolyesi.com.tr.html")); err == nil {
+		t.Error("suspension page left behind")
 	}
 }

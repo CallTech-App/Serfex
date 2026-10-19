@@ -21,6 +21,9 @@ class Commands extends Section
 {
     protected const VIEW_METHODS = ['show'];
 
+    /** The package feature a customer's application needs for this section. */
+    public const FEATURE = 'shell';
+
     use ReadsRunLogs;
 
     /** Offered until the user saves their own. */

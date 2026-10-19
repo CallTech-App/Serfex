@@ -7,6 +7,7 @@ use App\Enums\SiteStatus;
 use App\Support\CertificateState;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,42 @@ class Site extends Model
     public function systemUser(): BelongsTo
     {
         return $this->belongsTo(SystemUser::class);
+    }
+
+    /**
+     * The customer who owns the site, through its account.
+     */
+    public function customer(): ?Customer
+    {
+        return $this->systemUser?->customer;
+    }
+
+    /**
+     * True while the owner's account is suspended (or being deleted): the
+     * site shows the suspension page.
+     */
+    public function isSuspended(): bool
+    {
+        return (bool) $this->customer()?->isSuspended();
+    }
+
+    /**
+     * Sites the user may see: all of them for an administrator, their own
+     * for a customer, none for anyone else.
+     *
+     * @param  Builder<Site>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        if ($user->is_admin) {
+            return;
+        }
+        if ($user->customer_id === null) {
+            $query->whereRaw('false');
+
+            return;
+        }
+        $query->whereHas('systemUser', fn ($u) => $u->where('customer_id', $user->customer_id));
     }
 
     /**
@@ -163,6 +200,9 @@ class Site extends Model
         }
         if ($this->hasHttps()) {
             $spec['tls'] = ['certificate' => $this->certificate->name, 'redirect' => $this->https_redirect];
+        }
+        if ($this->isSuspended()) {
+            return $spec + ['suspended' => true];
         }
 
         return $spec + $this->laravelWeb();

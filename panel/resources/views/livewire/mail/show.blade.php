@@ -36,7 +36,9 @@
         <p class="mt-1 text-[13px] text-muted">Bu alan adının posta kutularını, yönlendiricilerini ve posta ayarlarını yönetin.</p>
     </div>
 
-    @include('livewire.mail.server-state')
+    @if (auth()->user()->is_admin)
+        @include('livewire.mail.server-state')
+    @endif
 
     @if ($closed)
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">

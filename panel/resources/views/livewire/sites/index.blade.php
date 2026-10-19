@@ -1,3 +1,4 @@
+@php $admin = auth()->user()->is_admin; @endphp
 <div class="space-y-6">
     {{-- Refresh while the agent works on a site. --}}
     @if ($busy)
@@ -6,7 +7,7 @@
 
     <div>
         <h1 class="text-[22px] font-semibold tracking-tight">Siteler</h1>
-        <p class="mt-1 text-[13px] text-muted">Sunucudaki web sitelerini ve alan adlarını yönetin.</p>
+        <p class="mt-1 text-[13px] text-muted">{{ $admin ? 'Sunucudaki web sitelerini ve alan adlarını yönetin.' : 'Web sitelerinizi ve alan adlarınızı yönetin.' }}</p>
     </div>
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
@@ -28,6 +29,7 @@
                     <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
                         <th class="py-2.5 pr-3 pl-5 font-medium">Alan adı</th>
                         <th class="px-3 py-2.5 font-medium">Sistem kullanıcısı</th>
+                        @if ($admin)<th class="px-3 py-2.5 font-medium">Müşteri</th>@endif
                         <th class="px-3 py-2.5 font-medium">PHP</th>
                         <th class="px-3 py-2.5 font-medium">Oluşturuldu</th>
                         <th class="py-2.5 pr-5 pl-3 font-medium">Durum</th>
@@ -41,13 +43,23 @@
                                 @if ($site->preview)<span class="ml-1.5 rounded-full bg-surface-2 px-1.5 py-0.5 font-sans text-2xs text-muted" title="Laravel önizleme ortamı">Önizleme</span>@endif
                             </td>
                             <td class="px-3 py-3 font-mono text-[13px] text-muted">{{ $site->systemUser->name }}</td>
+                            @if ($admin)
+                                <td class="px-3 py-3">
+                                    @if ($owner = $site->systemUser->customer)
+                                        <a href="{{ route('customers.show', $owner) }}" wire:navigate class="hover:text-accent">{{ $owner->displayName() }}</a>
+                                        @if ($owner->isSuspended())<span class="ml-1.5 rounded-full bg-warn-soft px-1.5 py-0.5 text-2xs font-medium text-warn">Askıda</span>@endif
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                            @endif
                             <td class="px-3 py-3 font-mono text-[13px]">{{ $site->php_version }}</td>
                             <td class="px-3 py-3 whitespace-nowrap text-muted num">{{ $site->created_at->format('d.m.Y H:i') }}</td>
                             <td class="py-3 pr-5 pl-3"><x-status-badge :status="$site->status" /></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-12 text-center">
+                            <td colspan="{{ $admin ? 6 : 5 }}" class="px-5 py-12 text-center">
                                 @if ($search !== '')
                                     <p class="text-muted">Aramanızla eşleşen site yok.</p>
                                 @else
@@ -95,15 +107,27 @@
                         <span><span class="font-mono">www.</span> ile de açılsın</span>
                     </label>
                 </div>
+                @if ($admin && $customers->isNotEmpty())
+                    <div>
+                        <label for="customerId" class="mb-1.5 block">Müşteri</label>
+                        <select id="customerId" wire:model.live="customerId" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 text-[13.5px]">
+                            <option value="">Müşterisiz (yönetici)</option>
+                            @foreach ($customers as $c)
+                                <option value="{{ $c->id }}">{{ $c->displayName() }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1.5 text-2xs text-muted">Müşterinin sitesi onun paket sınırlarına sayılır ve müşteri panelinde görünür.</p>
+                    </div>
+                @endif
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label for="systemUser" class="mb-1.5 block">Sistem kullanıcısı</label>
-                        <input id="systemUser" wire:model.live.debounce.400ms="systemUser" required autocomplete="off" spellcheck="false"
-                               class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('systemUser') ? 'border-crit' : 'border-line' }}">
+                        <input id="systemUser" wire:model.live.debounce.400ms="systemUser" required autocomplete="off" spellcheck="false" @readonly(! $admin || $customerId !== '')
+                               class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none read-only:bg-surface-2 read-only:text-muted focus:border-accent {{ $errors->has('systemUser') ? 'border-crit' : 'border-line' }}">
                         @error('systemUser')
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
-                            <p class="mt-1.5 text-2xs text-muted">Dosyalar bu kullanıcıya ait olur. Varsa mevcut kullanıcı kullanılır.</p>
+                            <p class="mt-1.5 text-2xs text-muted">{{ ! $admin ? 'Hesabınızın sistem kullanıcısı; dosyalar ona ait olur.' : ($customerId !== '' ? 'Müşterinin sistem kullanıcısı; dosyalar ona ait olur.' : 'Dosyalar bu kullanıcıya ait olur. Varsa mevcut kullanıcı kullanılır.') }}</p>
                         @enderror
                     </div>
                     <div>

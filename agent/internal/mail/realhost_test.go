@@ -232,6 +232,31 @@ func TestRealHost(t *testing.T) {
 	webmail(t, m, veli)
 	queue(t, m)
 
+	// A suspended domain keeps its mail: logins fail, incoming mail is
+	// deferred (not bounced), and lifting the suspension lets the same
+	// password in again.
+	spec.Suspended = true
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := imapFetch(veli, password, 1); err == nil {
+		t.Fatal("a suspended mailbox can still sign in")
+	}
+	if err := submit(ali, password, ali, []string{veli}, "x", "x"); err == nil || !strings.Contains(err.Error(), "535") {
+		t.Fatalf("sending from a suspended mailbox: %v", err)
+	}
+	if err := deliver(veli); err == nil || !strings.Contains(err.Error(), "450") {
+		t.Fatalf("mail to a suspended domain: %v", err)
+	}
+	spec.Suspended = false
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	waitMessages(t, veli, password, 1)
+	if err := deliver(veli); err != nil {
+		t.Fatalf("mail after the suspension: %v", err)
+	}
+
 	// Removing a mailbox stops its logins at once.
 	spec.Mailboxes = spec.Mailboxes[:1]
 	if _, err := m.ApplyDomain(ctx, spec); err != nil {
@@ -292,6 +317,35 @@ func submit(user, pass, from string, to []string, subject, body string) error {
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nDate: %s\r\nMessage-ID: <%d@client.servik.test>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n%s\r\n",
 		from, strings.Join(to, ", "), subject, time.Now().Format(time.RFC1123Z), time.Now().UnixNano(), body)
 	if _, err := io.WriteString(w, msg); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
+}
+
+// deliver hands a message for to to port 25, as another mail server would.
+func deliver(to string) error {
+	c, err := smtp.Dial("127.0.0.1:25")
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	if err := c.Hello("mx.example.net"); err != nil {
+		return err
+	}
+	if err := c.Mail("someone@example.net"); err != nil {
+		return err
+	}
+	if err := c.Rcpt(to); err != nil {
+		return err
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, "From: someone@example.net\r\nTo: "+to+"\r\nSubject: Dışarıdan\r\n\r\nMerhaba\r\n"); err != nil {
 		return err
 	}
 	if err := w.Close(); err != nil {

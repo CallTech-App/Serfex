@@ -1,10 +1,14 @@
 @php
     $ssl = $site->sslState();
+    $user = auth()->user();
+    $owner = $site->customer();
+    // Tools the customer's package does not have.
+    $missing = fn (string $feature) => $user->allows($feature) ? null : 'Paketinizde yok';
     $certificate = $site->certificate;
     $laravel = $site->laravelApp;
-    $laravelTool = $laravel
+    $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
         ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
-        : ['layers', 'Laravel', 'Kurulu değil', route('laravel.index', ['site' => $site->id])];
+        : ['layers', 'Laravel', 'Kurulu değil', route('laravel.index', ['site' => $site->id])]);
     // Site tools, grouped by job. Only the ones with a link work in this
     // version; the rest show what is coming. [icon, name, status, link, opens in a new tab]
     $groups = [
@@ -29,12 +33,16 @@
             ['download', 'Başka sunucudan taşı', null],
         ]],
         ['Alan adı ve DNS', 'network', [
-            ['network', 'DNS kayıtları', $zone ? $zone->records_count.' kayıt' : null, $zone ? route('dns.show', $zone) : null],
+            $missing('dns') ? ['network', 'DNS kayıtları', $missing('dns')] : ['network', 'DNS kayıtları', $zone ? $zone->records_count.' kayıt' : null, $zone ? route('dns.show', $zone) : null],
             ['globe', 'Alt alan adları', null],
             ['link', 'Ek alan adları', $site->aliases ? implode(', ', $site->aliases) : 'Yok'],
             ['corner-up-right', 'Yönlendirmeler', null],
         ]],
-        ['E-posta', 'mail', $mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting ? [
+        ['E-posta', 'mail', $missing('mail') ? [
+            ['mail', 'Posta kutuları', $missing('mail')],
+            ['forward', 'Yönlendiriciler', $missing('mail')],
+            ['inbox', 'Webmail', $missing('mail')],
+        ] : ($mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting ? [
             ['mail', 'Posta kutuları', $mail->mailboxes_count.' kutu', route('mail.show', $mail)],
             ['forward', 'Yönlendiriciler', $mail->forwarders_count ?: 'Yok', route('mail.show', [$mail, 'tab' => 'yonlendiriciler'])],
             ['inbox', 'Webmail', $webmail ? 'Roundcube' : 'Kapalı', $webmail, true],
@@ -42,7 +50,7 @@
             ['mail', 'Posta kutuları', 'E-posta kapalı', route('mail.index', ['ac' => $site->domain])],
             ['forward', 'Yönlendiriciler', null],
             ['inbox', 'Webmail', null],
-        ]],
+        ])],
         ['Güvenlik', 'shield', [
             ['shield-check', 'SSL sertifikası', $ssl->label(), route('sites.ssl', $site)],
             ['folder-lock', 'Parola korumalı dizinler', null],
@@ -85,6 +93,20 @@
         </div>
     </div>
 
+    @if ($site->isSuspended())
+        <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
+            <span class="absolute inset-y-0 left-0 w-1 bg-warn"></span>
+            <x-icon name="circle-pause" class="text-warn" />
+            <div class="min-w-0 flex-1">
+                <p class="font-medium">Site askıda: ziyaretçiler "hizmet dışı" sayfasını görüyor.</p>
+                <p class="mt-0.5 text-[13px] text-muted">{{ $user->is_admin ? 'Müşterinin hesabı askıya alındı' : 'Hesabınız askıya alındı' }}{{ $owner->suspend_reason ? ': '.$owner->suspend_reason : '' }}. Dosyalar, posta ve veritabanları korunuyor.</p>
+            </div>
+            @if ($user->is_admin)
+                <a href="{{ route('customers.show', $owner) }}" wire:navigate class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">Müşteriye git</a>
+            @endif
+        </div>
+    @endif
+
     @if ($site->status === \App\Enums\SiteStatus::Failed)
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
             <span class="absolute inset-y-0 left-0 w-1 bg-crit"></span>
@@ -123,6 +145,9 @@
             <p class="text-2xs text-muted">Sistem kullanıcısı</p>
             <p class="mt-1 font-mono text-[12.5px]">{{ $site->systemUser->name }}</p>
             <span class="text-2xs text-muted">{{ $otherSites ? "Bu kullanıcının {$otherSites} sitesi daha var" : 'Yalnızca bu siteye ait' }}</span>
+            @if ($user->is_admin && $owner)
+                <a href="{{ route('customers.show', $owner) }}" wire:navigate class="mt-0.5 block truncate text-2xs text-accent hover:underline">Müşteri: {{ $owner->displayName() }}</a>
+            @endif
         </div>
         <div class="min-w-0">
             <p class="text-2xs text-muted">Belge kökü</p>

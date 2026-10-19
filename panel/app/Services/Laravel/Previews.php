@@ -8,6 +8,7 @@ use App\Models\LaravelApp;
 use App\Models\LaravelPreview;
 use App\Models\Site;
 use App\Models\User;
+use App\Services\Customers\Quotas;
 use App\Support\Hostnames;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -74,6 +75,9 @@ class Previews
             $this->redeploy($existing, $title, $by);
 
             return $existing;
+        }
+        if (($refusal = app(Quotas::class)->refusal($app->site->customer(), 'disk')) !== null) {
+            throw new RuntimeException($refusal);
         }
         $domain = $name.'.'.$app->site->domain;
         if (! Hostnames::isValidDomain($domain) || strlen($domain) > 200) {

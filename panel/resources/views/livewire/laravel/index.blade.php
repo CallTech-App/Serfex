@@ -21,7 +21,7 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-            @if (auth()->user()->is_admin)
+            @if ($canInstall)
             <button type="button" wire:click="openInstall" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                 <x-icon name="plus" />Laravel uygulaması kur
             </button>
@@ -101,7 +101,7 @@
                                     <p class="text-muted">Aramanızla eşleşen uygulama yok.</p>
                                 @else
                                     <p class="font-medium">Henüz Laravel uygulaması yok</p>
-                                    @if (auth()->user()->is_admin)
+                                    @if ($canInstall)
                                         <p class="mt-1 text-[13px] text-muted">Bir sitede yeni proje başlatın ya da Git deposundan kurun. Sitelerde zaten Laravel varsa "Mevcut uygulamaları bul"a basın.</p>
                                     @else
                                         <p class="mt-1 text-[13px] text-muted">Size henüz bir uygulama atanmadı. Sunucu yöneticisinden sizi bir uygulamaya eklemesini isteyin.</p>
@@ -129,7 +129,7 @@
     </section>
 
     {{-- Kurulum --}}
-    @if (auth()->user()->is_admin)
+    @if ($canInstall)
     <x-modal title="Laravel uygulaması kur" show="installing" size="max-w-2xl">
         <form wire:submit="install" class="flex max-h-[calc(100vh-2rem)] flex-col">
             <h2 class="flex h-12 shrink-0 items-center border-b border-line px-5 text-[14.5px] font-semibold">Laravel uygulaması kur</h2>

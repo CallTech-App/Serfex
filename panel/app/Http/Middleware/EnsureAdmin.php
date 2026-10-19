@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Server pages are for administrators. Other accounts (members of Laravel
- * applications) are sent to their applications.
+ * Server pages (Canlı İzleme, Servik AI, server settings, customers) are
+ * for administrators only.
  */
 class EnsureAdmin
 {
@@ -16,9 +16,6 @@ class EnsureAdmin
     {
         if ($request->user()?->is_admin) {
             return $next($request);
-        }
-        if ($request->isMethod('GET') && $request->routeIs('dashboard')) {
-            return redirect()->route('laravel.index');
         }
         abort(403);
     }

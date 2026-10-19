@@ -82,6 +82,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 		return res, nil
 	})
 	handle(srv, "site.logs", func(_ context.Context, p site.LogsSpec) (any, error) { return svc.sites.Logs(p) })
+	handle(srv, "usage.disk", func(ctx context.Context, p site.DiskSpec) (any, error) { return svc.sites.DiskUsage(ctx, p) })
 	srv.Handle("dns.status", func(ctx context.Context, _ json.RawMessage) (any, error) {
 		return svc.dns.Status(ctx), nil
 	})

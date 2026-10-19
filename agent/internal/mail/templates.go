@@ -99,7 +99,7 @@ smtpd_sasl_auth_enable = no
 smtpd_sender_login_maps = texthash:{{.Maps}}/senders
 
 smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination
-smtpd_recipient_restrictions = reject_unauth_pipelining, reject_non_fqdn_recipient, reject_unknown_recipient_domain, permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination, check_policy_service unix:private/quota-status
+smtpd_recipient_restrictions = reject_unauth_pipelining, reject_non_fqdn_recipient, reject_unknown_recipient_domain, check_recipient_access texthash:{{.Maps}}/suspended, permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination, check_policy_service unix:private/quota-status
 
 # Rspamd scores incoming mail, signs outgoing mail with DKIM and enforces
 # sending limits. If it is down, mail still flows.

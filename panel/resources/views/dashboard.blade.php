@@ -28,6 +28,15 @@
             <span class="ml-auto text-muted num">{{ \App\Models\Site::count() }} site</span>
             <x-icon name="chevron-right" class="text-muted" />
         </a>
+        @php $customerAttention = app(\App\Services\Customers\Quotas::class)->attentionCount(); @endphp
+        <a href="{{ route('customers.index') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+            <x-icon name="users" @class(['text-muted' => ! $customerAttention, 'text-warn' => $customerAttention]) />
+            <span>Müşteriler</span>
+            <span @class(['num ml-auto text-right', 'text-muted' => ! $customerAttention, 'font-medium text-warn' => $customerAttention])>
+                {{ $customerAttention ? $customerAttention.' müşteri paket sınırına yaklaştı ya da aştı' : \App\Models\Customer::count().' müşteri' }}
+            </span>
+            <x-icon name="chevron-right" class="text-muted" />
+        </a>
         @php $sslAttention = \App\Models\Certificate::attentionCount(); @endphp
         <div class="flex items-center gap-2 hover:bg-surface-2/60">
             <a href="{{ route('ssl.index', $sslAttention ? ['durum' => 'problem'] : []) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $sslAttention ? '' : 'pr-5' }}">

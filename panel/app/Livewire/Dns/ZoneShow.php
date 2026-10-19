@@ -4,6 +4,7 @@ namespace App\Livewire\Dns;
 
 use App\Enums\ZoneStatus;
 use App\Jobs\SyncDnsZone;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\DnsRecord;
 use App\Models\DnsZone;
 use App\Services\Dns\Zones;
@@ -15,6 +16,7 @@ use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('components.layouts.app')]
+#[ForCustomers(feature: 'dns')]
 class ZoneShow extends Component
 {
     use EditsRecords;
@@ -57,7 +59,7 @@ class ZoneShow extends Component
      */
     public function mount(int $zone): void
     {
-        $this->zoneId = DnsZone::findOrFail($zone)->id;
+        $this->zoneId = DnsZone::visibleTo(auth()->user())->findOrFail($zone)->id;
         $this->fillSettings();
     }
 
@@ -249,7 +251,7 @@ class ZoneShow extends Component
 
     private function zone(): ?DnsZone
     {
-        return DnsZone::with(['records', 'site'])->find($this->zoneId);
+        return DnsZone::visibleTo(auth()->user())->with(['records', 'site'])->find($this->zoneId);
     }
 
     private function fillSettings(): void
@@ -268,7 +270,7 @@ class ZoneShow extends Component
 
     private function originalName(): ?string
     {
-        return DnsRecord::find($this->recordKey)?->name;
+        return $this->zone()?->records->find($this->recordKey)?->name;
     }
 
     /**
@@ -276,7 +278,7 @@ class ZoneShow extends Component
      */
     private function isLastApexNs(): bool
     {
-        $record = DnsRecord::find($this->recordKey);
+        $record = $this->zone()?->records->find($this->recordKey);
 
         return $record !== null && $record->name === '@' && $record->type === 'NS'
             && DnsRecord::where('dns_zone_id', $record->dns_zone_id)->where('name', '@')->where('type', 'NS')->count() === 1;

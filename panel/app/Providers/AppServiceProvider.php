@@ -2,12 +2,16 @@
 
 namespace App\Providers;
 
-use App\Livewire\Laravel\GuardsAppCalls;
+use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureHostingAccess;
+use App\Livewire\Access;
 use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Component;
+use Livewire\Livewire;
 
 use function Livewire\on;
 
@@ -33,33 +37,12 @@ class AppServiceProvider extends ServiceProvider
             Gate::define('laravel.'.$ability, fn ($user, LaravelApp $app) => $user->canOnApp($app, $ability));
         }
 
-        // Every Livewire call is authorized here, before the method runs:
-        // accounts that are not administrators may use only the Laravel
-        // pages, and there only what their role on the application allows.
-        on('call', function (Component $component, string $method) {
-            $user = auth()->user();
-            if ($user === null) {
-                abort(403);
-            }
-            if (in_array(GuardsAppCalls::class, class_uses_recursive($component), true)) {
-                $app = LaravelApp::find($component->appId);
-                if ($app !== null && ! $user->canOnApp($app, $component->ability($method))) {
-                    abort(403);
-                }
-
-                return;
-            }
-            if (! $user->is_admin && (! str_starts_with($component::class, 'App\\Livewire\\Laravel\\')
-                || (defined($component::class.'::ADMIN_METHODS') && in_array($method, $component::ADMIN_METHODS, true)))) {
-                abort(403);
-            }
-        });
-
-        on('mount', function (Component $component) {
-            $user = auth()->user();
-            if ($user !== null && ! $user->is_admin && ! str_starts_with($component::class, 'App\\Livewire\\Laravel\\')) {
-                abort(403);
-            }
-        });
+        // Every Livewire mount and call is authorized here, before the
+        // component runs (see Access).
+        on('call', fn (Component $component, string $method) => Access::authorize($component, $method));
+        on('mount', fn (Component $component) => Access::authorize($component, null));
+        // Updates of an open page pass the same checks as loading it: a
+        // suspended customer's open tab stops working too.
+        Livewire::addPersistentMiddleware([EnsureActiveAccount::class, EnsureHostingAccess::class, EnsureAdmin::class]);
     }
 }

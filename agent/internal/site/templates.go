@@ -90,6 +90,22 @@ server {
 
     client_max_body_size 64m;
 {{template "acme" .}}
+{{- if .Suspended}}
+
+    # The hosting account is suspended: every request gets the suspension
+    # page. The files stay where they are.
+    error_page 503 @servik_suspended;
+    location @servik_suspended {
+        root {{.SuspendedRoot}};
+        try_files /{{.Domain}}.html =503;
+        add_header Cache-Control "no-store" always;
+    }
+
+    location / {
+        return 503;
+    }
+}
+{{- else}}
 {{- if .Maint}}
 
     error_page 503 @servik_maintenance;
@@ -174,6 +190,7 @@ server {
         deny all;
     }
 }
+{{- end}}
 `))
 
 // tlsConf is included by every HTTPS vhost: TLS 1.2 and 1.3 with Mozilla's
@@ -262,6 +279,10 @@ type tmplData struct {
 	MaintSecret string
 	MaintRetry  int
 	MaintRoot   string
+
+	// Suspended serves only the suspension page.
+	Suspended     bool
+	SuspendedRoot string
 }
 
 func render(t *template.Template, d tmplData) []byte {

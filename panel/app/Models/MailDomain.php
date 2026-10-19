@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MailDomainStatus;
+use App\Models\Concerns\OwnedThroughSite;
 use Database\Factories\MailDomainFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,8 @@ class MailDomain extends Model
 {
     /** @use HasFactory<MailDomainFactory> */
     use HasFactory;
+
+    use OwnedThroughSite;
 
     protected $attributes = [
         'status' => 'syncing',
@@ -84,6 +87,7 @@ class MailDomain extends Model
                 ->map(fn (MailForwarder $f) => ['name' => $f->name, 'to' => array_values($f->destinations)])
                 ->values()->all(),
             'catch_all' => array_values($catchAll->destinations ?? []),
+            'suspended' => (bool) $this->site?->isSuspended(),
         ];
     }
 }

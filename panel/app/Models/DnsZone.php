@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ZoneStatus;
+use App\Models\Concerns\OwnedThroughSite;
 use Database\Factories\DnsZoneFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,8 @@ class DnsZone extends Model
 {
     /** @use HasFactory<DnsZoneFactory> */
     use HasFactory;
+
+    use OwnedThroughSite;
 
     protected $attributes = [
         'status' => 'syncing',

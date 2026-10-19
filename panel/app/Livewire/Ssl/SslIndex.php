@@ -3,6 +3,7 @@
 namespace App\Livewire\Ssl;
 
 use App\Enums\CertificateStatus;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\Certificate;
 use App\Models\Site;
 use App\Services\Ssl\Certificates;
@@ -15,10 +16,12 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Every site on the server with the state of its certificate.
+ * Every site on the server (a customer's own) with the state of its
+ * certificate.
  */
 #[Layout('components.layouts.app')]
 #[Title('SSL Sertifikaları · Servik')]
+#[ForCustomers]
 class SslIndex extends Component
 {
     use WithPagination;
@@ -50,7 +53,7 @@ class SslIndex extends Component
     public function issueSelected(Certificates $certificates): void
     {
         $count = 0;
-        foreach (Site::with('certificate', 'certificates')->whereKey($this->selected)->get() as $site) {
+        foreach (Site::visibleTo(auth()->user())->with('certificate', 'certificates')->whereKey($this->selected)->get() as $site) {
             if ($site->status->isBusy() || $site->certificates->contains('status', CertificateStatus::Issuing)) {
                 continue;
             }
@@ -76,7 +79,8 @@ class SslIndex extends Component
 
     public function render(): View
     {
-        $sites = Site::query()
+        $user = auth()->user();
+        $sites = Site::visibleTo($user)
             ->with('certificate', 'certificates')
             ->when($this->search !== '', function (Builder $q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';
@@ -88,14 +92,16 @@ class SslIndex extends Component
             ->orderBy('domain')
             ->paginate(25);
 
-        $panel = Certificate::where('kind', 'panel')->first();
+        // The panel's and the mail server's own certificates are the
+        // administrator's business.
+        $admin = $user->is_admin;
 
         return view('livewire.ssl.index', [
             'sites' => $sites,
             'busy' => $sites->getCollection()->contains(fn (Site $s) => $s->sslState()->isBusy()),
-            'attention' => Certificate::attentionCount(),
-            'panel' => $panel,
-            'mail' => Certificate::where('kind', 'mail')->first(),
+            'attention' => $admin ? Certificate::attentionCount() : Certificate::attentionCount($user),
+            'panel' => $admin ? Certificate::where('kind', 'panel')->first() : null,
+            'mail' => $admin ? Certificate::where('kind', 'mail')->first() : null,
         ]);
     }
 }

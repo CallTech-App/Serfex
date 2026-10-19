@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\Impersonation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,12 @@ class LoginController extends Controller
         }
 
         RateLimiter::clear($key);
+        $user = Auth::user();
+        if ($user->customer_id !== null && ($user->customer === null || $user->customer->isSuspended())) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages(['email' => Impersonation::SUSPENDED]);
+        }
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));

@@ -213,7 +213,8 @@ class LaravelShow extends Component
         $menu = [];
         foreach (self::SECTIONS as $group => $items) {
             foreach ($items as $key => $item) {
-                if ($user->canOnApp($app, $item[2]) && ! ($app->isPreview() && in_array($key, self::NOT_IN_PREVIEWS, true))) {
+                if ($user->canOnApp($app, $item[2]) && ! ($app->isPreview() && in_array($key, self::NOT_IN_PREVIEWS, true))
+                    && ! ($key === 'komutlar' && ! $user->mayUseOnApp($app, 'shell'))) {
                     $menu[$group][$key] = $item;
                 }
             }

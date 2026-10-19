@@ -45,6 +45,8 @@ type MaintenanceSpec struct {
 const (
 	// MaintenanceDir holds the maintenance pages, readable by Nginx.
 	MaintenanceDir = "/var/lib/servik/maintenance"
+	// SuspendedDir holds the pages of suspended sites.
+	SuspendedDir = "/var/lib/servik/suspended"
 	// websocketConf defines the Connection header map proxied vhosts use.
 	websocketConf = "/etc/nginx/conf.d/servik-websocket.conf"
 	maxAllow      = 100
@@ -158,6 +160,39 @@ func pageContent(domain, html string) []byte {
 	return []byte("<!-- " + txn.Marker + ". Manual changes are overwritten. -->\n" + html)
 }
 
+// suspendedPage is the file Nginx serves while a site is suspended.
+func suspendedPage(domain string) string { return SuspendedDir + "/" + domain + ".html" }
+
+var suspendedTmpl = template.Must(template.New("suspended").Parse(`<!-- {{.Marker}}. Manual changes are overwritten. -->
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hizmet dışı · {{.Domain}}</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f6f8f8;color:#11191c}
+main{max-width:30rem;padding:2rem 1.5rem;text-align:center}
+h1{font-size:1.5rem;margin:0 0 .75rem}
+p{margin:.25rem 0;line-height:1.55;color:#4b5b60}
+.en{margin-top:1.25rem;font-size:.9rem}
+@media (prefers-color-scheme:dark){body{background:#0f1719;color:#e3ecec}p{color:#9fb1b4}}
+</style>
+<main>
+<h1>Bu site şu anda hizmet dışı</h1>
+<p><strong>{{.Domain}}</strong> barındırma hesabı askıya alındı.</p>
+<p>Sitenin sahibiyseniz barındırma sağlayıcınızla iletişime geçin.</p>
+<p class="en">This site is currently unavailable because its hosting account is suspended.</p>
+</main>
+</html>
+`))
+
+func suspendedContent(domain string) []byte {
+	var b strings.Builder
+	_ = suspendedTmpl.Execute(&b, map[string]string{"Marker": txn.Marker, "Domain": domain})
+	return []byte(b.String())
+}
+
 var wsConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 # Connection header for vhosts that proxy WebSockets (Octane, Reverb).
 map $http_upgrade $servik_connection_upgrade {
@@ -168,6 +203,12 @@ map $http_upgrade $servik_connection_upgrade {
 
 // webData fills in the proxy, WebSocket and maintenance parts of the vhost.
 func webData(d *tmplData, s Spec) {
+	if s.Suspended {
+		// A suspended site runs nothing: no proxy, no WebSockets, no
+		// maintenance bypass.
+		d.Suspended, d.SuspendedRoot = true, SuspendedDir
+		return
+	}
 	if s.Proxy != nil {
 		d.ProxyPort = s.Proxy.Port
 	}

@@ -3,10 +3,12 @@
 namespace App\Livewire\Laravel;
 
 use App\Enums\SiteStatus;
+use App\Models\Customer;
 use App\Models\LaravelApp;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Customers\Quotas;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\PhpConstraint;
 use Illuminate\Contracts\View\View;
@@ -31,7 +33,7 @@ class LaravelIndex extends Component
     /** Git hosts offered in the wizard: label and host name. */
     public const PROVIDERS = ['github' => ['GitHub', 'github.com'], 'gitlab' => ['GitLab', 'gitlab.com'], 'bitbucket' => ['Bitbucket', 'bitbucket.org'], 'other' => ['Başka adres', null]];
 
-    /** Only administrators install and adopt applications. */
+    /** Only administrators and customers (on their own sites) install and adopt applications. */
     public const ADMIN_METHODS = ['openInstall', 'install', 'backToForm', 'scan', 'adopt', 'undoAdopt'];
 
     /** The PHP a new project needs (Laravel 13). */
@@ -100,9 +102,9 @@ class LaravelIndex extends Component
     public function mount(): void
     {
         // "Laravel kur" from a site's page.
-        $site = Site::find((int) request()->query('site'));
-        if ($site !== null && auth()->user()->is_admin && $site->laravelApp()->doesntExist()) {
-            $this->openInstall(app(AgentClient::class), $site->id);
+        $site = Site::visibleTo(auth()->user())->find((int) request()->query('site'));
+        if ($site !== null && $site->laravelApp()->doesntExist()) {
+            $this->openInstall(app(AgentClient::class), app(Quotas::class), $site->id);
         }
     }
 
@@ -111,14 +113,22 @@ class LaravelIndex extends Component
         $this->resetPage();
     }
 
-    public function openInstall(AgentClient $agent, ?int $siteId = null): void
+    public function openInstall(AgentClient $agent, Quotas $quotas, ?int $siteId = null): void
     {
+        if (($refusal = $quotas->refusal($this->customer(), 'laravel_apps')) !== null) {
+            $this->dispatch('toast', message: $refusal, source: $this->getId());
+
+            return;
+        }
         $this->reset('step', 'siteId', 'source', 'kit', 'provider', 'repository', 'private', 'branch', 'phpVersion', 'database', 'dbDriver', 'dbHost',
             'dbPort', 'dbName', 'dbUser', 'dbPassword', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError');
         $this->resetValidation();
         $this->installing = true;
         try {
             $this->phpVersions = array_values($agent->call('php.versions') ?? []);
+            if (($package = $this->customer()?->package) !== null) {
+                $this->phpVersions = $package->phpVersionsFrom($this->phpVersions);
+            }
         } catch (AgentException $e) {
             $this->phpVersions = [];
             $this->agentError = 'Sunucu ajanına ulaşılamıyor: '.($e->reason ?: $e->getMessage());
@@ -129,7 +139,7 @@ class LaravelIndex extends Component
 
     public function updatedSiteId(): void
     {
-        $site = $this->siteId ? Site::find($this->siteId) : null;
+        $site = $this->siteId ? Site::visibleTo(auth()->user())->find($this->siteId) : null;
         if ($site !== null) {
             $this->phpVersion = $site->php_version;
         }
@@ -143,7 +153,7 @@ class LaravelIndex extends Component
     /**
      * Checks the form; for a private repository shows the deploy key first.
      */
-    public function install(AgentClient $agent, LaravelApps $apps): void
+    public function install(AgentClient $agent, LaravelApps $apps, Quotas $quotas): void
     {
         $this->repository = trim($this->repository);
         $this->branch = trim($this->branch);
@@ -159,7 +169,12 @@ class LaravelIndex extends Component
             'dbHost' => 'sunucu',
             'dbPort' => 'port',
         ]);
-        $site = Site::with('systemUser')->findOrFail($this->siteId);
+        $site = Site::visibleTo(auth()->user())->with('systemUser')->findOrFail($this->siteId);
+        if (($refusal = $quotas->refusal($site->customer(), 'laravel_apps')) !== null) {
+            $this->agentError = $refusal;
+
+            return;
+        }
 
         if ($this->source === 'git' && $this->private && $this->step === 'form') {
             try {
@@ -247,11 +262,16 @@ class LaravelIndex extends Component
     /**
      * Manage a found application where it is.
      */
-    public function adopt(int $index, LaravelApps $apps): void
+    public function adopt(int $index, LaravelApps $apps, Quotas $quotas): void
     {
         $f = $this->found[$index] ?? null;
-        $site = $f ? Site::find($f['site_id']) : null;
+        $site = $f ? Site::visibleTo(auth()->user())->find($f['site_id']) : null;
         if ($site === null || $site->laravelApp()->exists()) {
+            return;
+        }
+        if (($refusal = $quotas->refusal($site->customer(), 'laravel_apps')) !== null) {
+            $this->dispatch('toast', message: $refusal, source: $this->getId());
+
             return;
         }
         $before = $site->web_root;
@@ -267,7 +287,7 @@ class LaravelIndex extends Component
 
     public function undoAdopt(int $id, ?string $webRoot, LaravelApps $apps): void
     {
-        $app = LaravelApp::with('site')->find($id);
+        $app = LaravelApp::with('site')->whereHas('site', fn ($q) => $q->visibleTo(auth()->user()))->find($id);
         if ($app !== null && $app->source === 'existing' && $app->deployments()->doesntExist()) {
             $apps->forget($app, $webRoot);
         }
@@ -282,7 +302,9 @@ class LaravelIndex extends Component
             ->withCount('previews')
             // Preview environments are listed under their application.
             ->whereNull('preview_of_id')
-            ->when(! auth()->user()->is_admin, fn ($q) => $q->whereIn('laravel_apps.id', auth()->user()->laravelMemberships()->select('laravel_app_id')))
+            ->when(! auth()->user()->is_admin, fn ($q) => $q->where(fn ($q) => $q
+                ->whereIn('laravel_apps.id', auth()->user()->laravelMemberships()->select('laravel_app_id'))
+                ->when(auth()->user()->isCustomer(), fn ($q) => $q->orWhereHas('site', fn ($s) => $s->visibleTo(auth()->user())))))
             ->when($this->search !== '', function ($q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';
                 $q->whereHas('site', fn ($s) => $s->where('domain', 'like', $term));
@@ -295,6 +317,7 @@ class LaravelIndex extends Component
             'apps' => $apps,
             'busy' => $apps->getCollection()->contains(fn (LaravelApp $a) => $a->status->isBusy() || $a->latestDeployment?->status->isBusy()),
             'sites' => $this->installing ? $this->freeSites() : collect(),
+            'canInstall' => auth()->user()->is_admin || auth()->user()->isCustomer(),
         ]);
     }
 
@@ -305,12 +328,21 @@ class LaravelIndex extends Component
      */
     private function freeSites(): Collection
     {
-        return Site::with('systemUser')
+        return Site::visibleTo(auth()->user())
+            ->with('systemUser')
             ->where('status', SiteStatus::Active)
             ->whereDoesntHave('laravelApp')
             ->whereDoesntHave('preview')
             ->orderBy('domain')
             ->get();
+    }
+
+    /**
+     * The signed-in customer, or null for everyone else.
+     */
+    private function customer(): ?Customer
+    {
+        return auth()->user()->isCustomer() ? auth()->user()->customer : null;
     }
 
     /**

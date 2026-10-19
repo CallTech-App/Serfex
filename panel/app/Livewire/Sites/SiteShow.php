@@ -5,6 +5,7 @@ namespace App\Livewire\Sites;
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
+use App\Livewire\Attributes\ForCustomers;
 use App\Models\DnsZone;
 use App\Models\MailDomain;
 use App\Models\Site;
@@ -14,6 +15,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
+#[ForCustomers]
 class SiteShow extends Component
 {
     public int $siteId;
@@ -35,7 +37,7 @@ class SiteShow extends Component
      */
     public function mount(int $site): void
     {
-        $this->siteId = Site::findOrFail($site)->id;
+        $this->siteId = Site::visibleTo(auth()->user())->findOrFail($site)->id;
     }
 
     /**
@@ -103,6 +105,6 @@ class SiteShow extends Component
 
     private function site(): ?Site
     {
-        return Site::with('systemUser', 'certificate', 'certificates')->find($this->siteId);
+        return Site::visibleTo(auth()->user())->with('systemUser.customer', 'certificate', 'certificates')->find($this->siteId);
     }
 }
