@@ -10,10 +10,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Removes a Laravel application from its site: its queue workers and
- * scheduler stop, the site serves public_html again, and with $removeFiles
- * the releases, shared .env and storage under laravel/ are deleted. An
- * application found on the site keeps its files where they are.
+ * Removes a Laravel application from its site: its queue workers,
+ * scheduler and Redis instance stop, the site serves public_html again,
+ * and with $removeFiles the releases, shared .env and storage under
+ * laravel/ are deleted. An application found on the site keeps its files
+ * where they are.
  */
 class RemoveLaravelApp implements ShouldQueue
 {
@@ -42,6 +43,9 @@ class RemoveLaravelApp implements ShouldQueue
         }
         try {
             $agent->call('laravel.remove', $app->target() + ['remove_files' => $this->removeFiles && $app->isManaged()], config('servik.agent.job_timeout'));
+            if ($app->redis_port !== null) {
+                $agent->call('redis.remove', ['domain' => $site->domain], config('servik.agent.job_timeout'));
+            }
             if ($site->web_root !== null) {
                 $site->update(['web_root' => null]);
                 $result = $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));

@@ -56,6 +56,7 @@ class CreateLaravelPreview implements ShouldQueue
             'domain' => $domain,
             'aliases' => [],
             'php_version' => $parent->site->php_version,
+            'web_server' => $parent->site->web_server,
             'status' => SiteStatus::Provisioning,
         ]));
         $preview->update(['site_id' => $site->id]);

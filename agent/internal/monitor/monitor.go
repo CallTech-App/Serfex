@@ -711,6 +711,9 @@ func describeUnit(unit string) (string, string) {
 		return "Servik paneli (web)", "servik"
 	case strings.HasPrefix(base, "servik-"):
 		return base, "servik"
+	case strings.HasPrefix(base, "postgresql@") && strings.HasSuffix(base, "-main"):
+		// The "main" cluster holds customers' databases (Veritabanları).
+		return "PostgreSQL", "shared"
 	case strings.HasPrefix(base, "postgresql"):
 		return "PostgreSQL (panel veritabanı)", "servik"
 	case base == "nginx":

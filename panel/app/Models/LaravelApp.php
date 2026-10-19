@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
     'scheduler', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at',
     'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
     'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
-    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id'])]
+    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id', 'redis_port', 'redis_password'])]
 class LaravelApp extends Model
 {
     /** @use HasFactory<LaravelAppFactory> */
@@ -32,7 +32,7 @@ class LaravelApp extends Model
     /** Where the live release of an application Servik deploys is. */
     public const MANAGED_PATH = 'laravel/current';
 
-    protected $hidden = ['install_env', 'deploy_key', 'webhook_token'];
+    protected $hidden = ['install_env', 'deploy_key', 'webhook_token', 'redis_password'];
 
     protected $attributes = [
         'status' => 'installing',
@@ -84,6 +84,7 @@ class LaravelApp extends Model
             'preview_seed' => 'boolean',
             'maintenance_on' => 'boolean',
             'backup_before_deploy' => 'boolean',
+            'redis_password' => 'encrypted',
         ];
     }
 
