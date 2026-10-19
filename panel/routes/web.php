@@ -6,6 +6,9 @@ use App\Http\Controllers\Laravel\BackupDownloadController;
 use App\Http\Controllers\Laravel\DeployWebhookController;
 use App\Http\Controllers\Mail\WebmailController;
 use App\Http\Middleware\EnsureAdmin;
+use App\Livewire\Ai\AiAssistant;
+use App\Livewire\Ai\AiAudit;
+use App\Livewire\Ai\AiSettingsPage;
 use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Dns\ZoneIndex;
 use App\Livewire\Dns\ZoneShow;
@@ -45,6 +48,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware(EnsureAdmin::class)->group(function () {
         Route::view('/', 'dashboard')->name('dashboard');
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
+        Route::livewire('/ai', AiAssistant::class)->name('ai.index');
+        Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
+        Route::livewire('/ai/kayit', AiAudit::class)->name('ai.audit');
         Route::livewire('/sites', SiteIndex::class)->name('sites.index');
         Route::livewire('/sites/{site}', SiteShow::class)->whereNumber('site')->name('sites.show');
         Route::livewire('/sites/{site}/ssl', SiteSsl::class)->whereNumber('site')->name('sites.ssl');

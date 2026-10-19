@@ -113,3 +113,70 @@
 .num {
     font-variant-numeric: tabular-nums;
 }
+
+/* Servik AI's answers, rendered from Markdown. */
+.ai-prose {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+.ai-prose > * + * {
+    margin-top: 0.6rem;
+}
+.ai-prose ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+}
+.ai-prose ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+}
+.ai-prose li + li {
+    margin-top: 0.2rem;
+}
+.ai-prose strong {
+    font-weight: 600;
+}
+.ai-prose a {
+    color: var(--color-accent);
+    text-decoration: underline;
+}
+.ai-prose code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+}
+.ai-prose pre {
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: 6px;
+    background: var(--color-surface-2);
+    padding: 0.6rem 0.75rem;
+    font-size: 12.5px;
+}
+.ai-prose h1,
+.ai-prose h2,
+.ai-prose h3,
+.ai-prose h4 {
+    font-weight: 600;
+}
+.ai-prose table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+.ai-prose th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--color-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.ai-prose th,
+.ai-prose td {
+    border-bottom: 1px solid var(--color-line);
+    padding: 0.35rem 0.75rem 0.35rem 0;
+    white-space: nowrap;
+}

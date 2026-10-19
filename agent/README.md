@@ -19,6 +19,7 @@ Methods so far:
 | `php.versions` | | PHP versions with PHP-FPM installed, e.g. `["8.3","8.4"]` |
 | `site.apply` | `domain`, `user`, `php_version`, `aliases` | creates or updates a site; returns paths, `uid`, `user_created`, `changed` |
 | `site.delete` | `domain`, `user`, `remove_files`, `remove_user` | removes the site; returns `files_removed`, `user_removed` |
+| `site.logs` | `domain`, `user`, `kind` (`access`, `error` or `php`), `bytes` | the end of the site's Nginx access or error log or its PHP error log (at most 1 MB); returns `exists`, `size`, `content`, `truncated`. Symbolic links in the customer's log path are refused |
 | `system.addresses` | | the server's public addresses, `{"ipv4": [...], "ipv6": [...]}` |
 | `dns.status` | | `installed`, `configured`, `running`, `version` of the DNS server |
 | `dns.setup` | | installs PowerDNS if missing, configures and starts it; returns `installed`, `changed`, `version` |

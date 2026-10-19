@@ -215,7 +215,10 @@
                 <button type="button" wire:click="openBlock" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                     <x-icon name="ban" />IP engelle
                 </button>
-                <p class="text-[13px] text-muted sm:ml-2">Kurallardan birini aşan adresler. Servik hiçbir adresi kendiliğinden engellemez.</p>
+                <p class="text-[13px] text-muted sm:ml-2">Kurallardan birini aşan adresler. Panel kendiliğinden engellemez; Servik AI'a izin verdiyseniz en fazla 24 saat engelleyebilir.</p>
+                @if ($openCount > 0)
+                    <x-ask-ai question="Canlı İzleme'de engellenmemiş saldırgan adresler görünüyor. Hangileri gerçekten saldırı, ne yapmalıyım?" class="ml-auto" />
+                @endif
             </div>
             <div class="relative overflow-x-auto">
                 <table class="w-full min-w-[820px] text-[13.5px]">
@@ -444,7 +447,14 @@
         @if ($site)
             <div class="flex h-12 items-center gap-3 border-b border-line px-5">
                 <h2 class="min-w-0 truncate text-[14.5px] font-semibold"><span class="font-mono">{{ $site->domain }}</span> için müdahale</h2>
-                <a href="{{ route('sites.show', $site) }}" wire:navigate class="ml-auto shrink-0 text-[13px] text-muted hover:text-fg">Siteye git</a>
+                @php
+                    $problem = $current ? \App\Services\Monitor\Health::site($current, count($siteAttackers), false)[0][0]->label() : null;
+                    $question = $problem && $problem !== 'Normal'
+                        ? "{$site->domain} sitesinde Canlı İzleme \"{$problem}\" gösteriyor. Nedenini bul ve ne yapmam gerektiğini söyle."
+                        : "{$site->domain} sitesinin şu anki kaynak kullanımı normal mi? Dikkat etmem gereken bir şey var mı?";
+                @endphp
+                <x-ask-ai :question="$question" before="$wire.close();" class="ml-auto" />
+                <a href="{{ route('sites.show', $site) }}" wire:navigate class="shrink-0 text-[13px] text-muted hover:text-fg">Siteye git</a>
                 <button type="button" wire:click="close" class="text-muted hover:text-fg" aria-label="Kapat"><x-icon name="x" /></button>
             </div>
             <div class="max-h-[75vh] divide-y divide-line overflow-y-auto text-[13.5px]">

@@ -3,7 +3,7 @@
         [null, [
             ['dashboard', 'layout-dashboard', 'Genel Bakış'],
             ['monitor.index', 'activity', 'Canlı İzleme'],
-            [null, 'sparkles', 'Servik AI'],
+            ['ai.index', 'sparkles', 'Servik AI'],
         ]],
         ['Barındırma', [
             ['sites.index', 'globe', 'Siteler'],
@@ -112,6 +112,17 @@
                         <span class="font-mono">{{ gethostname() }}</span>
                     </span>
                     <div class="ml-auto flex items-center gap-1">
+                        @if ($user?->is_admin)
+                            @if (request()->routeIs('ai.*'))
+                                <a href="{{ route('ai.index') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md bg-accent-soft px-3 text-[13px] font-medium text-accent hover:bg-accent/15">
+                                    <x-icon name="sparkles" /><span class="hidden md:inline">Servik AI</span>
+                                </a>
+                            @else
+                                <button type="button" x-on:click="$dispatch('ai-open')" class="flex h-9 items-center gap-2 rounded-md bg-accent-soft px-3 text-[13px] font-medium text-accent hover:bg-accent/15" aria-label="Servik AI">
+                                    <x-icon name="sparkles" /><span class="hidden md:inline">Servik AI</span>
+                                </button>
+                            @endif
+                        @endif
                         <button type="button" onclick="servikToggleTheme()" class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="Temayı değiştir" title="Temayı değiştir">
                             <x-icon name="sun-moon" class="size-[18px]" />
                         </button>
@@ -124,6 +135,9 @@
             </div>
         </div>
 
+        @if ($user?->is_admin && ! request()->routeIs('ai.*'))
+            <livewire:ai.ai-drawer />
+        @endif
         <x-toasts />
         @livewireScripts
     </body>
