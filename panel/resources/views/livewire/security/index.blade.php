@@ -167,7 +167,7 @@
                                     <tr wire:key="ev-{{ $e['id'] }}" class="align-top hover:bg-surface-2/60">
                                         <td class="num py-3 pr-3 pl-5 whitespace-nowrap text-muted">{{ $when($time) }}</td>
                                         <td class="px-3 py-3 font-mono text-[13px]">{{ $e['ip'] }}</td>
-                                        <td class="max-w-[22rem] px-3 py-3">
+                                        <td class="max-w-[20rem] px-3 py-3">
                                             <span class="block truncate font-mono text-[13px]" title="{{ $e['method'] }} {{ $e['uri'] }}">{{ $e['method'] }} {{ $e['uri'] }}</span>
                                             <span class="block font-mono text-2xs text-muted">{{ $e['site']?->domain ?? $e['host'] }}</span>
                                         </td>
@@ -184,14 +184,16 @@
                                             @endif
                                         </td>
                                         <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
+                                            <div class="flex flex-col items-end gap-1">
                                             @if (in_array($e['ip'], $blocked, true))
                                                 <span class="text-2xs text-muted">Engelli</span>
                                             @else
                                                 <button type="button" wire:click="openBlock(@js($e['ip']), {{ $e['site']?->id ?? 'null' }}, @js('WAF: '.($hit ? $hit['id'].' '.$hit['message'] : $e['uri'])))" class="{{ $link }}">IP'yi engelle</button>
                                             @endif
                                             @if ($e['site'] && $hit)
-                                                <a href="{{ route('sites.waf', ['site' => $e['site']->id, 'kural' => $hit['id'], 'yol' => $path]) }}" wire:navigate class="{{ $link }} ml-3" title="Bu kural sitenin meşru isteklerini engelliyorsa">İstisna ekle</a>
+                                                <a href="{{ route('sites.waf', ['site' => $e['site']->id, 'kural' => $hit['id'], 'yol' => $path]) }}" wire:navigate class="{{ $link }}" title="Bu kural sitenin meşru isteklerini engelliyorsa">İstisna ekle</a>
                                             @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

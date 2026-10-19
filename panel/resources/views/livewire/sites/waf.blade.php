@@ -118,6 +118,7 @@
                                     </td>
                                     <td class="px-3 py-3 whitespace-nowrap"><x-status-badge :status="$e['blocked'] ? new Badge('Engellendi', 'crit') : new Badge('Kaydedildi', 'warn')" /></td>
                                     <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
+                                        <div class="flex flex-col items-end gap-1">
                                         @if ($admin)
                                             @if (in_array($e['ip'], $blocked, true))
                                                 <span class="text-2xs text-muted">Engelli</span>
@@ -126,8 +127,9 @@
                                             @endif
                                         @endif
                                         @if ($rule)
-                                            <button type="button" wire:click="openExclude({{ $rule['id'] }}, @js($path))" class="{{ $link }} ml-3" title="Bu istek sitenin kendi isteğiyse">Yanlış alarm</button>
+                                            <button type="button" wire:click="openExclude({{ $rule['id'] }}, @js($path))" class="{{ $link }}" title="Bu istek sitenin kendi isteğiyse">Yanlış alarm</button>
                                         @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

@@ -1,8 +1,4 @@
 {{-- The security scan's findings, for Güvenlik → Tarama and a site's Tarama page. --}}
-@php
-    use App\Models\SecurityFinding;
-    $fixLink = 'text-[13px] text-accent hover:underline whitespace-nowrap';
-@endphp
 <div class="relative overflow-x-auto">
     <table class="w-full text-[13.5px] sm:min-w-[760px]">
         <thead>
@@ -12,14 +8,14 @@
                 @if ($showSite)
                     <th class="hidden px-3 py-2.5 font-medium md:table-cell">Site</th>
                 @endif
-                <th class="py-2.5 pr-5 pl-3"></th>
+                <th class="hidden py-2.5 pr-5 pl-3 sm:table-cell"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-line">
             @forelse ($findings as $f)
                 <tr wire:key="finding-{{ $f->id }}" class="align-top hover:bg-surface-2/60">
                     <td class="py-3 pr-3 pl-5"><x-status-badge :status="$f->severityBadge()" /></td>
-                    <td class="max-w-[34rem] px-3 py-3">
+                    <td class="max-w-[15rem] py-3 pr-5 pl-3 sm:max-w-[34rem] sm:px-3">
                         <span class="font-medium">{{ $f->title() }}</span>
                         @if ($f->path !== '')
                             <span class="mt-0.5 block truncate font-mono text-[12.5px] text-muted" title="{{ $f->path }}">{{ $f->path }}</span>
@@ -33,6 +29,9 @@
                         @if ($showSite && $f->site)
                             <span class="mt-0.5 block font-mono text-2xs text-muted md:hidden">{{ $f->site->domain }}</span>
                         @endif
+                        <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 sm:hidden">
+                            @include('livewire.security.finding-actions', ['f' => $f])
+                        </div>
                     </td>
                     @if ($showSite)
                         <td class="hidden px-3 py-3 md:table-cell">
@@ -43,24 +42,10 @@
                             @endif
                         </td>
                     @endif
-                    <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
-                        @if ($f->status === 'open')
-                            @foreach ($f->fixes ?? [] as $fix)
-                                @if (isset(SecurityFinding::FIXES[$fix]))
-                                    <button type="button" wire:click="fixFinding({{ $f->id }}, '{{ $fix }}')" wire:loading.attr="disabled" class="{{ $fixLink }} {{ $loop->first ? '' : 'ml-3' }}">{{ SecurityFinding::FIXES[$fix][0] }}</button>
-                                @endif
-                            @endforeach
-                            @if ($f->isServer() && $f->settingsLink())
-                                <a href="{{ $f->settingsLink() }}" wire:navigate class="{{ $fixLink }}">Ayara git</a>
-                            @endif
-                            @if (! $f->isServer())
-                                <button type="button" wire:click="ignoreFinding({{ $f->id }})" class="ml-3 text-[13px] text-muted hover:text-fg">Yok say</button>
-                            @endif
-                        @elseif ($f->status === 'fixed')
-                            <button type="button" wire:click="undoFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">Geri al</button>
-                        @elseif ($f->status === 'ignored')
-                            <button type="button" wire:click="reopenFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">Yeniden aç</button>
-                        @endif
+                    <td class="hidden py-3 pr-5 pl-3 text-right whitespace-nowrap sm:table-cell">
+                        <div class="flex justify-end gap-3">
+                        @include('livewire.security.finding-actions', ['f' => $f])
+                        </div>
                     </td>
                 </tr>
             @empty
