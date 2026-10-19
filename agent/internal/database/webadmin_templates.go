@@ -159,7 +159,7 @@ Description=Servik PHP-FPM (database manager)
 After=network.target
 
 [Service]
-Type=simple
+Type=notify
 ExecStart=/usr/sbin/php-fpm{{.PHP}} --nodaemonize --fpm-config /etc/servik/web/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
 RuntimeDirectory=servik-php
