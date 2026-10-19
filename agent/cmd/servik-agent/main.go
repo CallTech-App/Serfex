@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,9 +25,11 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/dns"
+	"github.com/winchester37/servik/agent/internal/firewall"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
+	"github.com/winchester37/servik/agent/internal/monitor"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -71,6 +74,16 @@ func main() {
 	svc.mail = mail.NewManager(h, *webUser)
 	svc.certs.AddConsumer(svc.mail)
 	svc.laravel = laravel.NewManager(h)
+	if *dryRun {
+		svc.monitor = monitor.NewDemo(h, svc.sites, log)
+	} else {
+		svc.monitor = monitor.New(h, svc.sites, log)
+	}
+	svc.sites.MaxChildren = svc.monitor.PHPWorkers
+	svc.firewall = firewall.NewManager(h)
+	if !*dryRun {
+		svc.firewall.Protected = ownAddresses
+	}
 	if err := run(*socket, svc, log); err != nil {
 		log.Error("agent stopped", "err", err)
 		os.Exit(1)
@@ -147,6 +160,30 @@ func run(socket string, svc services, log *slog.Logger) error {
 	srv := rpc.NewServer(log)
 	registerMethods(srv, svc)
 
+	// Blocks come back after a reboot; monitoring runs while the agent does.
+	if err := svc.firewall.Restore(ctx); err != nil {
+		log.Error("restoring IP blocks", "err", err)
+	}
+	go svc.monitor.Run(ctx)
+
 	log.Info("agent listening", "socket", socket, "version", version.Version)
 	return srv.Serve(ctx, ln)
+}
+
+// ownAddresses are every address of this server, which must never be
+// blocked.
+func ownAddresses() []netip.Addr {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil
+	}
+	var out []netip.Addr
+	for _, a := range addrs {
+		if n, ok := a.(*net.IPNet); ok {
+			if ip, ok := netip.AddrFromSlice(n.IP); ok {
+				out = append(out, ip.Unmap())
+			}
+		}
+	}
+	return out
 }

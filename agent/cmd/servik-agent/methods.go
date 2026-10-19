@@ -12,8 +12,10 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/dns"
+	"github.com/winchester37/servik/agent/internal/firewall"
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
+	"github.com/winchester37/servik/agent/internal/monitor"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -27,12 +29,14 @@ const CodeMailNotSetUp = -32002
 
 // services are the managers the methods act on.
 type services struct {
-	sites   *site.Manager
-	dns     *dns.Manager
-	certs   *cert.Manager
-	mail    *mail.Manager
-	laravel *laravel.Manager
-	dryRun  bool
+	sites    *site.Manager
+	dns      *dns.Manager
+	certs    *cert.Manager
+	mail     *mail.Manager
+	laravel  *laravel.Manager
+	monitor  *monitor.Monitor
+	firewall *firewall.Manager
+	dryRun   bool
 }
 
 func registerMethods(srv *rpc.Server, svc services) {
@@ -189,6 +193,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	})
 	registerMail(srv, svc)
 	registerLaravel(srv, svc)
+	registerMonitor(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -333,8 +338,11 @@ func addresses(dryRun bool) (map[string][]string, error) {
 }
 
 // decode strictly unmarshals params; unknown fields are rejected so typos
-// in the panel fail loudly.
+// in the panel fail loudly. Missing params mean none.
 func decode(p json.RawMessage, v any) error {
+	if len(bytes.TrimSpace(p)) == 0 || string(p) == "null" {
+		p = json.RawMessage("{}")
+	}
 	dec := json.NewDecoder(bytes.NewReader(p))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
@@ -359,7 +367,9 @@ func mapError(err error) error {
 	var cv *cert.ValidationError
 	var mv *mail.ValidationError
 	var lv *laravel.ValidationError
-	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) {
+	var fv *firewall.ValidationError
+	var monv *monitor.ValidationError
+	if errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -367,7 +377,9 @@ func mapError(err error) error {
 	var cop *cert.OperationError
 	var mop *mail.OperationError
 	var lop *laravel.OperationError
-	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) {
+	var fop *firewall.OperationError
+	var monop *monitor.OperationError
+	if errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -463,5 +475,46 @@ func registerLaravel(srv *rpc.Server, svc services) {
 		Offset int64  `json:"offset"`
 	}) (any, error) {
 		return l.ReadBackup(laravel.BackupRef{Domain: q.Domain, ID: q.ID}, q.Offset)
+	})
+}
+
+type domainParam struct {
+	Domain string `json:"domain"`
+}
+
+func registerMonitor(srv *rpc.Server, svc services) {
+	mon, fw := svc.monitor, svc.firewall
+	handle(srv, "monitor.live", func(_ context.Context, p monitor.SnapshotSpec) (any, error) { return mon.Snapshot(p), nil })
+	handle(srv, "monitor.limit.apply", func(ctx context.Context, p monitor.LimitSpec) (any, error) { return mon.ApplyLimit(ctx, p) })
+	handle(srv, "monitor.limit.remove", func(ctx context.Context, p domainParam) (any, error) {
+		removed, err := mon.RemoveLimit(ctx, p.Domain)
+		return map[string]bool{"removed": removed}, err
+	})
+	handle(srv, "monitor.limits", func(context.Context, struct{}) (any, error) { return mon.Limits(), nil })
+	handle(srv, "php.restart", func(ctx context.Context, p domainParam) (any, error) {
+		n, err := mon.RestartPool(ctx, p.Domain)
+		return map[string]int{"stopped": n}, err
+	})
+
+	handle(srv, "firewall.block", func(ctx context.Context, p firewall.Spec) (any, error) { return fw.Block(ctx, p) })
+	handle(srv, "firewall.unblock", func(ctx context.Context, p struct {
+		Address string `json:"address"`
+	}) (any, error) {
+		removed, err := fw.Unblock(ctx, p.Address)
+		return map[string]bool{"removed": removed}, err
+	})
+	handle(srv, "firewall.list", func(context.Context, struct{}) (any, error) { return fw.List() })
+
+	handle(srv, "mail.queue", func(ctx context.Context, _ struct{}) (any, error) { return svc.mail.Queue(ctx) })
+	handle(srv, "mail.queue.flush", func(ctx context.Context, _ struct{}) (any, error) {
+		return map[string]bool{"flushed": true}, svc.mail.FlushQueue(ctx)
+	})
+	handle(srv, "mail.queue.hold", func(ctx context.Context, p domainParam) (any, error) {
+		n, err := svc.mail.HoldDomain(ctx, p.Domain)
+		return map[string]int{"messages": n}, err
+	})
+	handle(srv, "mail.queue.release", func(ctx context.Context, p domainParam) (any, error) {
+		n, err := svc.mail.ReleaseDomain(ctx, p.Domain)
+		return map[string]int{"messages": n}, err
 	})
 }

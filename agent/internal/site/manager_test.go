@@ -359,3 +359,46 @@ func TestWebRoot(t *testing.T) {
 		}
 	}
 }
+
+func TestSetMaxChildren(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	if _, err := m.Apply(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	pool := "/etc/php/8.4/fpm/pool.d/kahveatolyesi.com.tr.conf"
+	if p := read(t, sim, pool); !strings.Contains(p, "pm.max_children = 10\n") || !strings.Contains(p, "pm.status_listen = /run/php/servik-kahveatolyesi.com.tr.status.sock\n") {
+		t.Fatalf("pool:\n%s", p)
+	}
+	if err := m.SetMaxChildren(ctx, spec.Domain, 3); err != nil {
+		t.Fatal(err)
+	}
+	if p := read(t, sim, pool); !strings.Contains(p, "pm.max_children = 3\n") {
+		t.Fatalf("pool:\n%s", p)
+	}
+	// A rejected configuration is rolled back.
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "php-fpm8.4" {
+			return errors.New("bad")
+		}
+		return nil
+	}
+	if err := m.SetMaxChildren(ctx, spec.Domain, 5); err == nil {
+		t.Fatal("expected an error")
+	}
+	if p := read(t, sim, pool); !strings.Contains(p, "pm.max_children = 3\n") {
+		t.Fatalf("not rolled back:\n%s", p)
+	}
+	sim.Fail = nil
+	if err := m.SetMaxChildren(ctx, "yok.com", 3); err == nil {
+		t.Fatal("missing site accepted")
+	}
+	// The hook keeps a limit when the site is applied again.
+	m.MaxChildren = func(string) int { return 2 }
+	if _, err := m.Apply(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if p := read(t, sim, pool); !strings.Contains(p, "pm.max_children = 2\n") {
+		t.Fatalf("pool:\n%s", p)
+	}
+}

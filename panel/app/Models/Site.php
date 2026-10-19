@@ -84,6 +84,24 @@ class Site extends Model
     }
 
     /**
+     * Temporary resource limits put on the site, past and present.
+     *
+     * @return HasMany<ResourceLimit, $this>
+     */
+    public function resourceLimits(): HasMany
+    {
+        return $this->hasMany(ResourceLimit::class);
+    }
+
+    /**
+     * The limit in force now, if any.
+     */
+    public function activeLimit(): ?ResourceLimit
+    {
+        return $this->resourceLimits()->active()->latest('id')->first();
+    }
+
+    /**
      * Host names the site answers to.
      *
      * @return list<string>
