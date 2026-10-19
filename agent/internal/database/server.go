@@ -336,7 +336,13 @@ func (m *Manager) writeNetwork(t *txn.Tx, p product, st *state) error {
 	bind := "127.0.0.1"
 	if len(remote) > 0 {
 		bind = "0.0.0.0"
-		if m.hasIPv6() {
+		switch {
+		case !m.hasIPv6():
+		case p.name == MariaDB:
+			// MariaDB's "::" socket takes IPv6 only; it listens on a
+			// list instead.
+			bind = "0.0.0.0,::"
+		default:
 			bind = "::"
 		}
 	}
