@@ -107,3 +107,17 @@ func TestSiteMethods(t *testing.T) {
 		t.Fatalf("error = %+v, want operation failed", resp.Error)
 	}
 }
+
+func TestDecodeTreatsMissingParamsAsNone(t *testing.T) {
+	var v struct {
+		Domain string `json:"domain"`
+	}
+	for _, p := range []string{"", "null", "{}"} {
+		if err := decode(json.RawMessage(p), &v); err != nil {
+			t.Errorf("decode(%q) = %v", p, err)
+		}
+	}
+	if err := decode(json.RawMessage(`{"typo":1}`), &v); err == nil {
+		t.Error("unknown field accepted")
+	}
+}

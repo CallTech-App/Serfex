@@ -176,8 +176,9 @@ func (m *Manager) FlushQueue(ctx context.Context) error {
 	return nil
 }
 
-// HoldDomain puts every queued message of a sender domain on hold, so a
-// site that sends spam stops sending at once; ReleaseDomain lets them go.
+// HoldDomain puts the queued messages of a sender domain on hold, so a
+// site that sends spam stops sending; ReleaseDomain lets them go. A
+// message Postfix is delivering right now is left to finish its attempt.
 // An empty domain means bounces (no sender). Both return how many
 // messages changed.
 func (m *Manager) HoldDomain(ctx context.Context, domain string) (int, error) {
@@ -205,7 +206,7 @@ func (m *Manager) moveDomain(ctx context.Context, domain string, hold bool) (int
 	}
 	var ids []string
 	for _, e := range list {
-		if senderDomain(e.Sender) != domain || (e.Queue == "hold") != !hold {
+		if senderDomain(e.Sender) != domain || (e.Queue == "hold") != !hold || (hold && e.Queue == "active") {
 			continue
 		}
 		ids = append(ids, e.ID)

@@ -338,8 +338,11 @@ func addresses(dryRun bool) (map[string][]string, error) {
 }
 
 // decode strictly unmarshals params; unknown fields are rejected so typos
-// in the panel fail loudly.
+// in the panel fail loudly. Missing params mean none.
 func decode(p json.RawMessage, v any) error {
+	if len(bytes.TrimSpace(p)) == 0 || string(p) == "null" {
+		p = json.RawMessage("{}")
+	}
 	dec := json.NewDecoder(bytes.NewReader(p))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {

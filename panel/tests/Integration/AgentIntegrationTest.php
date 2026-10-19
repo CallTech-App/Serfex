@@ -299,4 +299,51 @@ class AgentIntegrationTest extends TestCase
         $this->assertDirectoryDoesNotExist($this->root.'/home/hizlikargo/web/api.hizlikargo.app/laravel');
         $client->call('site.delete', ['domain' => $target['domain'], 'user' => $target['user'], 'remove_files' => true, 'remove_user' => true], 30);
     }
+
+    public function test_monitor_lifecycle(): void
+    {
+        $client = new AgentClient($this->socket);
+        $site = ['domain' => 'magazaonline.com.tr', 'user' => 'magaza', 'php_version' => '8.4'];
+        $client->call('site.apply', $site, 30);
+
+        // The dry-run agent makes up load for its sites every two seconds.
+        $usage = null;
+        for ($i = 0; $i < 50 && $usage === null; $i++) {
+            usleep(200_000);
+            foreach ($client->call('monitor.live', ['window' => 10])['sites'] as $u) {
+                $usage = $u['domain'] === $site['domain'] ? $u : $usage;
+            }
+        }
+        $this->assertNotNull($usage, 'the site never showed up in monitor.live');
+        $this->assertSame('magaza', $usage['user']);
+        $this->assertSame(10, $usage['php']['max']);
+
+        $blocked = $client->call('firewall.block', ['address' => '45.155.205.233', 'seconds' => 3600, 'reason' => 'İstek seli'], 30);
+        $this->assertSame('45.155.205.233', $blocked['address']);
+        $this->assertSame(['45.155.205.233'], array_column($client->call('firewall.list'), 'address'));
+        try {
+            $client->call('firewall.block', ['address' => '127.0.0.1', 'seconds' => 60], 30);
+            $this->fail('expected loopback to be refused');
+        } catch (AgentException $e) {
+            $this->assertSame(AgentException::INVALID_PARAMS, $e->getCode());
+        }
+        $this->assertTrue($client->call('firewall.unblock', ['address' => '45.155.205.233'], 30)['removed']);
+        $this->assertSame([], $client->call('firewall.list'));
+
+        $pool = $this->root.'/etc/php/8.4/fpm/pool.d/magazaonline.com.tr.conf';
+        $client->call('monitor.limit.apply', ['domain' => $site['domain'], 'cpu' => 50, 'memory_mb' => 512, 'php_workers' => 2, 'seconds' => 600], 30);
+        $this->assertStringContainsString("pm.max_children = 2\n", file_get_contents($pool));
+        $this->assertSame([50], array_column($client->call('monitor.limits'), 'cpu'));
+        // A site change keeps the limit.
+        $client->call('site.apply', $site, 30);
+        $this->assertStringContainsString("pm.max_children = 2\n", file_get_contents($pool));
+        $client->call('monitor.limit.remove', ['domain' => $site['domain']], 30);
+        $this->assertStringContainsString("pm.max_children = 10\n", file_get_contents($pool));
+        $this->assertSame([], $client->call('monitor.limits'));
+
+        $this->assertArrayHasKey('stopped', $client->call('php.restart', ['domain' => $site['domain']], 30));
+        $this->assertFalse($client->call('mail.queue')['installed']);
+
+        $client->call('site.delete', ['domain' => $site['domain'], 'user' => $site['user'], 'remove_files' => true, 'remove_user' => true], 30);
+    }
 }

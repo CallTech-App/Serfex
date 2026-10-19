@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('servik:ssl-renew')->hourly()->withoutOverlapping();
 Schedule::command('servik:mail-usage')->everyThirtyMinutes()->withoutOverlapping();
 Schedule::command('servik:laravel-backups')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('servik:monitor-record')->everyMinute()->withoutOverlapping();

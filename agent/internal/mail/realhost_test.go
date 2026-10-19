@@ -463,8 +463,9 @@ func queue(t *testing.T, m *Manager) {
 		t.Fatalf("queue never got there: %+v", last)
 		return QueueDomain{}
 	}
-	find(func(d QueueDomain) bool { return d.Active+d.Deferred == 1 })
-	// A message being delivered is held once the attempt ends.
+	// 192.0.2.1 never answers, so the message is deferred after Postfix's
+	// 30-second connection timeout.
+	find(func(d QueueDomain) bool { return d.Deferred == 1 && d.Reason != "" })
 	n, err := m.HoldDomain(ctx, "kuyruk.test")
 	if err != nil || n != 1 {
 		t.Fatalf("hold = %d, %v", n, err)

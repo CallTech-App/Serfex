@@ -64,7 +64,7 @@ Methods so far:
 | `firewall.list` | | the blocks in force |
 | `mail.queue` | | Postfix's queue: counts, messages grouped by sender domain, the oldest 200 messages |
 | `mail.queue.flush` | | retries every deferred message now |
-| `mail.queue.hold` / `mail.queue.release` | `domain` | holds or releases every queued message of a sender domain (`""` for bounces); returns `messages` |
+| `mail.queue.hold` / `mail.queue.release` | `domain` | holds a sender domain's queued messages (those being delivered right now finish their attempt) or releases them (`""` for bounces); returns `messages` |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate, and `web_root`

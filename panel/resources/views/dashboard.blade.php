@@ -8,6 +8,15 @@
         <div class="flex items-center gap-3 px-5 py-4">
             <livewire:agent-status />
         </div>
+        @php $monitorAttention = (int) \Illuminate\Support\Facades\Cache::get(\App\Services\Monitor\LiveStats::ATTENTION_KEY, 0); @endphp
+        <a href="{{ route('monitor.index') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+            <x-icon name="activity" @class(['text-muted' => ! $monitorAttention, 'text-warn' => $monitorAttention]) />
+            <span>Canlı izleme</span>
+            <span @class(['ml-auto num', 'text-muted' => ! $monitorAttention, 'font-medium text-warn' => $monitorAttention])>
+                {{ $monitorAttention ? $monitorAttention.' site veya saldırı ilgilenmenizi bekliyor' : 'Sorun yok' }}
+            </span>
+            <x-icon name="chevron-right" class="text-muted" />
+        </a>
         <a href="{{ route('sites.index') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="globe" class="text-muted" />
             <span>Siteler</span>

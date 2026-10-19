@@ -14,6 +14,7 @@ use App\Livewire\Laravel\LaravelShow;
 use App\Livewire\Mail\MailDomainShow;
 use App\Livewire\Mail\MailIndex;
 use App\Livewire\Mail\MailSettingsPage;
+use App\Livewire\Monitor\LiveMonitor;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SiteShow;
 use App\Livewire\Ssl\SiteSsl;
@@ -43,6 +44,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(EnsureAdmin::class)->group(function () {
         Route::view('/', 'dashboard')->name('dashboard');
+        Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
         Route::livewire('/sites', SiteIndex::class)->name('sites.index');
         Route::livewire('/sites/{site}', SiteShow::class)->whereNumber('site')->name('sites.show');
         Route::livewire('/sites/{site}/ssl', SiteSsl::class)->whereNumber('site')->name('sites.ssl');

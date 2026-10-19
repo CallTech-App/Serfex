@@ -2,7 +2,7 @@
     $nav = [
         [null, [
             ['dashboard', 'layout-dashboard', 'Genel Bakış'],
-            [null, 'activity', 'Canlı İzleme'],
+            ['monitor.index', 'activity', 'Canlı İzleme'],
             [null, 'sparkles', 'Servik AI'],
         ]],
         ['Barındırma', [
@@ -31,6 +31,7 @@
     }
     // Problem counts shown next to menu items.
     $alerts = $user?->is_admin ? [
+        'monitor.index' => [(int) \Illuminate\Support\Facades\Cache::get(\App\Services\Monitor\LiveStats::ATTENTION_KEY, 0), 'site veya saldırı'],
         'ssl.index' => [\App\Models\Certificate::attentionCount(), 'sertifika'],
         'mail.index' => [\App\Models\MailDomain::where('status', \App\Enums\MailDomainStatus::Failed)->count(), 'posta alan adı'],
         'laravel.index' => [\App\Models\LaravelApp::attentionCount(), 'Laravel uygulaması'],
