@@ -98,7 +98,9 @@ server {
     access_log {{.LogDir}}/access.log;
     error_log {{.LogDir}}/error.log;
 
-    client_max_body_size 64m;
+{{- if .Pool.BodyMB}}
+    client_max_body_size {{.Pool.BodyMB}}m; # PHP post_max_size
+{{- end}}
 
     # Servik's additions for this site (Güvenlik): WAF mode, password
     # protected folders, blocked paths. Missing files are fine.
@@ -246,10 +248,20 @@ listen.owner = {{.WebUser}}
 listen.group = {{.WebUser}}
 listen.mode = 0660
 
-pm = ondemand
+pm = {{.Pool.PM}}
 pm.max_children = {{.MaxChildren}}
+{{- if eq .Pool.PM "dynamic"}}
+pm.start_servers = {{.Pool.StartServers}}
+pm.min_spare_servers = {{.Pool.MinSpare}}
+pm.max_spare_servers = {{.Pool.MaxSpare}}
+{{- end}}
 pm.process_idle_timeout = 30s
-pm.max_requests = 500
+pm.max_requests = {{.Pool.MaxRequests}}
+; Workers without a temporary limit (Canlı İzleme).
+; servik-max-children = {{.Pool.Base}}
+{{- if .Pool.RequestTimeout}}
+request_terminate_timeout = {{.Pool.RequestTimeout}}s
+{{- end}}
 ; Live monitoring reads the pool's status here; Nginx never passes this
 ; path, and the status socket only answers root and the web server.
 pm.status_path = /servik-fpm-status
@@ -262,6 +274,19 @@ php_admin_value[sys_temp_dir] = {{.Home}}/tmp
 php_admin_value[session.save_path] = {{.Home}}/tmp
 php_admin_value[error_log] = {{.SiteDir}}/logs/php-error.log
 php_admin_flag[log_errors] = on
+{{- if .Pool.Disable}}
+php_admin_value[disable_functions] = {{.Pool.Disable}}
+{{- end}}
+{{- if or .Pool.Values .Pool.AdminValues}}
+
+; The site's own PHP settings (PHP ve Web Sunucusu).
+{{- range .Pool.AdminValues}}
+php_admin_value[{{.Key}}] = {{.Value}}
+{{- end}}
+{{- range .Pool.Values}}
+php_value[{{.Key}}] = {{.Value}}
+{{- end}}
+{{- end}}
 `))
 
 const placeholderHTML = `<!doctype html>
@@ -322,6 +347,9 @@ type tmplData struct {
 
 	// ExtraConf is the glob of the site's extra snippets (ExtraDir).
 	ExtraConf string
+
+	// Pool holds the site's PHP-FPM pool settings (see php.go).
+	Pool pool
 }
 
 func render(t *template.Template, d tmplData) []byte {

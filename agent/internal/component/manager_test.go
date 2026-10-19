@@ -12,6 +12,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/laravel"
+	"github.com/winchester37/servik/agent/internal/php"
 	"github.com/winchester37/servik/agent/internal/site"
 )
 
@@ -506,5 +507,70 @@ func TestDatabaseServers(t *testing.T) {
 	}
 	if _, err := m.Install(context.Background(), OpSpec{ID: "mysql", Run: "d5"}); err != nil {
 		t.Errorf("MySQL after MariaDB was removed: %v", err)
+	}
+}
+
+func TestPHPDefaultsAndExtensionPackages(t *testing.T) {
+	m, sim, _ := newTest(t)
+	m.PHP = php.NewManager(sim)
+	ctx := context.Background()
+	if _, err := m.Install(ctx, OpSpec{ID: "php8.4", Run: "p"}); err != nil {
+		t.Fatal(err)
+	}
+	if ini := read(t, sim, php.IniFile("8.4")); !strings.Contains(ini, "memory_limit = 256M") || !strings.Contains(ini, "opcache.enable = 1") {
+		t.Errorf("PHP 8.4 without Servik's defaults:\n%s", ini)
+	}
+
+	if _, err := m.Extension(ctx, ExtensionSpec{Version: "8.4", Name: "imagick", Run: "e1"}); err != nil {
+		t.Fatal(err)
+	}
+	if !ran(sim, "apt-get install -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold php8.4-imagick") || !ran(sim, "systemctl reload php8.4-fpm") {
+		t.Errorf("imagick not installed: %v", sim.Commands())
+	}
+	if !exists(sim, "/etc/php/8.4/fpm/conf.d/20-imagick.ini") {
+		t.Error("imagick not switched on")
+	}
+	if log := read(t, sim, runDir+"/e1.log"); !strings.Contains(log, "✓ Kuruldu") {
+		t.Errorf("run log:\n%s", log)
+	}
+	if _, err := m.Extension(ctx, ExtensionSpec{Version: "8.4", Name: "imagick", Remove: true, Run: "e2"}); err != nil {
+		t.Fatal(err)
+	}
+	if !ran(sim, "apt-get purge -y -q php8.4-imagick") || exists(sim, "/etc/php/8.4/mods-available/imagick.ini") {
+		t.Error("imagick not removed")
+	}
+
+	// A failing check purges the package again.
+	m.Fail = func(id, step string) error {
+		if step == "extension" {
+			return errors.New("broken extension")
+		}
+		return nil
+	}
+	if _, err := m.Extension(ctx, ExtensionSpec{Version: "8.4", Name: "apcu", Run: "e3"}); err == nil {
+		t.Fatal("failed install reported success")
+	}
+	if !ran(sim, "apt-get purge -y -q php8.4-apcu") {
+		t.Error("failed extension install not rolled back")
+	}
+	m.Fail = nil
+
+	var v *ValidationError
+	for _, bad := range []ExtensionSpec{
+		{Version: "8.4", Name: "evil", Run: "e4"},
+		{Version: "8.2", Name: "apcu", Run: "e5"},
+		{Version: "8.4", Name: "apcu", Run: "bad run"},
+	} {
+		if _, err := m.Extension(ctx, bad); !errors.As(err, &v) {
+			t.Errorf("%+v: %v", bad, err)
+		}
+	}
+	// The Redis extension comes and goes with Redis.
+	if _, err := m.Install(ctx, OpSpec{ID: "redis", Run: "r"}); err != nil {
+		t.Fatal(err)
+	}
+	var inUse *InUseError
+	if _, err := m.Extension(ctx, ExtensionSpec{Version: "8.4", Name: "redis", Remove: true, Run: "e6"}); !errors.As(err, &inUse) {
+		t.Errorf("removing the Redis extension: %v", err)
 	}
 }

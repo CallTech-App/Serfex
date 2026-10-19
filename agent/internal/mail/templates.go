@@ -16,6 +16,7 @@ type tmplData struct {
 	IPv6        bool
 	VmailUID    int
 	HourlyLimit int
+	MessageSize int64
 	MilterAddr  string
 	RedisSocket string
 	Maps        string
@@ -69,7 +70,7 @@ append_dot_mydomain = no
 alias_maps =
 alias_database =
 recipient_delimiter = +
-message_size_limit = 52428800
+message_size_limit = {{.MessageSize}}
 mailbox_size_limit = 0
 disable_vrfy_command = yes
 smtpd_helo_required = yes

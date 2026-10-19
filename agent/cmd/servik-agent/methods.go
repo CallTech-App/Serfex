@@ -21,8 +21,10 @@ import (
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/monitor"
+	"github.com/winchester37/servik/agent/internal/php"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/security"
+	"github.com/winchester37/servik/agent/internal/service"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -74,6 +76,8 @@ type services struct {
 	files      *files.Manager
 	ftp        *ftp.Manager
 	security   *security.Manager
+	services   *service.Manager
+	php        *php.Manager
 	dryRun     bool
 }
 
@@ -240,6 +244,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerUpdates(srv, svc)
 	registerFiles(srv, svc)
 	registerSecurity(srv, svc)
+	registerServices(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -444,7 +449,9 @@ func mapError(err error) error {
 	var uv *update.ValidationError
 	var ftpv *ftp.ValidationError
 	var secv *security.ValidationError
-	if errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var svcv *service.ValidationError
+	var phpv *php.ValidationError
+	if errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -460,7 +467,9 @@ func mapError(err error) error {
 	var uop *update.OperationError
 	var ftpop *ftp.OperationError
 	var secop *security.OperationError
-	if errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var svcop *service.OperationError
+	var phpop *php.OperationError
+	if errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -786,5 +795,37 @@ func registerSecurity(srv *rpc.Server, svc services) {
 	})
 	handle(srv, "fail2ban.ban", func(ctx context.Context, p component.BanSpec) (any, error) {
 		return map[string]bool{"banned": true}, c.Fail2banBan(ctx, p)
+	})
+}
+
+func registerServices(srv *rpc.Server, svc services) {
+	s, p, c := svc.services, svc.php, svc.components
+	handle(srv, "service.list", func(ctx context.Context, _ struct{}) (any, error) {
+		list, err := s.List(ctx)
+		return map[string]any{"services": list}, err
+	})
+	handle(srv, "service.action", func(ctx context.Context, q service.ActionSpec) (any, error) { return s.Do(ctx, q) })
+	handle(srv, "service.logs", func(ctx context.Context, q service.LogsSpec) (any, error) { return s.Logs(ctx, q) })
+	handle(srv, "service.settings", func(ctx context.Context, q struct {
+		Unit string `json:"unit"`
+	}) (any, error) {
+		return s.Settings(ctx, q.Unit)
+	})
+	// A database server restarts with its new settings, which can take
+	// longer than a panel request waits.
+	handle(srv, "service.settings.apply", func(ctx context.Context, q service.SettingsSpec) (any, error) {
+		return s.ApplySettings(context.WithoutCancel(ctx), q)
+	})
+
+	handle(srv, "php.info", func(_ context.Context, q struct {
+		Version string `json:"version"`
+	}) (any, error) {
+		return p.Info(q.Version)
+	})
+	handle(srv, "php.settings.apply", func(ctx context.Context, q php.SettingsSpec) (any, error) { return p.Apply(ctx, q) })
+	handle(srv, "php.extension.set", func(ctx context.Context, q php.ExtensionSpec) (any, error) { return p.SetExtension(ctx, q) })
+	// Package installs outlive a panel request that gives up.
+	handle(srv, "component.extension", func(ctx context.Context, q component.ExtensionSpec) (any, error) {
+		return c.Extension(context.WithoutCancel(ctx), q)
 	})
 }

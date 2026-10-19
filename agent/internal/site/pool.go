@@ -13,8 +13,8 @@ import (
 var maxChildrenRe = regexp.MustCompile(`(?m)^pm\.max_children = \d+$`)
 
 // SetMaxChildren changes how many PHP-FPM workers a site's pool may run,
-// without touching anything else of the site; n = 0 restores
-// DefaultMaxChildren. It is how temporary limits take effect at once.
+// without touching anything else of the site; n = 0 restores the site's
+// own number (its PHP settings, or DefaultMaxChildren). It is how temporary limits take effect at once.
 // Later Apply calls keep the value MaxChildren returns.
 func (m *Manager) SetMaxChildren(ctx context.Context, domain string, n int) (err error) {
 	if err := ValidateDomain(domain); err != nil {
@@ -22,9 +22,6 @@ func (m *Manager) SetMaxChildren(ctx context.Context, domain string, n int) (err
 	}
 	if n < 0 || n > 1000 {
 		return invalid("PHP workers must be between 1 and 1000")
-	}
-	if n == 0 {
-		n = DefaultMaxChildren
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -43,10 +40,11 @@ func (m *Manager) SetMaxChildren(ctx context.Context, domain string, n int) (err
 		if old == nil {
 			continue
 		}
-		if !maxChildrenRe.Match(old) {
-			return &OperationError{fmt.Errorf("%s has no pm.max_children line", pool)}
+		conf, err := setWorkers(old, n)
+		if err != nil {
+			return &OperationError{fmt.Errorf("%s: %w", pool, err)}
 		}
-		if err := t.WriteFile(pool, maxChildrenRe.ReplaceAll(old, fmt.Appendf(nil, "pm.max_children = %d", n))); err != nil {
+		if err := t.WriteFile(pool, conf); err != nil {
 			return &OperationError{err}
 		}
 		if !t.Changed {

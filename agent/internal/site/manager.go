@@ -29,6 +29,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/tuning"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -67,6 +68,8 @@ type Spec struct {
 	// WebServer is "nginx" (the default: Nginx passes PHP to PHP-FPM) or
 	// "apache" (Nginx in front of Apache, which reads .htaccess files).
 	WebServer string `json:"web_server"`
+	// PHP holds the site's own PHP settings; nil is the server's.
+	PHP *PHPSpec `json:"php"`
 }
 
 // DefaultWebRoot is the document root of a new site.
@@ -174,13 +177,12 @@ const ExtraRoot = "/etc/servik/nginx/sites"
 // AccessLog is the Nginx access log of a site.
 func AccessLog(domain string) string { return "/var/log/servik/sites/" + domain + "/access.log" }
 
-func (m *Manager) maxChildren(domain string) int {
+// tempLimit is a site's temporary PHP worker limit, or 0.
+func (m *Manager) tempLimit(domain string) int {
 	if m.MaxChildren != nil {
-		if n := m.MaxChildren(domain); n > 0 {
-			return n
-		}
+		return max(m.MaxChildren(domain), 0)
 	}
-	return DefaultMaxChildren
+	return 0
 }
 
 // PHPVersions lists the PHP versions that have PHP-FPM installed.
@@ -283,7 +285,6 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		LogDir:       p.logDir,
 		PHPSocket:    p.socket,
 		StatusSocket: p.status,
-		MaxChildren:  m.maxChildren(spec.Domain),
 		IPv6:         m.hasIPv6(),
 		ACMERoot:     cert.Webroot,
 		Apache:       apache,
@@ -295,6 +296,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		return Result{}, err
 	}
 	webData(&data, spec)
+	poolData(&data, spec.PHP, m.tempLimit(spec.Domain))
 	if newDocroot {
 		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{public + "/index.html"}, Stdin: render(placeholderTmpl, data)})
 		if _, err := m.h.Run(ctx, index); err != nil {
@@ -323,6 +325,11 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		if err := t.WriteFile(cert.TLSConf, tlsConf); err != nil {
 			return Result{}, err
 		}
+	}
+
+	// Server-wide Nginx limits (Hizmetler) every vhost inherits.
+	if err := tuning.WriteNginx(t, tuning.Load(m.h).Nginx); err != nil {
+		return Result{}, err
 	}
 
 	if data.ProxyPort != 0 || len(data.WebSockets) > 0 {
