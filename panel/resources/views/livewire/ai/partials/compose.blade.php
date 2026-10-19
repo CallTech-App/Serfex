@@ -8,7 +8,7 @@
 @endphp
 <div @class(['border-t border-line', 'px-5 py-4' => ! $compact, 'p-3' => $compact])>
     @unless ($compact)
-        <div class="mb-3 flex gap-2 overflow-x-auto">
+        <div class="mb-3 flex flex-wrap gap-2">
             @foreach ($chips as $chip)
                 <button type="button" wire:click="$set('question', @js($chip))" @disabled($busy)
                         class="h-8 shrink-0 whitespace-nowrap rounded-full border border-line px-3 text-[13px] hover:bg-surface-2 disabled:opacity-50">{{ $chip }}</button>

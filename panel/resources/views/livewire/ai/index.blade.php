@@ -12,6 +12,18 @@
         </div>
     </div>
 
+    @if ($conversations->isNotEmpty())
+        <label class="block md:hidden">
+            <span class="sr-only">Sohbetler</span>
+            <select x-on:change="$wire.open(Number($event.target.value))" class="h-9 w-full rounded-md border border-line bg-surface px-3 text-[13px]">
+                <option value="" @selected(! $conversation)>Yeni sohbet</option>
+                @foreach ($conversations as $c)
+                    <option value="{{ $c->id }}" @selected($c->id === $conversation?->id)>{{ $c->title }}</option>
+                @endforeach
+            </select>
+        </label>
+    @endif
+
     <section class="grid min-w-0 grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface md:h-[calc(100vh-12.5rem)] md:min-h-[560px] md:grid-cols-[240px_1fr]">
         <nav class="hidden min-h-0 flex-col border-r border-line md:flex" aria-label="Sohbetler">
             <p class="flex h-11 items-center border-b border-line px-4 text-2xs font-medium tracking-[.06em] text-muted uppercase">Sohbetler</p>

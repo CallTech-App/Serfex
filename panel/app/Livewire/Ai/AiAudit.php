@@ -41,7 +41,7 @@ class AiAudit extends Component
                 ->when($type === 'changes', fn ($q) => $q->where('type', '!=', 'read'))
                 ->when($type !== '' && $type !== 'changes', fn ($q) => $q->where('type', $type))
                 ->when($search !== '', fn ($q) => $q->where('summary', 'ilike', '%'.addcslashes($search, '%_\\').'%'))
-                ->latest('id')
+                ->latest('created_at')->latest('id')
                 ->paginate(50),
         ]);
     }
