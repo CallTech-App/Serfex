@@ -20,6 +20,10 @@ type maps struct {
 	dkim []byte
 }
 
+// suspendedHash stands in for a suspended mailbox's password: a crypt
+// hash no password can match.
+const suspendedHash = "{CRYPT}*"
+
 func mapHeader(what string) string {
 	return "# " + txn.Marker + ". Manual changes are overwritten.\n# " + what + "\n"
 }
@@ -80,9 +84,12 @@ func buildMaps(domains []DomainSpec) maps {
 			fmt.Fprintf(&senders, "%s %s\n", addr, addr)
 
 			fields := []string{}
+			hash := b.PasswordHash
 			if d.Suspended {
-				// A password that matches still does not let anyone in:
-				// IMAP, POP3 and SMTP logins all fail.
+				// No password matches while suspended, so IMAP, POP3 and
+				// SMTP AUTH all fail (nologin alone only stops the IMAP and
+				// POP3 login processes). Lifting it writes the hash back.
+				hash = suspendedHash
 				fields = append(fields, "nologin=y")
 			}
 			if b.QuotaMB > 0 {
@@ -105,7 +112,7 @@ func buildMaps(domains []DomainSpec) maps {
 			case d.SpamFilter:
 				fields = append(fields, "userdb_sieve_before="+spamSieve)
 			}
-			fmt.Fprintf(&users, "%s:%s::::::%s\n", addr, b.PasswordHash, strings.Join(fields, " "))
+			fmt.Fprintf(&users, "%s:%s::::::%s\n", addr, hash, strings.Join(fields, " "))
 		}
 		for _, a := range d.Aliases {
 			fmt.Fprintf(&aliases, "%s %s\n", d.address(a.Name), strings.Join(a.To, ", "))

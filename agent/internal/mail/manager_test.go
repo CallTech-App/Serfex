@@ -248,7 +248,7 @@ func TestSuspendedDomain(t *testing.T) {
 	contains(t, "suspended", read(t, sim, postfixMaps+"/suspended"), "example.com 450 4.2.1 Mailbox temporarily unavailable\n")
 	// The mailboxes stay (mail kept, nothing bounces) but cannot sign in.
 	contains(t, "mailboxes", read(t, sim, postfixMaps+"/mailboxes"), "info@example.com example.com/info/\n")
-	contains(t, "users", read(t, sim, dovecotUsers), "info@example.com:"+hash+"::::::nologin=y userdb_quota_rule=*:storage=1024M")
+	contains(t, "users", read(t, sim, dovecotUsers), "info@example.com:{CRYPT}*::::::nologin=y userdb_quota_rule=*:storage=1024M")
 
 	spec.Suspended = false
 	if _, err := m.ApplyDomain(ctx, spec); err != nil {
