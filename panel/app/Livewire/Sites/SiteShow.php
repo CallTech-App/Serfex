@@ -10,7 +10,11 @@ use App\Models\Database;
 use App\Models\DnsZone;
 use App\Models\FtpAccount;
 use App\Models\MailDomain;
+use App\Models\ProtectedDirectory;
+use App\Models\SecurityFinding;
+use App\Models\SecurityScan;
 use App\Models\Site;
+use App\Services\Components\Components;
 use App\Services\Mail\MailSettings;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -106,6 +110,10 @@ class SiteShow extends Component
             'ftpAccounts' => FtpAccount::where('site_id', $site->id)->count(),
             'mail' => MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
             'webmail' => app(MailSettings::class)->webmailUrl(),
+            'wafInstalled' => app(Components::class)->isInstalled('modsecurity'),
+            'openFindings' => SecurityFinding::open()->where('site_id', $site->id)->count(),
+            'scanned' => SecurityScan::where(fn ($q) => $q->where('site_id', $site->id)->orWhere('scope', 'server'))->whereNotNull('finished_at')->exists(),
+            'protectedDirs' => ProtectedDirectory::where('site_id', $site->id)->count(),
         ])->title($site->domain.' · Servik');
     }
 

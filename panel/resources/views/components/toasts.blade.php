@@ -27,7 +27,7 @@
     <template x-for="t in toasts" :key="t.id">
         <div class="pointer-events-auto flex max-w-md items-center gap-3 rounded-lg bg-fg px-4 py-2.5 text-[13.5px] text-bg shadow-lg">
             <span x-text="t.message"></span>
-            <button type="button" x-show="t.undo" @click="undo(t)" class="ml-2 font-medium text-accent-soft hover:underline">Geri al</button>
+            <button type="button" x-show="t.undo" @click="undo(t)" class="ml-2 shrink-0 font-medium whitespace-nowrap text-accent-soft hover:underline">Geri al</button>
         </div>
     </template>
 </div>

@@ -19,8 +19,8 @@ use Illuminate\Notifications\Notifiable;
  * Laravel applications they were added to, with the role they were given
  * there.
  */
-#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at'])]
-#[Hidden(['password', 'remember_token', 'invite_token'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at'])]
+#[Hidden(['password', 'remember_token', 'invite_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -47,6 +47,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'invited_at' => 'datetime',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
@@ -141,6 +144,15 @@ class User extends Authenticatable
         $package = $app->site?->customer()?->package;
 
         return $package === null || $package->allows($feature);
+    }
+
+    /**
+     * True once the account confirmed an authenticator app: signing in
+     * then asks for its code too.
+     */
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && $this->two_factor_secret !== null;
     }
 
     /**

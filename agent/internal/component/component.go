@@ -113,6 +113,8 @@ type Manager struct {
 	// makes the step fail (tests and the real-host test's rollback check).
 	Fail func(id, step string) error
 	now  func() time.Time
+	// demo holds a dry run's Fail2ban bans.
+	demo map[string][]string
 }
 
 // NewManager returns a Manager. On a simulator, versions are invented and

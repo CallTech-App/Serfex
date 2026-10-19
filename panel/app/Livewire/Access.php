@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Attributes\ForCustomers;
+use App\Livewire\Attributes\ForEveryAccount;
 use App\Livewire\Laravel\GuardsAppCalls;
 use App\Models\LaravelApp;
 use App\Models\User;
@@ -16,7 +17,8 @@ use ReflectionClass;
  * - administrators may use everything;
  * - customers may use components marked #[ForCustomers] whose feature
  *   their package has, and the Laravel pages when it has the toolkit;
- * - other accounts (Laravel team members) only the Laravel pages.
+ * - other accounts (Laravel team members) only the Laravel pages;
+ * - everyone the components marked #[ForEveryAccount] (their own account).
  *
  * On a Laravel application's page every call is also checked against the
  * caller's role on that application.
@@ -49,7 +51,7 @@ final class Access
      */
     public static function allows(User $user, string $class, ?string $method = null): bool
     {
-        if ($user->is_admin) {
+        if ($user->is_admin || (new ReflectionClass($class))->getAttributes(ForEveryAccount::class) !== []) {
             return true;
         }
         $laravel = str_starts_with($class, 'App\\Livewire\\Laravel\\');

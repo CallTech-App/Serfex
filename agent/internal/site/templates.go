@@ -99,6 +99,10 @@ server {
     error_log {{.LogDir}}/error.log;
 
     client_max_body_size 64m;
+
+    # Servik's additions for this site (Güvenlik): WAF mode, password
+    # protected folders, blocked paths. Missing files are fine.
+    include {{.ExtraConf}};
 {{template "acme" .}}
 {{- if .Suspended}}
 
@@ -315,6 +319,9 @@ type tmplData struct {
 	// Suspended serves only the suspension page.
 	Suspended     bool
 	SuspendedRoot string
+
+	// ExtraConf is the glob of the site's extra snippets (ExtraDir).
+	ExtraConf string
 }
 
 func render(t *template.Template, d tmplData) []byte {

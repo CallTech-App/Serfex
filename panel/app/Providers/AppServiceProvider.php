@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureHostingAccess;
+use App\Http\Middleware\EnsureTwoFactor;
 use App\Livewire\Access;
 use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
@@ -53,6 +54,6 @@ class AppServiceProvider extends ServiceProvider
         on('mount', fn (Component $component) => Access::authorize($component, null));
         // Updates of an open page pass the same checks as loading it: a
         // suspended customer's open tab stops working too.
-        Livewire::addPersistentMiddleware([EnsureActiveAccount::class, EnsureHostingAccess::class, EnsureAdmin::class]);
+        Livewire::addPersistentMiddleware([EnsureActiveAccount::class, EnsureTwoFactor::class, EnsureHostingAccess::class, EnsureAdmin::class]);
     }
 }

@@ -15,6 +15,8 @@ use App\Http\Controllers\Sites\SiteFileController;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureHostingAccess;
+use App\Http\Middleware\EnsureTwoFactor;
+use App\Livewire\Account\AccountSecurity;
 use App\Livewire\Ai\AiAssistant;
 use App\Livewire\Ai\AiAudit;
 use App\Livewire\Ai\AiSettingsPage;
@@ -34,12 +36,16 @@ use App\Livewire\Mail\MailDomainShow;
 use App\Livewire\Mail\MailIndex;
 use App\Livewire\Mail\MailSettingsPage;
 use App\Livewire\Monitor\LiveMonitor;
+use App\Livewire\Security\SecurityIndex;
 use App\Livewire\Settings\UpdatesPage;
 use App\Livewire\Sites\SiteFiles;
 use App\Livewire\Sites\SiteFtp;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SitePhp;
+use App\Livewire\Sites\SiteProtect;
+use App\Livewire\Sites\SiteScan;
 use App\Livewire\Sites\SiteShow;
+use App\Livewire\Sites\SiteWaf;
 use App\Livewire\Ssl\SiteSsl;
 use App\Livewire\Ssl\SslIndex;
 use App\Livewire\Ssl\SslSettingsPage;
@@ -54,11 +60,14 @@ Route::post('/davet/{token}', [InvitationController::class, 'store'])->where('to
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store']);
+    Route::get('/login/dogrulama', [LoginController::class, 'challenge'])->name('login.two-factor');
+    Route::post('/login/dogrulama', [LoginController::class, 'verify'])->middleware('throttle:20,1');
 });
 
-Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::post('/yoneticiye-don', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
+    Route::livewire('/hesap/guvenlik', AccountSecurity::class)->name('account.security');
 
     // Laravel pages are also for members of applications; each page
     // checks the account's role on the application.
@@ -79,6 +88,9 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         Route::post('/sites/{site}/dosyalar/kaydet', [SiteFileController::class, 'save'])->whereNumber('site')->name('sites.files.save');
         Route::post('/sites/{site}/dosyalar/yukle', [SiteFileController::class, 'upload'])->whereNumber('site')->name('sites.files.upload');
         Route::livewire('/sites/{site}/ftp', SiteFtp::class)->whereNumber('site')->name('sites.ftp');
+        Route::livewire('/sites/{site}/waf', SiteWaf::class)->whereNumber('site')->name('sites.waf');
+        Route::livewire('/sites/{site}/tarama', SiteScan::class)->whereNumber('site')->name('sites.scan');
+        Route::livewire('/sites/{site}/korumali-klasorler', SiteProtect::class)->whereNumber('site')->name('sites.protect');
         Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
         Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
         Route::livewire('/mail', MailIndex::class)->name('mail.index');
@@ -94,6 +106,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
 
     Route::middleware(EnsureAdmin::class)->group(function () {
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
+        Route::livewire('/guvenlik', SecurityIndex::class)->name('security.index');
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
         Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
         Route::livewire('/ai/kayit', AiAudit::class)->name('ai.audit');

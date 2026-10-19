@@ -106,6 +106,9 @@ const (
 	MaxExtractEntries = 200000
 	// TrashDays is how long deleted entries stay in the trash.
 	TrashDays = 7
+	// QuarantineDays is how long files the security scan quarantined
+	// stay in the trash.
+	QuarantineDays = 30
 	// uploadPrefix names unfinished uploads; listings hide them.
 	uploadPrefix = ".servik-upload-"
 	// searchTime bounds a search.
@@ -225,6 +228,8 @@ func Execute(req Request, prefix string) (any, error) {
 		return s.copy()
 	case "delete":
 		return s.delete()
+	case "quarantine":
+		return s.quarantine()
 	case "chmod":
 		return s.chmod()
 	case "compress":
@@ -246,7 +251,7 @@ func Execute(req Request, prefix string) (any, error) {
 }
 
 // Ops are the operations Execute knows.
-var Ops = []string{"list", "read", "text", "save", "upload", "mkdir", "create", "rename", "move", "copy", "delete", "chmod", "compress", "extract", "search", "trash.list", "trash.restore", "trash.delete", "trash.purge"}
+var Ops = []string{"list", "read", "text", "save", "upload", "mkdir", "create", "rename", "move", "copy", "delete", "quarantine", "chmod", "compress", "extract", "search", "trash.list", "trash.restore", "trash.delete", "trash.purge"}
 
 // clean checks a relative path from the panel and returns it cleaned:
 // "" for the root, otherwise "a/b". ".." can never climb out.
@@ -865,6 +870,26 @@ func (s *session) delete() (any, error) {
 			return map[string]any{"ids": ids}, err
 		}
 		id, err := s.toTrash(rel, abs, "deleted")
+		if err != nil {
+			return map[string]any{"ids": ids}, err
+		}
+		ids = append(ids, id)
+	}
+	s.purge(TrashDays)
+	return map[string]any{"ids": ids}, nil
+}
+
+// quarantine moves files the security scan found into the trash, where
+// nobody can run or fetch them, for QuarantineDays. A file loses all its
+// permissions there; restoring gives them back.
+func (s *session) quarantine() (any, error) {
+	ids := []string{}
+	for _, p := range s.req.Paths {
+		rel, abs, err := s.entry(p)
+		if err != nil {
+			return map[string]any{"ids": ids}, err
+		}
+		id, err := s.toTrash(rel, abs, "quarantined")
 		if err != nil {
 			return map[string]any{"ids": ids}, err
 		}

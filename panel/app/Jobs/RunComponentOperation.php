@@ -7,6 +7,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
 use App\Services\Databases\DatabaseServers;
+use App\Services\Security\Waf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -47,6 +48,11 @@ class RunComponentOperation implements ShouldQueue
         }
         $op->update(['status' => 'succeeded', 'error' => null, 'finished_at' => now()]);
         $this->refresh($components, $databases, $database);
+        // Removing ModSecurity took the sites' own WAF settings off the
+        // server; a new install brings them back.
+        if ($op->component === 'modsecurity' && $op->action === 'install') {
+            app(Waf::class)->syncAll();
+        }
     }
 
     public function failed(?\Throwable $e): void

@@ -56,8 +56,15 @@
         ])],
         ['Güvenlik', 'shield', [
             ['shield-check', 'SSL sertifikası', $ssl->label(), route('sites.ssl', $site)],
-            ['folder-lock', 'Parola korumalı dizinler', null],
-            ['scan-search', 'Kötü amaçlı yazılım taraması', null],
+            ...($missing('security') ? [
+                ['shield', 'WAF', $missing('security')],
+                ['scan-search', 'Güvenlik taraması', $missing('security')],
+                ['folder-lock', 'Parola korumalı klasörler', $missing('security')],
+            ] : [
+                ['shield', 'WAF', ! $wafInstalled ? 'Kurulu değil' : ($site->waf_mode ? \App\Services\Security\Waf::MODES[$site->waf_mode] : 'Sunucu ayarı'), route('sites.waf', $site)],
+                ['scan-search', 'Güvenlik taraması', $openFindings ? $openFindings.' açık bulgu' : ($scanned ? 'Sorun yok' : 'Taranmadı'), route('sites.scan', $site)],
+                ['folder-lock', 'Parola korumalı klasörler', $protectedDirs ? $protectedDirs.' klasör' : 'Yok', route('sites.protect', $site)],
+            ]),
         ]],
     ];
 @endphp

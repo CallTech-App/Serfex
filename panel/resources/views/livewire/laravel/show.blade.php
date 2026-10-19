@@ -167,7 +167,7 @@
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('removing', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">Vazgeç</button>
-                <button type="submit" class="h-9 rounded-md bg-crit px-3.5 text-[13.5px] font-medium text-white hover:brightness-110">Kaldır</button>
+                <button type="submit" class="h-9 rounded-md bg-crit px-3.5 text-[13.5px] font-medium text-on-crit hover:brightness-110">Kaldır</button>
             </div>
         </form>
     </x-modal>

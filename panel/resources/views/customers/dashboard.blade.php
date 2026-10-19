@@ -3,6 +3,8 @@
     $user = auth()->user();
     $worst = Quotas::worst($report);
     $sslAttention = \App\Models\Certificate::attentionCount($user);
+    $securityAttention = $user->allows('security') ? \App\Services\Security\Scans::attentionCount($user) : 0;
+    $securitySite = $securityAttention ? \App\Models\SecurityFinding::open()->visibleTo($user)->whereIn('severity', ['critical', 'high'])->value('site_id') : null;
     $rows = array_filter([
         ['sites.index', [], 'globe', 'Siteler', $report['sites']['used'].' site'],
         $user->allows('mail') ? ['mail.index', [], 'mail', 'E-posta', $report['mailboxes']['used'].' posta kutusu'] : null,
@@ -56,5 +58,21 @@
             </span>
             <x-icon name="chevron-right" class="text-muted" />
         </a>
+        @if ($securityAttention)
+            <a href="{{ route('sites.scan', $securitySite) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+                <x-icon name="shield-alert" class="text-crit" />
+                <span>Güvenlik</span>
+                <span class="num ml-auto text-right font-medium text-crit">{{ $securityAttention }} ciddi güvenlik bulgusu var</span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+        @endif
+        @if (! $user->hasTwoFactor())
+            <a href="{{ route('account.security') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+                <x-icon name="key-round" class="text-info" />
+                <span>Hesabınız</span>
+                <span class="num ml-auto truncate text-right font-medium text-info">İki adımlı doğrulama kapalı; açmanızı öneririz</span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+        @endif
     </section>
 </x-layouts.app>

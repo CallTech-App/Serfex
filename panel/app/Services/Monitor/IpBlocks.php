@@ -91,9 +91,36 @@ class IpBlocks
     public function unblock(IpBlock $block): void
     {
         if ($block->isActive()) {
-            $this->agent->call('firewall.unblock', ['address' => $block->address], config('servik.agent.job_timeout'));
+            // Fail2ban's bans live in Fail2ban's own table.
+            $block->source === 'fail2ban'
+                ? $this->agent->call('fail2ban.unban', ['jail' => (string) $block->kind, 'address' => $block->address], config('servik.agent.job_timeout'))
+                : $this->agent->call('firewall.unblock', ['address' => $block->address], config('servik.agent.job_timeout'));
         }
         $block->update(['removed_at' => $block->removed_at ?? now()]);
+    }
+
+    /**
+     * Undoes unblock(): the block comes back until it would have ended.
+     * Returns null when its time is already over.
+     *
+     * @throws MonitorException
+     * @throws AgentException
+     */
+    public function reblock(IpBlock $block): ?IpBlock
+    {
+        if ($block->isActive() || ($block->expires_at !== null && $block->expires_at->isPast())) {
+            return null;
+        }
+        if ($block->source === 'fail2ban') {
+            $this->agent->call('fail2ban.ban', ['jail' => (string) $block->kind, 'address' => $block->address], config('servik.agent.job_timeout'));
+            $block->update(['removed_at' => null]);
+
+            return $block;
+        }
+        $minutes = $block->expires_at ? max(1, (int) ceil(now()->diffInSeconds($block->expires_at) / 60)) : null;
+
+        return $this->block($block->address, $minutes, (string) $block->reason, $block->site, $block->kind, $block->user,
+            $block->source === 'ai' ? 'panel' : $block->source);
     }
 
     /**

@@ -163,6 +163,14 @@ func PHPSocket(domain string) string { return "/run/php/servik-" + domain + ".so
 // StatusSocket is where a site's PHP-FPM pool answers status requests.
 func StatusSocket(domain string) string { return "/run/php/servik-" + domain + ".status.sock" }
 
+// ExtraDir holds a site's Nginx snippets written by other parts of the
+// agent (package security): WAF mode, protected folders, blocked paths.
+// Every *.conf in it is included in the site's server block.
+func ExtraDir(domain string) string { return ExtraRoot + "/" + domain }
+
+// ExtraRoot holds every site's ExtraDir.
+const ExtraRoot = "/etc/servik/nginx/sites"
+
 // AccessLog is the Nginx access log of a site.
 func AccessLog(domain string) string { return "/var/log/servik/sites/" + domain + "/access.log" }
 
@@ -281,6 +289,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		Apache:       apache,
 		ApachePort:   ApachePort,
 		Aliases:      spec.Aliases,
+		ExtraConf:    ExtraDir(spec.Domain) + "/*.conf",
 	}
 	if err := m.tlsData(&data, spec.TLS); err != nil {
 		return Result{}, err
@@ -490,6 +499,9 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		}
 	}
 	// From here on nothing serves the site, so file removal is final.
+	if err := os.RemoveAll(m.h.Path(ExtraDir(spec.Domain))); err != nil {
+		return res, &OperationError{err}
+	}
 
 	u, err := m.h.LookupUser(spec.User)
 	userExists := err == nil

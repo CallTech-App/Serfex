@@ -275,13 +275,35 @@ class LiveMonitor extends Component
         foreach (IpBlock::whereKey(array_map('intval', $ids))->get() as $b) {
             try {
                 $blocks->unblock($b);
-                $done[] = $b->address;
+                $done[$b->id] = $b->address;
             } catch (AgentException $e) {
                 $this->actionError = self::agentMessage($e);
             }
         }
         if ($done !== []) {
-            $this->dispatch('toast', message: count($done) === 1 ? "{$done[0]} engeli kaldırıldı." : count($done).' adresin engeli kaldırıldı.');
+            $this->dispatch('toast',
+                message: count($done) === 1 ? reset($done).' engeli kaldırıldı.' : count($done).' adresin engeli kaldırıldı.',
+                source: $this->getId(),
+                undo: ['method' => 'reblockMany', 'args' => [array_keys($done)]],
+            );
+        }
+    }
+
+    /**
+     * Undoes unblockMany(): each block comes back for the time it had left.
+     *
+     * @param  list<int>  $ids
+     */
+    public function reblockMany(array $ids, IpBlocks $blocks): void
+    {
+        foreach (IpBlock::whereKey(array_map('intval', $ids))->get() as $b) {
+            try {
+                $blocks->reblock($b);
+            } catch (MonitorException $e) {
+                $this->actionError = $e->getMessage();
+            } catch (AgentException $e) {
+                $this->actionError = self::agentMessage($e);
+            }
         }
     }
 

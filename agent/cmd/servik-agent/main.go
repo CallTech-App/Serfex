@@ -39,6 +39,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/monitor"
 	"github.com/winchester37/servik/agent/internal/rpc"
+	"github.com/winchester37/servik/agent/internal/security"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -128,6 +129,8 @@ func main() {
 	}
 	svc.files = files.NewManager(h, exe)
 	svc.ftp = ftp.NewManager(h)
+	svc.security = security.NewManager(h, svc.files)
+	svc.security.WebUser = *webUser
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
@@ -247,9 +250,13 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	srv := rpc.NewServer(log)
 	registerMethods(srv, svc)
 
-	// Blocks come back after a reboot; monitoring runs while the agent does.
+	// Blocks and the port filter come back after a reboot; monitoring runs
+	// while the agent does.
 	if err := svc.firewall.Restore(ctx); err != nil {
 		log.Error("restoring IP blocks", "err", err)
+	}
+	if err := svc.firewall.RestoreRules(ctx); err != nil {
+		log.Error("restoring the port filter", "err", err)
 	}
 	go svc.monitor.Run(ctx)
 	go svc.databases.Run(ctx)
