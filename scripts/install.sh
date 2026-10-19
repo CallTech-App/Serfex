@@ -100,7 +100,8 @@ releases=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$SOURCE/releases
 # GitHub lists the newest first.
 pick='[.[] | select(.draft | not) | select($ch == "beta" or (.prerelease | not))
 	| select($v == "" or .tag_name == ("v" + $v) or .tag_name == $v)
-	| select(any(.assets[]; .name == ("servik-" + (.tag_name | ltrimstr("v")) + "-linux-" + $arch + ".tar.gz")))][0]'
+	| (.tag_name | ltrimstr("v")) as $tv
+	| select(any(.assets[]; .name == ("servik-" + $tv + "-linux-" + $arch + ".tar.gz")))][0]'
 release=$(jq -c --arg ch "$CHANNEL" --arg v "$VERSION" --arg arch "$ARCH" "$pick" <<< "$releases")
 [ "$release" != null ] || die "No ${VERSION:+$VERSION }release for linux-$ARCH on the $CHANNEL channel at $SOURCE."
 VERSION=$(jq -r '.tag_name | ltrimstr("v")' <<< "$release")
