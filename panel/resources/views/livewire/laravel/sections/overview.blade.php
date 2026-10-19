@@ -84,7 +84,7 @@
                         <dd class="{{ ($about['debug'] ?? false) ? 'text-crit' : '' }}">{{ ($about['debug'] ?? false) ? 'Açık, ziyaretçiler hata ayrıntısını görür' : 'Kapalı' }}</dd></div>
                     <div class="{{ $row }}"><dt class="text-muted">Veritabanı</dt><dd class="font-mono">{{ $about['database'] ?? '—' }}@if ($app->database)
                         · @if (auth()->user()->is_admin || auth()->user()->isCustomer())<a href="{{ route('databases.show', $app->database) }}" wire:navigate class="text-accent hover:underline">{{ $app->database->name }}</a>@else{{ $app->database->name }}@endif
-                        <span class="font-sans text-muted">({{ \App\Support\Bytes::format($app->database->size_bytes) }})</span>@endif</dd></div>
+                        @if ($app->database->measured_at)<span class="font-sans text-muted">({{ \App\Support\Bytes::format($app->database->size_bytes) }})</span>@endif @endif</dd></div>
                     <div class="{{ $row }}"><dt class="text-muted">Önbellek / oturum</dt><dd class="font-mono">{{ $about['cache'] ?? '—' }} / {{ $about['session'] ?? '—' }}</dd></div>
                     <div class="{{ $row }}"><dt class="text-muted">Kuyruk bağlantısı</dt><dd class="font-mono">{{ $about['queue'] ?? '—' }}</dd></div>
                 </dl>

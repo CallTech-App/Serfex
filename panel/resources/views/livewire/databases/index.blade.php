@@ -65,16 +65,16 @@
 
             @if ($tab === 'veritabanlari')
                 <div class="relative overflow-x-auto">
-                    <table class="w-full min-w-[720px] text-[13.5px]">
+                    <table class="w-full text-[13.5px] sm:min-w-[720px]">
                         <thead>
                             <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
                                 <th class="py-2.5 pr-3 pl-5 font-medium">Ad</th>
-                                <th class="px-3 py-2.5 font-medium">Site</th>
+                                <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Site</th>
                                 @if (count($installed) > 1)
-                                    <th class="px-3 py-2.5 font-medium">Sunucu</th>
+                                    <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Sunucu</th>
                                 @endif
                                 <th class="px-3 py-2.5 text-right font-medium">Boyut</th>
-                                <th class="px-3 py-2.5 font-medium">Kullanıcılar</th>
+                                <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Kullanıcılar</th>
                                 <th class="py-2.5 pr-5 pl-3"></th>
                             </tr>
                         </thead>
@@ -83,16 +83,17 @@
                                 <tr wire:key="db-{{ $db->id }}" class="hover:bg-surface-2/60">
                                     <td class="py-3 pr-3 pl-5 font-mono text-[13px] font-medium">
                                         <a href="{{ route('databases.show', $db) }}" wire:navigate class="hover:text-accent">{{ $db->name }}</a>
+                                        <span class="mt-0.5 block font-normal text-[12.5px] text-muted sm:hidden">{{ $db->site?->domain ?? '—' }}</span>
                                     </td>
-                                    <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap text-muted">{{ $db->site?->domain ?? '—' }}</td>
+                                    <td class="hidden px-3 py-3 font-mono text-[13px] whitespace-nowrap text-muted sm:table-cell">{{ $db->site?->domain ?? '—' }}</td>
                                     @if (count($installed) > 1)
-                                        <td class="px-3 py-3 whitespace-nowrap text-muted">{{ $labels[$db->server] ?? $db->serverLabel() }}</td>
+                                        <td class="hidden px-3 py-3 whitespace-nowrap text-muted sm:table-cell">{{ $labels[$db->server] ?? $db->serverLabel() }}</td>
                                     @endif
                                     <td class="num px-3 py-3 text-right whitespace-nowrap">{{ $db->measured_at ? Bytes::format($db->size_bytes) : '—' }}</td>
-                                    <td class="px-3 py-3 font-mono text-[12.5px] text-muted">{{ $db->users->pluck('name')->join(', ') ?: '—' }}</td>
+                                    <td class="hidden px-3 py-3 font-mono text-[12.5px] text-muted sm:table-cell">{{ $db->users->pluck('name')->join(', ') ?: '—' }}</td>
                                     <td class="py-3 pr-5 pl-3 text-right">
-                                        <a href="{{ route('databases.manager', $db) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-[13px] whitespace-nowrap text-accent hover:underline">
-                                            {{ $db->managerLabel() }}<x-icon name="external-link" class="size-3.5" />
+                                        <a href="{{ route('databases.manager', $db) }}" target="_blank" rel="noopener" aria-label="{{ $db->managerLabel() }}" class="inline-flex items-center gap-1.5 text-[13px] whitespace-nowrap text-accent hover:underline">
+                                            <span class="hidden sm:inline">{{ $db->managerLabel() }}</span><x-icon name="external-link" class="size-3.5" />
                                         </a>
                                     </td>
                                 </tr>
@@ -113,7 +114,7 @@
                 </div>
                 @if ($databases->total() > 0)
                     <div class="num flex items-center gap-3 border-t border-line px-5 py-3 text-2xs text-muted">
-                        <span>{{ $total }} veritabanı · toplam {{ Bytes::format($totalSize) }}@if ($versions) · {{ implode(' · ', $versions) }}@endif</span>
+                        <span>{{ $total }}@if ($limit !== null) / {{ $limit }}@endif veritabanı · toplam {{ Bytes::format($totalSize) }}@if ($versions) · {{ implode(' · ', $versions) }}@endif</span>
                         @if ($databases->hasPages())
                             <span class="ml-auto flex items-center gap-1">
                                 <button type="button" wire:click="previousPage('vt')" @disabled($databases->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Önceki</button>

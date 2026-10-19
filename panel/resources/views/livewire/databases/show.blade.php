@@ -116,7 +116,7 @@
                         <tr wire:key="u-{{ $u->id }}">
                             <td class="py-3 pr-3 pl-5 font-mono text-[13px] font-medium">{{ $u->name }}</td>
                             <td class="px-3 py-2">
-                                <select aria-label="{{ $u->name }} yetkisi" wire:change="setAccess({{ $u->id }}, $event.target.value)" @disabled($deleted) class="h-8 rounded-md border border-line bg-surface px-2 text-[13px]">
+                                <select aria-label="{{ $u->name }} yetkisi" wire:change="setAccess({{ $u->id }}, $event.target.value)" @disabled($deleted) class="h-8 rounded-md border border-line bg-surface px-2 text-[13px] disabled:opacity-40">
                                     @foreach (DatabaseUser::ACCESS as $key => [$label])
                                         <option value="{{ $key }}" @selected($u->pivot->access === $key)>{{ $label }}</option>
                                     @endforeach

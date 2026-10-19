@@ -211,6 +211,8 @@ class DatabaseIndex extends Component
             'users' => $users,
             'total' => (clone $all)->count(),
             'totalSize' => (int) (clone $all)->sum('size_bytes'),
+            // A customer sees how many more their package allows.
+            'limit' => $this->siteId === 0 ? $user->customer?->package?->max_databases : null,
             'sites' => $this->sites(),
             'filterSite' => $this->siteId !== 0 ? Site::find($this->siteId) : null,
             'installed' => $servers->installed(),
