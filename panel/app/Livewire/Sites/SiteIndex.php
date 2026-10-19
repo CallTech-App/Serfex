@@ -7,6 +7,7 @@ use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
 use App\Livewire\Attributes\ForCustomers;
 use App\Models\Customer;
+use App\Models\DnsZone;
 use App\Models\Site;
 use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
@@ -176,6 +177,11 @@ class SiteIndex extends Component
             return;
         }
         $owner = $customer ?? $account?->customer;
+        if (auth()->user()->isCustomer() && $this->takenByOthers($owner)) {
+            $this->addError('domain', 'Bu alan adı ya da üst alan adı başka bir hesaba ait.');
+
+            return;
+        }
         if ($refusal = $quotas->refusal($owner, 'sites')) {
             $this->agentError = $refusal;
 
@@ -213,6 +219,22 @@ class SiteIndex extends Component
             source: $this->getId(),
             undo: ['method' => 'undoCreate', 'args' => [$site->id]],
         );
+    }
+
+    /**
+     * True when the domain, or a domain above it, has a DNS zone that is
+     * not the customer's: their site would then live in someone else's zone.
+     */
+    private function takenByOthers(Customer $customer): bool
+    {
+        $labels = explode('.', $this->domain);
+        $names = [];
+        for ($i = 0; $i < count($labels) - 1; $i++) {
+            $names[] = implode('.', array_slice($labels, $i));
+        }
+
+        return DnsZone::with('site.systemUser')->whereIn('name', $names)->get()
+            ->contains(fn (DnsZone $zone) => $zone->site === null || ! $customer->owns($zone->site));
     }
 
     /**
