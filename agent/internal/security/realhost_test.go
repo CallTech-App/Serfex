@@ -320,6 +320,10 @@ func writeAs(t *testing.T, h host.Host, user, path, content string) {
 
 // expect fetches path until Nginx (reloaded asynchronously) answers code
 // with a body containing want; auth is "user:password".
+// fresh opens a new connection for every request: after a reload, a kept
+// connection can still reach an old Nginx worker with the old settings.
+var fresh = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+
 func expect(t *testing.T, path, auth string, code int, want string) {
 	t.Helper()
 	var got int
@@ -331,7 +335,7 @@ func expect(t *testing.T, path, auth string, code int, want string) {
 			name, pw, _ := strings.Cut(auth, ":")
 			req.SetBasicAuth(name, pw)
 		}
-		if resp, err := http.DefaultClient.Do(req); err == nil {
+		if resp, err := fresh.Do(req); err == nil {
 			b, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			got, body = resp.StatusCode, string(b)
@@ -345,10 +349,18 @@ func expect(t *testing.T, path, auth string, code int, want string) {
 	t.Fatalf("GET %s: %d %q, want %d with %q", u, got, body, code, want)
 }
 
+// waitEvent sends the attack until the audit log shows a matching event: a
+// request that lands right after a reload may still meet the old rules.
 func waitEvent(t *testing.T, m *Manager, ok func(Event) bool) Event {
 	t.Helper()
 	var last Events
 	for i := 0; i < 40; i++ {
+		req, _ := http.NewRequest("GET", "http://127.0.0.1"+attack, nil)
+		req.Host = rhDomain
+		if resp, err := fresh.Do(req); err == nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
 		last, _ = m.WAFEvents(EventsSpec{Hosts: []string{rhDomain}})
 		for _, e := range last.Events {
 			if ok(e) {

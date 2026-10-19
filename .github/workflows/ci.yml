@@ -397,6 +397,7 @@ jobs:
       - name: Logs
         if: failure()
         run: |
+          sudo ls -la /var/log/servik/modsecurity/ || true
           sudo tail -n 20 /var/log/servik/modsecurity/audit.log || true
           sudo ls -la /etc/servik/nginx/sites/*/ || true
           sudo nft list ruleset || true
