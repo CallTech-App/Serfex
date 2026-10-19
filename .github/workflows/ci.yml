@@ -345,15 +345,24 @@ jobs:
           sudo apt-get install -y -qq nginx php8.3-fpm openssh-server
           sudo systemctl start nginx php8.3-fpm ssh
 
-      - name: Start MinIO
+      # MinIO no longer publishes images on Docker Hub; its archived
+      # release binary is used, and moto's S3 server if that is gone too.
+      - name: Start S3-compatible storage
         run: |
-          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=servik -e MINIO_ROOT_PASSWORD=servik-minio-secret \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/minio/health/live && exit 0; sleep 1; done
-          docker logs minio; exit 1
+          if curl -fsSL -o /tmp/minio https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2025-04-22T22-12-26Z; then
+            chmod +x /tmp/minio && mkdir -p /tmp/minio-data
+            MINIO_ROOT_USER=servik MINIO_ROOT_PASSWORD=servik-minio-secret nohup /tmp/minio server /tmp/minio-data --address 127.0.0.1:9000 > /tmp/s3.log 2>&1 &
+            url=http://127.0.0.1:9000/minio/health/live
+          else
+            pipx install -q 'moto[server]'
+            nohup moto_server -H 127.0.0.1 -p 9000 > /tmp/s3.log 2>&1 &
+            url=http://127.0.0.1:9000/moto-api/
+          fi
+          for i in $(seq 1 30); do curl -sf -o /dev/null "$url" && exit 0; sleep 1; done
+          cat /tmp/s3.log; exit 1
 
       # Backs a site (files, home, a MySQL database and a mailbox) up to
-      # local disk, to MinIO and to SFTP on this machine, destroys the
+      # local disk, to S3 (MinIO) and to SFTP on this machine, destroys the
       # site and restores it from each, then checks the content.
       - name: Back up, destroy and restore a site for real
         run: >-
@@ -366,7 +375,7 @@ jobs:
         run: |
           sudo sh -c 'tail -n 80 /var/lib/servik/backups/runs/*.log' || true
           sudo journalctl --no-pager -u mysql -u ssh -n 80 || true
-          docker logs minio || true
+          cat /tmp/s3.log || true
 
   panel-realhost:
     name: Panel suspends a customer on a real server
