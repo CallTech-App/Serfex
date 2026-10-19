@@ -706,7 +706,9 @@ class BackupIndex extends Component
                     ->paginate(25);
                 $data['total'] = (int) Backup::usable()->sum('size');
             }
-            $data['lastBackup'] = Backup::usable()->where('scope', 'server')->latest('finished_at')->first();
+            $data['lastBackup'] = $user->is_admin
+                ? Backup::usable()->where('scope', 'server')->latest('finished_at')->first()
+                : Backup::usable()->whereHas('items', fn ($q) => $q->visibleTo($user)->where('status', 'succeeded'))->latest('finished_at')->first();
             $data['problems'] = $user->is_admin ? $backups->problems() : [];
             if ($user->isCustomer()) {
                 $data['quota'] = $quotas->report($user->customer)['backups'];

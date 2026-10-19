@@ -96,7 +96,7 @@
                 @endif
                 <span class="ml-auto text-2xs text-muted num">
                     @if ($lastBackup)
-                        Son sunucu yedeği {{ $when($lastBackup->finished_at) }}
+                        {{ $admin ? 'Son sunucu yedeği' : 'Son yedek' }} {{ $when($lastBackup->finished_at) }}
                     @endif
                     @if ($admin)
                         {{ $lastBackup ? '·' : '' }} {{ $next ? 'sonraki '.$when($next) : $summary }}
@@ -134,7 +134,7 @@
                                 </td>
                                 <td class="px-3 py-3">
                                     @if ($itemRows || $b->scope === 'site')
-                                        <span class="font-mono text-[13px]">{{ $itemRows ? $row->name : $setSites->first()?->name }}</span>
+                                        <span class="font-mono text-[13px] break-all sm:break-normal">{{ $itemRows ? $row->name : $setSites->first()?->name }}</span>
                                     @else
                                         Tüm sunucu <span class="text-2xs text-muted">· {{ $setSites->count() }} site{{ $row->items->contains('name', 'panel') ? ' + panel' : '' }}</span>
                                     @endif
@@ -155,7 +155,7 @@
                                     @endif
                                 </td>
                                 <td class="py-3 pr-5 pl-3 text-right">
-                                    <span class="inline-flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
+                                    <span class="inline-flex flex-col items-end gap-y-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-4 sm:gap-y-1">
                                         @if ($b->isRunning())
                                             <button type="button" wire:click="showRun('backup', {{ $b->id }})" class="{{ $link }}">İlerleme</button>
                                         @elseif ($b->isUsable() && (! $itemRows || $row->status === 'succeeded'))
