@@ -199,6 +199,8 @@ jobs:
         run: |
           sudo journalctl --no-pager -u 'servik-queue-*' -u 'servik-schedule-*' -u 'servik-proc-*' -n 200 || true
           sudo sh -c 'tail -n 100 /var/lib/servik/laravel/*/runs/*.log' || true
+          sudo sh -c 'tail -n 50 /var/log/servik/laravel/*/proc-*.log' || true
+          sudo sh -c 'cat /etc/nginx/sites-enabled/*' || true
 
   panel:
     name: Panel (PHP ${{ matrix.php }})

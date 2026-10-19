@@ -329,9 +329,19 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	get(t, "/up", 200)
-	plog, _ := m.ReadProcessLog(ProcessAction{Domain: realDomain, Name: "web"}, -1)
-	if !strings.Contains(plog.Data, "/up") {
-		t.Fatalf("the request did not reach the process:\n%s", plog.Data)
+	// PHP's server logs a request after answering it, so give the line a
+	// moment to land in the log.
+	var plog RunChunk
+	logDeadline := time.Now().Add(10 * time.Second)
+	for {
+		plog, _ = m.ReadProcessLog(ProcessAction{Domain: realDomain, Name: "web"}, -1)
+		if strings.Contains(plog.Data, "GET /up") {
+			break
+		}
+		if time.Now().After(logDeadline) {
+			t.Fatalf("the request did not reach the process:\n%s", plog.Data)
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
 	siteSpec.Proxy, siteSpec.WebSockets = nil, nil
 	if _, err := sites.Apply(ctx, siteSpec); err != nil {
