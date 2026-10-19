@@ -11,6 +11,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/tuning"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -267,6 +268,8 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		VmailUID: vmail.UID, HourlyLimit: spec.HourlyLimit, MilterAddr: milterAddr,
 		RedisSocket: redisSocket, Maps: postfixMaps, DovecotDir: dovecotDir, VmailDir: VmailDir,
 		MasterUser: MasterUser,
+		// Hizmetler → Postfix changes it.
+		MessageSize: int64(tuning.Load(m.h).Postfix.MessageSizeMB) << 20,
 	}
 
 	// Each service restarts only when its own files changed.

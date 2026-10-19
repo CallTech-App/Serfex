@@ -404,6 +404,46 @@ jobs:
           sudo journalctl --no-pager -u nginx -u fail2ban -n 100 || true
           sudo tail -n 50 /var/log/fail2ban.log || true
 
+  agent-services:
+    name: Agent manages services and PHP versions for real
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx, PHP-FPM and OpenSSH
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm openssh-server
+          sudo systemctl start nginx php8.3-fpm ssh
+
+      # Lists the services, stops PHP-FPM under a site (502) and starts it
+      # again, refuses to restart Nginx with a broken configuration while
+      # it keeps serving, reads the journal, lowers Nginx's body limit
+      # until a 2 MB upload gets 413, writes PHP's php.ini defaults and a
+      # site's own values, disabled functions and dynamic pool and reads
+      # them back from PHP, switches an extension off and on, and installs
+      # and removes APCu.
+      - name: Services and PHP for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 15m ./internal/service
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo cat /etc/nginx/conf.d/servik-tuning.conf || true
+          sudo cat /etc/php/8.3/fpm/conf.d/90-servik.ini || true
+          sudo ls /etc/php/8.3/fpm/pool.d/ || true
+          sudo journalctl --no-pager -u nginx -u php8.3-fpm -n 100 || true
+
   agent-backups:
     name: Agent backs up and restores a real site
     runs-on: ubuntu-24.04

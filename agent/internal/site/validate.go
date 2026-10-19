@@ -100,6 +100,9 @@ func (s Spec) validate() error {
 	if s.WebServer != "" && s.WebServer != WebNginx && s.WebServer != WebApache {
 		return invalid("web_server must be nginx or apache")
 	}
+	if err := s.PHP.validate(); err != nil {
+		return err
+	}
 	if len(s.Aliases) > maxAlias {
 		return invalid("at most %d aliases are allowed", maxAlias)
 	}

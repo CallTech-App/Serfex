@@ -40,6 +40,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/laravel"
+	"github.com/winchester37/servik/agent/internal/php"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
@@ -106,6 +107,8 @@ type Manager struct {
 	busy  map[string]string
 	comps map[string]*component
 
+	// PHP writes the php.ini defaults of a newly installed PHP version.
+	PHP *php.Manager
 	// Addresses returns the server's own addresses, which Fail2ban never
 	// bans.
 	Addresses func() []string

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,8 +39,10 @@ import (
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/monitor"
+	"github.com/winchester37/servik/agent/internal/php"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/security"
+	"github.com/winchester37/servik/agent/internal/service"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -113,7 +116,24 @@ func main() {
 	}
 	svc.monitor.DatabaseSites = svc.databases.Sites
 	svc.certs.PanelChanged = svc.databases.PanelCertificateChanged
+	svc.php = php.NewManager(h)
 	svc.components = component.NewManager(h, svc.sites, svc.databases, svc.laravel)
+	svc.components.PHP = svc.php
+	svc.services = service.NewManager(h)
+	svc.services.Usage = func() map[string]service.Usage {
+		out := map[string]service.Usage{}
+		for _, u := range svc.monitor.Snapshot(monitor.SnapshotSpec{Window: 10}).Services {
+			out[strings.TrimSuffix(u.Unit, ".service")] = service.Usage{CPU: u.CPU, Memory: u.Memory}
+		}
+		return out
+	}
+	if !*dryRun {
+		svc.services.SelfRestart = func(ctx context.Context) error {
+			// The answer goes out before systemd restarts the agent.
+			_, err := h.Run(ctx, host.Command{Name: "systemd-run", Args: []string{"--on-active=2", "--collect", "--unit=servik-agent-restart-" + strconv.FormatInt(time.Now().Unix(), 10), "systemctl", "restart", "servik-agent.service"}})
+			return err
+		}
+	}
 	if !*dryRun {
 		svc.components.Addresses = ownAddressStrings
 	}
@@ -210,6 +230,9 @@ func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
 				return nil, err
 			}
 		}
+	}
+	if err := php.SeedSimulator(sim, "8.3", "8.4", "8.5"); err != nil {
+		return nil, err
 	}
 	log.Warn("dry run: no real server changes are made", "root", root)
 	return sim, nil

@@ -194,7 +194,8 @@ class Components
     public function meta(string $id): array
     {
         if (preg_match('/^php(\d\.\d)$/', $id, $m)) {
-            return ['PHP '.$m[1], 'PHP-FPM ve yaygın eklentiler (mysql, pgsql, intl, gd, redis...)', 'web', 'PHP sürümleri'];
+            // Listed on Hizmetler → PHP sürümleri.
+            return ['PHP '.$m[1], 'PHP-FPM ve yaygın eklentiler (mysql, pgsql, intl, gd, redis...)', 'php', null];
         }
         if (preg_match('/^node(\d+)$/', $id, $m)) {
             $lts = in_array($m[1], self::NODE_LTS, true);
@@ -208,6 +209,16 @@ class Components
     public function name(string $id): string
     {
         return $this->meta($id)[0];
+    }
+
+    /**
+     * What an operation's progress window calls it.
+     */
+    public function operationName(ComponentOperation $operation): string
+    {
+        $name = $this->name($operation->component);
+
+        return $operation->detail ? "{$name} · {$operation->detail} eklentisi" : $name;
     }
 
     /**

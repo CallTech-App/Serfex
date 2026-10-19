@@ -179,7 +179,15 @@ func phpComponent(v string) *component {
 		},
 		units:  []string{"php" + v + "-fpm"},
 		backup: []string{"/etc/php/" + v},
-		purge:  func(m *Manager) []string { return []string{"php" + v + "-*"} },
+		// Servik's php.ini defaults (Hizmetler → PHP sürümleri); a
+		// version that has its own keeps them.
+		configure: func(o *op) error {
+			if o.m.PHP == nil {
+				return nil
+			}
+			return o.m.PHP.WriteDefaults(o.t, v)
+		},
+		purge: func(m *Manager) []string { return []string{"php" + v + "-*"} },
 		check: func(o *op) error {
 			_, err := o.run(host.Command{Name: "php-fpm" + v, Args: []string{"-t"}})
 			return err
