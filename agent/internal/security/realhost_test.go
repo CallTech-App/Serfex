@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -215,9 +216,13 @@ func TestRealHost(t *testing.T) {
 	if _, err := m.ApplySSH(ctx, SSHSettings{RootLogin: RootKey, PasswordAuth: true}); err != nil {
 		t.Fatal(err)
 	}
+	// OpenSSH prints prohibit-password under its old name, without-password.
 	out, err := exec.Command("sshd", "-T").CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "permitrootlogin prohibit-password") || !strings.Contains(string(out), "passwordauthentication yes") {
+	if err != nil || !regexp.MustCompile(`(?m)^permitrootlogin (prohibit|without)-password$`).Match(out) || !strings.Contains(string(out), "passwordauthentication yes") {
 		t.Fatalf("sshd -T after hardening: %v\n%s", err, out)
+	}
+	if st, err := m.SSH(ctx); err != nil || st.RootLogin != RootKey || !st.PasswordAuth || !st.Managed {
+		t.Fatalf("ssh status after hardening: %+v %v", st, err)
 	}
 
 	// --- Fail2ban ---
