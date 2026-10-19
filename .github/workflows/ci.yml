@@ -321,6 +321,44 @@ jobs:
           sudo sh -c 'tail -n 80 /var/lib/servik/components/runs/*.log' || true
           sudo journalctl --no-pager -u apache2 -u nginx -u 'servik-redis-*' -u memcached -n 100 || true
 
+  agent-files:
+    name: Agent manages files and SFTP accounts for real
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx, PHP-FPM and OpenSSH
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm openssh-server curl
+          sudo systemctl start nginx php8.3-fpm ssh
+
+      # Uploads, edits, deletes and restores files through the file
+      # manager's helper (running as the site's user) and checks that PHP
+      # serves them; then signs in over SFTP with curl: chrooted to the
+      # site's folder, uploads owned by the site's user, a locked
+      # (suspended) account refused, password change, folder change and
+      # deletion without touching the site's files.
+      - name: Files and SFTP for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 10m ./internal/ftp
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u ssh -u 'var-lib-servik-sftp-*' -n 100 || true
+          sudo cat /etc/ssh/sshd_config.d/50-servik-sftp.conf || true
+          findmnt -R /var/lib/servik/sftp || true
+
   agent-backups:
     name: Agent backs up and restores a real site
     runs-on: ubuntu-24.04

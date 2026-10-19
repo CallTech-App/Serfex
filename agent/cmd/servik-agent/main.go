@@ -31,7 +31,9 @@ import (
 	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
+	"github.com/winchester37/servik/agent/internal/files"
 	"github.com/winchester37/servik/agent/internal/firewall"
+	"github.com/winchester37/servik/agent/internal/ftp"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/mail"
@@ -63,6 +65,10 @@ func main() {
 	if *showVersion {
 		fmt.Println(version.Version)
 		return
+	}
+	if flag.Arg(0) == "files-helper" {
+		// Started by the agent itself, as a site's user (files package).
+		os.Exit(files.Serve(os.Stdin, os.Stdout))
 	}
 	if flag.Arg(0) == "call" {
 		os.Exit(call(*socket, flag.Args()[1:]))
@@ -115,6 +121,13 @@ func main() {
 		_, err := svc.certs.Install(ctx, spec)
 		return err
 	}
+	exe, err := os.Executable()
+	if err != nil {
+		log.Error("agent stopped", "err", err)
+		os.Exit(2)
+	}
+	svc.files = files.NewManager(h, exe)
+	svc.ftp = ftp.NewManager(h)
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
