@@ -18,6 +18,12 @@ return [
     'locales' => ['tr' => 'Türkçe', 'en' => 'English'],
     'locale' => env('SERVIK_LOCALE', 'tr'),
 
+    // The servik command line's binaries for developers' computers
+    // (linux and darwin, amd64 and arm64), with SHA256SUMS and
+    // install-cli.sh: the release's downloads/ folder. The panel serves
+    // them at /cli/install.sh and /cli/indir/<file>.
+    'cli_downloads' => env('SERVIK_CLI_DOWNLOADS', dirname(base_path()).'/downloads'),
+
     // File systems watched for free space (Bildirimler).
     'disk_paths' => ['/', '/home', '/var'],
 

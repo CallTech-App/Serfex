@@ -36,6 +36,9 @@ class Access extends Section
 
     public string $tokenName = 'GitHub Actions';
 
+    /** deploy or operate (LaravelApiToken::ABILITIES). */
+    public string $tokenAbility = 'deploy';
+
     /** Shown once: a new token or invitation link. */
     public ?string $secret = null;
 
@@ -148,6 +151,7 @@ class Access extends Section
     public function openToken(): void
     {
         $this->tokenName = 'GitHub Actions';
+        $this->tokenAbility = 'deploy';
         $this->resetValidation();
         $this->tokenForm = true;
     }
@@ -155,14 +159,17 @@ class Access extends Section
     public function createToken(): void
     {
         $this->tokenName = trim($this->tokenName);
-        $this->validate(['tokenName' => ['required', 'max:64']], [], ['tokenName' => 'ad']);
+        $this->validate([
+            'tokenName' => ['required', 'max:64'],
+            'tokenAbility' => ['required', Rule::in(array_keys(LaravelApiToken::ABILITIES))],
+        ], [], ['tokenName' => 'ad', 'tokenAbility' => __('yetki')]);
         $app = $this->app();
         if ($app->apiTokens()->whereNull('revoked_at')->count() >= 20) {
             $this->addError('tokenName', __('En çok 20 anahtar olabilir; kullanılmayanları iptal edin.'));
 
             return;
         }
-        [, $plain] = LaravelApiToken::issue($app, $this->tokenName, auth()->user());
+        [, $plain] = LaravelApiToken::issue($app, $this->tokenName, auth()->user(), $this->tokenAbility);
         $this->tokenForm = false;
         $this->showSecret($plain, 'token');
     }

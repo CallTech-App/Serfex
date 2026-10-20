@@ -3,12 +3,16 @@
 #
 #   servik-VERSION-linux-amd64.tar.gz   panel + agent for x86-64 servers
 #   servik-VERSION-linux-arm64.tar.gz   panel + agent for ARM servers
+#   servik-cli-{linux,darwin}-{amd64,arm64}  the servik command line
+#   install-cli.sh                      the command line's installer
 #   install.sh                          the installer
 #   SHA256SUMS                          sums of the files above
 #
 # An archive unpacks into /opt/servik/releases/VERSION (see install.sh):
-# VERSION, bin/servik-agent and panel/ with its production dependencies
-# and built assets. Needs Go, PHP with Composer, and Node.js.
+# VERSION, bin/servik-agent, bin/servik (the command line), panel/ with
+# its production dependencies and built assets, and downloads/ with the
+# command line for every system, which the panel serves at /cli/indir/
+# for developers' computers. Needs Go, PHP with Composer, and Node.js.
 #
 #   scripts/build-release.sh 0.2.0 dist
 #
@@ -44,6 +48,17 @@ if [ -z "$panel" ]; then
 	)
 fi
 
+echo "▸ Building the command line"
+cli=$work/downloads
+mkdir -p "$cli"
+for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+	(cd "$root/cli" && CGO_ENABLED=0 GOOS=${target%/*} GOARCH=${target#*/} go build -trimpath \
+		-ldflags "-s -w -X github.com/winchester37/servik/cli/internal/version.Version=$version" \
+		-o "$cli/servik-cli-${target%/*}-${target#*/}" ./cmd/servik)
+done
+cp "$root/scripts/install-cli.sh" "$cli/install-cli.sh"
+(cd "$cli" && sha256sum servik-cli-* install-cli.sh > SHA256SUMS)
+
 strip_panel() {
 	local p=$1
 	rm -rf "$p/node_modules" "$p/tests" "$p/storage" "$p/.env" "$p/.env.example" "$p/phpunit.xml" "$p/.phpunit.result.cache"
@@ -64,10 +79,13 @@ for arch in ${SERVIK_ARCHES:-amd64 arm64}; do
 	(cd "$root/agent" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
 		-ldflags "-s -w -X github.com/winchester37/servik/agent/internal/version.Version=$version" \
 		-o "$stage/bin/servik-agent" ./cmd/servik-agent)
+	cp "$cli/servik-cli-linux-$arch" "$stage/bin/servik"
+	cp -a "$cli" "$stage/downloads"
 	cp "$root/scripts/install.sh" "$stage/install.sh"
 	tar --sort=name --owner=0 --group=0 --numeric-owner -C "$stage" -czf "$out/servik-$version-linux-$arch.tar.gz" .
 done
 
 cp "$root/scripts/install.sh" "$out/install.sh"
-(cd "$out" && sha256sum servik-"$version"-linux-*.tar.gz install.sh > SHA256SUMS)
+cp "$cli"/servik-cli-* "$cli/install-cli.sh" "$out/"
+(cd "$out" && sha256sum servik-"$version"-linux-*.tar.gz servik-cli-* install-cli.sh install.sh > SHA256SUMS)
 echo "✓ $(ls "$out" | tr '\n' ' ')"

@@ -100,6 +100,29 @@
                     @endif
                 </div>
             </div>
+
+            <div class="{{ $row }}">
+                <span>{{ __('Komut satırı') }}</span>
+                <div>
+                    @if ($cliKeys->isEmpty())
+                        <p class="text-muted"><x-t text="Hiçbir bilgisayarda oturum yok. :command ile girildiğinde burada görünür."><x-slot:command><span class="font-mono text-fg">servik login</span></x-slot:command></x-t></p>
+                    @else
+                        <ul class="divide-y divide-line border-y border-line">
+                            @foreach ($cliKeys as $k)
+                                <li wire:key="cli-{{ $k->id }}" class="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-2.5">
+                                    <span class="font-mono font-medium">{{ $k->client }}</span>
+                                    @if ($k->scope === 'read')
+                                        <x-status-badge :status="new Badge(__('Salt okunur'), 'muted')" />
+                                    @endif
+                                    <span class="num text-2xs text-muted">{{ $k->last_used_at ? __('Son kullanım :when', ['when' => $k->last_used_at->timezone($tz)->diffForHumans()]) : __('Henüz kullanılmadı') }}@if ($k->last_used_ip) · <span class="font-mono">{{ $k->last_used_ip }}</span>@endif</span>
+                                    <button type="button" wire:click="closeCli({{ $k->id }})" class="ml-auto text-[13px] text-muted hover:text-fg">{{ __('Oturumu kapat') }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    <p class="mt-2 text-2xs text-muted">{{ __('servik komut satırı aracı bu hesapla, sizin yetkilerinizle çalışır. Kullanmadığınız bilgisayarların oturumunu kapatın.') }}</p>
+                </div>
+            </div>
         </div>
     </section>
 

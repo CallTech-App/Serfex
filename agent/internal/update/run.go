@@ -493,8 +493,9 @@ func unpack(archive, dir string) error {
 	}
 }
 
-// link connects a release to the panel's shared settings and storage
-// and lets the panel write its bootstrap cache.
+// link connects a release to the panel's shared settings and storage,
+// puts the command line on the PATH and lets the panel write its
+// bootstrap cache.
 func (x *execution) link(version string) error {
 	base := panel.ReleasesDir + "/" + version + "/panel"
 	for link, target := range map[string]string{base + "/.env": panel.EnvFile, base + "/storage": panel.StorageDir} {
@@ -506,6 +507,16 @@ func (x *execution) link(version string) error {
 		}
 		if err := os.Symlink(rel, p); err != nil {
 			return err
+		}
+	}
+	// The servik command line follows current; servers installed before
+	// it shipped get the link with their first release that has it.
+	if _, err := os.Stat(x.m.h.Path(panel.ReleasesDir + "/" + version + "/bin/servik")); err == nil {
+		if _, err := os.Lstat(x.m.h.Path(panel.CLILink)); errors.Is(err, os.ErrNotExist) {
+			_ = os.MkdirAll(filepath.Dir(x.m.h.Path(panel.CLILink)), 0o755)
+			if err := os.Symlink(panel.CurrentLink+"/bin/servik", x.m.h.Path(panel.CLILink)); err != nil {
+				return err
+			}
 		}
 	}
 	u, err := x.m.h.LookupUser(panel.User)

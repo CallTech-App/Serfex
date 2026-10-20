@@ -12,6 +12,7 @@ use App\Services\Customers\Quotas;
 use App\Services\Databases\Databases;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Laravel\EnvFile;
+use App\Services\Laravel\Environments;
 use App\Services\Laravel\Redis;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ class Environment extends Section
     protected const MANAGE_METHODS = ['createDatabase', 'undoCreateDatabase', 'connectRedis', 'undoConnectRedis'];
 
     /** How many earlier versions are kept. */
-    public const HISTORY = 30;
+    public const HISTORY = Environments::HISTORY;
 
     /** rows or text */
     public string $mode = 'rows';
@@ -136,19 +137,13 @@ class Environment extends Section
             return;
         }
         try {
-            $result = $agent->call('laravel.env.set', $app->agentApp() + ['content' => $content], config('servik.agent.job_timeout'));
+            ['version' => $version, 'cached' => $cached] = app(Environments::class)->save($app, $before, $content, auth()->user()?->name);
         } catch (AgentException $e) {
             $this->agentError = __('.env kaydedilemedi: :value', ['value' => self::agentMessage($e)]);
 
             return;
         }
         $this->agentError = null;
-        $version = $app->envVersions()->create([
-            'content' => $before,
-            'summary' => EnvFile::summary($before, $content),
-            'user_name' => auth()->user()?->name,
-        ]);
-        $app->envVersions()->whereNotIn('id', $app->envVersions()->limit(self::HISTORY)->pluck('id'))->delete();
         $this->original = $content;
         $this->missing = false;
         $this->loadContent($content);
@@ -156,7 +151,7 @@ class Environment extends Section
             return;
         }
         $this->dispatch('toast',
-            message: ($result['cached'] ?? false) ? __('.env kaydedildi, config:cache yenilendi.') : __('.env kaydedildi.'),
+            message: $cached ? __('.env kaydedildi, config:cache yenilendi.') : __('.env kaydedildi.'),
             source: $this->getId(),
             undo: ['method' => 'restore', 'args' => [$version->id]],
         );

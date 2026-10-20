@@ -27,8 +27,8 @@ final class ReadOnlyGuard
     /** Agent methods that only read. */
     private const READING = '/(^|\.)(status|list|get|info|logs|log|live|ping|versions|addresses|events|rules|health|usage|runs|timezones|check|scan|search|stat|read|queue|limits|inspect)$/';
 
-    /** Tables the sign-in itself and the log write to. */
-    private const BOOKKEEPING = ['sessions', 'cache', 'cache_locks', 'users', 'audit_entries'];
+    /** Tables the sign-in itself, the log and the person's own command line keys write to. */
+    private const BOOKKEEPING = ['sessions', 'cache', 'cache_locks', 'users', 'audit_entries', 'api_keys', 'cli_logins'];
 
     /**
      * True while the signed-in account is a read-only administrator. Never

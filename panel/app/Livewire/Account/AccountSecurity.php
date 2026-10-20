@@ -3,10 +3,13 @@
 namespace App\Livewire\Account;
 
 use App\Livewire\Attributes\ForEveryAccount;
+use App\Models\ApiKey;
 use App\Services\Security\Sessions;
 use App\Services\Security\TwoFactor;
+use App\Services\Settings\ApiKeys;
 use App\Support\Locales;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -14,8 +17,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Hesap güvenliği: the signed-in account's own language, two-step login
- * and the browsers it is signed in on. Every account has it, administrators,
+ * Hesap güvenliği: the signed-in account's own language, two-step login,
+ * the browsers it is signed in on and the command lines (servik login). Every account has it, administrators,
  * customers and Laravel team members alike.
  */
 #[Layout('components.layouts.app')]
@@ -148,6 +151,39 @@ class AccountSecurity extends Component
         $this->dispatch('toast', message: __('Oturum kapatıldı.'));
     }
 
+    /**
+     * Signs a command line out: its key stops working at once.
+     */
+    public function closeCli(int $id, ApiKeys $keys): void
+    {
+        $key = $this->cliKeys()->find($id);
+        if ($key === null) {
+            return;
+        }
+        $keys->revoke($key);
+        $this->dispatch('toast',
+            message: __(':client komut satırı oturumu kapatıldı.', ['client' => $key->client]),
+            source: $this->getId(),
+            undo: ['method' => 'reopenCli', 'args' => [$key->id]],
+        );
+    }
+
+    public function reopenCli(int $id, ApiKeys $keys): void
+    {
+        $key = ApiKey::where('user_id', auth()->id())->where('kind', ApiKey::CLI)->find($id);
+        if ($key !== null && $keys->restore($key)) {
+            $this->dispatch('toast', message: __('Komut satırı oturumu yeniden açıldı.'));
+        }
+    }
+
+    /**
+     * @return Builder<ApiKey>
+     */
+    private function cliKeys(): Builder
+    {
+        return ApiKey::where('user_id', auth()->id())->where('kind', ApiKey::CLI)->usable();
+    }
+
     public function revokeOthers(Sessions $sessions): void
     {
         $n = $sessions->revokeOthers(auth()->user(), session()->getId());
@@ -165,6 +201,7 @@ class AccountSecurity extends Component
             'codesLeft' => $twoFactor->recoveryCodesLeft($user),
             'sessions' => $sessions->of($user, session()->getId()),
             'sessionsAvailable' => $sessions->available(),
+            'cliKeys' => $this->cliKeys()->latest('id')->get(),
         ]);
     }
 }

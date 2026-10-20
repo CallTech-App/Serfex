@@ -30,10 +30,12 @@ const (
 	OptDir      = "/opt/servik"
 	ReleasesDir = OptDir + "/releases"
 	CurrentLink = OptDir + "/current"
-	ConfigFile  = "/etc/servik/panel.json"
-	EnvFile     = "/etc/servik/panel.env"
-	StateDir    = "/var/lib/servik/panel"
-	StorageDir  = StateDir + "/storage"
+	// CLILink puts the release's servik command line on the PATH.
+	CLILink    = "/usr/local/bin/servik"
+	ConfigFile = "/etc/servik/panel.json"
+	EnvFile    = "/etc/servik/panel.env"
+	StateDir   = "/var/lib/servik/panel"
+	StorageDir = StateDir + "/storage"
 
 	// User runs the panel's PHP, queue workers and scheduler.
 	User = "servik"

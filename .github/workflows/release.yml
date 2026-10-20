@@ -1,7 +1,8 @@
 name: Release
 
 # Pushing a version tag (v1.2.3, or v1.2.3-beta.1 for the beta channel)
-# builds the release archives and publishes them as a GitHub Release.
+# builds the release archives and the servik command line for Linux and
+# macOS, and publishes them as a GitHub Release.
 # Installed servers find it with their daily check (or "Şimdi denetle")
 # under Araçlar ve Ayarlar → Güncellemeler.
 on:
@@ -43,6 +44,10 @@ jobs:
 
       - name: Agent tests
         working-directory: agent
+        run: go test ./...
+
+      - name: Command line tests
+        working-directory: cli
         run: go test ./...
 
       - name: Build the release

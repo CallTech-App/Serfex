@@ -1,4 +1,5 @@
 @php
+    use App\Models\LaravelApiToken;
     use App\Models\LaravelAppMember;
     use App\Support\Badge;
     use App\Support\When;
@@ -6,8 +7,10 @@
     $deployUrl = route('api.deploy', $domain);
     $link = 'text-[13px] whitespace-nowrap text-muted hover:text-fg';
     $pre = 'scroll-thin overflow-x-auto rounded-md border border-line bg-surface-2 p-3 font-mono text-[12.5px] whitespace-pre';
-    $curl = "curl -fsS -X POST \\\n  -H \"Authorization: Bearer \$SERVIK_TOKEN\" \\\n  -d ref=main \\\n  {$deployUrl}";
-    $actions = '- name: '.__('Servik ile dağıt')."\n  run: |\n    curl -fsS -X POST \\\n      -H \"Authorization: Bearer \${{ secrets.SERVIK_TOKEN }}\" \\\n      -d ref=\${{ github.ref_name }} \\\n      {$deployUrl}";
+    $panelUrl = url('/');
+    $installUrl = route('cli.install');
+    $cli = "curl -fsSL {$installUrl} | sh\nservik login {$panelUrl}\nservik deploy -a {$domain} --wait";
+    $actions = '- name: '.__('Servik ile dağıt')."\n  env:\n    SERVIK_URL: {$panelUrl}\n    SERVIK_TOKEN: \${{ secrets.SERVIK_TOKEN }}\n  run: |\n    curl -fsSL {$installUrl} | sh\n    servik deploy --ref \${{ github.ref_name }} --wait";
 @endphp
 <div>
     @if ($agentError)
@@ -82,6 +85,7 @@
                 <li wire:key="t-{{ $t->id }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
                     <span class="font-medium">{{ $t->name }}</span>
                     <span class="font-mono text-[12.5px] text-muted">svk_…{{ $t->last_four }}</span>
+                    <x-status-badge :status="new Badge(__(LaravelApiToken::ABILITIES[$t->ability][0] ?? $t->ability), $t->ability === 'operate' ? 'info' : 'muted')" />
                     <span class="text-2xs text-muted">{{ $t->created_by ? $t->created_by.' · ' : '' }}{{ When::withTime($t->created_at) }} · {{ $t->last_used_at ? __('son kullanım :last_used_at (:last_used_ip)', ['last_used_at' => When::withTime($t->last_used_at), 'last_used_ip' => $t->last_used_ip]) : __('hiç kullanılmadı') }}</span>
                     @if ($manage)<button type="button" wire:click="revoke({{ $t->id }})" class="ml-auto {{ $link }} hover:text-crit">{{ __('İptal et') }}</button>@endif
                 </li>
@@ -91,13 +95,13 @@
     <div class="grid grid-cols-1 gap-x-6 gap-y-4 p-5 text-[13.5px] md:grid-cols-[230px_1fr]">
         <p class="font-medium md:pt-2">{{ __('Komut satırından') }}</p>
         <div class="min-w-0 max-w-2xl space-y-1">
-            <pre class="{{ $pre }}">{{ $curl }}</pre>
-            <p class="text-2xs text-muted"><x-t text="Yanıt dağıtım numarasını verir; durumunu :domain ile izleyin (:part, :part2). :part3, :part4 adımları kapatır."><x-slot:domain><span class="font-mono">{{ __('GET :domain', ['domain' => route('api.deployment', [$domain, 1])]) }}</span></x-slot:domain><x-slot:part><span class="font-mono">done</span></x-slot:part><x-slot:part2><span class="font-mono">status</span></x-slot:part2><x-slot:part3><span class="font-mono">migrate=0</span></x-slot:part3><x-slot:part4><span class="font-mono">frontend=0</span></x-slot:part4></x-t></p>
+            <pre class="{{ $pre }}">{{ $cli }}</pre>
+            <p class="text-2xs text-muted"><x-t text="servik aracını kurar, girişi tarayıcıda onaylatır ve dağıtımı sonuna kadar izler. Diğer komutlar için :help."><x-slot:help><span class="font-mono">servik help</span></x-slot:help></x-t></p>
         </div>
         <p class="font-medium md:pt-2">{{ __('CI\'dan (GitHub Actions)') }}</p>
         <div class="min-w-0 max-w-2xl space-y-1">
             <pre class="{{ $pre }}">{{ $actions }}</pre>
-            <p class="text-2xs text-muted"><x-t text="Anahtarı deponun gizli değerlerine :part adıyla ekleyin. Bir anahtar yalnızca bu uygulamayı dağıtır; önizleme de açabilir: :domain (:part2)."><x-slot:part><span class="font-mono">SERVIK_TOKEN</span></x-slot:part><x-slot:domain><span class="font-mono">{{ __('POST :domain', ['domain' => route('api.previews.create', $domain)]) }}</span></x-slot:domain><x-slot:part2><span class="font-mono">branch=…</span></x-slot:part2></x-t></p>
+            <p class="text-2xs text-muted"><x-t text="Anahtarı deponun gizli değerlerine :part adıyla ekleyin. --wait dağıtım başarısız olursa adımı da başarısız yapar. Araç olmadan: :domain (Authorization: Bearer)."><x-slot:part><span class="font-mono">SERVIK_TOKEN</span></x-slot:part><x-slot:domain><span class="font-mono">{{ __('POST :domain', ['domain' => $deployUrl]) }}</span></x-slot:domain></x-t></p>
         </div>
     </div>
 
@@ -138,6 +142,15 @@
                 <label for="tk-name" class="mb-1.5 block">{{ __('Ad') }}</label>
                 <input id="tk-name" wire:model="tokenName" class="h-9 w-full rounded-md border bg-surface px-3 outline-none focus:border-accent {{ $errors->has('tokenName') ? 'border-crit' : 'border-line' }}">
                 @error('tokenName')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">{{ __('Nerede kullanılacağını yazın, örneğin GitHub Actions.') }}</p>@enderror
+                <p class="mt-4 mb-1.5">{{ __('Yetki') }}</p>
+                <div class="space-y-2">
+                    @foreach (LaravelApiToken::ABILITIES as $value => [$label, $text])
+                        <label class="flex items-start gap-2">
+                            <input type="radio" wire:model="tokenAbility" value="{{ $value }}" class="mt-1">
+                            <span><span class="font-medium">{{ __($label) }}</span><br><span class="text-2xs text-muted">{{ __($text) }}</span></span>
+                        </label>
+                    @endforeach
+                </div>
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('tokenForm', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>

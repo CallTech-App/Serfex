@@ -7,12 +7,13 @@ first-class toolkit for deploying and running Laravel applications.
 
 ## Architecture
 
-Servik is split into two programs that live in this repository:
+Servik is split into three programs that live in this repository:
 
 | Directory | What it is | Runs as |
 |-----------|------------|---------|
 | [`panel/`](panel) | The web panel: a Laravel 13 application with a Livewire UI, backed by its own PostgreSQL database. | Unprivileged user |
 | [`agent/`](agent) | `servik-agent`: a single static Go binary that performs root-level server work (web server, PHP-FPM, DNS, mail, certificates, system users). | `root`, under systemd |
+| [`cli/`](cli) | `servik`: the command line. It talks to the panel's `/api/v1` with a person's key or an application's token, on the server or from a developer's computer. | Anyone |
 
 The panel never runs as root. It sends requests to the agent over a local Unix
 socket (`/run/servik-agent/agent.sock`) using JSON-RPC 2.0. The socket is
@@ -52,11 +53,38 @@ when a `v*` tag is pushed ([`scripts/build-release.sh`](scripts/build-release.sh
 notes from [`release-notes/`](release-notes)). Tags with a suffix (`v1.2.0-beta.1`)
 are published as pre-releases and reach only the beta channel.
 
+## Command line
+
+`servik` is installed on every server (`/usr/local/bin/servik`, with Tab
+completion for bash, zsh and fish). On a developer's Linux or macOS computer:
+
+```sh
+curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install-cli.sh | sh
+# or the panel's own version: curl -fsSL https://panel.example.com:8443/cli/install.sh | sh
+servik login panel.example.com:8443      # approve in the browser
+servik sites list
+servik deploy -a api.example.com --wait
+```
+
+`servik login` opens an approval page in the panel; the key it makes acts as
+that person within their role (customers reach only their own hosting,
+read-only administrators cannot change anything) and is listed, and can be
+closed, under **Hesap güvenliği**. On the server, `sudo servik login --local`
+signs root in without a browser. In CI, an application's token from
+**Erişim ve API** is enough:
+
+```sh
+SERVIK_URL=https://panel.example.com:8443 SERVIK_TOKEN=svk_... servik deploy --ref "$GITHUB_SHA" --wait
+```
+
+Every command takes `--json`; messages are Turkish or English by the locale
+(`--lang tr|en`). `servik --help` lists the commands.
+
 ## Requirements
 
 - Target server: Ubuntu Server 24.04 LTS or newer.
 - Panel: PHP 8.5 in production (8.3+ works for development), Composer, Node.js 22+, PostgreSQL 16+.
-- Agent: Go 1.24+.
+- Agent and command line: Go 1.24+.
 
 ## Development
 
@@ -165,6 +193,19 @@ To run the panel's agent integration tests against a real agent binary:
 ```sh
 SERVIK_AGENT_BIN=../agent/bin/servik-agent php artisan test --testsuite=Integration
 ```
+
+### Command line
+
+```sh
+cd cli
+go test ./...
+go build -o bin/servik ./cmd/servik
+./bin/servik login http://localhost:8000
+```
+
+The end-to-end run CI does against a real panel and agent (a site created,
+served by Nginx and deleted through `servik`) needs the same throwaway machine
+as the agent's real-server tests: `scripts/ci/cli-e2e.sh`.
 
 ## Contributing
 

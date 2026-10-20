@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Panel;
 
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
+use App\Livewire\Sites\SiteIndex;
 use App\Models\Customer;
 use App\Models\Site;
 use App\Models\SystemUser;
@@ -17,6 +18,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
+/**
+ * Sites. Administrators see and change all of them; a customer their own,
+ * created under their own account within their package.
+ */
 class SitesController extends ApiController
 {
     /**
@@ -24,16 +29,16 @@ class SitesController extends ApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $sites = Site::with('systemUser.customer', 'certificate')
+        $sites = Site::visibleTo($this->user($request))->with('systemUser.customer', 'certificate')
             ->when($request->filled('customer'), fn ($q) => $q->whereHas('systemUser', fn ($u) => $u->where('customer_id', (int) $request->query('customer'))))
             ->orderBy('domain')->get();
 
         return response()->json(['data' => $sites->map(fn (Site $s) => $this->site($s))->values()]);
     }
 
-    public function show(string $domain): JsonResponse
+    public function show(Request $request, string $domain): JsonResponse
     {
-        return response()->json(['data' => $this->site($this->find($domain))]);
+        return response()->json(['data' => $this->site($this->findSite($request, $domain))]);
     }
 
     /**
@@ -41,33 +46,42 @@ class SitesController extends ApiController
      */
     public function store(Request $request, AgentClient $agent, Quotas $quotas, PhpVersions $php, SiteCreator $creator): JsonResponse
     {
+        $user = $this->user($request);
         $request->merge(['domain' => Hostnames::normalize((string) $request->input('domain'))]);
         $data = $request->validate([
-            'domain' => ['required', 'string', fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('The domain is not valid.'), Rule::unique('sites', 'domain')],
+            'domain' => ['required', 'string', fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir alan adı girin, örneğin ornek.com.tr.')), Rule::unique('sites', 'domain')],
             'php_version' => ['nullable', 'string', 'regex:/^\d\.\d$/'],
             'www' => ['nullable', 'boolean'],
             'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')->whereNull('deleted_at')],
             'account' => ['nullable', 'string', 'regex:'.Hostnames::SYSTEM_USER_PATTERN, Rule::notIn(Hostnames::RESERVED_USERS)],
-        ]);
+        ], ['domain.unique' => __('Bu alan adı zaten bir siteye ait.')]);
+        if ($user->isCustomer()) {
+            // A customer's sites go under their own account.
+            $data['customer_id'] = $user->customer_id;
+            unset($data['account']);
+        }
         $customer = isset($data['customer_id']) ? Customer::with('package')->find($data['customer_id']) : null;
         $account = $customer?->username ?? ($data['account'] ?? Hostnames::suggestUser($data['domain']));
         $existing = SystemUser::where('name', $account)->first();
         if ($customer === null && $existing?->customer_id !== null && isset($data['account'])) {
-            return $this->refuse('This account belongs to a customer; pass customer_id instead.');
+            return $this->refuse(__('Bu hesap bir müşterinin; customer_id ile müşteriyi belirtin.'));
         }
         $owner = $customer ?? $existing?->customer;
+        if ($user->isCustomer() && SiteIndex::zoneTakenByOthers($data['domain'], $owner)) {
+            return $this->refuse(__('Bu alan adı ya da üst alan adı başka bir hesaba ait.'));
+        }
         if ($refusal = $quotas->refusal($owner, 'sites')) {
             return $this->refuse($refusal);
         }
         try {
             $installed = array_values($agent->call('php.versions') ?? []);
         } catch (AgentException $e) {
-            return $this->refuse('The server agent could not be reached: '.$e->reason, 503);
+            return $this->refuse(__('Sunucu ajanına ulaşılamadı: :reason', ['reason' => $e->reason]), 503);
         }
         $allowed = $owner?->package ? $owner->package->phpVersionsFrom($installed) : $installed;
         $version = $data['php_version'] ?? $php->default($allowed);
         if ($version === null || ! in_array($version, $allowed, true)) {
-            return $this->refuse('PHP '.($data['php_version'] ?? '').' is not available; installed and allowed: '.(implode(', ', $allowed) ?: 'none').'.');
+            return $this->refuse(__('PHP :version kullanılamıyor; kurulu ve izin verilenler: :allowed.', ['version' => $data['php_version'] ?? '', 'allowed' => implode(', ', $allowed) ?: '—']));
         }
 
         $site = $creator->create($data['domain'], $account, $version, (bool) ($data['www'] ?? true), $customer, $owner);
@@ -77,12 +91,12 @@ class SitesController extends ApiController
     }
 
     /**
-     * DELETE /api/v1/sites/{domain}: the site with its DNS zone, mail and
-     * databases, and its account when no other site uses it.
+     * DELETE /api/v1/sites/{domain}[?keep_dns=1]: the site with its DNS zone,
+     * mail and databases, and its account when no other site uses it.
      */
     public function destroy(Request $request, string $domain): JsonResponse
     {
-        $site = $this->find($domain);
+        $site = $this->findSite($request, $domain);
         if ($site->status === SiteStatus::Deleting) {
             return response()->json(['data' => $this->site($site)], 202);
         }
@@ -92,11 +106,6 @@ class SitesController extends ApiController
         $this->audit($request, __('Siteler'), __(':domain siliniyor.', ['domain' => $site->domain]));
 
         return response()->json(['data' => $this->site($site)], 202);
-    }
-
-    private function find(string $domain): Site
-    {
-        return Site::with('systemUser.customer', 'certificate')->where('domain', mb_strtolower($domain))->firstOrFail();
     }
 
     /**
@@ -116,6 +125,9 @@ class SitesController extends ApiController
             'account' => $site->systemUser?->name,
             'customer' => $customer ? ['id' => $customer->id, 'name' => $customer->displayName()] : null,
             'https' => $site->hasHttps(),
+            'https_redirect' => (bool) $site->https_redirect,
+            'certificate_expires_at' => $site->certificate?->not_after?->toIso8601String(),
+            'disk_bytes' => $site->disk_bytes,
             'last_error' => $site->last_error,
             'created_at' => $site->created_at?->toIso8601String(),
         ];

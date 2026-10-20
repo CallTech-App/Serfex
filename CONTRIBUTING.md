@@ -41,6 +41,15 @@ go vet ./...
 go test ./...
 ```
 
+Command line (its tests include the check that every message has English):
+
+```sh
+cd cli
+gofmt -l .
+go vet ./...
+go test ./...
+```
+
 ## Code style
 
 - PHP follows Laravel's conventions, enforced by Laravel Pint.
