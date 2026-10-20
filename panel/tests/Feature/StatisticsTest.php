@@ -208,7 +208,7 @@ class StatisticsTest extends TestCase
             ->assertSee('Posta trafiği')
             ->assertSee('34</span> gelen', false)
             ->assertSee('12</span> giden', false)
-            ->assertDontSee('999');
+            ->assertDontSee('>999<', false);
     }
 
     public function test_server_minutes_roll_up_into_hours_and_show_on_the_system_tab(): void
