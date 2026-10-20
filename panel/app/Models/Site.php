@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -185,6 +185,16 @@ class Site extends Model
     public function laravelApp(): HasOne
     {
         return $this->hasOne(LaravelApp::class);
+    }
+
+    /**
+     * The site's mail domain, when e-mail is on.
+     *
+     * @return HasOne<MailDomain, $this>
+     */
+    public function mailDomain(): HasOne
+    {
+        return $this->hasOne(MailDomain::class);
     }
 
     /**

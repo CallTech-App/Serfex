@@ -398,6 +398,53 @@
                     <div><dt class="text-2xs text-muted">Çalışma süresi</dt><dd class="num mt-0.5 font-medium">{{ Load::uptime($srv['uptime']) }}</dd></div>
                 </dl>
             @endif
+            @if ($server)
+                @php
+                    $pts = $server['points'];
+                    $sum = $server['summary'];
+                    $fmtAt = fn ($at) => match ($span) { '24s' => $at->format('H:i'), '12a' => \App\Services\Stats\SiteStats::monthName($at), default => $at->format('d.m') };
+                    $labels = count($pts) > 1 ? [$fmtAt($pts[0]['at']), $fmtAt($pts[intdiv(count($pts), 2)]['at']), $fmtAt(end($pts)['at'])] : [];
+                    $diskPts = array_map(fn ($p) => $p['disk_used'] ?? 0, $pts);
+                @endphp
+                <div class="border-b border-line px-5 py-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <p class="text-[13.5px] font-medium">Kaynak geçmişi</p>
+                        <div class="inline-flex rounded-md border border-line p-0.5 text-[13px]" role="group" aria-label="Geçmiş aralığı">
+                            @foreach (\App\Services\Stats\ServerHistory::RANGES as $key => [$label])
+                                <button type="button" wire:click="$set('span', '{{ $key }}')" aria-pressed="{{ $span === $key ? 'true' : 'false' }}"
+                                        @class(['h-7 rounded px-2.5', 'bg-surface-2 font-medium text-fg' => $span === $key, 'text-muted hover:text-fg' => $span !== $key])>{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+                    @if (count($pts) < 2)
+                        <p class="py-8 text-center text-[13px] text-muted">Bu aralık için henüz yeterli ölçüm yok. Saatlik değerler her saat başında eklenir.</p>
+                    @else
+                        <div class="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                            <div>
+                                <div class="flex items-baseline justify-between gap-3 text-[13px]"><span class="font-medium">İşlemci</span><span class="num text-muted">ort. {{ Load::cpu($sum['cpu']) }} · en yüksek {{ Load::cpu($sum['cpu_max']) }}</span></div>
+                                <x-line-chart :series="[array_column($pts, 'cpu')]" :max="100" :labels="$labels" class="mt-2" />
+                            </div>
+                            <div>
+                                <div class="flex items-baseline justify-between gap-3 text-[13px]"><span class="font-medium">Bellek</span><span class="num text-muted">ort. {{ Bytes::format($sum['memory']) }} · en yüksek {{ Bytes::format($sum['memory_max']) }}{{ $sum['memory_total'] ? ' / '.Bytes::format($sum['memory_total']) : '' }}</span></div>
+                                <x-line-chart :series="[array_column($pts, 'memory')]" :max="$sum['memory_total'] ?: null" :labels="$labels" class="mt-2" />
+                            </div>
+                            <div>
+                                <div class="flex items-baseline justify-between gap-3 text-[13px]"><span class="font-medium">Disk</span>
+                                    <span @class(['num', 'text-muted' => ! $sum['disk_total'] || $sum['disk_used'] / $sum['disk_total'] < 0.9, 'font-medium text-warn' => $sum['disk_total'] && $sum['disk_used'] / $sum['disk_total'] >= 0.9])>
+                                        {{ $sum['disk_used'] !== null ? Bytes::format($sum['disk_used']).($sum['disk_total'] ? ' / '.Bytes::format($sum['disk_total']).' (%'.round($sum['disk_used'] / $sum['disk_total'] * 100).')' : '') : 'Ölçülmedi' }}
+                                    </span>
+                                </div>
+                                <x-line-chart :series="[$diskPts]" :max="$sum['disk_total'] ?: null" :labels="$labels" class="mt-2" />
+                            </div>
+                            <div>
+                                <div class="flex items-baseline justify-between gap-3 text-[13px]"><span class="font-medium">Ağ</span><span class="num text-muted">giden {{ Bytes::format($sum['net_tx']) }} · gelen {{ Bytes::format($sum['net_rx']) }}</span></div>
+                                <x-line-chart :series="[array_column($pts, 'net_tx'), array_column($pts, 'net_rx')]" :labels="$labels" class="mt-2" />
+                            </div>
+                        </div>
+                        <p class="mt-3 text-2xs text-muted">{{ $span === '24s' ? '15 dakikalık ortalamalar.' : ($span === '7g' ? 'Saatlik ortalamalar.' : ($span === '30g' ? '4 saatlik ortalamalar.' : 'Günlük ortalamalar.')) }} Ağ grafiğinde düz çizgi giden, kesikli çizgi gelen trafik. Saatlik değerler 400 gün saklanır.</p>
+                    @endif
+                </div>
+            @endif
             @php
                 $groups = collect($snap['services'] ?? [])->groupBy('group');
                 $groupLabels = [

@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Backups\Backups;
 use App\Services\Customers\Quotas;
+use App\Services\Customers\UsageNotices;
 use App\Services\System\SystemServices;
 use App\Services\Updates\Updates;
 use Illuminate\Support\Facades\Crypt;
@@ -116,9 +117,15 @@ class Notifications
         }
         $quotas = app(Quotas::class);
         foreach (Customer::with('package')->get() as $customer) {
-            $disk = $quotas->report($customer)['disk'];
+            $report = $quotas->report($customer);
+            $disk = $report['disk'];
             if ($disk['level'] === 'crit') {
                 $out['disk:customer:'.$customer->id] = ['disk', $customer->displayName().' disk kotasını doldurdu ('.$disk['text'].')', null, route('customers.show', $customer, false)];
+            }
+            $traffic = $report['traffic'];
+            if ($traffic['level'] === 'crit') {
+                $out['traffic:customer:'.$customer->id] = ['traffic', $customer->displayName().' aylık trafik sınırını aştı ('.$traffic['text'].')',
+                    'Siteler çalışmaya devam ediyor; trafik ay başında sıfırlanır. Paketi yükseltmeyi düşünebilirsiniz.', route('customers.usage', ['customer' => $customer, 'sekme' => 'trafik'], false)];
             }
         }
         foreach (SystemServices::problems() as $s) {
@@ -184,6 +191,7 @@ class Notifications
         if ($opened !== [] || $resolved !== []) {
             $this->deliver($opened, $resolved);
         }
+        app(UsageNotices::class)->check();
 
         return ['opened' => count($opened), 'resolved' => count($resolved)];
     }
@@ -317,7 +325,7 @@ class Notifications
     /**
      * https://panel.ornek.com.tr:8443, for links in messages.
      */
-    private function panelUrl(): string
+    public function panelUrl(): string
     {
         $host = Setting::get('panel.hostname');
         $settings = app(PanelSettings::class);

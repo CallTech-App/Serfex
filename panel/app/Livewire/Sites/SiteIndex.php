@@ -8,6 +8,7 @@ use App\Livewire\Attributes\ForCustomers;
 use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\Site;
+use App\Models\SiteTraffic;
 use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
@@ -43,6 +44,10 @@ class SiteIndex extends Component
     /** Administrators may create the site for a customer ("" for none). */
     #[Url(as: 'musteri', except: '')]
     public string $customerId = '';
+
+    /** "" sorts by domain, "trafik" by this month's traffic. */
+    #[Url(as: 'sirala', except: '')]
+    public string $sort = '';
 
     public string $phpVersion = '';
 
@@ -242,11 +247,15 @@ class SiteIndex extends Component
                 $q->where('domain', 'like', $term)
                     ->orWhereHas('systemUser', fn ($u) => $u->where('name', 'like', $term));
             }))
+            ->when($this->sort === 'trafik', fn ($q) => $q->orderByRaw('coalesce((select bytes from site_traffic where site_traffic.site_id = sites.id and month = ?), 0) desc',
+                [now(config('servik.timezone'))->startOfMonth()->toDateString()]))
             ->orderBy('domain')
             ->paginate(25);
+        $traffic = SiteTraffic::whereIn('site_id', $sites->pluck('id'))->where('month', now(config('servik.timezone'))->startOfMonth()->toDateString())->pluck('bytes', 'site_id');
 
         return view('livewire.sites.index', [
             'sites' => $sites,
+            'traffic' => $traffic,
             'customers' => $user->is_admin && $this->creating ? Customer::orderByRaw('lower(coalesce(company, name))')->get(['id', 'company', 'name']) : collect(),
             'busy' => $sites->getCollection()->contains(fn (Site $s) => $s->status->isBusy()),
         ]);

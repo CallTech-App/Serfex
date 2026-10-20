@@ -76,10 +76,11 @@
             @include('livewire.customers.usage', ['report' => $report])
             <div class="flex flex-wrap items-center gap-3 border-t border-line px-5 py-3 text-[13px] text-muted">
                 <span>
-                    Disk; site dosyaları, posta ve Laravel yedeklerinin toplamıdır.
+                    Disk; site dosyaları, posta, veritabanları ve Laravel yedeklerinin toplamıdır.
                     {{ $measuredAt ? 'Son ölçüm '.\Illuminate\Support\Carbon::parse($measuredAt)->timezone(config('servik.timezone'))->format('d.m.Y H:i').'.' : 'Henüz ölçülmedi.' }}
                 </span>
-                <button type="button" wire:click="measure" wire:loading.attr="disabled" wire:target="measure" class="ml-auto flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] text-fg hover:bg-surface-2 disabled:opacity-60">
+                <a href="{{ route('customers.usage', $customer) }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">Disk ve trafik ayrıntısı</a>
+                <button type="button" wire:click="measure" wire:loading.attr="disabled" wire:target="measure" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] text-fg hover:bg-surface-2 disabled:opacity-60">
                     <x-icon name="refresh-cw" class="size-3.5" wire:loading.class="animate-spin" wire:target="measure" />Şimdi ölç
                 </button>
             </div>

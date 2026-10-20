@@ -23,3 +23,6 @@ Schedule::command('servik:services-check')->everyMinute()->withoutOverlapping();
 Schedule::command('servik:notify')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('servik:settings-check')->everyMinute()->withoutOverlapping();
 Schedule::command('servik:cron-history')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('servik:stats-collect')->everyMinute()->withoutOverlapping();
+Schedule::command('servik:stats-rollup')->hourlyAt(3)->withoutOverlapping();
+Schedule::command('servik:stats-prune')->dailyAt('04:10')->withoutOverlapping();

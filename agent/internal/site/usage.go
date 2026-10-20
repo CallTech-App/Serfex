@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -20,6 +21,9 @@ type DiskSpec struct {
 type DiskUsage struct {
 	Bytes uint64 `json:"bytes"`
 	Files uint64 `json:"files"`
+	// Sites is the part of Bytes in each site's folder
+	// (/home/<user>/web/<domain>), by domain.
+	Sites map[string]uint64 `json:"sites"`
 }
 
 const maxDiskUsers = 1000
@@ -48,7 +52,8 @@ func (m *Manager) DiskUsage(ctx context.Context, spec DiskSpec) (map[string]Disk
 }
 
 func measure(ctx context.Context, root string) (DiskUsage, error) {
-	var u DiskUsage
+	u := DiskUsage{Sites: map[string]uint64{}}
+	web := root + "/web/"
 	type inode struct{ dev, ino uint64 }
 	seen := map[inode]bool{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -82,6 +87,10 @@ func measure(ctx context.Context, root string) (DiskUsage, error) {
 			seen[key] = true
 		}
 		u.Bytes += uint64(st.Blocks) * 512
+		if rest, ok := strings.CutPrefix(path, web); ok {
+			domain, _, _ := strings.Cut(rest, "/")
+			u.Sites[domain] += uint64(st.Blocks) * 512
+		}
 		if !d.IsDir() {
 			u.Files++
 		}

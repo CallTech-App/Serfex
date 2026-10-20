@@ -27,6 +27,7 @@ use App\Livewire\Backups\BackupIndex;
 use App\Livewire\Components\ComponentIndex;
 use App\Livewire\Customers\CustomerIndex;
 use App\Livewire\Customers\CustomerShow;
+use App\Livewire\Customers\UsageReport;
 use App\Livewire\Databases\DatabaseIndex;
 use App\Livewire\Databases\DatabaseSettingsPage;
 use App\Livewire\Databases\DatabaseShow;
@@ -52,6 +53,7 @@ use App\Livewire\Settings\ServerSettings;
 use App\Livewire\Settings\UpdatesPage;
 use App\Livewire\Sites\SiteCron;
 use App\Livewire\Sites\SiteDirectives;
+use App\Livewire\Sites\SiteDisk;
 use App\Livewire\Sites\SiteDomainList;
 use App\Livewire\Sites\SiteErrorPages;
 use App\Livewire\Sites\SiteFiles;
@@ -62,6 +64,7 @@ use App\Livewire\Sites\SitePhp;
 use App\Livewire\Sites\SiteProtect;
 use App\Livewire\Sites\SiteScan;
 use App\Livewire\Sites\SiteShow;
+use App\Livewire\Sites\SiteStatistics;
 use App\Livewire\Sites\SiteWaf;
 use App\Livewire\Ssl\SiteSsl;
 use App\Livewire\Ssl\SslIndex;
@@ -113,6 +116,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/sites/{site}/hata-sayfalari', SiteErrorPages::class)->whereNumber('site')->name('sites.errors');
         Route::livewire('/sites/{site}/gunlukler', SiteLogs::class)->whereNumber('site')->name('sites.logs');
         Route::get('/sites/{site}/gunlukler/indir', SiteLogController::class)->whereNumber('site')->middleware('throttle:30,1')->name('sites.logs.download');
+        Route::livewire('/sites/{site}/istatistikler', SiteStatistics::class)->whereNumber('site')->name('sites.stats');
+        Route::livewire('/sites/{site}/disk', SiteDisk::class)->whereNumber('site')->name('sites.disk');
         Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
         Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
         Route::livewire('/mail', MailIndex::class)->name('mail.index');
@@ -123,6 +128,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/databases/{database}', DatabaseShow::class)->whereNumber('database')->name('databases.show');
         Route::get('/databases/{database}/yonetici', DatabaseManagerController::class)->whereNumber('database')->middleware('throttle:30,1')->name('databases.manager');
         Route::livewire('/yedekler', BackupIndex::class)->name('backups.index');
+        Route::livewire('/kullanim', UsageReport::class)->name('usage');
         Route::get('/yedekler/arsiv/{item}', ServerBackupDownloadController::class)->whereNumber('item')->name('backups.download');
     });
 
@@ -143,6 +149,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::post('/yedekler/yukle/{upload}', BackupUploadController::class)->where('upload', 'up-[a-z0-9]{20}')->name('backups.upload');
         Route::livewire('/musteriler', CustomerIndex::class)->name('customers.index');
         Route::livewire('/musteriler/{customer}', CustomerShow::class)->whereNumber('customer')->name('customers.show');
+        Route::livewire('/musteriler/{customer}/kullanim', UsageReport::class)->whereNumber('customer')->name('customers.usage');
         Route::post('/musteriler/{customer}/giris', [ImpersonationController::class, 'store'])->whereNumber('customer')->name('customers.impersonate');
 
         // Araçlar ve Ayarlar and Servik AI's settings: full administrators.

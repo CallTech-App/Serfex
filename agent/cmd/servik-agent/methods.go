@@ -27,6 +27,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/security"
 	"github.com/winchester37/servik/agent/internal/service"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/stats"
 	"github.com/winchester37/servik/agent/internal/system"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -86,6 +87,9 @@ type services struct {
 	php        *php.Manager
 	cron       *cron.Manager
 	system     *system.Manager
+	stats      *stats.Aggregator
+	statsFile  string
+	geoFile    string
 	dryRun     bool
 }
 
@@ -599,6 +603,7 @@ func registerMonitor(srv *rpc.Server, svc services) {
 		return map[string]bool{"removed": removed}, err
 	})
 	handle(srv, "monitor.limits", func(context.Context, struct{}) (any, error) { return mon.Limits(), nil })
+	handle(srv, "stats.collect", func(_ context.Context, p stats.CollectSpec) (any, error) { return svc.stats.Collect(p), nil })
 	handle(srv, "php.restart", func(ctx context.Context, p domainParam) (any, error) {
 		n, err := mon.RestartPool(ctx, p.Domain)
 		return map[string]int{"stopped": n}, err

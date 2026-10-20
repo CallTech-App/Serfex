@@ -14,6 +14,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/stats"
 )
 
 // fixture is a simulated machine with two sites of one account, one site
@@ -603,5 +604,34 @@ func TestDescribeUnit(t *testing.T) {
 		if name != want[0] || group != want[1] {
 			t.Errorf("describeUnit(%q) = %q, %q; want %q, %q", unit, name, group, want[0], want[1])
 		}
+	}
+}
+
+func TestStatisticsAndNetworkAreFed(t *testing.T) {
+	f := newFixture(t)
+	f.m.Stats = stats.New()
+	f.m.Stats.MailDomains = func() map[string]bool { return map[string]bool{"magaza.com.tr": true} }
+	f.write("/proc/net/dev", "Inter-|   Receive |  Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets\n    lo: 999 1 0 0 0 0 0 0 999 1 0 0 0 0 0 0\n  eth0: 1000 10 0 0 0 0 0 0 5000 20 0 0 0 0 0 0\n")
+	f.tick(0)
+	f.append(site.AccessLog("magaza.com.tr"),
+		accessLine("192.0.2.1", "GET", "/", 200),
+		`192.0.2.2 - - [19/Oct/2026:12:00:01 +0000] "GET /urun HTTP/1.1" 200 100 "https://www.google.com/" "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0"`)
+	f.append(mailLog, "Oct 19 12:00:00 mail postfix/lmtp[5]: EF56: to=<bilgi@magaza.com.tr>, relay=mail[private/dovecot-lmtp], delay=0.1, dsn=2.0.0, status=sent (250 2.0.0 Saved)")
+	f.write("/proc/net/dev", "Inter-|   Receive |  Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets\n    lo: 99999 1 0 0 0 0 0 0 99999 1 0 0 0 0 0 0\n  eth0: 3000 10 0 0 0 0 0 0 9000 20 0 0 0 0 0 0\n")
+	f.tick(2 * time.Second)
+
+	b := f.m.Stats.Collect(stats.CollectSpec{})
+	if len(b.Sites) != 1 || b.Sites[0].Domain != "magaza.com.tr" || b.Sites[0].Hours[0].Requests != 2 {
+		t.Fatalf("statistics = %+v", b.Sites)
+	}
+	if ref := b.Sites[0].Hours[0].Items[stats.KindReferrer]; ref["google.com"].Requests != 1 {
+		t.Fatalf("referrers = %+v", ref)
+	}
+	if len(b.Mail) != 1 || b.Mail[0].Hours[0].Received != 1 {
+		t.Fatalf("mail = %+v", b.Mail)
+	}
+	snap := f.m.Snapshot(SnapshotSpec{Window: 2})
+	if snap.Server.NetRx != 1000 || snap.Server.NetTx != 2000 {
+		t.Fatalf("network = %v rx/s, %v tx/s", snap.Server.NetRx, snap.Server.NetTx)
 	}
 }

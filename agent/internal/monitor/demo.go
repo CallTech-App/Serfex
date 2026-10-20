@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,6 +32,8 @@ type demoSampler struct {
 	h       interface{ Path(string) string }
 	qid     int
 	seeded  bool
+	netRx   float64
+	netTx   float64
 }
 
 // installed reports whether a file of a simulated package exists.
@@ -211,6 +214,9 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 	r.cpuTotal, r.cpuBusy = uint64(s.cpuAll), uint64(s.cpuBusy)
 	r.memAvail = r.memTotal - uint64(float64(14<<30)*wave(6))
 	r.load = [3]float64{total / 100 * 1.1, total / 100, total / 100 * 0.9}
+	s.netRx += (2.2e6 + 1.5e6*math.Sin(sec/300)) * wave(9) * dt
+	s.netTx += (9e6 + 6e6*math.Sin(sec/300)) * wave(10) * dt
+	r.netRx, r.netTx = uint64(s.netRx), uint64(s.netTx)
 
 	// Someone guesses mail and SSH passwords; one site sends mail.
 	ts := now.Format("2006-01-02T15:04:05.000000-07:00")
@@ -224,6 +230,22 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 		s.qid++
 		d := sites[len(sites)/2].Domain
 		r.mailLog = append(r.mailLog, fmt.Sprintf("%s mail postfix/qmgr[2210]: D%06X: from=<bilgi@%s>, size=4210, nrcpt=1 (queue active)", ts, s.qid, d))
+		status := "sent (250 2.0.0 OK)"
+		if s.rnd.IntN(8) == 0 {
+			status = "bounced (host mx.ornek-posta.net[198.51.100.40] said: 550 5.1.1 User unknown)"
+		}
+		r.mailLog = append(r.mailLog, fmt.Sprintf("%s mail postfix/smtp[2301]: D%06X: to=<musteri@ornek-posta.net>, relay=mx.ornek-posta.net[198.51.100.40]:25, delay=1, dsn=2.0.0, status=%s", ts, s.qid, status))
+	}
+	if len(sites) > 0 && s.rnd.IntN(4) == 0 {
+		// Mail arriving for the sites, some refused as spam.
+		s.qid++
+		d := sites[s.rnd.IntN(len(sites))].Domain
+		if s.rnd.IntN(5) == 0 {
+			r.mailLog = append(r.mailLog, fmt.Sprintf("%s mail postfix/cleanup[2401]: E%06X: milter-reject: END-OF-MESSAGE from unknown[203.0.113.9]: 5.7.1 Spam message rejected; from=<kampanya@kotu.example> to=<bilgi@%s> proto=ESMTP helo=<x>", ts, s.qid, d))
+		} else {
+			r.mailLog = append(r.mailLog, fmt.Sprintf("%s mail postfix/qmgr[2210]: E%06X: from=<ayse@gmail.com>, size=8000, nrcpt=1 (queue active)", ts, s.qid))
+			r.mailLog = append(r.mailLog, fmt.Sprintf("%s mail postfix/lmtp[2302]: E%06X: to=<bilgi@%s>, relay=mail[private/dovecot-lmtp], delay=0.2, dsn=2.0.0, status=sent (250 2.0.0 Saved)", ts, s.qid, d))
+		}
 	}
 	if s.rnd.IntN(2) == 0 {
 		r.authLog = append(r.authLog, ts+" host sshd[4410]: Failed password for invalid user admin from 192.0.2.201 port 52113 ssh2")
@@ -239,7 +261,32 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 	return r
 }
 
-var demoPaths = []string{"/", "/", "/", "/urunler", "/sepet", "/iletisim", "/blog/yazi-1", "/build/assets/app.js", "/build/assets/app.css", "/favicon.ico", "/api/v1/products"}
+var demoPaths = []string{"/", "/", "/", "/urunler", "/urunler", "/sepet", "/iletisim", "/hakkimizda", "/blog/filtre-kahve-nasil-demlenir", "/blog/espresso-rehberi",
+	"/urunler/etiyopya-yirgacheffe", "/build/assets/app.js", "/build/assets/app.css", "/favicon.ico", "/api/v1/products", "/img/kapak.webp"}
+
+// demoVisitors are address prefixes (by the demo country table: TR, DE,
+// NL, US, GB, AZ, FR) weighted by how often they visit.
+var demoVisitors = []string{"88.%d.%d.%d", "88.%d.%d.%d", "88.%d.%d.%d", "78.%d.%d.%d", "78.%d.%d.%d", "5.1.%d.%d", "37.0.%d.%d", "3.%d.%d.%d", "2.24.%d.%d", "5.191.%d.%d", "2.%d.%d.%d"}
+
+var demoReferrers = []string{"-", "-", "-", "-", "https://www.google.com/", "https://www.google.com/", "https://www.google.com.tr/", "https://www.instagram.com/",
+	"https://www.bing.com/search?q=kahve", "https://t.co/x1", "https://www.facebook.com/", "https://yandex.com.tr/", "https://www.eksisozluk.com/"}
+
+var demoBrowsers = []string{
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36",
+	"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+	"Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 15_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+}
+
+var demoBots = []string{
+	"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+	"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+	"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+	"Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
+	"Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
+	"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",
+	"curl/8.5.0",
+}
 
 // traffic writes n made-up access log lines.
 func (s *demoSampler) traffic(domain string, n float64, now time.Time, attack bool) []string {
@@ -249,27 +296,34 @@ func (s *demoSampler) traffic(domain string, n float64, now time.Time, attack bo
 	}
 	ts := now.Format("02/Jan/2006:15:04:05 -0700")
 	var lines []string
-	line := func(ip, method, path string, status int) {
-		lines = append(lines, fmt.Sprintf(`%s - - [%s] "%s %s HTTP/1.1" %d %d "-" "Mozilla/5.0"`, ip, ts, method, path, status, 1000+s.rnd.IntN(30000)))
+	line := func(ip, method, path string, status int, ref, agent string) {
+		lines = append(lines, fmt.Sprintf(`%s - - [%s] "%s %s HTTP/1.1" %d %d "%s" "%s"`, ip, ts, method, path, status, 1000+s.rnd.IntN(30000), ref, agent))
 	}
 	for i := 0; i < count; i++ {
-		ip := fmt.Sprintf("88.%d.%d.%d", 230+s.rnd.IntN(20), s.rnd.IntN(255), 1+s.rnd.IntN(250))
+		ip := demoVisitors[s.rnd.IntN(len(demoVisitors))]
+		for _, n := range []int{224 + s.rnd.IntN(16), s.rnd.IntN(255), 1 + s.rnd.IntN(250)} {
+			ip = strings.Replace(ip, "%d", strconv.Itoa(n), 1)
+		}
 		status := 200
 		if s.rnd.IntN(50) == 0 {
 			status = 404
 		}
-		line(ip, "GET", demoPaths[s.rnd.IntN(len(demoPaths))], status)
+		agent, ref := demoBrowsers[s.rnd.IntN(len(demoBrowsers))], demoReferrers[s.rnd.IntN(len(demoReferrers))]
+		if s.rnd.IntN(5) == 0 {
+			agent, ref = demoBots[s.rnd.IntN(len(demoBots))], "-"
+		}
+		line(ip, "GET", demoPaths[s.rnd.IntN(len(demoPaths))], status, ref, agent)
 	}
 	if attack {
 		dt := DefaultInterval.Seconds()
 		for i := 0; i < int(10*dt); i++ {
-			line("45.155.205.233", "POST", "/wp-login.php", 200)
+			line("45.155.205.233", "POST", "/wp-login.php", 200, "-", "Mozilla/5.0")
 		}
 		for i := 0; i < int(7*dt); i++ {
-			line("193.42.33.117", "POST", "/xmlrpc.php", 200)
+			line("193.42.33.117", "POST", "/xmlrpc.php", 200, "-", "Mozilla/5.0")
 		}
 		for i := 0; i < int(4*dt); i++ {
-			line("103.153.79.6", "GET", "/sepet?urun="+fmt.Sprint(s.rnd.IntN(9999)), 502)
+			line("103.153.79.6", "GET", "/sepet?urun="+fmt.Sprint(s.rnd.IntN(9999)), 502, "-", demoBrowsers[0])
 		}
 	}
 	return lines

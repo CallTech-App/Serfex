@@ -36,7 +36,7 @@
     if ($user?->isCustomer()) {
         // A customer sees their own hosting, within their package.
         $nav = [
-            [null, [['dashboard', 'layout-dashboard', 'Genel Bakış']]],
+            [null, [['dashboard', 'layout-dashboard', 'Genel Bakış'], ['usage', 'chart-column', 'Kullanım']]],
             ['Barındırma', array_values(array_filter([
                 ['sites.index', 'globe', 'Siteler'],
                 $user->allows('laravel') ? ['laravel.index', 'layers', 'Laravel'] : null,

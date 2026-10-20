@@ -238,6 +238,41 @@ jobs:
           sudo nft list ruleset || true
           sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
 
+  agent-stats:
+    name: Agent collects traffic statistics from a real site
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx and PHP-FPM
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm
+          sudo systemctl start nginx php8.3-fpm
+
+      # Serves a site, sends it visitors, crawlers and broken links from
+      # several addresses, and checks requests, bandwidth, visitors, pages,
+      # referrers, countries and bots as the panel collects them; measures
+      # the site's folder and keeps uncollected counts over a restart.
+      - name: Collect statistics from a real site
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 10m ./internal/stats
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u php8.3-fpm -u nginx -n 100 || true
+          sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
+
   agent-databases:
     name: Agent runs a real ${{ matrix.product }} server
     runs-on: ubuntu-24.04

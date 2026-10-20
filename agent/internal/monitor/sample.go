@@ -27,6 +27,8 @@ type raw struct {
 	memTotal  uint64
 	memAvail  uint64
 	load      [3]float64
+	netRx     uint64 // bytes received on every interface but loopback, since boot
+	netTx     uint64
 	procs     []proc
 	pools     map[string]poolStatus // by site
 	db        []dbConn
@@ -193,12 +195,39 @@ func (s *systemSampler) readStat(r *raw) {
 			}
 		}
 	}
+	r.netRx, r.netTx = readNetDev(s.h.Path("/proc/net/dev"))
 	if b, err := os.ReadFile(s.h.Path("/proc/loadavg")); err == nil {
 		f := strings.Fields(string(b))
 		for i := 0; i < 3 && i < len(f); i++ {
 			r.load[i], _ = strconv.ParseFloat(f[i], 64)
 		}
 	}
+}
+
+// readNetDev adds up the bytes every network interface but loopback
+// received and sent.
+func readNetDev(file string) (rx, tx uint64) {
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return 0, 0
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		name, rest, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(name) == "lo" {
+			continue
+		}
+		f := strings.Fields(rest)
+		if len(f) < 9 {
+			continue
+		}
+		r, err1 := strconv.ParseUint(f[0], 10, 64)
+		t, err2 := strconv.ParseUint(f[8], 10, 64)
+		if err1 == nil && err2 == nil {
+			rx += r
+			tx += t
+		}
+	}
+	return rx, tx
 }
 
 // readProcs reads every user-space process. Kernel threads (no command

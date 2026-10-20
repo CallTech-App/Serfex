@@ -37,6 +37,7 @@
         <div class="flex items-center gap-3 border-b border-line px-5 py-3.5">
             <x-icon name="package" class="text-muted" />
             <p class="font-medium">{{ $customer->package->name }} paketi</p>
+            <a href="{{ route('usage') }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">Kullanım raporu</a>
         </div>
         @include('livewire.customers.usage', ['report' => $report])
     </section>
