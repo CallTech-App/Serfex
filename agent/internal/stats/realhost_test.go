@@ -145,7 +145,8 @@ func TestRealHost(t *testing.T) {
 	if c.Requests != 8 || c.Visitors != 3 || c.Pages != 4 || c.BotRequests != 2 || c.S4 != 1 {
 		t.Errorf("counts = %+v", c)
 	}
-	if c.Bytes < 3<<20+6000 || c.BotBytes < 3<<20 {
+	// The 3 MB file went to curl; the pages are a few hundred bytes.
+	if c.BotBytes < 3<<20 || c.Bytes <= c.BotBytes {
 		t.Errorf("bandwidth %d, by bots %d", c.Bytes, c.BotBytes)
 	}
 	if items[stats.KindPage]["/urunler.php"].Requests != 2 || items[stats.KindPage]["/index.php"].Requests != 2 {
