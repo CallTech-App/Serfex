@@ -76,6 +76,14 @@ in its own log.
 
 See [Updates](updates.md).
 
+## Setup wizard
+
+The steps a new server needs (server name and addresses, name servers, the
+panel's address, notifications, firewall, defaults, backups), as after the
+installation. Run it again at any time; each step saves through the same
+settings as its own page. Overview lists the open steps until the wizard is
+finished. See [Installation](../installation.md#the-setup-wizard).
+
 ## Account security (everyone)
 
 From the name at the top right: language, two-step verification with

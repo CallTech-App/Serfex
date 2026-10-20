@@ -51,6 +51,22 @@ servik login https://panel.ornek.com.tr:8443 --token svk_…
 sudo servik login --local
 ```
 
+### servik setup-url
+
+```
+servik setup-url
+```
+
+Henüz yöneticisi olmayan bir panel için tek kullanımlık kurulum bağlantısı oluşturur. Bağlantıyı açan kişi ilk yönetici hesabını oluşturur ve kurulum sihirbazına geçer. Bağlantı 24 saat geçerlidir; yenisi oluşunca eskisi çalışmaz.
+
+install.sh ilk bağlantıyı kurulumun sonunda yazar. Sunucunun kendisinde root olarak çalışır.
+
+Örnekler:
+
+```sh
+sudo servik setup-url
+```
+
 ### servik logout
 
 ```

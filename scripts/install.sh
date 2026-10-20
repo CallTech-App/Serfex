@@ -3,6 +3,10 @@
 #
 #   curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh | sudo bash
 #
+# At the end it prints a one-time setup link (24 hours): whoever opens it
+# creates the first administrator and goes through the setup wizard. A
+# lost link is made again on the server with `sudo servik setup-url`.
+#
 # It installs the newest release (panel and agent) into
 # /opt/servik/releases/<version>, the panel's own PostgreSQL (a cluster
 # named "servik" on port 5433, apart from the customers'), the panel's
@@ -15,7 +19,8 @@
 #   --version V        install release V instead of the newest
 #   --channel C        stable (default) or beta: beta also takes pre-releases
 #   --hostname H       the panel's address (default: the server's FQDN)
-#   --admin-email E    create the administrator; the password is printed at the end
+#   --admin-email E    create the administrator now and print its password at the
+#                      end, instead of the one-time setup link (for automation)
 #   --admin-name N     the administrator's name (default: Yönetici / Administrator)
 #   --lang L           tr or en: the panel's default language and this
 #                      installer's (default: tr when LANG is Turkish, else en)
@@ -310,13 +315,23 @@ for i in $(seq 30); do
 done
 [ "$ok" -eq 1 ] || die "$(t "Panel https://127.0.0.1:$WEB_PORT/up adresinde yanıt vermiyor; /var/log/servik/web/ ve journalctl -u servik-php çıktısına bakın." "The panel does not answer on https://127.0.0.1:$WEB_PORT/up; see /var/log/servik/web/ and journalctl -u servik-php.")"
 
+# The way in: the administrator made above, or a one-time setup link.
+SETUP_URLS=
+if [ -z "$ADMIN_PASSWORD" ]; then
+	SETUP_URLS=$(artisan servik:setup-url --json 2> /dev/null | tail -n 1 | jq -r '.urls[]?' 2> /dev/null || true)
+fi
+
 printf '\n✓ %s\n\n  Panel:  https://%s:%s\n' "$(t "Servik $VERSION kuruldu." "Servik $VERSION is installed.")" "$PANEL_HOST" "$WEB_PORT"
 if [ -n "$ADMIN_PASSWORD" ]; then
 	printf "  $(t 'Giriş: %s / %s  (girişten sonra parolayı değiştirin)' 'Sign in: %s / %s  (change the password after signing in)')\n" "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+elif [ -n "$SETUP_URLS" ]; then
+	printf '\n  %s\n' "$(t "Kurulumu tamamlamak için bu bağlantıyı tarayıcıda açın; yönetici hesabını oluşturup kurulum sihirbazına geçersiniz:" "To finish, open this link in a browser; you create the administrator account and go on to the setup wizard:")"
+	while IFS= read -r u; do printf '\n    %s\n' "$u"; done <<< "$SETUP_URLS"
+	printf '\n  %s\n' "$(t "Bağlantı bir kez kullanılır ve 24 saat geçerlidir. Kaybederseniz: sudo servik setup-url" "The link works once, for 24 hours. If you lose it: sudo servik setup-url")"
 else
-	printf "  $(t 'Yöneticiyi oluşturun:' 'Create the administrator:')\n    sudo -u servik php%s /opt/servik/current/panel/artisan servik:admin\n" "$PANEL_PHP"
+	printf "  $(t 'Giriş: mevcut yönetici hesabınızla.' 'Sign in with your existing administrator account.')\n"
 fi
-[ -x /usr/local/bin/servik ] && printf "  $(t 'Komut satırı: %s' 'Command line: %s')\n" "sudo servik login --local"
+[ -x /usr/local/bin/servik ] && [ -z "$SETUP_URLS" ] && printf "  $(t 'Komut satırı: %s' 'Command line: %s')\n" "sudo servik login --local"
 printf '\n  %s\n  %s\n' \
 	"$(t "Panel kendi sertifikasını alana kadar kendinden imzalı bir sertifika kullanır: SSL → Ayarlar." "The panel uses a self-signed certificate until it gets its own: SSL → Settings.")" \
 	"$(t "Güvenlik duvarında 80, 443 ve $WEB_PORT portlarını (DNS ve posta için 53, 25, 587, 993) açın." "Open ports 80, 443 and $WEB_PORT (and 53, 25, 587, 993 for DNS and mail) in your firewall.")"

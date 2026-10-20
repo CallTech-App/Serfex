@@ -118,9 +118,23 @@ run() {
 
 	echo "▸ install.sh --version $V1"
 	bash "$root/scripts/install.sh" --version "$V1" --source "http://127.0.0.1:$PORT" --hostname panel.ci.test \
-		--no-components --yes --admin-email ci@servik.test --lang tr
+		--no-components --yes --lang tr | tee /tmp/install.out
 	expect_running "$V1"
+
+	# Without --admin-email the installer prints the one-time setup link.
+	link=$(grep -oE 'https://[^ ]+/install/[A-Za-z0-9]{48}' /tmp/install.out | head -n 1)
+	[ -n "$link" ] || fail "install.sh printed no setup link"
+	setup_path=${link#https://*/}
+	[ "$(code "/$setup_path")" = 200 ] || fail "the setup link answers $(code "/$setup_path")"
+	[ "$(sql "SELECT count(*) FROM users")" = 0 ] || fail "an account exists before the setup link was used"
+	servik setup-url > /tmp/setup-url.out || fail "servik setup-url failed"
+	grep -q '/install/' /tmp/setup-url.out || fail "servik setup-url printed no link"
+	[ "$(code "/$setup_path")" = 410 ] || fail "the first link still works after a new one was made"
+	ok "install.sh printed a setup link; servik setup-url replaced it"
+
+	artisan servik:admin --email=ci@servik.test --name=CI --password=ci-password-123
 	[ "$(sql "SELECT count(*) FROM users WHERE email = 'ci@servik.test' AND is_admin")" = 1 ] || fail "no administrator"
+	! servik setup-url > /dev/null 2>&1 || fail "servik setup-url made a link although an administrator exists"
 
 	echo "▸ servik:update --check"
 	artisan servik:update --check | tee /tmp/check.out

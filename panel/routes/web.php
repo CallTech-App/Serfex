@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\SetupController;
 use App\Http\Controllers\Backups\BackupDownloadController as ServerBackupDownloadController;
 use App\Http\Controllers\Backups\BackupUploadController;
 use App\Http\Controllers\CliDownloadController;
@@ -53,6 +54,7 @@ use App\Livewire\Settings\GeneralSettings;
 use App\Livewire\Settings\NotificationSettings;
 use App\Livewire\Settings\ServerSettings;
 use App\Livewire\Settings\UpdatesPage;
+use App\Livewire\Setup\SetupWizard;
 use App\Livewire\Sites\SiteCron;
 use App\Livewire\Sites\SiteDirectives;
 use App\Livewire\Sites\SiteDisk;
@@ -83,6 +85,11 @@ Route::post('/davet/{token}', [InvitationController::class, 'store'])->where('to
 // script and the binaries of this server's release.
 Route::get('/cli/install.sh', [CliDownloadController::class, 'script'])->middleware('throttle:30,1')->name('cli.install');
 Route::get('/cli/indir/{file}', [CliDownloadController::class, 'download'])->where('file', 'SHA256SUMS|servik-cli-(linux|darwin)-(amd64|arm64)')->middleware('throttle:30,1')->name('cli.download');
+
+// The one-time setup link install.sh prints: it creates the first
+// administrator. Wrong tokens are throttled like failed logins.
+Route::get('/install/{token}', [SetupController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('setup.link');
+Route::post('/install/{token}', [SetupController::class, 'store'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -162,6 +169,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
 
         // Araçlar ve Ayarlar and Servik AI's settings: full administrators.
         Route::middleware(EnsureFullAdmin::class)->group(function () {
+            Route::livewire('/install', SetupWizard::class)->name('setup');
             Route::livewire('/ayarlar', GeneralSettings::class)->name('settings.general');
             Route::livewire('/ayarlar/sunucu', ServerSettings::class)->name('settings.server');
             Route::livewire('/ayarlar/bildirimler', NotificationSettings::class)->name('settings.notifications');

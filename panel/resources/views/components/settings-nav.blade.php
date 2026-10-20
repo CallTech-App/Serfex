@@ -9,6 +9,7 @@
         ['settings.api', 'key-round', __('API anahtarları')],
         ['settings.audit', 'history', __('İşlem günlüğü')],
         ['settings.updates', 'refresh-cw', __('Güncellemeler')],
+        ['setup', 'list-checks', __('Kurulum sihirbazı')],
     ];
     $updates = count(app(\App\Services\Updates\Updates::class)->notices());
 @endphp

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Security\LoginLog;
 use App\Services\Security\TwoFactor;
+use App\Services\Setup\FirstRun;
 use App\Support\Impersonation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,9 +29,9 @@ class LoginController extends Controller
     /** How long the second step may wait after the password. */
     private const CHALLENGE_MINUTES = 10;
 
-    public function create(): View
+    public function create(FirstRun $firstRun): View
     {
-        return view('auth.login');
+        return view('auth.login', ['needsSetup' => $firstRun->needsAdministrator()]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -79,7 +80,7 @@ class LoginController extends Controller
         }
         Auth::guard('web')->login($user, $request->boolean('remember'));
 
-        return redirect()->intended(route('dashboard'));
+        return $this->home($user);
     }
 
     /**
@@ -117,6 +118,24 @@ class LoginController extends Controller
         $remember = (bool) $request->session()->pull('login.two_factor')['remember'];
         Auth::guard('web')->login($user, $remember);
         $request->session()->regenerate();
+
+        return $this->home($user);
+    }
+
+    /**
+     * Where a sign-in goes: where they were going, else the setup wizard
+     * the first time a full administrator signs in to a new panel, else
+     * Genel Bakış.
+     */
+    private function home(User $user): RedirectResponse
+    {
+        $firstRun = app(FirstRun::class);
+        $going = (string) session('url.intended', '');
+        if ($user->isFullAdmin() && ! $firstRun->started() && ($going === '' || $going === route('dashboard'))) {
+            $firstRun->start();
+
+            return redirect()->route('setup');
+        }
 
         return redirect()->intended(route('dashboard'));
     }

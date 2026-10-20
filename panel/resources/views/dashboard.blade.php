@@ -4,6 +4,10 @@
         <p class="mt-1 text-[13px] text-muted">{{ __('Sunucunun ve sitelerin durumu.') }}</p>
     </div>
 
+    @if (auth()->user()->isFullAdmin() && ! app(\App\Services\Setup\FirstRun::class)->completed())
+        <x-setup-checklist />
+    @endif
+
     <section class="divide-y divide-line rounded-xl border border-line bg-surface text-[13.5px]">
         <div class="flex items-center gap-3 px-5 py-4">
             <livewire:agent-status />

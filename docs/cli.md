@@ -51,6 +51,22 @@ servik login https://panel.ornek.com.tr:8443 --token svk_…
 sudo servik login --local
 ```
 
+### servik setup-url
+
+```
+servik setup-url
+```
+
+Makes a one-time setup link for a panel that has no administrator yet. Whoever opens it creates the first administrator account and goes on to the setup wizard. The link works for 24 hours; a new one stops the old one.
+
+install.sh prints the first link at the end of the installation. Runs on the server itself as root.
+
+Examples:
+
+```sh
+sudo servik setup-url
+```
+
 ### servik logout
 
 ```

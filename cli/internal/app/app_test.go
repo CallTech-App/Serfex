@@ -546,3 +546,52 @@ func contains(list []string, s string) bool {
 	}
 	return false
 }
+
+func TestSetupURLAsksThePanelForANewLink(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "panel.json")
+	os.WriteFile(cfg, []byte(`{"php":"8.5"}`), 0o644)
+	var out, errOut bytes.Buffer
+	var ran []string
+	answer := `{"url":"https://203.0.113.10:8443/install/abc","urls":["https://203.0.113.10:8443/install/abc","https://srv1.ornek.com.tr:8443/install/abc"],"expires_at":"2026-10-21T19:00:00+00:00"}`
+	env := &Env{
+		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
+		Getenv: func(k string) string {
+			return map[string]string{"SERVIK_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
+		},
+		Geteuid:  func() int { return 0 },
+		Hostname: func() (string, error) { return "srv1", nil },
+		ReadFile: func(p string) ([]byte, error) {
+			if p == panelConfig {
+				return os.ReadFile(cfg)
+			}
+			return os.ReadFile(p)
+		},
+		Command: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			ran = append([]string{name}, args...)
+			return []byte(answer + "\n"), nil
+		},
+	}
+	if code := Main([]string{"setup-url"}, env); code != 0 {
+		t.Fatalf("setup-url: %d %s", code, errOut.String())
+	}
+	if got := strings.Join(ran, " "); got != "runuser -u servik -- env -C /opt/servik/current/panel php8.5 artisan servik:setup-url --json" {
+		t.Errorf("ran %q", got)
+	}
+	if !strings.Contains(out.String(), "https://203.0.113.10:8443/install/abc\nhttps://srv1.ornek.com.tr:8443/install/abc\n") {
+		t.Errorf("stdout %q", out.String())
+	}
+
+	// A panel with an administrator says so.
+	answer = `{"error":"Bu panelde zaten bir yönetici var."}`
+	out.Reset()
+	errOut.Reset()
+	if code := Main([]string{"setup-url"}, env); code == 0 || !strings.Contains(errOut.String(), "zaten bir yönetici var") {
+		t.Errorf("with an administrator: %d %q", code, errOut.String())
+	}
+
+	env.Geteuid = func() int { return 1000 }
+	if code := Main([]string{"setup-url"}, env); code == 0 {
+		t.Error("ran without root")
+	}
+}
