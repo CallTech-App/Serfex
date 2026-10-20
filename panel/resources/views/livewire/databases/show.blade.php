@@ -35,7 +35,9 @@
             <x-icon name="loader-circle" class="animate-spin text-info" />
             <div class="min-w-0 flex-1">
                 <p class="font-medium">{{ __('Bu veritabanı silindi') }}</p>
-                <p class="mt-0.5 text-[13px] text-muted">{{ __('Kullanıcıların erişimi kaldırıldı. Veriler :undo_seconds sularında :backup_on_deletesunucudan silinir.', ['undo_seconds' => \App\Support\When::time($database->deleted_at->addSeconds(Databases::UNDO_SECONDS)), 'backup_on_delete' => $database->backup_on_delete ? __('yedeği alınarak ') : '']) }}</p>
+                <p class="mt-0.5 text-[13px] text-muted">{{ $database->backup_on_delete
+                    ? __('Kullanıcıların erişimi kaldırıldı. Veriler :time sularında yedeği alınarak sunucudan silinir.', ['time' => \App\Support\When::time($database->deleted_at->addSeconds(Databases::UNDO_SECONDS))])
+                    : __('Kullanıcıların erişimi kaldırıldı. Veriler :time sularında sunucudan silinir.', ['time' => \App\Support\When::time($database->deleted_at->addSeconds(Databases::UNDO_SECONDS))]) }}</p>
             </div>
             <button type="button" wire:click="undoDelete" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
                 <x-icon name="rotate-ccw" class="size-3.5" />{{ __('Geri al') }}
@@ -88,7 +90,7 @@
                 <dt class="text-muted">{{ __('Bağlantı') }}</dt>
                 <dd>
                     <span class="font-mono">127.0.0.1:{{ $port }}</span>
-                    <span class="text-muted">· siteler <span class="font-mono">localhost</span> da kullanabilir</span>
+                    <span class="text-muted">· <x-t text="siteler :host da kullanabilir"><x-slot:host><span class="font-mono">localhost</span></x-slot:host></x-t></span>
                 </dd>
             </div>
         </dl>

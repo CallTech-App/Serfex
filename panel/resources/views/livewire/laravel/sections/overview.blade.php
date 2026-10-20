@@ -90,7 +90,7 @@
                 </dl>
                 <button type="button" wire:click="$parent.show('ortam')" class="mt-2 text-[13px] text-accent hover:underline">{{ __('.env dosyasını düzenle') }}</button>
             @else
-                <p class="text-[13px] text-muted">{{ __('Uygulama şu an ayarlarını bildiremedi. Hatayı görmek için') }} <button type="button" wire:click="$parent.show('gunlukler')" class="text-accent hover:underline">{{ __('günlüklere') }}</button> {{ __('bakın.') }}</p>
+                <p class="text-[13px] text-muted"><x-t text="Uygulama şu an ayarlarını bildiremedi. Hatayı görmek için :logs bakın."><x-slot:logs><button type="button" wire:click="$parent.show('gunlukler')" class="text-accent hover:underline">{{ __('günlüklere') }}</button></x-slot:logs></x-t></p>
             @endif
         </div>
     </div>

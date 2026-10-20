@@ -70,7 +70,7 @@
                 </button>
                 <button type="button" wire:click="deleteSelected" @disabled($selected === [])
                         class="h-9 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40">
-                    Sil{{ $selected ? ' ('.count($selected).')' : '' }}
+                    {{ __('Sil') }}{{ $selected ? ' ('.count($selected).')' : '' }}
                 </button>
                 <button type="button" wire:click="$set('confirmingReset', true)" class="h-9 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Varsayılana dön') }}</button>
                 <div class="ml-auto flex w-full gap-2 sm:w-auto">

@@ -77,7 +77,7 @@
                             @php $secret = EnvFile::isSecret($row['key']); @endphp
                             <tr wire:key="env-{{ $i }}" x-show="! q || @js(strtolower($row['key'])).includes(q.toLowerCase())">
                                 <td class="py-2 pr-3 pl-5">
-                                    <input wire:model="rows.{{ $i }}.key" aria-label="{{ __('Anahtar') }}" placeholder="YENI_ANAHTAR" spellcheck="false" class="{{ $input }} uppercase {{ $errors->has('rows.'.$i.'.key') ? 'border-crit' : 'border-line' }}">
+                                    <input wire:model="rows.{{ $i }}.key" aria-label="{{ __('Anahtar') }}" placeholder="{{ __('YENI_ANAHTAR') }}" spellcheck="false" class="{{ $input }} uppercase {{ $errors->has('rows.'.$i.'.key') ? 'border-crit' : 'border-line' }}">
                                     @error('rows.'.$i.'.key')<p class="mt-1 font-sans text-2xs text-crit">{{ $message }}</p>@enderror
                                 </td>
                                 <td class="px-3 py-2">

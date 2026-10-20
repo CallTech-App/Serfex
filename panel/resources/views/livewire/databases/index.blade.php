@@ -114,7 +114,7 @@
                 </div>
                 @if ($databases->total() > 0)
                     <div class="num flex items-center gap-3 border-t border-line px-5 py-3 text-2xs text-muted">
-                        <span>{{ $total }}@if ($limit !== null) / {{ $limit }}@endif {{ __('veritabanı · toplam :total_size', ['total_size' => Bytes::format($totalSize)]) }}@if ($versions) · {{ implode(' · ', $versions) }}@endif</span>
+                        <span>{{ trans_choice(':used veritabanı · toplam :total_size', $limit ?? $total, ['used' => $limit !== null ? $total.' / '.$limit : $total, 'total_size' => Bytes::format($totalSize)]) }}@if ($versions) · {{ implode(' · ', $versions) }}@endif</span>
                         @if ($databases->hasPages())
                             <span class="ml-auto flex items-center gap-1">
                                 <button type="button" wire:click="previousPage('vt')" @disabled($databases->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Önceki') }}</button>

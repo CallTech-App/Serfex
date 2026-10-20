@@ -49,7 +49,7 @@
             <div class="min-w-0 flex-1">
                 <p class="font-medium">{{ __('Bu müşteri :suspended_at tarihinde askıya alındı', ['suspended_at' => \App\Support\When::dateTime($customer->suspended_at)]) }}</p>
                 <p class="mt-0.5 text-[13px] text-muted">
-                    {{ __(':suspend_reasonSiteleri askı sayfası gösteriyor, postası bekletiliyor ve panele giremiyor. Verileri silinmedi.', ['suspend_reason' => $customer->suspend_reason ? __('Neden: :suspend_reason. ', ['suspend_reason' => $customer->suspend_reason]) : '']) }}
+                    @if ($customer->suspend_reason){{ __('Neden: :reason.', ['reason' => $customer->suspend_reason]) }} @endif{{ __('Siteleri askı sayfası gösteriyor, postası bekletiliyor ve panele giremiyor. Verileri silinmedi.') }}
                 </p>
             </div>
             <button type="button" wire:click="unsuspend" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
@@ -64,7 +64,7 @@
                 <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="-mb-px flex h-12 items-center gap-1.5 border-b-2 whitespace-nowrap {{ $tab === $key ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg' }}">
                     {{ $label }}
-                    @if ($key === 'kullanim' && $worst !== 'ok')<i @class([__('size-1.5 rounded-full'), 'bg-warn' => $worst === 'warn', 'bg-crit' => $worst === 'crit'])></i>@endif
+                    @if ($key === 'kullanim' && $worst !== 'ok')<i @class(['size-1.5 rounded-full', 'bg-warn' => $worst === 'warn', 'bg-crit' => $worst === 'crit'])></i>@endif
                 </button>
             @endforeach
         </div>

@@ -223,7 +223,9 @@ class LiveMonitor extends Component
         }
         $this->actionError = null;
         $this->dispatch('toast',
-            message: __(':ids adres :durations engellendi.', ['ids' => count($ids), 'durations' => __(IpBlocks::DURATIONS[$this->attackMinutes])]),
+            message: $this->attackMinutes === 0
+                ? __(':ids adres kalıcı olarak engellendi.', ['ids' => count($ids)])
+                : __(':ids adres :durations engellendi.', ['ids' => count($ids), 'durations' => IpBlocks::DURATIONS[$this->attackMinutes]]),
             source: $this->getId(),
             undo: ['method' => 'unblockMany', 'args' => [$ids]],
         );
@@ -262,7 +264,9 @@ class LiveMonitor extends Component
         }
         $this->blocking = false;
         $this->dispatch('toast',
-            message: "{$b->address} ".($b->expires_at ? IpBlocks::DURATIONS[(int) $this->block['minutes']] : __('kalıcı olarak')).' engellendi.',
+            message: $b->expires_at
+                ? __(':address :duration engellendi.', ['address' => $b->address, 'duration' => IpBlocks::DURATIONS[(int) $this->block['minutes']]])
+                : __(':address kalıcı olarak engellendi.', ['address' => $b->address]),
             source: $this->getId(),
             undo: ['method' => 'unblock', 'args' => [$b->id]],
         );

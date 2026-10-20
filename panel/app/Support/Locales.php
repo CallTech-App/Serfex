@@ -103,7 +103,8 @@ final class Locales
      * The reader's word for a fixed label that is not wrapped in __() where
      * it is shown: Blade echoes ({{ }}) pass through here, so the labels in
      * constants, badges and the agent's lists (tabs, roles, service names)
-     * come out in English too. Only exact keys of lang/<locale>.json are
+     * come out in English too, and so do placeholder values (Translator,
+     * html()). Only exact keys of lang/<locale>.json are
      * swapped; everything else is shown as it is.
      */
     public static function label(mixed $value): mixed
@@ -133,10 +134,11 @@ final class Locales
     public static function html(string $text, array $values = [], ?int $count = null): HtmlString
     {
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5);
+        $count ??= str_contains(__($text), '|') ? (Translator::countIn($text, $values) ?? 2) : null;
         $line = e($count === null ? __($text) : trans_choice($text, $count, ['count' => $count]));
         $replace = [];
         foreach ($values as $key => $value) {
-            $replace[':'.$key] = $value instanceof Htmlable ? trim($value->toHtml()) : e((string) $value);
+            $replace[':'.$key] = $value instanceof Htmlable ? trim($value->toHtml()) : e((string) self::label($value));
         }
         // Longer names first, so :site does not eat :site_name.
         uksort($replace, fn ($a, $b) => mb_strlen($b) <=> mb_strlen($a));

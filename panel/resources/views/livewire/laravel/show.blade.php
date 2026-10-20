@@ -1,6 +1,6 @@
 @php
     use App\Enums\LaravelAppStatus;
-    $check = __('size-4 accent-[rgb(var(--accent))]');
+    $check = 'size-4 accent-[rgb(var(--accent))]';
     $installing = $app->status !== LaravelAppStatus::Active && $install !== null && $app->current_release === null;
     $operate = auth()->user()->canOnApp($app, 'operate');
     $manage = auth()->user()->canOnApp($app, 'manage');

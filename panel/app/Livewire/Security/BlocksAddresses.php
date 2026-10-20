@@ -49,7 +49,9 @@ trait BlocksAddresses
         }
         $this->blocking = false;
         $this->dispatch('toast',
-            message: "{$b->address} ".($b->expires_at ? IpBlocks::DURATIONS[(int) $this->block['minutes']] : __('kalıcı olarak')).' engellendi.',
+            message: $b->expires_at
+                ? __(':address :duration engellendi.', ['address' => $b->address, 'duration' => IpBlocks::DURATIONS[(int) $this->block['minutes']]])
+                : __(':address kalıcı olarak engellendi.', ['address' => $b->address]),
             source: $this->getId(),
             undo: ['method' => 'unblock', 'args' => [$b->id]],
         );

@@ -1,7 +1,7 @@
 @php
     use App\Livewire\Laravel\Sections\Previews;
     $dl = 'grid gap-1 py-3 sm:grid-cols-[230px_1fr] sm:gap-6';
-    $check = __('size-4 accent-[rgb(var(--accent))]');
+    $check = 'size-4 accent-[rgb(var(--accent))]';
     $link = 'text-[13px] whitespace-nowrap text-muted hover:text-fg';
     $domain = $app->site->domain;
     $scheme = $app->site->hasHttps() ? 'https' : 'http';
@@ -30,7 +30,7 @@
             </div>
             <div class="{{ $dl }}">
                 <dt class="text-muted">{{ __('Adres') }}</dt>
-                <dd><span class="font-mono text-[13px]">pr-{numara}.{{ $domain }}</span> <span class="text-muted">{{ __('ya da elle açılanlarda') }}</span> <span class="font-mono text-[13px]">{dal}.{{ $domain }}</span>
+                <dd><span class="font-mono text-[13px]">pr-{{ __('{numara}') }}.{{ $domain }}</span> <span class="text-muted">{{ __('ya da elle açılanlarda') }}</span> <span class="font-mono text-[13px]">{{ __('{dal}') }}.{{ $domain }}</span>
                     <p class="mt-1 text-2xs text-muted"><x-t text="Alan adının DNS'i bu sunucudaysa kayıt ve Let's Encrypt sertifikası otomatik gelir; başka yerdeyse orada :domain kaydını bu sunucuya yönlendirin."><x-slot:domain><span class="font-mono">*.{{ $domain }}</span></x-slot:domain></x-t></p>
                 </dd>
             </div>
@@ -44,7 +44,7 @@
             <form wire:submit="saveSettings" class="{{ $dl }}">
                 <dt class="text-muted sm:pt-1">.env</dt>
                 <dd class="max-w-xl space-y-2">
-                    <p class="text-[13px]"><x-t text="Uygulamanın .env dosyası kopyalanır; kuyruk, e-posta, önbellek ve oturum yalnızca önizlemenin kendisinde kalır (:a_p_p__k_e_y), yeni bir :part üretilir."><x-slot:a_p_p__k_e_y><span class="font-mono text-2xs">{{ implode(', ', array_diff($fixed, ['APP_KEY'])) }}</span></x-slot:a_p_p__k_e_y><x-slot:part><span class="font-mono text-2xs">APP_KEY</span></x-slot:part></x-t></p>
+                    <p class="text-[13px]"><x-t text="Uygulamanın .env dosyası kopyalanır; kuyruk, e-posta, önbellek ve oturum yalnızca önizlemenin kendisinde kalır (:keys), yeni bir :part üretilir."><x-slot:keys><span class="font-mono text-2xs">{{ implode(', ', array_diff($fixed, ['APP_KEY'])) }}</span></x-slot:keys><x-slot:part><span class="font-mono text-2xs">APP_KEY</span></x-slot:part></x-t></p>
                     <textarea wire:model="envText" rows="3" aria-label="{{ __('Önizlemeye özel .env değerleri') }}" spellcheck="false" @disabled(! $operate) placeholder="STRIPE_KEY=pk_test_…&#10;FEATURE_NEW_CHECKOUT=true"
                               class="w-full rounded-md border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('envText') ? 'border-crit' : 'border-line' }}"></textarea>
                     @error('envText')<p class="text-[13px] text-crit">{{ $message }}</p>@else<p class="text-2xs text-muted">{{ __('Önizlemelere özel değerler; en son yazılır, yukarıdakilerin üstüne geçer.') }}</p>@enderror
@@ -116,7 +116,7 @@
             <div class="space-y-4 p-5 text-[13.5px]">
                 <div>
                     <label for="pv-branch" class="mb-1.5 block">{{ __('Dal') }}</label>
-                    <input id="pv-branch" wire:model.live.debounce.300ms="branch" placeholder="feature/yeni-odeme" spellcheck="false" autocomplete="off"
+                    <input id="pv-branch" wire:model.live.debounce.300ms="branch" placeholder="{{ __('feature/yeni-odeme') }}" spellcheck="false" autocomplete="off"
                            class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('branch') ? 'border-crit' : 'border-line' }}">
                     @error('branch')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted"><x-t text="Adres: :part"><x-slot:part><span class="font-mono">{{ \App\Services\Laravel\Previews::nameFor($branch ?: 'dal') }}.{{ $domain }}</span></x-slot:part></x-t></p>@enderror
                 </div>

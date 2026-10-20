@@ -70,7 +70,7 @@
         </div>
         <div class="space-y-1 border-t border-line px-5 py-3 text-2xs text-muted">
             <p><x-t text="İstekler :part başlığıyla gönderilir. Anahtar başına dakikada :per_minute istek. Yazma istekleri İşlem günlüğüne &quot;API&quot; olarak düşer." :with="['per_minute' => \App\Services\Settings\ApiKeys::PER_MINUTE]"><x-slot:part><span class="font-mono">{{ __('Authorization: Bearer <anahtar>') }}</span></x-slot:part></x-t></p>
-            <p><x-t text="Uç noktalar: :part"><x-slot:part><span class="font-mono">{{ __('GET /server · GET|POST /sites · GET|DELETE /sites/{alan-adı} · GET|POST /customers · POST /customers/{id}/suspend · GET /packages · GET /dns/zones · POST /dns/zones/{alan-adı}/records') }}</span></x-slot:part></x-t></p>
+            <p><x-t text="Uç noktalar: :part"><x-slot:part><span class="font-mono">GET /server · GET|POST /sites · GET|DELETE /sites/{{ '{'.__('alan-adı').'}' }} · GET|POST /customers · POST /customers/{id}/suspend · GET /packages · GET /dns/zones · POST /dns/zones/{{ '{'.__('alan-adı').'}' }}/records</span></x-slot:part></x-t></p>
         </div>
     </section>
 

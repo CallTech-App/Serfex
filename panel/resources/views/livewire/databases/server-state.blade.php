@@ -27,7 +27,7 @@
             </fieldset>
             <label class="flex items-start gap-3">
                 <input type="checkbox" wire:model="setupPostgres" class="mt-0.5 size-4 accent-accent">
-                <span><span class="block font-medium">PostgreSQL de kurulsun</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ __('Yanında çalışır; isteyen siteler PostgreSQL veritabanı açabilir. Sonradan da kurulabilir.') }}</span></span>
+                <span><span class="block font-medium">{{ __('PostgreSQL de kurulsun') }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ __('Yanında çalışır; isteyen siteler PostgreSQL veritabanı açabilir. Sonradan da kurulabilir.') }}</span></span>
             </label>
             @error('setupProduct') <p class="text-[13px] text-crit">{{ $message }}</p> @enderror
             @if (! empty($server['error']))

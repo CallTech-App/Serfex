@@ -92,7 +92,7 @@
             const r = await fetch(this.base + '/kaydet', { method: 'POST', body: JSON.stringify({ path: this.editor.path, content: this.editor.content, mtime: this.editor.mtime }), headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' } });
             const j = await r.json().catch(() => ({}));
             this.editor.busy = false;
-            if (! r.ok) { this.editor.error = j.error || 'Kaydedilemedi.'; return; }
+            if (! r.ok) { this.editor.error = j.error || @js(__('Kaydedilemedi.')); return; }
             this.editor.mtime = j.mtime; this.editor.dirty = false;
             $wire.saved(this.editor.path, j.trash || '');
         },
@@ -399,7 +399,7 @@
                 <label for="transfer-to" class="mb-1.5 block">{{ __('Hedef klasör') }}</label>
                 <div class="flex overflow-hidden rounded-md border border-line focus-within:border-accent">
                     <span class="grid place-items-center border-r border-line bg-surface-2 px-3 font-mono text-[12.5px] text-muted">{{ $site->domain }}/</span>
-                    <input id="transfer-to" wire:model="transferTo" autocomplete="off" spellcheck="false" placeholder="public_html/eski" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
+                    <input id="transfer-to" wire:model="transferTo" autocomplete="off" spellcheck="false" placeholder="{{ __('public_html/eski') }}" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
                 </div>
                 <p class="mt-2 text-2xs text-muted">{{ __('Klasör var olmalı. Aynı adda bir öğe varsa işlem durur; hiçbir şeyin üzerine yazılmaz.') }}</p>
             </div>

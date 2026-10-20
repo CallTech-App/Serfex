@@ -132,7 +132,7 @@
                 </div>
             @else
                 <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3 text-[13.5px]">
-                    <span>Sunucu: <strong class="font-medium">{{ Waf::MODES[$server['mode']] }}</strong> <span class="text-muted">· paranoya seviyesi {{ $server['paranoia'] }}{{ $ownModes ? __(' · :own_modes site kendi kipinde', ['own_modes' => $ownModes]) : '' }}</span></span>
+                    <span><x-t text="Sunucu: :mode"><x-slot:mode><strong class="font-medium">{{ Waf::MODES[$server['mode']] }}</strong></x-slot:mode></x-t> <span class="text-muted">· {{ __('paranoya seviyesi :paranoia', ['paranoia' => $server['paranoia']]) }}{{ $ownModes ? __(' · :own_modes site kendi kipinde', ['own_modes' => $ownModes]) : '' }}</span></span>
                     <select wire:model.live="wafSite" class="{{ $field }} border-line ml-auto max-w-56" aria-label="{{ __('Site') }}">
                         <option value="0">{{ __('Bütün siteler') }}</option>
                         @foreach ($sites as $s)
@@ -220,7 +220,7 @@
                     <x-status-badge :status="new Badge(__('Taranıyor'), 'info', true)" />
                     <span class="num text-muted">{{ __(':sites_done / :sites_total site · :files dosya', ['sites_done' => $running->sites_done, 'sites_total' => $running->sites_total, 'files' => \App\Support\Num::format($running->files, 0)]) }}</span>
                 @elseif ($last)
-                    <span class="text-muted">Son tarama {{ $when($last->finished_at) }} · {{ $last->triggerLabel() }} · <span class="num">{{ \App\Support\Num::format($last->files, 0) }}</span> dosya{{ $last->clamav ? __(' · ClamAV ile') : '' }}</span>
+                    <span class="text-muted">{{ __('Son tarama :when', ['when' => $when($last->finished_at)]) }} · {{ $last->triggerLabel() }} · <x-t text=":files dosya" :count="$last->files"><x-slot:files><span class="num">{{ \App\Support\Num::format($last->files, 0) }}</span></x-slot:files></x-t>{{ $last->clamav ? __(' · ClamAV ile') : '' }}</span>
                     @if ($last->status !== 'succeeded')
                         <x-status-badge :status="$last->status === 'failed' ? new Badge(__('Başarısız'), 'crit') : new Badge(__('Bazı siteler taranamadı'), 'warn')" title="{{ $last->error }}" />
                     @endif

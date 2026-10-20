@@ -49,7 +49,7 @@
                         <tr>
                             <td colspan="3" class="px-5 py-12 text-center">
                                 <p class="font-medium">{{ __('Korunan klasör yok') }}</p>
-                                <p class="mt-1 text-[13px] text-muted"><x-t text="Örneğin :part klasörünü yalnızca parolayı bilenler açsın."><x-slot:part><span class="font-mono">/yonetim/</span></x-slot:part></x-t></p>
+                                <p class="mt-1 text-[13px] text-muted"><x-t text="Örneğin :part klasörünü yalnızca parolayı bilenler açsın."><x-slot:part><span class="font-mono">{{ __('/yonetim/') }}</span></x-slot:part></x-t></p>
                             </td>
                         </tr>
                     @endforelse
@@ -67,7 +67,7 @@
                 <div>
                     <div class="flex overflow-hidden rounded-md border focus-within:border-accent {{ $errors->has('path') ? 'border-crit' : 'border-line' }}">
                         <span class="grid max-w-[55%] place-items-center truncate border-r border-line bg-surface-2 px-3 font-mono text-[12.5px] text-muted">{{ $site->domain }}</span>
-                        <input id="p-path" wire:model="path" placeholder="/yonetim/" spellcheck="false" autocomplete="off" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
+                        <input id="p-path" wire:model="path" placeholder="{{ __('/yonetim/') }}" spellcheck="false" autocomplete="off" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
                     </div>
                     @error('path') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                 </div>

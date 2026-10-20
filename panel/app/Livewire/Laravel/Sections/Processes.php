@@ -218,7 +218,7 @@ class Processes extends Section
         $app = $this->app();
         $apps->syncProcesses($app, web: in_array($process->kind, ['octane', 'reverb'], true));
         $this->dispatch('toast',
-            message: $process->label().($enabled ? __(' başlatılıyor.') : __(' durduruluyor.')),
+            message: $enabled ? __(':label başlatılıyor.', ['label' => $process->label()]) : __(':label durduruluyor.', ['label' => $process->label()]),
             source: $this->getId(),
             undo: ['method' => $enabled ? 'disable' : 'enableAgain', 'args' => [$process->id]],
         );

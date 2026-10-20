@@ -320,7 +320,7 @@ class SystemServices
             '/^configuration test failed, .+? was left as it is: (.*)$/s' => __('Ayar dosyası denetimden geçmedi; hizmete dokunulmadı. Hata: $1'),
             '/^the service refused the settings, nothing was changed: (.*)$/s' => __('Hizmet yeni ayarları kabul etmedi; hiçbir şey değişmedi. Hata: $1'),
             '/^(.+) is not running; start it first$/' => __('$1 çalışmıyor; önce başlatın.'),
-            '/^(.+) cannot be stopped: .*$/s' => '$1 durdurulamaz.',
+            '/^(.+) cannot be stopped: .*$/s' => __('$1 durdurulamaz.'),
             '/^.+ is not a service Servik manages.*$/s' => __('Bu hizmet sunucuda yok.'),
         ];
         foreach ($patterns as $pattern => $text) {

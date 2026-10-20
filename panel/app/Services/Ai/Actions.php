@@ -97,9 +97,9 @@ class Actions
                 'address' => ['type' => 'string'],
                 'minutes' => ['type' => 'integer', 'description' => '1 to 1440 (default 60)'],
                 'reason' => ['type' => 'string', 'description' => 'Short reason in Turkish, shown to the administrator'],
-                'domain' => ['type' => 'string', 'description' => __('The attacked site, if any')],
+                'domain' => ['type' => 'string', 'description' => 'The attacked site, if any'],
             ], 'required' => ['address', 'reason']]],
-            ['name' => 'limit_site', 'description' => __('Put a temporary cap on a site\'s CPU (percent of one core, 25-200), memory (256-2048 MB) and/or PHP workers (2-6) for at most 120 minutes, to protect other sites from one that overloads the server. You may do this WITHOUT asking; the agent lifts it on time. If the settings do not allow it, it becomes a proposal.'), 'input_schema' => ['type' => 'object', 'properties' => [
+            ['name' => 'limit_site', 'description' => 'Put a temporary cap on a site\'s CPU (percent of one core, 25-200), memory (256-2048 MB) and/or PHP workers (2-6) for at most 120 minutes, to protect other sites from one that overloads the server. You may do this WITHOUT asking; the agent lifts it on time. If the settings do not allow it, it becomes a proposal.', 'input_schema' => ['type' => 'object', 'properties' => [
                 'domain' => ['type' => 'string'],
                 'cpu_percent' => ['type' => 'integer'],
                 'memory_mb' => ['type' => 'integer'],
@@ -319,9 +319,11 @@ class Actions
                     throw new MonitorException('minutes must be 0 (permanent) to 525600.');
                 }
                 $site = $domain !== '' ? Site::where('domain', $domain)->first() : null;
-                $duration = $minutes === 0 ? __('kalıcı olarak') : self::duration($minutes);
+                $title = $minutes === 0
+                    ? __(':address adresini kalıcı olarak engelle', ['address' => $address])
+                    : __(':address adresini :duration engelle', ['address' => $address, 'duration' => self::duration($minutes)]);
 
-                return [['address' => $address, 'minutes' => $minutes, 'domain' => $site?->domain], __(':address adresini :duration engelle', ['address' => $address, 'duration' => $duration])];
+                return [['address' => $address, 'minutes' => $minutes, 'domain' => $site?->domain], $title];
 
             case 'unblock_ip':
                 $address = IpBlocks::normalize((string) ($in['address'] ?? ''));
@@ -420,7 +422,9 @@ class Actions
                 }
 
                 return [['domain' => $app->site->domain, 'worker' => $worker->name, 'processes' => $n, 'from' => $worker->processes],
-                    __($n > $worker->processes ? ':domain :worker işçisini :n sürece çıkar' : ':domain :worker işçisini :n sürece indir', ['domain' => $app->site->domain, 'worker' => $worker->name, 'n' => $n])];
+                    $n > $worker->processes
+                        ? __(':domain :worker işçisini :n sürece çıkar', ['domain' => $app->site->domain, 'worker' => $worker->name, 'n' => $n])
+                        : __(':domain :worker işçisini :n sürece indir', ['domain' => $app->site->domain, 'worker' => $worker->name, 'n' => $n])];
 
             case 'mail_hold':
             case 'mail_release':
@@ -764,9 +768,9 @@ class Actions
     private static function duration(int $minutes): string
     {
         return match (true) {
-            $minutes % 1440 === 0 => __(':minutes gün', ['minutes' => ($minutes / 1440)]),
-            $minutes % 60 === 0 => __(':minutes saat', ['minutes' => ($minutes / 60)]),
-            default => __(':minutes dakika', ['minutes' => $minutes]),
+            $minutes % 1440 === 0 => trans_choice(':count gün', intdiv($minutes, 1440)),
+            $minutes % 60 === 0 => trans_choice(':count saat', intdiv($minutes, 60)),
+            default => trans_choice(':count dakika', $minutes),
         };
     }
 

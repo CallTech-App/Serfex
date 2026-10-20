@@ -6,7 +6,7 @@
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
     $radio = 'flex cursor-pointer items-start gap-2.5 rounded-lg border border-line p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40';
     $chip = 'flex h-9 cursor-pointer items-center gap-2 rounded-md border border-line px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40';
-    $check = __('size-4 accent-[rgb(var(--accent))]');
+    $check = 'size-4 accent-[rgb(var(--accent))]';
 @endphp
 <div class="space-y-6">
     {{-- Refresh while an install, removal or deploy runs. --}}

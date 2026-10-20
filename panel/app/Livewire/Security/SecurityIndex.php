@@ -137,7 +137,7 @@ class SecurityIndex extends Component
         $settings = $firewall->settings();
         $previous = $settings;
         $settings['services'][$id] = ! $services[$id]['enabled'];
-        $this->saveFirewall($firewall, $settings, $previous, $services[$id]['name'].($settings['services'][$id] ? __(' için portlar açıldı.') : __(' için portlar kapatıldı.')));
+        $this->saveFirewall($firewall, $settings, $previous, $settings['services'][$id] ? __(':name için portlar açıldı.', ['name' => $services[$id]['name']]) : __(':name için portlar kapatıldı.', ['name' => $services[$id]['name']]));
     }
 
     public function openRule(?string $id, Firewall $firewall): void

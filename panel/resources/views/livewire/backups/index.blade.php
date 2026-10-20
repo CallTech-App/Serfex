@@ -328,7 +328,7 @@
                                 <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="sKeepLocal" class="size-4 accent-accent">{{ __('En yeni yedeği bu sunucuda da sakla') }}</label>
                             @endif
                             @if ($targets->isEmpty())
-                                <p class="text-[12.5px] text-muted">{{ __('Uzak bir hedef için') }} <button type="button" wire:click="$set('tab', 'hedefler')" class="text-accent hover:underline">{{ __('Hedefler') }}</button> {{ __('sekmesinden S3 ya da SFTP ekleyin.') }}</p>
+                                <p class="text-[12.5px] text-muted"><x-t text="Uzak bir hedef için :tab sekmesinden S3 ya da SFTP ekleyin."><x-slot:tab><button type="button" wire:click="$set('tab', 'hedefler')" class="text-accent hover:underline">{{ __('Hedefler') }}</button></x-slot:tab></x-t></p>
                             @endif
                         </div>
                     </div>
@@ -508,7 +508,7 @@
                             </table>
                         </div>
                         @if ($detail->isUsable() && ! $detail->onServer())
-                            <p class="text-[13px] text-muted">{{ __('Bu yedek yalnızca :name. İndirmek için önce', ['name' => $detail->target?->name ?? __('uzak hedefte')]) }} <button type="button" wire:click="fetch({{ $detail->id }})" wire:loading.attr="disabled" class="text-accent hover:underline">{{ __('sunucuya alın') }}</button>{{ __('; geri yükleme bunu kendisi yapar.') }}</p>
+                            <p class="text-[13px] text-muted">{{ $detail->target ? __('Bu yedek yalnızca :name hedefinde.', ['name' => $detail->target->name]) : __('Bu yedek yalnızca uzak hedefte.') }} <x-t text="İndirmek için önce :fetch; geri yükleme bunu kendisi yapar."><x-slot:fetch><button type="button" wire:click="fetch({{ $detail->id }})" wire:loading.attr="disabled" class="text-accent hover:underline">{{ __('sunucuya alın') }}</button></x-slot:fetch></x-t></p>
                         @endif
                     </div>
                     <div class="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
@@ -532,7 +532,7 @@
             <div class="w-full max-w-md rounded-xl border border-line bg-surface p-5 text-[13.5px] shadow-xl" role="dialog" aria-modal="true" aria-label="{{ __('Yedeği sil') }}">
                 <p class="font-semibold">{{ __(':created_at yedeği silinsin mi?', ['created_at' => $when($deleting->created_at)]) }}</p>
                 <p class="mt-1 text-[13px] text-muted">
-                    {{ $deleting->remote ? __('Yedek bu sunucudan ve :target silinir.', ['target' => $deleting->target?->name ?? __('uzak hedeften')]) : __('Yedek bu sunucudan silinir.') }}
+                    {{ $deleting->remote ? ($deleting->target ? __('Yedek bu sunucudan ve :target hedefinden silinir.', ['target' => $deleting->target->name]) : __('Yedek bu sunucudan ve uzak hedeften silinir.')) : __('Yedek bu sunucudan silinir.') }}
                     @if ($deletingDependents > 0)
                         {{ __('Bu yedeğin devamı olan :deleting_dependents artımlı yedek de onunla birlikte silinir.', ['deleting_dependents' => $deletingDependents]) }}
                     @endif
@@ -693,7 +693,7 @@
                         </div>
                     @else
                         @if ($importTargets->isEmpty())
-                            <p class="text-[13px] text-muted">{{ __('Önce') }} <button type="button" wire:click="$set('importing', false); $set('tab', 'hedefler')" class="text-accent hover:underline">{{ __('Hedefler') }}</button> {{ __('sekmesinden yedeklerin bulunduğu S3 ya da SFTP hedefini ekleyin.') }}</p>
+                            <p class="text-[13px] text-muted"><x-t text="Önce :tab sekmesinden yedeklerin bulunduğu S3 ya da SFTP hedefini ekleyin."><x-slot:tab><button type="button" wire:click="$set('importing', false); $set('tab', 'hedefler')" class="text-accent hover:underline">{{ __('Hedefler') }}</button></x-slot:tab></x-t></p>
                         @else
                             <div class="flex gap-2">
                                 <select wire:model="scanTargetId" aria-label="{{ __('Hedef') }}" class="{{ $field }} min-w-0 flex-1 px-2.5">

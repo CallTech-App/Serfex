@@ -66,7 +66,7 @@
         </div>
         <label for="m-retry" class="font-medium md:pt-2">{{ __('Tekrar deneme süresi') }}</label>
         <div class="max-w-xl">
-            <div class="flex items-center gap-2"><input id="m-retry" type="number" min="0" wire:model="retry" @disabled($down || ! $operate) class="{{ $field }} num h-9 w-24 px-3 {{ $errors->has('retry') ? 'border-crit' : 'border-line' }}"><span class="text-[13px] text-muted">saniye (<span class="font-mono">Retry-After</span>)</span></div>
+            <div class="flex items-center gap-2"><input id="m-retry" type="number" min="0" wire:model="retry" @disabled($down || ! $operate) class="{{ $field }} num h-9 w-24 px-3 {{ $errors->has('retry') ? 'border-crit' : 'border-line' }}"><span class="text-[13px] text-muted"><x-t text="saniye (:header)"><x-slot:header><span class="font-mono">Retry-After</span></x-slot:header></x-t></span></div>
             @error('retry')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@enderror
         </div>
         @if ($operate)

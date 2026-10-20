@@ -296,7 +296,7 @@
                 <label for="redirect-source" class="sm:pt-2">{{ $redirectKind === 'domain' ? __('Alan adı') : __('Yol') }}</label>
                 <div>
                     @if ($redirectKind === 'domain')
-                        <input id="redirect-source" wire:model.live.debounce.400ms="source" @disabled($editRedirectId) required spellcheck="false" autocomplete="off" placeholder="eski-alanadi.com" class="{{ $field }} font-mono disabled:bg-surface-2 {{ $errors->has('source') ? 'border-crit' : 'border-line' }}">
+                        <input id="redirect-source" wire:model.live.debounce.400ms="source" @disabled($editRedirectId) required spellcheck="false" autocomplete="off" placeholder="{{ __('eski-alanadi.com') }}" class="{{ $field }} font-mono disabled:bg-surface-2 {{ $errors->has('source') ? 'border-crit' : 'border-line' }}">
                         @unless ($editRedirectId)
                             <label class="mt-2 flex items-center gap-2 text-[13px]">
                                 <input type="checkbox" wire:model="withWww" class="size-4 accent-accent">
@@ -306,7 +306,7 @@
                     @else
                         <div class="flex items-center rounded-md border bg-surface focus-within:border-accent {{ $errors->has('source') ? 'border-crit' : 'border-line' }} {{ $editRedirectId ? 'bg-surface-2' : '' }}">
                             <span class="truncate pl-3 font-mono text-[13px] text-muted">{{ $site->domain }}</span>
-                            <input id="redirect-source" wire:model="source" @disabled($editRedirectId) required spellcheck="false" autocomplete="off" placeholder="/eski-sayfa" class="h-9 min-w-0 flex-1 bg-transparent pr-3 font-mono text-[13px] outline-none">
+                            <input id="redirect-source" wire:model="source" @disabled($editRedirectId) required spellcheck="false" autocomplete="off" placeholder="{{ __('/eski-sayfa') }}" class="h-9 min-w-0 flex-1 bg-transparent pr-3 font-mono text-[13px] outline-none">
                         </div>
                     @endif
                     @error('source')

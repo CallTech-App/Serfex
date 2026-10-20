@@ -115,7 +115,7 @@
             <x-icon name="circle-pause" class="text-warn" />
             <div class="min-w-0 flex-1">
                 <p class="font-medium">{{ __('Site askıda: ziyaretçiler "hizmet dışı" sayfasını görüyor.') }}</p>
-                <p class="mt-0.5 text-[13px] text-muted">{{ __(':is_admin:suspend_reason. Dosyalar, posta ve veritabanları korunuyor.', ['is_admin' => $user->is_admin ? __('Müşterinin hesabı askıya alındı') : __('Hesabınız askıya alındı'), 'suspend_reason' => $owner->suspend_reason ? ': '.$owner->suspend_reason : '']) }}</p>
+                <p class="mt-0.5 text-[13px] text-muted">{{ $user->is_admin ? __('Müşterinin hesabı askıya alındı') : __('Hesabınız askıya alındı') }}{{ $owner->suspend_reason ? ': '.$owner->suspend_reason : '' }}. {{ __('Dosyalar, posta ve veritabanları korunuyor.') }}</p>
             </div>
             @if ($user->is_admin)
                 <a href="{{ route('customers.show', $owner) }}" wire:navigate class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">{{ __('Müşteriye git') }}</a>
@@ -171,7 +171,7 @@
             <span class="text-2xs text-muted">{{ $site->provisioned_at ? __('Oluşturuldu: :provisioned_at', ['provisioned_at' => \App\Support\When::dateTime($site->provisioned_at)]) : __('Henüz hazırlanmadı') }}</span>
         </div>
         @php $backupCell = $user->allows('backups') ? route('backups.index', ['site' => $site->id]) : null; @endphp
-        <{{ $backupCell ? 'a' : 'div' }} @if ($backupCell) {{ __('href=":backup_cell" wire:navigate', ['backup_cell' => $backupCell]) }} @endif {{ __('class="block hover:bg-surface-2/60 sm:col-span-2 xl:col-span-1">') }}
+        <{{ $backupCell ? 'a' : 'div' }} @if ($backupCell) href="{{ $backupCell }}" wire:navigate @endif class="block hover:bg-surface-2/60 sm:col-span-2 xl:col-span-1">
             <p class="text-2xs text-muted">{{ __('Son yedek') }}</p>
             <p class="num mt-1 font-medium">{{ $backupText }}</p>
             <span class="text-2xs text-muted">{{ $lastBackup ? ($lastBackup->backup->scope === 'server' ? __('Tüm sunucu yedeğiyle') : __('Site yedeği')).' · '.\App\Support\Bytes::format($lastBackup->size) : ($owner?->package && ! $owner->package->allows('backups') ? __('Paketi yedekleme içermiyor') : __('Zamanlanmış yedeğe girer')) }}</span>

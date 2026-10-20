@@ -81,7 +81,7 @@
                 </button>
                 <button type="button" wire:click="deleteSelected" @disabled($selected === [])
                         class="h-9 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40">
-                    Sil{{ $selected ? ' ('.count($selected).')' : '' }}
+                    {{ __('Sil') }}{{ $selected ? ' ('.count($selected).')' : '' }}
                 </button>
                 @if ($webmail)
                     <a href="{{ $webmail }}" target="_blank" rel="noopener" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2">
@@ -150,7 +150,7 @@
                                         <p class="text-muted">{{ __('Aramanızla eşleşen posta kutusu yok.') }}</p>
                                     @else
                                         <p class="font-medium">{{ __('Henüz posta kutusu yok') }}</p>
-                                        <p class="mt-1 text-[13px] text-muted"><x-t text="İlk posta kutusunu oluşturun, örneğin :name."><x-slot:name><span class="font-mono">bilgi{{ '@'.$domain->name }}</span></x-slot:name></x-t></p>
+                                        <p class="mt-1 text-[13px] text-muted"><x-t text="İlk posta kutusunu oluşturun, örneğin :name."><x-slot:name><span class="font-mono">{{ __('bilgi') }}{{ '@'.$domain->name }}</span></x-slot:name></x-t></p>
                                     @endif
                                 </td>
                             </tr>
@@ -317,7 +317,7 @@
                 <summary class="cursor-pointer text-[13px] text-accent">{{ __('E-posta istemcisi ayarları') }}</summary>
                 @if ($hostname)
                     <dl class="mt-3 grid max-w-xl grid-cols-[110px_1fr] gap-y-2 text-[13px]">
-                        <dt class="text-muted">{{ __('Kullanıcı adı') }}</dt><dd><x-t text="Tam e-posta adresi, örneğin :name"><x-slot:name><span class="font-mono">bilgi{{ '@'.$domain->name }}</span></x-slot:name></x-t></dd>
+                        <dt class="text-muted">{{ __('Kullanıcı adı') }}</dt><dd><x-t text="Tam e-posta adresi, örneğin :name"><x-slot:name><span class="font-mono">{{ __('bilgi') }}{{ '@'.$domain->name }}</span></x-slot:name></x-t></dd>
                         <dt class="text-muted">{{ __('IMAP') }}</dt><dd class="font-mono">{{ $hostname }} · 993 · SSL/TLS</dd>
                         <dt class="text-muted">{{ __('POP3') }}</dt><dd class="font-mono">{{ $hostname }} · 995 · SSL/TLS</dd>
                         <dt class="text-muted">{{ __('SMTP') }}</dt><dd class="font-mono">{{ $hostname }} · 465 · SSL/TLS <span class="font-sans text-muted">{{ __('ya da 587 · STARTTLS') }}</span></dd>

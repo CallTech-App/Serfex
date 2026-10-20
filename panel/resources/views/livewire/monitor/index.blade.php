@@ -524,7 +524,7 @@
                             <div><dt class="text-2xs text-muted">{{ __('PHP işçisi') }}</dt><dd class="num font-medium {{ $current['php']['max_reached'] ? 'text-crit' : '' }}">{{ $current['php']['known'] ? Load::number($current['php']['busy']).' / '.$current['php']['max'] : '—' }}</dd></div>
                             <div><dt class="text-2xs text-muted">{{ __('Posta/sa') }}</dt><dd class="num font-medium">{{ Load::number($current['mail_per_hour']) }}</dd></div>
                         </dl>
-                        <p class="text-2xs text-muted sm:col-span-2">{{ __('Grafikler :ranges; değerler şu anki.', ['ranges' => $long ? LiveMonitor::RANGES[$range][0] : 'son 10 dakika']) }}</p>
+                        <p class="text-2xs text-muted sm:col-span-2">{{ __('Grafikler :ranges; değerler şu anki.', ['ranges' => $long ? LiveMonitor::RANGES[$range][0] : __('son 10 dakika')]) }}</p>
                     </div>
                 @else
                     <p class="px-5 py-4 text-muted">{{ __('Bu site için henüz ölçüm yok.') }}</p>

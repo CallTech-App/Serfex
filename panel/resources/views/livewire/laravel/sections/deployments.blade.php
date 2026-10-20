@@ -2,7 +2,7 @@
     use App\Livewire\Laravel\LaravelIndex;
     use App\Support\When;
     $dl = 'grid gap-1 py-3 sm:grid-cols-[230px_1fr] sm:gap-6';
-    $check = __('size-4 accent-[rgb(var(--accent))]');
+    $check = 'size-4 accent-[rgb(var(--accent))]';
     $link = 'text-[13px] whitespace-nowrap text-muted hover:text-fg';
     $providerIcon = ['github' => 'github', 'gitlab' => 'gitlab'][$app->provider()] ?? 'git-branch';
 @endphp
@@ -25,7 +25,7 @@
                     <button type="button" wire:click="showKey" class="text-[13px] text-accent hover:underline">{{ __('Dağıtım anahtarı') }}</button>
                     <button type="button" wire:click="openConnect" class="text-[13px] text-accent hover:underline">{{ __('Değiştir') }}</button>
                 @else
-                    <span class="text-muted">{{ __('Git deposu bağlı değil:source.', ['source' => $app->source === 'create' ? __('; uygulama yeni proje olarak kuruldu') : '']) }}</span>
+                    <span class="text-muted">{{ $app->source === 'create' ? __('Git deposu bağlı değil; uygulama yeni proje olarak kuruldu.') : __('Git deposu bağlı değil.') }}</span>
                     <button type="button" wire:click="openConnect" class="text-[13px] text-accent hover:underline">{{ __('Depo bağla') }}</button>
                 @endif
             </dd>
@@ -35,7 +35,7 @@
             <dd class="space-y-1">
                 <label class="flex items-center gap-2.5">
                     <input type="checkbox" @checked($app->auto_deploy) wire:change="setting('auto_deploy', $event.target.checked)" @disabled(! $app->repository) class="{{ $check }}">
-                    <span>@if ($app->branch)<x-t text=":branch dalına"><x-slot:branch><span class="font-mono">{{ $app->branch }}</span></x-slot:branch></x-t> @endif {{ __('push gelince dağıt') }}</span>
+                    <span>@if ($app->branch)<x-t text=":branch dalına push gelince dağıt"><x-slot:branch><span class="font-mono">{{ $app->branch }}</span></x-slot:branch></x-t>@else{{ __('push gelince dağıt') }}@endif</span>
                 </label>
                 <p class="text-2xs text-muted" x-data="{ copied: false }">
                     <x-t text="Webhook: :app"><x-slot:app><span class="font-mono break-all">{{ $app->webhookUrl() }}</span></x-slot:app></x-t>
@@ -71,7 +71,7 @@
                     <button type="submit" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">{{ __('Kaydet') }}</button>
                     @error('healthPath')<span class="text-[13px] text-crit">{{ $message }}</span>@enderror
                 </form>
-                <p class="text-2xs text-muted">{{ __('Geçiş sonrası bu adres 3 kez istenir; 2xx dışında yanıt gelirse kod eski sürüme döner. Veritabanı geçişleri geri alınmaz; gerekirse dağıtım öncesi yedeği') }} <button type="button" wire:click="$dispatch('show-section', { section: 'yedekler' })" class="text-accent hover:underline">{{ __('Yedekler') }}</button> {{ __('bölümünden geri yükleyin. Yedek alınamazsa dağıtım başlamaz.') }}</p>
+                <p class="text-2xs text-muted"><x-t text="Geçiş sonrası bu adres 3 kez istenir; 2xx dışında yanıt gelirse kod eski sürüme döner. Veritabanı geçişleri geri alınmaz; gerekirse dağıtım öncesi yedeği :backups bölümünden geri yükleyin. Yedek alınamazsa dağıtım başlamaz."><x-slot:backups><button type="button" wire:click="$dispatch('show-section', { section: 'yedekler' })" class="text-accent hover:underline">{{ __('Yedekler') }}</button></x-slot:backups></x-t></p>
             </dd>
         </div>
     </dl>

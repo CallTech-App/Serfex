@@ -74,7 +74,7 @@
                     <p class="mt-1 max-w-2xl text-[13px] text-muted"><x-t text="Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu), bu yüzden Servik kendini burada güncelleyemez. Sunuculara Servik :part ile kurulur; güncellemeler o kurulumda bu sayfadan yapılır."><x-slot:part><span class="font-mono">install.sh</span></x-slot:part></x-t></p>
                 @elseif ($release)
                     <p class="mt-1 text-[13px] text-muted">
-                        {{ __(':published_at:prereleasepanel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.', ['published_at' => $release['published_at'] ? __(':published_at yayımlandı · ', ['published_at' => \App\Support\When::date(Carbon::parse($release['published_at']))]) : '', 'prerelease' => ($release['prerelease'] ?? false) ? __('beta sürüm · ') : '']) }}
+                        {{ collect([$release['published_at'] ? __(':date yayımlandı', ['date' => \App\Support\When::date(Carbon::parse($release['published_at']))]) : null, ($release['prerelease'] ?? false) ? __('beta sürüm') : null, __('panel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.')])->filter()->implode(' · ') }}
                     </p>
                     @foreach ($releases as $r)
                         <div class="mt-3 max-w-2xl">
@@ -185,7 +185,7 @@
                     <span class="flex items-center gap-1.5"><x-icon name="undo-2" class="size-4" /><x-t text="Önce panelin yedeği alınır; sorun çıkarsa otomatik olarak :version sürümüne döner."><x-slot:version><span class="font-mono text-fg">{{ $version }}</span></x-slot:version></x-t></span>
                 @endif
                 <span class="num">
-                    Kanal: <span class="text-fg">{{ Updates::CHANNELS[$channel] ?? __('Kararlı') }}</span>
+                    <x-t text="Kanal: :channel"><x-slot:channel><span class="text-fg">{{ Updates::CHANNELS[$channel] ?? __('Kararlı') }}</span></x-slot:channel></x-t>
                     · {{ ($status['checked_at'] ?? null) ? __('son denetim :checked_at', ['checked_at' => Carbon::parse($status['checked_at'])->diffForHumans()]) : __('henüz denetlenmedi') }}
                 </span>
                 @if ($status['check_error'] ?? null)

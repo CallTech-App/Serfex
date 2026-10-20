@@ -77,7 +77,7 @@ class QuickSearch extends Component
      */
     public static function fold(string $text): string
     {
-        return strtr(mb_strtolower(str_replace([__('İ'), 'I'], ['i', __('ı')], $text)), ['ı' => 'i', 'ş' => 's', 'ğ' => 'g', 'ü' => 'u', 'ö' => 'o', 'ç' => 'c', 'i̇' => 'i']);
+        return strtr(mb_strtolower(str_replace(['İ', 'I'], ['i', 'ı'], $text)), ['ı' => 'i', 'ş' => 's', 'ğ' => 'g', 'ü' => 'u', 'ö' => 'o', 'ç' => 'c', 'i̇' => 'i']);
     }
 
     private static function mayOpen(User $user, string $who): bool

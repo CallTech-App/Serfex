@@ -14,7 +14,9 @@ use App\Services\Audit\AuditLog;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Settings\PanelSettings;
 use App\Support\Locales;
+use App\Support\PanelValidator;
 use App\Support\ReadOnlyGuard;
+use App\Support\Translator;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Queue\Events\JobProcessing;
@@ -23,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Component;
 use Livewire\Livewire;
@@ -36,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->extend('translator', fn ($translator) => Translator::from($translator));
         // Remembers the agent's database status for one request or job.
         $this->app->scoped(DatabaseServers::class);
         $this->app->singleton(AgentClient::class, fn ($app) => new AgentClient(
@@ -49,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Validator::resolver(fn ($translator, $data, $rules, $messages, $attributes) => new PanelValidator($translator, $data, $rules, $messages, $attributes));
         foreach (['view', 'operate', 'manage'] as $ability) {
             Gate::define('laravel.'.$ability, fn ($user, LaravelApp $app) => $user->canOnApp($app, $ability));
         }

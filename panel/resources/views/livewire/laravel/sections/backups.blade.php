@@ -3,7 +3,7 @@
     use App\Support\Badge;
     use App\Support\Bytes;
     use App\Support\When;
-    $check = __('size-4 accent-[rgb(var(--accent))]');
+    $check = 'size-4 accent-[rgb(var(--accent))]';
     $link = 'text-[13px] text-muted hover:text-fg';
     $plan = match ($app->backup_schedule) {
         'daily' => __('Her gün :backup_time', ['backup_time' => $app->backup_time]),

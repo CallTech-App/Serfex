@@ -341,7 +341,7 @@ class MailDomainShow extends Component
         $this->editingForwarder = false;
         $label = $name === MailForwarder::CATCH_ALL ? __('Tümünü yakala yönlendiricisi') : $domain->address($name);
         $this->dispatch('toast',
-            message: $label.($forwarder === null ? __(' eklendi.') : __(' güncellendi.')),
+            message: $forwarder === null ? __(':label eklendi.', ['label' => $label]) : __(':label güncellendi.', ['label' => $label]),
             source: $this->getId(),
             undo: ['method' => 'undoForwarder', 'args' => [$name, $previous]],
         );
