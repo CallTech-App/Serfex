@@ -35,7 +35,7 @@ class Assistant
         ]);
         $conversation->update(['status' => 'running', 'error' => null, 'client_ip' => $clientIp ?? $conversation->client_ip]);
 
-        $context = 'Panel context (not typed by the administrator): now '.now()->timezone(config('app.timezone'))->format('Y-m-d H:i T')
+        $context = 'Panel context (not typed by the administrator): now '.now()->timezone(config('servik.timezone'))->format('Y-m-d H:i T')
             .', administrator '.$user->name.($clientIp ? ', connected from '.$clientIp : '').'.';
         $notes = $this->decisionNotes($conversation);
         $conversation->messages()->create([

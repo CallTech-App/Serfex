@@ -52,7 +52,7 @@ class LoginController extends Controller
 
         $provider = Auth::guard('web')->getProvider();
         $user = $provider->retrieveByCredentials($credentials);
-        if (! $user instanceof User || ! $provider->validateCredentials($user, $credentials)) {
+        if (! $user instanceof User || $user->removed_at !== null || ! $provider->validateCredentials($user, $credentials)) {
             RateLimiter::hit($key, 60);
             RateLimiter::hit($ipKey, 600);
             LoginLog::failed($request->ip(), $credentials['email']);

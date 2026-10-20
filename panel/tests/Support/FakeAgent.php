@@ -4,6 +4,7 @@ namespace Tests\Support;
 
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Support\ReadOnlyGuard;
 use Closure;
 
 /**
@@ -25,6 +26,7 @@ class FakeAgent extends AgentClient
 
     public function call(string $method, array $params = [], ?float $timeout = null): mixed
     {
+        ReadOnlyGuard::agent($method);
         $this->calls[] = [$method, $params];
         $answer = array_key_exists($method, $this->answers) ? $this->answers[$method] : [];
         if ($answer instanceof Closure) {

@@ -8,7 +8,7 @@
     $laravel = $site->laravelApp;
     $lastBackup = \App\Models\BackupItem::with('backup')->where('site_id', $site->id)->where('status', 'succeeded')
         ->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first();
-    $backupText = $lastBackup ? $lastBackup->backup->created_at->timezone(config('app.timezone'))->format('d.m.Y H:i') : 'Henüz yok';
+    $backupText = $lastBackup ? $lastBackup->backup->created_at->timezone(config('servik.timezone'))->format('d.m.Y H:i') : 'Henüz yok';
     $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
         ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
         : ['layers', 'Laravel', 'Kurulu değil', route('laravel.index', ['site' => $site->id])]);
@@ -26,7 +26,7 @@
             ['code', 'PHP ve web sunucusu', 'PHP '.$site->php_version.' · '.($site->web_server === \App\Models\Site::APACHE ? 'Apache' : 'Nginx'), route('sites.php', $site)],
             $laravelTool,
             ['terminal', 'SSH terminali', null],
-            ['clock', 'Zamanlanmış görevler', $laravel ? ($laravel->scheduler ? 'Açık' : 'Kapalı') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'zamanlayici']) : null],
+            ['clock', 'Zamanlanmış görevler', $cronJobs ? $cronJobs.' görev' : 'Yok', route('sites.cron', $site)],
             ['git-branch', 'Git dağıtımı', $laravel ? ($laravel->repository ? $laravel->repositoryName() : 'Bağlı değil') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'dagitimlar']) : null],
             ['file-text', 'Günlükler', null],
         ]],
@@ -143,7 +143,7 @@
             <p class="mt-1"><x-status-badge :status="$ssl" /></p>
             <span class="mt-1 block text-2xs text-muted">
                 @if ($certificate?->isInstalled())
-                    {{ $certificate->issuerLabel() }} · {{ $certificate->not_after->timezone(config('app.timezone'))->format('d.m.Y') }} tarihine kadar
+                    {{ $certificate->issuerLabel() }} · {{ $certificate->not_after->timezone(config('servik.timezone'))->format('d.m.Y') }} tarihine kadar
                 @elseif ($site->pendingCertificate()?->status === \App\Enums\CertificateStatus::WaitingDns)
                     DNS henüz bu sunucuya işaret etmiyor
                 @else

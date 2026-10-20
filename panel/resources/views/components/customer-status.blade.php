@@ -2,7 +2,7 @@
 {{-- Etkin, Askıda, Davet bekliyor or the time a deleted customer goes for good. --}}
 @php
     [$tone, $label] = match (true) {
-        $customer->trashed() => ['crit', $customer->deleted_at->addSeconds(\App\Services\Customers\Customers::UNDO_SECONDS)->timezone(config('app.timezone'))->format('H:i').' sularında silinecek'],
+        $customer->trashed() => ['crit', $customer->deleted_at->addSeconds(\App\Services\Customers\Customers::UNDO_SECONDS)->timezone(config('servik.timezone'))->format('H:i').' sularında silinecek'],
         $customer->suspended_at !== null => ['warn', 'Askıda'],
         (bool) $customer->user?->isInvited() => ['info', 'Davet bekliyor'],
         default => ['ok', 'Etkin'],

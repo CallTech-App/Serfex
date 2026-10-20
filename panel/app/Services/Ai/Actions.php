@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Audit\AuditLog;
 use App\Services\Dns\Zones;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Monitor\IpBlocks;
@@ -181,6 +182,9 @@ class Actions
         }
         $record->update(['status' => 'applied', 'decided_at' => now()]);
         AiEvent::record('auto', $title, $conversation, tool: $tool, data: $params);
+        AuditLog::record($title.' (onaysız, kendi sınırları içinde)', $conversation->user, 'ai', [
+            'actor' => 'Servik AI', 'section' => 'Servik AI', 'url' => route('ai.audit', [], false),
+        ]);
 
         return ["Done without approval: \"{$title}\". The administrator sees it with an Undo button.", false];
     }

@@ -85,6 +85,17 @@ Methods so far:
 | `component.run.read` | `run`, `offset` | the next part of an operation's log: `data`, `offset`, `size`, `done` |
 | `redis.apply` | `domain`, `user`, `port`, `password`, `max_memory_mb` | starts or updates a site's own Redis instance |
 | `redis.remove` | `domain` | stops a site's Redis instance and deletes its data |
+| `cron.apply` | `domain`, `user`, `php`, `tasks` (`id`, `schedule`, `command`, `enabled`, `timeout`) | replaces a site's scheduled tasks: the state in `/etc/servik/cron/<domain>.json` and the enabled tasks in `/etc/cron.d/servik-<domain>`; returns `tasks`, `enabled` |
+| `cron.remove` | `domain` | removes a site's tasks, crontab and run history; returns `removed` |
+| `cron.run` | `domain`, `id` | starts a task now, in the background, as the site's user; returns `started`, or `started: false, running: true` while it still runs |
+| `cron.runs` | `domain`, `id`, `limit` | the newest run records (`started_at`, `finished_at`, `duration_ms`, `exit_code`, `output`, `truncated`, `timed_out`, `skipped`, `trigger`), `running`, `running_since` |
+| `system.info` | | `hostname`, `fqdn`, `os`, `kernel`, `cpus`, `memory_bytes`, `timezone`, `uptime_seconds`, `addresses` |
+| `system.hostname.set` | `hostname` | sets the host name (hostnamectl) and its `127.0.1.1` line in `/etc/hosts` |
+| `system.timezone.set` | `timezone` | sets the time zone (timedatectl) |
+| `system.timezones` | | the time zones the server knows, sorted |
+| `panel.web.status` | | servik-web's `ports` and primary `port` |
+| `panel.web.ports` | `ports` | makes servik-web listen on 1-3 ports (the first is the primary one), for moving the panel to a new port with the old one still open until the new one is confirmed |
+| `ssl.panel.install` | `certificate`, `private_key` | stores an uploaded certificate as the panel's own and reloads servik-web |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate, and `web_root`

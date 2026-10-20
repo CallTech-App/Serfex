@@ -20,3 +20,6 @@ Schedule::command('servik:files-trash')->dailyAt('03:40')->withoutOverlapping();
 Schedule::command('servik:security-scan')->weeklyOn(0, '03:20')->withoutOverlapping();
 Schedule::command('servik:fail2ban-sync')->everyMinute()->withoutOverlapping();
 Schedule::command('servik:services-check')->everyMinute()->withoutOverlapping();
+Schedule::command('servik:notify')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('servik:settings-check')->everyMinute()->withoutOverlapping();
+Schedule::command('servik:cron-history')->everyFiveMinutes()->withoutOverlapping();

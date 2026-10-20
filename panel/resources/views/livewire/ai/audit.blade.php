@@ -1,6 +1,6 @@
 @php
     $tones = ['read' => 'muted', 'auto' => 'info', 'proposed' => 'info', 'applied' => 'ok', 'rejected' => 'muted', 'undone' => 'warn', 'failed' => 'crit'];
-    $at = fn ($d) => $d->timezone(config('app.timezone'));
+    $at = fn ($d) => $d->timezone(config('servik.timezone'));
 @endphp
 <div class="space-y-6">
     <div>

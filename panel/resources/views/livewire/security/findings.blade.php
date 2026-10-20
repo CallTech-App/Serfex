@@ -24,7 +24,7 @@
                             <span class="mt-0.5 block text-[12.5px] text-muted">{{ $f->detailText() }}</span>
                         @endif
                         @if ($f->status !== 'open')
-                            <span class="mt-0.5 block text-2xs text-muted">{{ $f->statusLabel() }}{{ $f->resolver ? ' · '.$f->resolver->name : '' }}{{ $f->resolved_at ? ' · '.$f->resolved_at->timezone(config('app.timezone'))->format('d.m.Y H:i') : '' }}</span>
+                            <span class="mt-0.5 block text-2xs text-muted">{{ $f->statusLabel() }}{{ $f->resolver ? ' · '.$f->resolver->name : '' }}{{ $f->resolved_at ? ' · '.$f->resolved_at->timezone(config('servik.timezone'))->format('d.m.Y H:i') : '' }}</span>
                         @endif
                         @if ($showSite && $f->site)
                             <span class="mt-0.5 block font-mono text-2xs text-muted md:hidden">{{ $f->site->domain }}</span>

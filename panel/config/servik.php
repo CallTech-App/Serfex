@@ -6,6 +6,14 @@ return [
     // a checkout from git is "dev".
     'version' => is_file(base_path('VERSION')) ? trim((string) file_get_contents(base_path('VERSION'))) : env('SERVIK_VERSION', 'dev'),
 
+    // The time zone the panel shows times in and runs its schedules by.
+    // Araçlar ve Ayarlar → Genel sets it together with the server's own;
+    // dates are stored in UTC either way.
+    'timezone' => env('SERVIK_TIMEZONE', 'Europe/Istanbul'),
+
+    // File systems watched for free space (Bildirimler).
+    'disk_paths' => ['/', '/home', '/var'],
+
     /*
     |--------------------------------------------------------------------------
     | Servik Agent

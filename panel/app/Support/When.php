@@ -17,8 +17,8 @@ final class When
         if ($at === null) {
             return '—';
         }
-        $at = $at->copy()->timezone(config('app.timezone'));
-        $now = now(config('app.timezone'));
+        $at = $at->copy()->timezone(config('servik.timezone'));
+        $now = now(config('servik.timezone'));
 
         return match (true) {
             $at->isSameDay($now) => 'Bugün '.$at->format('H:i'),
@@ -38,6 +38,6 @@ final class When
         }
         $short = self::short($at);
 
-        return str_contains($short, ':') ? $short : $short.' '.$at->copy()->timezone(config('app.timezone'))->format('H:i');
+        return str_contains($short, ':') ? $short : $short.' '.$at->copy()->timezone(config('servik.timezone'))->format('H:i');
     }
 }

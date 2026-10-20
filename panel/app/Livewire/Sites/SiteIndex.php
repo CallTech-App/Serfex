@@ -4,7 +4,6 @@ namespace App\Livewire\Sites;
 
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
-use App\Jobs\ProvisionSite;
 use App\Livewire\Attributes\ForCustomers;
 use App\Models\Customer;
 use App\Models\DnsZone;
@@ -13,15 +12,11 @@ use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
-use App\Services\Components\Components;
-use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
-use App\Services\Dns\Zones;
-use App\Services\Mail\MailDomains;
 use App\Services\Php\PhpVersions;
+use App\Services\Sites\SiteCreator;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -139,7 +134,7 @@ class SiteIndex extends Component
         }
     }
 
-    public function create(AgentClient $agent, Zones $zones, MailDomains $mail, Quotas $quotas, Customers $customers): void
+    public function create(AgentClient $agent, Quotas $quotas, SiteCreator $creator): void
     {
         $this->domain = Hostnames::normalize($this->domain);
         $customer = $this->customer();
@@ -196,25 +191,7 @@ class SiteIndex extends Component
             return;
         }
 
-        $site = DB::transaction(function () use ($customer, $customers) {
-            $user = $customer !== null ? $customers->account($customer) : SystemUser::firstOrCreate(['name' => $this->systemUser]);
-
-            return $user->sites()->create([
-                'domain' => $this->domain,
-                'aliases' => $this->wwwAlias && ! str_starts_with($this->domain, 'www.') ? ['www.'.$this->domain] : [],
-                'php_version' => $this->phpVersion,
-                'web_server' => app(Components::class)->defaultStack(),
-                'status' => SiteStatus::Provisioning,
-            ]);
-        });
-
-        ProvisionSite::dispatch($site);
-        // DNS does not wait for the web server: the zone is published even
-        // if provisioning fails and is retried.
-        $zones->forSite($site);
-        if ($owner === null || $owner->package->allows('mail')) {
-            $mail->forSite($site);
-        }
+        $site = $creator->create($this->domain, $this->systemUser, $this->phpVersion, $this->wwwAlias, $customer, $owner);
 
         $this->creating = false;
         $this->dispatch('toast',

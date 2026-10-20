@@ -2,6 +2,8 @@
 
 namespace App\Services\Agent;
 
+use App\Support\ReadOnlyGuard;
+
 /**
  * JSON-RPC 2.0 client for servik-agent.
  *
@@ -28,6 +30,7 @@ class AgentClient
      */
     public function call(string $method, array $params = [], ?float $timeout = null): mixed
     {
+        ReadOnlyGuard::agent($method);
         $id = $this->nextId++;
 
         $request = ['jsonrpc' => '2.0', 'id' => $id, 'method' => $method];

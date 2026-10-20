@@ -14,8 +14,10 @@ use App\Http\Controllers\Settings\UpdateProgressController;
 use App\Http\Controllers\Sites\SiteFileController;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureFullAdmin;
 use App\Http\Middleware\EnsureHostingAccess;
 use App\Http\Middleware\EnsureTwoFactor;
+use App\Http\Middleware\RefuseReadOnlyChanges;
 use App\Livewire\Account\AccountSecurity;
 use App\Livewire\Ai\AiAssistant;
 use App\Livewire\Ai\AiAudit;
@@ -40,7 +42,14 @@ use App\Livewire\Security\SecurityIndex;
 use App\Livewire\Services\PhpVersionShow;
 use App\Livewire\Services\ServiceIndex;
 use App\Livewire\Services\ServiceShow;
+use App\Livewire\Settings\AdminIndex;
+use App\Livewire\Settings\ApiKeyIndex;
+use App\Livewire\Settings\AuditLogPage;
+use App\Livewire\Settings\GeneralSettings;
+use App\Livewire\Settings\NotificationSettings;
+use App\Livewire\Settings\ServerSettings;
 use App\Livewire\Settings\UpdatesPage;
+use App\Livewire\Sites\SiteCron;
 use App\Livewire\Sites\SiteFiles;
 use App\Livewire\Sites\SiteFtp;
 use App\Livewire\Sites\SiteIndex;
@@ -67,7 +76,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login/dogrulama', [LoginController::class, 'verify'])->middleware('throttle:20,1');
 });
 
-Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, RefuseReadOnlyChanges::class])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::post('/yoneticiye-don', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     Route::livewire('/hesap/guvenlik', AccountSecurity::class)->name('account.security');
@@ -94,6 +103,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class])-
         Route::livewire('/sites/{site}/waf', SiteWaf::class)->whereNumber('site')->name('sites.waf');
         Route::livewire('/sites/{site}/tarama', SiteScan::class)->whereNumber('site')->name('sites.scan');
         Route::livewire('/sites/{site}/korumali-klasorler', SiteProtect::class)->whereNumber('site')->name('sites.protect');
+        Route::livewire('/sites/{site}/zamanlanmis-gorevler', SiteCron::class)->whereNumber('site')->name('sites.cron');
         Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
         Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
         Route::livewire('/mail', MailIndex::class)->name('mail.index');
@@ -111,7 +121,6 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class])-
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
         Route::livewire('/guvenlik', SecurityIndex::class)->name('security.index');
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
-        Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
         Route::livewire('/ai/kayit', AiAudit::class)->name('ai.audit');
         Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
         Route::livewire('/mail/settings', MailSettingsPage::class)->name('mail.settings');
@@ -121,11 +130,22 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class])-
         Route::livewire('/hizmetler', ServiceIndex::class)->name('services.index');
         Route::livewire('/hizmetler/php/{version}', PhpVersionShow::class)->where('version', '\d\.\d')->name('services.php');
         Route::livewire('/hizmetler/{unit}', ServiceShow::class)->where('unit', '[a-z0-9][a-z0-9@._-]{0,63}')->name('services.show');
-        Route::livewire('/ayarlar/guncellemeler', UpdatesPage::class)->name('settings.updates');
-        Route::get('/ayarlar/guncellemeler/ilerleme/{run}', UpdateProgressController::class)->where('run', 'upd-[a-z0-9]{20}')->name('settings.updates.progress');
         Route::post('/yedekler/yukle/{upload}', BackupUploadController::class)->where('upload', 'up-[a-z0-9]{20}')->name('backups.upload');
         Route::livewire('/musteriler', CustomerIndex::class)->name('customers.index');
         Route::livewire('/musteriler/{customer}', CustomerShow::class)->whereNumber('customer')->name('customers.show');
         Route::post('/musteriler/{customer}/giris', [ImpersonationController::class, 'store'])->whereNumber('customer')->name('customers.impersonate');
+
+        // Araçlar ve Ayarlar and Servik AI's settings: full administrators.
+        Route::middleware(EnsureFullAdmin::class)->group(function () {
+            Route::livewire('/ayarlar', GeneralSettings::class)->name('settings.general');
+            Route::livewire('/ayarlar/sunucu', ServerSettings::class)->name('settings.server');
+            Route::livewire('/ayarlar/bildirimler', NotificationSettings::class)->name('settings.notifications');
+            Route::livewire('/ayarlar/yoneticiler', AdminIndex::class)->name('settings.admins');
+            Route::livewire('/ayarlar/api', ApiKeyIndex::class)->name('settings.api');
+            Route::livewire('/ayarlar/islem-gunlugu', AuditLogPage::class)->name('settings.audit');
+            Route::livewire('/ayarlar/guncellemeler', UpdatesPage::class)->name('settings.updates');
+            Route::get('/ayarlar/guncellemeler/ilerleme/{run}', UpdateProgressController::class)->where('run', 'upd-[a-z0-9]{20}')->name('settings.updates.progress');
+            Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
+        });
     });
 });

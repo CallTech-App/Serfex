@@ -13,6 +13,7 @@ use App\Services\Databases\Databases;
 use App\Services\Dns\Zones;
 use App\Services\Files\FtpAccounts;
 use App\Services\Mail\MailDomains;
+use App\Services\Sites\CronJobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,8 @@ class DeleteSite implements ShouldQueue
         try {
             // SFTP accounts mount the site's folders; they go first.
             app(FtpAccounts::class)->deleteForSite($site);
+            // Scheduled tasks run as the account in the site folder.
+            app(CronJobs::class)->removeForSite($site);
             // Queue workers and the scheduler run as the site's account
             // from its directory; they stop before it goes.
             if ($site->laravelApp()->exists()) {

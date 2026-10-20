@@ -59,7 +59,7 @@
 
         <section class="rounded-xl border border-line bg-surface">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">Web veritabanı yöneticisi</h2>
-            <form wire:submit="savePort" class="max-w-3xl px-5 py-2 text-[13.5px]">
+            <div class="max-w-3xl px-5 py-2 text-[13.5px]">
                 <div class="divide-y divide-line">
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                         <span class="sm:pt-0.5">Araçlar</span>
@@ -73,21 +73,18 @@
                         </p>
                     </div>
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
-                        <label for="port" class="sm:pt-2">Port (HTTPS)</label>
+                        <span class="sm:pt-0.5">Port (HTTPS)</span>
                         <div>
-                            <div class="flex items-center gap-2">
-                                <input id="port" wire:model.number="port" inputmode="numeric" class="num h-9 w-28 rounded-md border bg-surface px-3 outline-none focus:border-accent {{ $errors->has('port') ? 'border-crit' : 'border-line' }}">
-                                <button type="submit" @disabled($busy) class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">Kaydet</button>
-                            </div>
-                            @error('port')
-                                <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
-                            @else
-                                <p class="mt-1.5 text-2xs text-muted">Panelden "phpMyAdmin'de aç" ya da "Adminer'da aç" denince tek kullanımlık bir bağlantıyla bu portta, parola sorulmadan açılır. Oturum 4 saat sürer.</p>
-                            @enderror
+                            <p class="num font-mono">{{ $port }}</p>
+                            <p class="mt-1.5 text-2xs text-muted">Panelle aynı port. Panelden "phpMyAdmin'de aç" ya da "Adminer'da aç" denince tek kullanımlık bir bağlantıyla parola sorulmadan açılır; oturum 4 saat sürer.
+                                @if (auth()->user()->isFullAdmin())
+                                    Port <a href="{{ route('settings.general') }}" wire:navigate class="text-accent hover:underline">Araçlar ve Ayarlar → Genel</a> sayfasında değişir.
+                                @endif
+                            </p>
                         </div>
                     </div>
                 </div>
-            </form>
+            </div>
         </section>
     @endif
 </div>

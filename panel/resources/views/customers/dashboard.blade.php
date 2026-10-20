@@ -10,7 +10,7 @@
         $user->allows('mail') ? ['mail.index', [], 'mail', 'E-posta', $report['mailboxes']['used'].' posta kutusu'] : null,
         $user->allows('laravel') ? ['laravel.index', [], 'layers', 'Laravel', $report['laravel_apps']['used'].' uygulama'] : null,
         $user->allows('backups') ? ['backups.index', [], 'archive', 'Yedekler', ($last = \App\Models\BackupItem::visibleTo($user)->where('status', 'succeeded')->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first())
-            ? 'Son yedek '.$last->backup->created_at->timezone(config('app.timezone'))->format('d.m.Y H:i') : 'Henüz yedek yok'] : null,
+            ? 'Son yedek '.$last->backup->created_at->timezone(config('servik.timezone'))->format('d.m.Y H:i') : 'Henüz yedek yok'] : null,
     ]);
 @endphp
 <x-layouts.app title="Genel Bakış · Servik">

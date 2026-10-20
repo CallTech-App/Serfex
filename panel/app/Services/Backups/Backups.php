@@ -92,7 +92,7 @@ class Backups
         if ($s['enabled'] && $slot !== null && $slot->lt(now()->subHours(3))) {
             $taken = Backup::where('scope', 'server')->where('trigger', 'scheduled')->where('created_at', '>=', $slot->copy()->subMinutes(5))->exists();
             if (! $taken && Site::where('created_at', '<', $slot)->exists()) {
-                $out[] = ['text' => $slot->format('d.m H:i').' zamanlanmış yedeği başlamadı; panelin zamanlayıcısı ve "backups" kuyruğu çalışıyor mu?', 'level' => 'warn'];
+                $out[] = ['text' => $slot->copy()->timezone(config('servik.timezone'))->format('d.m H:i').' zamanlanmış yedeği başlamadı; panelin zamanlayıcısı ve "backups" kuyruğu çalışıyor mu?', 'level' => 'warn'];
             }
         }
         if (($queued = Backup::where('status', 'queued')->oldest('id')->first()) !== null && $queued->created_at->lt(now()->subMinutes(10))) {

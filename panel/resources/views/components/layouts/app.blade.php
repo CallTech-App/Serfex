@@ -21,10 +21,18 @@
             ['backups.index', 'archive', 'Yedekler'],
             ['services.index', 'server-cog', 'Hizmetler'],
             ['components.index', 'package-plus', 'Yazılım Yönetimi'],
-            ['settings.updates', 'settings', 'Araçlar ve Ayarlar'],
+            ['settings.general', 'settings', 'Araçlar ve Ayarlar'],
         ]],
     ];
     $user = auth()->user();
+    if ($user?->is_admin && ! $user->isFullAdmin()) {
+        // Araçlar ve Ayarlar is for full administrators; Salt okunur
+        // accounts do not use Servik AI either.
+        $nav[3][1] = array_values(array_filter($nav[3][1], fn ($i) => $i[0] !== 'settings.general'));
+        if ($user->isReadOnly()) {
+            $nav[0][1] = array_values(array_filter($nav[0][1], fn ($i) => $i[0] !== 'ai.index'));
+        }
+    }
     if ($user?->isCustomer()) {
         // A customer sees their own hosting, within their package.
         $nav = [
@@ -54,7 +62,7 @@
             'customers.index' => [app(\App\Services\Customers\Quotas::class)->attentionCount(), 'müşteri kotası'],
             'backups.index' => [count(app(\App\Services\Backups\Backups::class)->problems()), 'yedekleme sorunu'],
             'services.index' => [count(\App\Services\System\SystemServices::problems()), 'durmuş hizmet'],
-            'settings.updates' => [count(app(\App\Services\Updates\Updates::class)->notices()), 'güncelleme bildirimi'],
+            'settings.general' => [count(app(\App\Services\Updates\Updates::class)->notices()), 'güncelleme bildirimi'],
         ],
         (bool) $user?->isCustomer() => [
             'ssl.index' => [\App\Models\Certificate::attentionCount($user), 'sertifika'],
@@ -119,7 +127,7 @@
                             <div class="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
                             <div class="min-w-0 leading-tight">
                                 <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>
-                                <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => 'Sunucu yöneticisi', $user->isCustomer() => 'Müşteri · '.$user->customer?->package?->name, default => 'Laravel ekibi' } }}</p>
+                                <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => $user->roleName(), $user->isCustomer() => 'Müşteri · '.$user->customer?->package?->name, default => 'Laravel ekibi' } }}</p>
                             </div>
                         </a>
                         <form method="POST" action="{{ route('logout') }}" class="ml-auto">
@@ -137,10 +145,10 @@
                     <button type="button" @click="menu = true" class="-ml-1 rounded-md p-2 hover:bg-surface-2 lg:hidden" aria-label="Menüyü aç"><x-icon name="menu" class="size-5" /></button>
                     <span class="hidden h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] sm:flex">
                         <span class="size-2 rounded-full bg-ok"></span>
-                        <span class="font-mono">{{ gethostname() }}</span>
+                        <span class="font-mono">{{ \App\Models\Setting::get('server.hostname') ?: gethostname() }}</span>
                     </span>
                     <div class="ml-auto flex items-center gap-1">
-                        @if ($user?->is_admin)
+                        @if ($user?->is_admin && ! $user->isReadOnly())
                             @if (request()->routeIs('ai.*'))
                                 <a href="{{ route('ai.index') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md bg-accent-soft px-3 text-[13px] font-medium text-accent hover:bg-accent/15">
                                     <x-icon name="sparkles" /><span class="hidden md:inline">Servik AI</span>
@@ -157,6 +165,12 @@
                     </div>
                 </header>
 
+                @if ($user?->isReadOnly())
+                    <div class="flex items-center gap-3 border-b border-info/30 bg-info-soft px-4 py-2.5 text-[13px] lg:px-8">
+                        <x-icon name="eye" class="text-info" />
+                        <span>Salt okunur hesapla bakıyorsunuz: her şeyi görebilir, hiçbir şeyi değiştiremezsiniz.</span>
+                    </div>
+                @endif
                 @if ($impersonator)
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-warn/30 bg-warn-soft px-4 py-2.5 text-[13px] lg:px-8">
                         <x-icon name="user-check" class="text-warn" />
@@ -173,7 +187,7 @@
             </div>
         </div>
 
-        @if ($user?->is_admin && ! request()->routeIs('ai.*'))
+        @if ($user?->is_admin && ! $user->isReadOnly() && ! request()->routeIs('ai.*'))
             <livewire:ai.ai-drawer />
         @endif
         <x-toasts />

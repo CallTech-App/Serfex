@@ -19,7 +19,7 @@ use Illuminate\Notifications\Notifiable;
  * Laravel applications they were added to, with the role they were given
  * there.
  */
-#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'role', 'last_login_at', 'last_login_ip', 'removed_at'])]
 #[Hidden(['password', 'remember_token', 'invite_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
@@ -30,6 +30,13 @@ class User extends Authenticatable
     private const ROLE_RANK = ['viewer' => 1, 'developer' => 2, 'owner' => 3];
 
     private const ABILITY_RANK = ['view' => 1, 'operate' => 2, 'manage' => 3];
+
+    /** Administrator roles: key => [name, what it may do]. */
+    public const ROLES = [
+        'full' => ['Tam yönetici', 'Her şey; Araçlar ve Ayarlar, yöneticiler ve API anahtarları dahil.'],
+        'support' => ['Destek', 'Siteler, müşteriler ve sunucudaki her iş; Araçlar ve Ayarlar hariç.'],
+        'readonly' => ['Salt okunur', 'Her sayfayı görür, hiçbir şeyi değiştiremez; Servik AI\'yı kullanamaz.'],
+    ];
 
     protected $attributes = [
         'is_admin' => true,
@@ -50,6 +57,8 @@ class User extends Authenticatable
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'removed_at' => 'datetime',
         ];
     }
 
@@ -66,6 +75,36 @@ class User extends Authenticatable
     public function isCustomer(): bool
     {
         return ! $this->is_admin && $this->customer_id !== null;
+    }
+
+    /**
+     * full, support or readonly for administrators; null for everyone else.
+     */
+    public function adminRole(): ?string
+    {
+        return $this->is_admin ? ($this->role ?? 'full') : null;
+    }
+
+    /**
+     * An administrator who may also change the panel itself: settings,
+     * administrators, API keys and updates.
+     */
+    public function isFullAdmin(): bool
+    {
+        return $this->adminRole() === 'full';
+    }
+
+    /**
+     * An administrator who may look at everything and change nothing.
+     */
+    public function isReadOnly(): bool
+    {
+        return $this->adminRole() === 'readonly';
+    }
+
+    public function roleName(): string
+    {
+        return self::ROLES[$this->adminRole()][0] ?? ($this->isCustomer() ? 'Müşteri' : 'Laravel ekibi');
     }
 
     /**

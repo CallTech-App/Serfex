@@ -380,6 +380,47 @@ func TestRealHost(t *testing.T) {
 	}
 	hc.Jar = jar
 
+	// The panel's port moves in two steps: the old and the new port
+	// together, then the new one alone; the sign-in keeps working.
+	dial := func(port int) bool {
+		for i := 0; i < 20; i++ {
+			c, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(port), time.Second)
+			if err == nil {
+				c.Close()
+				return true
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+		return false
+	}
+	if _, err := m.SetWebPorts(ctx, WebPortsSpec{Ports: []int{9443, DefaultPort}}); err != nil {
+		t.Fatal(err)
+	}
+	if !dial(9443) || !dial(DefaultPort) {
+		t.Fatal("servik-web does not listen on both ports during a port change")
+	}
+	if _, err := m.SetWebPorts(ctx, WebPortsSpec{Ports: []int{9443}}); err != nil {
+		t.Fatal(err)
+	}
+	if !dial(9443) {
+		t.Fatal("servik-web does not listen on the new port")
+	}
+	time.Sleep(time.Second)
+	if c, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(DefaultPort), time.Second); err == nil {
+		c.Close()
+		t.Fatal("servik-web still listens on the old port")
+	}
+	login2, err := m.Login(ctx, LoginSpec{Server: server, Database: shop})
+	if err != nil || login2.Port != 9443 {
+		t.Fatalf("sign-in after the port change: %+v, %v", login2, err)
+	}
+	if code, _ := get("https://127.0.0.1:9443" + login2.Path); code != http.StatusOK {
+		t.Fatalf("sign-in on the new port: %d", code)
+	}
+	if _, err := m.SetWebPorts(ctx, WebPortsSpec{Ports: []int{DefaultPort}}); err != nil {
+		t.Fatal(err)
+	}
+
 	// Deleting with a backup keeps a dump, removes the database and keeps
 	// the users' other grants.
 	del, err := m.DeleteDatabase(ctx, DeleteSpec{Server: server, Name: shop, Backup: true})

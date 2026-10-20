@@ -194,7 +194,7 @@ class Tools
         }
 
         return [
-            'now' => now()->timezone(config('app.timezone'))->format('Y-m-d H:i T'),
+            'now' => now()->timezone(config('servik.timezone'))->format('Y-m-d H:i T'),
             'server' => $server,
             'sites' => Site::count(),
             'attention' => [
@@ -636,7 +636,7 @@ class Tools
 
     private function time(?\DateTimeInterface $at): ?string
     {
-        return $at === null ? null : Carbon::instance($at)->timezone(config('app.timezone'))->format('Y-m-d H:i');
+        return $at === null ? null : Carbon::instance($at)->timezone(config('servik.timezone'))->format('Y-m-d H:i');
     }
 
     /**

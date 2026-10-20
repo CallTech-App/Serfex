@@ -494,6 +494,50 @@ jobs:
           sudo journalctl --no-pager -u mysql -u ssh -n 80 || true
           cat /tmp/s3.log || true
 
+  agent-cron:
+    name: Agent runs scheduled tasks and changes server settings for real
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx, PHP-FPM and cron
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm cron
+          sudo systemctl start nginx php8.3-fpm cron
+
+      # Provisions a site and runs its tasks by hand as the site's user:
+      # user, folder and environment, a failing command's exit code, a
+      # timeout that stops the command, a second run refused (and
+      # recorded as skipped) while one goes, output cut to its last
+      # 64 KiB; then waits for the cron daemon to run a task every minute
+      # from /etc/cron.d, and removes the crontab when nothing is enabled.
+      - name: Scheduled tasks for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 10m ./internal/cron
+
+      # Host name and time zone through hostnamectl and timedatectl, put
+      # back afterwards.
+      - name: Server settings for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 5m ./internal/system
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u cron -n 100 || true
+          sudo sh -c 'cat /etc/cron.d/servik-*' || true
+
   update-realhost:
     name: Panel updates itself on a real server
     runs-on: ubuntu-24.04

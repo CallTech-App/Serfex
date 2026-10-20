@@ -2,7 +2,7 @@
     use App\Services\Updates\Updates;
     use App\Support\Badge;
     use Illuminate\Support\Carbon;
-    $when = fn ($d) => $d ? Carbon::parse($d)->timezone(config('app.timezone'))->format('d.m.Y H:i') : '—';
+    $when = fn ($d) => $d ? Carbon::parse($d)->timezone(config('servik.timezone'))->format('d.m.Y H:i') : '—';
     $installed = (bool) ($status['installed'] ?? false);
     $version = $status['version'] ?? config('servik.version');
     $previous = ($status['previous'] ?? '') ?: null;
@@ -15,16 +15,8 @@
     $notes = fn (?string $md) => \App\Services\Ai\Transcript::markdown(trim((string) $md) ?: 'Bu sürüm için not yazılmamış.');
     $link = 'text-[13px] text-accent hover:underline disabled:opacity-40 disabled:no-underline';
 @endphp
-<div class="space-y-6">
-    <div>
-        <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="Konum">
-            <span>Araçlar ve Ayarlar</span>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">Güncellemeler</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">Güncellemeler</h1>
-        <p class="mt-1 text-[13px] text-muted">Servik panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar <a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">Yazılım Yönetimi</a>'nden güncellenir.</p>
-    </div>
+<x-settings-page current="settings.updates" title="Güncellemeler">
+    <x-slot:description>Servik panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar <a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">Yazılım Yönetimi</a>'nden güncellenir.</x-slot:description>
 
     @if ($agentError)
         <div class="rounded-xl border border-line bg-crit-soft px-5 py-4 text-[13.5px]">
@@ -82,7 +74,7 @@
                     <p class="mt-1 max-w-2xl text-[13px] text-muted">Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu), bu yüzden Servik kendini burada güncelleyemez. Sunuculara Servik <span class="font-mono">install.sh</span> ile kurulur; güncellemeler o kurulumda bu sayfadan yapılır.</p>
                 @elseif ($release)
                     <p class="mt-1 text-[13px] text-muted">
-                        {{ $release['published_at'] ? Carbon::parse($release['published_at'])->timezone(config('app.timezone'))->format('d.m.Y') . ' yayımlandı · ' : '' }}{{ ($release['prerelease'] ?? false) ? 'beta sürüm · ' : '' }}panel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.
+                        {{ $release['published_at'] ? Carbon::parse($release['published_at'])->timezone(config('servik.timezone'))->format('d.m.Y') . ' yayımlandı · ' : '' }}{{ ($release['prerelease'] ?? false) ? 'beta sürüm · ' : '' }}panel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.
                     </p>
                     @foreach ($releases as $r)
                         <div class="mt-3 max-w-2xl">
@@ -311,4 +303,4 @@
             </div>
         </div>
     </x-modal>
-</div>
+</x-settings-page>

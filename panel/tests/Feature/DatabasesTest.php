@@ -448,21 +448,17 @@ class DatabasesTest extends TestCase
         $this->assertSame(1, Database::onlyTrashed()->count());
     }
 
-    public function test_settings_add_postgresql_and_change_the_managers_port(): void
+    public function test_settings_add_postgresql_and_show_the_panels_port(): void
     {
         Setting::put('databases.products', ['mysql' => 'mysql']);
+        Setting::put('databases.manager_port', 9443);
 
         Livewire::test(DatabaseSettingsPage::class)
             ->assertSee('PostgreSQL\'i kur', false)
-            ->call('addPostgres')
-            ->set('port', 80)
-            ->call('savePort')
-            ->assertHasErrors('port')
-            ->set('port', 9443)
-            ->call('savePort')
-            ->assertHasNoErrors();
+            ->assertSee('9443')
+            ->assertSee('Araçlar ve Ayarlar → Genel')
+            ->call('addPostgres');
         Queue::assertPushed(SetupDatabaseServers::class, fn ($job) => $job->products === ['mysql', 'postgresql']);
-        $this->assertSame(9443, app(DatabaseServers::class)->managerPort());
     }
 
     public function test_remote_hosts_are_checked_like_the_agent_does(): void

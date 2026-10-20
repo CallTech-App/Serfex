@@ -321,6 +321,67 @@ func TestIssuePanel(t *testing.T) {
 	}
 }
 
+func TestInstallPanel(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	var issuer Simulated
+	chain, key, err := issuer.Obtain(ctx, Request{Names: []string{"panel." + zone}}, nopSolver{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPEM, _ := encodeKey(key)
+	_, otherKey, _ := issuer.Obtain(ctx, Request{Names: []string{zone}}, nopSolver{})
+	otherPEM, _ := encodeKey(otherKey)
+	expired := Simulated{Validity: -time.Hour}
+	oldChain, oldKey, _ := expired.Obtain(ctx, Request{Names: []string{zone}}, nopSolver{})
+	oldKeyPEM, _ := encodeKey(oldKey)
+
+	for name, spec := range map[string]PanelInstallSpec{
+		"wrong key": {Certificate: pemCert(chain[0]), PrivateKey: string(otherPEM)},
+		"expired":   {Certificate: pemCert(oldChain[0]), PrivateKey: string(oldKeyPEM)},
+		"no cert":   {Certificate: "hello", PrivateKey: string(keyPEM)},
+		"no key":    {Certificate: pemCert(chain[0])},
+	} {
+		var v *ValidationError
+		if _, err := m.InstallPanel(ctx, spec); !errors.As(err, &v) {
+			t.Errorf("%s: err = %v, want validation error", name, err)
+		}
+	}
+	if info, _ := m.GetPanel(); info != nil {
+		t.Fatal("a refused upload was stored")
+	}
+
+	// The panel's web server picks up the uploaded certificate.
+	os.MkdirAll(sim.Path("/etc/systemd/system"), 0o755)
+	os.WriteFile(sim.Path("/etc/systemd/system/"+PanelUnit+".service"), nil, 0o644)
+	changed := false
+	m.PanelChanged = func(context.Context) error { changed = true; return nil }
+	res, err := m.InstallPanel(ctx, PanelInstallSpec{Certificate: pemCert(chain[1]) + pemCert(chain[0]), PrivateKey: string(keyPEM)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Name != "panel" || res.Names[0] != "panel."+zone || !res.Changed || !res.Reloaded || !changed {
+		t.Fatalf("unexpected %+v (panel changed %v)", res, changed)
+	}
+	if !sim.Ran("systemctl reload-or-restart " + PanelUnit) {
+		t.Fatal("panel web server not reloaded")
+	}
+	if info, _ := m.GetPanel(); info == nil || info.Fingerprint != res.Fingerprint {
+		t.Fatal("panel certificate not stored")
+	}
+	full, keyFile := PanelFiles()
+	if fi, err := os.Stat(sim.Path(keyFile)); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Fatalf("key file %v %v", fi, err)
+	}
+	if data, _ := os.ReadFile(sim.Path(full)); !strings.HasPrefix(string(data), pemCert(chain[0])) {
+		t.Fatal("the leaf must come first")
+	}
+	// The same upload again changes nothing.
+	if res, err := m.InstallPanel(ctx, PanelInstallSpec{Certificate: pemCert(chain[0]) + pemCert(chain[1]), PrivateKey: string(keyPEM)}); err != nil || res.Changed {
+		t.Fatalf("second install %+v %v", res, err)
+	}
+}
+
 type nopSolver struct{}
 
 func (nopSolver) PresentHTTP(context.Context, string, string, string) error { return nil }
