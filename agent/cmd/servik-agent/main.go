@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -45,6 +46,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/security"
 	"github.com/winchester37/servik/agent/internal/service"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/stats"
 	"github.com/winchester37/servik/agent/internal/system"
 	"github.com/winchester37/servik/agent/internal/update"
 	"github.com/winchester37/servik/agent/internal/version"
@@ -122,6 +124,18 @@ func main() {
 		svc.databases = database.NewManager(h)
 	}
 	svc.monitor.DatabaseSites = svc.databases.Sites
+	svc.stats = stats.New()
+	svc.stats.MailDomains = mailDomains(h)
+	svc.statsFile = h.Path(statsState)
+	if err := svc.stats.Load(svc.statsFile); err != nil {
+		log.Error("loading uncollected statistics", "err", err)
+	}
+	if *dryRun {
+		svc.stats.SetGeo(stats.DemoGeo())
+	} else {
+		svc.geoFile = h.Path(stats.GeoFile)
+	}
+	svc.monitor.Stats = svc.stats
 	svc.certs.PanelChanged = svc.databases.PanelCertificateChanged
 	svc.php = php.NewManager(h)
 	svc.components = component.NewManager(h, svc.sites, svc.databases, svc.laravel)
@@ -297,9 +311,44 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	}
 	go svc.monitor.Run(ctx)
 	go svc.databases.Run(ctx)
+	if svc.geoFile != "" {
+		go stats.KeepGeo(ctx, svc.stats, svc.geoFile, stats.RegistryFiles, log)
+	}
 
 	log.Info("agent listening", "socket", socket, "version", version.Version)
-	return srv.Serve(ctx, ln)
+	err = srv.Serve(ctx, ln)
+	// Counts the panel has not collected yet survive the restart.
+	if serr := svc.stats.Save(svc.statsFile); serr != nil {
+		log.Error("saving uncollected statistics", "err", serr)
+	}
+	return err
+}
+
+// statsState holds the statistics not collected yet while the agent is
+// stopped.
+const statsState = "/var/lib/servik/stats/state.gob"
+
+// mailDomains lists the server's mail domains (package mail keeps one
+// state file each), read again at most every 30 seconds.
+func mailDomains(h host.Host) func() map[string]bool {
+	var (
+		mu   sync.Mutex
+		at   time.Time
+		last map[string]bool
+	)
+	return func() map[string]bool {
+		mu.Lock()
+		defer mu.Unlock()
+		if last != nil && time.Since(at) < 30*time.Second {
+			return last
+		}
+		last, at = map[string]bool{}, time.Now()
+		files, _ := filepath.Glob(h.Path("/etc/servik/mail/domains/*.json"))
+		for _, f := range files {
+			last[strings.TrimSuffix(filepath.Base(f), ".json")] = true
+		}
+		return last
+	}
 }
 
 // ownAddressStrings are the server's addresses as text, for Fail2ban.

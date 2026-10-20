@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/stats"
 )
 
 const (
@@ -64,6 +65,8 @@ type Monitor struct {
 	prevUptime float64
 	prevBusy   uint64
 	prevTotal  uint64
+	prevRx     uint64
+	prevTx     uint64
 	server     serverInfo
 	series     map[string][]point // "site:<domain>", "account:<user>", "unit:<name>", "server"
 	units      map[string]int     // processes in each unit, latest sample
@@ -80,6 +83,10 @@ type Monitor struct {
 	// DatabaseSites, when set, maps database names to the site that uses
 	// them; connections to other databases are attributed by name.
 	DatabaseSites func() map[string]string
+
+	// Stats, when set, receives the new access and mail log lines for the
+	// panel's statistics.
+	Stats *stats.Aggregator
 }
 
 type mark struct {
@@ -110,6 +117,8 @@ type point struct {
 	DBActive int
 	DBLong   int
 	Mail     int
+	NetRx    float64 // the whole server: bytes/s received
+	NetTx    float64 // bytes/s sent
 }
 
 // New returns a monitor of the real machine. pools applies PHP worker
@@ -327,9 +336,16 @@ func (m *Monitor) process(now time.Time, sites []siteInfo, r raw) {
 		pt.Requests, pt.Err4, pt.Err5 = t.requests, t.err4, t.err5
 		m.traffic[d] += t.bytes
 		m.detect.addWeb(d, t)
+		if m.Stats != nil {
+			m.Stats.AddAccess(d, byDomain[d].Names, lines, now)
+		}
 	}
 	m.detect.addAuthLines(r.mailLog, r.authLog, now)
 	m.detect.expire(now, sitesSet)
+	if m.Stats != nil {
+		m.Stats.AddMail(r.mailLog, now)
+		m.Stats.Forget(sitesSet)
+	}
 
 	m.mail.add(r.mailLog, now)
 	for uid, n := range m.mail.byUID {
@@ -385,6 +401,11 @@ func (m *Monitor) process(now time.Time, sites []siteInfo, r raw) {
 		srv.CPU = float64(r.cpuBusy-m.prevBusy) / float64(r.cpuTotal-m.prevTotal) * 100
 	}
 	m.prevBusy, m.prevTotal = r.cpuBusy, r.cpuTotal
+	if !first && r.netRx >= m.prevRx && r.netTx >= m.prevTx && m.prevRx+m.prevTx > 0 {
+		srv.NetRx = float64(r.netRx-m.prevRx) / dt
+		srv.NetTx = float64(r.netTx-m.prevTx) / dt
+	}
+	m.prevRx, m.prevTx = r.netRx, r.netTx
 	if r.memTotal > r.memAvail {
 		srv.Mem = r.memTotal - r.memAvail
 	}
@@ -505,6 +526,10 @@ type ServerUsage struct {
 	serverInfo
 	CPU    float64 `json:"cpu"`
 	Memory uint64  `json:"memory"`
+	// NetRx and NetTx are bytes per second received and sent on every
+	// network interface but loopback.
+	NetRx float64 `json:"net_rx"`
+	NetTx float64 `json:"net_tx"`
 }
 
 // HistoryPoint is one sample of a site, for charts.
@@ -543,6 +568,7 @@ func (m *Monitor) Snapshot(spec SnapshotSpec) Snapshot {
 	snap.Server.serverInfo = m.server
 	sa := aggregate(m.series["server"], since)
 	snap.Server.CPU, snap.Server.Memory = sa.CPU, sa.Mem
+	snap.Server.NetRx, snap.Server.NetTx = round(sa.netRx, 0), round(sa.netTx, 0)
 
 	accounts := map[string][]string{}
 	for _, si := range m.sites {
@@ -613,6 +639,8 @@ type agg struct {
 	err4Rate float64
 	err5Rate float64
 	mailRate float64
+	netRx    float64
+	netTx    float64
 	php      PHPUsage
 	db       DBUsage
 }
@@ -621,7 +649,7 @@ type agg struct {
 // time covered; CPU is weighted by each sample's length.
 func aggregate(series []point, since time.Time) agg {
 	var a agg
-	var secs, cpu, io, mem, busy, conns, active float64
+	var secs, cpu, io, mem, busy, conns, active, rx, tx float64
 	var req, e4, e5, mail int
 	phpN := 0
 	for _, p := range series {
@@ -632,6 +660,8 @@ func aggregate(series []point, since time.Time) agg {
 		secs += p.Dt
 		cpu += p.CPU * p.Dt
 		io += p.IO * p.Dt
+		rx += p.NetRx * p.Dt
+		tx += p.NetTx * p.Dt
 		mem += float64(p.Mem)
 		req, e4, e5, mail = req+p.Requests, e4+p.Err4, e5+p.Err5, mail+p.Mail
 		conns += float64(p.DBConns)
@@ -651,6 +681,8 @@ func aggregate(series []point, since time.Time) agg {
 	}
 	a.CPU = cpu / secs
 	a.IO = io / secs
+	a.netRx = rx / secs
+	a.netTx = tx / secs
 	a.Mem = uint64(mem / float64(a.n))
 	a.reqRate = float64(req) / secs
 	a.err4Rate = float64(e4) / secs

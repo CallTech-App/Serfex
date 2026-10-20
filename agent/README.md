@@ -20,7 +20,7 @@ Methods so far:
 | `site.apply` | `domain`, `user`, `php_version`, `aliases`, `suspended` | creates or updates a site; a suspended site answers every request with 503 and a suspension page while its files stay. Returns paths, `uid`, `user_created`, `changed` |
 | `site.delete` | `domain`, `user`, `remove_files`, `remove_user` | removes the site; returns `files_removed`, `user_removed` |
 | `site.logs` | `domain`, `user`, `kind` (`access`, `error` or `php`), `bytes` | the end of the site's Nginx access or error log or its PHP error log (at most 1 MB); returns `exists`, `size`, `content`, `truncated`. Symbolic links in the customer's log path are refused |
-| `usage.disk` | `users` | disk space used by each account's home directory, `{"<user>": {"bytes", "files"}}`; hard links count once, symbolic links are not followed |
+| `usage.disk` | `users` | disk space used by each account's home directory, `{"<user>": {"bytes", "files", "sites": {"<domain>": bytes}}}` (`sites`: the part in each site's folder `web/<domain>`); hard links count once, symbolic links are not followed |
 | `system.addresses` | | the server's public addresses, `{"ipv4": [...], "ipv6": [...]}` |
 | `dns.status` | | `installed`, `configured`, `running`, `version` of the DNS server |
 | `dns.setup` | | installs PowerDNS if missing, configures and starts it; returns `installed`, `changed`, `version` |
@@ -56,7 +56,8 @@ Methods so far:
 | `laravel.key` | target | the site's deploy key (ed25519), created on first use |
 | `laravel.health` | `domain`, `path` | requests the path through the site's own Nginx; returns `ok`, `status`, `ms` |
 | `laravel.remove` | target, `remove_files` | stops workers and the timer, and with `remove_files` deletes the releases |
-| `monitor.live` | `window`, `history` | averages over the last `window` seconds (2–600): per site CPU, memory, disk I/O, PHP-FPM pool, requests, errors, database connections, mail, top addresses, limit and `traffic` (bytes sent since `started`); accounts, system services, the server, and suspect addresses; with `history` the samples of that site |
+| `monitor.live` | `window`, `history` | averages over the last `window` seconds (2–600): per site CPU, memory, disk I/O, PHP-FPM pool, requests, errors, database connections, mail, top addresses, limit and `traffic` (bytes sent since `started`); accounts, system services, the server (with `net_rx`/`net_tx` bytes per second), and suspect addresses; with `history` the samples of that site |
+| `stats.collect` | `ack` | statistics counted since the last collection, by site and UTC hour (requests, bytes, visitors, pages, bot requests and bytes, 2xx–5xx, and the pages, referrers, countries and bots behind them) and by mail domain and hour (sent, received, rejected, bounced), as a batch with an `id`; the batch is handed out again until the next call names it in `ack`; `countries` tells whether the country table is loaded |
 | `monitor.limit.apply` | `domain`, `cpu`, `memory_mb`, `php_workers`, `seconds` | caps a site for a while (replacing its limit); returns the limit with `expires_at` |
 | `monitor.limit.remove` | `domain` | ends a site's limit now; returns `removed` |
 | `monitor.limits` | | the limits in force |
@@ -404,6 +405,34 @@ flood, blocks and unblocks the address with nftables, caps the site's CPU
 and memory through its scope (also for workers started later), limits its
 PHP workers and restarts its pool.
 
+
+## Statistics
+
+The monitor hands the new lines of each site's access log and of the mail
+log to package `stats`, which adds them up per site and UTC hour until the
+panel collects them with `stats.collect` (every minute) and stores hourly
+and daily rollups in its own database.
+
+- **Visitors.** A visitor is a hash of address and user agent, counted once
+  per site and day (server time); addresses never leave the agent. Bots and
+  tools (Googlebot, AhrefsBot, curl, a missing user agent, anything calling
+  itself a bot or crawler) are counted apart and left out of visitors,
+  pages, referrers and countries.
+- **Pages** are successful GETs that are not images, scripts, styles or
+  downloads. **Referrers** are the referring hosts, without the site's own
+  names and subdomains. At most 300 distinct values per kind, site and hour
+  are kept; the rest add up under "".
+- **Countries** come from the five regional registries' public delegated
+  files (where each address block was registered), downloaded once a month
+  into `/var/lib/servik/stats/countries.bin` and looked up locally.
+- **Mail** per domain: messages delivered to its mailboxes (`received`),
+  sent to and bounced by other servers (by the queue ID's sender), and
+  refused on the way in (`reject:`, `milter-reject:`).
+- **Collection is acknowledged.** A batch stays pending until the next call
+  names it, so a batch the panel lost is sent again and one it stored is
+  never counted twice. Uncollected counts and today's visitors are written
+  to `/var/lib/servik/stats/state.gob` when the agent stops and read back
+  when it starts. Counts the panel has not collected for a week are dropped.
 ## Databases
 
 Customer databases run on the distribution's own servers: MySQL 8 or

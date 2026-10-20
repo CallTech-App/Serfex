@@ -25,6 +25,10 @@ func TestDiskUsage(t *testing.T) {
 	if err := os.Symlink("/etc", home+"/etc"); err != nil {
 		t.Fatal(err)
 	}
+	// What sits in the site's folder is also shown apart.
+	if err := os.WriteFile(home+"/web/kahveatolyesi.com.tr/public_html/index.html", []byte(strings.Repeat("y", 50_000)), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := m.DiskUsage(context.Background(), DiskSpec{Users: []string{"kahve", "bos"}})
 	if err != nil {
@@ -33,10 +37,13 @@ func TestDiskUsage(t *testing.T) {
 	if b := got["kahve"].Bytes; b < 200_000 || b > 400_000 {
 		t.Errorf("kahve uses %d bytes", b)
 	}
-	if f := got["kahve"].Files; f != 2 { // big.bin and the symlink
+	if f := got["kahve"].Files; f != 3 { // big.bin, index.html and the symlink
 		t.Errorf("kahve has %d files", f)
 	}
-	if got["bos"] != (DiskUsage{}) {
+	if s := got["kahve"].Sites["kahveatolyesi.com.tr"]; s < 50_000 || s > got["kahve"].Bytes {
+		t.Errorf("the site's folder uses %d bytes", s)
+	}
+	if got["bos"].Bytes != 0 || len(got["bos"].Sites) != 0 {
 		t.Errorf("an account without a home uses %+v", got["bos"])
 	}
 
