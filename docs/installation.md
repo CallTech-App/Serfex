@@ -89,7 +89,7 @@ turn it on, and it opens what the installed services need.
 The installer ends with a link like this:
 
 ```
-https://203.0.113.10:8443/kurulum/Xk9…
+https://203.0.113.10:8443/install/Xk9…
 ```
 
 Open it in a browser (accept the self-signed certificate warning). It asks
@@ -127,10 +127,12 @@ step saves with the same settings as its own page and can be left for later
    creating your domain's zone. Register the two names with their addresses as
    glue (host) records at your domain registrar, then make them the domain's
    name servers; the wizard shows the exact names and addresses.
-3. **Panel address**: the name you open the panel with (default
-   `panel.<your domain>`) and its Let's Encrypt certificate, retried every
-   hour until the name points here. The port is changed under Settings →
-   General.
+3. **Panel address**: open the panel on the server's own name (the
+   default), on a separate name such as `admin.example.com`, or only on its
+   IP address and port. A name gets a Let's Encrypt certificate, retried
+   every hour until the name points here; it cannot be a site's or the mail
+   server's name. The IP address always works. The port is changed under
+   Settings → General.
 4. **Notifications**: where problem emails go. If the server cannot send mail
    yet, the step says so and links to the outgoing mail settings.
 5. **Firewall**: turns on Servik's firewall with the ports the installed

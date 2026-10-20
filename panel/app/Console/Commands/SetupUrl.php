@@ -31,7 +31,7 @@ class SetupUrl extends Command
         }
 
         ['token' => $token, 'expires_at' => $expires] = $firstRun->newToken();
-        $urls = array_map(fn ($base) => $base.'/kurulum/'.$token, $firstRun->panelUrls());
+        $urls = array_map(fn ($base) => $base.'/install/'.$token, $firstRun->panelUrls());
         if ($this->option('json')) {
             $this->line((string) json_encode([
                 'url' => $urls[0],

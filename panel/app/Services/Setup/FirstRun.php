@@ -235,7 +235,7 @@ class FirstRun
     {
         return match ($step) {
             'ad-sunuculari' => ($ns = app(DnsSettings::class)->nameservers()) !== [] ? [true, implode(', ', $ns)] : [false, null],
-            'panel' => ($host = Setting::get('panel.hostname')) && Certificate::where('kind', 'panel')->whereNotNull('not_after')->exists() ? [true, $host] : [false, $host ?: null],
+            'panel' => ($host = Setting::get('panel.hostname')) && Certificate::where('kind', 'panel')->whereNotNull('not_after')->exists() ? [true, $host] : [false, $host ?: __('IP adresi ve port')],
             'bildirimler' => ($emails = app(Notifications::class)->settings()['emails']) !== [] ? [true, implode(', ', $emails)] : [false, null],
             'guvenlik' => app(Firewall::class)->enabled() ? [true, __('Açık')] : [false, null],
             'yedekler' => BackupTarget::exists() ? [true, BackupTarget::orderBy('id')->value('name')] : [false, null],

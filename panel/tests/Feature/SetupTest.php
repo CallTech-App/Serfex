@@ -9,6 +9,7 @@ use App\Livewire\Setup\SetupWizard;
 use App\Models\Certificate;
 use App\Models\DnsZone;
 use App\Models\Setting;
+use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
@@ -64,7 +65,7 @@ class SetupTest extends TestCase
     public function test_the_command_prints_a_link_on_the_servers_address(): void
     {
         $this->artisan('servik:setup-url')
-            ->expectsOutputToContain('https://203.0.113.10:8443/kurulum/')
+            ->expectsOutputToContain('https://203.0.113.10:8443/install/')
             ->assertSuccessful();
         $saved = Setting::get('setup.token');
         $this->assertSame(64, strlen($saved['hash']));
@@ -75,12 +76,12 @@ class SetupTest extends TestCase
     {
         $token = $this->link();
         $this->get('/login')->assertOk()->assertSee('Bu panel henüz kurulmadı.')->assertSee('sudo servik setup-url');
-        $this->get('/kurulum/'.$token)->assertOk()->assertSee('Yönetici hesabını oluşturun');
+        $this->get('/install/'.$token)->assertOk()->assertSee('Yönetici hesabını oluşturun');
 
-        $this->post('/kurulum/'.$token, [
+        $this->post('/install/'.$token, [
             'name' => 'Sercan', 'email' => 'Sercan@Ornek.com.tr', 'password' => 'correct-horse-battery',
             'password_confirmation' => 'correct-horse-battery', 'locale' => 'en',
-        ])->assertRedirect('/kurulum');
+        ])->assertRedirect('/install');
 
         $admin = User::sole();
         $this->assertAuthenticatedAs($admin);
@@ -92,8 +93,8 @@ class SetupTest extends TestCase
 
         // The link works once.
         auth()->logout();
-        $this->get('/kurulum/'.$token)->assertStatus(410)->assertSee('Bu panel zaten kuruldu');
-        $this->post('/kurulum/'.$token, ['name' => 'X', 'email' => 'x@example.test', 'password' => 'another-long-password', 'password_confirmation' => 'another-long-password', 'locale' => 'tr'])->assertStatus(410);
+        $this->get('/install/'.$token)->assertStatus(410)->assertSee('Bu panel zaten kuruldu');
+        $this->post('/install/'.$token, ['name' => 'X', 'email' => 'x@example.test', 'password' => 'another-long-password', 'password_confirmation' => 'another-long-password', 'locale' => 'tr'])->assertStatus(410);
         $this->assertSame(1, User::count());
         $this->get('/login')->assertDontSee('sudo servik setup-url');
     }
@@ -102,17 +103,17 @@ class SetupTest extends TestCase
     {
         $old = $this->link();
         $new = app(FirstRun::class)->newToken()['token'];
-        $this->get('/kurulum/'.$old)->assertStatus(410)->assertSee('sudo servik setup-url');
-        $this->get('/kurulum/'.str_repeat('a', 48))->assertStatus(410);
+        $this->get('/install/'.$old)->assertStatus(410)->assertSee('sudo servik setup-url');
+        $this->get('/install/'.str_repeat('a', 48))->assertStatus(410);
 
         $this->travel(25)->hours();
-        $this->get('/kurulum/'.$new)->assertStatus(410)->assertSee('Kurulum bağlantısı geçersiz');
+        $this->get('/install/'.$new)->assertStatus(410)->assertSee('Kurulum bağlantısı geçersiz');
     }
 
     public function test_the_password_must_be_long_and_confirmed(): void
     {
         $token = $this->link();
-        $this->from('/kurulum/'.$token)->post('/kurulum/'.$token, [
+        $this->from('/install/'.$token)->post('/install/'.$token, [
             'name' => 'Sercan', 'email' => 'sercan@example.test', 'password' => 'short', 'password_confirmation' => 'short', 'locale' => 'tr',
         ])->assertSessionHasErrors('password');
         $this->assertSame(0, User::count());
@@ -172,11 +173,12 @@ class SetupTest extends TestCase
         $this->assertContains('srv1 A 203.0.113.10', $records);
         Queue::assertPushed(SyncDnsZone::class);
 
-        $wizard->assertSet('panelHostname', 'panel.ornek.com.tr')
+        // The panel opens on the server's own name unless another is chosen.
+        $wizard->assertSet('panelMode', 'hostname')
+            ->assertSee('https://srv1.ornek.com.tr:8443')
             ->call('save')
             ->assertSet('step', 'bildirimler');
-        $this->assertSame('panel.ornek.com.tr', Setting::get('panel.hostname'));
-        $this->assertTrue($zone->records()->where('name', 'panel')->where('type', 'A')->where('content', '203.0.113.10')->exists());
+        $this->assertSame('srv1.ornek.com.tr', Setting::get('panel.hostname'));
         Queue::assertPushed(IssuePanelCertificate::class);
 
         $wizard->assertSet('emails', 'sercan@ornek.com.tr')
@@ -246,14 +248,45 @@ class SetupTest extends TestCase
         $this->assertSame('open', $states['guvenlik']['state']);
     }
 
+    public function test_the_panel_can_open_on_another_name_or_only_on_its_ip_address(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'full']));
+        Site::factory()->create(['domain' => 'yonetim.ornek.com.tr']);
+        Setting::put('mail.hostname', 'mail.ornek.com.tr');
+
+        $wizard = Livewire::test(SetupWizard::class)->call('go', 'panel')
+            ->set('panelMode', 'custom')
+            ->call('save')->assertHasErrors('panelHostname')
+            ->set('panelHostname', 'yonetim.ornek.com.tr')
+            ->call('save')->assertHasErrors('panelHostname')
+            ->set('panelHostname', 'mail.ornek.com.tr')
+            ->call('save')->assertHasErrors('panelHostname')
+            ->set('panelHostname', 'Servik.Ornek.com.tr')
+            ->call('save')->assertHasNoErrors()->assertSet('step', 'bildirimler');
+        $this->assertSame('servik.ornek.com.tr', Setting::get('panel.hostname'));
+        Queue::assertPushed(IssuePanelCertificate::class);
+
+        // Only https://<IP>:<port>: no name and no certificate request.
+        Queue::fake();
+        $wizard->call('go', 'panel')
+            ->assertSet('panelMode', 'custom')
+            ->set('panelMode', 'ip')
+            ->assertSee('https://203.0.113.10:8443')
+            ->call('save')->assertHasNoErrors()->assertSet('step', 'bildirimler');
+        $this->assertNull(Setting::get('panel.hostname'));
+        Queue::assertNotPushed(IssuePanelCertificate::class);
+        Livewire::test(SetupWizard::class)->assertSet('panelMode', 'ip');
+        $this->assertSame('IP adresi ve port', collect(app(FirstRun::class)->checklist())->keyBy('step')['panel']['detail']);
+    }
+
     public function test_only_full_administrators_open_the_wizard(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'support']));
-        $this->get('/kurulum')->assertForbidden();
+        $this->get('/install')->assertForbidden();
         $this->get('/')->assertDontSee('İlk kurulum');
 
         $this->actingAs(User::factory()->create(['role' => 'full']));
-        $this->get('/kurulum')->assertOk()->assertSee('Sunucunun adı, adresi ve saati');
+        $this->get('/install')->assertOk()->assertSee('Sunucunun adı, adresi ve saati');
         $this->get(route('settings.general'))->assertSee(route('setup'));
     }
 
@@ -272,7 +305,7 @@ class SetupTest extends TestCase
     public function test_a_full_administrators_first_sign_in_opens_the_wizard_once(): void
     {
         User::factory()->create(['email' => 'sercan@example.test', 'password' => 'correct-horse-battery', 'role' => 'full']);
-        $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/kurulum');
+        $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/install');
         $this->post('/logout');
         $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/');
     }

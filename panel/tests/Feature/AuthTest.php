@@ -24,7 +24,7 @@ class AuthTest extends TestCase
 
         // The first sign-in to a new panel opens the setup wizard.
         $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])
-            ->assertRedirect('/kurulum');
+            ->assertRedirect('/install');
         $this->assertAuthenticatedAs($user);
 
         $this->post('/logout')->assertRedirect('/login');

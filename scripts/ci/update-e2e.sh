@@ -122,13 +122,13 @@ run() {
 	expect_running "$V1"
 
 	# Without --admin-email the installer prints the one-time setup link.
-	link=$(grep -oE 'https://[^ ]+/kurulum/[A-Za-z0-9]{48}' /tmp/install.out | head -n 1)
+	link=$(grep -oE 'https://[^ ]+/install/[A-Za-z0-9]{48}' /tmp/install.out | head -n 1)
 	[ -n "$link" ] || fail "install.sh printed no setup link"
 	setup_path=${link#https://*/}
 	[ "$(code "/$setup_path")" = 200 ] || fail "the setup link answers $(code "/$setup_path")"
 	[ "$(sql "SELECT count(*) FROM users")" = 0 ] || fail "an account exists before the setup link was used"
 	servik setup-url > /tmp/setup-url.out || fail "servik setup-url failed"
-	grep -q '/kurulum/' /tmp/setup-url.out || fail "servik setup-url printed no link"
+	grep -q '/install/' /tmp/setup-url.out || fail "servik setup-url printed no link"
 	[ "$(code "/$setup_path")" = 410 ] || fail "the first link still works after a new one was made"
 	ok "install.sh printed a setup link; servik setup-url replaced it"
 

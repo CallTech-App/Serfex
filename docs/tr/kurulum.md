@@ -92,7 +92,7 @@ açık tutar.
 Kurulum şuna benzer bir bağlantıyla biter:
 
 ```
-https://203.0.113.10:8443/kurulum/Xk9…
+https://203.0.113.10:8443/install/Xk9…
 ```
 
 Bağlantıyı tarayıcıda açın (kendinden imzalı sertifika uyarısını kabul edin).
@@ -129,9 +129,12 @@ aynı ayarları kaydeder ve "Sonra" ile ertelenebilir:
    bölgesinin oluşturulması. Bu iki adı IP adresleriyle alan adı firmanızda
    glue (host) kaydı olarak açın, sonra alan adının ad sunucuları yapın;
    sihirbaz tam adları ve adresleri gösterir.
-3. **Panel adresi:** paneli açacağınız ad (varsayılan `panel.<alan adınız>`) ve
-   Let's Encrypt sertifikası; ad sunucuyu gösterene kadar her saat yeniden
-   denenir. Port Araçlar ve Ayarlar → Genel'den değiştirilir.
+3. **Panel adresi:** paneli sunucunun kendi adıyla (varsayılan), `yonetim.ornek.com.tr`
+   gibi ayrı bir adla ya da yalnızca IP adresi ve portla açarsınız. Bir ad
+   seçerseniz Let's Encrypt sertifikası alınır; ad sunucuyu gösterene kadar her
+   saat yeniden denenir. Ad bir sitenin ya da posta sunucusunun adı olamaz. IP
+   adresiyle açılan panel her zaman çalışır. Port Araçlar ve Ayarlar →
+   Genel'den değiştirilir.
 4. **Bildirimler:** sorun e-postalarının gideceği adresler. Sunucu henüz posta
    gönderemiyorsa adım bunu söyler ve giden posta ayarlarına bağlantı verir.
 5. **Güvenlik duvarı:** kurulu hizmetlerin ihtiyaç duyduğu portlarla (panel,

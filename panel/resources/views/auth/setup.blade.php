@@ -17,7 +17,7 @@
                 <span class="text-[19px] font-semibold tracking-tight">servik</span>
             </div>
 
-            <form method="POST" action="{{ url('/kurulum/'.$token) }}" class="rounded-xl border border-line bg-surface">
+            <form method="POST" action="{{ url('/install/'.$token) }}" class="rounded-xl border border-line bg-surface">
                 @csrf
                 <div class="border-b border-line px-5 py-4">
                     <p class="text-2xs font-medium tracking-wide text-muted uppercase">{{ __('Kurulum · 1. adım') }}</p>

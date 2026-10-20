@@ -88,8 +88,8 @@ Route::get('/cli/indir/{file}', [CliDownloadController::class, 'download'])->whe
 
 // The one-time setup link install.sh prints: it creates the first
 // administrator. Wrong tokens are throttled like failed logins.
-Route::get('/kurulum/{token}', [SetupController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('setup.link');
-Route::post('/kurulum/{token}', [SetupController::class, 'store'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1');
+Route::get('/install/{token}', [SetupController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('setup.link');
+Route::post('/install/{token}', [SetupController::class, 'store'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -169,7 +169,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
 
         // Araçlar ve Ayarlar and Servik AI's settings: full administrators.
         Route::middleware(EnsureFullAdmin::class)->group(function () {
-            Route::livewire('/kurulum', SetupWizard::class)->name('setup');
+            Route::livewire('/install', SetupWizard::class)->name('setup');
             Route::livewire('/ayarlar', GeneralSettings::class)->name('settings.general');
             Route::livewire('/ayarlar/sunucu', ServerSettings::class)->name('settings.server');
             Route::livewire('/ayarlar/bildirimler', NotificationSettings::class)->name('settings.notifications');

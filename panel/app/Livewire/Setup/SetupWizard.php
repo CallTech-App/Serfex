@@ -72,7 +72,10 @@ class SetupWizard extends Component
 
     public bool $createZone = true;
 
-    // Panel adresi
+    // Panel adresi: the server's name, a name of its own, or only the IP
+    // address and port.
+    public string $panelMode = 'hostname';
+
     public string $panelHostname = '';
 
     public bool $issueCertificate = true;
@@ -125,7 +128,11 @@ class SetupWizard extends Component
         $this->installDns = $dnsState !== 'ready';
         $this->createZone = $this->domain === '' || ! DnsZone::where('name', $this->domain)->exists();
 
-        $this->panelHostname = (string) (Setting::get('panel.hostname') ?: ($this->domain !== '' ? 'panel.'.$this->domain : ''));
+        $saved = (string) Setting::get('panel.hostname', '');
+        // No name after the panel step was saved means IP address and port.
+        $ipOnly = $saved === '' && ($firstRun->progress()['steps']['panel'] ?? null) === 'done';
+        $this->panelMode = $ipOnly ? 'ip' : ($saved === '' || $saved === $this->hostname ? 'hostname' : 'custom');
+        $this->panelHostname = $this->panelMode === 'custom' ? $saved : '';
 
         $saved = app(Notifications::class)->settings()['emails'];
         $this->emails = implode(', ', $saved !== [] ? $saved : [auth()->user()->email]);
@@ -232,7 +239,6 @@ class SetupWizard extends Component
             $follows = fn (string $value, string $label) => $value === '' || ($old !== '' && $value === $label.'.'.$old);
             $this->ns1 = $follows($this->ns1, 'ns1') ? 'ns1.'.$guess : $this->ns1;
             $this->ns2 = $follows($this->ns2, 'ns2') ? 'ns2.'.$guess : $this->ns2;
-            $this->panelHostname = $follows($this->panelHostname, 'panel') ? 'panel.'.$guess : $this->panelHostname;
             $this->domain = $guess;
             $this->createZone = ! DnsZone::where('name', $guess)->exists();
         }
@@ -270,33 +276,45 @@ class SetupWizard extends Component
         if (($zone = DnsZone::where('name', $this->domain)->first()) !== null) {
             $this->addAddress($zone, $this->hostname);
         }
-        if ($this->panelHostname === '') {
-            $this->panelHostname = 'panel.'.$this->domain;
-        }
 
         return true;
     }
 
     private function savePanel(): bool
     {
-        $this->panelHostname = Hostnames::normalize($this->panelHostname);
-        $this->validate([
-            'panelHostname' => [
-                'required',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir ad girin, örneğin panel.ornek.com.tr.')),
-                fn ($attr, $value, $fail) => app(SiteDomains::class)->siteFor($value) !== null ? $fail(__('Bu ad bir sitede kullanılıyor; panel için ayrı bir ad seçin, örneğin panel.:value.', ['value' => $value])) : null,
-                fn ($attr, $value, $fail) => $value === Setting::get('mail.hostname') ? $fail(__('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.')) : null,
-            ],
-        ], [], ['panelHostname' => __('panel adresi')]);
+        $this->validate(['panelMode' => ['required', Rule::in(['hostname', 'custom', 'ip'])]]);
+        if ($this->panelMode === 'ip') {
+            // https://<IP>:<port> keeps working; no name, no Let's Encrypt.
+            Setting::put('panel.hostname', null);
+
+            return true;
+        }
+        $name = $this->panelMode === 'hostname' ? $this->serverName() : Hostnames::normalize($this->panelHostname);
+        if ($this->panelMode === 'custom') {
+            $this->panelHostname = $name;
+        }
+        $problem = match (true) {
+            $this->panelMode === 'custom' && $name === '' => __('Panel için bir ad girin, örneğin yonetim.ornek.com.tr.'),
+            $this->panelMode === 'hostname' && ! Hostnames::isValidDomain($name) => __('Sunucunun adı noktalı tam bir ad değil. Sunucu adımında tam adı girin ya da başka bir seçenek seçin.'),
+            ! Hostnames::isValidDomain($name) => __('Geçerli bir ad girin, örneğin panel.ornek.com.tr.'),
+            app(SiteDomains::class)->siteFor($name) !== null => __('Bu ad bir sitede kullanılıyor; panel için ayrı bir ad seçin, örneğin panel.:value.', ['value' => $name]),
+            $name === Setting::get('mail.hostname') => __('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.'),
+            default => null,
+        };
+        if ($problem !== null) {
+            $this->addError('panelHostname', $problem);
+
+            return false;
+        }
 
         $previous = (string) Setting::get('panel.hostname', '');
-        Setting::put('panel.hostname', $this->panelHostname);
-        $zone = $this->zoneFor($this->panelHostname);
+        Setting::put('panel.hostname', $name);
+        $zone = $this->zoneFor($name);
         if ($zone !== null) {
-            $this->addAddress($zone, $this->panelHostname);
+            $this->addAddress($zone, $name);
         }
-        if ($this->issueCertificate && ($this->panelHostname !== $previous || ! $this->panelCertificateInstalled())) {
-            app(Certificates::class)->issuePanel($this->panelHostname);
+        if ($this->issueCertificate && ($name !== $previous || ! $this->panelCertificateInstalled())) {
+            app(Certificates::class)->issuePanel($name);
         }
 
         return true;
@@ -469,6 +487,14 @@ class SetupWizard extends Component
         });
     }
 
+    /**
+     * The server's own name as saved (Sunucu step) or read from the server.
+     */
+    private function serverName(): string
+    {
+        return strtolower((string) (Setting::get('server.hostname') ?: $this->hostname));
+    }
+
     private function panelCertificateInstalled(): bool
     {
         return Certificate::where('kind', 'panel')->whereNotNull('not_after')->exists();
@@ -486,6 +512,8 @@ class SetupWizard extends Component
             'dnsServer' => Setting::get('dns.server', []),
             'glue' => [[$this->ns1, $dns->ipv4() ?: $this->ipv4], [$this->ns2, $this->ns2Ip ?: ($dns->ipv4() ?: $this->ipv4)]],
             'port' => $settings->port(),
+            'serverName' => $this->step === 'panel' ? $this->serverName() : '',
+            'panelIp' => $dns->ipv4() ?: $this->ipv4,
             'mailProblem' => $this->step === 'bildirimler' ? app(OutgoingMail::class)->problem() : null,
             'firewallOn' => $firewall->enabled(),
             'firewallServices' => $this->step === 'guvenlik' ? array_filter($firewall->services(), fn ($s) => $s['enabled']) : [],

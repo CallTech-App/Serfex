@@ -40,7 +40,7 @@
                 @switch($step)
                     @case('sunucu') {{ __('Sunucunun adı, adresi ve saati') }} @break
                     @case('ad-sunuculari') {{ __('Ad sunucuları') }} @break
-                    @case('panel') {{ __('Panelin adresi ve sertifikası') }} @break
+                    @case('panel') {{ __('Panel adresi') }} @break
                     @case('bildirimler') {{ __('Bildirimler') }} @break
                     @case('guvenlik') {{ __('Güvenlik duvarı') }} @break
                     @case('varsayilanlar') {{ __('Yeni sitelerin varsayılanları') }} @break
@@ -52,7 +52,7 @@
                 @switch($step)
                     @case('sunucu') {{ __('Sunucunun kendi adı (hostname), DNS kayıtlarında kullanılacak IP adresleri, saat dilimi ve dil.') }} @break
                     @case('ad-sunuculari') {{ __('Alan adlarınızın bu sunucuyu ad sunucusu olarak kullanması için kendi ad sunucularınız. Sonra da Alan Adları ve DNS → Ayarlar\'dan değiştirebilirsiniz.') }} @break
-                    @case('panel') {{ __('Paneli bundan sonra IP adresiyle değil bu adla açarsınız; adın sertifikası Let\'s Encrypt\'ten alınır.') }} @break
+                    @case('panel') {{ __('Paneli sunucunun adıyla, ayrı bir adla ya da yalnızca IP adresi ve portla açabilirsiniz. Bir ad seçerseniz sertifikası Let\'s Encrypt\'ten alınır.') }} @break
                     @case('bildirimler') {{ __('Sertifika, yedek, disk ya da duran bir hizmet sorunu olduğunda e-posta gidecek adresler.') }} @break
                     @case('guvenlik') {{ __('Açıkken sunucu yalnızca Servik\'in kullandığı portlarda yanıt verir. Panele şu anki bağlantınız hiçbir zaman kesilmez.') }} @break
                     @case('varsayilanlar') {{ __('Yeni bir site eklendiğinde seçili gelecek web sunucusu ve PHP sürümü, ve Servik\'in hangi sürümleri önereceği.') }} @break
@@ -120,7 +120,7 @@
                             <label for="domain" class="sm:pt-2">{{ __('Kendi alan adınız') }}</label>
                             <div>
                                 <input id="domain" wire:model.live.debounce.400ms="domain" spellcheck="false" autocomplete="off" placeholder="ornek.com.tr" class="{{ $field }} font-mono sm:w-80 {{ $error('domain') }}">
-                                @error('domain')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1.5 text-2xs text-muted">{{ __('Ad sunucularınızın ve panelin adı bu alan adının altında olur.') }}</p>@enderror
+                                @error('domain')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1.5 text-2xs text-muted">{{ __('Ad sunucularınızın adı bu alan adının altında olur.') }}</p>@enderror
                             </div>
                         </div>
                         <div class="{{ $row }}">
@@ -156,7 +156,7 @@
                                     <input type="checkbox" wire:model="createZone" class="mt-0.5 size-4 accent-accent">
                                     <span>
                                         <x-t text=":domain için DNS bölgesi oluştur"><x-slot:domain><span class="font-mono">{{ $domain ?: 'ornek.com.tr' }}</span></x-slot:domain></x-t>
-                                        <span class="block text-2xs text-muted">{{ __('Ad sunucularının, sunucunun ve panelin A kayıtları içine yazılır.') }}</span>
+                                        <span class="block text-2xs text-muted">{{ __('Ad sunucularının ve sunucunun A kayıtları içine yazılır.') }}</span>
                                     </span>
                                 </label>
                             </div>
@@ -176,22 +176,44 @@
                 @case('panel')
                     <div class="divide-y divide-line">
                         <div class="{{ $row }}">
-                            <label for="panel-hostname" class="sm:pt-2">{{ __('Panel adresi') }}</label>
-                            <div>
-                                <input id="panel-hostname" wire:model="panelHostname" spellcheck="false" autocomplete="off" placeholder="panel.ornek.com.tr" class="{{ $field }} font-mono sm:w-80 {{ $error('panelHostname') }}">
-                                @error('panelHostname')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1.5 text-2xs text-muted">{{ __('Bir sitenin ya da posta sunucusunun adı olmamalı. Alan adınızın DNS bölgesi bu sunucudaysa A kaydı kendiliğinden eklenir.') }}</p>@enderror
+                            <span class="sm:pt-0.5">{{ __('Paneli açacağınız adres') }}</span>
+                            <div class="space-y-3">
+                                <label class="flex items-start gap-2">
+                                    <input type="radio" wire:model.live="panelMode" value="hostname" class="mt-0.5 size-4 accent-accent">
+                                    <span>{{ __('Sunucunun adı') }}<span class="block font-mono text-[13px] text-muted">https://{{ $serverName ?: 'srv1.ornek.com.tr' }}:{{ $port }}</span></span>
+                                </label>
+                                <label class="flex items-start gap-2">
+                                    <input type="radio" wire:model.live="panelMode" value="custom" class="mt-0.5 size-4 accent-accent">
+                                    <span class="flex-1">{{ __('Ayrı bir ad') }}
+                                        @if ($panelMode === 'custom')
+                                            <input id="panel-hostname" wire:model="panelHostname" spellcheck="false" autocomplete="off" placeholder="panel.ornek.com.tr" class="{{ $field }} mt-1.5 block font-mono sm:w-80 {{ $error('panelHostname') }}">
+                                        @endif
+                                    </span>
+                                </label>
+                                <label class="flex items-start gap-2">
+                                    <input type="radio" wire:model.live="panelMode" value="ip" class="mt-0.5 size-4 accent-accent">
+                                    <span>{{ __('Yalnızca IP adresi ve port') }}<span class="block font-mono text-[13px] text-muted">https://{{ $panelIp ?: '203.0.113.10' }}:{{ $port }}</span></span>
+                                </label>
+                                @error('panelHostname')<p class="text-[13px] text-crit">{{ $message }}</p>@else<p class="text-2xs text-muted">{{ __('Panelin adı bir sitenin ya da posta sunucusunun adı olamaz; posta sunucusu mail.ornek.com.tr gibi ayrı bir ad kullanır. Alan adınızın DNS bölgesi bu sunucudaysa A kaydı kendiliğinden eklenir. IP adresiyle açılan panel her zaman çalışır.') }}</p>@enderror
                             </div>
                         </div>
-                        <div class="{{ $row }}">
-                            <span>{{ __('Sertifika') }}</span>
-                            <label class="flex items-start gap-2">
-                                <input type="checkbox" wire:model="issueCertificate" class="mt-0.5 size-4 accent-accent">
-                                <span>
-                                    {{ __('Let\'s Encrypt sertifikası al') }}
-                                    <span class="block text-2xs text-muted">{{ __('Ad henüz bu sunucuyu göstermiyorsa her saat yeniden denenir. O zamana kadar panel kendinden imzalı sertifikayla açılır; tarayıcının uyarısı bundandır.') }}</span>
-                                </span>
-                            </label>
-                        </div>
+                        @if ($panelMode !== 'ip')
+                            <div class="{{ $row }}">
+                                <span>{{ __('Sertifika') }}</span>
+                                <label class="flex items-start gap-2">
+                                    <input type="checkbox" wire:model="issueCertificate" class="mt-0.5 size-4 accent-accent">
+                                    <span>
+                                        {{ __('Let\'s Encrypt sertifikası al') }}
+                                        <span class="block text-2xs text-muted">{{ __('Ad henüz bu sunucuyu göstermiyorsa her saat yeniden denenir. O zamana kadar panel kendinden imzalı sertifikayla açılır; tarayıcının uyarısı bundandır.') }}</span>
+                                    </span>
+                                </label>
+                            </div>
+                        @else
+                            <div class="{{ $row }}">
+                                <span>{{ __('Sertifika') }}</span>
+                                <p class="text-[13px] text-muted">{{ __('IP adresine Let\'s Encrypt sertifikası verilmez; panel kendinden imzalı sertifikayla açılır ve tarayıcı uyarı gösterir. Sonra bir ad vermek için Araçlar ve Ayarlar → Genel.') }}</p>
+                            </div>
+                        @endif
                         <div class="{{ $row }}">
                             <span>{{ __('Panel portu') }}</span>
                             <div>

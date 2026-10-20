@@ -553,7 +553,7 @@ func TestSetupURLAsksThePanelForANewLink(t *testing.T) {
 	os.WriteFile(cfg, []byte(`{"php":"8.5"}`), 0o644)
 	var out, errOut bytes.Buffer
 	var ran []string
-	answer := `{"url":"https://203.0.113.10:8443/kurulum/abc","urls":["https://203.0.113.10:8443/kurulum/abc","https://srv1.ornek.com.tr:8443/kurulum/abc"],"expires_at":"2026-10-21T19:00:00+00:00"}`
+	answer := `{"url":"https://203.0.113.10:8443/install/abc","urls":["https://203.0.113.10:8443/install/abc","https://srv1.ornek.com.tr:8443/install/abc"],"expires_at":"2026-10-21T19:00:00+00:00"}`
 	env := &Env{
 		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
 		Getenv: func(k string) string {
@@ -578,7 +578,7 @@ func TestSetupURLAsksThePanelForANewLink(t *testing.T) {
 	if got := strings.Join(ran, " "); got != "runuser -u servik -- env -C /opt/servik/current/panel php8.5 artisan servik:setup-url --json" {
 		t.Errorf("ran %q", got)
 	}
-	if !strings.Contains(out.String(), "https://203.0.113.10:8443/kurulum/abc\nhttps://srv1.ornek.com.tr:8443/kurulum/abc\n") {
+	if !strings.Contains(out.String(), "https://203.0.113.10:8443/install/abc\nhttps://srv1.ornek.com.tr:8443/install/abc\n") {
 		t.Errorf("stdout %q", out.String())
 	}
 
