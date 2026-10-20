@@ -33,6 +33,10 @@ const (
 	// CLILink puts the release's servik command line on the PATH.
 	CLILink    = "/usr/local/bin/servik"
 	ConfigFile = "/etc/servik/panel.json"
+	// TokenFile holds a GitHub token for reading the releases of a
+	// private repository (root only). It is meant for testing before the
+	// repository is public; without it releases are read anonymously.
+	TokenFile  = "/etc/servik/release-token"
 	EnvFile    = "/etc/servik/panel.env"
 	StateDir   = "/var/lib/servik/panel"
 	StorageDir = StateDir + "/storage"
@@ -58,6 +62,8 @@ type Config struct {
 	Source string `json:"source,omitempty"`
 	// Hostname is the panel's address, for the health check's Host header.
 	Hostname string `json:"hostname,omitempty"`
+	// Token is read from TokenFile, never from ConfigFile.
+	Token string `json:"-"`
 }
 
 // Load reads the configuration. ok is false when the panel was not
@@ -73,6 +79,9 @@ func Load(h host.Host) (Config, bool) {
 	}
 	if c.Source == "" {
 		c.Source = DefaultSource
+	}
+	if b, err := os.ReadFile(h.Path(TokenFile)); err == nil {
+		c.Token = strings.TrimSpace(string(b))
 	}
 	return c, true
 }

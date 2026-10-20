@@ -21,6 +21,9 @@
 #                      installer's (default: tr when LANG is Turkish, else en)
 #   --source URL       where releases are listed (GitHub API URL of the repository)
 #   --no-components    skip the customers' software (PHP 8.4, Composer, Node.js 24, Fail2ban)
+#   --token T          a GitHub token for a private repository's releases
+#                      (or SERVIK_GITHUB_TOKEN); kept in /etc/servik/release-token
+#                      so that the panel's update check can read them too
 #   -y, --yes          do not ask before starting
 #
 # Everything it prints also goes to /var/log/servik/install.log.
@@ -38,6 +41,7 @@ ADMIN_NAME=
 LANG_CODE=
 COMPONENTS=1
 YES=0
+TOKEN=${SERVIK_GITHUB_TOKEN:-}
 
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -49,6 +53,7 @@ while [ $# -gt 0 ]; do
 	--lang) LANG_CODE=$2; shift 2 ;;
 	--source) SOURCE=${2%/}; shift 2 ;;
 	--no-components) COMPONENTS=0; shift ;;
+	--token) TOKEN=$2; shift 2 ;;
 	-y | --yes) YES=1; shift ;;
 	-h | --help) sed -n '2,/^set -euo/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//'; exit 0 ;;
 	*) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
@@ -113,7 +118,15 @@ step "$(t "Temel paketler" "Base packages")"
 "${APT[@]}" install --no-install-recommends ca-certificates curl jq tar gzip software-properties-common
 
 step "$(t "Sürüm bulunuyor" "Finding the release")"
-releases=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$SOURCE/releases?per_page=50") ||
+# A private repository answers only with the token, and serves its files
+# only through the API.
+auth=()
+link=.browser_download_url
+if [ -n "$TOKEN" ]; then
+	auth=(-H "Authorization: Bearer $TOKEN")
+	link=.url
+fi
+releases=$(curl -fsSL "${auth[@]}" -H 'Accept: application/vnd.github+json' "$SOURCE/releases?per_page=50") ||
 	die "$(t "$SOURCE adresindeki sürümler listelenemedi." "Could not list releases at $SOURCE.")"
 # GitHub lists the newest first.
 pick='[.[] | select(.draft | not) | select($ch == "beta" or (.prerelease | not))
@@ -124,14 +137,14 @@ release=$(jq -c --arg ch "$CHANNEL" --arg v "$VERSION" --arg arch "$ARCH" "$pick
 [ "$release" != null ] || die "$(t "$SOURCE adresinde $CHANNEL kanalında linux-$ARCH için ${VERSION:+$VERSION }sürüm yok." "No ${VERSION:+$VERSION }release for linux-$ARCH on the $CHANNEL channel at $SOURCE.")"
 VERSION=$(jq -r '.tag_name | ltrimstr("v")' <<< "$release")
 archive=servik-$VERSION-linux-$ARCH.tar.gz
-asset() { jq -r --arg n "$1" '.assets[] | select(.name == $n) | .browser_download_url' <<< "$release"; }
+asset() { jq -r --arg n "$1" ".assets[] | select(.name == \$n) | $link" <<< "$release"; }
 echo "Servik $VERSION"
 
 step "$(t "$archive indiriliyor ve doğrulanıyor" "Downloading and verifying $archive")"
 dl=$(mktemp -d)
 trap 'rm -rf "$dl"' EXIT
-curl -fL --retry 3 -o "$dl/$archive" "$(asset "$archive")"
-curl -fsSL --retry 3 -o "$dl/SHA256SUMS" "$(asset SHA256SUMS)"
+curl -fL --retry 3 "${auth[@]}" -H 'Accept: application/octet-stream' -o "$dl/$archive" "$(asset "$archive")"
+curl -fsSL --retry 3 "${auth[@]}" -H 'Accept: application/octet-stream' -o "$dl/SHA256SUMS" "$(asset SHA256SUMS)"
 (cd "$dl" && grep -E "  \*?$archive\$" SHA256SUMS | sha256sum -c -) || die "$(t "$archive, SHA256SUMS ile eşleşmiyor." "$archive does not match SHA256SUMS.")"
 
 step "$(t "Panel için PHP $PANEL_PHP" "PHP $PANEL_PHP for the panel")"
@@ -239,6 +252,9 @@ chown root:servik /etc/servik/panel.env
 chmod 0640 /etc/servik/panel.env
 jq -n --arg php "$PANEL_PHP" --arg source "$SOURCE" --arg host "$PANEL_HOST" \
 	'{php: $php, source: $source, hostname: $host}' > /etc/servik/panel.json
+if [ -n "$TOKEN" ]; then
+	(umask 077 && printf '%s\n' "$TOKEN" > /etc/servik/release-token)
+fi
 
 step "$(t "Servik ajanı" "Servik agent")"
 cat > /etc/systemd/system/servik-agent.service <<-UNIT

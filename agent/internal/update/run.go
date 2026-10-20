@@ -379,6 +379,7 @@ func (x *execution) download(url, file string) (int64, string, error) {
 	}
 	req.Header.Set("User-Agent", "servik-agent/"+x.m.Agent)
 	req.Header.Set("Accept", "application/octet-stream")
+	authorize(req, x.cfg.Token)
 	resp, err := x.m.HTTP.Do(req)
 	if err != nil {
 		return 0, "", err

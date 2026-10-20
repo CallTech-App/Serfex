@@ -274,7 +274,7 @@ func (m *Manager) Check(ctx context.Context, spec CheckSpec) (Status, error) {
 	}
 	cur, _ := panel.CurrentVersion(m.h)
 	l := latest{CheckedAt: m.now().UTC().Format(time.RFC3339), Channel: spec.Channel, Current: cur, Releases: []Release{}}
-	releases, err := m.fetchReleases(ctx, cfg.Source, spec.Channel)
+	releases, err := m.fetchReleases(ctx, cfg, spec.Channel)
 	if err != nil {
 		l.Error = err.Error()
 		// The releases found before stay offered.
@@ -295,14 +295,15 @@ func (m *Manager) Check(ctx context.Context, spec CheckSpec) (Status, error) {
 	return st, nil
 }
 
-// fetchReleases reads the GitHub release list of source.
-func (m *Manager) fetchReleases(ctx context.Context, source, channel string) ([]Release, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(source, "/")+"/releases?per_page=50", nil)
+// fetchReleases reads the GitHub release list of cfg.Source.
+func (m *Manager) fetchReleases(ctx context.Context, cfg panel.Config, channel string) ([]Release, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(cfg.Source, "/")+"/releases?per_page=50", nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "servik-agent/"+m.Agent)
+	authorize(req, cfg.Token)
 	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	resp, err := m.HTTP.Do(req.WithContext(cctx))
@@ -325,6 +326,7 @@ func (m *Manager) fetchReleases(ctx context.Context, source, channel string) ([]
 		Assets      []struct {
 			Name string `json:"name"`
 			URL  string `json:"browser_download_url"`
+			API  string `json:"url"`
 			Size int64  `json:"size"`
 		} `json:"assets"`
 	}
@@ -339,6 +341,10 @@ func (m *Manager) fetchReleases(ctx context.Context, source, channel string) ([]
 		}
 		rel := Release{Version: v, Tag: r.Tag, Name: r.Name, Notes: r.Body, PublishedAt: r.PublishedAt, Prerelease: r.Prerelease, URL: r.URL}
 		for _, a := range r.Assets {
+			// A private repository's files are only served through the API.
+			if cfg.Token != "" && a.API != "" {
+				a.URL = a.API
+			}
 			switch a.Name {
 			case ArchiveName(v, m.Arch):
 				rel.Archive, rel.Size = a.URL, a.Size
@@ -351,6 +357,14 @@ func (m *Manager) fetchReleases(ctx context.Context, source, channel string) ([]
 		}
 	}
 	return out, nil
+}
+
+// authorize adds token, when there is one, for a private repository.
+// net/http drops it when GitHub redirects a download to its storage.
+func authorize(req *http.Request, token string) {
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 }
 
 // ArchiveName is the release archive for arch.

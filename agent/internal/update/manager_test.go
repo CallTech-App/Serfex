@@ -45,21 +45,33 @@ func TestCompare(t *testing.T) {
 	}
 }
 
-// fakeSource serves a GitHub-style release list and the archives.
+// fakeSource serves a GitHub-style release list and the archives. With a
+// token it acts as a private repository: it answers only requests that
+// carry the token, and serves files only at their API URLs.
 type fakeSource struct {
 	srv      *httptest.Server
 	releases []map[string]any
 	files    map[string][]byte
+	token    string
 }
 
 func newSource(t *testing.T) *fakeSource {
 	f := &fakeSource{files: map[string][]byte{}}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/releases" {
+		path := r.URL.Path
+		if f.token != "" {
+			api, found := strings.CutPrefix(path, "/api")
+			if r.Header.Get("Authorization") != "Bearer "+f.token || (!found && path != "/releases") {
+				http.NotFound(w, r)
+				return
+			}
+			path = api
+		}
+		if path == "/releases" {
 			_ = json.NewEncoder(w).Encode(f.releases)
 			return
 		}
-		data, ok := f.files[r.URL.Path]
+		data, ok := f.files[path]
 		if !ok {
 			http.NotFound(w, r)
 			return
@@ -95,8 +107,8 @@ func (f *fakeSource) publish(t *testing.T, version string, prerelease bool, extr
 		"draft": false, "prerelease": prerelease, "published_at": "2026-10-19T08:00:00Z",
 		"html_url": f.srv.URL + "/releases/v" + version,
 		"assets": []map[string]any{
-			{"name": name, "browser_download_url": f.srv.URL + "/dl/" + version + "/" + name, "size": len(archive)},
-			{"name": "SHA256SUMS", "browser_download_url": f.srv.URL + "/dl/" + version + "/SHA256SUMS"},
+			{"name": name, "browser_download_url": f.srv.URL + "/dl/" + version + "/" + name, "url": f.srv.URL + "/api/dl/" + version + "/" + name, "size": len(archive)},
+			{"name": "SHA256SUMS", "browser_download_url": f.srv.URL + "/dl/" + version + "/SHA256SUMS", "url": f.srv.URL + "/api/dl/" + version + "/SHA256SUMS"},
 		},
 	})
 }
@@ -309,6 +321,35 @@ func TestUpgradeSwitchesAndKeepsThePreviousRelease(t *testing.T) {
 	}
 	if _, err := m.Start(ctx, StartSpec{Version: "0.2.0", Run: "u2"}); err == nil {
 		t.Error("the running release was installed again")
+	}
+}
+
+func TestTokenReadsAPrivateRepository(t *testing.T) {
+	src := newSource(t)
+	src.token = "ghp_test"
+	src.publish(t, "0.2.0", false, nil)
+	sim, m := installed(t, src)
+	ctx := context.Background()
+	m.ApplyPanel = func(context.Context) error { return nil }
+
+	if _, err := m.Check(ctx, CheckSpec{}); err == nil {
+		t.Fatal("a private repository was read without the token")
+	}
+	if err := os.WriteFile(sim.Path(panel.TokenFile), []byte("ghp_test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	st, err := m.Check(ctx, CheckSpec{})
+	if err != nil || len(st.Releases) != 1 {
+		t.Fatalf("check with the token: %v, %+v", err, st)
+	}
+	if _, err := m.Start(ctx, StartSpec{Version: "0.2.0", Run: "p1"}); err != nil {
+		t.Fatal(err)
+	}
+	if log := finish(t, m, "p1"); !strings.Contains(log, "✓ Servik 0.2.0 kuruldu.") {
+		t.Fatalf("update with the token:\n%s", log)
+	}
+	if v := current(t, sim); v != "0.2.0" {
+		t.Fatalf("current is %s", v)
 	}
 }
 
