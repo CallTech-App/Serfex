@@ -399,6 +399,11 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{verb, u}}); err != nil {
 			return SetupResult{}, fmt.Errorf("%s did not start (see journalctl -u %s): %w", u, u, err)
 		}
+		if u == "rspamd" {
+			if err := m.waitRspamd(ctx); err != nil {
+				return SetupResult{}, err
+			}
+		}
 	}
 	if webChanged {
 		if err := m.reloadWeb(ctx, s.PHPVersion); err != nil {
