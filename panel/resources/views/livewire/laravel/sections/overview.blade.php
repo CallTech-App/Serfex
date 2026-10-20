@@ -55,7 +55,7 @@
                 <p class="mt-1 font-medium text-warn">{{ __('Bakım modunda') }}</p>
                 <button type="button" wire:click="$parent.show('bakim')" class="text-2xs text-accent hover:underline">{{ __('Bakım modu') }}</button>
             @else
-                <p class="mt-1 font-medium">{{ __('Açık') }}</p>
+                <p class="mt-1 font-medium">{{ __('Açık (uygulama)') }}</p>
                 <span class="text-2xs text-muted">{{ __('Zamanlayıcı :enabled', ['enabled' => ($schedule['enabled'] ?? false) ? __('açık') : __('kapalı')]) }}@if ($schedule['last_run'] ?? null) {{ __('· son çalışma :last_run', ['last_run' => When::withTime(\Illuminate\Support\Carbon::parse($schedule['last_run']))]) }}@endif</span>
             @endif
         </div>

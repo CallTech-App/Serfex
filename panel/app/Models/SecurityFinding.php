@@ -208,7 +208,7 @@ class SecurityFinding extends Model
             'fixed' => __(self::FIXES[$this->fix_action][1] ?? 'Düzeltildi'),
             'ignored' => __('Yok sayıldı'),
             'gone' => __('Artık bulunmuyor'),
-            default => __('Açık'),
+            default => __('Açık (bulgu)'),
         };
     }
 }

@@ -189,9 +189,8 @@ func parse(args []string, sets []*Flags, passthrough bool) ([]string, error) {
 	return positional, nil
 }
 
-// help writes a command's help.
-func (cmd *Command) help(c *Ctx) string {
-	var b strings.Builder
+// synopsis is the usage line: servik sites create <domain> [options].
+func (cmd *Command) synopsis() string {
 	synopsis := "servik"
 	if cmd.parent != nil {
 		synopsis = "servik " + strings.TrimPrefix(cmd.path(), "servik ")
@@ -205,7 +204,13 @@ func (cmd *Command) help(c *Ctx) string {
 	if len(cmd.ownFlags().list) > 0 || cmd.parent == nil {
 		synopsis += " " + T("[seçenekler]")
 	}
-	fmt.Fprintf(&b, "%s %s\n", c.bold(T("Kullanım:")), synopsis)
+	return synopsis
+}
+
+// help writes a command's help.
+func (cmd *Command) help(c *Ctx) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s %s\n", c.bold(T("Kullanım:")), cmd.synopsis())
 	text := cmd.Long
 	if text == "" {
 		text = cmd.Short

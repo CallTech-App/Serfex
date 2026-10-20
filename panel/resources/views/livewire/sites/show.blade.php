@@ -57,8 +57,8 @@
             ['inbox', 'Webmail', $webmail ? 'Roundcube' : __('Kapalı'), $webmail, true],
         ] : [
             ['mail', __('Posta kutuları'), __('E-posta kapalı'), route('mail.index', ['ac' => $site->domain])],
-            ['forward', __('Yönlendiriciler'), null],
-            ['inbox', 'Webmail', null],
+            ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('mail.index', ['ac' => $site->domain])],
+            ['inbox', 'Webmail', __('E-posta kapalı'), route('mail.index', ['ac' => $site->domain])],
         ])],
         [__('Güvenlik'), 'shield', [
             ['shield-check', __('SSL sertifikası'), $ssl->label(), route('sites.ssl', $site)],
