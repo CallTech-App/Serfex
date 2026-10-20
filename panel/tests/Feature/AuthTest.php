@@ -22,12 +22,16 @@ class AuthTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'sercan@example.test', 'password' => 'correct-horse-battery']);
 
+        // The first sign-in to a new panel opens the setup wizard.
         $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])
-            ->assertRedirect('/');
+            ->assertRedirect('/kurulum');
         $this->assertAuthenticatedAs($user);
 
         $this->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
+
+        $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])
+            ->assertRedirect('/');
     }
 
     public function test_wrong_password_is_rejected(): void

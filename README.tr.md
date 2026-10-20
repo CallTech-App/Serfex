@@ -87,11 +87,14 @@ Boş bir Ubuntu Server 24.04 ya da daha yenisinde (amd64 veya arm64), root olara
 
 ```sh
 curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
-sudo bash install.sh --admin-email siz@ornek.com --lang tr
+sudo bash install.sh --lang tr
 ```
 
-Birkaç dakika sürer; sonunda panelin adresini (`https://<sunucu>:8443`) ve
-yöneticinin parolasını yazar. Geri kalan her şey (DNS, e-posta,
+Birkaç dakika sürer ve tek kullanımlık bir kurulum bağlantısıyla biter.
+Bağlantıyı açıp yönetici hesabını oluşturursunuz; ardından bir kurulum
+sihirbazı sunucu adı, ad sunucuları, saat dilimi, panelin adresi ve
+sertifikası, bildirimler, güvenlik duvarı, varsayılanlar ve yedekler için
+adım adım yol gösterir. Geri kalan her şey (DNS, e-posta,
 veritabanı sunucuları, başka PHP sürümleri) gerektiğinde panelden kurulur.
 Seçenekler, portlar ve ilk adımlar için [Kurulum](docs/tr/kurulum.md).
 

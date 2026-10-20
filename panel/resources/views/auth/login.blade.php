@@ -45,7 +45,14 @@
                     <button type="submit" class="h-9 w-full rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">{{ __('Giriş yap') }}</button>
                 </div>
             </form>
-            <p class="mt-4 text-center text-2xs text-muted"><x-t text="Yönetici hesabı sunucuda :code ile açılır; müşteriler size iletilen giriş bağlantısıyla şifrelerini belirler."><x-slot:code><code class="font-mono">php artisan servik:admin</code></x-slot:code></x-t></p>
+            @if ($needsSetup)
+                <div class="mt-4 rounded-xl border border-line bg-info-soft px-4 py-3 text-[13px]" role="status">
+                    <p class="font-medium">{{ __('Bu panel henüz kurulmadı.') }}</p>
+                    <p class="mt-1 text-muted"><x-t text="install.sh betiğinin sonunda yazılan kurulum bağlantısını açın. Bağlantıyı kaybettiyseniz ya da süresi dolduysa sunucuda :code komutuyla yenisini alın."><x-slot:code><code class="font-mono text-fg">sudo servik setup-url</code></x-slot:code></x-t></p>
+                </div>
+            @else
+                <p class="mt-4 text-center text-2xs text-muted">{{ __('Yöneticiler Araçlar ve Ayarlar → Yöneticiler\'den davet edilir; müşteriler size iletilen giriş bağlantısıyla şifrelerini belirler.') }}</p>
+            @endif
             <x-locale-links />
         </main>
     </body>

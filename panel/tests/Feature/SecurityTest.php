@@ -27,6 +27,7 @@ use App\Services\Security\Fail2ban;
 use App\Services\Security\Firewall;
 use App\Services\Security\Scans;
 use App\Services\Security\TwoFactor;
+use App\Services\Setup\FirstRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -398,7 +399,9 @@ class SecurityTest extends TestCase
         $this->assertTrue($this->admin->hasTwoFactor());
         $this->assertNotContains(str_replace('-', '', $codes[0]), $this->admin->two_factor_recovery_codes);
 
-        // The password alone no longer signs in.
+        // The password alone no longer signs in. (This panel's setup is
+        // done, so the sign-in goes to Genel Bakış.)
+        app(FirstRun::class)->complete();
         auth()->logout();
         $this->post('/login', ['email' => $this->admin->email, 'password' => 'password'])->assertRedirect(route('login.two-factor'));
         $this->assertGuest();

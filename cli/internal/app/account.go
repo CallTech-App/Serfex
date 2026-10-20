@@ -88,6 +88,14 @@ func accountCommands() []*Command {
 			Run: login,
 		},
 		{
+			Name: "setup-url", Group: T("Hesap"),
+			Short: T("Yeni panelin kurulum bağlantısını yazar"),
+			Long: T("Henüz yöneticisi olmayan bir panel için tek kullanımlık kurulum bağlantısı oluşturur. Bağlantıyı açan kişi ilk yönetici hesabını oluşturur ve kurulum sihirbazına geçer. Bağlantı 24 saat geçerlidir; yenisi oluşunca eskisi çalışmaz.\n\n" +
+				"install.sh ilk bağlantıyı kurulumun sonunda yazar. Sunucunun kendisinde root olarak çalışır."),
+			Examples: []string{"sudo servik setup-url"},
+			Run:      setupURL,
+		},
+		{
 			Name: "logout", Group: T("Hesap"),
 			Short: T("Profilden çıkar ve anahtarını panelde kapatır"),
 			Run:   logout,
@@ -306,25 +314,15 @@ func loginLocal(c *Ctx) error {
 	if c.env.Geteuid() != 0 {
 		return fmt.Errorf("%s", T("servik login --local sunucunun kendisinde root olarak çalışır: sudo servik login --local"))
 	}
-	raw, err := c.env.ReadFile(panelConfig)
-	if err != nil {
-		return fmt.Errorf("%s", T("%s okunamadı; bu sunucuda Servik kurulu değil gibi görünüyor.", panelConfig))
-	}
-	var panel struct {
-		PHP string `json:"php"`
-	}
-	if err := json.Unmarshal(raw, &panel); err != nil || panel.PHP == "" {
-		return fmt.Errorf("%s", T("%s anlaşılamadı.", panelConfig))
-	}
 	host, _ := c.env.Hostname()
-	args := []string{"-u", "servik", "--", "env", "-C", panelDir, "php" + panel.PHP, "artisan", "servik:cli-key", "--client", host + " (root)"}
+	args := []string{"servik:cli-key", "--client", host + " (root)"}
 	if e := c.String("email"); e != "" {
 		args = append(args, "--email", e)
 	}
 	if c.Bool("read-only") {
 		args = append(args, "--read-only")
 	}
-	out, err := c.env.Command(c, "runuser", args...)
+	out, err := localArtisan(c, args...)
 	if err != nil {
 		return fmt.Errorf("%s", T("Panel anahtar oluşturamadı: %s", err))
 	}
@@ -351,6 +349,58 @@ func loginLocal(c *Ctx) error {
 		fp = api.Fingerprint(chain[0])
 	}
 	return c.signIn(&config.Profile{URL: u.String(), Token: key.Key, Fingerprint: fp, Connect: key.Connect})
+}
+
+// localArtisan runs one of the panel's artisan commands on this server,
+// as the panel's own user, and returns what it printed.
+func localArtisan(c *Ctx, args ...string) ([]byte, error) {
+	raw, err := c.env.ReadFile(panelConfig)
+	if err != nil {
+		return nil, fmt.Errorf("%s", T("%s okunamadı; bu sunucuda Servik kurulu değil gibi görünüyor.", panelConfig))
+	}
+	var panel struct {
+		PHP string `json:"php"`
+	}
+	if err := json.Unmarshal(raw, &panel); err != nil || panel.PHP == "" {
+		return nil, fmt.Errorf("%s", T("%s anlaşılamadı.", panelConfig))
+	}
+	return c.env.Command(c, "runuser", append([]string{"-u", "servik", "--", "env", "-C", panelDir, "php" + panel.PHP, "artisan"}, args...)...)
+}
+
+// setupURL prints a new one-time setup link: the way into a panel that
+// has no administrator yet (install.sh prints the first one).
+func setupURL(c *Ctx) error {
+	if c.env.Geteuid() != 0 {
+		return fmt.Errorf("%s", T("servik setup-url sunucunun kendisinde root olarak çalışır: sudo servik setup-url"))
+	}
+	out, err := localArtisan(c, "servik:setup-url", "--json")
+	var link struct {
+		URL       string   `json:"url"`
+		URLs      []string `json:"urls"`
+		ExpiresAt string   `json:"expires_at"`
+		Error     string   `json:"error"`
+	}
+	if jerr := json.Unmarshal(lastLine(out), &link); jerr != nil {
+		if err != nil {
+			return fmt.Errorf("%s", T("Panel kurulum bağlantısı oluşturamadı: %s", err))
+		}
+		return fmt.Errorf("%s", T("Panelin yanıtı anlaşılamadı."))
+	}
+	if link.Error != "" {
+		return fmt.Errorf("%s", link.Error)
+	}
+	if c.json {
+		return c.printJSON(lastLine(out))
+	}
+	until := link.ExpiresAt
+	if t, err := time.Parse(time.RFC3339, link.ExpiresAt); err == nil {
+		until = t.Local().Format("2006-01-02 15:04")
+	}
+	c.note("%s", T("Kurulum bağlantısı: bir kez kullanılır, %s tarihine kadar geçerli. Önceki bağlantı artık çalışmaz.", until))
+	for _, u := range link.URLs {
+		c.println(u)
+	}
+	return nil
 }
 
 func lastLine(out []byte) []byte {

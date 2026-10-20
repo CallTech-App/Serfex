@@ -86,11 +86,13 @@ On a fresh Ubuntu Server 24.04 or newer (amd64 or arm64), as root:
 
 ```sh
 curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
-sudo bash install.sh --admin-email you@example.com
+sudo bash install.sh
 ```
 
-It takes a few minutes and ends with the panel's address,
-`https://<server>:8443`, and the administrator's password. Everything else
+It takes a few minutes and ends with a one-time setup link. Open it to create
+the administrator account; a setup wizard then walks through the host name,
+name servers, time zone, the panel's address and certificate, notifications,
+the firewall, defaults and backups. Everything else
 (DNS, mail, database servers, more PHP versions) is installed from the panel
 when you need it. See [Installation](docs/installation.md) for options,
 ports and first steps.

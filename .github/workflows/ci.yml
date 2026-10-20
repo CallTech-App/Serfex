@@ -749,9 +749,10 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq 'mysql-*' 'mariadb-*' 'postgresql*' || true
           sudo rm -rf /var/lib/mysql /etc/mysql /var/lib/postgresql /etc/postgresql /etc/postgresql-common
 
-      # Installs 0.1.0-ci.1 with install.sh, updates to ci.2 after a panel
-      # backup, tries ci.3 (fails its health check: Servik returns to ci.2
-      # by itself, database included), then returns to ci.1 by hand.
+      # Installs 0.1.0-ci.1 with install.sh (checks its setup link and
+      # servik setup-url), updates to ci.2 after a panel backup, tries ci.3
+      # (fails its health check: Servik returns to ci.2 by itself, database
+      # included), then returns to ci.1 by hand.
       - name: Install, update, fail and roll back for real
         run: sudo scripts/ci/update-e2e.sh run "$RUNNER_TEMP/releases"
 

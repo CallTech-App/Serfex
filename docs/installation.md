@@ -21,7 +21,7 @@ plan 4 GB or more for Laravel applications with queues and front-end builds.
 
 ```sh
 curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
-sudo bash install.sh --admin-email you@example.com
+sudo bash install.sh
 ```
 
 The installer shows what it will do and asks before it starts. It:
@@ -35,7 +35,7 @@ The installer shows what it will do and asks before it starts. It:
 5. starts the panel on `https://<host name>:8443` with a self-signed certificate;
 6. installs the defaults for customer sites: Nginx, PHP 8.4, Composer,
    Node.js 24 and Fail2ban (skip with `--no-components`);
-7. creates the administrator and prints the password.
+7. prints a one-time setup link (below).
 
 Everything it prints is also written to `/var/log/servik/install.log`.
 
@@ -43,7 +43,7 @@ Everything it prints is also written to `/var/log/servik/install.log`.
 
 | Option | |
 |--------|---|
-| `--admin-email E` | Create the administrator with this email; the password is printed at the end. Without it, create one later with `servik:admin` (below). |
+| `--admin-email E` | Create the administrator now with this email and print its password at the end, instead of the setup link. For automated installs; the setup wizard still opens at the first sign-in. |
 | `--admin-name N` | The administrator's name. |
 | `--hostname H` | The panel's address. Default: the server's fully qualified host name. |
 | `--lang tr\|en` | The panel's default language and the installer's. Default: Turkish when the system `LANG` is Turkish, otherwise English. |
@@ -52,6 +52,7 @@ Everything it prints is also written to `/var/log/servik/install.log`.
 | `--no-components` | Do not install Nginx, PHP 8.4, Composer, Node.js and Fail2ban for sites now. |
 | `--source URL` | Where releases are listed: the GitHub API address of a repository (for forks and mirrors). |
 | `--token T` | A GitHub token for a private repository's releases (or `SERVIK_GITHUB_TOKEN`). It is kept in `/etc/servik/release-token`, readable only by root, so the panel's update check can read them too. |
+| `-y`, `--yes` | Do not ask before starting. |
 
 ### From a private repository
 
@@ -67,7 +68,6 @@ curl -fsSL -H "Authorization: Bearer $SERVIK_GITHUB_TOKEN" -H 'Accept: applicati
 
 Once the repository is public, delete the token on GitHub and on the server
 (`sudo rm /etc/servik/release-token`).
-| `-y`, `--yes` | Do not ask before starting. |
 
 ### Ports
 
@@ -84,45 +84,80 @@ Open these in your provider's firewall:
 Servik has its own firewall as well (Security → Firewall). It is off until you
 turn it on, and it opens what the installed services need.
 
-### Without `--admin-email`
+### The setup link
 
-```sh
-sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:admin
+The installer ends with a link like this:
+
+```
+https://203.0.113.10:8443/kurulum/Xk9…
 ```
 
-It asks for the email, the name and a password of at least 12 characters
-(or takes `--email`, `--name` and `--password`). Running it again resets the
-first administrator's email, name and password, which is the way back in when
-that password is lost. Other administrators are managed under Settings →
-Administrators.
+Open it in a browser (accept the self-signed certificate warning). It asks
+for your name, email, a password of at least 12 characters and the panel's
+language, creates the first administrator and opens the setup wizard. The
+link works once and for 24 hours. Nobody can sign in before it is used, and
+only root on the server can make a new one:
 
-## First steps in the panel
+```sh
+sudo servik setup-url
+```
 
-Sign in at `https://<host name>:8443`. Your browser warns about the
-self-signed certificate the first time.
+A new link stops the previous one. Once an administrator exists, the command
+refuses; a lost password is reset on the server with
+`sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:admin`, which
+also takes `--email`, `--name` and `--password`. Other administrators are
+invited under Settings → Administrators.
 
-1. **Change the password and turn on two-factor sign-in**: your name at the
-   top right → Account security.
-2. **Give the panel its own certificate**: Settings → General → Panel
-   address. Once the host name resolves to the server, Servik gets a Let's
-   Encrypt certificate for it and renews it.
-3. **Check the server settings**: Settings → General (language, time zone,
-   session length) and Settings → Server (the server's host name).
-4. **Install the DNS server** if Servik should answer for your domains:
-   Domains & DNS → Install the DNS server. Then enter your name servers under
-   Domains & DNS → Server DNS settings.
-5. **Install the mail server** if you will host email: Email → Email settings,
+Servik does not sign in with the server's root password: PHP never runs as
+root, the root password never crosses the browser, and the setup link works
+on servers that only allow SSH keys.
+
+## The setup wizard
+
+The wizard opens after the administrator is created, and at the first
+sign-in of a full administrator when the account was made another way. Each
+step saves with the same settings as its own page and can be left for later
+("Later"):
+
+1. **Server**: the server's fully qualified host name (also set it as the
+   PTR record of the IP address at your provider, for mail), the IPv4 and
+   IPv6 addresses DNS records use, the time zone and the server's language.
+2. **Name servers**: your own domain, `ns1`/`ns2` under it (and a second IP
+   address for `ns2` if the server has one), installing the DNS server and
+   creating your domain's zone. Register the two names with their addresses as
+   glue (host) records at your domain registrar, then make them the domain's
+   name servers; the wizard shows the exact names and addresses.
+3. **Panel address**: the name you open the panel with (default
+   `panel.<your domain>`) and its Let's Encrypt certificate, retried every
+   hour until the name points here. The port is changed under Settings →
+   General.
+4. **Notifications**: where problem emails go. If the server cannot send mail
+   yet, the step says so and links to the outgoing mail settings.
+5. **Firewall**: turns on Servik's firewall with the ports the installed
+   services need (the panel, web, SSH on its real port, and DNS and mail once
+   installed). Your own connection to the panel is never cut.
+6. **Defaults**: the web server and PHP version new sites get, and the
+   update channel (stable or beta). Updates are never installed on their own.
+7. **Backups**: the daily server backup and its time, with a reminder to add
+   a remote destination (S3 or SFTP).
+
+The summary shows what is done and what is left, with the glue and PTR
+reminders. Until you press **Finish setup**, Overview shows the same list at
+the top. The wizard can be run again at any time from Settings → Setup wizard.
+
+## After the wizard
+
+1. **Turn on two-factor sign-in**: your name at the top right → Account
+   security.
+2. **Install the mail server** if you will host email: Email → Email settings,
    enter the mail server's name (for example `mail.example.com`), then
    Install the mail server.
-6. **Install a database server**: Databases → Database servers. MySQL is the
+3. **Install a database server**: Databases → Database servers. MySQL is the
    default; MariaDB replaces it, PostgreSQL runs alongside.
-7. **Add your first site**: Sites → Add site. Servik creates the system user,
+4. **Add your first site**: Sites → Add site. Servik creates the system user,
    the PHP-FPM pool, the web server configuration, the DNS zone, and a
    certificate as soon as the domain points at the server.
-8. **Set a backup destination**: Backups → Destinations. Backups run daily at
-   03:00 to local disk until you add S3-compatible storage or SFTP.
-9. **Tell Servik who to notify**: Settings → Notifications (email and webhook).
-10. Optional: **Servik AI** → Settings, with your Claude API key.
+5. Optional: **Servik AI** → Settings, with your Claude API key.
 
 The [administrator guide](README.md#administrator-guide) covers each area.
 

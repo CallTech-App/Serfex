@@ -22,7 +22,7 @@ fazlasını planlayın.
 
 ```sh
 curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
-sudo bash install.sh --admin-email siz@ornek.com --lang tr
+sudo bash install.sh --lang tr
 ```
 
 Kurulum ne yapacağını gösterir ve başlamadan önce sorar. Sırasıyla:
@@ -37,7 +37,7 @@ Kurulum ne yapacağını gösterir ve başlamadan önce sorar. Sırasıyla:
    adresinde başlatır;
 6. müşteri siteleri için varsayılanları kurar: Nginx, PHP 8.4, Composer,
    Node.js 24 ve Fail2ban (`--no-components` ile atlanır);
-7. yöneticiyi oluşturur ve parolasını yazar.
+7. tek kullanımlık bir kurulum bağlantısı yazar (aşağıda).
 
 Yazdığı her şey `/var/log/servik/install.log` dosyasına da gider.
 
@@ -45,7 +45,7 @@ Yazdığı her şey `/var/log/servik/install.log` dosyasına da gider.
 
 | Seçenek | |
 |---------|---|
-| `--admin-email E` | Yöneticiyi bu e-postayla oluşturur; parola sonda yazılır. Verilmezse yöneticiyi sonra `servik:admin` ile oluşturun (aşağıda). |
+| `--admin-email E` | Kurulum bağlantısı yerine yöneticiyi şimdi bu e-postayla oluşturur ve parolasını sonda yazar. Otomatik kurulumlar için; kurulum sihirbazı yine ilk girişte açılır. |
 | `--admin-name N` | Yöneticinin adı. |
 | `--hostname H` | Panelin adresi. Varsayılan: sunucunun tam adı (FQDN). |
 | `--lang tr\|en` | Panelin varsayılan dili ve kurulumun dili. Varsayılan: sistemin `LANG` değeri Türkçeyse Türkçe, değilse İngilizce. |
@@ -87,45 +87,79 @@ Servik'in kendi güvenlik duvarı da var (Güvenlik → Güvenlik duvarı). Siz
 açana kadar kapalıdır; açıldığında kurulu hizmetlerin ihtiyaç duyduğu portları
 açık tutar.
 
-### `--admin-email` vermediyseniz
+### Kurulum bağlantısı
 
-```sh
-sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:admin
+Kurulum şuna benzer bir bağlantıyla biter:
+
+```
+https://203.0.113.10:8443/kurulum/Xk9…
 ```
 
-E-postayı, adı ve en az 12 karakterlik bir parolayı sorar (ya da `--email`,
-`--name`, `--password` alır). Yeniden çalıştırmak ilk yöneticinin e-postasını,
-adını ve parolasını sıfırlar; parola unutulduğunda panele dönmenin yolu budur.
-Diğer yöneticiler Araçlar ve Ayarlar → Yöneticiler'den yönetilir.
+Bağlantıyı tarayıcıda açın (kendinden imzalı sertifika uyarısını kabul edin).
+Adınızı, e-postanızı, en az 12 karakterlik bir parolayı ve panelin dilini
+sorar; ilk yöneticiyi oluşturur ve kurulum sihirbazını açar. Bağlantı bir kez
+ve 24 saat çalışır. Kullanılana kadar kimse giriş yapamaz; yenisini yalnızca
+sunucuda root olan oluşturabilir:
 
-## Paneldeki ilk adımlar
+```sh
+sudo servik setup-url
+```
 
-`https://<sunucu adı>:8443` adresinden giriş yapın. Tarayıcınız ilk seferde
-kendinden imzalı sertifika için uyarır.
+Yeni bağlantı öncekini geçersiz kılar. Bir yönetici varsa komut bağlantı
+oluşturmaz; unutulan parola sunucuda
+`sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:admin` ile
+sıfırlanır (`--email`, `--name`, `--password` da alır). Diğer yöneticiler
+Araçlar ve Ayarlar → Yöneticiler'den davet edilir.
 
-1. **Parolayı değiştirin ve iki adımlı girişi açın:** sağ üstte adınız →
-   Hesap güvenliği.
-2. **Panele kendi sertifikasını verin:** Araçlar ve Ayarlar → Genel → Panel
-   adresi. Sunucu adı sunucuya çözümlendiğinde Servik bunun için Let's Encrypt
-   sertifikası alır ve yeniler.
-3. **Sunucu ayarlarını gözden geçirin:** Araçlar ve Ayarlar → Genel (dil,
-   saat dilimi, oturum süresi) ve Araçlar ve Ayarlar → Sunucu (sunucunun adı).
-4. Alan adlarınızı Servik yanıtlayacaksa **DNS sunucusunu kurun:** Alan Adları
-   ve DNS → DNS sunucusunu kur. Ardından ad sunucularınızı Alan Adları ve DNS →
-   Sunucu DNS ayarları'na yazın.
-5. E-posta barındıracaksanız **posta sunucusunu kurun:** E-posta → E-posta
+Servik sunucunun root parolasıyla giriş yaptırmaz: PHP hiçbir zaman root
+olarak çalışmaz, root parolası tarayıcıdan geçmez ve kurulum bağlantısı
+yalnızca SSH anahtarıyla girilen sunucularda da çalışır.
+
+## Kurulum sihirbazı
+
+Sihirbaz yönetici oluşturulunca açılır; hesap başka yoldan açıldıysa tam
+yetkili bir yöneticinin ilk girişinde açılır. Her adım kendi ayar sayfasıyla
+aynı ayarları kaydeder ve "Sonra" ile ertelenebilir:
+
+1. **Sunucu:** sunucunun tam adı (posta için sağlayıcınızın panelinde IP'nin
+   PTR kaydını da bu ada yönlendirin), DNS kayıtlarında kullanılan IPv4 ve IPv6
+   adresleri, saat dilimi ve sunucunun dili.
+2. **Ad sunucuları:** kendi alan adınız, altında `ns1`/`ns2` (sunucunun ikinci
+   bir IP'si varsa `ns2` için o), DNS sunucusunun kurulması ve alan adınızın DNS
+   bölgesinin oluşturulması. Bu iki adı IP adresleriyle alan adı firmanızda
+   glue (host) kaydı olarak açın, sonra alan adının ad sunucuları yapın;
+   sihirbaz tam adları ve adresleri gösterir.
+3. **Panel adresi:** paneli açacağınız ad (varsayılan `panel.<alan adınız>`) ve
+   Let's Encrypt sertifikası; ad sunucuyu gösterene kadar her saat yeniden
+   denenir. Port Araçlar ve Ayarlar → Genel'den değiştirilir.
+4. **Bildirimler:** sorun e-postalarının gideceği adresler. Sunucu henüz posta
+   gönderemiyorsa adım bunu söyler ve giden posta ayarlarına bağlantı verir.
+5. **Güvenlik duvarı:** kurulu hizmetlerin ihtiyaç duyduğu portlarla (panel,
+   web, gerçek portundaki SSH; kurulunca DNS ve posta) Servik'in güvenlik
+   duvarını açar. Panele kendi bağlantınız hiçbir zaman kesilmez.
+6. **Varsayılanlar:** yeni sitelerin web sunucusu ve PHP sürümü, güncelleme
+   kanalı (kararlı ya da beta). Güncellemeler hiçbir zaman kendiliğinden
+   kurulmaz.
+7. **Yedekler:** günlük sunucu yedeği ve saati; uzak bir hedef (S3 ya da SFTP)
+   eklemeniz için hatırlatma.
+
+Özet neyin yapıldığını, neyin kaldığını, glue ve PTR hatırlatmalarıyla
+gösterir. **Kurulumu bitir**'e basana kadar Genel Bakış'ın üstünde aynı liste
+durur. Sihirbaz istendiğinde Araçlar ve Ayarlar → Kurulum sihirbazı'ndan
+yeniden çalıştırılır.
+
+## Sihirbazdan sonra
+
+1. **İki adımlı girişi açın:** sağ üstte adınız → Hesap güvenliği.
+2. E-posta barındıracaksanız **posta sunucusunu kurun:** E-posta → E-posta
    ayarları'nda posta sunucusunun adını (ör. `mail.ornek.com`) yazın, sonra
    Posta sunucusunu kur.
-6. **Bir veritabanı sunucusu kurun:** Veritabanları → Veritabanı sunucuları.
+3. **Bir veritabanı sunucusu kurun:** Veritabanları → Veritabanı sunucuları.
    Varsayılan MySQL'dir; MariaDB onun yerine geçer, PostgreSQL yanında çalışır.
-7. **İlk sitenizi ekleyin:** Siteler → Site ekle. Servik sistem kullanıcısını,
+4. **İlk sitenizi ekleyin:** Siteler → Site ekle. Servik sistem kullanıcısını,
    PHP-FPM havuzunu, web sunucusu yapılandırmasını ve DNS bölgesini oluşturur;
    alan adı sunucuyu gösterdiği anda sertifikayı alır.
-8. **Bir yedek hedefi belirleyin:** Yedekler → Hedefler. Siz S3 uyumlu bir
-   depolama ya da SFTP eklemedikçe yedekler her gün 03:00'te yerel diske alınır.
-9. **Kime haber verileceğini seçin:** Araçlar ve Ayarlar → Bildirimler
-   (e-posta ve webhook).
-10. İsteğe bağlı: **Servik AI** → Ayarlar, Claude API anahtarınızla.
+5. İsteğe bağlı: **Servik AI** → Ayarlar, Claude API anahtarınızla.
 
 Her alanın ayrıntısı [yönetici kılavuzunda](../README.md#administrator-guide) (İngilizce).
 

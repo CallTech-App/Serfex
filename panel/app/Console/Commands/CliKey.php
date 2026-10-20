@@ -28,7 +28,7 @@ class CliKey extends Command
             ? User::where('email', mb_strtolower($email))->where('is_admin', true)->whereNull('removed_at')->first()
             : User::where('is_admin', true)->whereNull('removed_at')->where(fn ($q) => $q->where('role', 'full')->orWhereNull('role'))->oldest('id')->first();
         if ($user === null) {
-            $this->components->error($email !== null ? __(':email adında bir yönetici yok.', ['email' => $email]) : __('Henüz yönetici yok; önce servik:admin ile oluşturun.'));
+            $this->components->error($email !== null ? __(':email adında bir yönetici yok.', ['email' => $email]) : __('Henüz yönetici yok. Kurulum bağlantısını sudo servik setup-url ile alın ve yönetici hesabını panelde oluşturun.'));
 
             return self::FAILURE;
         }
