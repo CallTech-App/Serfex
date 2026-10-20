@@ -270,7 +270,7 @@ func (m *Manager) rebuild(ctx context.Context, t *txn.Tx) error {
 		if _, err := m.h.Run(ctx, host.Command{Name: "rspamadm", Args: []string{"configtest"}}); err != nil {
 			return fmt.Errorf("rspamd rejected the DKIM settings: %w", err)
 		}
-		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "rspamd"}}); err != nil {
+		if err := m.reloadRspamd(ctx); err != nil {
 			return err
 		}
 	}
