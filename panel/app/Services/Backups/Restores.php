@@ -76,10 +76,10 @@ class Restores
             return __('Geri yüklenecek en az bir şey seçin.');
         }
         if ($this->backups->busy()) {
-            return Backups::BUSY;
+            return __(Backups::BUSY);
         }
         if (PanelUpdate::running()->exists()) {
-            return Backups::UPDATING;
+            return __(Backups::UPDATING);
         }
         $site = $this->siteFor($item);
         if (($refusal = $this->refusal($user, $item, $site, $parts)) !== null) {
@@ -247,7 +247,7 @@ class Restores
                 ProvisionSite::dispatchSync($site->fresh());
             }
         } catch (AgentException $e) {
-            $this->fail($restore, $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamadı.') : ($e->getCode() === -32006 ? Backups::BUSY : ($e->reason ?: $e->getMessage())));
+            $this->fail($restore, $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamadı.') : ($e->getCode() === -32006 ? __(Backups::BUSY) : ($e->reason ?: $e->getMessage())));
 
             return;
         } catch (Throwable $e) {

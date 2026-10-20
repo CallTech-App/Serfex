@@ -12,6 +12,7 @@ use App\Services\Customers\Quotas;
 use App\Services\Customers\UsageNotices;
 use App\Services\System\SystemServices;
 use App\Services\Updates\Updates;
+use App\Support\Locales;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -25,6 +26,10 @@ use Throwable;
  * servik:notify compares what is wrong now with what the administrators
  * were already told, and sends one message per run with the new problems
  * and the ones that went away. A problem is told once, not every run.
+ *
+ * Problems are recognised by their Turkish text; each is written in every
+ * language of the panel, and each administrator gets the mail in their own
+ * language, the webhook in the one chosen for it.
  */
 class Notifications
 {
@@ -36,7 +41,7 @@ class Notifications
     public function __construct(private readonly OutgoingMail $mail) {}
 
     /**
-     * @return array{emails: list<string>, webhook_url: string, webhook_secret: ?string, events: array<string, bool>}
+     * @return array{emails: list<string>, webhook_url: string, webhook_secret: ?string, webhook_locale: ?string, events: array<string, bool>}
      */
     public function settings(): array
     {
@@ -46,6 +51,8 @@ class Notifications
             'emails' => array_values((array) ($saved['emails'] ?? [])),
             'webhook_url' => (string) ($saved['webhook_url'] ?? ''),
             'webhook_secret' => $saved['webhook_secret'] ?? null,
+            // null: the server's default language
+            'webhook_locale' => Locales::supports($saved['webhook_locale'] ?? null) ? $saved['webhook_locale'] : null,
             'events' => array_replace(array_fill_keys(array_keys(NotificationEvent::KINDS), true), (array) ($saved['events'] ?? [])),
         ];
     }
@@ -55,7 +62,7 @@ class Notifications
      */
     public function save(array $values): void
     {
-        Setting::put(self::KEY, array_replace($this->settings(), array_intersect_key($values, ['emails' => 1, 'webhook_url' => 1, 'webhook_secret' => 1, 'events' => 1])));
+        Setting::put(self::KEY, array_replace($this->settings(), array_intersect_key($values, ['emails' => 1, 'webhook_url' => 1, 'webhook_secret' => 1, 'webhook_locale' => 1, 'events' => 1])));
     }
 
     /**
@@ -85,6 +92,31 @@ class Notifications
 
         return $emails !== [] ? $emails : User::where('is_admin', true)->whereNull('removed_at')->whereNull('invite_token')
             ->where(fn ($q) => $q->where('role', 'full')->orWhereNull('role'))->orderBy('id')->pluck('email')->all();
+    }
+
+    /**
+     * The recipients by the language they read: an address that belongs to
+     * a person gets that person's language, others the server's default.
+     *
+     * @return array<string, list<string>>
+     */
+    public function recipientsByLocale(): array
+    {
+        $people = User::whereIn('email', $this->recipients())->get()->keyBy(fn (User $u) => mb_strtolower($u->email));
+        $out = [];
+        foreach ($this->recipients() as $email) {
+            $out[Locales::forUser($people->get(mb_strtolower($email)))][] = $email;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The language of the webhook's titles.
+     */
+    public function webhookLocale(): string
+    {
+        return $this->settings()['webhook_locale'] ?? Locales::serverDefault();
     }
 
     /**
@@ -169,17 +201,19 @@ class Notifications
     public function check(): array
     {
         $settings = $this->settings();
-        $current = array_filter($this->problems(), fn ($p) => $settings['events'][$p[0]] ?? true);
+        // In Turkish, the source language: the keys of backup and update
+        // problems come from their text.
+        $current = array_filter(Locales::using('tr', fn () => $this->problems()), fn ($p) => $settings['events'][$p[0]] ?? true);
         $open = NotificationEvent::where('state', 'open')->get()->keyBy('key');
 
+        $new = array_diff_key($current, $open->all());
+        $texts = $new === [] ? [] : $this->texts(array_keys($new), $current);
         $opened = [];
-        foreach ($current as $key => [$kind, $title, $detail, $url]) {
-            if (! $open->has($key)) {
-                $opened[] = NotificationEvent::updateOrCreate(['key' => $key], [
-                    'kind' => $kind, 'title' => Str::limit($title, 250), 'detail' => $detail, 'url' => $url,
-                    'state' => 'open', 'sent' => null, 'error' => null, 'opened_at' => now(), 'resolved_at' => null,
-                ]);
-            }
+        foreach ($new as $key => [$kind, $title, $detail, $url]) {
+            $opened[] = NotificationEvent::updateOrCreate(['key' => $key], [
+                'kind' => $kind, 'title' => Str::limit($title, 250), 'detail' => $detail, 'texts' => $texts[$key] ?? null, 'url' => $url,
+                'state' => 'open', 'sent' => null, 'error' => null, 'opened_at' => now(), 'resolved_at' => null,
+            ]);
         }
         $resolved = [];
         foreach ($open as $key => $event) {
@@ -197,6 +231,28 @@ class Notifications
     }
 
     /**
+     * The new problems' title and detail in every language but Turkish:
+     * key => locale => {title, detail}.
+     *
+     * @param  list<string>  $keys
+     * @param  array<string, array{0: string, 1: string, 2: ?string, 3: ?string}>  $turkish
+     * @return array<string, array<string, array{title: string, detail: ?string}>>
+     */
+    private function texts(array $keys, array $turkish): array
+    {
+        $out = [];
+        foreach (array_keys(Locales::all()) as $locale) {
+            $problems = $locale === 'tr' ? $turkish : Locales::using($locale, fn () => $this->problems());
+            foreach ($keys as $key) {
+                $p = $problems[$key] ?? $turkish[$key];
+                $out[$key][$locale] = ['title' => Str::limit($p[1], 250), 'detail' => $p[2]];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Sends a test message on every channel; channel => null or why it failed.
      *
      * @return array<string, ?string>
@@ -204,9 +260,9 @@ class Notifications
     public function test(): array
     {
         $out = [];
-        if ($this->recipients() !== []) {
-            $out['email'] = $this->mail->send($this->recipients(), __('Servik deneme bildirimi'),
-                __("Bu bir deneme bildirimidir. Servik'in bildirimleri bu adrese ulaşıyor.")."\n\n".$this->panelUrl()."\n");
+        foreach ($this->recipientsByLocale() as $locale => $emails) {
+            $out['email'] ??= Locales::using($locale, fn () => $this->mail->send($emails, __('Servik deneme bildirimi'),
+                __("Bu bir deneme bildirimidir. Servik'in bildirimleri bu adrese ulaşıyor.")."\n\n".$this->panelUrl()."\n"));
         }
         if ($this->settings()['webhook_url'] !== '') {
             $out['webhook'] = $this->post(['event' => 'servik.test', 'problems' => [], 'resolved' => []]);
@@ -224,16 +280,16 @@ class Notifications
         $settings = $this->settings();
         $sent = [];
         $errors = [];
-        $recipients = $this->recipients();
-        if ($recipients !== []) {
-            $error = $this->mail->send($recipients, $this->subject($opened, $resolved), $this->body($opened, $resolved));
-            $sent['email'] = $error === null;
+        foreach ($this->recipientsByLocale() as $locale => $emails) {
+            $error = Locales::using($locale, fn () => $this->mail->send($emails, $this->subject($opened, $resolved), $this->body($opened, $resolved)));
+            $sent['email'] = ($sent['email'] ?? true) && $error === null;
             if ($error !== null) {
                 $errors[] = __('E-posta: :error', ['error' => $error]);
             }
         }
         if ($settings['webhook_url'] !== '') {
-            $item = fn (NotificationEvent $e) => ['kind' => $e->kind, 'key' => $e->key, 'title' => $e->title, 'detail' => $e->detail,
+            $locale = $this->webhookLocale();
+            $item = fn (NotificationEvent $e) => ['kind' => $e->kind, 'key' => $e->key, 'title' => $e->titleIn($locale), 'detail' => $e->detailIn($locale),
                 'url' => $e->url ? $this->panelUrl().$e->url : null, 'at' => ($e->resolved_at ?? $e->opened_at)->toIso8601String()];
             $error = $this->post(['event' => 'servik.problems', 'problems' => array_map($item, $opened), 'resolved' => array_map($item, $resolved)]);
             $sent['webhook'] = $error === null;
@@ -278,10 +334,10 @@ class Notifications
     {
         $name = $this->serverName();
         if ($opened === []) {
-            return '[Servik] '.$name.': '.(count($resolved) === 1 ? __('düzeldi: :title', ['title' => $resolved[0]->title]) : __(':resolved sorun düzeldi', ['resolved' => count($resolved)]));
+            return '[Servik] '.$name.': '.(count($resolved) === 1 ? __('düzeldi: :title', ['title' => $resolved[0]->titleIn()]) : trans_choice(':count sorun düzeldi', count($resolved)));
         }
 
-        return '[Servik] '.$name.': '.(count($opened) === 1 ? $opened[0]->title : __(':opened sorun', ['opened' => count($opened)]));
+        return '[Servik] '.$name.': '.(count($opened) === 1 ? $opened[0]->titleIn() : trans_choice(':count sorun', count($opened)));
     }
 
     /**
@@ -295,9 +351,9 @@ class Notifications
             $lines[] = __('İlgilenmeniz gerekenler:');
             foreach ($opened as $e) {
                 $lines[] = '';
-                $lines[] = '- '.$e->kindName().': '.$e->title;
-                if ($e->detail) {
-                    $lines[] = '  '.Str::limit($e->detail, 300);
+                $lines[] = '- '.$e->kindName().': '.$e->titleIn();
+                if ($e->detailIn()) {
+                    $lines[] = '  '.Str::limit($e->detailIn(), 300);
                 }
                 if ($e->url) {
                     $lines[] = '  '.$this->panelUrl().$e->url;
@@ -308,11 +364,11 @@ class Notifications
             $lines[] = '';
             $lines[] = __('Düzelenler:');
             foreach ($resolved as $e) {
-                $lines[] = '- '.$e->kindName().': '.$e->title;
+                $lines[] = '- '.$e->kindName().': '.$e->titleIn();
             }
         }
         $lines[] = '';
-        $lines[] = __('Bildirimleri Araçlar ve Ayarlar → Bildirimler\'den değiştirebilirsiniz: :panel_url:value', ['panel_url' => $this->panelUrl(), 'value' => route('settings.notifications', [], false)]);
+        $lines[] = __('Bildirimleri Araçlar ve Ayarlar → Bildirimler\'den değiştirebilirsiniz: :url', ['url' => $this->panelUrl().route('settings.notifications', [], false)]);
 
         return implode("\n", $lines);
     }

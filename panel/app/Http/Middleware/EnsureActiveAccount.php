@@ -32,7 +32,7 @@ class EnsureActiveAccount
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect()->route('login')->withErrors(['email' => Impersonation::SUSPENDED]);
+                return redirect()->route('login')->withErrors(['email' => __(Impersonation::SUSPENDED)]);
             }
         }
 

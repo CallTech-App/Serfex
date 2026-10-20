@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class AgentClientTest extends TestCase
 {

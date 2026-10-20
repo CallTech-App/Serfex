@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Locales;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,9 +21,9 @@ use Illuminate\Notifications\Notifiable;
  * Laravel applications they were added to, with the role they were given
  * there.
  */
-#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'role', 'last_login_at', 'last_login_ip', 'removed_at'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'role', 'last_login_at', 'last_login_ip', 'removed_at', 'locale'])]
 #[Hidden(['password', 'remember_token', 'invite_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
-class User extends Authenticatable
+class User extends Authenticatable implements HasLocalePreference
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -41,6 +43,14 @@ class User extends Authenticatable
     protected $attributes = [
         'is_admin' => true,
     ];
+
+    /**
+     * The language this person reads the panel and their mail in.
+     */
+    public function preferredLocale(): string
+    {
+        return Locales::forUser($this);
+    }
 
     /**
      * Get the attributes that should be cast.

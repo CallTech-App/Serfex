@@ -13,13 +13,16 @@ use App\Services\Agent\AgentClient;
 use App\Services\Audit\AuditLog;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Settings\PanelSettings;
+use App\Support\Locales;
 use App\Support\ReadOnlyGuard;
 use Illuminate\Auth\Events\Login;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Foundation\Events\DiagnosingHealth;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Component;
 use Livewire\Livewire;
@@ -59,6 +62,9 @@ class AppServiceProvider extends ServiceProvider
         // Fixed labels echoed in views are shown in the reader's language
         // (see Locales::label).
         Blade::setEchoFormat('e(\\App\\Support\\Locales::label(%s))');
+        // A queued job works in the language of the person who started it.
+        Queue::createPayloadUsing(fn () => ['locale' => app()->getLocale()]);
+        Event::listen(JobProcessing::class, fn (JobProcessing $event) => Locales::apply($event->job->payload()['locale'] ?? Locales::serverDefault()));
 
         // Every Livewire mount and call is authorized here, before the
         // component runs (see Access).
@@ -73,7 +79,11 @@ class AppServiceProvider extends ServiceProvider
         on('mount', fn (Component $component) => AuditLog::undoOnMount($component));
         Event::listen(Login::class, function (Login $event) {
             if (request()->is('login', 'login/dogrulama', 'davet/*')) {
-                $event->user->forceFill(['last_login_at' => now(), 'last_login_ip' => request()->ip()])->saveQuietly();
+                // The language picked on the sign-in page becomes the
+                // person's own when they have not chosen one.
+                $picked = $event->user->locale === null && request()->hasSession() ? request()->session()->get('locale') : null;
+                $event->user->forceFill(['last_login_at' => now(), 'last_login_ip' => request()->ip()] + (Locales::supports($picked) ? ['locale' => $picked] : []))->saveQuietly();
+                Locales::apply(Locales::forUser($event->user));
                 AuditLog::record(__('Panele giriş yaptı.'), $event->user);
             }
         });

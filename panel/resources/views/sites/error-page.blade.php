@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="{{ app()->getLocale() }}">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
@@ -19,6 +19,8 @@ a{color:#0d7479}
 <h1>{{ $title }}</h1>
 <p>{{ $text }}</p>
 <p><a href="/">{{ __(':domain ana sayfasına dönün', ['domain' => $domain]) }}</a></p>
-<p class="en">{{ $english }}</p>
+@if ($english)
+<p class="en" lang="en">{{ $english }}</p>
+@endif
 </main>
 </html>

@@ -53,7 +53,8 @@ class SiteErrorPages extends Component
     }
 
     /**
-     * Servik's starting page for $key, in the site's name.
+     * Servik's starting page for $key, in the site's name and the
+     * panel user's language.
      */
     public static function template(string $key, string $domain): string
     {
@@ -61,9 +62,10 @@ class SiteErrorPages extends Component
 
         return view('sites.error-page', [
             'code' => $key === '50x' ? '500' : $code,
-            'title' => $title,
-            'text' => $text,
-            'english' => $english,
+            'title' => __($title),
+            'text' => __($text),
+            // A Turkish page carries an English line for foreign visitors.
+            'english' => app()->getLocale() === 'tr' ? $english : null,
             'domain' => $domain,
         ])->render();
     }

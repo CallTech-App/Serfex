@@ -223,7 +223,7 @@ class BackupImports
             str_contains($why, 'passphrase is wrong') || str_contains($why, 'wrong passphrase') => __('Şifreleme parolası yanlış.'),
             str_contains($why, 'enter its passphrase') => __('Arşiv şifreli; şifreleme parolasını girin.'),
             str_contains($why, 'not a Servik backup') => __('Bu dosya bir Servik yedeği değil. cPanel ve Plesk yedekleri içe aktarılamaz.'),
-            $e->getCode() === -32006 => Backups::BUSY,
+            $e->getCode() === -32006 => __(Backups::BUSY),
             default => $why,
         };
     }

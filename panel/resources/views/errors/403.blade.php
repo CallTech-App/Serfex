@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 403, 'title' => __('Bu sayfaya erişiminiz yok'), 'text' => $exception->getMessage() !== '' && $exception->getMessage() !== 'This action is unauthorized.' ? $exception->getMessage() : __('Hesabınızın bu sayfayı görme izni yok.')])

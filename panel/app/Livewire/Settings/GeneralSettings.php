@@ -10,7 +10,9 @@ use App\Services\Settings\PanelSettings;
 use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Support\Hostnames;
+use App\Support\Locales;
 use Illuminate\Contracts\View\View;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -26,6 +28,9 @@ class GeneralSettings extends Component
     public string $hostname = '';
 
     public string $timezone = '';
+
+    /** The server's default language. */
+    public string $locale = '';
 
     public string $sessionMinutes = '';
 
@@ -45,6 +50,7 @@ class GeneralSettings extends Component
     {
         $this->hostname = (string) Setting::get('panel.hostname', '');
         $this->timezone = $settings->timezone();
+        $this->locale = $settings->locale();
         $this->sessionMinutes = (string) $settings->sessionMinutes();
     }
 
@@ -60,11 +66,12 @@ class GeneralSettings extends Component
                 fn ($attr, $value, $fail) => $value !== '' && $value === Setting::get('mail.hostname') ? $fail(__('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.')) : null,
             ],
             'timezone' => ['required', 'string', 'max:64', fn ($attr, $value, $fail) => in_array($value, timezone_identifiers_list(), true) ? null : $fail(__('Listeden bir saat dilimi seçin.'))],
+            'locale' => ['required', Rule::in(array_keys(Locales::all()))],
             'sessionMinutes' => ['required', 'integer', 'min:15', 'max:10080'],
         ], [
             'sessionMinutes.min' => __('Oturum süresi en az 15 dakika olabilir.'),
             'sessionMinutes.max' => __('Oturum süresi en fazla 7 gün (10080 dakika) olabilir.'),
-        ], ['hostname' => __('panel adresi'), 'timezone' => __('saat dilimi'), 'sessionMinutes' => __('oturum süresi')]);
+        ], ['hostname' => __('panel adresi'), 'timezone' => __('saat dilimi'), 'locale' => __('dil'), 'sessionMinutes' => __('oturum süresi')]);
 
         $previous = $this->current($settings);
         if ($this->timezone !== $previous['timezone']) {
@@ -77,6 +84,7 @@ class GeneralSettings extends Component
             }
         }
         $settings->setSessionMinutes((int) $this->sessionMinutes);
+        $settings->setLocale($this->locale);
         Setting::put('panel.hostname', $this->hostname ?: null);
 
         // A new address gets its certificate right away; the DNS check
@@ -86,15 +94,21 @@ class GeneralSettings extends Component
             $certificates->issuePanel($this->hostname);
         }
 
-        $this->dispatch('toast',
-            message: $issuing ? __('Genel ayarlar kaydedildi. Panel sertifikası alınıyor.') : __('Genel ayarlar kaydedildi.'),
-            source: $this->getId(),
-            undo: ['method' => 'undoSave', 'args' => [$previous]],
-        );
+        $message = $issuing ? __('Genel ayarlar kaydedildi. Panel sertifikası alınıyor.') : __('Genel ayarlar kaydedildi.');
+        // The page speaks the new language at once when this person goes
+        // by the server's default (Undo stays in İşlem günlüğü).
+        if (Locales::forUser(auth()->user()) !== app()->getLocale()) {
+            Locales::apply(Locales::forUser(auth()->user()));
+            session()->flash('toast', $issuing ? __('Genel ayarlar kaydedildi. Panel sertifikası alınıyor.') : __('Genel ayarlar kaydedildi.'));
+            $this->redirect(route('settings.general'));
+
+            return;
+        }
+        $this->dispatch('toast', message: $message, source: $this->getId(), undo: ['method' => 'undoSave', 'args' => [$previous]]);
     }
 
     /**
-     * @param  array{hostname: ?string, timezone: string, session: int}  $previous
+     * @param  array{hostname: ?string, timezone: string, locale?: string, session: int}  $previous
      */
     public function undoSave(PanelSettings $settings, array $previous): void
     {
@@ -109,6 +123,9 @@ class GeneralSettings extends Component
             }
         }
         $settings->setSessionMinutes(max(15, min(10080, (int) ($previous['session'] ?? PanelSettings::DEFAULT_SESSION_MINUTES))));
+        if (Locales::supports($previous['locale'] ?? null)) {
+            $settings->setLocale($previous['locale']);
+        }
         $hostname = Hostnames::normalize((string) ($previous['hostname'] ?? ''));
         Setting::put('panel.hostname', $hostname !== '' && Hostnames::isValidDomain($hostname) ? $hostname : null);
         $this->mount($settings);
@@ -271,13 +288,14 @@ class GeneralSettings extends Component
     }
 
     /**
-     * @return array{hostname: ?string, timezone: string, session: int}
+     * @return array{hostname: ?string, timezone: string, locale: string, session: int}
      */
     private function current(PanelSettings $settings): array
     {
         return [
             'hostname' => Setting::get('panel.hostname'),
             'timezone' => $settings->timezone(),
+            'locale' => $settings->locale(),
             'session' => $settings->sessionMinutes(),
         ];
     }

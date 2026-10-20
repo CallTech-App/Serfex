@@ -22,6 +22,21 @@
     <section class="rounded-xl border border-line bg-surface">
         <div class="max-w-4xl divide-y divide-line px-5 text-[13.5px]">
             <div class="{{ $row }}">
+                <label for="locale" class="sm:pt-2">{{ __('Dil') }}</label>
+                <form wire:submit="saveLocale">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="locale" wire:model="locale" class="{{ $field }} border-line px-2.5">
+                            <option value="">{{ __('Sunucunun dili (:name)', ['name' => \App\Support\Locales::all()[\App\Support\Locales::serverDefault()]]) }}</option>
+                            @foreach (\App\Support\Locales::all() as $code => $name)
+                                <option value="{{ $code }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit" class="{{ $btn }}">{{ __('Kaydet') }}</button>
+                    </div>
+                    <p class="mt-1.5 text-2xs text-muted">{{ __('Panel ve size gönderilen e-postalar bu dilde olur.') }}</p>
+                </form>
+            </div>
+            <div class="{{ $row }}">
                 <span>{{ __('İki adımlı doğrulama') }}</span>
                 <div>
                     @if ($user->hasTwoFactor())

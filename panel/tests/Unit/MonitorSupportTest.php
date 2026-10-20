@@ -7,7 +7,7 @@ use App\Services\Monitor\IpBlocks;
 use App\Services\Monitor\MonitorException;
 use App\Support\Load;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class MonitorSupportTest extends TestCase
 {

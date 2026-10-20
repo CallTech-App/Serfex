@@ -112,10 +112,10 @@ class Backups
     public function startServer(?User $user, string $trigger = 'manual'): Backup|string
     {
         if ($this->busy()) {
-            return self::BUSY;
+            return __(self::BUSY);
         }
         if (PanelUpdate::running()->exists()) {
-            return self::UPDATING;
+            return __(self::UPDATING);
         }
         $type = 'full';
         $base = null;
@@ -140,10 +140,10 @@ class Backups
     {
         if ($trigger !== 'safety') {
             if ($this->busy()) {
-                return self::BUSY;
+                return __(self::BUSY);
             }
             if (PanelUpdate::running()->exists()) {
-                return self::UPDATING;
+                return __(self::UPDATING);
             }
             if (($refusal = $this->refusal($user, $site)) !== null) {
                 return $refusal;
@@ -585,7 +585,7 @@ class Backups
                 'passphrase' => $backup->encrypted ? (string) $backup->passphrase : '',
             ], config('servik.agent.backup_timeout'));
         } catch (AgentException $e) {
-            return $e->getCode() === -32006 ? self::BUSY : __('Hedeften alınamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
+            return $e->getCode() === -32006 ? __(self::BUSY) : __('Hedeften alınamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
         }
         $backup->update(['cached_at' => now()]);
 

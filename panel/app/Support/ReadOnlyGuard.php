@@ -53,7 +53,7 @@ final class ReadOnlyGuard
             || (new ReflectionClass($component))->getAttributes(ForEveryAccount::class) !== []) {
             return;
         }
-        $component->dispatch('toast', message: ReadOnlyAccount::MESSAGE);
+        $component->dispatch('toast', message: __(ReadOnlyAccount::MESSAGE));
         $returnEarly();
     }
 

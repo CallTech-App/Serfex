@@ -8,7 +8,7 @@ use App\Services\Laravel\LogParser;
 use App\Services\Laravel\PhpConstraint;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class LaravelSupportTest extends TestCase
 {

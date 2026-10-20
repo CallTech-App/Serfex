@@ -79,10 +79,18 @@
                     </div>
                 </div>
                 <div class="{{ $row }}">
-                    <span>{{ __('Dil') }}</span>
+                    <label for="locale" class="sm:pt-2">{{ __('Dil') }}</label>
                     <div>
-                        <span>{{ __('Türkçe') }}</span>
-                        <p class="mt-1 text-2xs text-muted">{{ __('İngilizce arayüz sonraki sürümlerde gelecek.') }}</p>
+                        <select id="locale" wire:model="locale" class="{{ $field }} sm:w-80 {{ $errors->has('locale') ? 'border-crit' : 'border-line' }}">
+                            @foreach (\App\Support\Locales::all() as $code => $name)
+                                <option value="{{ $code }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        @error('locale')
+                            <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
+                        @else
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Panelin ve bildirimlerin varsayılan dili. Herkes kendi dilini Hesap güvenliği sayfasından seçebilir.') }}</p>
+                        @enderror
                     </div>
                 </div>
                 <div class="{{ $row }}">

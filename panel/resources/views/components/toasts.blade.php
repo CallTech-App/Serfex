@@ -2,7 +2,9 @@
     Notifications. Livewire components dispatch a browser event:
         $this->dispatch('toast', message: '...', source: $this->getId(), undo: ['method' => 'undoX', 'args' => [1]]);
     The undo button calls that method on the component that sent the toast.
-    A toast flashed to the session (session('toast')) is shown on page load.
+    A toast flashed to the session (session('toast')) is shown on page load:
+    a message, or ['message' => ..., 'undo' => ['name' => component name,
+    'method' => ..., 'args' => [...]]] for an Undo after a reload.
 --}}
 <div
     x-data="{
@@ -15,11 +17,11 @@
         remove(id) { this.toasts = this.toasts.filter(t => t.id !== id); },
         undo(t) {
             this.remove(t.id);
-            const c = window.Livewire?.find(t.component);
+            const c = t.component ? window.Livewire?.find(t.component) : window.Livewire?.all().find(x => x.name === t.undo.name)?.$wire;
             if (c) c.$call(t.undo.method, ...(t.undo.args ?? []));
         },
     }"
-    x-init="@if (session('toast')) add({ message: @js(session('toast')) }) @endif"
+    x-init="@if (session('toast')) add(@js(is_array(session('toast')) ? session('toast') : ['message' => session('toast')])) @endif"
     @toast.window="add({ ...$event.detail, component: $event.detail.source ?? $event.target.closest('[wire\\:id]')?.getAttribute('wire:id') })"
     class="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4"
     aria-live="polite"

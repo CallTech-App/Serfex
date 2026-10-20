@@ -43,6 +43,7 @@
                     <button type="submit" class="h-9 w-full rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">{{ __('Hesabı aç') }}</button>
                 </div>
             </form>
+            <x-locale-links />
         </main>
     </body>
 </html>

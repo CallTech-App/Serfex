@@ -5,6 +5,7 @@ namespace App\Livewire\Account;
 use App\Livewire\Attributes\ForEveryAccount;
 use App\Services\Security\Sessions;
 use App\Services\Security\TwoFactor;
+use App\Support\Locales;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
@@ -13,8 +14,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Hesap güvenliği: the signed-in account's own two-step login and the
- * browsers it is signed in on. Every account has it, administrators,
+ * Hesap güvenliği: the signed-in account's own language, two-step login
+ * and the browsers it is signed in on. Every account has it, administrators,
  * customers and Laravel team members alike.
  */
 #[Layout('components.layouts.app')]
@@ -22,7 +23,43 @@ use Livewire\Component;
 #[ForEveryAccount]
 class AccountSecurity extends Component
 {
+    /** This person's language; '' follows the server's default. */
+    public string $locale = '';
+
     public bool $settingUp = false;
+
+    public function mount(): void
+    {
+        $this->locale = (string) auth()->user()->locale;
+    }
+
+    public function saveLocale(): void
+    {
+        $this->validate(['locale' => ['nullable', 'in:'.implode(',', array_keys(Locales::all()))]], [], ['locale' => __('dil')]);
+        $this->switchLocale($this->locale ?: null);
+    }
+
+    public function undoLocale(?string $previous): void
+    {
+        $this->switchLocale(Locales::supports($previous) ? $previous : null, undo: false);
+    }
+
+    /**
+     * Saves the choice and reloads the page in that language; the toast
+     * after the reload still offers Undo.
+     */
+    private function switchLocale(?string $locale, bool $undo = true): void
+    {
+        $user = auth()->user();
+        $previous = $user->locale;
+        $user->forceFill(['locale' => $locale])->save();
+        Locales::apply(Locales::forUser($user));
+        session()->flash('toast', [
+            'message' => $undo ? __('Dil kaydedildi.') : __('Dil geri alındı.'),
+            'undo' => $undo ? ['name' => $this->getName(), 'method' => 'undoLocale', 'args' => [$previous]] : null,
+        ]);
+        $this->redirect(route('account.security'));
+    }
 
     /** The new secret while setting up; it is saved only once confirmed. */
     #[Locked]

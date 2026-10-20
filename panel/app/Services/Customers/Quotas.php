@@ -16,6 +16,7 @@ use App\Models\SiteRedirect;
 use App\Models\SiteTraffic;
 use App\Models\Subdomain;
 use App\Support\Bytes;
+use App\Support\Num;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -172,7 +173,7 @@ class Quotas
     public function text(string $key, ?int $used, ?int $limit): string
     {
         $bytes = in_array($key, ['disk', 'traffic'], true);
-        $fmt = fn (int $n) => $bytes ? Bytes::format($n) : \App\Support\Num::format($n, 0);
+        $fmt = fn (int $n) => $bytes ? Bytes::format($n) : Num::format($n, 0);
 
         return ($used === null ? '—' : $fmt($used)).' / '.($limit === null ? __('Sınırsız') : $fmt($limit));
     }

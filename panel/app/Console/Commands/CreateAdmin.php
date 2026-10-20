@@ -24,19 +24,19 @@ class CreateAdmin extends Command
         $admin = User::query()->where('is_admin', true)->whereNull('customer_id')->oldest('id')->first();
 
         $email = $this->option('email') ?? text(
-            label: 'E-mail address',
+            label: __('E-posta adresi'),
             default: $admin?->email ?? '',
             required: true,
         );
         $name = $this->option('name') ?? text(
-            label: 'Name',
-            default: $admin?->name ?? 'Administrator',
+            label: __('Ad'),
+            default: $admin?->name ?? __('Yönetici'),
             required: true,
         );
         $password = $this->option('password') ?? password(
-            label: 'Password',
+            label: __('Parola'),
             required: true,
-            hint: 'At least 12 characters.',
+            hint: __('En az 12 karakter.'),
         );
 
         $validator = Validator::make(
@@ -46,6 +46,7 @@ class CreateAdmin extends Command
                 'name' => ['required', 'string', 'max:255'],
                 'password' => ['required', 'string', 'min:12'],
             ],
+            attributes: ['email' => __('e-posta adresi'), 'name' => __('ad'), 'password' => __('parola')],
         );
         if ($validator->fails()) {
             foreach ($validator->errors()->all() as $error) {
@@ -57,10 +58,10 @@ class CreateAdmin extends Command
 
         if ($admin === null) {
             User::create(compact('email', 'name', 'password'));
-            $this->components->info("Administrator {$email} created.");
+            $this->components->info(__(':email yöneticisi oluşturuldu.', ['email' => $email]));
         } else {
             $admin->update(compact('email', 'name', 'password'));
-            $this->components->info("Administrator {$email} updated.");
+            $this->components->info(__(':email yöneticisi güncellendi.', ['email' => $email]));
         }
 
         return self::SUCCESS;

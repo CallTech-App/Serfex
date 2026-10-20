@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\DnsRecords;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class DnsRecordsTest extends TestCase
 {

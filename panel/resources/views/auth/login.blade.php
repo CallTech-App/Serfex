@@ -46,6 +46,7 @@
                 </div>
             </form>
             <p class="mt-4 text-center text-2xs text-muted"><x-t text="Yönetici hesabı sunucuda :code ile açılır; müşteriler size iletilen giriş bağlantısıyla şifrelerini belirler."><x-slot:code><code class="font-mono">php artisan servik:admin</code></x-slot:code></x-t></p>
+            <x-locale-links />
         </main>
     </body>
 </html>

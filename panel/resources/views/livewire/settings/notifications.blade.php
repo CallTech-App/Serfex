@@ -44,6 +44,15 @@
                         @else
                             <p class="mt-1.5 text-2xs text-muted"><x-t text="Sorunlar bu adrese JSON olarak POST edilir; Slack, Discord, Teams ya da kendi sisteminiz. Gövdenin HMAC-SHA256 imzası :part başlığındadır."><x-slot:part><span class="font-mono">X-Servik-Signature</span></x-slot:part></x-t></p>
                         @enderror
+                        <div class="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+                            <label for="webhook-locale" class="text-muted">{{ __('Başlıkların dili') }}</label>
+                            <select id="webhook-locale" wire:model="webhookLocale" class="h-8 rounded-md border border-line bg-surface px-2 text-[13px] outline-none focus:border-accent">
+                                <option value="">{{ __('Sunucunun dili (:name)', ['name' => \App\Support\Locales::all()[\App\Support\Locales::serverDefault()]]) }}</option>
+                                @foreach (\App\Support\Locales::all() as $code => $name)
+                                    <option value="{{ $code }}">{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="mt-2 flex flex-wrap items-center gap-3 text-[13px]">
                             @if ($secret)
                                 <span class="font-mono text-[12.5px]">{{ $secret }}</span>
@@ -159,7 +168,7 @@
                         <tr wire:key="event-{{ $event->id }}">
                             <td class="py-3 pr-3 pl-5">
                                 <span class="text-2xs text-muted">{{ $event->kindName() }}</span>
-                                <span class="block">{{ $event->title }}</span>
+                                <span class="block">{{ $event->titleIn() }}</span>
                                 @if ($event->error)
                                     <span class="block text-[12.5px] text-crit">{{ $event->error }}</span>
                                 @endif

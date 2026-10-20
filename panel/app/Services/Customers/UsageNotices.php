@@ -7,6 +7,7 @@ use App\Models\UsageNotice;
 use App\Models\User;
 use App\Services\Settings\Notifications;
 use App\Services\Settings\OutgoingMail;
+use App\Support\Locales;
 
 /**
  * Mails customers when their disk or monthly traffic reaches 85 % of the
@@ -45,8 +46,13 @@ class UsageNotices
                 if ($level === 'ok' || in_array($level, $had, true)) {
                     continue;
                 }
-                $to = $this->recipients($customer);
-                if ($to === [] || $this->mail->send($to, ...$this->message($customer, $kind, $level, $report[$kind])) !== null) {
+                $groups = $this->recipientsByLocale($customer);
+                $failed = $groups === [];
+                foreach ($groups as $locale => $to) {
+                    // In the reader's language, numbers included.
+                    $failed = Locales::using($locale, fn () => $this->mail->send($to, ...$this->message($customer, $kind, $level, $this->quotas->report($customer)[$kind]))) !== null || $failed;
+                }
+                if ($failed) {
                     continue; // tried again at the next run
                 }
                 UsageNotice::create(['customer_id' => $customer->id, 'kind' => $kind, 'level' => $level, 'sent_at' => now()]);
@@ -67,6 +73,22 @@ class UsageNotices
         $emails = User::where('customer_id', $customer->id)->whereNull('removed_at')->whereNull('invite_token')->pluck('email')->all();
 
         return $emails !== [] ? $emails : array_values(array_filter([$customer->email]));
+    }
+
+    /**
+     * The recipients by language: each login's own, the contact address
+     * the server's default.
+     *
+     * @return array<string, list<string>>
+     */
+    public function recipientsByLocale(Customer $customer): array
+    {
+        $users = User::where('customer_id', $customer->id)->whereNull('removed_at')->whereNull('invite_token')->get();
+        if ($users->isEmpty()) {
+            return $customer->email ? [Locales::serverDefault() => [$customer->email]] : [];
+        }
+
+        return $users->groupBy(fn (User $u) => Locales::forUser($u))->map(fn ($g) => $g->pluck('email')->all())->all();
     }
 
     /**

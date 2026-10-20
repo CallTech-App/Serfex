@@ -65,7 +65,7 @@ class LoginController extends Controller
 
         RateLimiter::clear($key);
         if ($user->customer_id !== null && ($user->customer === null || $user->customer->isSuspended())) {
-            throw ValidationException::withMessages(['email' => Impersonation::SUSPENDED]);
+            throw ValidationException::withMessages(['email' => __(Impersonation::SUSPENDED)]);
         }
         $request->session()->regenerate();
         if ($user->hasTwoFactor()) {

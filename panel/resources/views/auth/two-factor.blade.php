@@ -39,6 +39,7 @@
                     <button type="submit" class="ml-auto h-9 rounded-md bg-accent px-4 text-[13.5px] font-medium text-accent-fg hover:brightness-110">{{ __('Doğrula') }}</button>
                 </div>
             </form>
+            <x-locale-links />
         </main>
     </body>
 </html>
