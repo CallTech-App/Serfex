@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in Servik does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please do not report security problems here; use the Security tab instead.
+        English or Turkish is fine.
+  - type: input
+    id: version
+    attributes:
+      label: Servik version
+      description: Settings → Updates, or `servik version`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Server
+      description: Ubuntu version and architecture.
+      placeholder: Ubuntu 24.04, amd64
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Installation or updates
+        - Sites, files, PHP
+        - DNS
+        - SSL
+        - Email
+        - Databases
+        - Laravel
+        - Customers and plans
+        - Live monitoring or Servik AI
+        - Security
+        - Backups
+        - Services or software
+        - Settings
+        - Command line
+        - API
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Press …
+        3. See …
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        The message the panel showed, and relevant lines from `journalctl -u servik-agent`,
+        `/var/lib/servik/panel/storage/logs/laravel.log` or `/var/log/servik/`.
+        Remove passwords, keys and customer data first.
+      render: text
