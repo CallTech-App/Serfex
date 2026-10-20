@@ -40,7 +40,7 @@
         ['Alan adı ve DNS', 'network', [
             $missing('dns') ? ['network', 'DNS kayıtları', $missing('dns')] : ['network', 'DNS kayıtları', $zone ? $zone->records_count.' kayıt' : null, $zone ? route('dns.show', $zone) : null],
             ['globe', 'Alt alan adları', $subdomainCount ? $subdomainCount.' alt alan adı' : 'Yok', route('sites.domains', $site)],
-            ['link', 'Ek alan adları', $site->aliases ? implode(', ', $site->aliases) : 'Yok', route('sites.domains', ['site' => $site, 'sekme' => 'ek'])],
+            ['link', 'Ek alan adları', $site->aliases ? count($site->aliases).' ad' : 'Yok', route('sites.domains', ['site' => $site, 'sekme' => 'ek'])],
             ['corner-up-right', 'Yönlendirmeler', $redirectCount ? $redirectCount.' yönlendirme' : 'Yok', route('sites.domains', ['site' => $site, 'sekme' => 'yonlendirmeler'])],
         ]],
         ['E-posta', 'mail', $missing('mail') ? [

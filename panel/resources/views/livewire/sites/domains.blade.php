@@ -61,8 +61,8 @@
                             @php $s = $state($sub->name); @endphp
                             <tr wire:key="sub-{{ $sub->id }}" class="hover:bg-surface-2/60">
                                 <td class="max-w-0 py-3 pr-3 pl-5 sm:w-[34%]">
-                                    <a href="{{ $scheme }}://{{ $sub->name }}" target="_blank" rel="noopener" class="block truncate font-mono text-[13px] hover:text-accent">{{ $sub->name }}</a>
-                                    <span class="mt-0.5 block truncate font-mono text-2xs text-muted md:hidden">{{ $sub->web_root }}</span>
+                                    <a href="{{ $scheme }}://{{ $sub->name }}" target="_blank" rel="noopener" class="block font-mono break-all sm:truncate sm:break-normal text-[13px] hover:text-accent">{{ $sub->name }}</a>
+                                    <span class="mt-0.5 block font-mono break-all sm:truncate sm:break-normal text-2xs text-muted md:hidden">{{ $sub->web_root }}</span>
                                     <span class="mt-1 block sm:hidden"><x-status-badge :status="$s['badge']" /></span>
                                 </td>
                                 <td class="hidden max-w-0 px-3 py-3 md:table-cell">
@@ -72,9 +72,9 @@
                                 <td class="hidden px-3 py-3 sm:table-cell" title="{{ $s['hint'] }}">
                                     <x-status-badge :status="$s['badge']" />
                                 </td>
-                                <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
-                                    <a href="{{ route('sites.files', ['site' => $site, 'yol' => $sub->web_root]) }}" wire:navigate class="text-[13px] text-accent hover:underline">Dosyalar</a>
-                                    <button type="button" wire:click="confirmRemove('subdomain', {{ $sub->id }})" class="ml-3 text-[13px] text-crit hover:underline">Kaldır</button>
+                                <td class="w-px py-3 pr-5 pl-3 text-right whitespace-nowrap">
+                                    <a href="{{ route('sites.files', ['site' => $site, 'yol' => $sub->web_root]) }}" wire:navigate class="hidden text-[13px] text-accent hover:underline sm:inline">Dosyalar</a>
+                                    <button type="button" wire:click="confirmRemove('subdomain', {{ $sub->id }})" class="text-[13px] sm:ml-3 text-crit hover:underline">Kaldır</button>
                                 </td>
                             </tr>
                         @empty
@@ -114,7 +114,7 @@
                             @php $s = $state($alias); $zone = $zoneLink($alias); @endphp
                             <tr wire:key="alias-{{ $alias }}" class="hover:bg-surface-2/60">
                                 <td class="max-w-0 py-3 pr-3 pl-5 sm:w-[34%]">
-                                    <a href="{{ $scheme }}://{{ $alias }}" target="_blank" rel="noopener" class="block truncate font-mono text-[13px] hover:text-accent">{{ $alias }}</a>
+                                    <a href="{{ $scheme }}://{{ $alias }}" target="_blank" rel="noopener" class="block font-mono break-all sm:truncate sm:break-normal text-[13px] hover:text-accent">{{ $alias }}</a>
                                     @if ($alias === 'www.'.$site->domain)
                                         <span class="text-2xs text-muted">Paket sınırına sayılmaz</span>
                                     @endif
@@ -131,7 +131,7 @@
                                 <td class="hidden px-3 py-3 sm:table-cell" title="{{ $s['hint'] }}">
                                     <x-status-badge :status="$s['badge']" />
                                 </td>
-                                <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
+                                <td class="w-px py-3 pr-5 pl-3 text-right whitespace-nowrap">
                                     <button type="button" wire:click="confirmRemove('alias', @js($alias))" class="text-[13px] text-crit hover:underline">Kaldır</button>
                                 </td>
                             </tr>
@@ -170,22 +170,22 @@
                                 <td class="max-w-0 py-3 pr-3 pl-5 sm:w-[32%]">
                                     @if ($redirect->isDomain())
                                         @php $s = $state($redirect->source); @endphp
-                                        <span class="block truncate font-mono text-[13px]">{{ $redirect->source }}</span>
+                                        <span class="block font-mono break-all sm:truncate sm:break-normal text-[13px]">{{ $redirect->source }}</span>
                                         <span class="text-2xs text-muted">{{ $redirect->with_www ? 'www ile birlikte · ' : '' }}</span><span class="text-2xs" title="{{ $s['hint'] }}"><x-status-badge :status="$s['badge']" /></span>
                                     @else
-                                        <span class="block truncate font-mono text-[13px]"><span class="text-muted">{{ $site->domain }}</span>{{ $redirect->source }}</span>
+                                        <span class="block font-mono break-all sm:truncate sm:break-normal text-[13px]"><span class="text-muted">{{ $site->domain }}</span>{{ $redirect->source }}</span>
                                         <span class="text-2xs text-muted">Sitedeki yol ve altındakiler</span>
                                     @endif
-                                    <span class="mt-0.5 block truncate font-mono text-2xs text-muted sm:hidden">→ {{ $redirect->target }}</span>
+                                    <span class="mt-0.5 block font-mono break-all sm:truncate sm:break-normal text-2xs text-muted sm:hidden">→ {{ $redirect->target }}</span>
                                 </td>
-                                <td class="hidden max-w-0 px-3 py-3 sm:table-cell">
+                                <td class="hidden max-w-0 px-3 py-3 sm:table-cell sm:w-[34%]">
                                     <span class="block truncate font-mono text-[12.5px]" title="{{ $redirect->target }}">{{ $redirect->target }}</span>
                                 </td>
                                 <td class="hidden px-3 py-3 whitespace-nowrap md:table-cell">
                                     {{ SiteRedirect::CODES[$redirect->code] ?? $redirect->code }}
                                     <span class="block text-2xs text-muted">{{ $redirect->keep_path ? 'Yolu korur' : 'Hep aynı adrese' }}</span>
                                 </td>
-                                <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
+                                <td class="w-px py-3 pr-5 pl-3 text-right whitespace-nowrap">
                                     <button type="button" wire:click="openEditRedirect({{ $redirect->id }})" class="text-[13px] text-accent hover:underline">Düzenle</button>
                                     <button type="button" wire:click="confirmRemove('redirect', {{ $redirect->id }})" class="ml-3 text-[13px] text-crit hover:underline">Kaldır</button>
                                 </td>
@@ -208,7 +208,7 @@
     @if ($certificateBehind)
         <div class="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface px-5 py-3 text-[13px]">
             <x-icon name="shield-check" class="text-muted" />
-            <span class="min-w-0 flex-1 text-muted">Sitenin sertifikası bazı adları henüz kapsamıyor. Servik, DNS'leri bu sunucuya işaret edince her saat yeniden dener.</span>
+            <span class="min-w-0 flex-1 basis-64 text-muted">Sitenin sertifikası bazı adları henüz kapsamıyor. Servik, DNS'leri bu sunucuya işaret edince her saat yeniden dener.</span>
             <button type="button" wire:click="updateCertificate" class="{{ $btn }}"><x-icon name="refresh-cw" class="size-3.5" />Sertifikayı şimdi güncelle</button>
         </div>
     @endif
@@ -341,7 +341,7 @@
                     </select>
                 </div>
 
-                <span class="mt-2.5 sm:mt-0 sm:pt-2">Yol</span>
+                <span class="mt-2.5 sm:mt-0 sm:pt-2">Adresin devamı</span>
                 <label class="flex items-start gap-2 text-[13px] sm:pt-2">
                     <input type="checkbox" wire:model="keepPath" class="mt-0.5 size-4 accent-accent">
                     <span>İstenen yolu hedefin sonuna ekle
