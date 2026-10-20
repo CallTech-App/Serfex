@@ -118,7 +118,7 @@ run() {
 
 	echo "▸ install.sh --version $V1"
 	bash "$root/scripts/install.sh" --version "$V1" --source "http://127.0.0.1:$PORT" --hostname panel.ci.test \
-		--no-components --yes --admin-email ci@servik.test
+		--no-components --yes --admin-email ci@servik.test --lang tr
 	expect_running "$V1"
 	[ "$(sql "SELECT count(*) FROM users WHERE email = 'ci@servik.test' AND is_admin")" = 1 ] || fail "no administrator"
 
