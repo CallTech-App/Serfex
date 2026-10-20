@@ -73,7 +73,7 @@ class Quotas
         return [
             'sites' => $sites->count(),
             'disk' => $disk,
-            'traffic' => (int) SiteTraffic::whereIn('site_id', $siteIds)->where('month', now()->startOfMonth()->toDateString())->sum('bytes'),
+            'traffic' => (int) SiteTraffic::whereIn('site_id', $siteIds)->where('month', now(config('servik.timezone'))->startOfMonth()->toDateString())->sum('bytes'),
             'mailboxes' => $mailboxes->count(),
             'databases' => Database::whereIn('system_user_id', $accounts)->count(),
             'laravel_apps' => $apps->whereNull('preview_of_id')->count(),

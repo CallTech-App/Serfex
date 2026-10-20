@@ -68,7 +68,7 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
-            @foreach (['kutular' => 'Posta kutuları', 'yonlendiriciler' => 'Yönlendiriciler', 'ayarlar' => 'Posta ayarları'] as $key => $label)
+            @foreach (['kutular' => 'Posta kutuları', 'yonlendiriciler' => 'Yönlendiriciler', 'trafik' => 'Posta trafiği', 'ayarlar' => 'Posta ayarları'] as $key => $label)
                 <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="-mb-px h-12 border-b-2 whitespace-nowrap {{ $tab === $key ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg' }}">{{ $label }}</button>
             @endforeach
@@ -202,6 +202,40 @@
                 </table>
             </div>
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">Bir posta kutusunun postasını da iletmek için posta kutusunu açıp "Yönlendirme" alanını doldurun.</p>
+        @elseif ($tab === 'trafik')
+            @php $num = fn (int $n) => number_format($n, 0, ',', '.'); @endphp
+            <div class="border-b border-line px-5 py-3 text-[13.5px]">
+                <p class="num text-muted">
+                    Son 30 gün:
+                    <span class="font-semibold text-fg">{{ $num($traffic['totals']['received']) }}</span> gelen ·
+                    <span class="font-semibold text-fg">{{ $num($traffic['totals']['sent']) }}</span> giden ·
+                    <span @class(['font-semibold', 'text-fg' => ! $traffic['totals']['rejected'], 'text-warn' => $traffic['totals']['rejected'] > 0])>{{ $num($traffic['totals']['rejected']) }}</span> reddedilen ·
+                    <span @class(['font-semibold', 'text-fg' => ! $traffic['totals']['bounced'], 'text-warn' => $traffic['totals']['bounced'] > 0])>{{ $num($traffic['totals']['bounced']) }}</span> teslim edilemeyen
+                </p>
+            </div>
+            <div class="max-h-[60vh] overflow-auto">
+                <table class="w-full min-w-[560px] text-[13.5px]">
+                    <thead class="sticky top-0 bg-surface">
+                        <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
+                            <th class="py-2.5 pr-3 pl-5 font-medium">Gün</th>
+                            @foreach (\App\Services\Stats\MailTraffic::COUNTS as $label)
+                                <th class="px-3 py-2.5 text-right font-medium last:pr-5">{{ $label }}</th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line">
+                        @foreach ($traffic['days'] as $day)
+                            <tr wire:key="mail-day-{{ $day['day']->toDateString() }}" class="hover:bg-surface-2/60">
+                                <td class="num py-2.5 pr-3 pl-5">{{ $day['day']->format('d.m.Y') }} <span class="text-2xs text-muted">{{ $day['day']->locale('tr')->isoFormat('dddd') }}</span></td>
+                                @foreach (array_keys(\App\Services\Stats\MailTraffic::COUNTS) as $c)
+                                    <td @class(['num px-3 py-2.5 text-right last:pr-5', 'text-muted' => $day[$c] === 0])>{{ $num($day[$c]) }}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <p class="border-t border-line px-5 py-3 text-2xs text-muted">Posta sunucusunun günlüğünden sayılır, dakikada bir güncellenir. Reddedilen: spam ya da bilinmeyen alıcı yüzünden sunucunun kabul etmediği iletiler. Teslim edilemeyen: karşı sunucunun geri çevirdiği giden iletiler.</p>
         @else
             <form wire:submit="saveSettings" class="max-w-3xl px-5 py-5 text-[13.5px]">
                 <div class="divide-y divide-line">

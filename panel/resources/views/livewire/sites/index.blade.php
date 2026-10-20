@@ -31,7 +31,11 @@
                         <th class="px-3 py-2.5 font-medium">Sistem kullanıcısı</th>
                         @if ($admin)<th class="px-3 py-2.5 font-medium">Müşteri</th>@endif
                         <th class="px-3 py-2.5 font-medium">PHP</th>
-                        <th class="px-3 py-2.5 font-medium">Oluşturuldu</th>
+                        <th class="px-3 py-2.5 text-right font-medium">
+                            <button type="button" wire:click="$set('sort', '{{ $sort === 'trafik' ? '' : 'trafik' }}')" class="inline-flex items-center gap-1 uppercase hover:text-fg" title="Bu ayın trafiğine göre sırala">
+                                Trafik (bu ay)@if ($sort === 'trafik')<x-icon name="arrow-down" class="size-3" />@endif
+                            </button>
+                        </th>
                         <th class="py-2.5 pr-5 pl-3 font-medium">Durum</th>
                     </tr>
                 </thead>
@@ -54,7 +58,13 @@
                                 </td>
                             @endif
                             <td class="px-3 py-3 font-mono text-[13px]">{{ $site->php_version }}</td>
-                            <td class="px-3 py-3 whitespace-nowrap text-muted num">{{ $site->created_at->format('d.m.Y H:i') }}</td>
+                            <td class="px-3 py-3 text-right whitespace-nowrap num">
+                                @if ($site->status === \App\Enums\SiteStatus::Active)
+                                    <a href="{{ route('sites.stats', $site) }}" wire:navigate @class(['hover:text-accent', 'text-muted' => ! ($traffic[$site->id] ?? 0)])>{{ \App\Support\Bytes::format((int) ($traffic[$site->id] ?? 0)) }}</a>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td class="py-3 pr-5 pl-3"><x-status-badge :status="$site->status" /></td>
                         </tr>
                     @empty

@@ -15,6 +15,7 @@ use App\Services\Mail\MailDomains;
 use App\Services\Mail\MailPassword;
 use App\Services\Mail\MailSettings;
 use App\Services\Mail\MailUsage;
+use App\Services\Stats\MailTraffic;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -463,7 +464,7 @@ class MailDomainShow extends Component
         $this->dispatch('toast', message: $domain !== null && $domains->restore($domain) ? 'E-posta yeniden açıldı.' : 'Artık geri alınamıyor.');
     }
 
-    public function render(MailDns $dns, MailSettings $settings): View
+    public function render(MailDns $dns, MailSettings $settings, MailTraffic $traffic): View
     {
         $domain = $this->domain();
         if ($domain === null) {
@@ -486,6 +487,7 @@ class MailDomainShow extends Component
             'hostname' => $settings->hostname(),
             'webmail' => $settings->webmailUrl(),
             'quotas' => MailSettings::QUOTAS,
+            'traffic' => $this->tab === 'trafik' ? $traffic->days([$domain->name]) : null,
         ])->title($domain->name.' · E-posta · Servik');
     }
 

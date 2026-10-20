@@ -14,7 +14,9 @@ use App\Services\Monitor\LiveStats;
 use App\Services\Monitor\MailQueue;
 use App\Services\Monitor\MonitorException;
 use App\Services\Monitor\ResourceLimits;
+use App\Services\Stats\ServerHistory;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -50,6 +52,10 @@ class LiveMonitor extends Component
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
+
+    /** The Sistem tab's history range (ServerHistory::RANGES). */
+    #[Url(as: 'gecmis', except: '24s')]
+    public string $span = '24s';
 
     /** The site whose intervention dialog is open. */
     public ?int $siteId = null;
@@ -475,6 +481,15 @@ class LiveMonitor extends Component
             }
         }
 
+        $server = null;
+        if ($this->tab === 'sistem') {
+            if (! isset(ServerHistory::RANGES[$this->span])) {
+                $this->span = '24s';
+            }
+            $points = Cache::remember('servik.server-history.'.$this->span, 60, fn () => app(ServerHistory::class)->series($this->span));
+            $server = ['points' => $points, 'summary' => ServerHistory::summary($points)];
+        }
+
         $mail = null;
         $mailError = null;
         if ($this->tab === 'posta') {
@@ -502,6 +517,7 @@ class LiveMonitor extends Component
             'long' => $long,
             'mail' => $mail,
             'mailError' => $mailError,
+            'server' => $server,
             'poll' => match (true) {
                 $this->blocking => null,
                 $this->acting, $this->tab === 'posta' => '5s',

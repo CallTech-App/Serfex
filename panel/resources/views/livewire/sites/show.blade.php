@@ -8,6 +8,8 @@
     $laravel = $site->laravelApp;
     $lastBackup = \App\Models\BackupItem::with('backup')->where('site_id', $site->id)->where('status', 'succeeded')
         ->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first();
+    $monthStats = app(\App\Services\Stats\SiteStats::class)->totals([$site->id], 'bu-ay');
+    $diskTotal = app(\App\Services\Stats\DiskBreakdown::class)->site($site)['total'];
     $backupText = $lastBackup ? $lastBackup->backup->created_at->timezone(config('servik.timezone'))->format('d.m.Y H:i') : 'Henüz yok';
     $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
         ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
@@ -19,6 +21,8 @@
             ['folder', 'Dosya Yöneticisi', '', route('sites.files', $site)],
             ['hard-drive-upload', 'FTP hesapları', $ftpAccounts ? $ftpAccounts.' hesap' : 'Yok', route('sites.ftp', $site)],
             ['database', 'Veritabanları', $databases ? $databases.' veritabanı' : 'Yok', route('databases.index', ['site' => $site->id])],
+            ['chart-column', 'İstatistikler', $monthStats['visitors'] ? 'Bu ay '.number_format($monthStats['visitors'], 0, ',', '.').' ziyaretçi' : 'Bu ay ziyaret yok', route('sites.stats', $site)],
+            ['hard-drive', 'Disk kullanımı', $site->disk_bytes === null ? 'Ölçülmedi' : \App\Support\Bytes::format($diskTotal), route('sites.disk', $site)],
             $missing('backups') ? ['archive-restore', 'Yedekler', $missing('backups')] : ['archive-restore', 'Yedekler', $lastBackup ? 'Son: '.$backupText : 'Henüz yok', route('backups.index', ['site' => $site->id])],
             ['key-round', 'Bağlantı bilgileri', null],
         ]],

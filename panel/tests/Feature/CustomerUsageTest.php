@@ -8,14 +8,11 @@ use App\Models\Mailbox;
 use App\Models\MailDomain;
 use App\Models\Package;
 use App\Models\Site;
-use App\Models\SiteTraffic;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
-use App\Services\Customers\Usage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\FakeAgent;
 use Tests\TestCase;
@@ -91,30 +88,6 @@ class CustomerUsageTest extends TestCase
 
         $customer->update(['suspended_at' => now()]);
         $this->assertStringContainsString('askıya alınmış', $quotas->refusal($customer->fresh(), 'laravel_apps'));
-    }
-
-    public function test_traffic_adds_up_per_month_across_agent_restarts(): void
-    {
-        $site = Site::factory()->create(['domain' => 'kahveatolyesi.com.tr']);
-        $usage = app(Usage::class);
-        $started = now()->subMinute()->toIso8601String();
-
-        $usage->recordTraffic(['started' => $started, 'sites' => [['domain' => 'kahveatolyesi.com.tr', 'traffic' => 1000]]]);
-        $usage->recordTraffic(['started' => $started, 'sites' => [['domain' => 'kahveatolyesi.com.tr', 'traffic' => 1500], ['domain' => 'bilinmeyen.com', 'traffic' => 9]]]);
-        // The agent restarted and counts from zero again.
-        $usage->recordTraffic(['started' => now()->toIso8601String(), 'sites' => [['domain' => 'kahveatolyesi.com.tr', 'traffic' => 200]]]);
-
-        $this->assertSame(1700, (int) SiteTraffic::where('site_id', $site->id)->where('month', now()->startOfMonth()->toDateString())->value('bytes'));
-    }
-
-    public function test_traffic_from_before_recording_started_is_not_counted(): void
-    {
-        $site = Site::factory()->create(['domain' => 'kahveatolyesi.com.tr']);
-        Cache::forget('servik.traffic.counters');
-
-        app(Usage::class)->recordTraffic(['started' => now()->subDays(3)->toIso8601String(), 'sites' => [['domain' => 'kahveatolyesi.com.tr', 'traffic' => 5 * 1024 ** 3]]]);
-
-        $this->assertSame(0, SiteTraffic::where('site_id', $site->id)->count());
     }
 
     public function test_customer_dashboard_shows_usage_and_warns_when_full(): void

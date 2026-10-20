@@ -39,12 +39,34 @@
                 <x-ask-ai question="Sunucuda çalışmayan hizmetler var: {{ $serviceNames }}. Neden durmuş olabilir, nasıl düzeltirim?" label="AI'ya sor" class="mr-5" />
             @endif
         </div>
-        <a href="{{ route('sites.index') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+        @php
+            $month = app(\App\Services\Stats\SiteStats::class)->thisMonth();
+            $monthBytes = array_sum(array_column($month, 'bytes'));
+            $monthVisitors = array_sum(array_column($month, 'visitors'));
+        @endphp
+        <a href="{{ route('sites.index', $monthBytes ? ['sirala' => 'trafik'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="globe" class="text-muted" />
             <span>Siteler</span>
-            <span class="ml-auto text-muted num">{{ \App\Models\Site::count() }} site</span>
+            <span class="ml-auto truncate text-right text-muted num">
+                {{ \App\Models\Site::count() }} site{{ $monthBytes ? ' · bu ay '.\App\Support\Bytes::format($monthBytes).' trafik, '.number_format($monthVisitors, 0, ',', '.').' ziyaretçi' : '' }}
+            </span>
             <x-icon name="chevron-right" class="text-muted" />
         </a>
+        @php
+            $week = app(\App\Services\Stats\ServerHistory::class)->series('7g');
+            $weekSum = \App\Services\Stats\ServerHistory::summary($week);
+            $diskRatio = $weekSum['disk_total'] ? $weekSum['disk_used'] / $weekSum['disk_total'] : null;
+        @endphp
+        @if (count($week) > 1)
+            <a href="{{ route('monitor.index', ['sekme' => 'sistem', 'gecmis' => '7g']) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+                <x-icon name="gauge" @class(['text-muted' => $diskRatio < 0.9, 'text-warn' => $diskRatio >= 0.9]) />
+                <span>Sunucu kaynakları</span>
+                <span @class(['ml-auto truncate text-right num', 'text-muted' => $diskRatio < 0.9, 'font-medium text-warn' => $diskRatio >= 0.9])>
+                    Son 7 gün: işlemci ort. {{ \App\Support\Load::cpu($weekSum['cpu']) }}, bellek ort. {{ $weekSum['memory_total'] ? '%'.round($weekSum['memory'] / $weekSum['memory_total'] * 100) : \App\Support\Bytes::format($weekSum['memory']) }}{{ $diskRatio !== null ? ', disk %'.round($diskRatio * 100).' dolu' : '' }}
+                </span>
+                <x-icon name="chevron-right" class="text-muted" />
+            </a>
+        @endif
         @php $customerAttention = app(\App\Services\Customers\Quotas::class)->attentionCount(); @endphp
         <a href="{{ route('customers.index') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="users" @class(['text-muted' => ! $customerAttention, 'text-warn' => $customerAttention]) />
