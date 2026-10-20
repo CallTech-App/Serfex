@@ -34,7 +34,7 @@ class SetupMailServer implements ShouldBeUnique, ShouldQueue
     {
         $hostname = $settings->hostname();
         if ($hostname === null) {
-            $settings->saveServer(['state' => 'failed', 'error' => 'Önce E-posta ayarlarından posta sunucusunun adını girin.']);
+            $settings->saveServer(['state' => 'failed', 'error' => __('Önce E-posta ayarlarından posta sunucusunun adını girin.')]);
 
             return;
         }

@@ -112,7 +112,7 @@ class Backup extends Model
 
     public function typeLabel(): string
     {
-        return $this->type === 'incremental' ? 'Artımlı' : 'Tam';
+        return $this->type === 'incremental' ? __('Artımlı') : __('Tam');
     }
 
     /**
@@ -120,12 +120,12 @@ class Backup extends Model
      */
     public function destinationLabel(): string
     {
-        $remote = $this->target?->name ?? 'Uzak hedef';
+        $remote = $this->target?->name ?? __('Uzak hedef');
 
         return match (true) {
-            $this->local && $this->remote => 'Yerel disk + '.$remote,
+            $this->local && $this->remote => __('Yerel disk + :remote', ['remote' => $remote]),
             $this->remote => $remote,
-            default => 'Yerel disk',
+            default => __('Yerel disk'),
         };
     }
 }

@@ -13,6 +13,8 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+
+	"github.com/winchester37/servik/agent/internal/i18n"
 )
 
 // Standard JSON-RPC 2.0 error codes.
@@ -38,6 +40,9 @@ type Request struct {
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
+	// Locale is Servik's addition: the language of the panel user the
+	// call is for, for messages written for people (see i18n).
+	Locale string `json:"locale,omitempty"`
 }
 
 // Response is a JSON-RPC 2.0 response.
@@ -151,7 +156,7 @@ func (s *Server) dispatch(ctx context.Context, line []byte) (resp Response, ok b
 		return errorResponse(req.ID, CodeMethodNotFound, "method not found"), !isNotification
 	}
 
-	result, err := h(ctx, req.Params)
+	result, err := h(i18n.WithLocale(ctx, req.Locale), req.Params)
 	if err != nil {
 		var rpcErr *Error
 		if errors.As(err, &rpcErr) {

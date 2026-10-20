@@ -38,7 +38,7 @@ class RunSecurityScan implements ShouldQueue
     {
         $scan = $this->scan->fresh();
         if ($scan !== null && $scan->isRunning()) {
-            $scan->update(['status' => 'failed', 'error' => $e?->getMessage() ?: 'Tarama yarıda kaldı.', 'finished_at' => now()]);
+            $scan->update(['status' => 'failed', 'error' => $e?->getMessage() ?: __('Tarama yarıda kaldı.'), 'finished_at' => now()]);
         }
     }
 }

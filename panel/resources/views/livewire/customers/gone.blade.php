@@ -1,1 +1,1 @@
-<div class="text-[13px] text-muted">Bu müşteri silindi. <a href="{{ route('customers.index') }}" wire:navigate class="text-accent hover:underline">Müşterilere dön</a></div>
+<div class="text-[13px] text-muted"><x-t text="Bu müşteri silindi. :link"><x-slot:link><a href="{{ route('customers.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Müşterilere dön') }}</a></x-slot:link></x-t></div>

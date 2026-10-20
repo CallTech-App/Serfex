@@ -46,7 +46,7 @@ class LoginController extends Controller
             $wait = max(RateLimiter::availableIn($key), RateLimiter::tooManyAttempts($ipKey, self::PER_IP) ? RateLimiter::availableIn($ipKey) : 0);
 
             throw ValidationException::withMessages([
-                'email' => 'Çok fazla deneme yapıldı. '.$wait.' saniye sonra tekrar deneyin.',
+                'email' => __('Çok fazla deneme yapıldı. :wait saniye sonra tekrar deneyin.', ['wait' => $wait]),
             ]);
         }
 
@@ -58,14 +58,14 @@ class LoginController extends Controller
             LoginLog::failed($request->ip(), $credentials['email']);
 
             throw ValidationException::withMessages([
-                'email' => 'E-posta ya da parola hatalı.',
+                'email' => __('E-posta ya da parola hatalı.'),
             ]);
         }
         $provider->rehashPasswordIfRequired($user, $credentials);
 
         RateLimiter::clear($key);
         if ($user->customer_id !== null && ($user->customer === null || $user->customer->isSuspended())) {
-            throw ValidationException::withMessages(['email' => Impersonation::SUSPENDED]);
+            throw ValidationException::withMessages(['email' => __(Impersonation::SUSPENDED)]);
         }
         $request->session()->regenerate();
         if ($user->hasTwoFactor()) {
@@ -99,19 +99,19 @@ class LoginController extends Controller
     {
         $user = $this->pending($request);
         if ($user === null) {
-            return redirect()->route('login')->withErrors(['email' => 'Doğrulama süresi doldu; yeniden giriş yapın.']);
+            return redirect()->route('login')->withErrors(['email' => __('Doğrulama süresi doldu; yeniden giriş yapın.')]);
         }
         $request->validate(['code' => ['required', 'string', 'max:20']], [], ['code' => 'kod']);
         $key = 'login-2fa|'.$user->id;
         if (RateLimiter::tooManyAttempts($key, 5)) {
-            throw ValidationException::withMessages(['code' => 'Çok fazla deneme yapıldı. '.RateLimiter::availableIn($key).' saniye sonra tekrar deneyin.']);
+            throw ValidationException::withMessages(['code' => __('Çok fazla deneme yapıldı. :key saniye sonra tekrar deneyin.', ['key' => RateLimiter::availableIn($key)])]);
         }
         if (! $twoFactor->verify($user, (string) $request->input('code'))) {
             RateLimiter::hit($key, 300);
             RateLimiter::hit('login-ip|'.$request->ip(), 600);
             LoginLog::failed($request->ip(), $user->email, 'two-factor code');
 
-            throw ValidationException::withMessages(['code' => 'Kod doğru değil ya da süresi geçmiş.']);
+            throw ValidationException::withMessages(['code' => __('Kod doğru değil ya da süresi geçmiş.')]);
         }
         RateLimiter::clear($key);
         $remember = (bool) $request->session()->pull('login.two_factor')['remember'];

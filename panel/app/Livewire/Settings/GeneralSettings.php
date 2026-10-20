@@ -10,7 +10,9 @@ use App\Services\Settings\PanelSettings;
 use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Support\Hostnames;
+use App\Support\Locales;
 use Illuminate\Contracts\View\View;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -26,6 +28,9 @@ class GeneralSettings extends Component
     public string $hostname = '';
 
     public string $timezone = '';
+
+    /** The server's default language. */
+    public string $locale = '';
 
     public string $sessionMinutes = '';
 
@@ -45,6 +50,7 @@ class GeneralSettings extends Component
     {
         $this->hostname = (string) Setting::get('panel.hostname', '');
         $this->timezone = $settings->timezone();
+        $this->locale = $settings->locale();
         $this->sessionMinutes = (string) $settings->sessionMinutes();
     }
 
@@ -55,28 +61,30 @@ class GeneralSettings extends Component
         $this->validate([
             'hostname' => [
                 'nullable',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir ad girin, örneğin panel.ornek.com.tr.'),
-                fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail('Bu ad bir sitede kullanılıyor; panel için ayrı bir ad seçin, örneğin panel.'.$value.'.') : null,
-                fn ($attr, $value, $fail) => $value !== '' && $value === Setting::get('mail.hostname') ? $fail('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.') : null,
+                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir ad girin, örneğin panel.ornek.com.tr.')),
+                fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail(__('Bu ad bir sitede kullanılıyor; panel için ayrı bir ad seçin, örneğin panel.:value.', ['value' => $value])) : null,
+                fn ($attr, $value, $fail) => $value !== '' && $value === Setting::get('mail.hostname') ? $fail(__('Bu ad posta sunucusunun adı; panel için ayrı bir ad seçin.')) : null,
             ],
-            'timezone' => ['required', 'string', 'max:64', fn ($attr, $value, $fail) => in_array($value, timezone_identifiers_list(), true) ? null : $fail('Listeden bir saat dilimi seçin.')],
+            'timezone' => ['required', 'string', 'max:64', fn ($attr, $value, $fail) => in_array($value, timezone_identifiers_list(), true) ? null : $fail(__('Listeden bir saat dilimi seçin.'))],
+            'locale' => ['required', Rule::in(array_keys(Locales::all()))],
             'sessionMinutes' => ['required', 'integer', 'min:15', 'max:10080'],
         ], [
-            'sessionMinutes.min' => 'Oturum süresi en az 15 dakika olabilir.',
-            'sessionMinutes.max' => 'Oturum süresi en fazla 7 gün (10080 dakika) olabilir.',
-        ], ['hostname' => 'panel adresi', 'timezone' => 'saat dilimi', 'sessionMinutes' => 'oturum süresi']);
+            'sessionMinutes.min' => __('Oturum süresi en az 15 dakika olabilir.'),
+            'sessionMinutes.max' => __('Oturum süresi en fazla 7 gün (10080 dakika) olabilir.'),
+        ], ['hostname' => __('panel adresi'), 'timezone' => __('saat dilimi'), 'locale' => __('dil'), 'sessionMinutes' => __('oturum süresi')]);
 
         $previous = $this->current($settings);
         if ($this->timezone !== $previous['timezone']) {
             try {
                 $settings->setTimezone($this->timezone);
             } catch (AgentException $e) {
-                $this->addError('timezone', 'Sunucunun saat dilimi değiştirilemedi: '.$e->reason);
+                $this->addError('timezone', __('Sunucunun saat dilimi değiştirilemedi: :reason', ['reason' => $e->reason]));
 
                 return;
             }
         }
         $settings->setSessionMinutes((int) $this->sessionMinutes);
+        $settings->setLocale($this->locale);
         Setting::put('panel.hostname', $this->hostname ?: null);
 
         // A new address gets its certificate right away; the DNS check
@@ -86,15 +94,21 @@ class GeneralSettings extends Component
             $certificates->issuePanel($this->hostname);
         }
 
-        $this->dispatch('toast',
-            message: 'Genel ayarlar kaydedildi.'.($issuing ? ' Panel sertifikası alınıyor.' : ''),
-            source: $this->getId(),
-            undo: ['method' => 'undoSave', 'args' => [$previous]],
-        );
+        $message = $issuing ? __('Genel ayarlar kaydedildi. Panel sertifikası alınıyor.') : __('Genel ayarlar kaydedildi.');
+        // The page speaks the new language at once when this person goes
+        // by the server's default (Undo stays in İşlem günlüğü).
+        if (Locales::forUser(auth()->user()) !== app()->getLocale()) {
+            Locales::apply(Locales::forUser(auth()->user()));
+            session()->flash('toast', $issuing ? __('Genel ayarlar kaydedildi. Panel sertifikası alınıyor.') : __('Genel ayarlar kaydedildi.'));
+            $this->redirect(route('settings.general'));
+
+            return;
+        }
+        $this->dispatch('toast', message: $message, source: $this->getId(), undo: ['method' => 'undoSave', 'args' => [$previous]]);
     }
 
     /**
-     * @param  array{hostname: ?string, timezone: string, session: int}  $previous
+     * @param  array{hostname: ?string, timezone: string, locale?: string, session: int}  $previous
      */
     public function undoSave(PanelSettings $settings, array $previous): void
     {
@@ -103,17 +117,20 @@ class GeneralSettings extends Component
             try {
                 $settings->setTimezone($timezone);
             } catch (AgentException $e) {
-                $this->dispatch('toast', message: 'Saat dilimi geri alınamadı: '.$e->reason);
+                $this->dispatch('toast', message: __('Saat dilimi geri alınamadı: :reason', ['reason' => $e->reason]));
 
                 return;
             }
         }
         $settings->setSessionMinutes(max(15, min(10080, (int) ($previous['session'] ?? PanelSettings::DEFAULT_SESSION_MINUTES))));
+        if (Locales::supports($previous['locale'] ?? null)) {
+            $settings->setLocale($previous['locale']);
+        }
         $hostname = Hostnames::normalize((string) ($previous['hostname'] ?? ''));
         Setting::put('panel.hostname', $hostname !== '' && Hostnames::isValidDomain($hostname) ? $hostname : null);
         $this->mount($settings);
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Genel ayarlardaki değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Genel ayarlardaki değişiklik geri alındı.'));
     }
 
     public function openPort(PanelSettings $settings): void
@@ -127,7 +144,7 @@ class GeneralSettings extends Component
     {
         $this->resetValidation('port');
         $port = trim($this->port);
-        $problem = ctype_digit($port) ? $settings->portProblem((int) $port) : 'Bir port numarası girin, örneğin 9443.';
+        $problem = ctype_digit($port) ? $settings->portProblem((int) $port) : __('Bir port numarası girin, örneğin 9443.');
         if ($problem !== null) {
             $this->addError('port', $problem);
 
@@ -136,12 +153,12 @@ class GeneralSettings extends Component
         try {
             $settings->changePort((int) $port);
         } catch (AgentException $e) {
-            $this->addError('port', $e->getCode() === AgentException::INVALID_PARAMS ? 'Bu port kullanılamıyor: '.$e->reason : 'Port değiştirilemedi: '.$e->reason);
+            $this->addError('port', $e->getCode() === AgentException::INVALID_PARAMS ? __('Bu port kullanılamıyor: :reason', ['reason' => $e->reason]) : __('Port değiştirilemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->changingPort = false;
-        $this->dispatch('toast', message: 'Panel '.$port.' portunda da açıldı. Yeni adresten açıp onaylayın.');
+        $this->dispatch('toast', message: __('Panel :port portunda da açıldı. Yeni adresten açıp onaylayın.', ['port' => $port]));
     }
 
     /**
@@ -155,18 +172,18 @@ class GeneralSettings extends Component
             return;
         }
         if (request()->getPort() !== (int) $change['to']) {
-            $this->dispatch('toast', message: 'Onayı yeni porttan verin; böylece yeni portun size açık olduğu görülür.');
+            $this->dispatch('toast', message: __('Onayı yeni porttan verin; böylece yeni portun size açık olduğu görülür.'));
 
             return;
         }
         try {
             $settings->confirmPort();
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Port değiştirilemedi: '.$e->reason);
+            $this->dispatch('toast', message: __('Port değiştirilemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
-        $this->dispatch('toast', message: 'Panel artık yalnızca '.$change['to'].' portunda.', source: $this->getId(), undo: ['method' => 'portBack', 'args' => [(int) $change['from']]]);
+        $this->dispatch('toast', message: __('Panel artık yalnızca :to portunda.', ['to' => $change['to']]), source: $this->getId(), undo: ['method' => 'portBack', 'args' => [(int) $change['from']]]);
     }
 
     public function revertPort(PanelSettings $settings): void
@@ -178,11 +195,11 @@ class GeneralSettings extends Component
         try {
             $settings->revertPort();
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Eski porta dönülemedi: '.$e->reason);
+            $this->dispatch('toast', message: __('Eski porta dönülemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
-        $this->dispatch('toast', message: 'Port değişikliğinden vazgeçildi; panel '.$change['from'].' portunda kaldı.');
+        $this->dispatch('toast', message: __('Port değişikliğinden vazgeçildi; panel :from portunda kaldı.', ['from' => $change['from']]));
     }
 
     /**
@@ -197,11 +214,11 @@ class GeneralSettings extends Component
         try {
             $settings->changePort($port);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Eski port açılamadı: '.$e->reason);
+            $this->dispatch('toast', message: __('Eski port açılamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
-        $this->dispatch('toast', message: 'Panel yeniden '.$port.' portunda da açıldı; eski adresten onaylayın.');
+        $this->dispatch('toast', message: __('Panel yeniden :port portunda da açıldı; eski adresten onaylayın.', ['port' => $port]));
     }
 
     public function issuePanel(Certificates $certificates): void
@@ -211,7 +228,7 @@ class GeneralSettings extends Component
             return;
         }
         $certificates->issuePanel($hostname);
-        $this->dispatch('toast', message: 'Panel sertifikası alınıyor.');
+        $this->dispatch('toast', message: __('Panel sertifikası alınıyor.'));
     }
 
     public function openUpload(): void
@@ -228,20 +245,20 @@ class GeneralSettings extends Component
             'privateKey' => ['required', 'string', 'max:65536', 'regex:/-----BEGIN [A-Z ]*PRIVATE KEY-----/'],
             'chain' => ['nullable', 'string', 'max:131072'],
         ], [
-            'certificate.regex' => 'PEM biçiminde bir sertifika yapıştırın (-----BEGIN CERTIFICATE----- ile başlar).',
-            'privateKey.regex' => 'PEM biçiminde bir özel anahtar yapıştırın (-----BEGIN PRIVATE KEY----- ile başlar).',
-        ], ['certificate' => 'sertifika', 'privateKey' => 'özel anahtar', 'chain' => 'ara sertifikalar']);
+            'certificate.regex' => __('PEM biçiminde bir sertifika yapıştırın (-----BEGIN CERTIFICATE----- ile başlar).'),
+            'privateKey.regex' => __('PEM biçiminde bir özel anahtar yapıştırın (-----BEGIN PRIVATE KEY----- ile başlar).'),
+        ], ['certificate' => 'sertifika', 'privateKey' => __('özel anahtar'), 'chain' => __('ara sertifikalar')]);
         try {
             $settings->uploadCertificate($this->certificate, $this->privateKey, $this->chain);
         } catch (AgentException $e) {
-            $this->addError('certificate', 'Sertifika kurulamadı: '.$e->reason);
+            $this->addError('certificate', __('Sertifika kurulamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->uploading = false;
         $this->certificate = $this->privateKey = $this->chain = '';
         // Undo goes back to Let's Encrypt for the panel's address.
-        $this->dispatch('toast', message: 'Panelin kendi sertifikası kuruldu.', source: $this->getId(),
+        $this->dispatch('toast', message: __('Panelin kendi sertifikası kuruldu.'), source: $this->getId(),
             undo: Setting::get('panel.hostname') ? ['method' => 'issuePanel', 'args' => []] : null);
     }
 
@@ -271,13 +288,14 @@ class GeneralSettings extends Component
     }
 
     /**
-     * @return array{hostname: ?string, timezone: string, session: int}
+     * @return array{hostname: ?string, timezone: string, locale: string, session: int}
      */
     private function current(PanelSettings $settings): array
     {
         return [
             'hostname' => Setting::get('panel.hostname'),
             'timezone' => $settings->timezone(),
+            'locale' => $settings->locale(),
             'session' => $settings->sessionMinutes(),
         ];
     }

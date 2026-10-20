@@ -47,7 +47,7 @@ class Scans
     {
         $running = SecurityScan::running()->where(fn ($q) => $q->where('scope', 'server')->when($site, fn ($q) => $q->orWhere('site_id', $site->id)))->first();
         if ($running !== null) {
-            return $running->scope === 'server' ? 'Sunucu taraması sürüyor; bitince sonuçlar burada.' : 'Bu sitenin taraması sürüyor.';
+            return $running->scope === 'server' ? __('Sunucu taraması sürüyor; bitince sonuçlar burada.') : __('Bu sitenin taraması sürüyor.');
         }
         $scan = SecurityScan::create([
             'scope' => $site ? 'site' : 'server',
@@ -82,7 +82,7 @@ class Scans
                 }
                 $scan->update(['clamav' => (bool) ($result['clamav'] ?? false), 'files' => $scan->files + (int) ($siteResult['files'] ?? 0)]);
             } catch (AgentUnavailableException $e) {
-                $errors[] = 'Sunucu ajanına ulaşılamıyor.';
+                $errors[] = __('Sunucu ajanına ulaşılamıyor.');
                 break;
             } catch (AgentException $e) {
                 $errors[] = $site->domain.': '.$e->reason;
@@ -323,10 +323,10 @@ class Scans
     public static function message(AgentException $e): string
     {
         return match (true) {
-            $e instanceof AgentUnavailableException => 'Sunucu ajanına ulaşılamıyor.',
-            str_contains($e->reason, 'no longer exists') => 'Dosya artık yerinde değil; yeniden tarayın.',
-            str_contains($e->reason, 'nothing was quarantined') => 'Dosya karantinaya alınamadı; artık yerinde olmayabilir.',
-            default => 'Sunucu düzeltmeyi uygulayamadı: '.$e->reason,
+            $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
+            str_contains($e->reason, 'no longer exists') => __('Dosya artık yerinde değil; yeniden tarayın.'),
+            str_contains($e->reason, 'nothing was quarantined') => __('Dosya karantinaya alınamadı; artık yerinde olmayabilir.'),
+            default => __('Sunucu düzeltmeyi uygulayamadı: :reason', ['reason' => $e->reason]),
         };
     }
 }

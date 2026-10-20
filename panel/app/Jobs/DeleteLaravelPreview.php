@@ -31,7 +31,7 @@ class DeleteLaravelPreview implements ShouldQueue
         if ($preview->site !== null) {
             DeleteSite::dispatchSync($preview->site, removeUser: false);
             if ($preview->site->fresh() !== null) {
-                $preview->update(['status' => 'failed', 'error' => 'Önizleme sitesi silinemedi: '.$preview->site->fresh()->last_error]);
+                $preview->update(['status' => 'failed', 'error' => __('Önizleme sitesi silinemedi: :last_error', ['last_error' => $preview->site->fresh()->last_error])]);
 
                 return;
             }

@@ -30,7 +30,7 @@ class PurgeFileTrash extends Command
                 $this->warn($site->domain.': '.$e->getMessage());
             }
         }
-        $this->info("Çöp kutularından {$removed} öğe silindi.");
+        $this->info(__('Çöp kutularından :removed öğe silindi.', ['removed' => $removed]));
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }

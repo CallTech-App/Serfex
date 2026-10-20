@@ -65,7 +65,7 @@ class SiteScan extends Component
     public function scan(Scans $scans): void
     {
         $scan = $scans->start($this->site(), 'manual', auth()->user());
-        $this->dispatch('toast', message: is_string($scan) ? $scan : 'Tarama başladı.');
+        $this->dispatch('toast', message: is_string($scan) ? $scan : __('Tarama başladı.'));
     }
 
     public function openDeny(): void
@@ -81,17 +81,17 @@ class SiteScan extends Component
         $site = $this->site();
         $path = '/'.ltrim(trim($this->denyPath), '/');
         if ($path === '/' || ! WebAccess::validPath($path)) {
-            $this->addError('denyPath', 'Yolu /yedek.sql ya da /eski/ gibi yazın; harf, rakam ve ._~%@+- içerebilir.');
+            $this->addError('denyPath', __('Yolu /yedek.sql ya da /eski/ gibi yazın; harf, rakam ve ._~%@+- içerebilir.'));
 
             return;
         }
         if (in_array($path, $site->denied_paths ?? [], true)) {
-            $this->addError('denyPath', 'Bu yol zaten engelli.');
+            $this->addError('denyPath', __('Bu yol zaten engelli.'));
 
             return;
         }
         if (count($site->denied_paths ?? []) >= WebAccess::MAX_DENIED) {
-            $this->addError('denyPath', 'Bir sitede en fazla '.WebAccess::MAX_DENIED.' yol engellenebilir.');
+            $this->addError('denyPath', __('Bir sitede en fazla :max_denied yol engellenebilir.', ['max_denied' => WebAccess::MAX_DENIED]));
 
             return;
         }
@@ -103,7 +103,7 @@ class SiteScan extends Component
             return;
         }
         $this->denying = false;
-        $this->dispatch('toast', message: $path.' artık indirilemiyor.', source: $this->getId(), undo: ['method' => 'allow', 'args' => [$path]]);
+        $this->dispatch('toast', message: __(':path artık indirilemiyor.', ['path' => $path]), source: $this->getId(), undo: ['method' => 'allow', 'args' => [$path]]);
     }
 
     public function allow(string $path, WebAccess $access): void
@@ -119,7 +119,7 @@ class SiteScan extends Component
 
             return;
         }
-        $this->dispatch('toast', message: $path.' yeniden erişilebilir.', source: $this->getId(), undo: ['method' => 'deny', 'args' => [$path]]);
+        $this->dispatch('toast', message: __(':path yeniden erişilebilir.', ['path' => $path]), source: $this->getId(), undo: ['method' => 'deny', 'args' => [$path]]);
     }
 
     public function deny(string $path, WebAccess $access): void
@@ -150,6 +150,6 @@ class SiteScan extends Component
             'findings' => $this->findingScope()->with('resolver')->where('status', $status)->worstFirst()->paginate(50),
             'statusCounts' => $this->findingScope()->whereIn('status', ['open', 'fixed', 'ignored'])->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->all(),
             'denied' => $site->denied_paths ?? [],
-        ])->title('Güvenlik taraması · '.$site->domain.' · Servik');
+        ])->title(__('Güvenlik taraması · :domain · Servik', ['domain' => $site->domain]));
     }
 }

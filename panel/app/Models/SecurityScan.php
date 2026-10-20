@@ -69,9 +69,9 @@ class SecurityScan extends Model
     public function triggerLabel(): string
     {
         return match ($this->trigger) {
-            'schedule' => 'Haftalık tarama',
-            'upload' => 'Yüklenen dosya',
-            default => $this->user->name ?? 'Elle',
+            'schedule' => __('Haftalık tarama'),
+            'upload' => __('Yüklenen dosya'),
+            default => $this->user->name ?? __('Elle'),
         };
     }
 }

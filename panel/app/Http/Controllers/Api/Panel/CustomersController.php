@@ -61,7 +61,7 @@ class CustomersController extends ApiController
         }
         [$customer, $invite] = $customers->create([...$data, 'package_id' => $package]);
         Quotas::forget();
-        $this->audit($request, 'Müşteriler ve Paketler', $customer->displayName().' müşterisi eklendi.', route('customers.show', $customer, false));
+        $this->audit($request, __('Müşteriler ve Paketler'), __(':name müşterisi eklendi.', ['name' => $customer->displayName()]), route('customers.show', $customer, false));
 
         return response()->json(['data' => [...$this->customer($customer->load('package')), 'invitation_url' => route('invitation', $invite)]], 201);
     }
@@ -71,7 +71,7 @@ class CustomersController extends ApiController
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:200']])['reason'] ?? null;
         if ($customer->suspended_at === null) {
             $customers->suspend($customer, $reason);
-            $this->audit($request, 'Müşteriler ve Paketler', $customer->displayName().' askıya alındı.', route('customers.show', $customer, false));
+            $this->audit($request, __('Müşteriler ve Paketler'), __(':name askıya alındı.', ['name' => $customer->displayName()]), route('customers.show', $customer, false));
         }
 
         return response()->json(['data' => $this->customer($customer->fresh('package'))]);
@@ -81,7 +81,7 @@ class CustomersController extends ApiController
     {
         if ($customer->suspended_at !== null) {
             $customers->unsuspend($customer);
-            $this->audit($request, 'Müşteriler ve Paketler', $customer->displayName().' yeniden etkin.', route('customers.show', $customer, false));
+            $this->audit($request, __('Müşteriler ve Paketler'), __(':name yeniden etkin.', ['name' => $customer->displayName()]), route('customers.show', $customer, false));
         }
 
         return response()->json(['data' => $this->customer($customer->fresh('package'))]);

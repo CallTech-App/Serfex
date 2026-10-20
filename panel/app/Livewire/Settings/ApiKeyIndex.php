@@ -53,17 +53,17 @@ class ApiKeyIndex extends Component
             'name' => ['required', 'string', 'max:80'],
             'scope' => ['required', Rule::in(array_keys(ApiKey::SCOPES))],
             'expires' => [Rule::in(array_keys(self::EXPIRY))],
-        ], [], ['name' => 'ad', 'scope' => 'yetki', 'expires' => 'geçerlilik']);
+        ], [], ['name' => 'ad', 'scope' => 'yetki', 'expires' => __('geçerlilik')]);
         $ips = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\s,;]+/', $this->ips) ?: []))));
         foreach ($ips as $ip) {
             if (! $this->validRange($ip)) {
-                $this->addError('ips', $ip.' geçerli bir IP adresi ya da aralık değil.');
+                $this->addError('ips', __(':ip geçerli bir IP adresi ya da aralık değil.', ['ip' => $ip]));
 
                 return;
             }
         }
         if (count($ips) > 20) {
-            $this->addError('ips', 'En fazla 20 adres girin.');
+            $this->addError('ips', __('En fazla 20 adres girin.'));
 
             return;
         }
@@ -71,7 +71,7 @@ class ApiKeyIndex extends Component
             $this->expires === '' ? null : now()->addDays((int) $this->expires));
         $this->creating = false;
         $this->created = ['name' => $key->name, 'key' => $plain];
-        $this->dispatch('toast', message: $key->name.' API anahtarı oluşturuldu.', source: $this->getId(), undo: ['method' => 'revokeNow', 'args' => [$key->id]]);
+        $this->dispatch('toast', message: __(':name API anahtarı oluşturuldu.', ['name' => $key->name]), source: $this->getId(), undo: ['method' => 'revokeNow', 'args' => [$key->id]]);
     }
 
     /**
@@ -84,7 +84,7 @@ class ApiKeyIndex extends Component
             return;
         }
         $keys->revoke($key);
-        $this->dispatch('toast', message: $key->name.' API anahtarı geri alındı.');
+        $this->dispatch('toast', message: __(':name API anahtarı geri alındı.', ['name' => $key->name]));
     }
 
     public function confirmRevoke(int $id): void
@@ -100,14 +100,14 @@ class ApiKeyIndex extends Component
             return;
         }
         $keys->revoke($key);
-        $this->dispatch('toast', message: $key->name.' API anahtarı iptal edildi.', source: $this->getId(), undo: ['method' => 'restore', 'args' => [$key->id]]);
+        $this->dispatch('toast', message: __(':name API anahtarı iptal edildi.', ['name' => $key->name]), source: $this->getId(), undo: ['method' => 'restore', 'args' => [$key->id]]);
     }
 
     public function restore(ApiKeys $keys, int $id): void
     {
         $key = ApiKey::find($id);
         if ($key !== null && $keys->restore($key)) {
-            $this->dispatch('toast', message: $key->name.' API anahtarı yeniden geçerli.');
+            $this->dispatch('toast', message: __(':name API anahtarı yeniden geçerli.', ['name' => $key->name]));
         }
     }
 

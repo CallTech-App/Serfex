@@ -109,26 +109,26 @@ class ServiceShow extends Component
                 : ['required', 'integer', "between:{$min},{$max}"];
             $names["settings.{$key}"] = mb_strtolower($label);
         }
-        $this->validate($rules, ['settings.worker_processes.regex' => '"auto" ya da 1-999 arasında bir sayı girin.'], $names);
+        $this->validate($rules, ['settings.worker_processes.regex' => __('"auto" ya da 1-999 arasında bir sayı girin.')], $names);
         foreach (SystemServices::SETTINGS[$section] as $key => $_) {
             $values[$key] = $key === 'worker_processes' ? trim($this->settings[$key]) : (int) $this->settings[$key];
         }
         $before = $this->current;
         if ($values == $before) {
-            $this->dispatch('toast', message: 'Değişiklik yok.');
+            $this->dispatch('toast', message: __('Değişiklik yok.'));
 
             return;
         }
         $result = $services->applySettings($this->unit, $section, $values);
         if (is_string($result)) {
-            $this->settingsError = 'Ayarlar uygulanamadı, hizmet önceki ayarlarıyla çalışıyor: '.$result;
+            $this->settingsError = __('Ayarlar uygulanamadı, hizmet önceki ayarlarıyla çalışıyor: :result', ['result' => $result]);
 
             return;
         }
         $this->settingsError = null;
         $this->useSettings($result);
         $this->dispatch('toast',
-            message: ($service['name'] ?? $this->unit).' yeni ayarlarla çalışıyor.',
+            message: __(':name yeni ayarlarla çalışıyor.', ['name' => __($service['name'] ?? $this->unit)]),
             source: $this->getId(),
             undo: ['method' => 'undoSettings', 'args' => [$before]],
         );
@@ -145,12 +145,12 @@ class ServiceShow extends Component
         }
         $result = $services->applySettings($this->unit, $section, array_intersect_key($before, SystemServices::SETTINGS[$section]));
         if (is_string($result)) {
-            $this->settingsError = 'Önceki ayarlar geri yüklenemedi: '.$result;
+            $this->settingsError = __('Önceki ayarlar geri yüklenemedi: :result', ['result' => $result]);
 
             return;
         }
         $this->useSettings($result);
-        $this->dispatch('toast', message: 'Önceki ayarlar geri yüklendi.');
+        $this->dispatch('toast', message: __('Önceki ayarlar geri yüklendi.'));
     }
 
     public function render(SystemServices $services): View
@@ -164,12 +164,12 @@ class ServiceShow extends Component
 
         return view('livewire.services.show', [
             'service' => $service,
-            'agentError' => $service === null ? ($error ? 'Sunucu ajanı hata verdi: '.$error : 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.') : null,
+            'agentError' => $service === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null,
             'logs' => $logs,
             'affects' => $services->affects($this->unit),
             'fields' => SystemServices::SETTINGS[$service['settings'] ?? ''] ?? [],
             'confirm' => $this->confirming && $service ? $services->confirmation($service, $this->confirming) : null,
-        ])->title(($service['name'] ?? $this->unit).' · Hizmetler · Servik');
+        ])->title(__(':name · Hizmetler · Servik', ['name' => __($service['name'] ?? $this->unit)]));
     }
 
     private function loadSettings(SystemServices $services, string $section): void
@@ -202,15 +202,15 @@ class ServiceShow extends Component
         }
         $name = $result['name'] ?? $this->unit;
         $message = match ($action) {
-            'start' => "{$name} başlatıldı.",
-            'stop' => "{$name} durduruldu.",
-            'reload' => "{$name} ayarlarını yeniden yükledi.",
-            'enable' => "{$name} sunucu açılınca başlayacak.",
-            'disable' => "{$name} sunucu açılınca başlamayacak.",
-            default => "{$name} yeniden başlatıldı.",
+            'start' => __(':name başlatıldı.', ['name' => $name]),
+            'stop' => __(':name durduruldu.', ['name' => $name]),
+            'reload' => __(':name ayarlarını yeniden yükledi.', ['name' => $name]),
+            'enable' => __(':name sunucu açılınca başlayacak.', ['name' => $name]),
+            'disable' => __(':name sunucu açılınca başlamayacak.', ['name' => $name]),
+            default => __(':name yeniden başlatıldı.', ['name' => $name]),
         };
         if (in_array($action, ['start', 'restart'], true) && ($result['state'] ?? '') !== 'active') {
-            $this->refused = "{$name} çalışmıyor; ayrıntılar aşağıdaki günlükte.";
+            $this->refused = __(':name çalışmıyor; ayrıntılar aşağıdaki günlükte.', ['name' => $name]);
         }
         $undo = $offerUndo ? ['start' => 'stop', 'stop' => 'start', 'enable' => 'disable', 'disable' => 'enable'][$action] ?? null : null;
         $this->dispatch('toast',

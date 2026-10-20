@@ -78,6 +78,6 @@ class UsageReport extends Component
                 ->sortByDesc('bytes')->values()->all();
         }
 
-        return view('livewire.customers.report', $data)->title('Kullanım · '.$customer->displayName().' · Servik');
+        return view('livewire.customers.report', $data)->title(__('Kullanım · :name · Servik', ['name' => $customer->displayName()]));
     }
 }

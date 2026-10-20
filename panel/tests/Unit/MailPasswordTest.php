@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\Mail\MailPassword;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class MailPasswordTest extends TestCase
 {

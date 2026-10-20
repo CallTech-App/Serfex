@@ -3,10 +3,10 @@
     <table class="w-full text-[13.5px] sm:min-w-[760px]">
         <thead>
             <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                <th class="w-24 py-2.5 pr-3 pl-5 font-medium">Önem</th>
-                <th class="px-3 py-2.5 font-medium">Sorun</th>
+                <th class="w-24 py-2.5 pr-3 pl-5 font-medium">{{ __('Önem') }}</th>
+                <th class="px-3 py-2.5 font-medium">{{ __('Sorun') }}</th>
                 @if ($showSite)
-                    <th class="hidden px-3 py-2.5 font-medium md:table-cell">Site</th>
+                    <th class="hidden px-3 py-2.5 font-medium md:table-cell">{{ __('Site') }}</th>
                 @endif
                 <th class="hidden py-2.5 pr-5 pl-3 sm:table-cell"></th>
             </tr>
@@ -24,7 +24,7 @@
                             <span class="mt-0.5 block text-[12.5px] text-muted">{{ $f->detailText() }}</span>
                         @endif
                         @if ($f->status !== 'open')
-                            <span class="mt-0.5 block text-2xs text-muted">{{ $f->statusLabel() }}{{ $f->resolver ? ' · '.$f->resolver->name : '' }}{{ $f->resolved_at ? ' · '.$f->resolved_at->timezone(config('servik.timezone'))->format('d.m.Y H:i') : '' }}</span>
+                            <span class="mt-0.5 block text-2xs text-muted">{{ $f->statusLabel() }}{{ $f->resolver ? ' · '.$f->resolver->name : '' }}{{ $f->resolved_at ? ' · '.\App\Support\When::dateTime($f->resolved_at) : '' }}</span>
                         @endif
                         @if ($showSite && $f->site)
                             <span class="mt-0.5 block font-mono text-2xs text-muted md:hidden">{{ $f->site->domain }}</span>
@@ -38,7 +38,7 @@
                             @if ($f->site)
                                 <a href="{{ route('sites.scan', $f->site) }}" wire:navigate class="font-mono text-[13px] hover:text-accent">{{ $f->site->domain }}</a>
                             @else
-                                <span class="text-muted">Sunucu</span>
+                                <span class="text-muted">{{ __('Sunucu') }}</span>
                             @endif
                         </td>
                     @endif
@@ -51,8 +51,8 @@
             @empty
                 <tr>
                     <td colspan="{{ $showSite ? 4 : 3 }}" class="px-5 py-12 text-center">
-                        <p class="font-medium">Bulgu yok</p>
-                        <p class="mt-1 text-[13px] text-muted">Tarama zararlı dosya, açıkta kalan .env ve yedek dosyası, yanlış izin ve eski yazılım arar.</p>
+                        <p class="font-medium">{{ __('Bulgu yok') }}</p>
+                        <p class="mt-1 text-[13px] text-muted">{{ __('Tarama zararlı dosya, açıkta kalan .env ve yedek dosyası, yanlış izin ve eski yazılım arar.') }}</p>
                     </td>
                 </tr>
             @endforelse
@@ -60,12 +60,12 @@
     </table>
 </div>
 <div class="num flex flex-wrap items-center gap-3 border-t border-line px-5 py-3 text-2xs text-muted">
-    <span>Karantinaya alınan dosyalar çalıştırılamaz ve indirilemez; Dosya Yöneticisi'nin çöp kutusunda {{ \App\Services\Security\Scans::QUARANTINE_DAYS }} gün bekler ve oradan geri yüklenebilir.</span>
+    <span>{{ __('Karantinaya alınan dosyalar çalıştırılamaz ve indirilemez; Dosya Yöneticisi\'nin çöp kutusunda :quarantine_days gün bekler ve oradan geri yüklenebilir.', ['quarantine_days' => \App\Services\Security\Scans::QUARANTINE_DAYS]) }}</span>
     @if ($findings->hasPages())
         <span class="ml-auto flex items-center gap-1">
-            <button type="button" wire:click="previousPage" @disabled($findings->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Önceki</button>
-            <span class="px-2">Sayfa {{ $findings->currentPage() }} / {{ $findings->lastPage() }}</span>
-            <button type="button" wire:click="nextPage" @disabled(! $findings->hasMorePages()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Sonraki</button>
+            <button type="button" wire:click="previousPage" @disabled($findings->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Önceki') }}</button>
+            <span class="px-2">{{ __('Sayfa :findings / :findings2', ['findings' => $findings->currentPage(), 'findings2' => $findings->lastPage()]) }}</span>
+            <button type="button" wire:click="nextPage" @disabled(! $findings->hasMorePages()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Sonraki') }}</button>
         </span>
     @endif
 </div>

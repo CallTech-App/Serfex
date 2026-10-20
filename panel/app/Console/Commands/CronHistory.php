@@ -13,7 +13,7 @@ class CronHistory extends Command
 {
     public function handle(CronJobs $jobs): int
     {
-        $this->info($jobs->refreshHistory().' görev güncellendi.');
+        $this->info(__(':refresh_history görev güncellendi.', ['refresh_history' => $jobs->refreshHistory()]));
 
         return self::SUCCESS;
     }

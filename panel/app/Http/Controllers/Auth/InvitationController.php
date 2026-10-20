@@ -32,7 +32,7 @@ class InvitationController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'password' => ['required', 'confirmed', Password::min(10)],
-        ], [], ['name' => 'ad soyad', 'password' => 'parola']);
+        ], [], ['name' => __('ad soyad'), 'password' => 'parola']);
         $user->forceFill([
             'name' => $data['name'],
             'password' => $data['password'],

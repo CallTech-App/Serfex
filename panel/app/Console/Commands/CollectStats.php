@@ -26,7 +26,7 @@ class CollectStats extends Command
             return self::FAILURE;
         }
         if ($result['id'] !== '') {
-            $this->info("{$result['hours']} site saati kaydedildi ({$result['id']}).");
+            $this->info(__(':hours site saati kaydedildi (:id).', ['hours' => $result['hours'], 'id' => $result['id']]));
         }
 
         return self::SUCCESS;

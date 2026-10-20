@@ -22,7 +22,7 @@ class RefreshMailUsage extends Command
         MailDomain::where('status', MailDomainStatus::Active)->each(function (MailDomain $domain) use ($usage, &$count) {
             $count += (int) $usage->refresh($domain);
         });
-        $this->info("{$count} alan adının posta kullanımı güncellendi.");
+        $this->info(__(':count alan adının posta kullanımı güncellendi.', ['count' => $count]));
 
         return self::SUCCESS;
     }

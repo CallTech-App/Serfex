@@ -59,13 +59,13 @@ class BackupImports
                 'passphrase' => $passphrase,
             ]), config('servik.agent.backup_timeout'));
         } catch (AgentException $e) {
-            return $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : $this->reason($e);
+            return $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : $this->reason($e);
         }
         $m = (array) ($in['manifest'] ?? []);
         if (($m['incremental'] ?? []) !== []) {
             $this->agent->call('backup.delete', ['key' => $key, 'local' => true], config('servik.agent.job_timeout'));
 
-            return 'Bu arşiv artımlı bir yedek; tek başına geri yüklenemez. Zincirin tam yedeğini içe aktarın ya da yedeğin bulunduğu hedefi tarayın.';
+            return __('Bu arşiv artımlı bir yedek; tek başına geri yüklenemez. Zincirin tam yedeğini içe aktarın ya da yedeğin bulunduğu hedefi tarayın.');
         }
         $name = (string) ($m['name'] ?? '');
         $meta = isset($in['meta']) ? (is_string($in['meta']) ? json_decode($in['meta'], true) : (array) $in['meta']) : null;
@@ -108,7 +108,7 @@ class BackupImports
         try {
             $found = (array) $this->agent->call('backup.scan', ['target' => $spec], 300);
         } catch (AgentException $e) {
-            return $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : 'Hedef taranamadı: '.$this->reason($e);
+            return $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Hedef taranamadı: :reason', ['reason' => $this->reason($e)]);
         }
         $known = Backup::whereIn('key', array_map(fn ($f) => $f['descriptor']['key'] ?? '', $found))->pluck('key')->all();
 
@@ -142,10 +142,10 @@ class BackupImports
     {
         $found = collect($scan)->firstWhere('key', $key);
         if ($found === null) {
-            return 'Yedek hedefte bulunamadı; yeniden tarayın.';
+            return __('Yedek hedefte bulunamadı; yeniden tarayın.');
         }
         if ($found['encrypted'] && ($passphrase === null || strlen($passphrase) < 12)) {
-            return 'Bu yedek şifreli; alındığı sunucunun şifreleme parolasını girin.';
+            return __('Bu yedek şifreli; alındığı sunucunun şifreleme parolasını girin.');
         }
         $chain = [$found];
         if ($found['incremental']) {
@@ -158,7 +158,7 @@ class BackupImports
                 }
             }
             if ($chain[0]['incremental']) {
-                return 'Bu artımlı yedeğin dayandığı tam yedek hedefte yok.';
+                return __('Bu artımlı yedeğin dayandığı tam yedek hedefte yok.');
             }
         }
         $backup = null;
@@ -166,7 +166,7 @@ class BackupImports
             $backup = $f['known'] ? Backup::where('key', $f['key'])->first() : $this->adoptOne($target, $f, $passphrase, $user);
         }
 
-        return $backup ?? 'Yedek eklenemedi.';
+        return $backup ?? __('Yedek eklenemedi.');
     }
 
     /**
@@ -220,10 +220,10 @@ class BackupImports
         $why = $e->reason ?: $e->getMessage();
 
         return match (true) {
-            str_contains($why, 'passphrase is wrong') || str_contains($why, 'wrong passphrase') => 'Şifreleme parolası yanlış.',
-            str_contains($why, 'enter its passphrase') => 'Arşiv şifreli; şifreleme parolasını girin.',
-            str_contains($why, 'not a Servik backup') => 'Bu dosya bir Servik yedeği değil. cPanel ve Plesk yedekleri içe aktarılamaz.',
-            $e->getCode() === -32006 => Backups::BUSY,
+            str_contains($why, 'passphrase is wrong') || str_contains($why, 'wrong passphrase') => __('Şifreleme parolası yanlış.'),
+            str_contains($why, 'enter its passphrase') => __('Arşiv şifreli; şifreleme parolasını girin.'),
+            str_contains($why, 'not a Servik backup') => __('Bu dosya bir Servik yedeği değil. cPanel ve Plesk yedekleri içe aktarılamaz.'),
+            $e->getCode() === -32006 => __(Backups::BUSY),
             default => $why,
         };
     }

@@ -38,7 +38,7 @@ class RestoreBackup implements ShouldQueue
     {
         $restore = $this->restore->fresh();
         if ($restore !== null && $restore->isRunning()) {
-            $restore->update(['status' => 'failed', 'error' => $e?->getMessage() ?? 'Geri yükleme yarıda kaldı.', 'finished_at' => now()]);
+            $restore->update(['status' => 'failed', 'error' => $e?->getMessage() ?? __('Geri yükleme yarıda kaldı.'), 'finished_at' => now()]);
         }
     }
 }

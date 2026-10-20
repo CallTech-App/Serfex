@@ -797,4 +797,7 @@ jobs:
 
       - run: vendor/bin/pint --test
 
+      - name: Translations are complete
+        run: php artisan servik:lang-check --agent=../agent
+
       - run: php artisan test

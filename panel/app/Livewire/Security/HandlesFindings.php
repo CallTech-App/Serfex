@@ -35,7 +35,7 @@ trait HandlesFindings
         }
         $done = SecurityFinding::FIXES[$action][1];
         $this->dispatch('toast',
-            message: $action === 'quarantine' ? $done.'; dosya Dosya Yöneticisi\'nin çöp kutusunda '.Scans::QUARANTINE_DAYS.' gün bekler.' : $done.'.',
+            message: $action === 'quarantine' ? __(':done; dosya Dosya Yöneticisi\'nin çöp kutusunda :quarantine_days gün bekler.', ['done' => $done, 'quarantine_days' => Scans::QUARANTINE_DAYS]) : $done.'.',
             source: $this->getId(),
             undo: ['method' => 'undoFinding', 'args' => [$finding->id]],
         );
@@ -54,7 +54,7 @@ trait HandlesFindings
 
             return;
         }
-        $this->dispatch('toast', message: 'Düzeltme geri alındı.');
+        $this->dispatch('toast', message: __('Düzeltme geri alındı.'));
     }
 
     public function ignoreFinding(int $id, Scans $scans): void
@@ -64,7 +64,7 @@ trait HandlesFindings
             return;
         }
         $scans->ignore($finding, auth()->user());
-        $this->dispatch('toast', message: 'Bulgu yok sayıldı; sonraki taramalarda da gösterilmez.', source: $this->getId(),
+        $this->dispatch('toast', message: __('Bulgu yok sayıldı; sonraki taramalarda da gösterilmez.'), source: $this->getId(),
             undo: ['method' => 'reopenFinding', 'args' => [$finding->id]]);
     }
 

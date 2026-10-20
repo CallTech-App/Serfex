@@ -8,6 +8,7 @@ use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\AiUsage;
 use App\Models\User;
+use App\Support\Locales;
 use Illuminate\Support\Str;
 
 /**
@@ -36,7 +37,8 @@ class Assistant
         $conversation->update(['status' => 'running', 'error' => null, 'client_ip' => $clientIp ?? $conversation->client_ip]);
 
         $context = 'Panel context (not typed by the administrator): now '.now()->timezone(config('servik.timezone'))->format('Y-m-d H:i T')
-            .', administrator '.$user->name.($clientIp ? ', connected from '.$clientIp : '').'.';
+            .', administrator '.$user->name.($clientIp ? ', connected from '.$clientIp : '')
+            .', answer in '.(Locales::forUser($user) === 'en' ? 'English' : 'Turkish').'.';
         $notes = $this->decisionNotes($conversation);
         $conversation->messages()->create([
             'kind' => 'user',
@@ -71,10 +73,10 @@ class Assistant
             $this->repairHistory($conversation);
             for ($step = 0; $step < (int) config('servik.ai.max_steps'); $step++) {
                 if (! $this->settings->ready()) {
-                    throw new ClaudeException('Servik AI kapalı ya da Claude API anahtarı kayıtlı değil.');
+                    throw new ClaudeException(__('Servik AI kapalı ya da Claude API anahtarı kayıtlı değil.'));
                 }
                 if ($this->settings->overBudget()) {
-                    throw new ClaudeException('Bu ayın Servik AI harcama sınırına ulaşıldı. Sınırı Servik AI ayarlarından değiştirebilirsiniz.');
+                    throw new ClaudeException(__('Bu ayın Servik AI harcama sınırına ulaşıldı. Sınırı Servik AI ayarlarından değiştirebilirsiniz.'));
                 }
                 $messages = $conversation->messages()->get()->map(fn (AiMessage $m) => self::forApi($m->toApi()))->all();
                 $response = $this->claude->send($model, [['type' => 'text', 'text' => Prompt::system()]], $this->tools->definitions(), $messages);
@@ -100,7 +102,7 @@ class Assistant
                 $conversation->messages()->create(['kind' => 'tool_results', 'content' => $results]);
                 $conversation->touch();
             }
-            throw new ClaudeException('Servik AI bu soru için çok fazla adım attı ve durduruldu. Soruyu daraltıp yeniden deneyin.');
+            throw new ClaudeException(__('Servik AI bu soru için çok fazla adım attı ve durduruldu. Soruyu daraltıp yeniden deneyin.'));
         } catch (ClaudeException $e) {
             $conversation->update(['status' => 'failed', 'error' => $e->getMessage()]);
         }

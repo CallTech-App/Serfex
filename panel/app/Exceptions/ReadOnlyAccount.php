@@ -13,6 +13,6 @@ class ReadOnlyAccount extends HttpException
 
     public function __construct()
     {
-        parent::__construct(403, self::MESSAGE);
+        parent::__construct(403, __(self::MESSAGE));
     }
 }

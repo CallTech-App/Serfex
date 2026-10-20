@@ -123,7 +123,7 @@ class SecurityIndex extends Component
         $settings = $firewall->settings();
         $previous = $settings;
         $settings['enabled'] = $on;
-        if ($this->saveFirewall($firewall, $settings, $previous, $on ? 'Güvenlik duvarı açıldı; yalnızca izin verilen portlar yanıt veriyor.' : 'Güvenlik duvarı kapatıldı; bütün portlar açık.')) {
+        if ($this->saveFirewall($firewall, $settings, $previous, $on ? __('Güvenlik duvarı açıldı; yalnızca izin verilen portlar yanıt veriyor.') : __('Güvenlik duvarı kapatıldı; bütün portlar açık.'))) {
             $this->confirmingFirewall = false;
         }
     }
@@ -137,7 +137,7 @@ class SecurityIndex extends Component
         $settings = $firewall->settings();
         $previous = $settings;
         $settings['services'][$id] = ! $services[$id]['enabled'];
-        $this->saveFirewall($firewall, $settings, $previous, $services[$id]['name'].($settings['services'][$id] ? ' için portlar açıldı.' : ' için portlar kapatıldı.'));
+        $this->saveFirewall($firewall, $settings, $previous, $settings['services'][$id] ? __(':name için portlar açıldı.', ['name' => $services[$id]['name']]) : __(':name için portlar kapatıldı.', ['name' => $services[$id]['name']]));
     }
 
     public function openRule(?string $id, Firewall $firewall): void
@@ -165,7 +165,7 @@ class SecurityIndex extends Component
         $problems = $firewall->problems($rule);
         $settings = $firewall->settings();
         if ($this->ruleId === null && count($settings['rules']) >= Firewall::MAX_RULES) {
-            $problems['name'] = 'En fazla '.Firewall::MAX_RULES.' kural eklenebilir.';
+            $problems['name'] = __('En fazla :max_rules kural eklenebilir.', ['max_rules' => Firewall::MAX_RULES]);
         }
         if ($problems !== []) {
             foreach ($problems as $field => $message) {
@@ -179,7 +179,7 @@ class SecurityIndex extends Component
         $rule['enabled'] = true;
         $index = collect($settings['rules'])->search(fn ($r) => $r['id'] === $rule['id']);
         $index === false ? $settings['rules'][] = $rule : $settings['rules'][$index] = $rule;
-        if ($this->saveFirewall($firewall, $settings, $previous, $rule['name'].' kaydedildi.', 'rule.name')) {
+        if ($this->saveFirewall($firewall, $settings, $previous, __(':name kaydedildi.', ['name' => $rule['name']]), 'rule.name')) {
             $this->editingRule = false;
         }
     }
@@ -193,7 +193,7 @@ class SecurityIndex extends Component
             return;
         }
         $settings['rules'] = array_values(array_filter($settings['rules'], fn ($r) => $r['id'] !== $id));
-        $this->saveFirewall($firewall, $settings, $previous, $rule['name'].' silindi.');
+        $this->saveFirewall($firewall, $settings, $previous, __(':name silindi.', ['name' => $rule['name']]));
     }
 
     /**
@@ -209,7 +209,7 @@ class SecurityIndex extends Component
             'rules' => array_values(array_filter((array) ($settings['rules'] ?? []), fn ($r) => is_array($r) && isset($r['id'], $r['name'], $r['ports'], $r['protocol'], $r['action'])
                 && preg_match('/^r-[a-z0-9]{10}$/', (string) $r['id']) && $firewall->problems(['sources' => [], 'action' => 'allow'] + $r) === [])),
         ];
-        $this->saveFirewall($firewall, $settings, null, 'Güvenlik duvarı önceki haline döndü.');
+        $this->saveFirewall($firewall, $settings, null, __('Güvenlik duvarı önceki haline döndü.'));
     }
 
     /**
@@ -263,7 +263,7 @@ class SecurityIndex extends Component
         }
         $this->configuringWaf = false;
         $this->dispatch('toast',
-            message: $this->wafMode === 'block' ? 'WAF artık saldırıları engelliyor.' : 'WAF saldırıları yalnızca kaydediyor.',
+            message: $this->wafMode === 'block' ? __('WAF artık saldırıları engelliyor.') : __('WAF saldırıları yalnızca kaydediyor.'),
             source: $this->getId(),
             undo: ['method' => 'undoWafSettings', 'args' => [$previous['mode'], $previous['paranoia']]],
         );
@@ -290,7 +290,7 @@ class SecurityIndex extends Component
 
             return;
         }
-        $this->dispatch('toast', message: 'Tarama başladı; bütün sitelerin dosyaları okunuyor.');
+        $this->dispatch('toast', message: __('Tarama başladı; bütün sitelerin dosyaları okunuyor.'));
     }
 
     // --- Giriş güvenliği ---------------------------------------------
@@ -304,7 +304,7 @@ class SecurityIndex extends Component
         }
         $twoFactor->setRequired($this->require2fa);
         $this->dispatch('toast',
-            message: $this->require2fa === 'none' ? 'İki adımlı doğrulama artık isteğe bağlı.' : 'Kurmamış hesaplar ilk girişte iki adımlı doğrulamayı kuracak.',
+            message: $this->require2fa === 'none' ? __('İki adımlı doğrulama artık isteğe bağlı.') : __('Kurmamış hesaplar ilk girişte iki adımlı doğrulamayı kuracak.'),
             source: $this->getId(),
             undo: ['method' => 'undoTwoFactor', 'args' => [$previous]],
         );
@@ -333,7 +333,7 @@ class SecurityIndex extends Component
             return;
         }
         $twoFactor->disable($user);
-        $this->dispatch('toast', message: $user->name.' için iki adımlı doğrulama kapatıldı; bir sonraki girişte yeniden kurabilir.');
+        $this->dispatch('toast', message: __(':name için iki adımlı doğrulama kapatıldı; bir sonraki girişte yeniden kurabilir.', ['name' => $user->name]));
     }
 
     public function saveSsh(Ssh $ssh): void
@@ -348,7 +348,7 @@ class SecurityIndex extends Component
             return;
         }
         $this->sshLoaded = true;
-        $this->dispatch('toast', message: 'SSH ayarları uygulandı.', source: $this->getId(),
+        $this->dispatch('toast', message: __('SSH ayarları uygulandı.'), source: $this->getId(),
             undo: ['method' => 'undoSsh', 'args' => [(string) ($before['root_login'] ?? 'prohibit-password'), (bool) ($before['password_auth'] ?? true)]]);
     }
 

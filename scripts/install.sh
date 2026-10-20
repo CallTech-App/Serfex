@@ -16,7 +16,9 @@
 #   --channel C        stable (default) or beta: beta also takes pre-releases
 #   --hostname H       the panel's address (default: the server's FQDN)
 #   --admin-email E    create the administrator; the password is printed at the end
-#   --admin-name N     the administrator's name (default: Yönetici)
+#   --admin-name N     the administrator's name (default: Yönetici / Administrator)
+#   --lang L           tr or en: the panel's default language and this
+#                      installer's (default: tr when LANG is Turkish, else en)
 #   --source URL       where releases are listed (GitHub API URL of the repository)
 #   --no-components    skip the customers' software (PHP 8.4, Composer, Node.js 24, Fail2ban)
 #   -y, --yes          do not ask before starting
@@ -32,7 +34,8 @@ VERSION=
 CHANNEL=stable
 HOSTNAME_ARG=
 ADMIN_EMAIL=
-ADMIN_NAME=Yönetici
+ADMIN_NAME=
+LANG_CODE=
 COMPONENTS=1
 YES=0
 
@@ -43,6 +46,7 @@ while [ $# -gt 0 ]; do
 	--hostname) HOSTNAME_ARG=$2; shift 2 ;;
 	--admin-email) ADMIN_EMAIL=$2; shift 2 ;;
 	--admin-name) ADMIN_NAME=$2; shift 2 ;;
+	--lang) LANG_CODE=$2; shift 2 ;;
 	--source) SOURCE=${2%/}; shift 2 ;;
 	--no-components) COMPONENTS=0; shift ;;
 	-y | --yes) YES=1; shift ;;
@@ -51,6 +55,11 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+[ -n "$LANG_CODE" ] || case ${LANG:-} in tr_* | tr) LANG_CODE=tr ;; *) LANG_CODE=en ;; esac
+case $LANG_CODE in tr | en) ;; *) echo "--lang must be tr or en." >&2; exit 2 ;; esac
+[ -n "$ADMIN_NAME" ] || ADMIN_NAME=$([ "$LANG_CODE" = tr ] && echo Yönetici || echo Administrator)
+# t "Türkçe" "English": the message in the installer's language.
+t() { if [ "$LANG_CODE" = tr ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }
 step() { printf '\n▸ %s\n' "$*"; }
 die() { printf '\n✗ %s\n' "$*" >&2; exit 1; }
 agent() { /opt/servik/current/bin/servik-agent call "$@"; }
@@ -58,65 +67,74 @@ artisan() { runuser -u servik -- env -C /opt/servik/current/panel "php$PANEL_PHP
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a
 APT=(apt-get -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
 
-[ "$(id -u)" -eq 0 ] || die "Run the installer as root (sudo bash install.sh)."
-[ -r /etc/os-release ] || die "Servik runs on Ubuntu Server 24.04 or newer."
+[ "$(id -u)" -eq 0 ] || die "$(t "Kurulumu root olarak çalıştırın (sudo bash install.sh)." "Run the installer as root (sudo bash install.sh).")"
+[ -r /etc/os-release ] || die "$(t "Servik Ubuntu Server 24.04 ya da daha yenisinde çalışır." "Servik runs on Ubuntu Server 24.04 or newer.")"
 # In a subshell: os-release sets VERSION, which is ours.
 read -r OS_ID OS_VERSION < <(. /etc/os-release && echo "${ID:-unknown} ${VERSION_ID:-0}")
 PRETTY_NAME=$(. /etc/os-release && echo "${PRETTY_NAME:-unknown}")
 if [ "$OS_ID" != ubuntu ] || ! dpkg --compare-versions "$OS_VERSION" ge 24.04; then
-	die "Servik runs on Ubuntu Server 24.04 or newer; this is $PRETTY_NAME."
+	die "$(t "Servik Ubuntu Server 24.04 ya da daha yenisinde çalışır; bu sunucu $PRETTY_NAME." "Servik runs on Ubuntu Server 24.04 or newer; this is $PRETTY_NAME.")"
 fi
-command -v systemctl > /dev/null && [ -d /run/systemd/system ] || die "Servik needs systemd."
+command -v systemctl > /dev/null && [ -d /run/systemd/system ] || die "$(t "Servik systemd gerektirir." "Servik needs systemd.")"
 ARCH=$(dpkg --print-architecture)
-case $ARCH in amd64 | arm64) ;; *) die "Servik has releases for amd64 and arm64, not $ARCH." ;; esac
-case $CHANNEL in stable | beta) ;; *) die "--channel must be stable or beta." ;; esac
+case $ARCH in amd64 | arm64) ;; *) die "$(t "Servik'in amd64 ve arm64 sürümleri var, $ARCH yok." "Servik has releases for amd64 and arm64, not $ARCH.")" ;; esac
+case $CHANNEL in stable | beta) ;; *) die "$(t "--channel stable ya da beta olmalı." "--channel must be stable or beta.")" ;; esac
 if [ -e /opt/servik/current ]; then
-	die "Servik is already installed ($(cat /opt/servik/current/VERSION 2>/dev/null)). Update it from the panel: Araçlar ve Ayarlar → Güncellemeler."
+	die "$(t "Servik zaten kurulu ($(cat /opt/servik/current/VERSION 2>/dev/null)). Panelden güncelleyin: Araçlar ve Ayarlar → Güncellemeler." "Servik is already installed ($(cat /opt/servik/current/VERSION 2>/dev/null)). Update it from the panel: Settings → Updates.")"
 fi
 PANEL_HOST=${HOSTNAME_ARG:-$(hostname -f 2>/dev/null || hostname)}
 
 mkdir -p /var/log/servik
 exec > >(tee -a /var/log/servik/install.log) 2>&1
-echo "Servik installer · $(date -u '+%Y-%m-%d %H:%M UTC') · $PRETTY_NAME · $ARCH"
+echo "$(t "Servik kurulumu" "Servik installer") · $(date -u '+%Y-%m-%d %H:%M UTC') · $PRETTY_NAME · $ARCH"
 
 if [ "$YES" -eq 0 ] && [ -r /dev/tty ]; then
-	cat <<-INFO
+	if [ "$LANG_CODE" = tr ]; then
+		cat <<-INFO
 
-	This installs Servik on $PANEL_HOST:
-	  the panel on https://$PANEL_HOST:$WEB_PORT, its PostgreSQL on port $DB_PORT,
-	  PHP $PANEL_PHP for the panel, Nginx$([ "$COMPONENTS" -eq 1 ] && echo ", PHP 8.4, Composer, Node.js 24 and Fail2ban for sites").
-	INFO
-	read -r -p "Continue? [y/N] " answer < /dev/tty
-	case $answer in y | Y | e | E | yes | evet) ;; *) die "Nothing was changed." ;; esac
+		Servik $PANEL_HOST sunucusuna kurulacak:
+		  panel https://$PANEL_HOST:$WEB_PORT adresinde, PostgreSQL'i $DB_PORT portunda,
+		  panel için PHP $PANEL_PHP, Nginx$([ "$COMPONENTS" -eq 1 ] && echo "; siteler için PHP 8.4, Composer, Node.js 24 ve Fail2ban").
+		INFO
+	else
+		cat <<-INFO
+
+		This installs Servik on $PANEL_HOST:
+		  the panel on https://$PANEL_HOST:$WEB_PORT, its PostgreSQL on port $DB_PORT,
+		  PHP $PANEL_PHP for the panel, Nginx$([ "$COMPONENTS" -eq 1 ] && echo ", PHP 8.4, Composer, Node.js 24 and Fail2ban for sites").
+		INFO
+	fi
+	read -r -p "$(t "Devam edilsin mi? [e/H] " "Continue? [y/N] ")" answer < /dev/tty
+	case $answer in y | Y | e | E | yes | evet) ;; *) die "$(t "Hiçbir şey değiştirilmedi." "Nothing was changed.")" ;; esac
 fi
 
-step "Base packages"
+step "$(t "Temel paketler" "Base packages")"
 "${APT[@]}" update
 "${APT[@]}" install --no-install-recommends ca-certificates curl jq tar gzip software-properties-common
 
-step "Finding the release"
+step "$(t "Sürüm bulunuyor" "Finding the release")"
 releases=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$SOURCE/releases?per_page=50") ||
-	die "Could not list releases at $SOURCE."
+	die "$(t "$SOURCE adresindeki sürümler listelenemedi." "Could not list releases at $SOURCE.")"
 # GitHub lists the newest first.
 pick='[.[] | select(.draft | not) | select($ch == "beta" or (.prerelease | not))
 	| select($v == "" or .tag_name == ("v" + $v) or .tag_name == $v)
 	| (.tag_name | ltrimstr("v")) as $tv
 	| select(any(.assets[]; .name == ("servik-" + $tv + "-linux-" + $arch + ".tar.gz")))][0]'
 release=$(jq -c --arg ch "$CHANNEL" --arg v "$VERSION" --arg arch "$ARCH" "$pick" <<< "$releases")
-[ "$release" != null ] || die "No ${VERSION:+$VERSION }release for linux-$ARCH on the $CHANNEL channel at $SOURCE."
+[ "$release" != null ] || die "$(t "$SOURCE adresinde $CHANNEL kanalında linux-$ARCH için ${VERSION:+$VERSION }sürüm yok." "No ${VERSION:+$VERSION }release for linux-$ARCH on the $CHANNEL channel at $SOURCE.")"
 VERSION=$(jq -r '.tag_name | ltrimstr("v")' <<< "$release")
 archive=servik-$VERSION-linux-$ARCH.tar.gz
 asset() { jq -r --arg n "$1" '.assets[] | select(.name == $n) | .browser_download_url' <<< "$release"; }
 echo "Servik $VERSION"
 
-step "Downloading and verifying $archive"
+step "$(t "$archive indiriliyor ve doğrulanıyor" "Downloading and verifying $archive")"
 dl=$(mktemp -d)
 trap 'rm -rf "$dl"' EXIT
 curl -fL --retry 3 -o "$dl/$archive" "$(asset "$archive")"
 curl -fsSL --retry 3 -o "$dl/SHA256SUMS" "$(asset SHA256SUMS)"
-(cd "$dl" && grep -E "  \*?$archive\$" SHA256SUMS | sha256sum -c -) || die "$archive does not match SHA256SUMS."
+(cd "$dl" && grep -E "  \*?$archive\$" SHA256SUMS | sha256sum -c -) || die "$(t "$archive, SHA256SUMS ile eşleşmiyor." "$archive does not match SHA256SUMS.")"
 
-step "PHP $PANEL_PHP for the panel"
+step "$(t "Panel için PHP $PANEL_PHP" "PHP $PANEL_PHP for the panel")"
 if ! apt-cache policy "php$PANEL_PHP-fpm" | grep -q 'Candidate: [0-9]'; then
 	add-apt-repository -y ppa:ondrej/php
 	"${APT[@]}" update
@@ -125,7 +143,7 @@ fi
 	php$PANEL_PHP-cli php$PANEL_PHP-fpm php$PANEL_PHP-pgsql php$PANEL_PHP-mbstring php$PANEL_PHP-xml \
 	php$PANEL_PHP-curl php$PANEL_PHP-intl php$PANEL_PHP-zip php$PANEL_PHP-bcmath
 
-step "The panel's PostgreSQL (cluster servik, port $DB_PORT)"
+step "$(t "Panelin PostgreSQL'i (servik kümesi, port $DB_PORT)" "The panel's PostgreSQL (cluster servik, port $DB_PORT)")"
 # The customers' PostgreSQL, when installed from the panel, is the "main"
 # cluster; the panel keeps its own.
 mkdir -p /etc/postgresql-common/createcluster.d
@@ -148,7 +166,7 @@ if [ "$(psql_admin -At -c "SELECT 1 FROM pg_database WHERE datname = 'servik'")"
 	psql_admin -c "CREATE DATABASE servik OWNER servik"
 fi
 
-step "Servik $VERSION into /opt/servik/releases/$VERSION"
+step "$(t "Servik $VERSION, /opt/servik/releases/$VERSION dizinine" "Servik $VERSION into /opt/servik/releases/$VERSION")"
 id servik > /dev/null 2>&1 || useradd --system --user-group --home-dir /var/lib/servik/panel --shell /usr/sbin/nologin --comment "Servik panel" servik
 install -d -m 0755 /etc/servik /var/lib/servik /opt/servik /opt/servik/releases
 install -d -m 0750 -o servik -g servik /var/lib/servik/panel /var/lib/servik/panel/storage
@@ -159,8 +177,8 @@ rel=/opt/servik/releases/$VERSION
 rm -rf "$rel" "$rel.tmp"
 mkdir -p "$rel.tmp"
 tar -xzf "$dl/$archive" -C "$rel.tmp" --no-same-owner --no-same-permissions
-[ "$(cat "$rel.tmp/VERSION")" = "$VERSION" ] || die "$archive is not release $VERSION."
-[ "$("$rel.tmp/bin/servik-agent" -version)" = "$VERSION" ] || die "The agent in $archive does not run here."
+[ "$(cat "$rel.tmp/VERSION")" = "$VERSION" ] || die "$(t "$archive, $VERSION sürümü değil." "$archive is not release $VERSION.")"
+[ "$("$rel.tmp/bin/servik-agent" -version)" = "$VERSION" ] || die "$(t "$archive içindeki ajan bu sunucuda çalışmıyor." "The agent in $archive does not run here.")"
 mv "$rel.tmp" "$rel"
 ln -sfn ../../../../../etc/servik/panel.env "$rel/panel/.env"
 rm -rf "$rel/panel/storage"
@@ -169,7 +187,7 @@ chown servik:servik "$rel/panel/bootstrap/cache"
 ln -sfn "releases/$VERSION" /opt/servik/current.new
 mv -T /opt/servik/current.new /opt/servik/current
 
-step "Settings"
+step "$(t "Ayarlar" "Settings")"
 if [ ! -f /etc/servik/panel.env ]; then
 	umask 027
 	cat > /etc/servik/panel.env <<-ENV
@@ -178,8 +196,8 @@ if [ ! -f /etc/servik/panel.env ]; then
 	APP_KEY=base64:$(head -c 32 /dev/urandom | base64)
 	APP_DEBUG=false
 	APP_URL=https://$PANEL_HOST:$WEB_PORT
-	APP_LOCALE=tr
-	APP_FALLBACK_LOCALE=en
+	APP_LOCALE=$LANG_CODE
+	SERVIK_LOCALE=$LANG_CODE
 	APP_FAKER_LOCALE=tr_TR
 	APP_MAINTENANCE_DRIVER=file
 
@@ -214,7 +232,7 @@ chmod 0640 /etc/servik/panel.env
 jq -n --arg php "$PANEL_PHP" --arg source "$SOURCE" --arg host "$PANEL_HOST" \
 	'{php: $php, source: $source, hostname: $host}' > /etc/servik/panel.json
 
-step "Servik agent"
+step "$(t "Servik ajanı" "Servik agent")"
 cat > /etc/systemd/system/servik-agent.service <<-UNIT
 # Servik: written by install.sh.
 [Unit]
@@ -236,9 +254,9 @@ systemctl daemon-reload
 systemctl enable servik-agent
 systemctl restart servik-agent
 for i in $(seq 50); do agent system.ping > /dev/null 2>&1 && break; sleep 0.2; done
-agent system.ping > /dev/null || die "The agent did not start: journalctl -u servik-agent"
+agent system.ping > /dev/null || die "$(t "Ajan başlamadı: journalctl -u servik-agent" "The agent did not start: journalctl -u servik-agent")"
 
-step "The panel on port $WEB_PORT"
+step "$(t "Panel, $WEB_PORT portunda" "The panel on port $WEB_PORT")"
 agent panel.setup > /dev/null
 artisan migrate --force --no-interaction
 artisan optimize
@@ -247,40 +265,33 @@ systemctl start servik-panel-queue servik-panel-backups servik-panel-scheduler
 if [ "$COMPONENTS" -eq 1 ]; then
 	# The defaults of Yazılım Yönetimi, installed as from the panel.
 	for c in nginx php8.4 composer node24 fail2ban; do
-		step "Installing $c"
+		step "$(t "$c kuruluyor" "Installing $c")"
 		agent component.install "{\"id\":\"$c\",\"run\":\"install-${c//./}-$(date +%s)\"}" > /dev/null ||
-			echo "  $c could not be installed now; install it later from Yazılım Yönetimi."
+			echo "  $(t "$c şimdi kurulamadı; daha sonra Yazılım Yönetimi'nden kurun." "$c could not be installed now; install it later from Software.")"
 	done
 fi
 
 ADMIN_PASSWORD=
 if [ -n "$ADMIN_EMAIL" ]; then
-	step "Administrator $ADMIN_EMAIL"
+	step "$(t "Yönetici $ADMIN_EMAIL" "Administrator $ADMIN_EMAIL")"
 	ADMIN_PASSWORD=$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)
 	artisan servik:admin --email="$ADMIN_EMAIL" --name="$ADMIN_NAME" --password="$ADMIN_PASSWORD"
 fi
 
-step "Checking the panel"
+step "$(t "Panel denetleniyor" "Checking the panel")"
 ok=0
 for i in $(seq 30); do
 	if curl -fsk -o /dev/null "https://127.0.0.1:$WEB_PORT/up"; then ok=1; break; fi
 	sleep 2
 done
-[ "$ok" -eq 1 ] || die "The panel does not answer on https://127.0.0.1:$WEB_PORT/up; see /var/log/servik/web/ and journalctl -u servik-php."
+[ "$ok" -eq 1 ] || die "$(t "Panel https://127.0.0.1:$WEB_PORT/up adresinde yanıt vermiyor; /var/log/servik/web/ ve journalctl -u servik-php çıktısına bakın." "The panel does not answer on https://127.0.0.1:$WEB_PORT/up; see /var/log/servik/web/ and journalctl -u servik-php.")"
 
-cat <<-DONE
-
-✓ Servik $VERSION is installed.
-
-  Panel:  https://$PANEL_HOST:$WEB_PORT
-DONE
+printf '\n✓ %s\n\n  Panel:  https://%s:%s\n' "$(t "Servik $VERSION kuruldu." "Servik $VERSION is installed.")" "$PANEL_HOST" "$WEB_PORT"
 if [ -n "$ADMIN_PASSWORD" ]; then
-	printf '  Sign in: %s / %s  (change the password after signing in)\n' "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+	printf "  $(t 'Giriş: %s / %s  (girişten sonra parolayı değiştirin)' 'Sign in: %s / %s  (change the password after signing in)')\n" "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
 else
-	printf '  Create the administrator:\n    sudo -u servik php%s /opt/servik/current/panel/artisan servik:admin\n' "$PANEL_PHP"
+	printf "  $(t 'Yöneticiyi oluşturun:' 'Create the administrator:')\n    sudo -u servik php%s /opt/servik/current/panel/artisan servik:admin\n" "$PANEL_PHP"
 fi
-cat <<-DONE
-
-  The panel uses a self-signed certificate until it gets its own: SSL → Ayarlar.
-  Open ports 80, 443 and $WEB_PORT (and 53, 25, 587, 993 for DNS and mail) in your firewall.
-DONE
+printf '\n  %s\n  %s\n' \
+	"$(t "Panel kendi sertifikasını alana kadar kendinden imzalı bir sertifika kullanır: SSL → Ayarlar." "The panel uses a self-signed certificate until it gets its own: SSL → Settings.")" \
+	"$(t "Güvenlik duvarında 80, 443 ve $WEB_PORT portlarını (DNS ve posta için 53, 25, 587, 993) açın." "Open ports 80, 443 and $WEB_PORT (and 53, 25, 587, 993 for DNS and mail) in your firewall.")"

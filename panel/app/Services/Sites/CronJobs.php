@@ -62,9 +62,9 @@ class CronJobs
     public static function commandProblem(string $command): ?string
     {
         return match (true) {
-            trim($command) === '' => 'Komutu yazın.',
-            strlen($command) > self::MAX_COMMAND => 'Komut en fazla '.self::MAX_COMMAND.' karakter olabilir.',
-            (bool) preg_match('/[\r\n\x00]/', $command) => 'Komut tek satır olmalı; birden fazla komut için && ya da bir betik kullanın.',
+            trim($command) === '' => __('Komutu yazın.'),
+            strlen($command) > self::MAX_COMMAND => __('Komut en fazla :max_command karakter olabilir.', ['max_command' => self::MAX_COMMAND]),
+            (bool) preg_match('/[\r\n\x00]/', $command) => __('Komut tek satır olmalı; birden fazla komut için && ya da bir betik kullanın.'),
             default => null,
         };
     }

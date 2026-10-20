@@ -52,11 +52,11 @@ class AdminIndex extends Component
             'email' => ['required', 'email:rfc', 'max:254', Rule::unique('users', 'email')],
             'name' => ['nullable', 'string', 'max:100'],
             'role' => ['required', Rule::in(array_keys(User::ROLES))],
-        ], ['email.unique' => 'Bu e-posta ile bir hesap zaten var.'], ['email' => 'e-posta', 'name' => 'ad', 'role' => 'rol']);
+        ], ['email.unique' => __('Bu e-posta ile bir hesap zaten var.')], ['email' => 'e-posta', 'name' => 'ad', 'role' => 'rol']);
         [$user, $link, $mailed] = $admins->invite($this->email, $this->name, $this->role, auth()->user());
         $this->inviting = false;
         $this->invitation = ['link' => $link, 'email' => $user->email, 'mailed' => $mailed];
-        $this->dispatch('toast', message: $user->email.' yönetici olarak davet edildi.', source: $this->getId(), undo: ['method' => 'cancelInvite', 'args' => [$user->id]]);
+        $this->dispatch('toast', message: __(':email yönetici olarak davet edildi.', ['email' => $user->email]), source: $this->getId(), undo: ['method' => 'cancelInvite', 'args' => [$user->id]]);
     }
 
     /**
@@ -69,7 +69,7 @@ class AdminIndex extends Component
             return;
         }
         $user->delete();
-        $this->dispatch('toast', message: $user->email.' daveti geri alındı.');
+        $this->dispatch('toast', message: __(':email daveti geri alındı.', ['email' => $user->email]));
     }
 
     public function reinvite(Administrators $admins, int $id): void
@@ -103,7 +103,7 @@ class AdminIndex extends Component
         $previous = $user->adminRole();
         $admins->changeRole($user, $this->editRole);
         $this->editId = null;
-        $this->dispatch('toast', message: $user->name.' artık '.User::ROLES[$this->editRole][0].'.', source: $this->getId(), undo: ['method' => 'undoRole', 'args' => [$user->id, $previous]]);
+        $this->dispatch('toast', message: __(':name artık :roles.', ['name' => $user->name, 'roles' => User::ROLES[$this->editRole][0]]), source: $this->getId(), undo: ['method' => 'undoRole', 'args' => [$user->id, $previous]]);
     }
 
     public function undoRole(Administrators $admins, int $id, string $role): void
@@ -113,7 +113,7 @@ class AdminIndex extends Component
             return;
         }
         $admins->changeRole($user, $role);
-        $this->dispatch('toast', message: $user->name.' yeniden '.User::ROLES[$role][0].'.');
+        $this->dispatch('toast', message: __(':name yeniden :roles.', ['name' => $user->name, 'roles' => User::ROLES[$role][0]]));
     }
 
     public function confirmRemove(int $id): void
@@ -134,7 +134,7 @@ class AdminIndex extends Component
             return;
         }
         $admins->remove($user);
-        $this->dispatch('toast', message: $user->name.' kaldırıldı; oturumları kapandı.', source: $this->getId(), undo: ['method' => 'restore', 'args' => [$user->id]]);
+        $this->dispatch('toast', message: __(':name kaldırıldı; oturumları kapandı.', ['name' => $user->name]), source: $this->getId(), undo: ['method' => 'restore', 'args' => [$user->id]]);
     }
 
     public function restore(Administrators $admins, int $id): void
@@ -144,7 +144,7 @@ class AdminIndex extends Component
             return;
         }
         $admins->restore($user);
-        $this->dispatch('toast', message: $user->name.' geri alındı.');
+        $this->dispatch('toast', message: __(':name geri alındı.', ['name' => $user->name]));
     }
 
     public function resetTwoFactor(Administrators $admins, int $id): void
@@ -154,13 +154,13 @@ class AdminIndex extends Component
             return;
         }
         $token = $admins->resetTwoFactor($user);
-        $this->dispatch('toast', message: $user->name.' için iki adımlı doğrulama kapatıldı; bir sonraki girişte yeniden kurabilir.', source: $this->getId(), undo: ['method' => 'undoTwoFactor', 'args' => [$token]]);
+        $this->dispatch('toast', message: __(':name için iki adımlı doğrulama kapatıldı; bir sonraki girişte yeniden kurabilir.', ['name' => $user->name]), source: $this->getId(), undo: ['method' => 'undoTwoFactor', 'args' => [$token]]);
     }
 
     public function undoTwoFactor(Administrators $admins, string $token): void
     {
         if ($user = $admins->undoResetTwoFactor($token)) {
-            $this->dispatch('toast', message: $user->name.' için iki adımlı doğrulama yeniden açıldı.');
+            $this->dispatch('toast', message: __(':name için iki adımlı doğrulama yeniden açıldı.', ['name' => $user->name]));
         }
     }
 

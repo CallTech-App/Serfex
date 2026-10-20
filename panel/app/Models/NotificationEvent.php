@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  * A problem the panel told the administrators about: once when it
  * appeared and once when it went away.
  */
-#[Fillable(['kind', 'key', 'title', 'detail', 'url', 'state', 'sent', 'error', 'opened_at', 'resolved_at'])]
+#[Fillable(['kind', 'key', 'title', 'detail', 'texts', 'url', 'state', 'sent', 'error', 'opened_at', 'resolved_at'])]
 class NotificationEvent extends Model
 {
     /** Kinds: key => [name, when the administrators hear about it]. */
@@ -26,6 +26,7 @@ class NotificationEvent extends Model
     {
         return [
             'sent' => 'array',
+            'texts' => 'array',
             'opened_at' => 'datetime',
             'resolved_at' => 'datetime',
         ];
@@ -33,6 +34,20 @@ class NotificationEvent extends Model
 
     public function kindName(): string
     {
-        return self::KINDS[$this->kind][0] ?? $this->kind;
+        return __(self::KINDS[$this->kind][0] ?? $this->kind);
+    }
+
+    /**
+     * The title in $locale (the reader's language by default); title holds
+     * the Turkish one.
+     */
+    public function titleIn(?string $locale = null): string
+    {
+        return $this->texts[$locale ?? app()->getLocale()]['title'] ?? $this->title;
+    }
+
+    public function detailIn(?string $locale = null): ?string
+    {
+        return $this->texts[$locale ?? app()->getLocale()]['detail'] ?? $this->detail;
     }
 }

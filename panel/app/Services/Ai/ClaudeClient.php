@@ -42,7 +42,7 @@ class ClaudeClient
      */
     public function send(string $model, array $system, array $tools, array $messages): array
     {
-        $key = $this->settings->apiKey() ?? throw new ClaudeException('Claude API anahtarı kayıtlı değil.');
+        $key = $this->settings->apiKey() ?? throw new ClaudeException(__('Claude API anahtarı kayıtlı değil.'));
         $fallbacks = Models::hasFallbacks($model);
 
         try {
@@ -114,16 +114,16 @@ class ClaudeClient
     public static function explain(APIException $e): string
     {
         return match (true) {
-            $e instanceof AuthenticationException => 'Claude API anahtarı geçersiz. Servik AI ayarlarından anahtarı kontrol edin.',
-            $e instanceof PermissionDeniedException => 'Bu API anahtarının seçili modeli kullanma izni yok.',
-            $e instanceof NotFoundException => 'Seçili model bu hesapta bulunamadı. Ayarlardan başka bir model seçin.',
-            $e instanceof RateLimitException => 'Claude hesabınızın kullanım sınırına ulaşıldı. Biraz sonra yeniden deneyin.',
-            $e instanceof BadRequestException && str_contains(strtolower($e->getMessage()), 'credit') => 'Claude hesabınızda yeterli kredi yok.',
-            $e instanceof BadRequestException => 'Claude isteği kabul etmedi: '.mb_substr(self::apiMessage($e), 0, 300),
-            $e instanceof APITimeoutException => 'Claude zamanında yanıt vermedi. Yeniden deneyin.',
-            $e instanceof APIConnectionException => 'Claude API\'ye bağlanılamadı. Sunucunun api.anthropic.com adresine çıkabildiğini kontrol edin.',
-            ($e->status ?? 0) >= 500 => 'Claude şu an yanıt veremiyor (yoğunluk ya da bakım). Biraz sonra yeniden deneyin.',
-            default => 'Claude isteği başarısız oldu: '.mb_substr(self::apiMessage($e), 0, 300),
+            $e instanceof AuthenticationException => __('Claude API anahtarı geçersiz. Servik AI ayarlarından anahtarı kontrol edin.'),
+            $e instanceof PermissionDeniedException => __('Bu API anahtarının seçili modeli kullanma izni yok.'),
+            $e instanceof NotFoundException => __('Seçili model bu hesapta bulunamadı. Ayarlardan başka bir model seçin.'),
+            $e instanceof RateLimitException => __('Claude hesabınızın kullanım sınırına ulaşıldı. Biraz sonra yeniden deneyin.'),
+            $e instanceof BadRequestException && str_contains(strtolower($e->getMessage()), 'credit') => __('Claude hesabınızda yeterli kredi yok.'),
+            $e instanceof BadRequestException => __('Claude isteği kabul etmedi: :value', ['value' => mb_substr(self::apiMessage($e), 0, 300)]),
+            $e instanceof APITimeoutException => __('Claude zamanında yanıt vermedi. Yeniden deneyin.'),
+            $e instanceof APIConnectionException => __('Claude API\'ye bağlanılamadı. Sunucunun api.anthropic.com adresine çıkabildiğini kontrol edin.'),
+            ($e->status ?? 0) >= 500 => __('Claude şu an yanıt veremiyor (yoğunluk ya da bakım). Biraz sonra yeniden deneyin.'),
+            default => __('Claude isteği başarısız oldu: :value', ['value' => mb_substr(self::apiMessage($e), 0, 300)]),
         };
     }
 

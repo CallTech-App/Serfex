@@ -119,9 +119,9 @@ class Environment extends Section
                 'rows.*.key' => ['required', 'regex:/^[A-Z_][A-Z0-9_]*$/', 'distinct'],
                 'rows.*.value' => ['nullable', 'string', 'max:65535'],
             ], [
-                'rows.*.key.required' => 'Anahtar boş olamaz.',
-                'rows.*.key.regex' => 'Anahtar büyük harf, rakam ve _ içerebilir.',
-                'rows.*.key.distinct' => 'Bu anahtar iki kez var.',
+                'rows.*.key.required' => __('Anahtar boş olamaz.'),
+                'rows.*.key.regex' => __('Anahtar büyük harf, rakam ve _ içerebilir.'),
+                'rows.*.key.distinct' => __('Bu anahtar iki kez var.'),
             ]);
             $content = EnvFile::apply($this->text, $this->values());
         } else {
@@ -131,14 +131,14 @@ class Environment extends Section
 
         $before = $this->original ?? '';
         if ($content === $before) {
-            $this->dispatch('toast', message: 'Değişiklik yok.');
+            $this->dispatch('toast', message: __('Değişiklik yok.'));
 
             return;
         }
         try {
             $result = $agent->call('laravel.env.set', $app->agentApp() + ['content' => $content], config('servik.agent.job_timeout'));
         } catch (AgentException $e) {
-            $this->agentError = '.env kaydedilemedi: '.self::agentMessage($e);
+            $this->agentError = __('.env kaydedilemedi: :value', ['value' => self::agentMessage($e)]);
 
             return;
         }
@@ -156,7 +156,7 @@ class Environment extends Section
             return;
         }
         $this->dispatch('toast',
-            message: ($result['cached'] ?? false) ? '.env kaydedildi, config:cache yenilendi.' : '.env kaydedildi.',
+            message: ($result['cached'] ?? false) ? __('.env kaydedildi, config:cache yenilendi.') : __('.env kaydedildi.'),
             source: $this->getId(),
             undo: ['method' => 'restore', 'args' => [$version->id]],
         );
@@ -173,7 +173,7 @@ class Environment extends Section
         $site = $app->site;
         $server = $servers->defaultServer();
         if ($server === null) {
-            $this->agentError = 'Bu sunucuda veritabanı sunucusu kurulu değil.';
+            $this->agentError = __('Bu sunucuda veritabanı sunucusu kurulu değil.');
 
             return;
         }
@@ -193,7 +193,7 @@ class Environment extends Section
         try {
             $database = $databases->create($site, $server, $name, $user, $password);
         } catch (AgentException $e) {
-            $this->agentError = 'Veritabanı oluşturulamadı: '.self::agentMessage($e);
+            $this->agentError = __('Veritabanı oluşturulamadı: :value', ['value' => self::agentMessage($e)]);
 
             return;
         }
@@ -219,7 +219,7 @@ class Environment extends Section
         $app->update(['database_id' => $database->id]);
         $this->mode = 'rows';
         $this->dispatch('toast',
-            message: "{$database->name} oluşturuldu ve .env dosyasına yazıldı. Tabloları oluşturmak için Komutlar'dan migrate çalıştırın.",
+            message: __(':name oluşturuldu ve .env dosyasına yazıldı. Tabloları oluşturmak için Komutlar\'dan migrate çalıştırın.', ['name' => $database->name]),
             source: $this->getId(),
             undo: ['method' => 'undoCreateDatabase', 'args' => [$database->id]],
         );
@@ -237,14 +237,14 @@ class Environment extends Section
             return;
         }
         if (! $components->isInstalled('redis')) {
-            $this->agentError = 'Bu sunucuda Redis kurulu değil.';
+            $this->agentError = __('Bu sunucuda Redis kurulu değil.');
 
             return;
         }
         try {
             $env = $redis->connect($app);
         } catch (AgentException $e) {
-            $this->agentError = 'Redis başlatılamadı: '.self::agentMessage($e);
+            $this->agentError = __('Redis başlatılamadı: :value', ['value' => self::agentMessage($e)]);
 
             return;
         }
@@ -266,7 +266,7 @@ class Environment extends Section
         }
         $this->mode = 'rows';
         $this->dispatch('toast',
-            message: "Redis 127.0.0.1:{$app->redis_port} üzerinde başlatıldı; önbellek, oturumlar ve kuyruklar Redis'e alındı. Kuyruk işçileri bir sonraki dağıtımda yeniden başlar.",
+            message: __('Redis 127.0.0.1::redis_port üzerinde başlatıldı; önbellek, oturumlar ve kuyruklar Redis\'e alındı. Kuyruk işçileri bir sonraki dağıtımda yeniden başlar.', ['redis_port' => $app->redis_port]),
             source: $this->getId(),
             undo: ['method' => 'undoConnectRedis', 'args' => []],
         );
@@ -288,7 +288,7 @@ class Environment extends Section
         try {
             $redis->disconnect($app);
         } catch (AgentException $e) {
-            $this->agentError = 'Redis durdurulamadı: '.self::agentMessage($e);
+            $this->agentError = __('Redis durdurulamadı: :value', ['value' => self::agentMessage($e)]);
         }
     }
 

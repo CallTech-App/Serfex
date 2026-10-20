@@ -20,13 +20,13 @@ class DatabaseManagerController extends Controller
     {
         $db = Database::visibleTo($request->user())->findOrFail($database);
         if ($db->systemUser?->customer?->isSuspended()) {
-            return $this->fail($db, 'Hesap askıda; veritabanı yöneticisi açılamaz.');
+            return $this->fail($db, __('Hesap askıda; veritabanı yöneticisi açılamaz.'));
         }
 
         try {
             return redirect()->away($databases->managerUrl($db, $request->getHost()));
         } catch (AgentException $e) {
-            return $this->fail($db, $db->managerLabel().' açılamadı: '.$e->reason);
+            return $this->fail($db, __(':manager_label açılamadı: :reason', ['manager_label' => $db->managerLabel(), 'reason' => $e->reason]));
         }
     }
 

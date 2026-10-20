@@ -107,7 +107,7 @@ class SiteProtect extends Component
         }
         $this->editing = false;
         $this->logins = [];
-        $this->dispatch('toast', message: $dir->path.' artık parola soruyor.');
+        $this->dispatch('toast', message: __(':path artık parola soruyor.', ['path' => $dir->path]));
     }
 
     public function delete(int $id, WebAccess $access): void
@@ -120,7 +120,7 @@ class SiteProtect extends Component
 
             return;
         }
-        $this->dispatch('toast', message: $dir->path.' artık parola sormuyor.', source: $this->getId(), undo: ['method' => 'restore', 'args' => [$dir->id]]);
+        $this->dispatch('toast', message: __(':path artık parola sormuyor.', ['path' => $dir->path]), source: $this->getId(), undo: ['method' => 'restore', 'args' => [$dir->id]]);
     }
 
     public function restore(int $id, WebAccess $access): void
@@ -143,6 +143,6 @@ class SiteProtect extends Component
         return view('livewire.sites.protect', [
             'site' => $site,
             'dirs' => ProtectedDirectory::where('site_id', $site->id)->orderBy('path')->get(),
-        ])->title('Parola korumalı klasörler · '.$site->domain.' · Servik');
+        ])->title(__('Parola korumalı klasörler · :domain · Servik', ['domain' => $site->domain]));
     }
 }

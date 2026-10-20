@@ -71,7 +71,7 @@ class SitesController extends ApiController
         }
 
         $site = $creator->create($data['domain'], $account, $version, (bool) ($data['www'] ?? true), $customer, $owner);
-        $this->audit($request, 'Siteler', "{$site->domain} oluşturuluyor.", route('sites.show', $site, false));
+        $this->audit($request, __('Siteler'), __(':domain oluşturuluyor.', ['domain' => $site->domain]), route('sites.show', $site, false));
 
         return response()->json(['data' => $this->site($site->fresh(['systemUser.customer', 'certificate']))], 202);
     }
@@ -89,7 +89,7 @@ class SitesController extends ApiController
         $keep = $request->boolean('keep_dns');
         $site->update(['status' => SiteStatus::Deleting]);
         DeleteSite::dispatch($site, removeUser: true, removeZone: ! $keep, removeMail: true, removeDatabases: true);
-        $this->audit($request, 'Siteler', "{$site->domain} siliniyor.");
+        $this->audit($request, __('Siteler'), __(':domain siliniyor.', ['domain' => $site->domain]));
 
         return response()->json(['data' => $this->site($site)], 202);
     }

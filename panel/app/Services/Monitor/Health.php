@@ -39,30 +39,30 @@ final class Health
             $rank = min($rank, $r);
         };
         if ($attackers > 0) {
-            $add('Saldırı', 'crit', 0);
+            $add(__('Saldırı'), 'crit', 0);
         }
         if (($u['php']['max_reached'] ?? false) || ($u['php']['queue'] ?? 0) > 0) {
-            $add('PHP havuzu dolu', 'crit', 1);
+            $add(__('PHP havuzu dolu'), 'crit', 1);
         }
         if (($u['server_errors'] ?? 0) >= self::ERRORS_WARN) {
-            $add('5xx hataları', 'crit', 1);
+            $add(__('5xx hataları'), 'crit', 1);
         }
         if (($u['cpu'] ?? 0) >= self::CPU_WARN) {
-            $add('Yüksek CPU', 'warn', 2);
+            $add(__('Yüksek CPU'), 'warn', 2);
         }
         if (($u['memory'] ?? 0) >= self::MEMORY_WARN) {
-            $add('Yüksek bellek', 'warn', 2);
+            $add(__('Yüksek bellek'), 'warn', 2);
         }
         if (($u['db']['longest'] ?? 0) >= self::SLOW_QUERY) {
-            $add('Yavaş sorgu', 'warn', 2);
+            $add(__('Yavaş sorgu'), 'warn', 2);
         }
         if (($u['mail_per_hour'] ?? 0) >= self::MAIL_WARN) {
-            $add('Yoğun posta', 'warn', 2);
+            $add(__('Yoğun posta'), 'warn', 2);
         }
         // Only the worst problem and the limit, so the column stays short.
         $badges = array_slice($badges, 0, 1);
         if ($limited) {
-            $badges[] = new Badge('Sınırlı', 'info');
+            $badges[] = new Badge(__('Sınırlı'), 'info');
             $rank = min($rank, 3);
         }
         if ($badges === []) {

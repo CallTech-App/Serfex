@@ -53,7 +53,8 @@ class SiteErrorPages extends Component
     }
 
     /**
-     * Servik's starting page for $key, in the site's name.
+     * Servik's starting page for $key, in the site's name and the
+     * panel user's language.
      */
     public static function template(string $key, string $domain): string
     {
@@ -61,9 +62,10 @@ class SiteErrorPages extends Component
 
         return view('sites.error-page', [
             'code' => $key === '50x' ? '500' : $code,
-            'title' => $title,
-            'text' => $text,
-            'english' => $english,
+            'title' => __($title),
+            'text' => __($text),
+            // A Turkish page carries an English line for foreign visitors.
+            'english' => app()->getLocale() === 'tr' ? $english : null,
             'domain' => $domain,
         ])->render();
     }
@@ -92,12 +94,12 @@ class SiteErrorPages extends Component
             return;
         }
         if (trim($this->html) === '') {
-            $this->addError('html', 'Sayfanın HTML\'ini yazın; web sunucusunun kendi sayfasına dönmek için "Varsayılana dön"ü kullanın.');
+            $this->addError('html', __('Sayfanın HTML\'ini yazın; web sunucusunun kendi sayfasına dönmek için "Varsayılana dön"ü kullanın.'));
 
             return;
         }
         if (strlen($this->html) > self::MAX_BYTES) {
-            $this->addError('html', 'Sayfa en fazla 256 KB olabilir.');
+            $this->addError('html', __('Sayfa en fazla 256 KB olabilir.'));
 
             return;
         }
@@ -106,12 +108,12 @@ class SiteErrorPages extends Component
         try {
             $domains->change($site, fn () => $site->update(['error_pages' => [...($site->error_pages ?? []), $key => $this->html]]));
         } catch (AgentException $e) {
-            $this->addError('html', 'Sunucu sayfayı kaydedemedi: '.$e->forPeople());
+            $this->addError('html', __('Sunucu sayfayı kaydedemedi: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         $this->editing = null;
-        $this->dispatch('toast', message: self::PAGES[$key][1].' sayfası kaydedildi.', source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $this->dispatch('toast', message: __(':pages sayfası kaydedildi.', ['pages' => self::PAGES[$key][1]]), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
     public function confirmReset(string $key): void
@@ -133,11 +135,11 @@ class SiteErrorPages extends Component
         try {
             $domains->change($site, fn () => $site->update(['error_pages' => $pages ?: null]));
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Sunucu değişikliği uygulayamadı: '.$e->forPeople());
+            $this->dispatch('toast', message: __('Sunucu değişikliği uygulayamadı: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
-        $this->dispatch('toast', message: self::PAGES[$key][1].' için web sunucusunun sayfası kullanılıyor.', source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $this->dispatch('toast', message: __(':pages için web sunucusunun sayfası kullanılıyor.', ['pages' => self::PAGES[$key][1]]), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
     public function undo(SiteDomains $domains, string $token): void
@@ -156,11 +158,11 @@ class SiteErrorPages extends Component
         try {
             $domains->change($site, fn () => $site->update(['error_pages' => $pages ?: null]));
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Geri alınamadı: '.$e->forPeople());
+            $this->dispatch('toast', message: __('Geri alınamadı: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
-        $this->dispatch('toast', message: 'Hata sayfası geri alındı.');
+        $this->dispatch('toast', message: __('Hata sayfası geri alındı.'));
     }
 
     /**
@@ -181,6 +183,6 @@ class SiteErrorPages extends Component
         return view('livewire.sites.error-pages', [
             'site' => $site,
             'pages' => $site->error_pages ?? [],
-        ])->title('Hata sayfaları · '.$site->domain.' · Servik');
+        ])->title(__('Hata sayfaları · :domain · Servik', ['domain' => $site->domain]));
     }
 }

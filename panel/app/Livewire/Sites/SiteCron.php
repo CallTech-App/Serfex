@@ -103,16 +103,16 @@ class SiteCron extends Component
         $schedule = CronJobs::normalizeSchedule($this->preset === 'custom' ? $this->schedule : $this->preset);
         $this->resetValidation();
         if ($schedule === null) {
-            $this->addError('schedule', 'Beş alanlı bir cron zamanı yazın: dakika saat gün ay haftanın-günü, örneğin 30 2 * * *.');
+            $this->addError('schedule', __('Beş alanlı bir cron zamanı yazın: dakika saat gün ay haftanın-günü, örneğin 30 2 * * *.'));
         }
         if ($problem = CronJobs::commandProblem($this->command)) {
             $this->addError('command', $problem);
         }
         if (mb_strlen($this->note) > 100) {
-            $this->addError('note', 'Not en fazla 100 karakter olabilir.');
+            $this->addError('note', __('Not en fazla 100 karakter olabilir.'));
         }
         if (! isset(CronJobs::TIMEOUTS[$this->timeout])) {
-            $this->addError('timeout', 'Listeden bir süre seçin.');
+            $this->addError('timeout', __('Listeden bir süre seçin.'));
         }
         if ($this->getErrorBag()->isNotEmpty()) {
             return;
@@ -129,16 +129,16 @@ class SiteCron extends Component
         try {
             $task = $this->change($site, $jobs, fn () => $task ? tap($task)->update($values) : CronJob::create(['site_id' => $site->id, ...$values]));
         } catch (AgentException $e) {
-            $this->addError('command', 'Sunucu görevi kaydedemedi: '.$e->reason);
+            $this->addError('command', __('Sunucu görevi kaydedemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->editing = false;
         Quotas::forget();
         if ($previous === null) {
-            $this->dispatch('toast', message: 'Zamanlanmış görev eklendi: '.$task->scheduleLabel().'.', source: $this->getId(), undo: ['method' => 'undoCreate', 'args' => [$task->id]]);
+            $this->dispatch('toast', message: __('Zamanlanmış görev eklendi: :schedule_label.', ['schedule_label' => $task->scheduleLabel()]), source: $this->getId(), undo: ['method' => 'undoCreate', 'args' => [$task->id]]);
         } else {
-            $this->dispatch('toast', message: 'Zamanlanmış görev kaydedildi.', source: $this->getId(), undo: ['method' => 'undoEdit', 'args' => [$task->id, $previous]]);
+            $this->dispatch('toast', message: __('Zamanlanmış görev kaydedildi.'), source: $this->getId(), undo: ['method' => 'undoEdit', 'args' => [$task->id, $previous]]);
         }
     }
 
@@ -148,7 +148,7 @@ class SiteCron extends Component
         if ($task === null) {
             return;
         }
-        $this->changeOrToast($jobs, fn () => $task->forceDelete(), 'Eklenen görev geri alındı.');
+        $this->changeOrToast($jobs, fn () => $task->forceDelete(), __('Eklenen görev geri alındı.'));
         Quotas::forget();
     }
 
@@ -165,7 +165,7 @@ class SiteCron extends Component
         }
         $note = mb_substr(trim((string) ($previous['note'] ?? '')), 0, 100);
         $this->changeOrToast($jobs, fn () => $task->update(['schedule' => $schedule, 'command' => $command, 'note' => $note ?: null, 'timeout' => (int) $previous['timeout']]),
-            'Görevdeki değişiklik geri alındı.');
+            __('Görevdeki değişiklik geri alındı.'));
     }
 
     public function pause(CronJobs $jobs, int $id): void
@@ -187,11 +187,11 @@ class SiteCron extends Component
         try {
             $this->change($this->site(), $jobs, fn () => $task->update(['enabled' => $enabled]));
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Sunucu görevi değiştiremedi: '.$e->reason);
+            $this->dispatch('toast', message: __('Sunucu görevi değiştiremedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
-        $this->dispatch('toast', message: $enabled ? 'Görev yeniden çalışacak.' : 'Görev duraklatıldı; zamanı gelince çalışmaz.',
+        $this->dispatch('toast', message: $enabled ? __('Görev yeniden çalışacak.') : __('Görev duraklatıldı; zamanı gelince çalışmaz.'),
             source: $this->getId(), undo: $withUndo ? ['method' => $enabled ? 'pause' : 'resume', 'args' => [$task->id]] : null);
     }
 
@@ -201,11 +201,11 @@ class SiteCron extends Component
         try {
             $started = $jobs->run($task);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Görev başlatılamadı: '.$e->reason);
+            $this->dispatch('toast', message: __('Görev başlatılamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
-        $this->dispatch('toast', message: $started ? 'Görev başlatıldı; çıktısı geçmişte görünecek.' : 'Görev zaten çalışıyor.');
+        $this->dispatch('toast', message: $started ? __('Görev başlatıldı; çıktısı geçmişte görünecek.') : __('Görev zaten çalışıyor.'));
         if ($started) {
             $task->update(['last_run_at' => now(), 'last_status' => 'running']);
         }
@@ -226,12 +226,12 @@ class SiteCron extends Component
         try {
             $this->change($this->site(), $jobs, fn () => $task->delete());
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Sunucu görevi silemedi: '.$e->reason);
+            $this->dispatch('toast', message: __('Sunucu görevi silemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
         Quotas::forget();
-        $this->dispatch('toast', message: 'Zamanlanmış görev silindi.', source: $this->getId(), undo: ['method' => 'restore', 'args' => [$task->id]]);
+        $this->dispatch('toast', message: __('Zamanlanmış görev silindi.'), source: $this->getId(), undo: ['method' => 'restore', 'args' => [$task->id]]);
     }
 
     public function restore(CronJobs $jobs, int $id): void
@@ -240,7 +240,7 @@ class SiteCron extends Component
         if ($task === null) {
             return;
         }
-        $this->changeOrToast($jobs, fn () => $task->restore(), 'Zamanlanmış görev geri alındı.');
+        $this->changeOrToast($jobs, fn () => $task->restore(), __('Zamanlanmış görev geri alındı.'));
         Quotas::forget();
     }
 
@@ -254,7 +254,7 @@ class SiteCron extends Component
             $this->history = ['runs' => $runs['runs'], 'running' => $runs['running'], 'error' => null];
             $this->runId = $runs['runs'][0]['id'] ?? null;
         } catch (AgentException $e) {
-            $this->history = ['runs' => [], 'running' => false, 'error' => 'Geçmiş okunamadı: '.$e->reason];
+            $this->history = ['runs' => [], 'running' => false, 'error' => __('Geçmiş okunamadı: :reason', ['reason' => $e->reason])];
         }
     }
 
@@ -280,7 +280,7 @@ class SiteCron extends Component
             'tasks' => CronJob::where('site_id', $site->id)->orderBy('id')->get(),
             'usage' => $customer ? app(Quotas::class)->report($customer)['cron_jobs'] : null,
             'refusal' => $jobs->refusal($site->systemUser),
-        ])->title('Zamanlanmış görevler · '.$site->domain.' · Servik');
+        ])->title(__('Zamanlanmış görevler · :domain · Servik', ['domain' => $site->domain]));
     }
 
     /**
@@ -309,7 +309,7 @@ class SiteCron extends Component
         try {
             $this->change($this->site(), $jobs, $change);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Sunucu görevi değiştiremedi: '.$e->reason);
+            $this->dispatch('toast', message: __('Sunucu görevi değiştiremedi: :reason', ['reason' => $e->reason]));
 
             return;
         } catch (Throwable $e) {

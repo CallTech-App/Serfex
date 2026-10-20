@@ -3,7 +3,6 @@ package laravel
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -70,6 +70,8 @@ type tinkerSession struct {
 	last    time.Time
 	stopped bool
 	done    chan struct{}
+	// ctx carries the language of the person who opened it.
+	ctx context.Context
 }
 
 // tinkerOutput writes the session's output to its run log, without the
@@ -155,16 +157,16 @@ func (m *Manager) StartTinker(ctx context.Context, spec TinkerSpec) (TinkerState
 	}
 	key := tinkerKey(spec.Domain, spec.Session)
 	out := &tinkerOutput{f: log}
-	out.over = func() { m.endTinker(key, "çıktı 8 MB sınırını aştı") }
-	out.note(fmt.Sprintf("Tinker · %s · PHP %s · %s kullanıcısıyla\nYazdıklarınız gerçek veritabanında çalışır. Oturum %d dakika işlem yapılmazsa kapanır.\n",
-		spec.Domain, spec.PHPVersion, spec.User, int(tinkerIdle.Minutes())))
+	out.over = func() { m.endTinker(key, i18n.T(ctx, "çıktı 8 MB sınırını aştı")) }
+	out.note(i18n.T(ctx, "Tinker · %s · PHP %s · %s kullanıcısıyla", spec.Domain, spec.PHPVersion, spec.User) + "\n" +
+		i18n.T(ctx, "Yazdıklarınız gerçek veritabanında çalışır. Oturum %d dakika işlem yapılmazsa kapanır.", int(tinkerIdle.Minutes())) + "\n")
 	c := m.cmdEnv(spec.Target, spec.dir(), nil, []string{"PSYSH_CONFIG=" + psyshConfig}, phpBin(spec.PHPVersion), "artisan", "tinker")
 	proc, err := starter.Start(c, out)
 	if err != nil {
 		log.Close()
 		return TinkerState{}, failed("tinker could not be started: %v", err)
 	}
-	s := &tinkerSession{proc: proc, out: out, last: time.Now(), done: make(chan struct{})}
+	s := &tinkerSession{proc: proc, out: out, last: time.Now(), done: make(chan struct{}), ctx: context.WithoutCancel(ctx)}
 	m.tinkers[key] = s
 
 	go func() {
@@ -174,7 +176,7 @@ func (m *Manager) StartTinker(ctx context.Context, spec TinkerSpec) (TinkerState
 		stopped := s.stopped
 		s.mu.Unlock()
 		if !stopped {
-			out.note("\n■ Oturum kapandı.\n")
+			out.note("\n■ " + i18n.T(ctx, "Oturum kapandı.") + "\n")
 		}
 		m.tmu.Lock()
 		if m.tinkers[key] == s {
@@ -197,9 +199,9 @@ func (m *Manager) StartTinker(ctx context.Context, spec TinkerSpec) (TinkerState
 				s.mu.Unlock()
 				switch {
 				case idle > tinkerIdle:
-					m.endTinker(key, fmt.Sprintf("%d dakika işlem yapılmadı", int(tinkerIdle.Minutes())))
+					m.endTinker(key, i18n.T(ctx, "%d dakika işlem yapılmadı", int(tinkerIdle.Minutes())))
 				case now.Sub(started) > tinkerLifetime:
-					m.endTinker(key, fmt.Sprintf("en uzun oturum süresi (%d dakika) doldu", int(tinkerLifetime.Minutes())))
+					m.endTinker(key, i18n.T(ctx, "en uzun oturum süresi (%d dakika) doldu", int(tinkerLifetime.Minutes())))
 				}
 			}
 		}
@@ -220,9 +222,9 @@ func (m *Manager) endTinker(key, why string) {
 	s.stopped = true
 	s.mu.Unlock()
 	if why != "" {
-		s.out.note("\n■ Oturum kapatıldı: " + why + ".\n")
+		s.out.note("\n■ " + i18n.T(s.ctx, "Oturum kapatıldı: %s.", why) + "\n")
 	} else {
-		s.out.note("\n■ Oturum kapatıldı.\n")
+		s.out.note("\n■ " + i18n.T(s.ctx, "Oturum kapatıldı.") + "\n")
 	}
 	_ = s.proc.Kill()
 }

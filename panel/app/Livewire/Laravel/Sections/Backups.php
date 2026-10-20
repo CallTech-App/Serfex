@@ -64,7 +64,7 @@ class Backups extends Section
     public function create(BackupService $backups): void
     {
         $this->validate(['parts' => ['required', 'array', 'min:1'], 'parts.*' => [Rule::in(array_keys(LaravelBackup::PARTS))]],
-            ['parts.required' => 'En az bir parça seçin.', 'parts.min' => 'En az bir parça seçin.']);
+            ['parts.required' => __('En az bir parça seçin.'), 'parts.min' => __('En az bir parça seçin.')]);
         if (($refusal = app(Quotas::class)->refusal($this->app()->site?->customer(), 'disk')) !== null) {
             $this->addError('parts', $refusal);
 
@@ -72,7 +72,7 @@ class Backups extends Section
         }
         $backups->create($this->app(), $this->parts, 'manual', auth()->user());
         $this->creating = false;
-        $this->dispatch('toast', message: 'Yedek alınıyor.');
+        $this->dispatch('toast', message: __('Yedek alınıyor.'));
     }
 
     public function openSchedule(): void
@@ -91,12 +91,12 @@ class Backups extends Section
             'schedule' => ['required', Rule::in(['off', 'daily', 'weekly'])],
             'time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
             'keep' => ['required', 'integer', 'between:1,90'],
-        ], ['time.regex' => 'Saati SS:DD biçiminde yazın, örneğin 03:00.'], ['keep' => 'saklanacak yedek sayısı', 'time' => 'saat']);
+        ], ['time.regex' => __('Saati SS:DD biçiminde yazın, örneğin 03:00.')], ['keep' => __('saklanacak yedek sayısı'), 'time' => 'saat']);
         $app = $this->app();
         $before = $app->only(['backup_schedule', 'backup_time', 'backup_keep']);
         $app->update(['backup_schedule' => $this->schedule, 'backup_time' => $this->time, 'backup_keep' => $this->keep]);
         $this->scheduling = false;
-        $this->dispatch('toast', message: 'Yedekleme planı kaydedildi.', source: $this->getId(), undo: ['method' => 'restoreSchedule', 'args' => [$before]]);
+        $this->dispatch('toast', message: __('Yedekleme planı kaydedildi.'), source: $this->getId(), undo: ['method' => 'restoreSchedule', 'args' => [$before]]);
     }
 
     /**
@@ -129,10 +129,10 @@ class Backups extends Section
             return;
         }
         $this->validate(['restoreParts' => ['required', 'array', 'min:1'], 'restoreParts.*' => [Rule::in($this->restorable($backup))]],
-            ['restoreParts.required' => 'En az bir parça seçin.', 'restoreParts.min' => 'En az bir parça seçin.']);
+            ['restoreParts.required' => __('En az bir parça seçin.'), 'restoreParts.min' => __('En az bir parça seçin.')]);
         $backups->restore($backup, array_values($this->restoreParts), $this->safety, auth()->user());
         $this->restoring = false;
-        $this->dispatch('toast', message: 'Geri yükleme başladı.');
+        $this->dispatch('toast', message: __('Geri yükleme başladı.'));
     }
 
     /**
@@ -146,7 +146,7 @@ class Backups extends Section
             return;
         }
         $backups->restore($before, $before->parts, false, auth()->user());
-        $this->dispatch('toast', message: 'Geri yüklemeden önceki hâline dönülüyor.');
+        $this->dispatch('toast', message: __('Geri yüklemeden önceki hâline dönülüyor.'));
     }
 
     public function delete(int $id, BackupService $backups): void
@@ -162,7 +162,7 @@ class Backups extends Section
         }
         $backups->delete($backup);
         $this->dispatch('toast',
-            message: 'Yedek silindi.',
+            message: __('Yedek silindi.'),
             source: $this->getId(),
             undo: ['method' => 'undoDelete', 'args' => [$backup->id]],
         );
@@ -172,7 +172,7 @@ class Backups extends Section
     {
         $backup = $this->backup($id);
         if ($backup !== null && $backups->undoDelete($backup)) {
-            $this->dispatch('toast', message: 'Yedek geri getirildi.');
+            $this->dispatch('toast', message: __('Yedek geri getirildi.'));
         }
     }
 
@@ -184,7 +184,7 @@ class Backups extends Section
             return;
         }
         $this->logRun = $run;
-        $this->logTitle = $restore ? 'Geri yükleme günlüğü' : 'Yedekleme günlüğü';
+        $this->logTitle = $restore ? __('Geri yükleme günlüğü') : __('Yedekleme günlüğü');
         $this->viewingLog = true;
     }
 

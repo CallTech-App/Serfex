@@ -5,6 +5,7 @@ namespace App\Livewire\Account;
 use App\Livewire\Attributes\ForEveryAccount;
 use App\Services\Security\Sessions;
 use App\Services\Security\TwoFactor;
+use App\Support\Locales;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
@@ -13,8 +14,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Hesap güvenliği: the signed-in account's own two-step login and the
- * browsers it is signed in on. Every account has it, administrators,
+ * Hesap güvenliği: the signed-in account's own language, two-step login
+ * and the browsers it is signed in on. Every account has it, administrators,
  * customers and Laravel team members alike.
  */
 #[Layout('components.layouts.app')]
@@ -22,7 +23,43 @@ use Livewire\Component;
 #[ForEveryAccount]
 class AccountSecurity extends Component
 {
+    /** This person's language; '' follows the server's default. */
+    public string $locale = '';
+
     public bool $settingUp = false;
+
+    public function mount(): void
+    {
+        $this->locale = (string) auth()->user()->locale;
+    }
+
+    public function saveLocale(): void
+    {
+        $this->validate(['locale' => ['nullable', 'in:'.implode(',', array_keys(Locales::all()))]], [], ['locale' => __('dil')]);
+        $this->switchLocale($this->locale ?: null);
+    }
+
+    public function undoLocale(?string $previous): void
+    {
+        $this->switchLocale(Locales::supports($previous) ? $previous : null, undo: false);
+    }
+
+    /**
+     * Saves the choice and reloads the page in that language; the toast
+     * after the reload still offers Undo.
+     */
+    private function switchLocale(?string $locale, bool $undo = true): void
+    {
+        $user = auth()->user();
+        $previous = $user->locale;
+        $user->forceFill(['locale' => $locale])->save();
+        Locales::apply(Locales::forUser($user));
+        session()->flash('toast', [
+            'message' => $undo ? __('Dil kaydedildi.') : __('Dil geri alındı.'),
+            'undo' => $undo ? ['name' => $this->getName(), 'method' => 'undoLocale', 'args' => [$previous]] : null,
+        ]);
+        $this->redirect(route('account.security'));
+    }
 
     /** The new secret while setting up; it is saved only once confirmed. */
     #[Locked]
@@ -57,7 +94,7 @@ class AccountSecurity extends Component
         $this->resetValidation();
         $codes = $twoFactor->enable($user, $this->secret, $this->code);
         if ($codes === null) {
-            $this->addError('code', 'Kod doğru değil. Uygulamadaki güncel 6 haneli kodu yazın; telefonun saati doğru olmalı.');
+            $this->addError('code', __('Kod doğru değil. Uygulamadaki güncel 6 haneli kodu yazın; telefonun saati doğru olmalı.'));
 
             return;
         }
@@ -87,19 +124,19 @@ class AccountSecurity extends Component
         $user = auth()->user();
         $this->resetValidation();
         if ($twoFactor->isRequiredFor($user)) {
-            $this->addError('password', 'Sunucu yöneticisi iki adımlı doğrulamayı bu hesap için zorunlu tuttu.');
+            $this->addError('password', __('Sunucu yöneticisi iki adımlı doğrulamayı bu hesap için zorunlu tuttu.'));
 
             return;
         }
         if (! Hash::check($this->password, $user->password)) {
-            $this->addError('password', 'Parola yanlış.');
+            $this->addError('password', __('Parola yanlış.'));
 
             return;
         }
         $twoFactor->disable($user);
         $this->disabling = false;
         $this->password = '';
-        $this->dispatch('toast', message: 'İki adımlı doğrulama kapatıldı.');
+        $this->dispatch('toast', message: __('İki adımlı doğrulama kapatıldı.'));
     }
 
     public function revoke(string $id, Sessions $sessions): void
@@ -108,13 +145,13 @@ class AccountSecurity extends Component
             return;
         }
         $sessions->revoke(auth()->user(), $id);
-        $this->dispatch('toast', message: 'Oturum kapatıldı.');
+        $this->dispatch('toast', message: __('Oturum kapatıldı.'));
     }
 
     public function revokeOthers(Sessions $sessions): void
     {
         $n = $sessions->revokeOthers(auth()->user(), session()->getId());
-        $this->dispatch('toast', message: $n ? $n.' oturum kapatıldı.' : 'Başka oturum yok.');
+        $this->dispatch('toast', message: $n ? __(':n oturum kapatıldı.', ['n' => $n]) : __('Başka oturum yok.'));
     }
 
     public function render(TwoFactor $twoFactor, Sessions $sessions): View

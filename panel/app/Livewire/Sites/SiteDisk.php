@@ -40,11 +40,11 @@ class SiteDisk extends Component
         try {
             $usage->measureDisk(collect([$this->site()->systemUser]));
         } catch (AgentException $e) {
-            $this->agentError = 'Disk ölçülemedi: '.$e->forPeople();
+            $this->agentError = __('Disk ölçülemedi: :for_people', ['for_people' => $e->forPeople()]);
 
             return;
         }
-        $this->dispatch('toast', message: 'Disk kullanımı ölçüldü.');
+        $this->dispatch('toast', message: __('Disk kullanımı ölçüldü.'));
     }
 
     public function render(DiskBreakdown $disk): View
@@ -55,6 +55,6 @@ class SiteDisk extends Component
             'site' => $site,
             'disk' => $disk->site($site),
             'customer' => $site->customer(),
-        ])->title('Disk kullanımı · '.$site->domain.' · Servik');
+        ])->title(__('Disk kullanımı · :domain · Servik', ['domain' => $site->domain]));
     }
 }

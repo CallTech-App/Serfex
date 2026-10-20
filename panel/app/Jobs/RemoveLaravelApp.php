@@ -37,7 +37,7 @@ class RemoveLaravelApp implements ShouldQueue
             DeleteLaravelPreview::dispatchSync($preview);
         }
         if ($app->previews()->exists()) {
-            $app->update(['status' => LaravelAppStatus::Failed, 'last_error' => 'Önizleme ortamları silinemedi; önce onları Önizleme ortamları bölümünden silin.']);
+            $app->update(['status' => LaravelAppStatus::Failed, 'last_error' => __('Önizleme ortamları silinemedi; önce onları Önizleme ortamları bölümünden silin.')]);
 
             return;
         }

@@ -2,8 +2,8 @@
 {{-- An Araçlar ve Ayarlar page: breadcrumb, title, the sections menu and the page's own cards. --}}
 <div class="space-y-6">
     <div>
-        <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="Konum">
-            <a href="{{ route('settings.general') }}" wire:navigate class="hover:text-accent">Araçlar ve Ayarlar</a>
+        <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
+            <a href="{{ route('settings.general') }}" wire:navigate class="hover:text-accent">{{ __('Araçlar ve Ayarlar') }}</a>
             <x-icon name="chevron-right" class="size-3.5" />
             <span class="text-fg">{{ $title }}</span>
         </nav>

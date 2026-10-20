@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -75,7 +76,7 @@ func (m *Manager) Remove(ctx context.Context, productName string, w io.Writer) (
 		err = opError(err)
 	}()
 
-	fmt.Fprintf(w, "▸ %s durduruluyor\n", p.unit)
+	fmt.Fprintln(w, "▸ "+i18n.T(ctx, "%s durduruluyor", p.unit))
 	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", p.unit}, Stream: w}); err != nil {
 		return err
 	}
@@ -88,12 +89,12 @@ func (m *Manager) Remove(ctx context.Context, productName string, w io.Writer) (
 			return err
 		}
 		v := strings.TrimSuffix(strings.TrimPrefix(p.unit, "postgresql@"), "-main")
-		fmt.Fprintf(w, "▸ Müşteri kümesi kaldırılıyor (PostgreSQL %s main)\n", v)
+		fmt.Fprintf(w, "▸ %s\n", i18n.T(ctx, "Müşteri kümesi kaldırılıyor (PostgreSQL %s main)", v))
 		if _, err := m.h.Run(ctx, host.Command{Name: "pg_dropcluster", Args: []string{"--stop", v, "main"}, Stream: w}); err != nil {
 			return err
 		}
 	} else {
-		fmt.Fprintf(w, "▸ Paketler kaldırılıyor: %s\n", strings.Join(removePackages[p.name], " "))
+		fmt.Fprintf(w, "▸ %s\n", i18n.T(ctx, "Paketler kaldırılıyor: %s", strings.Join(removePackages[p.name], " ")))
 		purge := host.Command{Name: "apt-get", Args: append([]string{"purge", "-y", "-q"}, removePackages[p.name]...), Env: aptEnv, Stream: w}
 		if _, err := m.h.Run(ctx, purge); err != nil {
 			return err
@@ -104,7 +105,7 @@ func (m *Manager) Remove(ctx context.Context, productName string, w io.Writer) (
 		// them.
 		if m.exists(p.dataDir) {
 			dest := fmt.Sprintf("%s/%s-%s", ComponentBackups, p.name, m.now().UTC().Format("20060102-150405"))
-			fmt.Fprintf(w, "▸ Veri klasörü %s klasörüne taşınıyor\n", dest)
+			fmt.Fprintf(w, "▸ %s\n", i18n.T(ctx, "Veri klasörü %s klasörüne taşınıyor", dest))
 			if err := os.MkdirAll(m.h.Path(ComponentBackups), 0o700); err == nil {
 				_ = os.Rename(m.h.Path(p.dataDir), m.h.Path(dest))
 			}

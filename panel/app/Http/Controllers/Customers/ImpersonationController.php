@@ -21,7 +21,7 @@ class ImpersonationController extends Controller
         $admin = $request->user();
         $user = $customer->user;
         abort_unless($admin->is_admin && $user !== null && ! $user->is_admin, 403);
-        AuditLog::record($customer->displayName().' olarak panele girdi.', $admin, extra: ['section' => 'Müşteriler ve Paketler', 'url' => route('customers.show', $customer, false)]);
+        AuditLog::record(__(':name olarak panele girdi.', ['name' => $customer->displayName()]), $admin, extra: ['section' => __('Müşteriler ve Paketler'), 'url' => route('customers.show', $customer, false)]);
 
         Auth::login($user);
         $request->session()->regenerate();

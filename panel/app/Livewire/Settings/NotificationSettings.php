@@ -5,6 +5,7 @@ namespace App\Livewire\Settings;
 use App\Models\NotificationEvent;
 use App\Services\Settings\Notifications;
 use App\Services\Settings\OutgoingMail;
+use App\Support\Locales;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
@@ -27,6 +28,9 @@ class NotificationSettings extends Component
     public array $events = [];
 
     public string $webhookUrl = '';
+
+    /** Language of the webhook's titles; '' is the server's default. */
+    public string $webhookLocale = '';
 
     public bool $showSecret = false;
 
@@ -53,6 +57,7 @@ class NotificationSettings extends Component
         $this->emails = implode(', ', $s['emails']);
         $this->events = $s['events'];
         $this->webhookUrl = $s['webhook_url'];
+        $this->webhookLocale = (string) $s['webhook_locale'];
         $m = $mail->settings();
         $this->mode = $m['mode'];
         $this->host = (string) $m['host'];
@@ -69,16 +74,17 @@ class NotificationSettings extends Component
         $this->webhookUrl = trim($this->webhookUrl);
         $this->validate([
             'webhookUrl' => ['nullable', 'url:https,http', 'max:500'],
-        ], [], ['webhookUrl' => 'webhook adresi']);
+            'webhookLocale' => ['nullable', Rule::in(array_keys(Locales::all()))],
+        ], [], ['webhookUrl' => __('webhook adresi'), 'webhookLocale' => __('webhook dili')]);
         foreach ($emails as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-                $this->addError('emails', $email.' geçerli bir e-posta adresi değil.');
+                $this->addError('emails', __(':email geçerli bir e-posta adresi değil.', ['email' => $email]));
 
                 return;
             }
         }
         if (count($emails) > 10) {
-            $this->addError('emails', 'En fazla 10 adres girin.');
+            $this->addError('emails', __('En fazla 10 adres girin.'));
 
             return;
         }
@@ -87,14 +93,15 @@ class NotificationSettings extends Component
             'emails' => $emails,
             'events' => array_map('boolval', array_intersect_key($this->events, NotificationEvent::KINDS)),
             'webhook_url' => $this->webhookUrl,
+            'webhook_locale' => $this->webhookLocale ?: null,
         ]);
         $this->emails = implode(', ', $emails);
-        $this->dispatch('toast', message: 'Bildirim ayarları kaydedildi.', source: $this->getId(),
-            undo: ['method' => 'undoSave', 'args' => [['emails' => $previous['emails'], 'events' => $previous['events'], 'webhook_url' => $previous['webhook_url']]]]);
+        $this->dispatch('toast', message: __('Bildirim ayarları kaydedildi.'), source: $this->getId(),
+            undo: ['method' => 'undoSave', 'args' => [['emails' => $previous['emails'], 'events' => $previous['events'], 'webhook_url' => $previous['webhook_url'], 'webhook_locale' => $previous['webhook_locale']]]]);
     }
 
     /**
-     * @param  array{emails: list<string>, events: array<string, bool>, webhook_url: string}  $previous
+     * @param  array{emails: list<string>, events: array<string, bool>, webhook_url: string, webhook_locale?: ?string}  $previous
      */
     public function undoSave(Notifications $notifications, OutgoingMail $mail, array $previous): void
     {
@@ -104,9 +111,10 @@ class NotificationSettings extends Component
             'emails' => array_slice($emails, 0, 10),
             'events' => array_map('boolval', array_intersect_key((array) ($previous['events'] ?? []), NotificationEvent::KINDS)),
             'webhook_url' => $url === '' || filter_var($url, FILTER_VALIDATE_URL) ? $url : '',
+            'webhook_locale' => Locales::supports($previous['webhook_locale'] ?? null) ? $previous['webhook_locale'] : null,
         ]);
         $this->mount($notifications, $mail);
-        $this->dispatch('toast', message: 'Bildirim ayarlarındaki değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Bildirim ayarlarındaki değişiklik geri alındı.'));
     }
 
     public function newSecret(Notifications $notifications): void
@@ -114,7 +122,7 @@ class NotificationSettings extends Component
         $previous = $notifications->settings()['webhook_secret'];
         $notifications->save(['webhook_secret' => Crypt::encryptString(Str::random(40))]);
         $this->showSecret = true;
-        $this->dispatch('toast', message: 'Webhook imza anahtarı yenilendi.', source: $this->getId(), undo: ['method' => 'undoSecret', 'args' => [$previous]]);
+        $this->dispatch('toast', message: __('Webhook imza anahtarı yenilendi.'), source: $this->getId(), undo: ['method' => 'undoSecret', 'args' => [$previous]]);
     }
 
     public function undoSecret(Notifications $notifications, ?string $previous): void
@@ -127,7 +135,7 @@ class NotificationSettings extends Component
             }
         }
         $notifications->save(['webhook_secret' => $previous]);
-        $this->dispatch('toast', message: 'Önceki imza anahtarı geri geldi.');
+        $this->dispatch('toast', message: __('Önceki imza anahtarı geri geldi.'));
     }
 
     public function saveMail(OutgoingMail $mail): void
@@ -143,8 +151,8 @@ class NotificationSettings extends Component
             'username' => ['nullable', 'string', 'max:254'],
             'password' => ['nullable', 'string', 'max:254'],
             'fromAddress' => ['nullable', 'email:rfc', 'max:254'],
-        ], ['host.regex' => 'Sunucu adını ya da IP adresini girin, örneğin smtp.ornek.com.tr.'],
-            ['host' => 'SMTP sunucusu', 'port' => 'port', 'encryption' => 'şifreleme', 'username' => 'kullanıcı adı', 'password' => 'parola', 'fromAddress' => 'gönderen adresi']);
+        ], ['host.regex' => __('Sunucu adını ya da IP adresini girin, örneğin smtp.ornek.com.tr.')],
+            ['host' => __('SMTP sunucusu'), 'port' => 'port', 'encryption' => __('şifreleme'), 'username' => __('kullanıcı adı'), 'password' => 'parola', 'fromAddress' => __('gönderen adresi')]);
         $previous = $mail->settings();
         $mail->save([
             'mode' => $this->mode,
@@ -156,7 +164,7 @@ class NotificationSettings extends Component
             'from_address' => $this->fromAddress,
         ]);
         $this->password = '';
-        $this->dispatch('toast', message: 'E-posta gönderimi kaydedildi.', source: $this->getId(), undo: ['method' => 'undoMail', 'args' => [array_diff_key($previous, ['password' => 1])]]);
+        $this->dispatch('toast', message: __('E-posta gönderimi kaydedildi.'), source: $this->getId(), undo: ['method' => 'undoMail', 'args' => [array_diff_key($previous, ['password' => 1])]]);
     }
 
     /**
@@ -175,14 +183,14 @@ class NotificationSettings extends Component
             'from_address' => filter_var($previous['from_address'] ?? '', FILTER_VALIDATE_EMAIL) ? $previous['from_address'] : '',
         ]);
         $this->mount($notifications, $mail);
-        $this->dispatch('toast', message: 'E-posta gönderimindeki değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('E-posta gönderimindeki değişiklik geri alındı.'));
     }
 
     public function test(Notifications $notifications): void
     {
         $this->tested = $notifications->test();
         if ($this->tested === []) {
-            $this->dispatch('toast', message: 'Gönderilecek bir adres ya da webhook yok.');
+            $this->dispatch('toast', message: __('Gönderilecek bir adres ya da webhook yok.'));
         }
     }
 

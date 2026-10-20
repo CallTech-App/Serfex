@@ -23,7 +23,7 @@ class EnsureActiveAccount
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login')->withErrors(['email' => 'Hesabınız kaldırıldı.']);
+            return redirect()->route('login')->withErrors(['email' => __('Hesabınız kaldırıldı.')]);
         }
         if ($user !== null && $user->customer_id !== null && ! Impersonation::active()) {
             $customer = $user->customer;
@@ -32,7 +32,7 @@ class EnsureActiveAccount
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect()->route('login')->withErrors(['email' => Impersonation::SUSPENDED]);
+                return redirect()->route('login')->withErrors(['email' => __(Impersonation::SUSPENDED)]);
             }
         }
 

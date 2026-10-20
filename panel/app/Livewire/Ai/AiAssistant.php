@@ -51,7 +51,7 @@ class AiAssistant extends Component
         if ($this->conversationId === $id) {
             $this->conversationId = null;
         }
-        $this->dispatch('toast', message: 'Sohbet silindi.', source: $this->getId(), undo: ['method' => 'restore', 'args' => [$id]]);
+        $this->dispatch('toast', message: __('Sohbet silindi.'), source: $this->getId(), undo: ['method' => 'restore', 'args' => [$id]]);
     }
 
     public function restore(int $id): void

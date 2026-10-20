@@ -101,7 +101,7 @@ class LaravelShow extends Component
     public function refreshStatus(): void
     {
         if ($this->app() === null) {
-            session()->flash('toast', 'Laravel uygulaması kaldırıldı.');
+            session()->flash('toast', __('Laravel uygulaması kaldırıldı.'));
             $this->redirectRoute('laravel.index', navigate: true);
         }
     }
@@ -131,7 +131,7 @@ class LaravelShow extends Component
         $this->ref = trim($this->ref);
         $this->validate([
             'ref' => ['nullable', 'max:200', 'regex:~^[A-Za-z0-9][A-Za-z0-9._/-]*$~', 'not_regex:~\.\.~'],
-        ], ['ref.regex' => 'Dal veya etiket adı geçersiz.', 'ref.not_regex' => 'Dal veya etiket adı geçersiz.']);
+        ], ['ref.regex' => __('Dal veya etiket adı geçersiz.'), 'ref.not_regex' => __('Dal veya etiket adı geçersiz.')]);
         $deployment = $apps->deploy($app, $this->ref, auth()->user(), $this->migrate, $this->frontend);
         $this->deploying = false;
         $this->section = 'dagitimlar';
@@ -160,14 +160,14 @@ class LaravelShow extends Component
             return;
         }
         if ($this->confirmDomain !== $app->site->domain) {
-            $this->addError('confirmDomain', 'Alan adını tam olarak yazın.');
+            $this->addError('confirmDomain', __('Alan adını tam olarak yazın.'));
 
             return;
         }
         $preview = LaravelPreview::where('preview_app_id', $app->id)->first();
         if ($preview !== null) {
             app(Previews::class)->delete($preview);
-            session()->flash('toast', $app->site->domain.' siliniyor.');
+            session()->flash('toast', __(':domain siliniyor.', ['domain' => $app->site->domain]));
             $this->redirectRoute('laravel.show', ['app' => $app->preview_of_id, 'bolum' => 'onizleme'], navigate: true);
 
             return;

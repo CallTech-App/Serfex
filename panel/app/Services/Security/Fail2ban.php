@@ -69,7 +69,7 @@ class Fail2ban
                 if ($block === null) {
                     IpBlock::create([
                         'address' => $address, 'source' => 'fail2ban', 'kind' => $jail['name'],
-                        'reason' => 'Fail2ban: '.self::jailLabel($jail['name']).' için çok sayıda hatalı deneme',
+                        'reason' => __('Fail2ban: :name için çok sayıda hatalı deneme', ['name' => self::jailLabel($jail['name'])]),
                         'expires_at' => $until,
                     ]);
                 } elseif ($until !== null && ! $until->equalTo($block->expires_at)) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/panel"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/txn"
@@ -229,7 +230,7 @@ func nodeComponent(line string) *component {
 			o.step("Node.js %s indiriliyor (nodejs.org, SHA-256 denetimiyle)", line)
 			v, err := o.m.laravel.InstallNode(o.ctx, line)
 			if err == nil {
-				fmt.Fprintf(o.w, "  Node.js %s kuruldu\n", v)
+				fmt.Fprintln(o.w, "  "+i18n.T(o.ctx, "Node.js %s kuruldu", v))
 			}
 			return err
 		},

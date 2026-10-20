@@ -137,19 +137,19 @@ class CustomerIndex extends Component
                 function ($attr, $value, $fail) {
                     $account = SystemUser::where('name', $value)->first();
                     if ($account !== null && $account->customer_id !== null) {
-                        $fail('Bu sistem kullanıcısı başka bir müşteriye ait.');
+                        $fail(__('Bu sistem kullanıcısı başka bir müşteriye ait.'));
                     }
                 }],
             'packageId' => ['required', Rule::exists('packages', 'id')],
         ], [
-            'email.unique' => 'Bu e-posta adresiyle bir panel hesabı zaten var.',
-            'username.regex' => 'Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).',
-            'username.unique' => 'Bu sistem kullanıcısı başka bir müşteriye ait.',
-            'username.not_in' => 'Bu ad sistem tarafından kullanılıyor.',
-            'phone.regex' => 'Telefon numarası geçersiz.',
+            'email.unique' => __('Bu e-posta adresiyle bir panel hesabı zaten var.'),
+            'username.regex' => __('Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).'),
+            'username.unique' => __('Bu sistem kullanıcısı başka bir müşteriye ait.'),
+            'username.not_in' => __('Bu ad sistem tarafından kullanılıyor.'),
+            'phone.regex' => __('Telefon numarası geçersiz.'),
         ], [
-            'company' => 'firma adı', 'name' => 'yetkili kişi', 'email' => 'e-posta', 'phone' => 'telefon',
-            'username' => 'sistem kullanıcısı', 'packageId' => 'paket',
+            'company' => __('firma adı'), 'name' => __('yetkili kişi'), 'email' => 'e-posta', 'phone' => 'telefon',
+            'username' => __('sistem kullanıcısı'), 'packageId' => 'paket',
         ]);
 
         [$customer, $invite] = $customers->create([
@@ -181,7 +181,7 @@ class CustomerIndex extends Component
         $this->selected = [];
         if ($done !== []) {
             $this->dispatch('toast',
-                message: count($done) === 1 ? 'Müşteri askıya alındı.' : count($done).' müşteri askıya alındı.',
+                message: count($done) === 1 ? __('Müşteri askıya alındı.') : __(':done müşteri askıya alındı.', ['done' => count($done)]),
                 source: $this->getId(),
                 undo: ['method' => 'undoSuspend', 'args' => [$done]],
             );
@@ -203,7 +203,7 @@ class CustomerIndex extends Component
         $customer = Customer::onlyTrashed()->find($id);
         if ($customer !== null && $customers->restore($customer)) {
             Quotas::forget();
-            $this->dispatch('toast', message: $customer->displayName().' geri alındı.');
+            $this->dispatch('toast', message: __(':name geri alındı.', ['name' => $customer->displayName()]));
         }
     }
 
@@ -257,9 +257,9 @@ class CustomerIndex extends Component
         $this->pkgPhpMemory = trim($this->pkgPhpMemory);
         $rules['pkgPhpMemory'] = ['nullable', 'integer', 'min:32', 'max:65536'];
         $this->validate($rules, [
-            'pkgName.unique' => 'Bu adda bir paket zaten var.',
-            'pkgPhp.min' => 'En az bir PHP sürümü seçin ya da tümüne izin verin.',
-        ], array_merge(['pkgName' => 'paket adı', 'pkgPhpMemory' => 'PHP bellek sınırı'], array_combine(
+            'pkgName.unique' => __('Bu adda bir paket zaten var.'),
+            'pkgPhp.min' => __('En az bir PHP sürümü seçin ya da tümüne izin verin.'),
+        ], array_merge(['pkgName' => __('paket adı'), 'pkgPhpMemory' => __('PHP bellek sınırı')], array_combine(
             array_map(fn ($k) => "limits.{$k}", array_keys(Package::LIMITS)),
             array_map(fn ($l) => mb_strtolower($l[1]), Package::LIMITS),
         )));
@@ -296,7 +296,7 @@ class CustomerIndex extends Component
         }
         Quotas::forget();
         $this->editingPackage = false;
-        $this->dispatch('toast', message: $this->packageEditId ? 'Paket kaydedildi; müşterilerine hemen uygulanır.' : 'Paket eklendi.');
+        $this->dispatch('toast', message: $this->packageEditId ? __('Paket kaydedildi; müşterilerine hemen uygulanır.') : __('Paket eklendi.'));
     }
 
     public function deletePackage(int $id): void
@@ -307,14 +307,14 @@ class CustomerIndex extends Component
         }
         if ($package->customers_count > 0 || $package->is_default) {
             $this->dispatch('toast', message: $package->is_default
-                ? 'Varsayılan paket silinemez. Önce başka bir paketi varsayılan yapın.'
-                : 'Bu paketi kullanan müşteriler var. Önce onları başka bir pakete taşıyın.');
+                ? __('Varsayılan paket silinemez. Önce başka bir paketi varsayılan yapın.')
+                : __('Bu paketi kullanan müşteriler var. Önce onları başka bir pakete taşıyın.'));
 
             return;
         }
         $attributes = $package->only($package->getFillable());
         $package->delete();
-        $this->dispatch('toast', message: "{$attributes['name']} paketi silindi.", source: $this->getId(),
+        $this->dispatch('toast', message: __(':name paketi silindi.', ['name' => $attributes['name']]), source: $this->getId(),
             undo: ['method' => 'undoDeletePackage', 'args' => [$attributes]]);
     }
 

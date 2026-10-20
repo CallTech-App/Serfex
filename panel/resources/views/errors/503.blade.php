@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 503, 'title' => __('Panel şu an kullanılamıyor'), 'text' => __('Panel bakımda. Birkaç dakika içinde geri gelecek; siteleriniz ve e-postanız çalışmaya devam eder.')])

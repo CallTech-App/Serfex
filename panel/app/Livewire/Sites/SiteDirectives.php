@@ -49,7 +49,7 @@ class SiteDirectives extends Component
         $values = ['nginx_directives' => self::clean($this->nginx), 'apache_directives' => self::clean($this->apache)];
         foreach (['nginx_directives' => 'nginx', 'apache_directives' => 'apache'] as $column => $field) {
             if (strlen((string) $values[$column]) > self::MAX_BYTES) {
-                $this->addError($field, 'En fazla 64 KB yazılabilir.');
+                $this->addError($field, __('En fazla 64 KB yazılabilir.'));
             }
         }
         if ($this->getErrorBag()->isNotEmpty()) {
@@ -57,7 +57,7 @@ class SiteDirectives extends Component
         }
         $before = $site->only(array_keys($values));
         if ($before === $values) {
-            $this->dispatch('toast', message: 'Değişiklik yok.');
+            $this->dispatch('toast', message: __('Değişiklik yok.'));
 
             return;
         }
@@ -71,7 +71,7 @@ class SiteDirectives extends Component
         }
         $token = Str::random(24);
         Cache::put('site-directives-undo:'.$token, ['site_id' => $site->id, ...$before], SiteDomains::UNDO_SECONDS);
-        $this->dispatch('toast', message: 'Yönergeler denendi ve uygulandı.', source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $this->dispatch('toast', message: __('Yönergeler denendi ve uygulandı.'), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
     public function undo(SiteDomains $domains, string $token): void
@@ -85,14 +85,14 @@ class SiteDirectives extends Component
         try {
             $domains->change($site, fn () => $site->update($values));
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Geri alınamadı: '.$e->forPeople());
+            $this->dispatch('toast', message: __('Geri alınamadı: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         $this->nginx = (string) $values['nginx_directives'];
         $this->apache = (string) $values['apache_directives'];
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Yönergeler önceki hâline döndü.');
+        $this->dispatch('toast', message: __('Yönergeler önceki hâline döndü.'));
     }
 
     private static function clean(string $text): ?string
@@ -107,6 +107,6 @@ class SiteDirectives extends Component
         $site = $this->site();
 
         return view('livewire.sites.directives', ['site' => $site])
-            ->title('Web sunucusu yönergeleri · '.$site->domain.' · Servik');
+            ->title(__('Web sunucusu yönergeleri · :domain · Servik', ['domain' => $site->domain]));
     }
 }

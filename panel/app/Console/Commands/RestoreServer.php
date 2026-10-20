@@ -39,33 +39,33 @@ class RestoreServer extends Command
     {
         $key = $this->argument('key');
         if ($key === null) {
-            $this->table(['Key', 'Date', 'From', 'Sites', 'Panel'], Backup::with('items')->whereIn('scope', ['server', 'panel'])->usable()->latest()->limit(30)->get()
-                ->map(fn (Backup $b) => [$b->key, $b->created_at->format('Y-m-d H:i'), $b->source_host ?? 'this server', $b->items->where('name', '!=', 'panel')->count(), $b->items->contains('name', 'panel') ? 'yes' : 'no'])->all());
-            $this->line('Run again with a key and --panel and/or --sites.');
+            $this->table([__('Anahtar'), __('Tarih'), __('Kaynak'), __('Siteler'), __('Panel')], Backup::with('items')->whereIn('scope', ['server', 'panel'])->usable()->latest()->limit(30)->get()
+                ->map(fn (Backup $b) => [$b->key, $b->created_at->format('Y-m-d H:i'), $b->source_host ?? __('bu sunucu'), $b->items->where('name', '!=', 'panel')->count(), $b->items->contains('name', 'panel') ? __('evet') : __('hayır')])->all());
+            $this->line(__('Bir anahtar ve --panel ve/veya --sites ile yeniden çalıştırın.'));
 
             return self::SUCCESS;
         }
         $backup = Backup::with('items', 'target')->where('key', $key)->first();
         if ($backup === null || ! $backup->isUsable()) {
-            $this->error("Backup {$key} is not listed here. Import it in Yedekler first.");
+            $this->error(__(':key yedeği burada listelenmiyor. Önce Yedekler sayfasından içe aktarın.', ['key' => $key]));
 
             return self::FAILURE;
         }
         if (! $this->option('panel') && ! $this->option('sites')) {
-            $this->error('Choose --panel, --sites or both.');
+            $this->error(__('--panel, --sites ya da ikisini birden seçin.'));
 
             return self::FAILURE;
         }
         if (! $this->option('force') && ! $this->confirm($this->option('panel')
-            ? 'This replaces the panel\'s database with the backup\'s. Continue?'
-            : 'This restores every site of the backup over what is on this server. Continue?')) {
+            ? __('Panelin veritabanı yedektekiyle değiştirilecek. Devam edilsin mi?')
+            : __('Yedekteki her site bu sunucudakinin üzerine geri yüklenecek. Devam edilsin mi?'))) {
             return self::FAILURE;
         }
 
         if ($this->option('panel')) {
             $panel = $backup->items->firstWhere('name', 'panel');
             if ($panel === null) {
-                $this->error('The backup has no panel archive.');
+                $this->error(__('Yedekte panel arşivi yok.'));
 
                 return self::FAILURE;
             }
@@ -96,12 +96,12 @@ class RestoreServer extends Command
                     continue;
                 }
                 foreach ((array) ($restore->result['skipped'] ?? []) as $part => $why) {
-                    $this->line("  skipped {$part}: {$why}");
+                    $this->line('  '.__(':part atlandı: :why', ['part' => $part, 'why' => $why]));
                 }
-                $this->info('  restored');
+                $this->info('  '.__('geri yüklendi'));
             }
             if ($failed > 0) {
-                $this->warn("{$failed} site(s) could not be restored.");
+                $this->warn(trans_choice(':count site geri yüklenemedi.', $failed));
 
                 return self::FAILURE;
             }
@@ -134,7 +134,7 @@ class RestoreServer extends Command
             $env = $this->read($agent, $backup->key, 'panel.env');
         } catch (AgentException $e) {
             @unlink($dump);
-            $this->error('The panel archive could not be read: '.$e->reason);
+            $this->error(__('Panel arşivi okunamadı: :reason', ['reason' => $e->reason]));
 
             return false;
         }
@@ -146,12 +146,12 @@ class RestoreServer extends Command
         $targetName = $backup->target?->name;
 
         $c = config('database.connections.'.config('database.default'));
-        $this->line('▸ Loading the panel database');
+        $this->line('▸ '.__('Panel veritabanı yükleniyor'));
         $result = Process::env(['PGPASSWORD' => (string) ($c['password'] ?? '')])->timeout(3600)->input((string) gzdecode((string) file_get_contents($dump)))
             ->run(['psql', '-v', 'ON_ERROR_STOP=1', '-q', '-h', (string) ($c['host'] ?? '127.0.0.1'), '-p', (string) ($c['port'] ?? 5432), '-U', (string) $c['username'], '-d', (string) $c['database']]);
         @unlink($dump);
         if (! $result->successful()) {
-            $this->error('psql failed: '.Str::limit(trim($result->errorOutput()), 500));
+            $this->error(__('psql başarısız oldu: :output', ['output' => Str::limit(trim($result->errorOutput()), 500)]));
 
             return false;
         }
@@ -159,7 +159,7 @@ class RestoreServer extends Command
         if (preg_match('/^APP_KEY=(.+)$/m', $env, $m)) {
             $this->setAppKey(trim($m[1]));
         } else {
-            $this->warn('The backup has no APP_KEY; encrypted settings must be entered again.');
+            $this->warn(__('Yedekte APP_KEY yok; şifreli ayarların yeniden girilmesi gerekecek.'));
         }
 
         DB::transaction(function () use ($self, $passphrase, $items, $targetName) {
@@ -172,7 +172,7 @@ class RestoreServer extends Command
                 $row->items()->updateOrCreate(['name' => $i['name']], [...$i, 'site_id' => DB::table('sites')->where('domain', $i['name'])->value('id')]);
             }
         });
-        $this->info('  The panel database was loaded. Restart the panel queue workers (php artisan queue:restart) before using it.');
+        $this->info('  '.__('Panel veritabanı yüklendi. Kullanmadan önce panelin kuyruk işçilerini yeniden başlatın (php artisan queue:restart).'));
 
         return true;
     }
@@ -216,7 +216,7 @@ class RestoreServer extends Command
         $env = is_file($file) ? (string) file_get_contents($file) : '';
         $env = preg_match('/^APP_KEY=.*$/m', $env) ? preg_replace('/^APP_KEY=.*$/m', 'APP_KEY='.$key, $env) : rtrim($env)."\nAPP_KEY={$key}\n";
         if (@file_put_contents($file, $env) === false) {
-            $this->warn("Could not write {$file}; set APP_KEY={$key} there by hand.");
+            $this->warn(__(':file yazılamadı; APP_KEY=:key satırını oraya elle ekleyin.', ['file' => $file, 'key' => $key]));
 
             return;
         }
@@ -224,6 +224,6 @@ class RestoreServer extends Command
         app()->forgetInstance('encrypter');
         Crypt::clearResolvedInstance('encrypter');
         Model::encryptUsing(app('encrypter'));
-        $this->line('  APP_KEY was taken from the backup.');
+        $this->line('  '.__('APP_KEY yedekten alındı.'));
     }
 }

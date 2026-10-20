@@ -71,7 +71,7 @@ class SiteLogs extends Component
         try {
             $log = $logs->read($site, $this->kind);
         } catch (AgentException $e) {
-            $error = 'Günlük okunamadı: '.$e->forPeople();
+            $error = __('Günlük okunamadı: :for_people', ['for_people' => $e->forPeople()]);
         }
 
         return view('livewire.sites.logs', [
@@ -80,6 +80,6 @@ class SiteLogs extends Component
             'log' => $log,
             'error' => $error,
             'lines' => $log ? Logs::lines($log['content'], $log['truncated'], $this->kind, $this->filter, $this->problems, $this->count) : [],
-        ])->title('Günlükler · '.$site->domain.' · Servik');
+        ])->title(__('Günlükler · :domain · Servik', ['domain' => $site->domain]));
     }
 }

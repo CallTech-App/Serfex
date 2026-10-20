@@ -74,15 +74,15 @@ class Deployments extends Section
             'keep_releases' => $app->update(['keep_releases' => max(2, min(20, (int) $value))]),
             default => null,
         };
-        $this->dispatch('toast', message: 'Dağıtım ayarı kaydedildi.');
+        $this->dispatch('toast', message: __('Dağıtım ayarı kaydedildi.'));
     }
 
     public function saveHealthPath(): void
     {
         $this->healthPath = '/'.ltrim(trim($this->healthPath), '/');
-        $this->validate(['healthPath' => ['required', 'max:200', 'regex:~^/[^\s#]*$~']], [], ['healthPath' => 'sağlık adresi']);
+        $this->validate(['healthPath' => ['required', 'max:200', 'regex:~^/[^\s#]*$~']], [], ['healthPath' => __('sağlık adresi')]);
         $this->app()->update(['health_path' => $this->healthPath]);
-        $this->dispatch('toast', message: 'Sağlık kontrolü adresi kaydedildi.');
+        $this->dispatch('toast', message: __('Sağlık kontrolü adresi kaydedildi.'));
     }
 
     public function saveHooks(): void
@@ -96,7 +96,7 @@ class Deployments extends Section
         $before = $app->hookScripts();
         $app->update(['hooks' => array_map(fn ($s) => str_replace("\r\n", "\n", trim((string) $s)), $this->hooks)]);
         $this->dispatch('toast',
-            message: 'Dağıtım adımları kaydedildi; bir sonraki dağıtımda çalışır.',
+            message: __('Dağıtım adımları kaydedildi; bir sonraki dağıtımda çalışır.'),
             source: $this->getId(),
             undo: ['method' => 'restoreHooks', 'args' => [$before]],
         );
@@ -128,7 +128,7 @@ class Deployments extends Section
         $previous = $app->deployments()->where('release', $app->current_release)->first();
         $deployment = $apps->rollback($app, $to, auth()->user());
         $this->dispatch('toast',
-            message: "#{$to->number} sürümüne dönülüyor.",
+            message: __('#:number sürümüne dönülüyor.', ['number' => $to->number]),
             source: $this->getId(),
             undo: $previous ? ['method' => 'undoRollback', 'args' => [$deployment->id, $previous->id]] : null,
         );
@@ -186,7 +186,7 @@ class Deployments extends Section
             'repository' => ['required', 'max:300', 'regex:'.LaravelApps::REPOSITORY_PATTERN],
             'branch' => ['nullable', 'max:200', 'regex:~^[A-Za-z0-9][A-Za-z0-9._/-]*$~', 'not_regex:~\.\.~'],
         ], [
-            'repository.regex' => 'Depo adresi "kullanıcı/depo", https://… veya git@… biçiminde olmalı.',
+            'repository.regex' => __('Depo adresi "kullanıcı/depo", https://… veya git@… biçiminde olmalı.'),
         ], ['repository' => 'depo', 'branch' => 'dal']);
         $host = LaravelIndex::PROVIDERS[$this->provider][1] ?? 'github.com';
         $repo = $this->repository;
@@ -202,7 +202,7 @@ class Deployments extends Section
         if ($this->private) {
             $this->showKey();
         }
-        $this->dispatch('toast', message: 'Depo bağlandı. "Dağıt" ile ilk sürümü yayına alabilirsiniz.');
+        $this->dispatch('toast', message: __('Depo bağlandı. "Dağıt" ile ilk sürümü yayına alabilirsiniz.'));
     }
 
     public function render(): View

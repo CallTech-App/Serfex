@@ -147,7 +147,7 @@ class Actions
             }
             [$params, $title] = $this->validate($action, $input);
         } catch (MonitorException $e) {
-            AiEvent::record('failed', 'Geçersiz istek ('.$action.'): '.$e->getMessage(), $conversation, tool: $tool, data: $input);
+            AiEvent::record('failed', __('Geçersiz istek (:action): :message', ['action' => $action, 'message' => $e->getMessage()]), $conversation, tool: $tool, data: $input);
 
             return [$e->getMessage(), true];
         }
@@ -182,7 +182,7 @@ class Actions
         }
         $record->update(['status' => 'applied', 'decided_at' => now()]);
         AiEvent::record('auto', $title, $conversation, tool: $tool, data: $params);
-        AuditLog::record($title.' (onaysız, kendi sınırları içinde)', $conversation->user, 'ai', [
+        AuditLog::record(__(':title (onaysız, kendi sınırları içinde)', ['title' => $title]), $conversation->user, 'ai', [
             'actor' => 'Servik AI', 'section' => 'Servik AI', 'url' => route('ai.audit', [], false),
         ]);
 
@@ -197,10 +197,10 @@ class Actions
     public function apply(AiAction $action, User $user): void
     {
         if (! $action->isPending()) {
-            throw new MonitorException('Bu öneri zaten karara bağlandı.');
+            throw new MonitorException(__('Bu öneri zaten karara bağlandı.'));
         }
         if ($action->created_at->lt(now()->subHours(self::PROPOSAL_HOURS))) {
-            throw new MonitorException('Bu önerinin süresi doldu; durum değişmiş olabilir. Servik AI\'ya yeniden sorun.');
+            throw new MonitorException(__('Bu önerinin süresi doldu; durum değişmiş olabilir. Servik AI\'ya yeniden sorun.'));
         }
         $conversation = $action->conversation;
         try {
@@ -242,7 +242,7 @@ class Actions
     public function undo(AiAction $action, User $user): void
     {
         if (! $this->canUndo($action)) {
-            throw new MonitorException('Bu işlem geri alınamaz.');
+            throw new MonitorException(__('Bu işlem geri alınamaz.'));
         }
         $u = $action->undo;
         try {
@@ -275,15 +275,15 @@ class Actions
         $rec = fn (array $r) => DnsRecords::fqdn($r['name'], $p['domain']).' '.$r['type'].' '.(isset($r['priority']) ? $r['priority'].' ' : '').$r['content'].(isset($r['ttl']) ? ' (TTL '.$r['ttl'].')' : '');
 
         return match ($action->action) {
-            'block_ip' => ['+ engel '.$p['address'].' · '.($p['minutes'] ? IpBlocks::DURATIONS[$p['minutes']] ?? $p['minutes'].' dk' : 'kalıcı')],
-            'unblock_ip' => ['− engel '.$p['address']],
-            'limit_site' => ['+ sınır '.$p['domain'].' · '.self::limitSummary($p).' · '.$p['minutes'].' dk'],
-            'lift_limit' => ['− sınır '.$p['domain']],
+            'block_ip' => [__('+ engel :address · :duration', ['address' => $p['address'], 'duration' => $p['minutes'] ? __(IpBlocks::DURATIONS[$p['minutes']] ?? ':m dk', ['m' => $p['minutes']]) : __('kalıcı')])],
+            'unblock_ip' => [__('− engel :address', ['address' => $p['address']])],
+            'limit_site' => [__('+ sınır :domain · :p · :minutes dk', ['domain' => $p['domain'], 'p' => self::limitSummary($p), 'minutes' => $p['minutes']])],
+            'lift_limit' => [__('− sınır :domain', ['domain' => $p['domain']])],
             'dns_add_record' => ['+ '.$rec($p['record'])],
             'dns_update_record' => ['− '.$rec($p['old_record']), '+ '.$rec($p['record'])],
             'dns_delete_record' => ['− '.$rec($p['old_record'])],
             'https_redirect' => [($p['enabled'] ? '+ ' : '− ').'return 301 https://$host$request_uri;'],
-            'laravel_scale_worker' => [$p['worker'].': '.$p['from'].' → '.$p['processes'].' süreç'],
+            'laravel_scale_worker' => [__(':worker: :from → :processes süreç', ['worker' => $p['worker'], 'from' => $p['from'], 'processes' => $p['processes']])],
             default => [],
         };
     }
@@ -319,15 +319,17 @@ class Actions
                     throw new MonitorException('minutes must be 0 (permanent) to 525600.');
                 }
                 $site = $domain !== '' ? Site::where('domain', $domain)->first() : null;
-                $duration = $minutes === 0 ? 'kalıcı olarak' : self::duration($minutes);
+                $title = $minutes === 0
+                    ? __(':address adresini kalıcı olarak engelle', ['address' => $address])
+                    : __(':address adresini :duration engelle', ['address' => $address, 'duration' => self::duration($minutes)]);
 
-                return [['address' => $address, 'minutes' => $minutes, 'domain' => $site?->domain], "{$address} adresini {$duration} engelle"];
+                return [['address' => $address, 'minutes' => $minutes, 'domain' => $site?->domain], $title];
 
             case 'unblock_ip':
                 $address = IpBlocks::normalize((string) ($in['address'] ?? ''));
                 IpBlock::active()->where('address', $address)->exists() || throw new MonitorException("{$address} is not blocked.");
 
-                return [['address' => $address], "{$address} engelini kaldır"];
+                return [['address' => $address], __(':address engelini kaldır', ['address' => $address])];
 
             case 'limit_site':
                 $site = $this->site($domain);
@@ -345,18 +347,18 @@ class Actions
                     throw new MonitorException('minutes must be 5 to '.ResourceLimits::MAX_MINUTES.'.');
                 }
 
-                return [$p, "{$site->domain} sitesini ".self::duration($p['minutes']).' sınırla ('.self::limitSummary($p).')'];
+                return [$p, __(':domain sitesini :duration sınırla (:summary)', ['domain' => $site->domain, 'duration' => self::duration($p['minutes']), 'summary' => self::limitSummary($p)])];
 
             case 'lift_limit':
                 $site = $this->site($domain);
                 $site->activeLimit() ?? throw new MonitorException("{$site->domain} has no active limit.");
 
-                return [['domain' => $site->domain], "{$site->domain} sitesinin geçici sınırını kaldır"];
+                return [['domain' => $site->domain], __(':domain sitesinin geçici sınırını kaldır', ['domain' => $site->domain])];
 
             case 'restart_php':
                 $site = $this->site($domain);
 
-                return [['domain' => $site->domain], "{$site->domain} için PHP işçilerini yeniden başlat"];
+                return [['domain' => $site->domain], __(':domain için PHP işçilerini yeniden başlat', ['domain' => $site->domain])];
 
             case 'dns_add_record':
             case 'dns_update_record':
@@ -366,7 +368,7 @@ class Actions
             case 'ssl_renew':
                 $site = $this->site($domain);
 
-                return [['domain' => $site->domain], "{$site->domain} için Let's Encrypt sertifikası al"];
+                return [['domain' => $site->domain], __(':domain için Let\'s Encrypt sertifikası al', ['domain' => $site->domain])];
 
             case 'https_redirect':
                 $site = $this->site($domain);
@@ -378,7 +380,7 @@ class Actions
                     throw new MonitorException("{$site->domain} has no installed certificate; redirecting to HTTPS would break it.");
                 }
 
-                return [['domain' => $site->domain, 'enabled' => $on], "{$site->domain} için HTTP'den HTTPS'e yönlendirmeyi ".($on ? 'aç' : 'kapat')];
+                return [['domain' => $site->domain, 'enabled' => $on], $on ? __(":domain için HTTP'den HTTPS'e yönlendirmeyi aç", ['domain' => $site->domain]) : __(":domain için HTTP'den HTTPS'e yönlendirmeyi kapat", ['domain' => $site->domain])];
 
             case 'laravel_deploy':
                 $app = $this->app($domain);
@@ -389,7 +391,7 @@ class Actions
                     throw new MonitorException('ref is not a valid branch or tag name.');
                 }
 
-                return [['domain' => $app->site->domain, 'ref' => $ref], "{$app->site->domain} uygulamasını ".($ref ? "{$ref} dalından " : '').'yeniden dağıt'];
+                return [['domain' => $app->site->domain, 'ref' => $ref], $ref ? __(':domain uygulamasını :ref dalından yeniden dağıt', ['domain' => $app->site->domain, 'ref' => $ref]) : __(':domain uygulamasını yeniden dağıt', ['domain' => $app->site->domain])];
 
             case 'laravel_rollback':
                 $app = $this->app($domain);
@@ -403,12 +405,12 @@ class Actions
                 }
                 $app->hasRunningDeployment() && throw new MonitorException('A deployment is running now.');
 
-                return [['domain' => $app->site->domain, 'deployment_number' => $number], "{$app->site->domain} uygulamasını #{$number} sürümüne geri döndür"];
+                return [['domain' => $app->site->domain, 'deployment_number' => $number], __(':domain uygulamasını #:number sürümüne geri döndür', ['domain' => $app->site->domain, 'number' => $number])];
 
             case 'laravel_restart_workers':
                 $app = $this->app($domain);
 
-                return [['domain' => $app->site->domain], "{$app->site->domain} kuyruk işçilerini yeniden başlat"];
+                return [['domain' => $app->site->domain], __(':domain kuyruk işçilerini yeniden başlat', ['domain' => $app->site->domain])];
 
             case 'laravel_scale_worker':
                 $app = $this->app($domain);
@@ -420,7 +422,9 @@ class Actions
                 }
 
                 return [['domain' => $app->site->domain, 'worker' => $worker->name, 'processes' => $n, 'from' => $worker->processes],
-                    "{$app->site->domain} {$worker->name} işçisini {$n} sürece ".($n > $worker->processes ? 'çıkar' : 'indir')];
+                    $n > $worker->processes
+                        ? __(':domain :worker işçisini :n sürece çıkar', ['domain' => $app->site->domain, 'worker' => $worker->name, 'n' => $n])
+                        : __(':domain :worker işçisini :n sürece indir', ['domain' => $app->site->domain, 'worker' => $worker->name, 'n' => $n])];
 
             case 'mail_hold':
             case 'mail_release':
@@ -428,10 +432,10 @@ class Actions
                     throw new MonitorException('domain must be the sender domain.');
                 }
 
-                return [['domain' => $domain], $action === 'mail_hold' ? "{$domain} kaynaklı kuyruktaki postaları beklet" : "{$domain} için bekletilen postaları serbest bırak"];
+                return [['domain' => $domain], $action === 'mail_hold' ? __(':domain kaynaklı kuyruktaki postaları beklet', ['domain' => $domain]) : __(':domain için bekletilen postaları serbest bırak', ['domain' => $domain])];
 
             case 'mail_flush':
-                return [[], 'Bekleyen tüm postaları şimdi yeniden dene'];
+                return [[], __('Bekleyen tüm postaları şimdi yeniden dene')];
         }
 
         throw new MonitorException("Unknown action \"{$action}\".");
@@ -484,9 +488,9 @@ class Actions
         $label = fn (array $r) => DnsRecords::fqdn($r['name'], $zone->name).' '.$r['type'];
 
         return [$p, match ($action) {
-            'dns_add_record' => "{$zone->name} bölgesine {$label($p['record'])} kaydı ekle",
-            'dns_update_record' => "{$zone->name} bölgesinde {$label($p['old_record'])} kaydını değiştir",
-            'dns_delete_record' => "{$zone->name} bölgesinden {$label($p['old_record'])} kaydını sil",
+            'dns_add_record' => __(':name bölgesine :record kaydı ekle', ['name' => $zone->name, 'record' => $label($p['record'])]),
+            'dns_update_record' => __(':name bölgesinde :old_record kaydını değiştir', ['name' => $zone->name, 'old_record' => $label($p['old_record'])]),
+            'dns_delete_record' => __(':name bölgesinden :old_record kaydını sil', ['name' => $zone->name, 'old_record' => $label($p['old_record'])]),
         }];
     }
 
@@ -573,7 +577,7 @@ class Actions
                 break;
 
             case 'lift_limit':
-                $limit = $this->site($p['domain'])->activeLimit() ?? throw new MonitorException('Sitenin etkin bir sınırı yok.');
+                $limit = $this->site($p['domain'])->activeLimit() ?? throw new MonitorException(__('Sitenin etkin bir sınırı yok.'));
                 $this->limits->lift($limit);
                 $undo = ['limit' => null, 'previous' => $limit->only(['site_id', 'cpu', 'memory_mb', 'php_workers', 'reason', 'source', 'user_id', 'expires_at'])];
                 break;
@@ -620,7 +624,7 @@ class Actions
             case 'laravel_deploy':
                 $app = $this->app($p['domain']);
                 $live = $app->deployments()->where('release', $app->current_release)->whereNotNull('release')->latest('number')->first();
-                $deployment = $this->apps->deploy($app, $p['ref'], $user, triggeredBy: $user?->name ? $user->name.' (Servik AI önerisi)' : 'Servik AI');
+                $deployment = $this->apps->deploy($app, $p['ref'], $user, triggeredBy: $user?->name ? __(':name (Servik AI önerisi)', ['name' => $user->name]) : 'Servik AI');
                 $undo = ['app' => $app->id, 'deployment' => $deployment->id, 'previous' => $live?->id];
                 break;
 
@@ -659,7 +663,7 @@ class Actions
                 break;
 
             default:
-                throw new MonitorException('Bilinmeyen işlem.');
+                throw new MonitorException(__('Bilinmeyen işlem.'));
         }
         $action->undo = $undo;
         $action->save();
@@ -689,9 +693,9 @@ class Actions
      */
     private function restoreZone(array $u): void
     {
-        $zone = DnsZone::find($u['zone']) ?? throw new MonitorException('DNS bölgesi artık yok.');
+        $zone = DnsZone::find($u['zone']) ?? throw new MonitorException(__('DNS bölgesi artık yok.'));
         if (self::recordsHash($zone) !== $u['after']) {
-            throw new MonitorException('Bölgenin kayıtları o zamandan beri değişti; geri almak sonraki değişiklikleri de silerdi. Kaydı DNS sayfasından düzeltin.');
+            throw new MonitorException(__('Bölgenin kayıtları o zamandan beri değişti; geri almak sonraki değişiklikleri de silerdi. Kaydı DNS sayfasından düzeltin.'));
         }
         $this->zones->replaceRecords($zone, $u['records']);
     }
@@ -703,7 +707,7 @@ class Actions
      */
     private function restoreRelease(array $u, User $user): void
     {
-        $app = LaravelApp::find($u['app']) ?? throw new MonitorException('Uygulama artık yok.');
+        $app = LaravelApp::find($u['app']) ?? throw new MonitorException(__('Uygulama artık yok.'));
         $started = LaravelDeployment::find($u['deployment']);
         if ($started !== null && $started->status->isBusy() && $started->started_at === null) {
             // Not started yet: it simply does not run.
@@ -713,10 +717,10 @@ class Actions
         }
         $previous = $u['previous'] ? LaravelDeployment::find($u['previous']) : null;
         if ($previous === null || $previous->release === null) {
-            throw new MonitorException('Dönülecek önceki sürüm bulunamadı.');
+            throw new MonitorException(__('Dönülecek önceki sürüm bulunamadı.'));
         }
         if ($app->hasRunningDeployment()) {
-            throw new MonitorException('Şu an bir dağıtım çalışıyor; bitince yeniden deneyin.');
+            throw new MonitorException(__('Şu an bir dağıtım çalışıyor; bitince yeniden deneyin.'));
         }
         $this->apps->rollback($app, $previous, $user);
     }
@@ -764,16 +768,16 @@ class Actions
     private static function duration(int $minutes): string
     {
         return match (true) {
-            $minutes % 1440 === 0 => ($minutes / 1440).' gün',
-            $minutes % 60 === 0 => ($minutes / 60).' saat',
-            default => $minutes.' dakika',
+            $minutes % 1440 === 0 => trans_choice(':count gün', intdiv($minutes, 1440)),
+            $minutes % 60 === 0 => trans_choice(':count saat', intdiv($minutes, 60)),
+            default => trans_choice(':count dakika', $minutes),
         };
     }
 
     private static function message(MonitorException|AgentException $e): string
     {
         return match (true) {
-            $e instanceof AgentUnavailableException => 'Sunucu ajanına ulaşılamıyor.',
+            $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
             $e instanceof AgentException => $e->reason,
             default => $e->getMessage(),
         };

@@ -33,7 +33,8 @@ class AgentClient
         ReadOnlyGuard::agent($method);
         $id = $this->nextId++;
 
-        $request = ['jsonrpc' => '2.0', 'id' => $id, 'method' => $method];
+        // locale: the language of the agent's progress lines and messages.
+        $request = ['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'locale' => app()->getLocale()];
         if ($params !== []) {
             $request['params'] = $params;
         }

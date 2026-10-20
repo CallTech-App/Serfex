@@ -203,7 +203,7 @@ class BackupIndex extends Component
         } else {
             $site = Site::visibleTo($user)->with('systemUser.customer.package')->find($this->backupSite);
             if ($site === null) {
-                $this->addError('backupSite', 'Bir site seçin.');
+                $this->addError('backupSite', __('Bir site seçin.'));
 
                 return;
             }
@@ -216,7 +216,7 @@ class BackupIndex extends Component
         }
         $this->backingUp = false;
         $this->running = ['backup', $result->id];
-        $this->dispatch('toast', message: $result->scope === 'server' ? 'Tüm sunucunun yedeği alınıyor.' : $result->items()->value('name').' yedekleniyor.');
+        $this->dispatch('toast', message: $result->scope === 'server' ? __('Tüm sunucunun yedeği alınıyor.') : __(':value yedekleniyor.', ['value' => $result->items()->value('name')]));
     }
 
     // ---- Restoring -------------------------------------------------------
@@ -231,7 +231,7 @@ class BackupIndex extends Component
         $items = $this->restorableItems($backup);
         $item = $itemId !== null ? $items->firstWhere('id', $itemId) : ($this->siteId !== 0 ? $items->firstWhere('site_id', $this->siteId) : null) ?? $items->first();
         if ($item === null) {
-            $this->refused = 'Bu yedekte geri yüklenebilecek bir site yok.';
+            $this->refused = __('Bu yedekte geri yüklenebilecek bir site yok.');
 
             return;
         }
@@ -258,7 +258,7 @@ class BackupIndex extends Component
             return;
         }
         $this->validate(['restoreParts' => ['required', 'array', 'min:1'], 'restoreParts.*' => [Rule::in($item->restorable())]],
-            ['restoreParts.required' => 'En az bir şey seçin.', 'restoreParts.min' => 'En az bir şey seçin.']);
+            ['restoreParts.required' => __('En az bir şey seçin.'), 'restoreParts.min' => __('En az bir şey seçin.')]);
         $result = $restores->start($item, $this->restoreParts, $this->safety, auth()->user());
         if (is_string($result)) {
             $this->addError('restoreParts', $result);
@@ -267,7 +267,7 @@ class BackupIndex extends Component
         }
         $this->restoring = false;
         $this->running = ['restore', $result->id];
-        $this->dispatch('toast', message: "{$item->name} geri yükleniyor.");
+        $this->dispatch('toast', message: __(':name geri yükleniyor.', ['name' => $item->name]));
     }
 
     /**
@@ -286,7 +286,7 @@ class BackupIndex extends Component
             return;
         }
         $this->running = ['restore', $result->id];
-        $this->dispatch('toast', message: 'Geri yüklemeden önceki hâline dönülüyor.');
+        $this->dispatch('toast', message: __('Geri yüklemeden önceki hâline dönülüyor.'));
     }
 
     // ---- Progress --------------------------------------------------------
@@ -319,7 +319,7 @@ class BackupIndex extends Component
         try {
             $chunk = app(AgentClient::class)->call('backup.run.read', ['run' => $run, 'offset' => max(0, $offset)]);
         } catch (AgentException) {
-            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => ! $op->isRunning(), 'status' => $op->status, 'error' => 'Sunucu ajanına ulaşılamıyor.'];
+            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => ! $op->isRunning(), 'status' => $op->status, 'error' => __('Sunucu ajanına ulaşılamıyor.')];
         }
         $next = (int) ($chunk['offset'] ?? 0);
 
@@ -362,7 +362,7 @@ class BackupIndex extends Component
 
             return;
         }
-        $this->dispatch('toast', message: 'Yedek bu sunucuya alındı; '.Backups::CACHE_HOURS.' saat indirilebilir.');
+        $this->dispatch('toast', message: __('Yedek bu sunucuya alındı; :cache_hours saat indirilebilir.', ['cache_hours' => Backups::CACHE_HOURS]));
     }
 
     public function askDelete(int $backupId): void
@@ -382,7 +382,7 @@ class BackupIndex extends Component
             return;
         }
         $ids = $backups->delete($backup);
-        $this->dispatch('toast', message: count($ids) > 1 ? count($ids).' yedek silindi.' : 'Yedek silindi.', source: $this->getId(), undo: ['method' => 'undoDelete', 'args' => [$ids]]);
+        $this->dispatch('toast', message: count($ids) > 1 ? __(':ids yedek silindi.', ['ids' => count($ids)]) : __('Yedek silindi.'), source: $this->getId(), undo: ['method' => 'undoDelete', 'args' => [$ids]]);
     }
 
     /**
@@ -408,11 +408,11 @@ class BackupIndex extends Component
             'sKeepMonthly' => ['required', 'integer', 'between:0,60'],
             'sTarget' => ['nullable', Rule::in(BackupTarget::pluck('id')->map(fn ($id) => (string) $id)->all())],
             'sSkip.*' => ['string'],
-        ], ['sTime.regex' => 'Saati SS:DD biçiminde yazın, örneğin 03:00.'], ['sKeepDaily' => 'günlük', 'sKeepWeekly' => 'haftalık', 'sKeepMonthly' => 'aylık']);
+        ], ['sTime.regex' => __('Saati SS:DD biçiminde yazın, örneğin 03:00.')], ['sKeepDaily' => __('günlük'), 'sKeepWeekly' => __('haftalık'), 'sKeepMonthly' => __('aylık')]);
         $exclude = collect(preg_split('/[\r\n,]+/', $this->sExclude))->map(fn ($p) => trim($p))->filter()->values();
         foreach ($exclude as $pattern) {
             if (! preg_match('/^[^\x00-\x1f\'"\\\\]{1,200}$/', $pattern) || str_starts_with($pattern, '-')) {
-                $this->addError('sExclude', "\"{$pattern}\" kullanılamaz.");
+                $this->addError('sExclude', __('":pattern" kullanılamaz.', ['pattern' => $pattern]));
 
                 return;
             }
@@ -433,7 +433,7 @@ class BackupIndex extends Component
             'exclude' => $exclude->all(),
             'skip_sites' => array_values(array_intersect($this->sSkip, Site::pluck('domain')->all())),
         ]);
-        $this->dispatch('toast', message: 'Yedekleme zamanlaması kaydedildi.', source: $this->getId(), undo: ['method' => 'restoreSchedule', 'args' => [$before]]);
+        $this->dispatch('toast', message: __('Yedekleme zamanlaması kaydedildi.'), source: $this->getId(), undo: ['method' => 'restoreSchedule', 'args' => [$before]]);
     }
 
     /**
@@ -522,9 +522,9 @@ class BackupIndex extends Component
             ];
         }
         $this->validate($rules, [
-            'tFolder.regex' => 'Klasör yalnızca harf, rakam, . _ - ve / içerebilir.',
-            'tBucket.regex' => 'Geçerli bir bucket adı girin (küçük harf, rakam, - ve .).',
-        ], ['tName' => 'ad', 'tBucket' => 'bucket', 'tAccessKey' => 'erişim anahtarı', 'tSecretKey' => 'gizli anahtar', 'tHost' => 'sunucu', 'tUser' => 'kullanıcı', 'tRegion' => 'bölge', 'tFolder' => 'klasör']);
+            'tFolder.regex' => __('Klasör yalnızca harf, rakam, . _ - ve / içerebilir.'),
+            'tBucket.regex' => __('Geçerli bir bucket adı girin (küçük harf, rakam, - ve .).'),
+        ], ['tName' => 'ad', 'tBucket' => 'bucket', 'tAccessKey' => __('erişim anahtarı'), 'tSecretKey' => __('gizli anahtar'), 'tHost' => 'sunucu', 'tUser' => __('kullanıcı'), 'tRegion' => __('bölge'), 'tFolder' => __('klasör')]);
 
         $old = $existing?->config ?? [];
         $config = $this->tType === 's3' ? [
@@ -556,12 +556,12 @@ class BackupIndex extends Component
             } else {
                 $probe->fill($previous)->save();
             }
-            $this->addError('tName', 'Bağlantı testi başarısız, kaydedilmedi: '.$why);
+            $this->addError('tName', __('Bağlantı testi başarısız, kaydedilmedi: :why', ['why' => $why]));
 
             return;
         }
         $this->editingTarget = false;
-        $this->dispatch('toast', message: "{$probe->name}: bağlantı ve yazma testi başarılı, kaydedildi.");
+        $this->dispatch('toast', message: __(':name: bağlantı ve yazma testi başarılı, kaydedildi.', ['name' => $probe->name]));
     }
 
     public function testTarget(int $id, Backups $backups): void
@@ -571,7 +571,7 @@ class BackupIndex extends Component
             return;
         }
         $why = $backups->test($target);
-        $this->dispatch('toast', message: $why === null ? "{$target->name}: bağlantı ve yazma testi başarılı." : "{$target->name}: {$why}");
+        $this->dispatch('toast', message: $why === null ? __(':name: bağlantı ve yazma testi başarılı.', ['name' => $target->name]) : "{$target->name}: {$why}");
     }
 
     public function deleteTarget(int $id, BackupSettings $settings): void
@@ -581,12 +581,12 @@ class BackupIndex extends Component
             return;
         }
         if ((int) $settings->schedule()['target_id'] === $target->id) {
-            $this->refused = "{$target->name} zamanlanmış yedeklerin hedefi; önce Zamanlama'dan başka bir hedef seçin.";
+            $this->refused = __(':name zamanlanmış yedeklerin hedefi; önce Zamanlama\'dan başka bir hedef seçin.', ['name' => $target->name]);
 
             return;
         }
         $target->delete();
-        $this->dispatch('toast', message: "{$target->name} kaldırıldı. Üzerindeki yedekler silinmedi.", source: $this->getId(), undo: ['method' => 'restoreTarget', 'args' => [$target->id]]);
+        $this->dispatch('toast', message: __(':name kaldırıldı. Üzerindeki yedekler silinmedi.', ['name' => $target->name]), source: $this->getId(), undo: ['method' => 'restoreTarget', 'args' => [$target->id]]);
     }
 
     public function restoreTarget(int $id): void
@@ -632,7 +632,7 @@ class BackupIndex extends Component
     {
         $target = BackupTarget::find($this->scanTargetId);
         if ($target === null) {
-            $this->addError('scanTargetId', 'Bir hedef seçin.');
+            $this->addError('scanTargetId', __('Bir hedef seçin.'));
 
             return;
         }
@@ -664,7 +664,7 @@ class BackupIndex extends Component
         }
         $this->importing = false;
         $this->scope = '';
-        $this->dispatch('toast', message: 'Yedek listeye eklendi; geri yüklemek için "Geri yükle"yi kullanın.');
+        $this->dispatch('toast', message: __('Yedek listeye eklendi; geri yüklemek için "Geri yükle"yi kullanın.'));
     }
 
     // ---- Page ---------------------------------------------------------------
@@ -735,7 +735,7 @@ class BackupIndex extends Component
                     $data['importFiles'] = $imports->files();
                 } catch (AgentException $e) {
                     $data['importFiles'] = [];
-                    $data['importError'] = $e->reason ?: 'Sunucu ajanına ulaşılamıyor.';
+                    $data['importError'] = $e->reason ?: __('Sunucu ajanına ulaşılamıyor.');
                 }
             }
         }

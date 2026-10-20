@@ -77,29 +77,29 @@ class MailIndex extends Component
         $this->validate([
             'domain' => [
                 'required',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir alan adı girin, örneğin ornek.com.tr.'),
+                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir alan adı girin, örneğin ornek.com.tr.')),
                 Rule::unique('mail_domains', 'name')->where('status', '!=', MailDomainStatus::Deleting->value),
                 fn ($attr, $value, $fail) => auth()->user()->is_admin || $this->candidates(withTaken: true)->contains($value)
-                    ? null : $fail('E-postayı yalnızca kendi sitelerinizin alan adları için açabilirsiniz.'),
+                    ? null : $fail(__('E-postayı yalnızca kendi sitelerinizin alan adları için açabilirsiniz.')),
                 fn ($attr, $value, $fail) => $value === app(MailSettings::class)->hostname()
-                    ? $fail('Bu ad posta sunucusunun kendi adı; e-postayı alan adının kendisi için açın.') : null,
+                    ? $fail(__('Bu ad posta sunucusunun kendi adı; e-postayı alan adının kendisi için açın.')) : null,
             ],
         ], [
-            'domain.unique' => 'Bu alan adında e-posta zaten açık.',
+            'domain.unique' => __('Bu alan adında e-posta zaten açık.'),
         ], [
-            'domain' => 'alan adı',
+            'domain' => __('alan adı'),
         ]);
 
         $existing = MailDomain::where('name', $this->domain)->first();
         $domain = $domains->enable($this->domain, Site::visibleTo(auth()->user())->where('domain', $this->domain)->first());
         $this->enabling = false;
         if ($existing !== null) {
-            $this->dispatch('toast', message: "{$domain->name} için e-posta yeniden açıldı; posta kutuları geri geldi.");
+            $this->dispatch('toast', message: __(':name için e-posta yeniden açıldı; posta kutuları geri geldi.', ['name' => $domain->name]));
 
             return;
         }
         $this->dispatch('toast',
-            message: "{$domain->name} için e-posta açıldı.",
+            message: __(':name için e-posta açıldı.', ['name' => $domain->name]),
             source: $this->getId(),
             undo: ['method' => 'undoEnable', 'args' => [$domain->id]],
         );

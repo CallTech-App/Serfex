@@ -31,15 +31,15 @@ class DnsRecords
     public static function valueField(string $type): array
     {
         return match ($type) {
-            'A' => ['IPv4 adresi', '185.98.142.21'],
-            'AAAA' => ['IPv6 adresi', '2a0e:1c80:4:2a::21'],
-            'CNAME' => ['Hedef alan adı', 'ornek.com.tr.'],
-            'MX' => ['Posta sunucusu', 'mail.ornek.com.tr.'],
-            'TXT' => ['Değer', 'v=spf1 a mx ~all'],
-            'NS' => ['Ad sunucusu', 'ns1.ornek.com.tr.'],
-            'SRV' => ['Ağırlık, port ve hedef', '5 5060 sip.ornek.com.tr.'],
-            'CAA' => ['Değer', '0 issue "letsencrypt.org"'],
-            default => ['Değer', ''],
+            'A' => [__('IPv4 adresi'), '185.98.142.21'],
+            'AAAA' => [__('IPv6 adresi'), '2a0e:1c80:4:2a::21'],
+            'CNAME' => [__('Hedef alan adı'), 'ornek.com.tr.'],
+            'MX' => [__('Posta sunucusu'), 'mail.ornek.com.tr.'],
+            'TXT' => [__('Değer'), 'v=spf1 a mx ~all'],
+            'NS' => [__('Ad sunucusu'), 'ns1.ornek.com.tr.'],
+            'SRV' => [__('Ağırlık, port ve hedef'), '5 5060 sip.ornek.com.tr.'],
+            'CAA' => [__('Değer'), '0 issue "letsencrypt.org"'],
+            default => [__('Değer'), ''],
         };
     }
 
@@ -47,10 +47,10 @@ class DnsRecords
     {
         return match (true) {
             isset(self::TTLS[$ttl]) => self::TTLS[$ttl],
-            $ttl % 86400 === 0 => ($ttl / 86400).' gün',
-            $ttl % 3600 === 0 => ($ttl / 3600).' saat',
-            $ttl % 60 === 0 => ($ttl / 60).' dakika',
-            default => $ttl.' sn',
+            $ttl % 86400 === 0 => __(':ttl gün', ['ttl' => ($ttl / 86400)]),
+            $ttl % 3600 === 0 => __(':ttl saat', ['ttl' => ($ttl / 3600)]),
+            $ttl % 60 === 0 => __(':ttl dakika', ['ttl' => ($ttl / 60)]),
+            default => __(':seconds sn', ['seconds' => $ttl]),
         };
     }
 
@@ -100,20 +100,20 @@ class DnsRecords
     {
         $value = trim($value);
         if ($value === '') {
-            return [null, 'Bir değer girin.'];
+            return [null, __('Bir değer girin.')];
         }
 
         switch ($type) {
             case 'A':
                 return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
                     ? [$value, null]
-                    : [null, 'Geçerli bir IPv4 adresi girin, örneğin 185.98.142.21.'];
+                    : [null, __('Geçerli bir IPv4 adresi girin, örneğin 185.98.142.21.')];
             case 'AAAA':
                 $packed = filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? inet_pton($value) : false;
 
                 return $packed !== false && ! str_starts_with($packed, str_repeat("\0", 10)."\xff\xff")
                     ? [inet_ntop($packed), null]
-                    : [null, 'Geçerli bir IPv6 adresi girin, örneğin 2a0e:1c80:4:2a::21.'];
+                    : [null, __('Geçerli bir IPv6 adresi girin, örneğin 2a0e:1c80:4:2a::21.')];
             case 'CNAME':
             case 'NS':
             case 'MX':
@@ -121,30 +121,30 @@ class DnsRecords
 
                 return $host !== null || ($type === 'MX' && $value === '.')
                     ? [$host ?? '.', null]
-                    : [null, 'Geçerli bir alan adı girin, örneğin '.self::valueField($type)[1]];
+                    : [null, __('Geçerli bir alan adı girin, örneğin :type', ['type' => self::valueField($type)[1]])];
             case 'SRV':
                 $parts = preg_split('/\s+/', $value);
                 if (count($parts) !== 3 || ! self::isUint16($parts[0]) || ! self::isUint16($parts[1])) {
-                    return [null, 'Ağırlık, port ve hedefi boşlukla ayırarak yazın, örneğin 5 5060 sip.ornek.com.tr.'];
+                    return [null, __('Ağırlık, port ve hedefi boşlukla ayırarak yazın, örneğin 5 5060 sip.ornek.com.tr.')];
                 }
                 $host = $parts[2] === '.' ? '.' : self::hostname($parts[2], $zone);
 
                 return $host === null
-                    ? [null, 'Hedef geçerli bir alan adı olmalı.']
+                    ? [null, __('Hedef geçerli bir alan adı olmalı.')]
                     : [(int) $parts[0].' '.(int) $parts[1].' '.$host, null];
             case 'TXT':
                 return strlen($value) <= 4000
                     ? [$value, null]
-                    : [null, 'TXT değeri en fazla 4000 karakter olabilir.'];
+                    : [null, __('TXT değeri en fazla 4000 karakter olabilir.')];
             case 'CAA':
                 if (! preg_match('/^(\d{1,3})\s+(issue|issuewild|iodef)\s+"?([\x21\x23-\x5b\x5d-\x7e]+)"?$/i', $value, $m) || (int) $m[1] > 255) {
-                    return [null, 'Bayrak, etiket ve değer yazın, örneğin 0 issue "letsencrypt.org".'];
+                    return [null, __('Bayrak, etiket ve değer yazın, örneğin 0 issue "letsencrypt.org".')];
                 }
 
                 return [(int) $m[1].' '.strtolower($m[2]).' "'.$m[3].'"', null];
         }
 
-        return [null, 'Desteklenmeyen kayıt türü.'];
+        return [null, __('Desteklenmeyen kayıt türü.')];
     }
 
     public static function isValidPriority(mixed $priority): bool

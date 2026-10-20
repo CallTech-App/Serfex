@@ -275,7 +275,7 @@ class Site extends Model
             return $this->certificate->state();
         }
 
-        return $this->pendingCertificate()?->state() ?? new CertificateState('Sertifika yok', 'muted');
+        return $this->pendingCertificate()?->state() ?? new CertificateState(__('Sertifika yok'), 'muted');
     }
 
     /**

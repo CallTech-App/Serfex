@@ -135,7 +135,7 @@ class Backups
         } catch (AgentException $e) {
             // A backup the agent cannot reach stays listed as failed rather
             // than leaving a file nobody sees.
-            $backup->update(['status' => 'failed', 'error' => 'Sunucudan silinemedi: '.($e->reason ?: $e->getMessage())]);
+            $backup->update(['status' => 'failed', 'error' => __('Sunucudan silinemedi: :reason', ['reason' => ($e->reason ?: $e->getMessage())])]);
 
             return;
         }

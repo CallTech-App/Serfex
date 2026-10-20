@@ -80,11 +80,11 @@ class Backups
         $out = [];
         $last = Backup::with('items')->where('scope', 'server')->whereIn('status', ['succeeded', 'partial', 'failed'])->latest('id')->first();
         if ($last?->status === 'failed') {
-            $out[] = ['text' => 'Son sunucu yedeği alınamadı: '.Str::limit((string) $last->error, 120), 'level' => 'crit'];
+            $out[] = ['text' => __('Son sunucu yedeği alınamadı: :error', ['error' => Str::limit((string) $last->error, 120)]), 'level' => 'crit'];
         } elseif ($last?->status === 'partial') {
             $failed = $last->items->where('status', 'failed');
             $out[] = ['text' => $failed->isNotEmpty()
-                ? 'Son sunucu yedeğinde '.$failed->count().' arşiv alınamadı: '.$failed->pluck('name')->take(3)->join(', ')
+                ? __('Son sunucu yedeğinde :count arşiv alınamadı: :join', ['count' => $failed->count(), 'join' => $failed->pluck('name')->take(3)->join(', ')])
                 : Str::limit((string) $last->error, 140), 'level' => 'warn'];
         }
         $s = $this->settings->schedule();
@@ -92,14 +92,14 @@ class Backups
         if ($s['enabled'] && $slot !== null && $slot->lt(now()->subHours(3))) {
             $taken = Backup::where('scope', 'server')->where('trigger', 'scheduled')->where('created_at', '>=', $slot->copy()->subMinutes(5))->exists();
             if (! $taken && Site::where('created_at', '<', $slot)->exists()) {
-                $out[] = ['text' => $slot->copy()->timezone(config('servik.timezone'))->format('d.m H:i').' zamanlanmış yedeği başlamadı; panelin zamanlayıcısı ve "backups" kuyruğu çalışıyor mu?', 'level' => 'warn'];
+                $out[] = ['text' => __(':format zamanlanmış yedeği başlamadı; panelin zamanlayıcısı ve "backups" kuyruğu çalışıyor mu?', ['format' => $slot->copy()->timezone(config('servik.timezone'))->format('d.m H:i')]), 'level' => 'warn'];
             }
         }
         if (($queued = Backup::where('status', 'queued')->oldest('id')->first()) !== null && $queued->created_at->lt(now()->subMinutes(10))) {
-            $out[] = ['text' => 'Bir yedek 10 dakikadır kuyrukta bekliyor; "php artisan queue:work backups --queue=backups" çalışıyor mu?', 'level' => 'warn'];
+            $out[] = ['text' => __('Bir yedek 10 dakikadır kuyrukta bekliyor; "php artisan queue:work backups --queue=backups" çalışıyor mu?'), 'level' => 'warn'];
         }
         foreach (BackupTarget::where('status', 'failed')->get() as $t) {
-            $out[] = ['text' => $t->name.' hedefine ulaşılamıyor: '.Str::limit((string) $t->last_error, 100), 'level' => 'warn'];
+            $out[] = ['text' => __(':name hedefine ulaşılamıyor: :last_error', ['name' => $t->name, 'last_error' => Str::limit((string) $t->last_error, 100)]), 'level' => 'warn'];
         }
 
         return $out;
@@ -112,10 +112,10 @@ class Backups
     public function startServer(?User $user, string $trigger = 'manual'): Backup|string
     {
         if ($this->busy()) {
-            return self::BUSY;
+            return __(self::BUSY);
         }
         if (PanelUpdate::running()->exists()) {
-            return self::UPDATING;
+            return __(self::UPDATING);
         }
         $type = 'full';
         $base = null;
@@ -140,10 +140,10 @@ class Backups
     {
         if ($trigger !== 'safety') {
             if ($this->busy()) {
-                return self::BUSY;
+                return __(self::BUSY);
             }
             if (PanelUpdate::running()->exists()) {
-                return self::UPDATING;
+                return __(self::UPDATING);
             }
             if (($refusal = $this->refusal($user, $site)) !== null) {
                 return $refusal;
@@ -167,13 +167,13 @@ class Backups
     public function refusal(?User $user, Site $site): ?string
     {
         if ($site->status === SiteStatus::Deleting || $site->provisioned_at === null) {
-            return 'Site henüz hazır değil.';
+            return __('Site henüz hazır değil.');
         }
         if ($user === null || $user->is_admin) {
             return null;
         }
         if (! $user->allows('backups')) {
-            return 'Paketiniz yedeklemeyi içermiyor.';
+            return __('Paketiniz yedeklemeyi içermiyor.');
         }
 
         return app(Quotas::class)->refusal($user->customer, 'backups');
@@ -220,7 +220,7 @@ class Backups
             }
             $site = $item->site;
             if ($site === null || $site->systemUser === null) {
-                $item->update(['status' => 'failed', 'error' => 'Site yedek alınmadan önce silindi.']);
+                $item->update(['status' => 'failed', 'error' => __('Site yedek alınmadan önce silindi.')]);
 
                 continue;
             }
@@ -232,7 +232,7 @@ class Backups
             $specs[] = $spec;
         }
         if ($specs === []) {
-            $this->fail($backup, 'Yedeklenecek bir şey kalmadı.');
+            $this->fail($backup, __('Yedeklenecek bir şey kalmadı.'));
 
             return;
         }
@@ -259,7 +259,7 @@ class Backups
         try {
             $result = $this->agent->call('backup.create', $call, $backup->scope === 'server' ? config('servik.agent.server_backup_timeout') : config('servik.agent.backup_timeout'));
         } catch (AgentException $e) {
-            $this->fail($backup, $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamadı.' : ($e->reason ?: $e->getMessage()));
+            $this->fail($backup, $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamadı.') : ($e->reason ?: $e->getMessage()));
 
             return;
         }
@@ -281,7 +281,7 @@ class Backups
                 'warnings' => array_values(array_merge((array) ($r['warnings'] ?? []), $warnings[$item->name] ?? [])),
             ]);
         }
-        $backup->items()->where('status', 'pending')->update(['status' => 'failed', 'error' => 'Ajan bu arşivi almadı.']);
+        $backup->items()->where('status', 'pending')->update(['status' => 'failed', 'error' => __('Ajan bu arşivi almadı.')]);
         $remoteError = ($result['remote_error'] ?? '') ?: null;
         $backup->update([
             'status' => ($failed > 0 || $remoteError !== null || $backup->items()->where('status', 'failed')->exists()) ? 'partial' : 'succeeded',
@@ -290,7 +290,7 @@ class Backups
             'local' => (bool) ($result['local'] ?? true),
             'remote' => (bool) ($result['remote'] ?? false),
             'encrypted' => (bool) ($result['encrypted'] ?? false),
-            'error' => $remoteError !== null ? 'Uzak hedefe gönderilemedi, yedek bu sunucuda saklandı: '.$remoteError : null,
+            'error' => $remoteError !== null ? __('Uzak hedefe gönderilemedi, yedek bu sunucuda saklandı: :remote_error', ['remote_error' => $remoteError]) : null,
             'finished_at' => now(),
         ]);
         if ($backup->trigger === 'scheduled') {
@@ -393,12 +393,12 @@ class Backups
                 ->orderByDesc('backup_id')
                 ->first();
             if ($previous === null || ! in_array($previous->backup->status, ['succeeded', 'partial'], true)) {
-                return 'Bu artımlı yedeğin dayandığı önceki yedek artık yok; geri yüklenemez.';
+                return __('Bu artımlı yedeğin dayandığı önceki yedek artık yok; geri yüklenemez.');
             }
             array_unshift($chain, $previous);
             $current = $previous;
             if (count($chain) > 400) {
-                return 'Yedek zinciri çok uzun.';
+                return __('Yedek zinciri çok uzun.');
             }
         }
 
@@ -574,7 +574,7 @@ class Backups
             return null;
         }
         if ($backup->target === null) {
-            return 'Yedeğin hedefi artık yok.';
+            return __('Yedeğin hedefi artık yok.');
         }
         $names = $name !== null ? [$name] : $backup->items()->where('status', 'succeeded')->pluck('name')->all();
         try {
@@ -585,7 +585,7 @@ class Backups
                 'passphrase' => $backup->encrypted ? (string) $backup->passphrase : '',
             ], config('servik.agent.backup_timeout'));
         } catch (AgentException $e) {
-            return $e->getCode() === -32006 ? self::BUSY : 'Hedeften alınamadı: '.($e->reason ?: $e->getMessage());
+            return $e->getCode() === -32006 ? __(self::BUSY) : __('Hedeften alınamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
         }
         $backup->update(['cached_at' => now()]);
 
@@ -627,7 +627,7 @@ class Backups
         try {
             $result = $this->agent->call('backup.target.test', $target->agentSpec(), 180);
         } catch (AgentException $e) {
-            $why = $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : ($e->reason ?: $e->getMessage());
+            $why = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : ($e->reason ?: $e->getMessage());
             $target->update(['status' => 'failed', 'last_error' => $why, 'tested_at' => now()]);
 
             return $why;

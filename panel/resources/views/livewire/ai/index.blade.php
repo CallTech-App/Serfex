@@ -3,20 +3,20 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="text-[22px] font-semibold tracking-tight">Servik AI</h1>
-            <p class="mt-1 text-[13px] text-muted">Sunucunuz hakkında soru sorun; değişiklikleri onayınızla yapar.</p>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Sunucunuz hakkında soru sorun; değişiklikleri onayınızla yapar.') }}</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('ai.audit') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13.5px] hover:bg-surface-2"><x-icon name="scroll-text" />Kayıt</a>
-            <a href="{{ route('ai.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13.5px] hover:bg-surface-2"><x-icon name="settings" />Ayarlar</a>
-            <button type="button" wire:click="startNew" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110"><x-icon name="plus" />Yeni sohbet</button>
+            <a href="{{ route('ai.audit') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13.5px] hover:bg-surface-2"><x-icon name="scroll-text" />{{ __('Kayıt') }}</a>
+            <a href="{{ route('ai.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13.5px] hover:bg-surface-2"><x-icon name="settings" />{{ __('Ayarlar') }}</a>
+            <button type="button" wire:click="startNew" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110"><x-icon name="plus" />{{ __('Yeni sohbet') }}</button>
         </div>
     </div>
 
     @if ($conversations->isNotEmpty())
         <label class="block md:hidden">
-            <span class="sr-only">Sohbetler</span>
+            <span class="sr-only">{{ __('Sohbetler') }}</span>
             <select x-on:change="$wire.open(Number($event.target.value))" class="h-9 w-full rounded-md border border-line bg-surface px-3 text-[13px]">
-                <option value="" @selected(! $conversation)>Yeni sohbet</option>
+                <option value="" @selected(! $conversation)>{{ __('Yeni sohbet') }}</option>
                 @foreach ($conversations as $c)
                     <option value="{{ $c->id }}" @selected($c->id === $conversation?->id)>{{ $c->title }}</option>
                 @endforeach
@@ -25,8 +25,8 @@
     @endif
 
     <section class="grid min-w-0 grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface md:h-[calc(100vh-12.5rem)] md:min-h-[560px] md:grid-cols-[240px_1fr]">
-        <nav class="hidden min-h-0 flex-col border-r border-line md:flex" aria-label="Sohbetler">
-            <p class="flex h-11 items-center border-b border-line px-4 text-2xs font-medium tracking-[.06em] text-muted uppercase">Sohbetler</p>
+        <nav class="hidden min-h-0 flex-col border-r border-line md:flex" aria-label="{{ __('Sohbetler') }}">
+            <p class="flex h-11 items-center border-b border-line px-4 text-2xs font-medium tracking-[.06em] text-muted uppercase">{{ __('Sohbetler') }}</p>
             <div class="flex-1 space-y-0.5 overflow-y-auto p-2 text-[13px]">
                 @forelse ($conversations as $c)
                     <button type="button" wire:key="c-{{ $c->id }}" wire:click="open({{ $c->id }})"
@@ -39,17 +39,17 @@
                         @endif
                     </button>
                 @empty
-                    <p class="px-3 py-2 text-muted">Henüz sohbet yok.</p>
+                    <p class="px-3 py-2 text-muted">{{ __('Henüz sohbet yok.') }}</p>
                 @endforelse
             </div>
         </nav>
 
         <div class="flex min-h-[70vh] min-w-0 flex-col md:min-h-0">
             <div class="flex h-11 items-center gap-2 border-b border-line px-5">
-                <h2 class="truncate text-[14px] font-semibold">{{ $conversation?->title ?? 'Yeni sohbet' }}</h2>
+                <h2 class="truncate text-[14px] font-semibold">{{ $conversation?->title ?? __('Yeni sohbet') }}</h2>
                 @if ($conversation)
-                    <span class="num ml-auto whitespace-nowrap text-2xs text-muted">{{ $at($conversation->created_at)->isToday() ? 'Bugün '.$at($conversation->created_at)->format('H:i') : $at($conversation->created_at)->format('d.m.Y H:i') }}</span>
-                    <button type="button" wire:click="delete({{ $conversation->id }})" class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" aria-label="Sohbeti sil" title="Sohbeti sil"><x-icon name="trash-2" class="size-3.5" /></button>
+                    <span class="num ml-auto whitespace-nowrap text-2xs text-muted">{{ \App\Support\When::withTime($conversation->created_at) }}</span>
+                    <button type="button" wire:click="delete({{ $conversation->id }})" class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Sohbeti sil') }}" title="{{ __('Sohbeti sil') }}"><x-icon name="trash-2" class="size-3.5" /></button>
                 @endif
             </div>
 
@@ -62,8 +62,8 @@
                     @if ($items === [])
                         <div class="mx-auto max-w-md py-10 text-center">
                             <span class="mx-auto grid size-10 place-items-center rounded-full bg-accent-soft text-accent"><x-icon name="sparkles" class="size-5" /></span>
-                            <p class="mt-3 font-medium">Size nasıl yardımcı olabilirim?</p>
-                            <p class="mt-1 text-[13px] text-muted">Siteleri, DNS'i, sertifikaları, e-postayı, Laravel uygulamalarını ve canlı izlemeyi okuyabilirim. Saldıran adresleri engelleyebilir ve siteleri geçici olarak sınırlayabilirim; gerisini size önerir, onayınızla yaparım.</p>
+                            <p class="mt-3 font-medium">{{ __('Size nasıl yardımcı olabilirim?') }}</p>
+                            <p class="mt-1 text-[13px] text-muted">{{ __('Siteleri, DNS\'i, sertifikaları, e-postayı, Laravel uygulamalarını ve canlı izlemeyi okuyabilirim. Saldıran adresleri engelleyebilir ve siteleri geçici olarak sınırlayabilirim; gerisini size önerir, onayınızla yaparım.') }}</p>
                         </div>
                     @endif
                     @include('livewire.ai.partials.transcript')
@@ -71,7 +71,7 @@
                 @if ($ready)
                     @include('livewire.ai.partials.compose')
                 @else
-                    <p class="border-t border-line px-5 py-4 text-[13px] text-muted">Servik AI şu an kullanılamıyor. <a href="{{ route('ai.settings') }}" wire:navigate class="text-accent hover:underline">Ayarlar</a></p>
+                    <p class="border-t border-line px-5 py-4 text-[13px] text-muted"><x-t text="Servik AI şu an kullanılamıyor. :link"><x-slot:link><a href="{{ route('ai.settings') }}" wire:navigate class="text-accent hover:underline">{{ __('Ayarlar') }}</a></x-slot:link></x-t></p>
                 @endif
             @endif
         </div>

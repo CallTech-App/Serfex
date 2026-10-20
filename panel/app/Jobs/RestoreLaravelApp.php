@@ -37,10 +37,10 @@ class RestoreLaravelApp implements ShouldQueue
         $app = $backup->app;
         $backup->update(['restore_status' => 'running']);
         if ($this->safety) {
-            $before = $backups->createNow($app, $this->parts, 'restore', note: $backup->created_at->format('d.m.Y H:i').' yedeği geri yüklenmeden önce');
+            $before = $backups->createNow($app, $this->parts, 'restore', note: __(':created_at yedeği geri yüklenmeden önce', ['created_at' => $backup->created_at->format('d.m.Y H:i')]));
             $before->update(['user_name' => $this->userName]);
             if ($before->status !== 'succeeded') {
-                $backup->update(['restore_status' => 'failed', 'restore_error' => 'Geri yüklemeden önceki yedek alınamadı: '.$before->error, 'restored_at' => now()]);
+                $backup->update(['restore_status' => 'failed', 'restore_error' => __('Geri yüklemeden önceki yedek alınamadı: :error', ['error' => $before->error]), 'restored_at' => now()]);
 
                 return;
             }
@@ -66,7 +66,7 @@ class RestoreLaravelApp implements ShouldQueue
     {
         $backup = $this->backup->fresh();
         if ($backup !== null && in_array($backup->restore_status, ['queued', 'running'], true)) {
-            $backup->update(['restore_status' => 'failed', 'restore_error' => $e?->getMessage() ?? 'Geri yükleme yarıda kaldı.', 'restored_at' => now()]);
+            $backup->update(['restore_status' => 'failed', 'restore_error' => $e?->getMessage() ?? __('Geri yükleme yarıda kaldı.'), 'restored_at' => now()]);
         }
     }
 }

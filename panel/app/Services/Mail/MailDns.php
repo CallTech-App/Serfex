@@ -59,13 +59,13 @@ class MailDns
 
         $spf = 'v=spf1 a mx'.($ip4 ? ' ip4:'.$ip4 : '').($ip6 ? ' ip6:'.$ip6 : '').' ~all';
         $rows = [
-            ['key' => 'mx', 'label' => 'Gelen posta (MX)', 'name' => $d, 'type' => 'MX', 'content' => 'mail.'.$d.'.', 'priority' => 10, 'policy' => 'type'],
+            ['key' => 'mx', 'label' => __('Gelen posta (MX)'), 'name' => $d, 'type' => 'MX', 'content' => 'mail.'.$d.'.', 'priority' => 10, 'policy' => 'type'],
         ];
         if ($ip4) {
-            $rows[] = ['key' => 'mail-a', 'label' => 'Posta sunucusu adresi', 'name' => 'mail.'.$d, 'type' => 'A', 'content' => $ip4, 'priority' => null, 'policy' => 'type'];
+            $rows[] = ['key' => 'mail-a', 'label' => __('Posta sunucusu adresi'), 'name' => 'mail.'.$d, 'type' => 'A', 'content' => $ip4, 'priority' => null, 'policy' => 'type'];
         }
         if ($ip6) {
-            $rows[] = ['key' => 'mail-aaaa', 'label' => 'Posta sunucusu adresi (IPv6)', 'name' => 'mail.'.$d, 'type' => 'AAAA', 'content' => $ip6, 'priority' => null, 'policy' => 'type'];
+            $rows[] = ['key' => 'mail-aaaa', 'label' => __('Posta sunucusu adresi (IPv6)'), 'name' => 'mail.'.$d, 'type' => 'AAAA', 'content' => $ip6, 'priority' => null, 'policy' => 'type'];
         }
         $rows[] = ['key' => 'spf', 'label' => 'SPF', 'name' => $d, 'type' => 'TXT', 'content' => $spf, 'priority' => null, 'policy' => 'prefix', 'prefix' => 'v=spf1'];
         if ($domain->dkim_record) {
@@ -73,11 +73,11 @@ class MailDns
         }
         $rows[] = ['key' => 'dmarc', 'label' => 'DMARC', 'name' => '_dmarc.'.$d, 'type' => 'TXT', 'content' => 'v=DMARC1; p=none', 'priority' => null, 'policy' => 'prefix', 'prefix' => 'v=DMARC1'];
         if ($host !== null) {
-            $rows[] = ['key' => 'autoconfig', 'label' => 'İstemci ayarları (Thunderbird)', 'name' => 'autoconfig.'.$d, 'type' => 'CNAME', 'content' => $host.'.', 'priority' => null, 'policy' => 'name'];
-            $rows[] = ['key' => 'autodiscover', 'label' => 'İstemci ayarları (Outlook)', 'name' => 'autodiscover.'.$d, 'type' => 'CNAME', 'content' => $host.'.', 'priority' => null, 'policy' => 'name'];
-            $rows[] = ['key' => 'srv-autodiscover', 'label' => 'İstemci ayarları (Outlook)', 'name' => '_autodiscover._tcp.'.$d, 'type' => 'SRV', 'content' => '1 443 '.$host.'.', 'priority' => 0, 'policy' => 'type'];
-            $rows[] = ['key' => 'srv-submissions', 'label' => 'Giden posta (SMTP)', 'name' => '_submissions._tcp.'.$d, 'type' => 'SRV', 'content' => '1 465 '.$host.'.', 'priority' => 0, 'policy' => 'type'];
-            $rows[] = ['key' => 'srv-imaps', 'label' => 'Gelen posta (IMAP)', 'name' => '_imaps._tcp.'.$d, 'type' => 'SRV', 'content' => '1 993 '.$host.'.', 'priority' => 0, 'policy' => 'type'];
+            $rows[] = ['key' => 'autoconfig', 'label' => __('İstemci ayarları (Thunderbird)'), 'name' => 'autoconfig.'.$d, 'type' => 'CNAME', 'content' => $host.'.', 'priority' => null, 'policy' => 'name'];
+            $rows[] = ['key' => 'autodiscover', 'label' => __('İstemci ayarları (Outlook)'), 'name' => 'autodiscover.'.$d, 'type' => 'CNAME', 'content' => $host.'.', 'priority' => null, 'policy' => 'name'];
+            $rows[] = ['key' => 'srv-autodiscover', 'label' => __('İstemci ayarları (Outlook)'), 'name' => '_autodiscover._tcp.'.$d, 'type' => 'SRV', 'content' => '1 443 '.$host.'.', 'priority' => 0, 'policy' => 'type'];
+            $rows[] = ['key' => 'srv-submissions', 'label' => __('Giden posta (SMTP)'), 'name' => '_submissions._tcp.'.$d, 'type' => 'SRV', 'content' => '1 465 '.$host.'.', 'priority' => 0, 'policy' => 'type'];
+            $rows[] = ['key' => 'srv-imaps', 'label' => __('Gelen posta (IMAP)'), 'name' => '_imaps._tcp.'.$d, 'type' => 'SRV', 'content' => '1 993 '.$host.'.', 'priority' => 0, 'policy' => 'type'];
         }
 
         return $rows;
@@ -193,26 +193,26 @@ class MailDns
     {
         $rows = $this->check($domain, public: false);
         if ($rows !== [] && $rows[0]['zone'] === 'nozone') {
-            return new Badge('DNS başka yerde', 'muted');
+            return new Badge(__('DNS başka yerde'), 'muted');
         }
         $missing = count(array_filter($rows, fn ($r) => $r['zone'] === 'missing'));
         $different = count(array_filter($rows, fn ($r) => $r['zone'] === 'different'));
 
         return match (true) {
-            $missing > 0 => new Badge($missing.' kayıt eksik', 'crit'),
-            $different > 0 => new Badge($different.' kayıt farklı', 'warn'),
-            default => new Badge('Kayıtlar tamam', 'ok'),
+            $missing > 0 => new Badge(__(':missing kayıt eksik', ['missing' => $missing]), 'crit'),
+            $different > 0 => new Badge(__(':different kayıt farklı', ['different' => $different]), 'warn'),
+            default => new Badge(__('Kayıtlar tamam'), 'ok'),
         };
     }
 
     private function badge(string $zone, ?bool $live): Badge
     {
         return match (true) {
-            $live === true => new Badge('Yayıldı', 'ok'),
-            $zone === 'written' => new Badge('Yazıldı', 'info'),
-            $zone === 'different' => new Badge('Farklı', 'warn'),
-            $zone === 'nozone' => new Badge('Eksik', 'warn'),
-            default => new Badge('Eksik', 'crit'),
+            $live === true => new Badge(__('Yayıldı'), 'ok'),
+            $zone === 'written' => new Badge(__('Yazıldı'), 'info'),
+            $zone === 'different' => new Badge(__('Farklı'), 'warn'),
+            $zone === 'nozone' => new Badge(__('Eksik'), 'warn'),
+            default => new Badge(__('Eksik'), 'crit'),
         };
     }
 

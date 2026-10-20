@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 )
 
 // DeploySpec is one deploy of an application into laravel/releases.
@@ -206,7 +207,7 @@ type deploy struct {
 }
 
 func (d *deploy) step(format string, a ...any) {
-	fmt.Fprintf(d.log, "▸ "+format+"\n", a...)
+	fmt.Fprintf(d.log, "▸ "+i18n.Translate(d.ctx, format)+"\n", a...)
 }
 
 // exec runs a step as the site's account in dir, streaming its output.
@@ -321,13 +322,13 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 	if err := d.linkShared(); err != nil {
 		return DeployResult{}, err
 	}
-	if err := d.hook("derlemeden önce", spec.Hooks.BeforeBuild); err != nil {
+	if err := d.hook(i18n.T(ctx, "derlemeden önce"), spec.Hooks.BeforeBuild); err != nil {
 		return DeployResult{}, err
 	}
 	if err := d.build(&res); err != nil {
 		return DeployResult{}, err
 	}
-	if err := d.hook("yayına almadan önce", spec.Hooks.BeforeActivate); err != nil {
+	if err := d.hook(i18n.T(ctx, "yayına almadan önce"), spec.Hooks.BeforeActivate); err != nil {
 		return DeployResult{}, err
 	}
 
@@ -340,7 +341,7 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 	m.afterSwitch(ctx, log, spec.Target)
 
 	problem := ""
-	if err := d.hook("yayına aldıktan sonra", spec.Hooks.AfterActivate); err != nil {
+	if err := d.hook(i18n.T(ctx, "yayına aldıktan sonra"), spec.Hooks.AfterActivate); err != nil {
 		problem = err.Error()
 	}
 	if problem == "" && spec.Health != nil {
@@ -364,10 +365,10 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 		}
 		m.afterSwitch(ctx, log, spec.Target)
 		_, _ = m.userRun(ctx, spec.Target, "/", "rm", "-rf", "--one-file-system", d.dir)
-		fmt.Fprintf(log, "✗ Sürüm geri alındı: current → releases/%s. Ziyaretçiler önceki sürümü görmeye devam etti.\n", previous)
+		fmt.Fprintf(log, "✗ %s\n", i18n.T(ctx, "Sürüm geri alındı: current → releases/%s. Ziyaretçiler önceki sürümü görmeye devam etti.", previous))
 		res.RolledBack = true
 	} else if problem != "" {
-		fmt.Fprintln(log, "⚠ Yeni sürüm yayında, ama sorun giderilmeli.")
+		fmt.Fprintln(log, "⚠ "+i18n.T(ctx, "Yeni sürüm yayında, ama sorun giderilmeli."))
 	}
 
 	m.prune(ctx, spec.Target, spec.Keep, log)
@@ -376,7 +377,7 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 	res.Releases = m.releases(spec.Target)
 	res.Millis = time.Since(start).Milliseconds()
 	if problem == "" {
-		fmt.Fprintf(log, "✓ releases/%s yayında. Toplam %s.\n", spec.Release, humanDuration(time.Since(start)))
+		fmt.Fprintf(log, "✓ %s\n", i18n.T(ctx, "releases/%s yayında. Toplam %s.", spec.Release, humanDuration(time.Since(start))))
 	}
 	return res, nil
 }
@@ -617,22 +618,22 @@ func (m *Manager) activate(ctx context.Context, t Target, release string) error 
 // restart in the new release.
 func (m *Manager) afterSwitch(ctx context.Context, w io.Writer, t Target) {
 	ctx = context.WithoutCancel(ctx)
-	msg := "PHP-FPM yenilendi"
+	msg := i18n.T(ctx, "PHP-FPM yenilendi")
 	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "php" + t.PHPVersion + "-fpm"}}); err != nil {
-		msg = "PHP-FPM yenilenemedi"
+		msg = i18n.T(ctx, "PHP-FPM yenilenemedi")
 	}
 	if m.hasWorkers(t.Domain) {
 		if m.restartWorkers(ctx, t.Domain) == nil {
-			msg += " · kuyruk işçileri yeniden başlatıldı"
+			msg += " · " + i18n.T(ctx, "kuyruk işçileri yeniden başlatıldı")
 		} else {
-			msg += " · kuyruk işçileri yeniden başlatılamadı"
+			msg += " · " + i18n.T(ctx, "kuyruk işçileri yeniden başlatılamadı")
 		}
 	}
 	if len(m.enabledProcesses(t.Domain)) > 0 {
 		if m.restartProcesses(ctx, t.Domain) == nil {
-			msg += " · süreçler yeniden başlatıldı"
+			msg += " · " + i18n.T(ctx, "süreçler yeniden başlatıldı")
 		} else {
-			msg += " · süreçler yeniden başlatılamadı"
+			msg += " · " + i18n.T(ctx, "süreçler yeniden başlatılamadı")
 		}
 	}
 	fmt.Fprintf(w, "▸ %s\n", msg)
@@ -687,7 +688,7 @@ func (m *Manager) prune(ctx context.Context, t Target, keep int, w io.Writer) {
 		}
 	}
 	if len(removed) > 0 {
-		fmt.Fprintf(w, "▸ Eski sürümler silindi: %s (son %d sürüm saklanıyor)\n", strings.Join(removed, ", "), keep)
+		fmt.Fprintf(w, "▸ %s\n", i18n.T(ctx, "Eski sürümler silindi: %s (son %d sürüm saklanıyor)", strings.Join(removed, ", "), keep))
 	}
 }
 

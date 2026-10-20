@@ -2,12 +2,12 @@
      Pre-rendered and self-contained: the release's built assets change
      during the update. --}}
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="{{ app()->getLocale() }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="refresh" content="10">
-        <title>Servik güncelleniyor</title>
+        <title>{{ __('Servik güncelleniyor') }}</title>
         <style>
             :root { color-scheme: light dark; --bg: #f6f7f9; --fg: #16181d; --muted: #5d6470; --line: #e3e6eb; --surface: #fff; --accent: #0f8b8d; }
             @media (prefers-color-scheme: dark) { :root { --bg: #0f1115; --fg: #e8eaee; --muted: #9aa1ad; --line: #262a33; --surface: #161920; --accent: #3cc3c4; } }
@@ -23,8 +23,8 @@
     <body>
         <main>
             <div class="spin" aria-hidden="true"></div>
-            <h1>Servik güncelleniyor</h1>
-            <p>Panel birkaç dakika içinde geri gelecek; bu sayfa kendiliğinden yenilenir. Siteleriniz ve e-postanız bu sırada çalışmaya devam eder.</p>
+            <h1>{{ __('Servik güncelleniyor') }}</h1>
+            <p>{{ __('Panel birkaç dakika içinde geri gelecek; bu sayfa kendiliğinden yenilenir. Siteleriniz ve e-postanız bu sırada çalışmaya devam eder.') }}</p>
         </main>
     </body>
 </html>

@@ -11,6 +11,13 @@ return [
     // dates are stored in UTC either way.
     'timezone' => env('SERVIK_TIMEZONE', 'Europe/Istanbul'),
 
+    // The panel's languages, each in its own name. Turkish is the source:
+    // views and code are written in it, lang/en.json translates. The
+    // server's default (Araçlar ve Ayarlar → Genel) starts as SERVIK_LOCALE,
+    // which install.sh sets from the language it was run in.
+    'locales' => ['tr' => 'Türkçe', 'en' => 'English'],
+    'locale' => env('SERVIK_LOCALE', 'tr'),
+
     // File systems watched for free space (Bildirimler).
     'disk_paths' => ['/', '/home', '/var'],
 

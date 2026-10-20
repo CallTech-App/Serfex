@@ -43,13 +43,15 @@ trait BlocksAddresses
 
             return;
         } catch (AgentException $e) {
-            $this->addError('block.address', $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : 'Adres engellenemedi: '.$e->reason);
+            $this->addError('block.address', $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Adres engellenemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->blocking = false;
         $this->dispatch('toast',
-            message: "{$b->address} ".($b->expires_at ? IpBlocks::DURATIONS[(int) $this->block['minutes']] : 'kalıcı olarak').' engellendi.',
+            message: $b->expires_at
+                ? __(':address :duration engellendi.', ['address' => $b->address, 'duration' => IpBlocks::DURATIONS[(int) $this->block['minutes']]])
+                : __(':address kalıcı olarak engellendi.', ['address' => $b->address]),
             source: $this->getId(),
             undo: ['method' => 'unblock', 'args' => [$b->id]],
         );
@@ -64,7 +66,7 @@ trait BlocksAddresses
         try {
             $blocks->unblock($b);
         } catch (AgentException $e) {
-            $this->refused = 'Engel kaldırılamadı: '.$e->reason;
+            $this->refused = __('Engel kaldırılamadı: :reason', ['reason' => $e->reason]);
         }
     }
 }

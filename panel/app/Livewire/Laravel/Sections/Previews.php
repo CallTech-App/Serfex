@@ -45,7 +45,7 @@ class Previews extends Section
             default => null,
         };
         $this->dispatch('toast',
-            message: $name === 'previews_enabled' ? ($value ? 'Pull request önizlemeleri açıldı.' : 'Pull request önizlemeleri kapatıldı.') : 'Önizleme ayarı kaydedildi.',
+            message: $name === 'previews_enabled' ? ($value ? __('Pull request önizlemeleri açıldı.') : __('Pull request önizlemeleri kapatıldı.')) : __('Önizleme ayarı kaydedildi.'),
             source: $this->getId(),
             undo: ['method' => 'setting', 'args' => [$name, $before]],
         );
@@ -59,16 +59,16 @@ class Previews extends Section
                 foreach (preg_split('/\n/', (string) $value) as $i => $line) {
                     $line = trim($line);
                     if ($line !== '' && ! str_starts_with($line, '#') && ! preg_match('/^[A-Za-z_][A-Za-z0-9_]*=/', $line)) {
-                        $fail('Satır '.($i + 1).': ANAHTAR=değer biçiminde yazın.');
+                        $fail(__('Satır :i: ANAHTAR=değer biçiminde yazın.', ['i' => ($i + 1)]));
 
                         return;
                     }
                 }
             }],
             'limit' => ['required', 'integer', 'between:1,20'],
-        ], [], ['limit' => 'önizleme sınırı']);
+        ], [], ['limit' => __('önizleme sınırı')]);
         $this->app()->update(['preview_env' => $this->envText === '' ? null : $this->envText, 'preview_limit' => $this->limit]);
-        $this->dispatch('toast', message: 'Önizleme ayarları kaydedildi; yeni önizlemelerde geçerli.');
+        $this->dispatch('toast', message: __('Önizleme ayarları kaydedildi; yeni önizlemelerde geçerli.'));
     }
 
     public function openCreate(): void
@@ -82,7 +82,7 @@ class Previews extends Section
     {
         $this->branch = trim($this->branch);
         $this->validate(['branch' => ['required', 'max:200', 'regex:~^[A-Za-z0-9][A-Za-z0-9._/-]*$~', 'not_regex:~\.\.~']],
-            ['branch.regex' => 'Dal adı geçersiz.', 'branch.not_regex' => 'Dal adı geçersiz.'], ['branch' => 'dal']);
+            ['branch.regex' => __('Dal adı geçersiz.'), 'branch.not_regex' => __('Dal adı geçersiz.')], ['branch' => 'dal']);
         try {
             $preview = $previews->create($this->app(), $this->branch, auth()->user());
         } catch (RuntimeException $e) {
@@ -91,7 +91,7 @@ class Previews extends Section
             return;
         }
         $this->creating = false;
-        $this->dispatch('toast', message: $preview->domain().' hazırlanıyor.');
+        $this->dispatch('toast', message: __(':domain hazırlanıyor.', ['domain' => $preview->domain()]));
     }
 
     public function redeploy(int $id, PreviewService $previews): void
@@ -99,7 +99,7 @@ class Previews extends Section
         $preview = $this->preview($id);
         if ($preview !== null) {
             $previews->redeploy($preview, by: auth()->user()->name);
-            $this->dispatch('toast', message: $preview->domain().' yeniden dağıtılıyor.');
+            $this->dispatch('toast', message: __(':domain yeniden dağıtılıyor.', ['domain' => $preview->domain()]));
         }
     }
 
@@ -123,7 +123,7 @@ class Previews extends Section
         $preview = $this->preview($id);
         if ($preview !== null) {
             $previews->delete($preview);
-            $this->dispatch('toast', message: $preview->domain().' siliniyor.');
+            $this->dispatch('toast', message: __(':domain siliniyor.', ['domain' => $preview->domain()]));
         }
     }
 
@@ -137,14 +137,14 @@ class Previews extends Section
         $deployment = $app?->latestDeployment;
 
         return match (true) {
-            $preview->status === 'deleting' => new Badge('Siliniyor', 'info', true),
-            $preview->status === 'failed' => new Badge('Kurulamadı', 'crit'),
-            $app === null => new Badge('Hazırlanıyor', 'info', true),
-            $deployment?->status->isBusy() ?? false => new Badge($app->status === LaravelAppStatus::Installing ? 'Kuruluyor' : 'Dağıtılıyor', 'info', true),
-            $app->status === LaravelAppStatus::Failed => new Badge('Kurulamadı', 'crit'),
-            in_array($deployment?->status, [DeploymentStatus::Failed, DeploymentStatus::RolledBack], true) => new Badge('Dağıtım başarısız', 'crit'),
-            $deployment?->status === DeploymentStatus::Unhealthy => new Badge('Sağlıksız', 'warn'),
-            default => new Badge('Hazır', 'ok'),
+            $preview->status === 'deleting' => new Badge(__('Siliniyor'), 'info', true),
+            $preview->status === 'failed' => new Badge(__('Kurulamadı'), 'crit'),
+            $app === null => new Badge(__('Hazırlanıyor'), 'info', true),
+            $deployment?->status->isBusy() ?? false => new Badge($app->status === LaravelAppStatus::Installing ? __('Kuruluyor') : __('Dağıtılıyor'), 'info', true),
+            $app->status === LaravelAppStatus::Failed => new Badge(__('Kurulamadı'), 'crit'),
+            in_array($deployment?->status, [DeploymentStatus::Failed, DeploymentStatus::RolledBack], true) => new Badge(__('Dağıtım başarısız'), 'crit'),
+            $deployment?->status === DeploymentStatus::Unhealthy => new Badge(__('Sağlıksız'), 'warn'),
+            default => new Badge(__('Hazır'), 'ok'),
         };
     }
 

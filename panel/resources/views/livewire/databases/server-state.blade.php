@@ -10,14 +10,14 @@
 @if ($state === 'missing' && $admin)
     <section class="rounded-xl border border-line bg-surface">
         <div class="border-b border-line px-5 py-4">
-            <h2 class="text-[15px] font-semibold">Veritabanı sunucusunu kurun</h2>
-            <p class="mt-1 text-[13px] text-muted">Müşteri veritabanları bu sunucuda çalışır. Servik seçtiğiniz sunucuyu kurar, yalnızca bu sunucudan bağlantı kabul edecek şekilde ayarlar ve tarayıcıdan yönetim için phpMyAdmin ya da Adminer'ı kendi web sunucusunda açar. Kurulum yarıda kalırsa yapılanlar geri alınır.</p>
+            <h2 class="text-[15px] font-semibold">{{ __('Veritabanı sunucusunu kurun') }}</h2>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Müşteri veritabanları bu sunucuda çalışır. Servik seçtiğiniz sunucuyu kurar, yalnızca bu sunucudan bağlantı kabul edecek şekilde ayarlar ve tarayıcıdan yönetim için phpMyAdmin ya da Adminer\'ı kendi web sunucusunda açar. Kurulum yarıda kalırsa yapılanlar geri alınır.') }}</p>
         </div>
         <form wire:submit="setupServer" class="space-y-4 p-5 text-[13.5px]">
             <fieldset>
-                <legend class="mb-2 font-medium">MySQL uyumlu sunucu</legend>
+                <legend class="mb-2 font-medium">{{ __('MySQL uyumlu sunucu') }}</legend>
                 <div class="grid gap-2 sm:grid-cols-2">
-                    @foreach (['mysql' => ['MySQL', 'Varsayılan. WordPress, Laravel ve çoğu PHP uygulaması için.'], 'mariadb' => ['MariaDB', 'MySQL ile uyumlu topluluk sürümü. İkisi aynı anda kurulamaz.']] as $key => [$label, $hint])
+                    @foreach (['mysql' => ['MySQL', __('Varsayılan. WordPress, Laravel ve çoğu PHP uygulaması için.')], 'mariadb' => ['MariaDB', __('MySQL ile uyumlu topluluk sürümü. İkisi aynı anda kurulamaz.')]] as $key => [$label, $hint])
                         <label class="flex cursor-pointer gap-3 rounded-lg border p-3 {{ $setupProduct === $key ? 'border-accent bg-accent-soft' : 'border-line hover:bg-surface-2' }}">
                             <input type="radio" wire:model.live="setupProduct" value="{{ $key }}" class="mt-0.5 size-4 accent-accent">
                             <span><span class="block font-medium">{{ $label }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ $hint }}</span></span>
@@ -27,18 +27,18 @@
             </fieldset>
             <label class="flex items-start gap-3">
                 <input type="checkbox" wire:model="setupPostgres" class="mt-0.5 size-4 accent-accent">
-                <span><span class="block font-medium">PostgreSQL de kurulsun</span><span class="mt-0.5 block text-[12.5px] text-muted">Yanında çalışır; isteyen siteler PostgreSQL veritabanı açabilir. Sonradan da kurulabilir.</span></span>
+                <span><span class="block font-medium">{{ __('PostgreSQL de kurulsun') }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ __('Yanında çalışır; isteyen siteler PostgreSQL veritabanı açabilir. Sonradan da kurulabilir.') }}</span></span>
             </label>
             @error('setupProduct') <p class="text-[13px] text-crit">{{ $message }}</p> @enderror
             @if (! empty($server['error']))
                 <div class="rounded-lg border border-line bg-crit-soft p-3 text-[13px]">
-                    <p class="font-medium text-crit">Önceki kurulum tamamlanamadı; yapılanlar geri alındı.</p>
+                    <p class="font-medium text-crit">{{ __('Önceki kurulum tamamlanamadı; yapılanlar geri alındı.') }}</p>
                     <p class="mt-1 font-mono text-[12.5px] break-words text-muted">{{ $server['error'] }}</p>
                 </div>
             @endif
             <div class="flex justify-end">
                 <button type="submit" wire:loading.attr="disabled" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
-                    <x-icon name="download" />Kur
+                    <x-icon name="download" />{{ __('Kur') }}
                 </button>
             </div>
         </form>
@@ -48,12 +48,12 @@
         $setup = app(DatabaseServers::class)->setup();
         $steps = [...($setup['products'] ?? []), 'manager'];
         $current = array_search($server['step'] ?? null, $steps, true);
-        $names = ['mysql' => 'MySQL kuruluyor', 'mariadb' => 'MariaDB kuruluyor', 'postgresql' => 'PostgreSQL kuruluyor', 'manager' => 'Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor'];
+        $names = ['mysql' => __('MySQL kuruluyor'), 'mariadb' => __('MariaDB kuruluyor'), 'postgresql' => __('PostgreSQL kuruluyor'), 'manager' => __('Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor')];
     @endphp
     <div class="relative overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
         <span class="absolute inset-y-0 left-0 w-1 bg-info"></span>
-        <p class="font-medium">Veritabanı sunucusu kuruluyor</p>
-        <p class="mt-0.5 text-[13px] text-muted">Paketler indirilip ayarlanıyor; bu sayfadan ayrılabilirsiniz.</p>
+        <p class="font-medium">{{ __('Veritabanı sunucusu kuruluyor') }}</p>
+        <p class="mt-0.5 text-[13px] text-muted">{{ __('Paketler indirilip ayarlanıyor; bu sayfadan ayrılabilirsiniz.') }}</p>
         <ol class="mt-3 space-y-1.5 text-[13px]">
             @foreach ($steps as $i => $step)
                 <li class="flex items-center gap-2 {{ $current !== false && $i > $current ? 'text-muted' : '' }}">
@@ -72,16 +72,16 @@
 @elseif ($state !== 'ready')
     @php
         [$tone, $title, $text, $action] = match ($state) {
-            'missing' => ['warn', 'Veritabanı sunucusu henüz kurulmadı', 'Sunucu yöneticiniz kurduğunda burada veritabanı oluşturabilirsiniz.', null],
-            'failed' => ['crit', 'Veritabanı sunucusu kurulamadı', 'Yarıda kalan kurulum geri alındı.', 'Tekrar dene'],
-            'stopped' => ['crit', 'Veritabanı sunucusu çalışmıyor', 'Siteler veritabanlarına bağlanamıyor. Servik ayarları denetleyip sunucuyu yeniden başlatabilir.', 'Onar ve başlat'],
-            'nomanager' => ['warn', 'Web veritabanı yöneticisi hazır değil', 'Veritabanları çalışıyor ama phpMyAdmin ve Adminer henüz kurulmadı.', 'Kur'],
-            default => ['crit', 'Sunucu ajanına ulaşılamıyor', 'Sunucuda "systemctl status servik-agent" ile kontrol edin.', null],
+            'missing' => ['warn', __('Veritabanı sunucusu henüz kurulmadı'), __('Sunucu yöneticiniz kurduğunda burada veritabanı oluşturabilirsiniz.'), null],
+            'failed' => ['crit', __('Veritabanı sunucusu kurulamadı'), __('Yarıda kalan kurulum geri alındı.'), __('Tekrar dene')],
+            'stopped' => ['crit', __('Veritabanı sunucusu çalışmıyor'), __('Siteler veritabanlarına bağlanamıyor. Servik ayarları denetleyip sunucuyu yeniden başlatabilir.'), __('Onar ve başlat')],
+            'nomanager' => ['warn', __('Web veritabanı yöneticisi hazır değil'), __('Veritabanları çalışıyor ama phpMyAdmin ve Adminer henüz kurulmadı.'), __('Kur')],
+            default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status servik-agent" ile kontrol edin.'), null],
         };
         if (! $admin) {
             $action = null;
             if (in_array($state, ['failed', 'nomanager', 'offline'], true)) {
-                [$tone, $title, $text] = ['warn', 'Veritabanı sunucusuna şu an ulaşılamıyor', 'Sunucu yöneticiniz bilgilendirildi; birazdan yeniden deneyin.'];
+                [$tone, $title, $text] = ['warn', __('Veritabanı sunucusuna şu an ulaşılamıyor'), __('Sunucu yöneticiniz bilgilendirildi; birazdan yeniden deneyin.')];
             }
         }
     @endphp
@@ -92,7 +92,7 @@
             <p class="font-medium">{{ $title }}</p>
             <p class="mt-0.5 text-[13px] text-muted">{{ $text }}</p>
             @if (! empty($server['stopped']))
-                <p class="mt-1 text-[13px] text-muted">Durmuş: {{ implode(', ', $server['stopped']) }}</p>
+                <p class="mt-1 text-[13px] text-muted">{{ __('Durmuş: :stopped', ['stopped' => implode(', ', $server['stopped'])]) }}</p>
             @endif
             @if ($admin && ! empty($server['error']))
                 <p class="mt-1 font-mono text-[12.5px] break-words text-muted">{{ $server['error'] }}</p>

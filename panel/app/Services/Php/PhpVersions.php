@@ -175,13 +175,13 @@ class PhpVersions
     public function startExtension(string $version, string $name, bool $remove, ?User $user): ComponentOperation|string
     {
         if (! preg_match('/^\d\.\d$/', $version) || ! preg_match('/^[a-z][a-z0-9_]{0,31}$/', $name)) {
-            return 'Bu eklenti buradan yönetilemiyor.';
+            return __('Bu eklenti buradan yönetilemiyor.');
         }
         if (ComponentOperation::running()->exists() || $this->components->databaseSetupRunning()) {
-            return 'Başka bir kurulum sürüyor. Bitince yeniden deneyin.';
+            return __('Başka bir kurulum sürüyor. Bitince yeniden deneyin.');
         }
         if (PanelUpdate::running()->exists()) {
-            return 'Servik güncelleniyor. Bitince yeniden deneyin.';
+            return __('Servik güncelleniyor. Bitince yeniden deneyin.');
         }
         $operation = ComponentOperation::create([
             'component' => 'php'.$version,
@@ -228,26 +228,26 @@ class PhpVersions
                 continue;
             }
             if (! str_contains($line, '=')) {
-                return ($i + 1).'. satır "ad = değer" biçiminde değil.';
+                return __(':i. satır "ad = değer" biçiminde değil.', ['i' => ($i + 1)]);
             }
             [$key, $value] = array_map('trim', explode('=', $line, 2));
             $value = trim($value, '"');
             if (! preg_match(self::KEY_PATTERN, $key) || strlen($key) > 64) {
-                return "\"{$key}\" geçerli bir php.ini adı değil.";
+                return __('":key" geçerli bir php.ini adı değil.', ['key' => $key]);
             }
             if (in_array($key, self::RESERVED, true) || ($customer && in_array($key, ['auto_prepend_file', 'auto_append_file'], true))) {
-                return "{$key} Servik tarafından ayarlanır, değiştirilemez.";
+                return __(':key Servik tarafından ayarlanır, değiştirilemez.', ['key' => $key]);
             }
             if (array_key_exists($key, self::SITE_INI)) {
-                return "{$key} için yukarıdaki alanı kullanın.";
+                return __(':key için yukarıdaki alanı kullanın.', ['key' => $key]);
             }
             if (! preg_match(self::VALUE_PATTERN, $value) || strlen($value) > 200) {
-                return "{$key} değeri yalnızca harf, rakam, boşluk ve . , : / + * @ ~ = % _ - içerebilir.";
+                return __(':key değeri yalnızca harf, rakam, boşluk ve . , : / + * @ ~ = % _ - içerebilir.', ['key' => $key]);
             }
             $out[$key] = $value;
         }
         if (count($out) > 30) {
-            return 'En fazla 30 özel yönerge eklenebilir.';
+            return __('En fazla 30 özel yönerge eklenebilir.');
         }
 
         return $out;

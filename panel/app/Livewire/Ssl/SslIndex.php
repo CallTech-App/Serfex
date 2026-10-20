@@ -71,9 +71,9 @@ class SslIndex extends Component
         }
         $this->selected = [];
         $this->dispatch('toast', message: match ($count) {
-            0 => 'Seçili sitelerde alınacak sertifika yok; yüklenmiş sertifikalar kendi sayfasından değiştirilir.',
-            1 => "Let's Encrypt sertifikası alınıyor.",
-            default => "{$count} site için Let's Encrypt sertifikası alınıyor.",
+            0 => __('Seçili sitelerde alınacak sertifika yok; yüklenmiş sertifikalar kendi sayfasından değiştirilir.'),
+            1 => __('Let\'s Encrypt sertifikası alınıyor.'),
+            default => __(':count site için Let\'s Encrypt sertifikası alınıyor.', ['count' => $count]),
         });
     }
 

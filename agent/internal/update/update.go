@@ -44,6 +44,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/panel"
 )
 
@@ -240,14 +241,15 @@ func (m *Manager) Status() (Status, error) {
 // interrupted ends a run whose process is gone. Called with m.mu held.
 func (m *Manager) interrupted(st *state) {
 	run := st.Running
+	spec, _ := m.loadSpec(run)
+	ctx := i18n.WithLocale(context.Background(), spec.Locale)
 	if f, err := os.OpenFile(m.h.Path(runDir+"/"+run+".log"), os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
 		if chunk, _ := m.readRun(run, 0); !chunk.Done {
-			fmt.Fprintln(f, "✗ Güncelleme yarıda kesildi; sunucuda journalctl -u servik-update-"+run+" ile bakın.")
+			fmt.Fprintln(f, "✗ "+i18n.T(ctx, "Güncelleme yarıda kesildi; sunucuda journalctl -u %s ile bakın.", "servik-update-"+run))
 		}
 		f.Close()
 	}
-	spec, _ := m.loadSpec(run)
-	st.Last = &Outcome{Run: run, Kind: spec.Kind, From: spec.From, To: spec.To, Status: "failed", Error: "Güncelleme yarıda kesildi.", FinishedAt: m.now().UTC().Format(time.RFC3339)}
+	st.Last = &Outcome{Run: run, Kind: spec.Kind, From: spec.From, To: spec.To, Status: "failed", Error: i18n.T(ctx, "Güncelleme yarıda kesildi."), FinishedAt: m.now().UTC().Format(time.RFC3339)}
 	st.Running = ""
 	_ = m.saveState(st)
 }
@@ -431,6 +433,7 @@ func (m *Manager) Rollback(ctx context.Context, spec RollbackSpec) (Started, err
 }
 
 func (m *Manager) begin(ctx context.Context, spec runSpec) (Started, error) {
+	spec.Locale = i18n.Locale(ctx)
 	m.mu.Lock()
 	st, err := m.loadState()
 	if err != nil {

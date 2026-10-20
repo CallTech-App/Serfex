@@ -25,7 +25,7 @@ class SyncFail2banBans extends Command
 
             return self::FAILURE;
         }
-        $this->info("{$n} Fail2ban engeli.");
+        $this->info("{$n} Fail2ban bans.");
 
         return self::SUCCESS;
     }

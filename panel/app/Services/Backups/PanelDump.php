@@ -38,7 +38,7 @@ class PanelDump
             $this->dump($dump);
             $uploads['panel.sql.gz'] = $this->send($dump);
         } catch (RuntimeException $e) {
-            $warnings[] = 'Panel veritabanı yedeklenemedi: '.$e->getMessage();
+            $warnings[] = __('Panel veritabanı yedeklenemedi: :message', ['message' => $e->getMessage()]);
         } finally {
             @unlink($dump);
         }
@@ -47,7 +47,7 @@ class PanelDump
             try {
                 $uploads['panel.env'] = $this->send($env);
             } catch (RuntimeException $e) {
-                $warnings[] = 'Panel ayarları (.env) yedeklenemedi: '.$e->getMessage();
+                $warnings[] = __('Panel ayarları (.env) yedeklenemedi: :message', ['message' => $e->getMessage()]);
             }
         }
 
@@ -61,11 +61,11 @@ class PanelDump
     {
         $c = config('database.connections.'.config('database.default'));
         if (($c['driver'] ?? '') !== 'pgsql') {
-            throw new RuntimeException('panel PostgreSQL kullanmıyor');
+            throw new RuntimeException(__('panel PostgreSQL kullanmıyor'));
         }
         $gz = gzopen($file, 'wb6');
         if ($gz === false) {
-            throw new RuntimeException('geçici dosya açılamadı');
+            throw new RuntimeException(__('geçici dosya açılamadı'));
         }
         $command = ['pg_dump', '--no-owner', '--no-privileges', '--clean', '--if-exists',
             '-h', (string) ($c['host'] ?? '127.0.0.1'), '-p', (string) ($c['port'] ?? 5432), '-U', (string) $c['username'], (string) $c['database']];
@@ -77,7 +77,7 @@ class PanelDump
             });
         gzclose($gz);
         if (! $result->successful()) {
-            throw new RuntimeException(Str::limit(trim($result->errorOutput()) ?: 'pg_dump çalışmadı', 300));
+            throw new RuntimeException(Str::limit(trim($result->errorOutput()) ?: __('pg_dump çalışmadı'), 300));
         }
     }
 
@@ -89,7 +89,7 @@ class PanelDump
         $id = 'up-'.Str::lower(Str::random(20));
         $in = fopen($file, 'rb');
         if ($in === false) {
-            throw new RuntimeException('dosya okunamadı');
+            throw new RuntimeException(__('dosya okunamadı'));
         }
         try {
             $offset = 0;

@@ -81,10 +81,10 @@ class Waf
     public function modeLabel(Site $site, ?string $server = null): string
     {
         if (! $this->installed()) {
-            return 'Kurulu değil';
+            return __('Kurulu değil');
         }
         if ($site->waf_mode === null) {
-            return 'Sunucu ayarı ('.self::MODES[$server ?? $this->server()['mode']].')';
+            return __('Sunucu ayarı (:mode)', ['mode' => __(self::MODES[$server ?? $this->server()['mode']])]);
         }
 
         return self::MODES[$site->waf_mode];
@@ -132,16 +132,16 @@ class Waf
     {
         $out = [];
         if ($ruleId < 1 || $ruleId > 99999999) {
-            $out['rule'] = 'Kural numarası 1 ile 99999999 arasında olmalı (örneğin 942100).';
+            $out['rule'] = __('Kural numarası 1 ile 99999999 arasında olmalı (örneğin 942100).');
         }
         if ($path !== '' && (! preg_match(self::PATH_PATTERN, $path) || str_contains($path, '//') || str_contains($path, '/../'))) {
-            $out['path'] = 'Yol / ile başlamalı; harf, rakam ve ._~/%@+- içerebilir.';
+            $out['path'] = __('Yol / ile başlamalı; harf, rakam ve ._~/%@+- içerebilir.');
         }
         if ($out === [] && WafExclusion::where('site_id', $site->id)->where('rule_id', $ruleId)->where('path', $path)->exists()) {
-            $out['rule'] = 'Bu kural bu yolda zaten kapalı.';
+            $out['rule'] = __('Bu kural bu yolda zaten kapalı.');
         }
         if ($out === [] && WafExclusion::where('site_id', $site->id)->count() >= self::MAX_EXCLUSIONS) {
-            $out['rule'] = 'Bir sitede en fazla '.self::MAX_EXCLUSIONS.' istisna olabilir.';
+            $out['rule'] = __('Bir sitede en fazla :max_exclusions istisna olabilir.', ['max_exclusions' => self::MAX_EXCLUSIONS]);
         }
 
         return $out;
@@ -259,10 +259,10 @@ class Waf
     public static function message(AgentException $e): string
     {
         return match (true) {
-            $e instanceof AgentUnavailableException => 'Sunucu ajanına ulaşılamıyor.',
-            $e->getCode() === self::NOT_INSTALLED => 'ModSecurity kurulu değil. Yazılım Yönetimi → Diğer bileşenler sayfasından kurabilirsiniz.',
-            str_contains($e->reason, 'nginx rejected') => 'Nginx yeni ayarı kabul etmedi; önceki ayar korundu.',
-            default => 'Sunucu ayarı uygulayamadı: '.$e->reason,
+            $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
+            $e->getCode() === self::NOT_INSTALLED => __('ModSecurity kurulu değil. Yazılım Yönetimi → Diğer bileşenler sayfasından kurabilirsiniz.'),
+            str_contains($e->reason, 'nginx rejected') => __('Nginx yeni ayarı kabul etmedi; önceki ayar korundu.'),
+            default => __('Sunucu ayarı uygulayamadı: :reason', ['reason' => $e->reason]),
         };
     }
 }

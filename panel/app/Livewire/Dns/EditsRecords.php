@@ -55,12 +55,12 @@ trait EditsRecords
         $ok = true;
 
         if (! in_array($this->recordType, DnsRecords::TYPES, true)) {
-            $this->addError('recordType', 'Desteklenmeyen kayıt türü.');
+            $this->addError('recordType', __('Desteklenmeyen kayıt türü.'));
             $ok = false;
         }
         $name = DnsRecords::normalizeName($this->recordName, $zone);
         if ($name === null) {
-            $this->addError('recordName', 'Ana makine yalnızca harf, rakam, - ve _ içerebilir; örneğin www veya _dmarc.');
+            $this->addError('recordName', __('Ana makine yalnızca harf, rakam, - ve _ içerebilir; örneğin www veya _dmarc.'));
             $ok = false;
         }
         [$content, $error] = $ok ? DnsRecords::normalizeContent($this->recordType, $this->recordValue, $zone) : [null, null];
@@ -70,11 +70,11 @@ trait EditsRecords
         }
         $withPriority = in_array($this->recordType, DnsRecords::WITH_PRIORITY, true);
         if ($withPriority && ! DnsRecords::isValidPriority($this->recordPriority)) {
-            $this->addError('recordPriority', '0 ile 65535 arasında olmalı.');
+            $this->addError('recordPriority', __('0 ile 65535 arasında olmalı.'));
             $ok = false;
         }
         if ($this->recordTtl < DnsRecords::MIN_TTL || $this->recordTtl > DnsRecords::MAX_TTL) {
-            $this->addError('recordTtl', 'TTL '.DnsRecords::MIN_TTL.' ile '.DnsRecords::MAX_TTL.' saniye arasında olmalı.');
+            $this->addError('recordTtl', __('TTL :min_ttl ile :max_ttl saniye arasında olmalı.', ['min_ttl' => DnsRecords::MIN_TTL, 'max_ttl' => DnsRecords::MAX_TTL]));
             $ok = false;
         }
         if (! $ok) {
@@ -100,7 +100,7 @@ trait EditsRecords
     protected function conflictsWith(array $record, iterable $others): bool
     {
         if ($record['type'] === 'CNAME' && $record['name'] === '@') {
-            $this->addError('recordName', 'Alan adının kendisine CNAME eklenemez; A veya AAAA kaydı kullanın.');
+            $this->addError('recordName', __('Alan adının kendisine CNAME eklenemez; A veya AAAA kaydı kullanın.'));
 
             return true;
         }
@@ -109,14 +109,14 @@ trait EditsRecords
                 continue;
             }
             if ($o['type'] === $record['type'] && $o['content'] === $record['content'] && $o['priority'] === $record['priority']) {
-                $this->addError('recordValue', 'Bu kayıt zaten var.');
+                $this->addError('recordValue', __('Bu kayıt zaten var.'));
 
                 return true;
             }
             if ($record['type'] === 'CNAME' || $o['type'] === 'CNAME') {
                 $this->addError('recordName', $record['type'] === 'CNAME'
-                    ? 'Bu ana makinede başka kayıtlar var; CNAME tek başına olmalı.'
-                    : 'Bu ana makinede CNAME kaydı var; yanına başka kayıt eklenemez.');
+                    ? __('Bu ana makinede başka kayıtlar var; CNAME tek başına olmalı.')
+                    : __('Bu ana makinede CNAME kaydı var; yanına başka kayıt eklenemez.'));
 
                 return true;
             }

@@ -54,6 +54,6 @@ class LaravelDeployment extends Model
         }
         $seconds = (int) $this->started_at->diffInSeconds($this->finished_at);
 
-        return $seconds < 60 ? $seconds.' sn' : intdiv($seconds, 60).' dk '.str_pad((string) ($seconds % 60), 2, '0', STR_PAD_LEFT).' sn';
+        return $seconds < 60 ? __(':seconds sn', ['seconds' => $seconds]) : __(':minutes dk :seconds sn', ['minutes' => intdiv($seconds, 60), 'seconds' => str_pad((string) ($seconds % 60), 2, '0', STR_PAD_LEFT)]);
     }
 }

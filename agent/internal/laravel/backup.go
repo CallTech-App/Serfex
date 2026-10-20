@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -160,7 +161,7 @@ func (m *Manager) Backup(ctx context.Context, spec BackupSpec) (res BackupResult
 	defer closeLog()
 	defer func() {
 		if err != nil {
-			fmt.Fprintf(log, "✗ Yedek alınamadı: %s\n", err)
+			fmt.Fprintf(log, "✗ %s\n", i18n.T(ctx, "Yedek alınamadı: %s", err))
 			err = &OperationError{err}
 		}
 	}()
@@ -197,7 +198,7 @@ func (m *Manager) Backup(ctx context.Context, spec BackupSpec) (res BackupResult
 		}
 		if skip != "" {
 			res.Skipped[part] = skip
-			fmt.Fprintf(log, "  %s alınmadı: %s\n", partLabel[part], skip)
+			fmt.Fprintf(log, "  %s\n", i18n.T(ctx, "%s alınmadı: %s", partLabel(ctx, part), skip))
 			continue
 		}
 		fi, err := os.Stat(filepath.Join(tmp, name))
@@ -228,11 +229,17 @@ func (m *Manager) Backup(ctx context.Context, spec BackupSpec) (res BackupResult
 		return BackupResult{}, err
 	}
 	res.Size = fi.Size()
-	fmt.Fprintf(log, "✓ Yedek alındı: %s\n", humanSize(res.Size))
+	fmt.Fprintf(log, "✓ %s\n", i18n.T(ctx, "Yedek alındı: %s", humanSize(res.Size)))
 	return res, nil
 }
 
-var partLabel = map[string]string{"code": "Kod", "env": ".env", "storage": "storage", "database": "Veritabanı"}
+// partLabel names a part of a backup in the log.
+func partLabel(ctx context.Context, part string) string {
+	if l := i18n.T(ctx, map[string]string{"code": "Kod", "database": "Veritabanı"}[part]); l != "" {
+		return l
+	}
+	return part
+}
 
 // backupDirs creates /var/lib/servik/backups/laravel/<domain>, root only.
 func (m *Manager) backupDirs(domain string) error {
@@ -258,45 +265,45 @@ func (m *Manager) backupPart(ctx context.Context, a App, part string, env map[st
 		excludes := []string{"--exclude=./node_modules"}
 		if a.Path == CurrentPath {
 			if res.Release == "" {
-				return "", "yayında bir sürüm yok", nil
+				return "", i18n.T(ctx, "yayında bir sürüm yok"), nil
 			}
 			src = baseDir(a.Target) + "/releases/" + res.Release
 		} else {
 			excludes = append(excludes, "--exclude=./storage", "--exclude=./.env")
 		}
-		fmt.Fprintln(log, "▸ Kod arşivleniyor")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Kod arşivleniyor"))
 		return "code.tar.gz", "", m.userTar(ctx, a.Target, src, excludes, filepath.Join(tmp, "code.tar.gz"))
 	case "env":
 		if !m.exists(a.envPath()) {
-			return "", ".env dosyası yok", nil
+			return "", i18n.T(ctx, ".env dosyası yok"), nil
 		}
 		b, err := m.readFile(ctx, a.Target, a.envPath(), maxEnv)
 		if err != nil {
 			return "", "", err
 		}
-		fmt.Fprintln(log, "▸ .env kopyalandı")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, ".env kopyalandı"))
 		return "env", "", os.WriteFile(filepath.Join(tmp, "env"), b, 0o600)
 	case "storage":
 		if !m.isDir(a.storagePath()) {
 			return "", "storage dizini yok", nil
 		}
-		fmt.Fprintln(log, "▸ storage arşivleniyor (önbellek, oturumlar ve günlükler hariç)")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "storage arşivleniyor (önbellek, oturumlar ve günlükler hariç)"))
 		return "storage.tar.gz", "", m.userTar(ctx, a.Target, a.storagePath(),
 			[]string{"--exclude=./framework/cache", "--exclude=./framework/sessions", "--exclude=./framework/views", "--exclude=./logs"}, filepath.Join(tmp, "storage.tar.gz"))
 	}
-	db, err := dbConfig(a, env)
+	db, err := dbConfig(ctx, a, env)
 	if err != nil {
 		return "", err.Error(), nil
 	}
 	res.Database = db.Driver
 	if db.Driver == "sqlite" {
 		if !m.exists(db.Database) {
-			return "", "SQLite dosyası yok", nil
+			return "", i18n.T(ctx, "SQLite dosyası yok"), nil
 		}
-		fmt.Fprintf(log, "▸ SQLite veritabanı kopyalanıyor (%s)\n", strings.TrimPrefix(db.Database, siteDir(a.Target)+"/"))
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "SQLite veritabanı kopyalanıyor (%s)", strings.TrimPrefix(db.Database, siteDir(a.Target)+"/")))
 		return "database.sqlite.gz", "", m.toGzip(ctx, m.cmd(a.Target, "/", nil, "cat", db.Database), "reading the SQLite database", filepath.Join(tmp, "database.sqlite.gz"))
 	}
-	c, err := m.dumpCommand(a.Target, db)
+	c, err := m.dumpCommand(ctx, a.Target, db)
 	if err != nil {
 		return "", err.Error(), nil
 	}
@@ -304,7 +311,7 @@ func (m *Manager) backupPart(ctx context.Context, a App, part string, env map[st
 	if db.Driver == "pgsql" {
 		tool = "pg_dump"
 	}
-	fmt.Fprintf(log, "▸ Veritabanı dökümü alınıyor (%s, %s)\n", db.Driver, db.Database)
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Veritabanı dökümü alınıyor (%s, %s)", db.Driver, db.Database))
 	return "database.sql.gz", "", m.toGzip(ctx, c, tool, filepath.Join(tmp, "database.sql.gz"))
 }
 
@@ -355,7 +362,7 @@ type DBConfig struct {
 // dbWordRe keeps connection settings from being read as options.
 var dbWordRe = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.@:%-]*$`)
 
-func dbConfig(a App, env map[string]string) (DBConfig, error) {
+func dbConfig(ctx context.Context, a App, env map[string]string) (DBConfig, error) {
 	db := DBConfig{Driver: env["DB_CONNECTION"], Host: env["DB_HOST"], Port: env["DB_PORT"], Database: env["DB_DATABASE"], Username: env["DB_USERNAME"], Password: env["DB_PASSWORD"]}
 	switch db.Driver {
 	case "sqlite":
@@ -366,14 +373,14 @@ func dbConfig(a App, env map[string]string) (DBConfig, error) {
 			db.Database = a.dir() + "/" + db.Database
 		}
 		if strings.Contains(db.Database, "..") || !strings.HasPrefix(db.Database, "/home/"+a.User+"/") {
-			return DBConfig{}, errors.New("SQLite dosyası sitenin dizininde değil")
+			return DBConfig{}, errors.New(i18n.T(ctx, "SQLite dosyası sitenin dizininde değil"))
 		}
 		return db, nil
 	case "mysql", "mariadb", "pgsql":
 	case "":
-		return DBConfig{}, errors.New(".env bir veritabanı bağlantısı tanımlamıyor")
+		return DBConfig{}, errors.New(i18n.T(ctx, ".env bir veritabanı bağlantısı tanımlamıyor"))
 	default:
-		return DBConfig{}, fmt.Errorf("%s veritabanları yedeklenemiyor", db.Driver)
+		return DBConfig{}, errors.New(i18n.T(ctx, "%s veritabanları yedeklenemiyor", db.Driver))
 	}
 	if db.Host == "" || db.Host == "localhost" {
 		db.Host = "127.0.0.1"
@@ -386,7 +393,7 @@ func dbConfig(a App, env map[string]string) (DBConfig, error) {
 	}
 	for _, w := range []string{db.Host, db.Port, db.Database, db.Username} {
 		if !dbWordRe.MatchString(w) {
-			return DBConfig{}, errors.New(".env içindeki veritabanı ayarları okunamadı")
+			return DBConfig{}, errors.New(i18n.T(ctx, ".env içindeki veritabanı ayarları okunamadı"))
 		}
 	}
 	return db, nil
@@ -394,18 +401,18 @@ func dbConfig(a App, env map[string]string) (DBConfig, error) {
 
 // dumpCommand is mysqldump or pg_dump for db, run as the site's account.
 // The password goes in the environment, never on the command line.
-func (m *Manager) dumpCommand(t Target, db DBConfig) (host.Command, error) {
+func (m *Manager) dumpCommand(ctx context.Context, t Target, db DBConfig) (host.Command, error) {
 	var c host.Command
 	switch db.Driver {
 	case "pgsql":
 		if !m.sim && !m.exists("/usr/bin/pg_dump") {
-			return c, errors.New("pg_dump kurulu değil (postgresql-client)")
+			return c, errors.New(i18n.T(ctx, "pg_dump kurulu değil (postgresql-client)"))
 		}
 		c = m.cmd(t, "/", nil, "pg_dump", "--clean", "--if-exists", "--no-owner", "--no-privileges", "--host="+db.Host, "--port="+db.Port, "--username="+db.Username, "--dbname="+db.Database)
 		c.Env = []string{"PGPASSWORD=" + db.Password}
 	default:
 		if !m.sim && !m.exists("/usr/bin/mysqldump") {
-			return c, errors.New("mysqldump kurulu değil (mysql-client)")
+			return c, errors.New(i18n.T(ctx, "mysqldump kurulu değil (mysql-client)"))
 		}
 		c = m.cmd(t, "/", nil, "mysqldump", "--single-transaction", "--quick", "--routines", "--triggers", "--no-tablespaces",
 			"--host="+db.Host, "--port="+db.Port, "--user="+db.Username, "--", db.Database)
@@ -549,7 +556,7 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 	defer closeLog()
 	defer func() {
 		if err != nil {
-			fmt.Fprintf(log, "✗ Geri yükleme durdu: %s\n", err)
+			fmt.Fprintf(log, "✗ %s\n", i18n.T(ctx, "Geri yükleme durdu: %s", err))
 			err = &OperationError{err}
 		}
 	}()
@@ -574,7 +581,7 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 			return RestoreResult{}, &ValidationError{fmt.Sprintf("the backup holds no %s", p)}
 		}
 	}
-	fmt.Fprintf(log, "▸ Geri yükleme başladı · yedek %s (%s)\n", spec.ID, man.Created.Format("2006-01-02 15:04"))
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Geri yükleme başladı · yedek %s (%s)", spec.ID, man.Created.Format("2006-01-02 15:04")))
 
 	if contains(spec.Parts, "env") {
 		b, err := os.ReadFile(filepath.Join(tmp, "env"))
@@ -584,14 +591,14 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 		if err := m.writeFile(ctx, spec.Target, spec.envPath(), b, "600"); err != nil {
 			return RestoreResult{}, err
 		}
-		fmt.Fprintln(log, "▸ .env geri yüklendi")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, ".env geri yüklendi"))
 		res.Restored = append(res.Restored, "env")
 	}
 	if contains(spec.Parts, "storage") {
 		if err := m.restoreStorage(ctx, spec.App, filepath.Join(tmp, "storage.tar.gz")); err != nil {
 			return RestoreResult{}, err
 		}
-		fmt.Fprintln(log, "▸ storage geri yüklendi")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "storage geri yüklendi"))
 		res.Restored = append(res.Restored, "storage")
 	}
 	if contains(spec.Parts, "database") {
@@ -614,12 +621,12 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 	if spec.Path == CurrentPath {
 		// The configuration cache must match the restored .env and code.
 		if out, err := m.userRun(ctx, spec.Target, spec.dir(), phpBin(spec.PHPVersion), "artisan", "optimize"); err != nil {
-			fmt.Fprintf(log, "⚠ php artisan optimize başarısız: %s\n", firstLine(out))
+			fmt.Fprintf(log, "⚠ %s\n", i18n.T(ctx, "php artisan optimize başarısız: %s", firstLine(out)))
 		}
 	}
 	m.afterSwitch(ctx, log, spec.Target)
 	res.Current = m.currentRelease(spec.Target)
-	fmt.Fprintln(log, "✓ Geri yükleme bitti.")
+	fmt.Fprintln(log, "✓ "+i18n.T(ctx, "Geri yükleme bitti."))
 	return res, nil
 }
 
@@ -632,7 +639,7 @@ func (m *Manager) restoreCode(ctx context.Context, a App, man Manifest, id, arch
 	}
 	dir := baseDir(a.Target) + "/releases/" + release
 	if m.isDir(dir) && m.exists(dir+"/artisan") {
-		fmt.Fprintf(log, "▸ releases/%s sunucuda duruyor, yeniden kullanılıyor\n", release)
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "releases/%s sunucuda duruyor, yeniden kullanılıyor", release))
 		return release, nil
 	}
 	if m.exists(dir) {
@@ -647,7 +654,7 @@ func (m *Manager) restoreCode(ctx context.Context, a App, man Manifest, id, arch
 		_, _ = m.userRun(context.WithoutCancel(ctx), a.Target, "/", "rm", "-rf", "--one-file-system", dir)
 		return "", err
 	}
-	fmt.Fprintf(log, "▸ Kod releases/%s dizinine açıldı\n", release)
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Kod releases/%s dizinine açıldı", release))
 	return release, nil
 }
 
@@ -690,7 +697,7 @@ func (m *Manager) restoreStorage(ctx context.Context, a App, archive string) err
 
 // restoreDatabase loads the dump into the database of the current .env.
 func (m *Manager) restoreDatabase(ctx context.Context, a App, tmp string, log io.Writer) error {
-	db, err := dbConfig(a, parseEnv(m.envContent(ctx, a.Target, a.envPath())))
+	db, err := dbConfig(ctx, a, parseEnv(m.envContent(ctx, a.Target, a.envPath())))
 	if err != nil {
 		return errors.New(err.Error())
 	}
@@ -717,7 +724,7 @@ func (m *Manager) restoreDatabase(ctx context.Context, a App, tmp string, log io
 		if _, err := m.userRun(ctx, a.Target, "/", "mv", "-T", next, db.Database); err != nil {
 			return errors.New("putting the SQLite database in place failed")
 		}
-		fmt.Fprintln(log, "▸ SQLite veritabanı geri yüklendi")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "SQLite veritabanı geri yüklendi"))
 		return nil
 	}
 	c, err := m.restoreCommand(a.Target, db)
@@ -725,7 +732,7 @@ func (m *Manager) restoreDatabase(ctx context.Context, a App, tmp string, log io
 		return err
 	}
 	c.Input = gz
-	fmt.Fprintf(log, "▸ Veritabanı dökümü yükleniyor (%s, %s)\n", db.Driver, db.Database)
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Veritabanı dökümü yükleniyor (%s, %s)", db.Driver, db.Database))
 	if out, err := m.h.Run(ctx, c); err != nil {
 		return fmt.Errorf("loading the database dump failed: %s", firstLine(out))
 	}

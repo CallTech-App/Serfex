@@ -45,7 +45,7 @@ class CreateLaravelPreview implements ShouldQueue
         try {
             $files = $agent->call('laravel.env.get', $parent->agentApp(), config('servik.agent.job_timeout'));
         } catch (AgentException $e) {
-            $this->fail($preview, 'Uygulamanın .env dosyası okunamadı: '.($e->reason ?: $e->getMessage()));
+            $this->fail($preview, __('Uygulamanın .env dosyası okunamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]));
 
             return;
         }
@@ -68,7 +68,7 @@ class CreateLaravelPreview implements ShouldQueue
         ProvisionSite::dispatchSync($site);
         $site->refresh()->load('systemUser');
         if ($site->status !== SiteStatus::Active) {
-            $this->fail($preview, 'Önizleme sitesi oluşturulamadı: '.$site->last_error);
+            $this->fail($preview, __('Önizleme sitesi oluşturulamadı: :last_error', ['last_error' => $site->last_error]));
 
             return;
         }
@@ -116,7 +116,7 @@ class CreateLaravelPreview implements ShouldQueue
     {
         $preview = $this->preview->fresh();
         if ($preview !== null && $preview->status === 'creating') {
-            $this->fail($preview, $e?->getMessage() ?? 'Önizleme ortamı kurulamadı.');
+            $this->fail($preview, $e?->getMessage() ?? __('Önizleme ortamı kurulamadı.'));
         }
     }
 }

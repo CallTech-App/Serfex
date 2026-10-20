@@ -108,7 +108,7 @@ class MailDomainShow extends Component
     public function refreshStatus(): void
     {
         if ($this->domain() === null) {
-            session()->flash('toast', 'E-posta kapatıldı.');
+            session()->flash('toast', __('E-posta kapatıldı.'));
             $this->redirectRoute('mail.index', navigate: true);
         }
     }
@@ -184,13 +184,13 @@ class MailDomainShow extends Component
             'mbBody' => [$this->mbAutoreply ? 'required' : 'nullable', 'string', 'max:5000'],
             'mbUntil' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today'],
         ], [
-            'mbBody.required' => 'Otomatik yanıt için bir metin yazın.',
-            'mbUntil.after_or_equal' => 'Bitiş tarihi bugün ya da sonrası olmalı.',
+            'mbBody.required' => __('Otomatik yanıt için bir metin yazın.'),
+            'mbUntil.after_or_equal' => __('Bitiş tarihi bugün ya da sonrası olmalı.'),
         ], [
             'mbQuota' => 'kota',
             'mbSubject' => 'konu',
-            'mbBody' => 'yanıt metni',
-            'mbUntil' => 'bitiş tarihi',
+            'mbBody' => __('yanıt metni'),
+            'mbUntil' => __('bitiş tarihi'),
         ]);
         if ($mailbox === null && ($error = $this->nameError($domain, $this->mbName)) !== null) {
             $this->addError('mbName', $error);
@@ -216,7 +216,7 @@ class MailDomainShow extends Component
             $created = $domains->createMailbox($domain, $this->mbName, $this->mbPassword, $this->mbQuota);
             $this->editingMailbox = false;
             $this->dispatch('toast',
-                message: "{$address} oluşturuldu.",
+                message: __(':address oluşturuldu.', ['address' => $address]),
                 source: $this->getId(),
                 undo: ['method' => 'undoCreate', 'args' => [$created->id]],
             );
@@ -237,7 +237,7 @@ class MailDomainShow extends Component
         ], $this->mbPassword);
         $this->editingMailbox = false;
         $this->dispatch('toast',
-            message: "{$address} güncellendi.".($this->mbPassword !== '' ? ' Yeni parola hemen geçerli.' : ''),
+            message: $this->mbPassword !== '' ? __(':address güncellendi. Yeni parola hemen geçerli.', ['address' => $address]) : __(':address güncellendi.', ['address' => $address]),
             source: $this->getId(),
             undo: ['method' => 'undoEdit', 'args' => [$token]],
         );
@@ -253,7 +253,7 @@ class MailDomainShow extends Component
 
     public function undoEdit(string $token, MailDomains $domains): void
     {
-        $this->dispatch('toast', message: $domains->undoMailbox($token) ? 'Değişiklik geri alındı.' : 'Değişiklik artık geri alınamıyor.');
+        $this->dispatch('toast', message: $domains->undoMailbox($token) ? __('Değişiklik geri alındı.') : __('Değişiklik artık geri alınamıyor.'));
     }
 
     public function deleteSelected(MailDomains $domains): void
@@ -269,8 +269,8 @@ class MailDomainShow extends Component
             return;
         }
         $this->dispatch('toast',
-            message: (count($ids) === 1 ? $domain->address($names->first()).' silindi.' : count($ids).' posta kutusu silindi.')
-                .' Postalar '.intdiv(MailDomains::UNDO_SECONDS, 60).' dakika saklanır.',
+            message: (count($ids) === 1 ? __(':first silindi.', ['first' => $domain->address($names->first())]) : __(':ids posta kutusu silindi.', ['ids' => count($ids)]))
+                .' '.__('Postalar :minutes dakika saklanır.', ['minutes' => intdiv(MailDomains::UNDO_SECONDS, 60)]),
             source: $this->getId(),
             undo: ['method' => 'undoDelete', 'args' => [$ids]],
         );
@@ -286,7 +286,7 @@ class MailDomainShow extends Component
             return;
         }
         $restored = $domains->restoreMailboxes($domain, array_map('intval', $ids));
-        $this->dispatch('toast', message: $restored === count($ids) ? 'Silme geri alındı.' : 'Bazı posta kutuları geri alınamadı; süre dolmuş olabilir.');
+        $this->dispatch('toast', message: $restored === count($ids) ? __('Silme geri alındı.') : __('Bazı posta kutuları geri alınamadı; süre dolmuş olabilir.'));
     }
 
     // Forwarders
@@ -322,7 +322,7 @@ class MailDomainShow extends Component
             }
         }
         if ($forwarder === null && $name === MailForwarder::CATCH_ALL && $domain->forwarders()->where('name', $name)->exists()) {
-            $this->addError('fwName', 'Bu alan adının zaten bir tümünü yakala yönlendiricisi var; onu düzenleyin.');
+            $this->addError('fwName', __('Bu alan adının zaten bir tümünü yakala yönlendiricisi var; onu düzenleyin.'));
 
             return;
         }
@@ -331,7 +331,7 @@ class MailDomainShow extends Component
             return;
         }
         if ($to === []) {
-            $this->addError('fwTo', 'En az bir adres yazın.');
+            $this->addError('fwTo', __('En az bir adres yazın.'));
 
             return;
         }
@@ -339,9 +339,9 @@ class MailDomainShow extends Component
         $previous = $forwarder?->destinations;
         $domains->saveForwarder($domain, $name, $to);
         $this->editingForwarder = false;
-        $label = $name === MailForwarder::CATCH_ALL ? 'Tümünü yakala yönlendiricisi' : $domain->address($name);
+        $label = $name === MailForwarder::CATCH_ALL ? __('Tümünü yakala yönlendiricisi') : $domain->address($name);
         $this->dispatch('toast',
-            message: $label.($forwarder === null ? ' eklendi.' : ' güncellendi.'),
+            message: $forwarder === null ? __(':label eklendi.', ['label' => $label]) : __(':label güncellendi.', ['label' => $label]),
             source: $this->getId(),
             undo: ['method' => 'undoForwarder', 'args' => [$name, $previous]],
         );
@@ -355,7 +355,7 @@ class MailDomainShow extends Component
         }
         $saved = $domains->deleteForwarder($forwarder);
         $this->dispatch('toast',
-            message: ($forwarder->isCatchAll() ? 'Tümünü yakala yönlendiricisi' : $forwarder->domain->address($forwarder->name)).' silindi.',
+            message: __(':name silindi.', ['name' => $forwarder->isCatchAll() ? __('Tümünü yakala yönlendiricisi') : $forwarder->domain->address($forwarder->name)]),
             source: $this->getId(),
             undo: ['method' => 'undoForwarder', 'args' => [$saved['name'], $saved['destinations']]],
         );
@@ -380,7 +380,7 @@ class MailDomainShow extends Component
         } elseif ($name === MailForwarder::CATCH_ALL || $this->nameError($domain, $name, forwarder: true) === null) {
             $domains->saveForwarder($domain, $name, $destinations);
         }
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     // Settings
@@ -394,7 +394,7 @@ class MailDomainShow extends Component
         $previous = ['spam_filter' => $domain->spam_filter, 'manage_dns' => $domain->manage_dns];
         $domain->update(['spam_filter' => $this->spamFilter, 'manage_dns' => $this->manageDns]);
         $domains->sync($domain);
-        $this->dispatch('toast', message: 'Posta ayarları kaydedildi.', source: $this->getId(), undo: ['method' => 'undoSettings', 'args' => [$previous]]);
+        $this->dispatch('toast', message: __('Posta ayarları kaydedildi.'), source: $this->getId(), undo: ['method' => 'undoSettings', 'args' => [$previous]]);
     }
 
     /**
@@ -409,7 +409,7 @@ class MailDomainShow extends Component
         $domain->update(['spam_filter' => (bool) $previous['spam_filter'], 'manage_dns' => (bool) $previous['manage_dns']]);
         $domains->sync($domain);
         $this->fillSettings($domain);
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     /**
@@ -423,16 +423,16 @@ class MailDomainShow extends Component
         }
         $token = $dns->apply($domain, fix: true);
         if ($token === null) {
-            $this->dispatch('toast', message: 'DNS kayıtları zaten önerilen değerlerde.');
+            $this->dispatch('toast', message: __('DNS kayıtları zaten önerilen değerlerde.'));
 
             return;
         }
-        $this->dispatch('toast', message: 'Posta için DNS kayıtları yazıldı.', source: $this->getId(), undo: ['method' => 'undoDns', 'args' => [$token]]);
+        $this->dispatch('toast', message: __('Posta için DNS kayıtları yazıldı.'), source: $this->getId(), undo: ['method' => 'undoDns', 'args' => [$token]]);
     }
 
     public function undoDns(string $token, Zones $zones): void
     {
-        $this->dispatch('toast', message: $zones->undo($token) !== null ? 'DNS değişikliği geri alındı.' : 'Değişiklik artık geri alınamıyor.');
+        $this->dispatch('toast', message: $zones->undo($token) !== null ? __('DNS değişikliği geri alındı.') : __('Değişiklik artık geri alınamıyor.'));
     }
 
     public function recheckDns(MailDns $dns): void
@@ -452,7 +452,7 @@ class MailDomainShow extends Component
         $domains->disable($domain);
         $this->disabling = false;
         $this->dispatch('toast',
-            message: "{$domain->name} için e-posta kapatıldı. Posta kutuları ".intdiv(MailDomains::UNDO_SECONDS, 60).' dakika sonra silinir.',
+            message: __(':name için e-posta kapatıldı. Posta kutuları :undo_seconds dakika sonra silinir.', ['name' => $domain->name, 'undo_seconds' => intdiv(MailDomains::UNDO_SECONDS, 60)]),
             source: $this->getId(),
             undo: ['method' => 'undoDisable', 'args' => []],
         );
@@ -461,7 +461,7 @@ class MailDomainShow extends Component
     public function undoDisable(MailDomains $domains): void
     {
         $domain = $this->domain();
-        $this->dispatch('toast', message: $domain !== null && $domains->restore($domain) ? 'E-posta yeniden açıldı.' : 'Artık geri alınamıyor.');
+        $this->dispatch('toast', message: $domain !== null && $domains->restore($domain) ? __('E-posta yeniden açıldı.') : __('Artık geri alınamıyor.'));
     }
 
     public function render(MailDns $dns, MailSettings $settings, MailTraffic $traffic): View
@@ -488,7 +488,7 @@ class MailDomainShow extends Component
             'webmail' => $settings->webmailUrl(),
             'quotas' => MailSettings::QUOTAS,
             'traffic' => $this->tab === 'trafik' ? $traffic->days([$domain->name]) : null,
-        ])->title($domain->name.' · E-posta · Servik');
+        ])->title(__(':name · E-posta · Servik', ['name' => $domain->name]));
     }
 
     private function domain(): ?MailDomain
@@ -514,20 +514,20 @@ class MailDomainShow extends Component
     private function nameError(MailDomain $domain, string $name, bool $forwarder = false): ?string
     {
         if ($name === '') {
-            return 'Adresin @ işaretinden önceki kısmını yazın.';
+            return __('Adresin @ işaretinden önceki kısmını yazın.');
         }
         if (! preg_match(self::LOCAL, $name) || str_contains($name, '..')) {
-            return 'Yalnızca küçük harf, rakam, nokta, tire ve alt çizgi kullanın; harf ya da rakamla başlayıp bitmeli.';
+            return __('Yalnızca küçük harf, rakam, nokta, tire ve alt çizgi kullanın; harf ya da rakamla başlayıp bitmeli.');
         }
         $mailbox = Mailbox::withTrashed()->where('mail_domain_id', $domain->id)->where('name', $name)->first();
         if ($mailbox?->trashed()) {
-            return 'Bu adres az önce silindi; postaları silinene kadar ('.intdiv(MailDomains::UNDO_SECONDS, 60).' dakika) yeniden kullanılamaz. Silmeyi geri alabilirsiniz.';
+            return __('Bu adres az önce silindi; postaları silinene kadar (:undo_seconds dakika) yeniden kullanılamaz. Silmeyi geri alabilirsiniz.', ['undo_seconds' => intdiv(MailDomains::UNDO_SECONDS, 60)]);
         }
         if ($mailbox !== null) {
-            return 'Bu adreste zaten bir posta kutusu var.';
+            return __('Bu adreste zaten bir posta kutusu var.');
         }
         if (! $forwarder && $domain->forwarders()->where('name', $name)->exists()) {
-            return 'Bu adres bir yönlendirici olarak kullanılıyor.';
+            return __('Bu adres bir yönlendirici olarak kullanılıyor.');
         }
 
         return null;
@@ -546,18 +546,18 @@ class MailDomainShow extends Component
             preg_split('/[\s,;]+/', $text) ?: [],
         ))));
         if (count($list) > 50) {
-            $this->addError($field, 'En fazla 50 adres yazabilirsiniz.');
+            $this->addError($field, __('En fazla 50 adres yazabilirsiniz.'));
 
             return null;
         }
         foreach ($list as $a) {
             if (filter_var($a, FILTER_VALIDATE_EMAIL) === false) {
-                $this->addError($field, "\"{$a}\" geçerli bir e-posta adresi değil.");
+                $this->addError($field, __('":a" geçerli bir e-posta adresi değil.', ['a' => $a]));
 
                 return null;
             }
             if ($a === $self) {
-                $this->addError($field, 'Bir adres kendisine yönlendirilemez.');
+                $this->addError($field, __('Bir adres kendisine yönlendirilemez.'));
 
                 return null;
             }

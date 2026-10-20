@@ -2,7 +2,7 @@
     use App\Livewire\Sites\SiteStatistics;
     use App\Services\Stats\SiteStats;
     use App\Support\Bytes;
-    $num = fn (int $n) => number_format($n, 0, ',', '.');
+    $num = fn (int $n) => \App\Support\Num::format($n, 0);
     $field = 'h-9 rounded-md border border-line bg-surface px-2.5 text-[13.5px] outline-none focus:border-accent';
     $fmt = fn (string $metric, int $v) => $metric === 'bytes' ? Bytes::format($v) : $num($v);
     $points = array_map(fn ($p) => [$p['label'], $p[$metric], $p['label'].': '.$fmt($metric, $p[$metric]).' '.mb_strtolower(SiteStatistics::METRICS[$metric])], $series);
@@ -13,18 +13,18 @@
 <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="Konum">
-                <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">Siteler</a>
+            <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
+                <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
                 <x-icon name="chevron-right" class="size-3.5" />
                 <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
                 <x-icon name="chevron-right" class="size-3.5" />
-                <span class="text-fg">İstatistikler</span>
+                <span class="text-fg">{{ __('İstatistikler') }}</span>
             </nav>
-            <h1 class="mt-2 text-[22px] font-semibold tracking-tight">İstatistikler</h1>
-            <p class="mt-1 text-[13px] text-muted">Ziyaretçiler, sayfalar ve bant genişliği. Servik bunları sitenin erişim günlüğünden sayar; ziyaretçi bilgisi sunucudan çıkmaz.</p>
+            <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('İstatistikler') }}</h1>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Ziyaretçiler, sayfalar ve bant genişliği. Servik bunları sitenin erişim günlüğünden sayar; ziyaretçi bilgisi sunucudan çıkmaz.') }}</p>
         </div>
         <label class="flex items-center gap-2 text-[13px] text-muted">
-            Dönem
+            {{ __('Dönem') }}
             <select wire:model.live="period" class="{{ $field }} text-fg">
                 @foreach (SiteStats::PERIODS as $key => $label)
                     <option value="{{ $key }}">{{ $label }}</option>
@@ -36,15 +36,12 @@
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-5 py-3 text-[13.5px]">
             <p class="num w-full min-w-0 text-muted sm:w-auto sm:flex-1">
-                <span class="font-semibold text-fg">{{ $num($totals['visitors']) }}</span> ziyaretçi ·
-                <span class="font-semibold text-fg">{{ $num($totals['pages']) }}</span> sayfa görüntüleme ·
-                <span class="font-semibold text-fg">{{ $num($totals['requests']) }}</span> istek ·
-                <span class="font-semibold text-fg">{{ Bytes::format($totals['bytes']) }}</span> bant genişliği
+                <x-t text=":visitors ziyaretçi · :pages sayfa görüntüleme · :requests istek · :bytes bant genişliği"><x-slot:visitors><span class="font-semibold text-fg">{{ $num($totals['visitors']) }}</span></x-slot:visitors><x-slot:pages><span class="font-semibold text-fg">{{ $num($totals['pages']) }}</span></x-slot:pages><x-slot:requests><span class="font-semibold text-fg">{{ $num($totals['requests']) }}</span></x-slot:requests><x-slot:bytes><span class="font-semibold text-fg">{{ Bytes::format($totals['bytes']) }}</span></x-slot:bytes></x-t>
                 @if ($totals['requests'] > 0)
-                    · botlar isteklerin %{{ $botShare }}'i
+                    {{ __('· botlar isteklerin %:bot_share\'i', ['bot_share' => $botShare]) }}
                 @endif
             </p>
-            <select wire:model.live="metric" aria-label="Grafikte gösterilen" class="{{ $field }} h-8 text-[13px]">
+            <select wire:model.live="metric" aria-label="{{ __('Grafikte gösterilen') }}" class="{{ $field }} h-8 text-[13px]">
                 @foreach (SiteStatistics::METRICS as $key => $label)
                     <option value="{{ $key }}">{{ $label }}</option>
                 @endforeach
@@ -53,8 +50,8 @@
 
         @if ($empty)
             <div class="px-5 py-14 text-center">
-                <p class="font-medium">Bu dönem için istatistik yok</p>
-                <p class="mt-1 text-[13px] text-muted">Site ziyaret aldıkça sayılar burada görünür; dakikada bir güncellenir.</p>
+                <p class="font-medium">{{ __('Bu dönem için istatistik yok') }}</p>
+                <p class="mt-1 text-[13px] text-muted">{{ __('Site ziyaret aldıkça sayılar burada görünür; dakikada bir güncellenir.') }}</p>
             </div>
         @else
             <div class="border-b border-line px-5 pt-5 pb-4">
@@ -73,18 +70,18 @@
                         <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
                             <th class="py-2.5 pr-3 pl-5 font-medium">{{ $heading }}</th>
                             @if ($tab === 'country')
-                                <th class="px-3 py-2.5 text-right font-medium">Ziyaretçi</th>
-                                <th class="px-3 py-2.5 text-right font-medium">İstek</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('Ziyaretçi') }}</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('İstek') }}</th>
                             @elseif ($tab === 'referrer')
-                                <th class="px-3 py-2.5 text-right font-medium">Gelen ziyaret</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('Gelen ziyaret') }}</th>
                             @elseif ($tab === 'page')
-                                <th class="px-3 py-2.5 text-right font-medium">Görüntüleme</th>
-                                <th class="px-3 py-2.5 text-right font-medium">Bant genişliği</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('Görüntüleme') }}</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('Bant genişliği') }}</th>
                             @else
-                                <th class="px-3 py-2.5 text-right font-medium">İstek</th>
-                                <th class="px-3 py-2.5 text-right font-medium">Bant genişliği</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('İstek') }}</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('Bant genişliği') }}</th>
                             @endif
-                            <th class="w-44 py-2.5 pr-5 pl-3 font-medium">Pay</th>
+                            <th class="w-44 py-2.5 pr-5 pl-3 font-medium">{{ __('Pay') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-line">
@@ -108,7 +105,7 @@
                                 <td class="py-2.5 pr-5 pl-3">
                                     <div class="flex items-center gap-2.5">
                                         <span class="h-1.5 w-24 overflow-hidden rounded-full bg-surface-2"><span class="block h-full rounded-full bg-muted" style="width: {{ max(1, min(100, round($row['share'] * 100))) }}%"></span></span>
-                                        <span class="num text-[12.5px] text-muted">%{{ number_format($row['share'] * 100, $row['share'] < 0.1 ? 1 : 0, ',', '.') }}</span>
+                                        <span class="num text-[12.5px] text-muted">{{ \App\Support\Num::percent($row['share'] * 100, $row['share'] < 0.1 ? 1 : 0) }}</span>
                                     </div>
                                 </td>
                             </tr>
@@ -116,11 +113,11 @@
                             <tr>
                                 <td colspan="4" class="px-5 py-10 text-center text-[13px] text-muted">
                                     @if ($tab === 'referrer')
-                                        Bu dönemde başka bir siteden gelen ziyaret yok.
+                                        {{ __('Bu dönemde başka bir siteden gelen ziyaret yok.') }}
                                     @elseif ($tab === 'bot')
-                                        Bu dönemde bot ziyareti yok.
+                                        {{ __('Bu dönemde bot ziyareti yok.') }}
                                     @else
-                                        Bu dönem için kayıt yok.
+                                        {{ __('Bu dönem için kayıt yok.') }}
                                     @endif
                                 </td>
                             </tr>
@@ -131,13 +128,13 @@
         @endif
         <p class="border-t border-line px-5 py-3 text-2xs text-muted">
             @if ($tab === 'country' && ! $countriesReady)
-                Ülke bilgisi hazırlanıyor: sunucu, bölgesel İnternet kayıt kuruluşlarının adres listelerini indirince ülkeler görünür.
+                {{ __('Ülke bilgisi hazırlanıyor: sunucu, bölgesel İnternet kayıt kuruluşlarının adres listelerini indirince ülkeler görünür.') }}
             @elseif ($tab === 'country')
-                Ülke, adresin kayıtlı olduğu yerdir (bölgesel İnternet kayıt kuruluşlarının listeleri, ayda bir güncellenir).
+                {{ __('Ülke, adresin kayıtlı olduğu yerdir (bölgesel İnternet kayıt kuruluşlarının listeleri, ayda bir güncellenir).') }}
             @elseif ($tab === 'bot')
-                Arama motorları, SEO araçları ve otomatik istemciler. Ziyaretçi, sayfa ve ülke sayılarına katılmaz.
+                {{ __('Arama motorları, SEO araçları ve otomatik istemciler. Ziyaretçi, sayfa ve ülke sayılarına katılmaz.') }}
             @else
-                Ziyaretçi her gün ayrı sayılır: üç gün gelen biri dönemde üç ziyaretçidir. Botlar ziyaretçi ve sayfa sayılarına katılmaz.
+                {{ __('Ziyaretçi her gün ayrı sayılır: üç gün gelen biri dönemde üç ziyaretçidir. Botlar ziyaretçi ve sayfa sayılarına katılmaz.') }}
             @endif
         </p>
     </section>

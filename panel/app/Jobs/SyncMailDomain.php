@@ -58,7 +58,7 @@ class SyncMailDomain implements ShouldBeUniqueUntilProcessing, ShouldQueue
             $domain->update([
                 'status' => MailDomainStatus::Failed,
                 'last_error' => $e->getCode() === self::NOT_SET_UP
-                    ? 'Posta sunucusu henüz kurulmadı. E-posta sayfasından kurun; alan adı kurulumdan sonra otomatik uygulanır.'
+                    ? __('Posta sunucusu henüz kurulmadı. E-posta sayfasından kurun; alan adı kurulumdan sonra otomatik uygulanır.')
                     : $e->reason,
             ]);
 

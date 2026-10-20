@@ -3,31 +3,31 @@
     use App\Support\Bytes;
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
     $ready = $server['state'] === 'ready' || ($server['state'] === 'nomanager' && $installed !== []);
-    $tabs = ['veritabanlari' => 'Veritabanları', 'kullanicilar' => 'Kullanıcılar'];
+    $tabs = ['veritabanlari' => __('Veritabanları'), 'kullanicilar' => __('Kullanıcılar')];
 @endphp
 <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             @if ($filterSite)
-                <nav class="mb-2 flex items-center gap-1.5 text-[13px] text-muted" aria-label="Konum">
+                <nav class="mb-2 flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
                     <a href="{{ route('sites.show', $filterSite) }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" /><span class="font-mono">{{ $filterSite->domain }}</span></a>
                     <x-icon name="chevron-right" class="size-3.5" />
-                    <span class="text-fg">Veritabanları</span>
+                    <span class="text-fg">{{ __('Veritabanları') }}</span>
                 </nav>
             @endif
-            <h1 class="text-[22px] font-semibold tracking-tight">Veritabanları</h1>
+            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Veritabanları') }}</h1>
             <p class="mt-1 text-[13px] text-muted">
                 @if ($filterSite)
-                    <span class="font-mono">{{ $filterSite->domain }}</span> sitesinin veritabanları ve kullanıcıları.
-                    <button type="button" wire:click="$set('siteId', 0)" class="text-accent hover:underline">Tümünü göster</button>
+                    <x-t text=":domain sitesinin veritabanları ve kullanıcıları."><x-slot:domain><span class="font-mono">{{ $filterSite->domain }}</span></x-slot:domain></x-t>
+                    <button type="button" wire:click="$set('siteId', 0)" class="text-accent hover:underline">{{ __('Tümünü göster') }}</button>
                 @else
-                    {{ auth()->user()->is_admin ? 'Bu sunucudaki müşteri veritabanları ve kullanıcıları.' : 'Sitelerinizin veritabanları ve kullanıcıları.' }} Ayrıntı için bir veritabanına tıklayın.
+                    {{ __(':is_admin Ayrıntı için bir veritabanına tıklayın.', ['is_admin' => auth()->user()->is_admin ? __('Bu sunucudaki müşteri veritabanları ve kullanıcıları.') : __('Sitelerinizin veritabanları ve kullanıcıları.')]) }}
                 @endif
             </p>
         </div>
         @if (auth()->user()->is_admin)
             <a href="{{ route('databases.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-                <x-icon name="settings" />Veritabanı sunucuları
+                <x-icon name="settings" />{{ __('Veritabanı sunucuları') }}
             </a>
         @endif
     </div>
@@ -48,17 +48,17 @@
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 @if ($tab === 'veritabanlari')
                     <button type="button" wire:click="openCreate" @disabled(! $ready || $sites->isEmpty()) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
-                        <x-icon name="plus" />Veritabanı oluştur
+                        <x-icon name="plus" />{{ __('Veritabanı oluştur') }}
                     </button>
                 @else
                     <button type="button" wire:click="openAddUser" @disabled(! $ready || $userDatabases->isEmpty()) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
-                        <x-icon name="plus" />Kullanıcı ekle
+                        <x-icon name="plus" />{{ __('Kullanıcı ekle') }}
                     </button>
                 @endif
                 <label class="relative ml-auto w-full sm:w-64">
-                    <span class="sr-only">Ara</span>
+                    <span class="sr-only">{{ __('Ara') }}</span>
                     <x-icon name="search" class="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $tab === 'veritabanlari' ? 'Veritabanı ya da site ara' : 'Kullanıcı ara' }}"
+                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $tab === 'veritabanlari' ? __('Veritabanı ya da site ara') : __('Kullanıcı ara') }}"
                            class="h-9 w-full rounded-md border border-transparent bg-surface-2 pr-3 pl-9 text-[13.5px] outline-none focus:border-accent focus:bg-surface">
                 </label>
             </div>
@@ -68,13 +68,13 @@
                     <table class="w-full text-[13.5px] sm:min-w-[720px]">
                         <thead>
                             <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                                <th class="py-2.5 pr-3 pl-5 font-medium">Ad</th>
-                                <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Site</th>
+                                <th class="py-2.5 pr-3 pl-5 font-medium">{{ __('Ad') }}</th>
+                                <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('Site') }}</th>
                                 @if (count($installed) > 1)
-                                    <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Sunucu</th>
+                                    <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('Sunucu') }}</th>
                                 @endif
-                                <th class="px-3 py-2.5 text-right font-medium">Boyut</th>
-                                <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Kullanıcılar</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ __('Boyut') }}</th>
+                                <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('Kullanıcılar') }}</th>
                                 <th class="py-2.5 pr-5 pl-3"></th>
                             </tr>
                         </thead>
@@ -101,10 +101,10 @@
                                 <tr>
                                     <td colspan="6" class="px-5 py-12 text-center">
                                         @if ($search !== '')
-                                            <p class="text-muted">Aramanızla eşleşen veritabanı yok.</p>
+                                            <p class="text-muted">{{ __('Aramanızla eşleşen veritabanı yok.') }}</p>
                                         @else
-                                            <p class="font-medium">Henüz veritabanı yok</p>
-                                            <p class="mt-1 text-[13px] text-muted">"Veritabanı oluştur" ile bir site için veritabanı ve kullanıcısını birlikte açın.</p>
+                                            <p class="font-medium">{{ __('Henüz veritabanı yok') }}</p>
+                                            <p class="mt-1 text-[13px] text-muted">{{ __('"Veritabanı oluştur" ile bir site için veritabanı ve kullanıcısını birlikte açın.') }}</p>
                                         @endif
                                     </td>
                                 </tr>
@@ -114,12 +114,12 @@
                 </div>
                 @if ($databases->total() > 0)
                     <div class="num flex items-center gap-3 border-t border-line px-5 py-3 text-2xs text-muted">
-                        <span>{{ $total }}@if ($limit !== null) / {{ $limit }}@endif veritabanı · toplam {{ Bytes::format($totalSize) }}@if ($versions) · {{ implode(' · ', $versions) }}@endif</span>
+                        <span>{{ trans_choice(':used veritabanı · toplam :total_size', $limit ?? $total, ['used' => $limit !== null ? $total.' / '.$limit : $total, 'total_size' => Bytes::format($totalSize)]) }}@if ($versions) · {{ implode(' · ', $versions) }}@endif</span>
                         @if ($databases->hasPages())
                             <span class="ml-auto flex items-center gap-1">
-                                <button type="button" wire:click="previousPage('vt')" @disabled($databases->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Önceki</button>
-                                <span class="px-2">Sayfa {{ $databases->currentPage() }} / {{ $databases->lastPage() }}</span>
-                                <button type="button" wire:click="nextPage('vt')" @disabled(! $databases->hasMorePages()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Sonraki</button>
+                                <button type="button" wire:click="previousPage('vt')" @disabled($databases->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Önceki') }}</button>
+                                <span class="px-2">{{ __('Sayfa :databases / :databases2', ['databases' => $databases->currentPage(), 'databases2' => $databases->lastPage()]) }}</span>
+                                <button type="button" wire:click="nextPage('vt')" @disabled(! $databases->hasMorePages()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Sonraki') }}</button>
                             </span>
                         @endif
                     </div>
@@ -129,9 +129,9 @@
                     <table class="w-full min-w-[680px] text-[13.5px]">
                         <thead>
                             <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                                <th class="py-2.5 pr-3 pl-5 font-medium">Kullanıcı</th>
-                                <th class="px-3 py-2.5 font-medium">Bağlantı</th>
-                                <th class="px-3 py-2.5 font-medium">Veritabanları</th>
+                                <th class="py-2.5 pr-3 pl-5 font-medium">{{ __('Kullanıcı') }}</th>
+                                <th class="px-3 py-2.5 font-medium">{{ __('Bağlantı') }}</th>
+                                <th class="px-3 py-2.5 font-medium">{{ __('Veritabanları') }}</th>
                                 <th class="py-2.5 pr-5 pl-3"></th>
                             </tr>
                         </thead>
@@ -144,17 +144,17 @@
                                         @forelse ($u->databases as $d)
                                             <span class="mr-2 inline-block whitespace-nowrap"><span class="font-mono">{{ $d->name }}</span> <span class="text-muted">({{ DatabaseUser::accessLabel($d->pivot->access) }})</span></span>
                                         @empty
-                                            <span class="text-muted">Erişimi yok</span>
+                                            <span class="text-muted">{{ __('Erişimi yok') }}</span>
                                         @endforelse
                                     </td>
                                     <td class="py-3 pr-5 pl-3 text-right whitespace-nowrap">
-                                        <button type="button" wire:click="openUser({{ $u->id }})" class="text-[13px] text-accent hover:underline">Düzenle</button>
-                                        <button type="button" wire:click="deleteUser({{ $u->id }})" class="ml-3 text-[13px] text-muted hover:text-crit">Sil</button>
+                                        <button type="button" wire:click="openUser({{ $u->id }})" class="text-[13px] text-accent hover:underline">{{ __('Düzenle') }}</button>
+                                        <button type="button" wire:click="deleteUser({{ $u->id }})" class="ml-3 text-[13px] text-muted hover:text-crit">{{ __('Sil') }}</button>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-5 py-12 text-center text-muted">{{ $search !== '' ? 'Aramanızla eşleşen kullanıcı yok.' : 'Henüz veritabanı kullanıcısı yok.' }}</td>
+                                    <td colspan="4" class="px-5 py-12 text-center text-muted">{{ $search !== '' ? __('Aramanızla eşleşen kullanıcı yok.') : __('Henüz veritabanı kullanıcısı yok.') }}</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -162,9 +162,9 @@
                 </div>
                 @if ($users->hasPages())
                     <div class="num flex items-center justify-end gap-1 border-t border-line px-5 py-3 text-2xs text-muted">
-                        <button type="button" wire:click="previousPage('ku')" @disabled($users->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Önceki</button>
-                        <span class="px-2">Sayfa {{ $users->currentPage() }} / {{ $users->lastPage() }}</span>
-                        <button type="button" wire:click="nextPage('ku')" @disabled(! $users->hasMorePages()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">Sonraki</button>
+                        <button type="button" wire:click="previousPage('ku')" @disabled($users->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Önceki') }}</button>
+                        <span class="px-2">{{ __('Sayfa :users / :users2', ['users' => $users->currentPage(), 'users2' => $users->lastPage()]) }}</span>
+                        <button type="button" wire:click="nextPage('ku')" @disabled(! $users->hasMorePages()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Sonraki') }}</button>
                     </div>
                 @endif
             @endif
@@ -172,13 +172,13 @@
     @endif
 
     {{-- Veritabanı oluştur --}}
-    <x-modal title="Veritabanı oluştur" show="creating">
+    <x-modal :title="__('Veritabanı oluştur')" show="creating">
         <form wire:submit="create">
-            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">Veritabanı oluştur</h2>
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Veritabanı oluştur') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
                 <div class="grid gap-4 {{ count($installed) > 1 ? 'sm:grid-cols-[minmax(0,1fr)_10rem]' : '' }}">
                     <div>
-                        <label for="db-site" class="mb-1.5 block">Site</label>
+                        <label for="db-site" class="mb-1.5 block">{{ __('Site') }}</label>
                         <select id="db-site" wire:model.live="formSite" class="{{ $field }} border-line font-mono">
                             @foreach ($sites as $s)
                                 <option value="{{ $s->id }}">{{ $s->domain }}</option>
@@ -188,7 +188,7 @@
                     </div>
                     @if (count($installed) > 1)
                         <div>
-                            <label for="db-server" class="mb-1.5 block">Sunucu</label>
+                            <label for="db-server" class="mb-1.5 block">{{ __('Sunucu') }}</label>
                             <select id="db-server" wire:model="formServer" class="{{ $field }} border-line">
                                 @foreach ($installed as $srv)
                                     <option value="{{ $srv }}">{{ $labels[$srv] }}</option>
@@ -198,40 +198,40 @@
                     @endif
                 </div>
                 <div>
-                    <label for="db-name" class="mb-1.5 block">Veritabanı adı</label>
+                    <label for="db-name" class="mb-1.5 block">{{ __('Veritabanı adı') }}</label>
                     <div class="flex overflow-hidden rounded-md border focus-within:border-accent {{ $errors->has('dbSuffix') ? 'border-crit' : 'border-line' }}">
                         <span class="grid place-items-center border-r border-line bg-surface-2 px-3 font-mono text-[13px] text-muted">{{ $prefix }}</span>
-                        <input id="db-name" wire:model="dbSuffix" required placeholder="ad" autocomplete="off" spellcheck="false" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
+                        <input id="db-name" wire:model="dbSuffix" required placeholder="{{ __('ad') }}" autocomplete="off" spellcheck="false" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
                     </div>
                     @error('dbSuffix') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                 </div>
                 <label class="flex items-center gap-2">
                     <input type="checkbox" wire:model.live="withUser" class="size-4 accent-accent">
-                    <span>Bu veritabanı için yeni kullanıcı oluştur</span>
+                    <span>{{ __('Bu veritabanı için yeni kullanıcı oluştur') }}</span>
                 </label>
                 @if ($withUser)
                     <div>
-                        <label for="db-user" class="mb-1.5 block">Kullanıcı adı</label>
+                        <label for="db-user" class="mb-1.5 block">{{ __('Kullanıcı adı') }}</label>
                         <div class="flex overflow-hidden rounded-md border focus-within:border-accent {{ $errors->has('userSuffix') ? 'border-crit' : 'border-line' }}">
                             <span class="grid place-items-center border-r border-line bg-surface-2 px-3 font-mono text-[13px] text-muted">{{ $prefix }}</span>
-                            <input id="db-user" wire:model="userSuffix" required placeholder="kullanıcı" autocomplete="off" spellcheck="false" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
+                            <input id="db-user" wire:model="userSuffix" required placeholder="{{ __('kullanıcı') }}" autocomplete="off" spellcheck="false" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
                         </div>
                         @error('userSuffix') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label for="db-pass" class="mb-1.5 block">Parola</label>
+                        <label for="db-pass" class="mb-1.5 block">{{ __('Parola') }}</label>
                         <div class="flex gap-2">
                             <input id="db-pass" wire:model="password" autocomplete="new-password" spellcheck="false" class="{{ $field }} min-w-0 flex-1 font-mono {{ $errors->has('password') ? 'border-crit' : 'border-line' }}">
-                            <button type="button" wire:click="newPassword('password')" class="h-9 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">Yeni oluştur</button>
+                            <button type="button" wire:click="newPassword('password')" class="h-9 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">{{ __('Yeni oluştur') }}</button>
                         </div>
                         @error('password')
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
-                            <p class="mt-1.5 text-2xs text-muted">Oluşturduktan sonra bir kez gösterilir; Servik parolayı saklamaz.</p>
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Oluşturduktan sonra bir kez gösterilir; Servik parolayı saklamaz.') }}</p>
                         @enderror
                     </div>
                     <div>
-                        <label for="db-access" class="mb-1.5 block">Yetki</label>
+                        <label for="db-access" class="mb-1.5 block">{{ __('Yetki') }}</label>
                         <select id="db-access" wire:model="access" class="{{ $field }} border-line">
                             @foreach (DatabaseUser::ACCESS as $key => [$label, $hint])
                                 <option value="{{ $key }}">{{ $label }} — {{ $hint }}</option>
@@ -241,20 +241,20 @@
                 @endif
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
-                <button type="button" wire:click="$set('creating', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">Vazgeç</button>
-                <button type="submit" wire:loading.attr="disabled" wire:target="create" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">Oluştur</button>
+                <button type="button" wire:click="$set('creating', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="create" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Oluştur') }}</button>
             </div>
         </form>
     </x-modal>
 
     {{-- Kullanıcı ekle --}}
-    <x-modal title="Kullanıcı ekle" show="addingUser">
+    <x-modal :title="__('Kullanıcı ekle')" show="addingUser">
         <form wire:submit="addUser">
-            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">Kullanıcı ekle</h2>
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Kullanıcı ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label for="u-db" class="mb-1.5 block">Veritabanı</label>
+                        <label for="u-db" class="mb-1.5 block">{{ __('Veritabanı') }}</label>
                         <select id="u-db" wire:model.live="userDatabase" class="{{ $field }} border-line font-mono">
                             @foreach ($userDatabases as $d)
                                 <option value="{{ $d->id }}">{{ $d->name }}</option>
@@ -262,7 +262,7 @@
                         </select>
                     </div>
                     <div>
-                        <label for="u-access" class="mb-1.5 block">Yetki</label>
+                        <label for="u-access" class="mb-1.5 block">{{ __('Yetki') }}</label>
                         <select id="u-access" wire:model="newUserAccess" class="{{ $field }} border-line">
                             @foreach (DatabaseUser::ACCESS as $key => [$label])
                                 <option value="{{ $key }}">{{ $label }}</option>
@@ -271,26 +271,26 @@
                     </div>
                 </div>
                 <div>
-                    <label for="u-name" class="mb-1.5 block">Kullanıcı adı</label>
+                    <label for="u-name" class="mb-1.5 block">{{ __('Kullanıcı adı') }}</label>
                     <div class="flex overflow-hidden rounded-md border focus-within:border-accent {{ $errors->has('newUserSuffix') ? 'border-crit' : 'border-line' }}">
                         <span class="grid place-items-center border-r border-line bg-surface-2 px-3 font-mono text-[13px] text-muted">{{ $userPrefix }}</span>
-                        <input id="u-name" wire:model="newUserSuffix" required placeholder="rapor" autocomplete="off" spellcheck="false" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
+                        <input id="u-name" wire:model="newUserSuffix" required placeholder="{{ __('rapor') }}" autocomplete="off" spellcheck="false" class="h-9 min-w-0 flex-1 bg-surface px-3 font-mono text-[13px] outline-none">
                     </div>
                     @error('newUserSuffix') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     @error('userDatabase') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label for="u-pass" class="mb-1.5 block">Parola</label>
+                    <label for="u-pass" class="mb-1.5 block">{{ __('Parola') }}</label>
                     <div class="flex gap-2">
                         <input id="u-pass" wire:model="newUserPassword" autocomplete="new-password" spellcheck="false" class="{{ $field }} min-w-0 flex-1 font-mono {{ $errors->has('newUserPassword') ? 'border-crit' : 'border-line' }}">
-                        <button type="button" wire:click="newPassword('newUserPassword')" class="h-9 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">Yeni oluştur</button>
+                        <button type="button" wire:click="newPassword('newUserPassword')" class="h-9 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">{{ __('Yeni oluştur') }}</button>
                     </div>
                     @error('newUserPassword') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                 </div>
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
-                <button type="button" wire:click="$set('addingUser', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">Vazgeç</button>
-                <button type="submit" wire:loading.attr="disabled" wire:target="addUser" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">Kullanıcıyı ekle</button>
+                <button type="button" wire:click="$set('addingUser', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="addUser" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Kullanıcıyı ekle') }}</button>
             </div>
         </form>
     </x-modal>

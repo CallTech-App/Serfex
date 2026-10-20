@@ -44,22 +44,22 @@ class ResourceLimits
         $memoryMb = $memoryMb ?: null;
         $phpWorkers = $phpWorkers ?: null;
         if ($cpu === null && $memoryMb === null && $phpWorkers === null) {
-            throw new MonitorException('CPU, bellek ya da PHP işçisinden en az birini sınırlayın.');
+            throw new MonitorException(__('CPU, bellek ya da PHP işçisinden en az birini sınırlayın.'));
         }
         if ($cpu !== null && ($cpu < 5 || $cpu > 6400)) {
-            throw new MonitorException('CPU sınırı bir çekirdeğin %5\'i ile %6400\'ü arasında olmalı.');
+            throw new MonitorException(__('CPU sınırı bir çekirdeğin %5\'i ile %6400\'ü arasında olmalı.'));
         }
         if ($memoryMb !== null && $memoryMb < 64) {
-            throw new MonitorException('Bellek sınırı en az 64 MB olmalı.');
+            throw new MonitorException(__('Bellek sınırı en az 64 MB olmalı.'));
         }
         if ($phpWorkers !== null && ($phpWorkers < 1 || $phpWorkers > 1000)) {
-            throw new MonitorException('PHP işçisi sayısı 1 ile 1000 arasında olmalı.');
+            throw new MonitorException(__('PHP işçisi sayısı 1 ile 1000 arasında olmalı.'));
         }
         if ($minutes < 1 || $minutes > self::MAX_MINUTES) {
-            throw new MonitorException('Süre 1 dakika ile 7 gün arasında olmalı.');
+            throw new MonitorException(__('Süre 1 dakika ile 7 gün arasında olmalı.'));
         }
         if ($source === 'ai' && $minutes > self::AI_MAX_MINUTES) {
-            throw new MonitorException('Servik AI bir siteyi en fazla 2 saat sınırlayabilir.');
+            throw new MonitorException(__('Servik AI bir siteyi en fazla 2 saat sınırlayabilir.'));
         }
 
         $this->agent->call('monitor.limit.apply', [

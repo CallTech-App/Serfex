@@ -69,17 +69,17 @@ class Restores
     {
         $item->loadMissing('backup', 'site.systemUser');
         if ($item->isPanel() || $item->status !== 'succeeded' || ! $item->backup->isUsable()) {
-            return 'Bu yedek geri yüklenemez.';
+            return __('Bu yedek geri yüklenemez.');
         }
         $parts = array_values(array_intersect(array_keys(Backup::RESTORE_PARTS), $parts, $item->restorable()));
         if ($parts === []) {
-            return 'Geri yüklenecek en az bir şey seçin.';
+            return __('Geri yüklenecek en az bir şey seçin.');
         }
         if ($this->backups->busy()) {
-            return Backups::BUSY;
+            return __(Backups::BUSY);
         }
         if (PanelUpdate::running()->exists()) {
-            return Backups::UPDATING;
+            return __(Backups::UPDATING);
         }
         $site = $this->siteFor($item);
         if (($refusal = $this->refusal($user, $item, $site, $parts)) !== null) {
@@ -89,7 +89,7 @@ class Restores
             return $chain;
         }
         if ($site === null && $item->meta !== null && empty($item->meta['site'])) {
-            return 'Site artık yok ve yedekte sitenin tanımı bulunmuyor; önce siteyi oluşturun.';
+            return __('Site artık yok ve yedekte sitenin tanımı bulunmuyor; önce siteyi oluşturun.');
         }
         $restore = BackupRestore::create([
             'backup_item_id' => $item->id,
@@ -129,13 +129,13 @@ class Restores
     public function refusal(?User $user, BackupItem $item, ?Site $site, array $parts = []): ?string
     {
         if ($site !== null && in_array($site->status, [SiteStatus::Deleting, SiteStatus::Provisioning], true)) {
-            return 'Site şu an değişiyor; biraz sonra yeniden deneyin.';
+            return __('Site şu an değişiyor; biraz sonra yeniden deneyin.');
         }
         if ($user === null || $user->is_admin) {
             return null;
         }
         if (! $user->allows('backups')) {
-            return 'Paketiniz yedeklemeyi içermiyor.';
+            return __('Paketiniz yedeklemeyi içermiyor.');
         }
         if ($site !== null) {
             $own = $user->canSeeSite($site);
@@ -147,16 +147,16 @@ class Restores
                 && ($account !== null ? $account->customer_id === $user->customer_id : $name === $user->customer?->username);
         }
         if (! $own) {
-            return 'Bu yedek sizin sitelerinizden birine ait değil.';
+            return __('Bu yedek sizin sitelerinizden birine ait değil.');
         }
         if ($site === null && ($refusal = app(Quotas::class)->refusal($user->customer, 'sites')) !== null) {
             return $refusal;
         }
         if (in_array('mail', $parts, true) && ! $user->allows('mail')) {
-            return 'Paketiniz e-postayı içermiyor.';
+            return __('Paketiniz e-postayı içermiyor.');
         }
         if (in_array('dns', $parts, true) && ! $user->allows('dns')) {
-            return 'Paketiniz DNS düzenlemeyi içermiyor.';
+            return __('Paketiniz DNS düzenlemeyi içermiyor.');
         }
 
         return null;
@@ -170,7 +170,7 @@ class Restores
         $restore->update(['status' => 'running']);
         $item = $restore->item()->with('backup.target')->first();
         if ($item === null) {
-            $this->fail($restore, 'Yedek silinmiş.');
+            $this->fail($restore, __('Yedek silinmiş.'));
 
             return;
         }
@@ -178,12 +178,12 @@ class Restores
         try {
             $meta = $this->meta($item);
         } catch (AgentException $e) {
-            $this->fail($restore, 'Yedek okunamadı: '.($e->reason ?: $e->getMessage()));
+            $this->fail($restore, __('Yedek okunamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]));
 
             return;
         }
         if ($meta === null) {
-            $this->fail($restore, 'Yedek okunamadı.');
+            $this->fail($restore, __('Yedek okunamadı.'));
 
             return;
         }
@@ -192,7 +192,7 @@ class Restores
             $site = $this->siteFor($item);
             if ($site === null) {
                 if (empty($meta['site'])) {
-                    $this->fail($restore, 'Site artık yok ve yedekte sitenin tanımı bulunmuyor; önce siteyi oluşturun.');
+                    $this->fail($restore, __('Site artık yok ve yedekte sitenin tanımı bulunmuyor; önce siteyi oluşturun.'));
 
                     return;
                 }
@@ -203,7 +203,7 @@ class Restores
             } elseif ($restore->result['safety'] ?? false) {
                 $safety = $this->backups->takeSafety($site, $user);
                 if (! $safety->isUsable()) {
-                    $this->fail($restore, 'Geri yüklemeden önce sitenin şimdiki hâli yedeklenemedi, hiçbir şey değiştirilmedi: '.($safety->error ?: $safety->items()->value('error')));
+                    $this->fail($restore, __('Geri yüklemeden önce sitenin şimdiki hâli yedeklenemedi, hiçbir şey değiştirilmedi: :error', ['error' => $safety->error ?: $safety->items()->value('error')]));
 
                     return;
                 }
@@ -247,7 +247,7 @@ class Restores
                 ProvisionSite::dispatchSync($site->fresh());
             }
         } catch (AgentException $e) {
-            $this->fail($restore, $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamadı.' : ($e->getCode() === -32006 ? Backups::BUSY : ($e->reason ?: $e->getMessage())));
+            $this->fail($restore, $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamadı.') : ($e->getCode() === -32006 ? __(Backups::BUSY) : ($e->reason ?: $e->getMessage())));
 
             return;
         } catch (Throwable $e) {
@@ -299,7 +299,7 @@ class Restores
     {
         $safety = $restore->safetyBackup?->items()->first();
         if ($safety === null || $restore->status !== 'succeeded') {
-            return 'Bu geri yükleme geri alınamaz.';
+            return __('Bu geri yükleme geri alınamaz.');
         }
 
         return $this->start($safety, $restore->parts, false, $user);

@@ -59,12 +59,12 @@ class Access extends Section
         $app = $this->app();
         $user = User::where('email', $this->email)->first();
         if ($user?->is_admin) {
-            $this->addError('email', 'Bu kişi sunucu yöneticisi; tüm uygulamalarda zaten sahip.');
+            $this->addError('email', __('Bu kişi sunucu yöneticisi; tüm uygulamalarda zaten sahip.'));
 
             return;
         }
         if ($user !== null && $app->members()->where('user_id', $user->id)->exists()) {
-            $this->addError('email', 'Bu kişi zaten ekli.');
+            $this->addError('email', __('Bu kişi zaten ekli.'));
 
             return;
         }
@@ -85,7 +85,7 @@ class Access extends Section
         if ($invite !== null) {
             $this->showSecret(route('invitation', $invite), 'invite');
         } else {
-            $this->dispatch('toast', message: $user->name.' eklendi.');
+            $this->dispatch('toast', message: __(':name eklendi.', ['name' => $user->name]));
         }
     }
 
@@ -112,7 +112,7 @@ class Access extends Section
         $before = $member->role;
         $member->update(['role' => $role]);
         $this->dispatch('toast',
-            message: $member->user->name.' artık '.LaravelAppMember::ROLES[$role][0].'.',
+            message: __(':name artık :roles.', ['name' => $member->user->name, 'roles' => LaravelAppMember::ROLES[$role][0]]),
             source: $this->getId(),
             undo: ['method' => 'setRole', 'args' => [$member->id, $before]],
         );
@@ -127,7 +127,7 @@ class Access extends Section
         $copy = ['user_id' => $member->user_id, 'role' => $member->role];
         $member->delete();
         $this->dispatch('toast',
-            message: $member->user->name.' bu uygulamadan çıkarıldı.',
+            message: __(':name bu uygulamadan çıkarıldı.', ['name' => $member->user->name]),
             source: $this->getId(),
             undo: ['method' => 'restoreMember', 'args' => [$copy]],
         );
@@ -158,7 +158,7 @@ class Access extends Section
         $this->validate(['tokenName' => ['required', 'max:64']], [], ['tokenName' => 'ad']);
         $app = $this->app();
         if ($app->apiTokens()->whereNull('revoked_at')->count() >= 20) {
-            $this->addError('tokenName', 'En çok 20 anahtar olabilir; kullanılmayanları iptal edin.');
+            $this->addError('tokenName', __('En çok 20 anahtar olabilir; kullanılmayanları iptal edin.'));
 
             return;
         }
@@ -175,7 +175,7 @@ class Access extends Section
         }
         $token->update(['revoked_at' => now()]);
         $this->dispatch('toast',
-            message: $token->name.' anahtarı iptal edildi; artık çalışmaz.',
+            message: __(':name anahtarı iptal edildi; artık çalışmaz.', ['name' => $token->name]),
             source: $this->getId(),
             undo: ['method' => 'unrevoke', 'args' => [$token->id]],
         );

@@ -54,7 +54,7 @@ class AiSettingsPage extends Component
             'key' => ['nullable', 'string', 'max:300', 'regex:/^sk-ant-[A-Za-z0-9_-]+$/'],
             'model' => ['required', 'in:'.implode(',', array_keys(Models::ALL))],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:100000'],
-        ], ['key.regex' => 'Claude API anahtarları sk-ant- ile başlar.'], ['key' => 'API anahtarı', 'budget' => 'harcama sınırı']);
+        ], ['key.regex' => __('Claude API anahtarları sk-ant- ile başlar.')], ['key' => __('API anahtarı'), 'budget' => __('harcama sınırı')]);
 
         $previous = $this->current($settings);
         Setting::put('ai.enabled', $this->enabled);
@@ -66,7 +66,7 @@ class AiSettingsPage extends Component
             $this->key = '';
         }
         $this->check = null;
-        $this->dispatch('toast', message: 'Servik AI ayarları kaydedildi.', source: $this->getId(),
+        $this->dispatch('toast', message: __('Servik AI ayarları kaydedildi.'), source: $this->getId(),
             undo: ['method' => 'undoSave', 'args' => [encrypt($previous)]]);
     }
 
@@ -78,7 +78,7 @@ class AiSettingsPage extends Component
         }
         $this->mount($settings);
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     public function removeKey(AiSettings $settings): void
@@ -86,7 +86,7 @@ class AiSettingsPage extends Component
         $previous = $this->current($settings);
         $settings->setApiKey(null);
         $this->check = null;
-        $this->dispatch('toast', message: 'API anahtarı silindi.', source: $this->getId(),
+        $this->dispatch('toast', message: __('API anahtarı silindi.'), source: $this->getId(),
             undo: ['method' => 'undoSave', 'args' => [encrypt($previous)]]);
     }
 
@@ -97,13 +97,13 @@ class AiSettingsPage extends Component
     {
         $key = trim($this->key) ?: $settings->apiKey();
         if ($key === null) {
-            $this->check = [false, 'Önce bir API anahtarı girin.'];
+            $this->check = [false, __('Önce bir API anahtarı girin.')];
 
             return;
         }
         try {
             $claude->check($key, Models::exists($this->model) ? $this->model : Models::DEFAULT);
-            $this->check = [true, 'Bağlantı çalışıyor: '.Models::label($this->model).' kullanılabilir.'];
+            $this->check = [true, __('Bağlantı çalışıyor: :model kullanılabilir.', ['model' => Models::label($this->model)])];
         } catch (ClaudeException $e) {
             $this->check = [false, $e->getMessage()];
         }

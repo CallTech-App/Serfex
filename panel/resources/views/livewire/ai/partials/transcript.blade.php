@@ -17,7 +17,7 @@
                     @elseif ($part['type'] === 'steps')
                         <p class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-2xs text-muted">
                             <x-icon name="scan-search" class="size-3.5" />
-                            <span>Baktığı yerler:</span>
+                            <span>{{ __('Baktığı yerler:') }}</span>
                             @foreach (array_unique($part['steps']) as $step)
                                 <span class="rounded bg-surface-2 px-1.5 py-0.5">{{ $step }}</span>
                             @endforeach
@@ -27,9 +27,9 @@
                     @endif
                 @endforeach
                 @if ($item['stop'] === 'max_tokens')
-                    <p class="text-2xs text-muted">Yanıt uzunluk sınırında kesildi; "devam et" yazabilirsiniz.</p>
+                    <p class="text-2xs text-muted">{{ __('Yanıt uzunluk sınırında kesildi; "devam et" yazabilirsiniz.') }}</p>
                 @elseif ($item['stop'] === 'refusal')
-                    <p class="text-[13px] text-muted">Claude bu isteğe yanıt vermedi. Soruyu başka bir şekilde sorabilirsiniz.</p>
+                    <p class="text-[13px] text-muted">{{ __('Claude bu isteğe yanıt vermedi. Soruyu başka bir şekilde sorabilirsiniz.') }}</p>
                 @endif
             </div>
         </div>
@@ -42,14 +42,14 @@
         @unless ($compact)
             <span class="grid size-7 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><x-icon name="sparkles" class="size-3.5 animate-pulse" /></span>
         @endunless
-        <span class="flex items-center gap-2"><x-icon name="loader-circle" class="size-3.5 animate-spin" />Servik AI sunucuya bakıyor…</span>
+        <span class="flex items-center gap-2"><x-icon name="loader-circle" class="size-3.5 animate-spin" />{{ __('Servik AI sunucuya bakıyor…') }}</span>
     </div>
 @elseif ($conversation?->status === 'failed')
     <div class="flex items-start gap-3 rounded-lg border border-crit/30 bg-crit-soft/60 px-4 py-3 text-[13px]">
         <x-icon name="triangle-alert" class="mt-0.5 text-crit" />
         <div class="min-w-0 flex-1">
             <p>{{ $conversation->error }}</p>
-            <button type="button" wire:click="retry" class="mt-2 font-medium text-accent hover:underline">Yeniden dene</button>
+            <button type="button" wire:click="retry" class="mt-2 font-medium text-accent hover:underline">{{ __('Yeniden dene') }}</button>
         </div>
     </div>
 @endif

@@ -454,7 +454,7 @@ class DatabasesTest extends TestCase
         Setting::put('databases.manager_port', 9443);
 
         Livewire::test(DatabaseSettingsPage::class)
-            ->assertSee('PostgreSQL\'i kur', false)
+            ->assertSee('PostgreSQL\'i kur')
             ->assertSee('9443')
             ->assertSee('Araçlar ve Ayarlar → Genel')
             ->call('addPostgres');

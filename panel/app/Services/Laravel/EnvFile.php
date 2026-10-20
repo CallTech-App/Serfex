@@ -113,10 +113,10 @@ final class EnvFile
         }
         $changed = array_keys(array_filter(array_intersect_key($new, $old), fn ($v, $k) => $old[$k] !== $v, ARRAY_FILTER_USE_BOTH));
         if ($changed !== []) {
-            $parts[] = self::names($changed).' değişti';
+            $parts[] = __(':changed değişti', ['changed' => self::names($changed)]);
         }
 
-        return $parts === [] ? ($before === $after ? 'Değişiklik yok' : 'Yorumlar veya düzen değişti') : implode(', ', $parts);
+        return $parts === [] ? ($before === $after ? __('Değişiklik yok') : __('Yorumlar veya düzen değişti')) : implode(', ', $parts);
     }
 
     /**
@@ -124,7 +124,7 @@ final class EnvFile
      */
     private static function names(array $keys): string
     {
-        return count($keys) > 3 ? implode(', ', array_slice($keys, 0, 3)).' ve '.(count($keys) - 3).' değişken daha' : implode(', ', $keys);
+        return count($keys) > 3 ? __(':keys ve :keys2 değişken daha', ['keys' => implode(', ', array_slice($keys, 0, 3)), 'keys2' => (count($keys) - 3)]) : implode(', ', $keys);
     }
 
     /**

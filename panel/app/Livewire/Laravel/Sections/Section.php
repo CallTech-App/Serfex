@@ -70,14 +70,16 @@ abstract class Section extends Component
     public static function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.'
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
             : $e->reason;
     }
 
     public function placeholder(): string
     {
-        return <<<'HTML'
-            <div class="flex items-center gap-2 px-5 py-6 text-[13.5px] text-muted"><svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Yükleniyor…</div>
+        $loading = e(__('Yükleniyor…'));
+
+        return <<<HTML
+            <div class="flex items-center gap-2 px-5 py-6 text-[13.5px] text-muted"><svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>{$loading}</div>
             HTML;
     }
 }

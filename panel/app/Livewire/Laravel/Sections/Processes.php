@@ -102,11 +102,11 @@ class Processes extends Section
                 Rule::unique('laravel_processes', 'name')->where('laravel_app_id', $app->id)->ignore($this->processId)],
             'form.command' => ['required', 'max:1000', 'regex:~^(php|artisan|/[\w./+-]+|[\w.+-]+)(\s|$)~'],
         ], [
-            'form.name.regex' => 'Küçük harf, rakam ve - kullanın.',
-            'form.name.unique' => 'Bu adda bir süreç var.',
-            'form.name.not_in' => 'Bu ad Horizon, Octane ve Reverb için ayrılmış.',
-            'form.command.regex' => 'Komut bir program adıyla başlamalı, örneğin php artisan mqtt:listen.',
-        ], ['form.name' => 'ad', 'form.command' => 'komut', 'form.workers' => 'işçi sayısı', 'form.max_requests' => 'istek sınırı', 'form.server' => 'sunucu']);
+            'form.name.regex' => __('Küçük harf, rakam ve - kullanın.'),
+            'form.name.unique' => __('Bu adda bir süreç var.'),
+            'form.name.not_in' => __('Bu ad Horizon, Octane ve Reverb için ayrılmış.'),
+            'form.command.regex' => __('Komut bir program adıyla başlamalı, örneğin php artisan mqtt:listen.'),
+        ], ['form.name' => 'ad', 'form.command' => 'komut', 'form.workers' => __('işçi sayısı'), 'form.max_requests' => __('istek sınırı'), 'form.server' => 'sunucu']);
 
         $data = $kind === 'octane'
             ? ['server' => $this->form['server'], 'workers' => (int) $this->form['workers'], 'max_requests' => (int) $this->form['max_requests']]
@@ -124,7 +124,7 @@ class Processes extends Section
         }
         $this->editing = false;
         $apps->syncProcesses($app, web: $kind === 'octane');
-        $this->dispatch('toast', message: $process->label().' kaydedildi; sunucuya uygulanıyor.');
+        $this->dispatch('toast', message: __(':label kaydedildi; sunucuya uygulanıyor.', ['label' => $process->label()]));
     }
 
     public function restart(int $id, AgentClient $agent): void
@@ -140,7 +140,7 @@ class Processes extends Section
 
             return;
         }
-        $this->dispatch('toast', message: $process->label().' yeniden başlatıldı.');
+        $this->dispatch('toast', message: __(':label yeniden başlatıldı.', ['label' => $process->label()]));
     }
 
     public function delete(int $id, LaravelApps $apps): void
@@ -153,7 +153,7 @@ class Processes extends Section
         $process->delete();
         $apps->syncProcesses($this->app());
         $this->dispatch('toast',
-            message: "{$copy['name']} süreci silindi.",
+            message: __(':name süreci silindi.', ['name' => $copy['name']]),
             source: $this->getId(),
             undo: ['method' => 'restore', 'args' => [$copy]],
         );
@@ -205,7 +205,7 @@ class Processes extends Section
         try {
             $chunk = app(AgentClient::class)->call('laravel.process.log', ['domain' => $app->site->domain, 'name' => $name, 'offset' => $offset]);
         } catch (AgentException) {
-            return ['data' => '', 'offset' => max(0, $offset), 'more' => false, 'done' => false, 'error' => 'Sunucu ajanına ulaşılamıyor.'];
+            return ['data' => '', 'offset' => max(0, $offset), 'more' => false, 'done' => false, 'error' => __('Sunucu ajanına ulaşılamıyor.')];
         }
         $next = (int) ($chunk['offset'] ?? 0);
 
@@ -218,7 +218,7 @@ class Processes extends Section
         $app = $this->app();
         $apps->syncProcesses($app, web: in_array($process->kind, ['octane', 'reverb'], true));
         $this->dispatch('toast',
-            message: $process->label().($enabled ? ' başlatılıyor.' : ' durduruluyor.'),
+            message: $enabled ? __(':label başlatılıyor.', ['label' => $process->label()]) : __(':label durduruluyor.', ['label' => $process->label()]),
             source: $this->getId(),
             undo: ['method' => $enabled ? 'disable' : 'enableAgain', 'args' => [$process->id]],
         );

@@ -152,7 +152,7 @@ class LiveMonitor extends Component
         }
         $this->actionError = null;
         $this->dispatch('toast',
-            message: "{$site->domain} ".ResourceLimits::DURATIONS[$minutes].' sınırlandı: '.$limit->summary().'.',
+            message: __(':domain :duration sınırlandı: :summary.', ['domain' => $site->domain, 'duration' => __(ResourceLimits::DURATIONS[$minutes]), 'summary' => $limit->summary()]),
             source: $this->getId(),
             undo: $previous === null ? ['method' => 'liftLimit', 'args' => [$limit->id]] : null,
         );
@@ -171,7 +171,7 @@ class LiveMonitor extends Component
 
             return;
         }
-        $this->dispatch('toast', message: "{$limit->site->domain} için sınır kaldırıldı.");
+        $this->dispatch('toast', message: __(':domain için sınır kaldırıldı.', ['domain' => $limit->site->domain]));
     }
 
     public function restartPhp(ResourceLimits $limits): void
@@ -189,8 +189,8 @@ class LiveMonitor extends Component
         }
         $this->actionError = null;
         $this->dispatch('toast', message: $n > 0
-            ? "{$site->domain} için {$n} PHP işçisi durduruldu; yeni istekler yeni işçilerle karşılanıyor."
-            : "{$site->domain} şu an PHP işçisi çalıştırmıyordu; yeniden başlatılacak bir şey yok.");
+            ? __(':domain için :n PHP işçisi durduruldu; yeni istekler yeni işçilerle karşılanıyor.', ['domain' => $site->domain, 'n' => $n])
+            : __(':domain şu an PHP işçisi çalıştırmıyordu; yeniden başlatılacak bir şey yok.', ['domain' => $site->domain]));
     }
 
     /**
@@ -217,13 +217,15 @@ class LiveMonitor extends Component
             return;
         }
         if ($ids === []) {
-            $this->dispatch('toast', message: 'Engellenecek saldırgan adres kalmadı.');
+            $this->dispatch('toast', message: __('Engellenecek saldırgan adres kalmadı.'));
 
             return;
         }
         $this->actionError = null;
         $this->dispatch('toast',
-            message: count($ids).' adres '.IpBlocks::DURATIONS[$this->attackMinutes].' engellendi.',
+            message: $this->attackMinutes === 0
+                ? __(':ids adres kalıcı olarak engellendi.', ['ids' => count($ids)])
+                : __(':ids adres :durations engellendi.', ['ids' => count($ids), 'durations' => IpBlocks::DURATIONS[$this->attackMinutes]]),
             source: $this->getId(),
             undo: ['method' => 'unblockMany', 'args' => [$ids]],
         );
@@ -262,7 +264,9 @@ class LiveMonitor extends Component
         }
         $this->blocking = false;
         $this->dispatch('toast',
-            message: "{$b->address} ".($b->expires_at ? IpBlocks::DURATIONS[(int) $this->block['minutes']] : 'kalıcı olarak').' engellendi.',
+            message: $b->expires_at
+                ? __(':address :duration engellendi.', ['address' => $b->address, 'duration' => IpBlocks::DURATIONS[(int) $this->block['minutes']]])
+                : __(':address kalıcı olarak engellendi.', ['address' => $b->address]),
             source: $this->getId(),
             undo: ['method' => 'unblock', 'args' => [$b->id]],
         );
@@ -289,7 +293,7 @@ class LiveMonitor extends Component
         }
         if ($done !== []) {
             $this->dispatch('toast',
-                message: count($done) === 1 ? reset($done).' engeli kaldırıldı.' : count($done).' adresin engeli kaldırıldı.',
+                message: count($done) === 1 ? __(':done engeli kaldırıldı.', ['done' => reset($done)]) : __(':done adresin engeli kaldırıldı.', ['done' => count($done)]),
                 source: $this->getId(),
                 undo: ['method' => 'reblockMany', 'args' => [array_keys($done)]],
             );
@@ -325,7 +329,7 @@ class LiveMonitor extends Component
 
             return;
         }
-        $this->dispatch('toast', message: 'Bekleyen iletiler yeniden deneniyor.');
+        $this->dispatch('toast', message: __('Bekleyen iletiler yeniden deneniyor.'));
     }
 
     public function hold(string $domain, MailQueue $queue): void
@@ -337,8 +341,8 @@ class LiveMonitor extends Component
 
             return;
         }
-        $name = $domain === '' ? 'Geri dönen iletiler' : $domain;
-        $this->dispatch('toast', message: "{$name}: {$n} ileti bekletmeye alındı.", source: $this->getId(),
+        $name = $domain === '' ? __('Geri dönen iletiler') : $domain;
+        $this->dispatch('toast', message: __(':name: :n ileti bekletmeye alındı.', ['name' => $name, 'n' => $n]), source: $this->getId(),
             undo: $n > 0 ? ['method' => 'release', 'args' => [$domain]] : null);
     }
 
@@ -351,8 +355,8 @@ class LiveMonitor extends Component
 
             return;
         }
-        $name = $domain === '' ? 'Geri dönen iletiler' : $domain;
-        $this->dispatch('toast', message: "{$name}: {$n} ileti serbest bırakıldı.");
+        $name = $domain === '' ? __('Geri dönen iletiler') : $domain;
+        $this->dispatch('toast', message: __(':name: :n ileti serbest bırakıldı.', ['name' => $name, 'n' => $n]));
     }
 
     // --- Rendering ---------------------------------------------------
@@ -360,7 +364,7 @@ class LiveMonitor extends Component
     public static function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.'
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
             : $e->reason;
     }
 
@@ -370,11 +374,11 @@ class LiveMonitor extends Component
     public static function ruleLabel(array $s): string
     {
         return match ($s['kind']) {
-            'flood' => 'İstek seli',
-            'login' => 'Giriş denemesi'.(($s['detail'] ?? '') !== '' ? ' · '.$s['detail'] : ''),
-            'scan' => 'Tarama (404)',
-            'mail' => 'Posta girişi denemesi'.(($s['detail'] ?? '') !== '' ? ' · '.strtoupper($s['detail']) : ''),
-            'ssh' => 'SSH girişi denemesi',
+            'flood' => __('İstek seli'),
+            'login' => __('Giriş denemesi').(($s['detail'] ?? '') !== '' ? ' · '.$s['detail'] : ''),
+            'scan' => __('Tarama (404)'),
+            'mail' => __('Posta girişi denemesi').(($s['detail'] ?? '') !== '' ? ' · '.strtoupper($s['detail']) : ''),
+            'ssh' => __('SSH girişi denemesi'),
             default => $s['kind'],
         };
     }

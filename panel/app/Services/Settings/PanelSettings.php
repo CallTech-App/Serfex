@@ -9,6 +9,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Security\Firewall;
+use App\Support\Locales;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -52,6 +53,7 @@ class PanelSettings
             $saved = Cache::rememberForever(self::CACHE_KEY, fn () => [
                 'timezone' => Setting::get('panel.timezone'),
                 'session' => Setting::get('panel.session_minutes'),
+                'locale' => Setting::get('panel.locale'),
             ]);
         } catch (Throwable) {
             $saved = [];
@@ -63,11 +65,34 @@ class PanelSettings
             config(['session.lifetime' => (int) $saved['session']]);
         }
         config(['app.schedule_timezone' => config('servik.timezone')]);
+        if (Locales::supports($saved['locale'] ?? null)) {
+            config(['servik.locale' => $saved['locale']]);
+        }
+        // Commands, jobs and anything without a person speak the server's
+        // language; SetLocale switches requests to the person's.
+        Locales::apply(Locales::serverDefault());
     }
 
     public function timezone(): string
     {
         return (string) (Setting::get('panel.timezone') ?: config('servik.timezone'));
+    }
+
+    /**
+     * The server's default language: for the sign-in page when the browser
+     * asks for none of the panel's, for people who did not choose one,
+     * and for commands and webhooks.
+     */
+    public function locale(): string
+    {
+        return Locales::supports($saved = Setting::get('panel.locale')) ? $saved : Locales::serverDefault();
+    }
+
+    public function setLocale(string $locale): void
+    {
+        Setting::put('panel.locale', $locale);
+        config(['servik.locale' => $locale]);
+        $this->forget();
     }
 
     public function sessionMinutes(): int
@@ -168,9 +193,9 @@ class PanelSettings
     public function portProblem(int $port): ?string
     {
         return match (true) {
-            $port < 1024 || $port > 65535 => 'Port 1024 ile 65535 arasında olmalı.',
-            in_array($port, self::RESERVED_PORTS, true) => $port.' sitelerin, Apache\'nin ya da DNS sunucusunun portu; başka bir port seçin.',
-            $port === $this->port() => 'Panel zaten bu portta.',
+            $port < 1024 || $port > 65535 => __('Port 1024 ile 65535 arasında olmalı.'),
+            in_array($port, self::RESERVED_PORTS, true) => __(':port sitelerin, Apache\'nin ya da DNS sunucusunun portu; başka bir port seçin.', ['port' => $port]),
+            $port === $this->port() => __('Panel zaten bu portta.'),
             default => null,
         };
     }

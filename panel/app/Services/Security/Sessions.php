@@ -74,7 +74,7 @@ class Sessions
             str_contains($agent, 'Chrome/') => 'Chrome',
             str_contains($agent, 'Safari/') => 'Safari',
             str_contains($agent, 'curl/') => 'curl',
-            default => 'Tarayıcı',
+            default => __('Tarayıcı'),
         };
         $os = match (true) {
             str_contains($agent, 'Windows') => 'Windows',

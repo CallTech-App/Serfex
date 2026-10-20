@@ -195,12 +195,12 @@ class Components
     {
         if (preg_match('/^php(\d\.\d)$/', $id, $m)) {
             // Listed on Hizmetler → PHP sürümleri.
-            return ['PHP '.$m[1], 'PHP-FPM ve yaygın eklentiler (mysql, pgsql, intl, gd, redis...)', 'php', null];
+            return ['PHP '.$m[1], __('PHP-FPM ve yaygın eklentiler (mysql, pgsql, intl, gd, redis...)'), 'php', null];
         }
         if (preg_match('/^node(\d+)$/', $id, $m)) {
             $lts = in_array($m[1], self::NODE_LTS, true);
 
-            return ['Node.js '.$m[1].($lts ? ' LTS' : ''), $lts ? 'Vite derlemeleri ve Node uygulamaları' : 'En yeni sürüm hattı', 'diger', 'Çalışma ortamları'];
+            return ['Node.js '.$m[1].($lts ? ' LTS' : ''), $lts ? __('Vite derlemeleri ve Node uygulamaları') : __('En yeni sürüm hattı'), 'diger', __('Çalışma ortamları')];
         }
 
         return self::CATALOG[$id] ?? [$id, '', 'diger', null];
@@ -218,7 +218,7 @@ class Components
     {
         $name = $this->name($operation->component);
 
-        return $operation->detail ? "{$name} · {$operation->detail} eklentisi" : $name;
+        return $operation->detail ? __(':name · :detail eklentisi', ['name' => $name, 'detail' => $operation->detail]) : $name;
     }
 
     /**
@@ -271,25 +271,25 @@ class Components
     {
         $status ??= $this->statuses()[$id] ?? [];
         if ($status['required'] ?? null) {
-            return 'Gerekli. Servik tüm sitelerde Nginx kullanır.';
+            return __('Gerekli. Servik tüm sitelerde Nginx kullanır.');
         }
         $used = array_values(array_unique([...$this->users($id), ...($status['used_by'] ?? [])]));
         if ($used === []) {
             return null;
         }
-        $list = count($used) > 2 ? implode(', ', array_slice($used, 0, 2)).' ve '.(count($used) - 2).' diğeri' : implode(', ', $used);
+        $list = count($used) > 2 ? __(':used ve :used2 diğeri', ['used' => implode(', ', array_slice($used, 0, 2)), 'used2' => (count($used) - 2)]) : implode(', ', $used);
         $hint = match (true) {
-            $id === 'apache' => 'Önce bu siteleri PHP ve Web Sunucusu sayfasından Nginx + PHP-FPM\'e alın.',
-            str_starts_with($id, 'php') => 'Önce bu siteleri başka bir PHP sürümüne alın.',
-            in_array($id, ['mysql', 'mariadb', 'postgresql'], true) => 'Önce veritabanlarını ve kullanıcılarını silin.',
-            $id === 'redis' => 'Önce uygulamaların Redis bağlantısını kaldırın.',
-            $id === 'composer' => 'Laravel dağıtımları için gerekli.',
-            str_starts_with($id, 'node') => 'Laravel derlemeleri bu sürümü kullanıyor; önce başka bir Node.js sürümü kurun.',
-            $id === 'supervisor' => 'Supervisor\'da tanımlı programlar var.',
+            $id === 'apache' => __('Önce bu siteleri PHP ve Web Sunucusu sayfasından Nginx + PHP-FPM\'e alın.'),
+            str_starts_with($id, 'php') => __('Önce bu siteleri başka bir PHP sürümüne alın.'),
+            in_array($id, ['mysql', 'mariadb', 'postgresql'], true) => __('Önce veritabanlarını ve kullanıcılarını silin.'),
+            $id === 'redis' => __('Önce uygulamaların Redis bağlantısını kaldırın.'),
+            $id === 'composer' => __('Laravel dağıtımları için gerekli.'),
+            str_starts_with($id, 'node') => __('Laravel derlemeleri bu sürümü kullanıyor; önce başka bir Node.js sürümü kurun.'),
+            $id === 'supervisor' => __('Supervisor\'da tanımlı programlar var.'),
             default => '',
         };
 
-        return trim("Kullanılıyor: {$list}. {$hint}");
+        return trim(__('Kullanılıyor: :list. :hint', ['list' => $list, 'hint' => $hint]));
     }
 
     /**
@@ -299,21 +299,21 @@ class Components
     public function start(string $id, string $action, ?User $user): ComponentOperation|string
     {
         if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove'], true)) {
-            return 'Bu bileşen buradan yönetilemiyor.';
+            return __('Bu bileşen buradan yönetilemiyor.');
         }
         if (ComponentOperation::running()->exists() || $this->databaseSetupRunning()) {
-            return 'Başka bir kurulum sürüyor. Bitince yeniden deneyin.';
+            return __('Başka bir kurulum sürüyor. Bitince yeniden deneyin.');
         }
         if (PanelUpdate::running()->exists()) {
-            return 'Servik güncelleniyor. Bitince yeniden deneyin.';
+            return __('Servik güncelleniyor. Bitince yeniden deneyin.');
         }
         $statuses = $this->statuses($error);
         if ($statuses === null) {
-            return $error ? 'Sunucu ajanı hata verdi: '.$error : 'Sunucu ajanına ulaşılamıyor.';
+            return $error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor.');
         }
         $status = $statuses[$id] ?? null;
         if ($status === null) {
-            return 'Bu sunucunun ajanı bu bileşeni tanımıyor.';
+            return __('Bu sunucunun ajanı bu bileşeni tanımıyor.');
         }
         if ($action === 'remove' && ($refusal = $this->removalRefusal($id, $status)) !== null) {
             return $refusal;
@@ -322,7 +322,7 @@ class Components
             return $refusal;
         }
         if ($action !== 'install' && ! ($status['installed'] ?? false)) {
-            return $this->name($id).' kurulu değil.';
+            return __(':name kurulu değil.', ['name' => $this->name($id)]);
         }
 
         $operation = ComponentOperation::create([
@@ -358,7 +358,7 @@ class Components
     {
         $other = ['mysql' => 'mariadb', 'mariadb' => 'mysql'][$id] ?? null;
         if ($other !== null && ($statuses[$other]['installed'] ?? false)) {
-            return $this->name($other).' kurulu; '.$this->name($id).' onunla aynı anda kurulamaz.';
+            return __(':name kurulu; :name2 onunla aynı anda kurulamaz.', ['name' => $this->name($other), 'name2' => $this->name($id)]);
         }
 
         return null;
@@ -420,33 +420,33 @@ class Components
     {
         $agent = $status['used_by'] ?? [];
         if ($id === 'nginx') {
-            return Site::count().' site';
+            return __(':value site', ['value' => Site::count()]);
         }
         if ($id === 'apache' || str_starts_with($id, 'php')) {
             $n = $id === 'apache' ? count($users) : Site::where('php_version', substr($id, 3))->count();
             $extra = array_values(array_filter($agent, fn ($u) => ! str_contains($u, '.') || str_contains($u, ' ')));
 
-            return implode(' · ', array_filter([$n ? $n.' site' : null, ...$extra])) ?: 'Henüz kullanılmıyor';
+            return implode(' · ', array_filter([$n ? __(':n site', ['n' => $n]) : null, ...$extra])) ?: __('Henüz kullanılmıyor');
         }
         if (in_array($id, ['mysql', 'mariadb', 'postgresql'], true)) {
             $server = $id === 'postgresql' ? DatabaseServers::POSTGRESQL : DatabaseServers::MYSQL;
             $dbs = Database::where('server', $server)->count();
             $sites = Database::where('server', $server)->whereNotNull('site_id')->distinct()->count('site_id');
 
-            return $dbs ? $dbs.' veritabanı · '.$sites.' site' : 'Henüz veritabanı yok';
+            return $dbs ? __(':dbs veritabanı · :sites site', ['dbs' => $dbs, 'sites' => $sites]) : __('Henüz veritabanı yok');
         }
         if (str_starts_with($id, 'node')) {
-            return ($status['default'] ?? false) ? 'Derlemelerde kullanılıyor' : 'Yedek sürüm';
+            return ($status['default'] ?? false) ? __('Derlemelerde kullanılıyor') : __('Yedek sürüm');
         }
 
         return match ($id) {
-            'redis' => $users ? count($users).' Laravel uygulaması' : 'Henüz kullanılmıyor',
-            'composer' => $users ? count($users).' Laravel uygulaması' : 'Komut satırında',
-            'supervisor' => $agent ? count($agent).' program' : 'Henüz kullanılmıyor',
-            'fail2ban' => $this->mail->isSetUp() ? 'SSH ve posta girişleri' : 'SSH girişleri',
-            'modsecurity' => ($status['settings']['mode'] ?? 'detect') === 'block' ? 'Engelleme kipinde · seviye '.($status['settings']['paranoia'] ?? 1) : 'Yalnızca izleme · seviye '.($status['settings']['paranoia'] ?? 1),
-            'clamav' => 'Posta taraması (Rspamd)',
-            default => 'Kurulu',
+            'redis' => $users ? __(':users Laravel uygulaması', ['users' => count($users)]) : __('Henüz kullanılmıyor'),
+            'composer' => $users ? __(':users Laravel uygulaması', ['users' => count($users)]) : __('Komut satırında'),
+            'supervisor' => $agent ? trans_choice(':count program', count($agent)) : __('Henüz kullanılmıyor'),
+            'fail2ban' => $this->mail->isSetUp() ? __('SSH ve posta girişleri') : __('SSH girişleri'),
+            'modsecurity' => ($status['settings']['mode'] ?? 'detect') === 'block' ? __('Engelleme kipinde · seviye :level', ['level' => $status['settings']['paranoia'] ?? 1]) : __('Yalnızca izleme · seviye :level', ['level' => $status['settings']['paranoia'] ?? 1]),
+            'clamav' => __('Posta taraması (Rspamd)'),
+            default => __('Kurulu'),
         };
     }
 
@@ -460,7 +460,7 @@ class Components
         $base = ['id' => $id, 'name' => $name, 'description' => $description, 'known' => true, 'version' => null, 'latest' => null,
             'running' => true, 'units' => [], 'operation' => null, 'default' => false, 'settings' => null];
         if ($id === 'snappymail') {
-            return $base + ['installed' => false, 'busy' => null, 'usage' => '—', 'refusal' => 'Sonraki sürümde.', 'later' => true];
+            return $base + ['installed' => false, 'busy' => null, 'usage' => '—', 'refusal' => __('Sonraki sürümde.'), 'later' => true];
         }
         $server = $this->mail->server();
         $installed = $this->mail->isSetUp() && $this->mail->webmailUrl() !== null;
@@ -469,8 +469,8 @@ class Components
         return $base + [
             'installed' => $installed,
             'busy' => ($server['state'] ?? null) === 'installing' ? ($this->mail->webmail() ? 'install' : 'remove') : null,
-            'usage' => $installed ? ($mailboxes ? $mailboxes.' posta kutusu' : 'Henüz posta kutusu yok') : '—',
-            'refusal' => $this->mail->isSetUp() ? null : 'E-posta sunucusu kurulunca gelir.',
+            'usage' => $installed ? ($mailboxes ? __(':mailboxes posta kutusu', ['mailboxes' => $mailboxes]) : __('Henüz posta kutusu yok')) : '—',
+            'refusal' => $this->mail->isSetUp() ? null : __('E-posta sunucusu kurulunca gelir.'),
             'mail' => true,
         ];
     }

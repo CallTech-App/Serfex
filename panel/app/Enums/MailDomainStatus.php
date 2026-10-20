@@ -12,10 +12,10 @@ enum MailDomainStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Syncing => 'Uygulanıyor',
-            self::Active => 'Posta açık',
-            self::Failed => 'Hata',
-            self::Deleting => 'Kapatılıyor',
+            self::Syncing => __('Uygulanıyor'),
+            self::Active => __('Posta açık'),
+            self::Failed => __('Hata'),
+            self::Deleting => __('Kapatılıyor'),
         };
     }
 

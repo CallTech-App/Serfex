@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 419, 'title' => __('Sayfanın süresi doldu'), 'text' => __('Uzun süre işlem yapılmadığı için oturumun güvenlik anahtarı yenilendi. Sayfayı yenileyip yeniden deneyin.')])

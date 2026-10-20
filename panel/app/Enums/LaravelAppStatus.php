@@ -12,10 +12,10 @@ enum LaravelAppStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Installing => 'Kuruluyor',
-            self::Active => 'Yayında',
-            self::Failed => 'Kurulamadı',
-            self::Removing => 'Kaldırılıyor',
+            self::Installing => __('Kuruluyor'),
+            self::Active => __('Yayında'),
+            self::Failed => __('Kurulamadı'),
+            self::Removing => __('Kaldırılıyor'),
         };
     }
 

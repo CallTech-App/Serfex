@@ -5,6 +5,7 @@ namespace App\Services\Settings;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Jobs\PurgeAdministrator;
 use App\Models\User;
+use App\Support\Locales;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -28,10 +29,10 @@ class Administrators
     public function refusal(User $actor, User $admin, ?string $role): ?string
     {
         return match (true) {
-            ! $admin->is_admin => 'Bu hesap bir yönetici değil.',
-            $admin->id === $actor->id => 'Kendi hesabınızın rolünü değiştiremez, hesabınızı kaldıramazsınız.',
-            $role !== null && ! isset(User::ROLES[$role]) => 'Geçersiz rol.',
-            $admin->isFullAdmin() && $role !== 'full' && $this->fullCount() <= 1 => 'Panelin en az bir tam yöneticisi olmalı.',
+            ! $admin->is_admin => __('Bu hesap bir yönetici değil.'),
+            $admin->id === $actor->id => __('Kendi hesabınızın rolünü değiştiremez, hesabınızı kaldıramazsınız.'),
+            $role !== null && ! isset(User::ROLES[$role]) => __('Geçersiz rol.'),
+            $admin->isFullAdmin() && $role !== 'full' && $this->fullCount() <= 1 => __('Panelin en az bir tam yöneticisi olmalı.'),
             default => null,
         };
     }
@@ -55,8 +56,9 @@ class Administrators
             'invited_at' => now(),
         ]));
         $link = route('invitation', $token);
-        $mailed = $this->mail->problem() === null && $this->mail->send([$email], 'Servik paneline davet edildiniz',
-            "{$by->name} sizi Servik paneline ".User::ROLES[$role][0]." olarak ekledi.\n\nParolanızı belirlemek için bu bağlantıyı açın (".InvitationController::DAYS." gün geçerli):\n{$link}\n") === null;
+        // The new person has not picked a language yet: the server's default.
+        $mailed = $this->mail->problem() === null && Locales::using(Locales::serverDefault(), fn () => $this->mail->send([$email], __('Servik paneline davet edildiniz'),
+            __(':by sizi Servik paneline :role olarak ekledi.', ['by' => $by->name, 'role' => __(User::ROLES[$role][0])])."\n\n".__('Parolanızı belirlemek için bu bağlantıyı açın (:days gün geçerli):', ['days' => InvitationController::DAYS])."\n{$link}\n")) === null;
 
         return [$user, $link, $mailed];
     }

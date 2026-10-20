@@ -104,8 +104,8 @@ class SiteIndex extends Component
 
         if ($this->phpVersions === []) {
             $this->agentError = $installed === []
-                ? 'Sunucuda PHP-FPM kurulu değil. Önce bir PHP sürümü kurun.'
-                : 'Paketin izin verdiği PHP sürümlerinin hiçbiri sunucuda kurulu değil.';
+                ? __('Sunucuda PHP-FPM kurulu değil. Önce bir PHP sürümü kurun.')
+                : __('Paketin izin verdiği PHP sürümlerinin hiçbiri sunucuda kurulu değil.');
 
             return;
         }
@@ -151,7 +151,7 @@ class SiteIndex extends Component
         $this->validate([
             'domain' => [
                 'required',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir alan adı girin, örneğin ornek.com.tr.'),
+                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir alan adı girin, örneğin ornek.com.tr.')),
                 Rule::unique('sites', 'domain'),
             ],
             'systemUser' => [
@@ -161,26 +161,26 @@ class SiteIndex extends Component
             ],
             'phpVersion' => ['required', Rule::in($this->phpVersions)],
         ], [
-            'domain.unique' => 'Bu alan adı zaten bir siteye ait.',
-            'systemUser.regex' => 'Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).',
-            'systemUser.not_in' => 'Bu ad sisteme ayrılmış, başka bir ad seçin.',
+            'domain.unique' => __('Bu alan adı zaten bir siteye ait.'),
+            'systemUser.regex' => __('Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).'),
+            'systemUser.not_in' => __('Bu ad sisteme ayrılmış, başka bir ad seçin.'),
         ], [
-            'domain' => 'alan adı',
-            'systemUser' => 'sistem kullanıcısı',
-            'phpVersion' => 'PHP sürümü',
+            'domain' => __('alan adı'),
+            'systemUser' => __('sistem kullanıcısı'),
+            'phpVersion' => __('PHP sürümü'),
         ]);
 
         // An account that belongs to a customer takes the site to that
         // customer, within their package.
         $account = SystemUser::where('name', $this->systemUser)->first();
         if ($account?->customer_id !== null && $customer !== null && $account->customer_id !== $customer->id) {
-            $this->addError('systemUser', 'Bu sistem kullanıcısı başka bir müşteriye ait.');
+            $this->addError('systemUser', __('Bu sistem kullanıcısı başka bir müşteriye ait.'));
 
             return;
         }
         $owner = $customer ?? $account?->customer;
         if (auth()->user()->isCustomer() && $this->takenByOthers($owner)) {
-            $this->addError('domain', 'Bu alan adı ya da üst alan adı başka bir hesaba ait.');
+            $this->addError('domain', __('Bu alan adı ya da üst alan adı başka bir hesaba ait.'));
 
             return;
         }
@@ -191,7 +191,7 @@ class SiteIndex extends Component
         }
 
         if (! $agent->ping()) {
-            $this->agentError = 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.';
+            $this->agentError = __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.');
 
             return;
         }
@@ -200,7 +200,7 @@ class SiteIndex extends Component
 
         $this->creating = false;
         $this->dispatch('toast',
-            message: "{$site->domain} oluşturuluyor.",
+            message: __(':domain oluşturuluyor.', ['domain' => $site->domain]),
             source: $this->getId(),
             undo: ['method' => 'undoCreate', 'args' => [$site->id]],
         );
@@ -234,7 +234,7 @@ class SiteIndex extends Component
         }
         $site->update(['status' => SiteStatus::Deleting]);
         DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true);
-        $this->dispatch('toast', message: "{$site->domain} geri alınıyor.");
+        $this->dispatch('toast', message: __(':domain geri alınıyor.', ['domain' => $site->domain]));
     }
 
     public function render(): View
@@ -278,7 +278,7 @@ class SiteIndex extends Component
     private function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.'
-            : 'Sunucu ajanı hata verdi: '.$e->reason;
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+            : __('Sunucu ajanı hata verdi: :reason', ['reason' => $e->reason]);
     }
 }

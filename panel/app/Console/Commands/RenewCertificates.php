@@ -76,7 +76,7 @@ class RenewCertificates extends Command
                 $count++;
             }
         }
-        $this->info("{$count} sertifika kuyruğa alındı.");
+        $this->info(__(':count sertifika kuyruğa alındı.', ['count' => $count]));
 
         return self::SUCCESS;
     }

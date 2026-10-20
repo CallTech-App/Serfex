@@ -86,7 +86,7 @@ class DnsController extends ApiController
             // PowerDNS keeps one TTL per name and type.
             $zone->records()->where('name', $record['name'])->where('type', $record['type'])->update(['ttl' => $record['ttl']]);
         });
-        $this->audit($request, 'Alan Adları ve DNS · '.$zone->name, "{$record['type']} kaydı eklendi: ".DnsRecords::fqdn($name, $zone->name), route('dns.show', $zone, false));
+        $this->audit($request, __('Alan Adları ve DNS · :name', ['name' => $zone->name]), __(':type kaydı eklendi: :name', ['type' => $record['type'], 'name' => DnsRecords::fqdn($name, $zone->name)]), route('dns.show', $zone, false));
 
         return response()->json(['data' => $this->record($created)], 201);
     }
@@ -99,7 +99,7 @@ class DnsController extends ApiController
             return $this->refuse('The zone must keep at least one NS record.', 409);
         }
         $zones->change($zone, fn (DnsZone $zone) => $zone->records()->whereKey($found->id)->delete());
-        $this->audit($request, 'Alan Adları ve DNS · '.$zone->name, "{$found->type} kaydı silindi: ".DnsRecords::fqdn($found->name, $zone->name), route('dns.show', $zone, false));
+        $this->audit($request, __('Alan Adları ve DNS · :name', ['name' => $zone->name]), __(':type kaydı silindi: :name', ['type' => $found->type, 'name' => DnsRecords::fqdn($found->name, $zone->name)]), route('dns.show', $zone, false));
 
         return response()->json(null, 204);
     }

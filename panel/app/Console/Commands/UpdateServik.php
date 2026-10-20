@@ -35,18 +35,18 @@ class UpdateServik extends Command
 
             return self::FAILURE;
         }
-        $this->line('Kurulu: Servik '.$status['version'].(($status['previous'] ?? '') !== '' ? ' (önceki: '.$status['previous'].')' : ''));
+        $this->line(($status['previous'] ?? '') !== '' ? __('Kurulu: Servik :version (önceki: :previous)', ['version' => $status['version'], 'previous' => $status['previous']]) : __('Kurulu: Servik :version', ['version' => $status['version']]));
         $release = $updates->available($status);
         if ($this->option('check')) {
-            $this->info($release ? 'Servik '.$release['version'].' hazır.' : 'Servik güncel.');
+            $this->info($release ? __('Servik :version hazır.', ['version' => $release['version']]) : __('Servik güncel.'));
 
             return self::SUCCESS;
         }
 
         $rollback = (bool) $this->option('rollback');
         $question = $rollback
-            ? 'Servik '.($status['previous'] ?? '?').' sürümüne dönülsün mü?'
-            : 'Servik '.($this->option('target') ?: ($release['version'] ?? '?')).' kurulsun mu?';
+            ? __('Servik :version sürümüne dönülsün mü?', ['version' => $status['previous'] ?? '?'])
+            : __('Servik :version kurulsun mu?', ['version' => $this->option('target') ?: ($release['version'] ?? '?')]);
         if (! $this->option('yes') && ! $this->confirm($question, true)) {
             return self::FAILURE;
         }
@@ -62,7 +62,7 @@ class UpdateServik extends Command
 
     private function follow(PanelUpdate $update, Updates $updates, AgentClient $agent): int
     {
-        $this->line('Panel yedeği alınıyor…');
+        $this->line(__('Panel yedeği alınıyor…'));
         $offset = 0;
         $deadline = time() + self::FOLLOW;
         while (time() < $deadline) {
@@ -98,9 +98,9 @@ class UpdateServik extends Command
         }
 
         return match ($update->status) {
-            'succeeded' => $this->done('Servik '.$update->to_version.' çalışıyor.'),
-            'rolled_back' => $this->failed('Servik '.$update->to_version.' kurulamadı, '.$update->from_version.' sürümüne dönüldü: '.$update->error, 2),
-            default => $this->failed($update->isRunning() ? 'Güncelleme bitmedi; Güncellemeler sayfasından izleyin.' : 'Başarısız: '.$update->error, 1),
+            'succeeded' => $this->done(__('Servik :to_version çalışıyor.', ['to_version' => $update->to_version])),
+            'rolled_back' => $this->failed(__('Servik :to_version kurulamadı, :from_version sürümüne dönüldü: :error', ['to_version' => $update->to_version, 'from_version' => $update->from_version, 'error' => $update->error]), 2),
+            default => $this->failed($update->isRunning() ? __('Güncelleme bitmedi; Güncellemeler sayfasından izleyin.') : __('Başarısız: :error', ['error' => $update->error]), 1),
         };
     }
 

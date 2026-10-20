@@ -10,7 +10,7 @@
     $every = max(1, (int) ceil($n / 8));
 @endphp
 <figure {{ $attributes->class(['min-w-0']) }}>
-    <div class="flex h-40 items-end gap-px sm:gap-0.5" role="img" aria-label="{{ $unit ?? 'Grafik' }}">
+    <div class="flex h-40 items-end gap-px sm:gap-0.5" role="img" aria-label="{{ $unit ?? __('Grafik') }}">
         @foreach ($points as $i => [$label, $value, $tip])
             <div class="group relative flex h-full min-w-0 flex-1 items-end" title="{{ $tip }}">
                 <div class="w-full rounded-t-sm bg-muted/35 group-hover:bg-muted" style="height: {{ $value > 0 ? max(1.5, round($value / $top * 100, 2)) : 0 }}%"></div>

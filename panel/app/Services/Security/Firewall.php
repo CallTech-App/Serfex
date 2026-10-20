@@ -72,12 +72,12 @@ class Firewall
         $mail = app(MailSettings::class)->isSetUp();
         $dns = (Setting::get('dns.server', [])['state'] ?? null) === 'ready' || DnsZone::exists();
         $list = [
-            'panel' => ['Servik paneli', (string) $panel, 'tcp', true, true, 'Panel, phpMyAdmin ve Adminer; kapatılamaz'],
-            'web' => ['Web siteleri', '80, 443', 'tcp', true, false, 'HTTP ve HTTPS'],
-            'ssh' => ['SSH ve SFTP', implode(', ', $this->sshPorts()), 'tcp', true, false, 'Sunucu yönetimi ve FTP hesapları'],
-            'mail' => ['E-posta', '25, 465, 587, 110, 995, 143, 993', 'tcp', $mail, false, 'SMTP, POP3 ve IMAP'],
-            'dns' => ['DNS sunucusu', '53', 'both', $dns, false, 'Alan adlarınızın ad sunucusu'],
-            'databases' => ['Uzak veritabanı bağlantısı', '3306, 5432', 'tcp', false, false, 'MySQL/MariaDB ve PostgreSQL; yalnızca dışarıdan bağlanılacaksa'],
+            'panel' => [__('Servik paneli'), (string) $panel, 'tcp', true, true, __('Panel, phpMyAdmin ve Adminer; kapatılamaz')],
+            'web' => [__('Web siteleri'), '80, 443', 'tcp', true, false, __('HTTP ve HTTPS')],
+            'ssh' => [__('SSH ve SFTP'), implode(', ', $this->sshPorts()), 'tcp', true, false, __('Sunucu yönetimi ve FTP hesapları')],
+            'mail' => [__('E-posta'), '25, 465, 587, 110, 995, 143, 993', 'tcp', $mail, false, __('SMTP, POP3 ve IMAP')],
+            'dns' => [__('DNS sunucusu'), '53', 'both', $dns, false, __('Alan adlarınızın ad sunucusu')],
+            'databases' => [__('Uzak veritabanı bağlantısı'), '3306, 5432', 'tcp', false, false, __('MySQL/MariaDB ve PostgreSQL; yalnızca dışarıdan bağlanılacaksa')],
         ];
         $out = [];
         foreach ($list as $id => [$name, $ports, $protocol, $default, $locked, $help]) {
@@ -187,7 +187,7 @@ class Firewall
     {
         $out = [];
         if (trim((string) $rule['name']) === '' || mb_strlen((string) $rule['name']) > 80) {
-            $out['name'] = 'Kurala 1-80 karakterlik bir ad verin.';
+            $out['name'] = __('Kurala 1-80 karakterlik bir ad verin.');
         }
         $ports = trim((string) $rule['ports']);
         $valid = preg_match(self::PORTS_PATTERN, $ports);
@@ -197,23 +197,23 @@ class Firewall
             $valid = $valid && $lo >= 1 && $hi <= 65535 && $lo <= $hi;
         }
         if (! $valid) {
-            $out['ports'] = 'Portları 8080 ya da 3000, 3001 ya da 49152-49352 gibi yazın.';
+            $out['ports'] = __('Portları 8080 ya da 3000, 3001 ya da 49152-49352 gibi yazın.');
         }
         if (! array_key_exists($rule['protocol'], self::PROTOCOLS)) {
-            $out['protocol'] = 'Bir protokol seçin.';
+            $out['protocol'] = __('Bir protokol seçin.');
         }
         foreach ($rule['sources'] as $source) {
             try {
                 IpBlocks::normalize($source);
             } catch (MonitorException) {
-                $out['sources'] = "\"{$source}\" bir IP adresi ya da aralığı değil.";
+                $out['sources'] = __('":source" bir IP adresi ya da aralığı değil.', ['source' => $source]);
             }
         }
         if (count($rule['sources']) > 50) {
-            $out['sources'] = 'En fazla 50 adres yazılabilir.';
+            $out['sources'] = __('En fazla 50 adres yazılabilir.');
         }
         if ($rule['action'] === 'deny' && $rule['sources'] === []) {
-            $out['sources'] = 'Engelleme kuralı için en az bir adres yazın; portu herkese kapatmak için kuralı silin.';
+            $out['sources'] = __('Engelleme kuralı için en az bir adres yazın; portu herkese kapatmak için kuralı silin.');
         }
 
         return $out;
@@ -227,9 +227,9 @@ class Firewall
     public static function message(AgentException $e): string
     {
         return match (true) {
-            $e instanceof AgentUnavailableException => 'Sunucu ajanına ulaşılamıyor.',
-            str_contains($e->reason, 'your own connection to the panel') => 'Bu kurallar panele şu anki bağlantınızı keserdi; hiçbir şey değiştirilmedi.',
-            default => 'Güvenlik duvarı ayarı uygulanamadı: '.$e->reason,
+            $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
+            str_contains($e->reason, 'your own connection to the panel') => __('Bu kurallar panele şu anki bağlantınızı keserdi; hiçbir şey değiştirilmedi.'),
+            default => __('Güvenlik duvarı ayarı uygulanamadı: :reason', ['reason' => $e->reason]),
         };
     }
 }

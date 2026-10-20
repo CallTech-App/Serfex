@@ -118,21 +118,21 @@ class ZoneIndex extends Component
         $this->validate([
             'domain' => [
                 'required',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail('Geçerli bir alan adı girin, örneğin ornek.com.tr.'),
+                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir alan adı girin, örneğin ornek.com.tr.')),
                 Rule::unique('dns_zones', 'name'),
             ],
             'start' => ['required', Rule::in(['template', 'empty'])],
         ], [
-            'domain.unique' => 'Bu alan adının DNS bölgesi zaten var.',
+            'domain.unique' => __('Bu alan adının DNS bölgesi zaten var.'),
         ], [
-            'domain' => 'alan adı',
+            'domain' => __('alan adı'),
         ]);
 
         $zone = $zones->create($this->domain, empty: $this->start === 'empty');
 
         $this->creating = false;
         $this->dispatch('toast',
-            message: "{$zone->name} eklendi.",
+            message: __(':name eklendi.', ['name' => $zone->name]),
             source: $this->getId(),
             undo: ['method' => 'undoCreate', 'args' => [$zone->id]],
         );
@@ -163,7 +163,7 @@ class ZoneIndex extends Component
             return;
         }
         $this->dispatch('toast',
-            message: count($tokens) === 1 ? $list->firstWhere('id', array_key_first($tokens))->name.' siliniyor.' : count($tokens).' DNS bölgesi siliniyor.',
+            message: count($tokens) === 1 ? __(':name siliniyor.', ['name' => $list->firstWhere('id', array_key_first($tokens))->name]) : __(':tokens DNS bölgesi siliniyor.', ['tokens' => count($tokens)]),
             source: $this->getId(),
             undo: ['method' => 'undoDelete', 'args' => [array_values($tokens)]],
         );
@@ -176,8 +176,8 @@ class ZoneIndex extends Component
     {
         $restored = array_filter(array_map(fn ($t) => $zones->undo((string) $t), $tokens));
         $this->dispatch('toast', message: count($restored) === count($tokens)
-            ? 'Silme geri alındı.'
-            : 'Bazı bölgeler geri alınamadı; aynı adla yeni bir bölge eklenmiş olabilir.');
+            ? __('Silme geri alındı.')
+            : __('Bazı bölgeler geri alınamadı; aynı adla yeni bir bölge eklenmiş olabilir.'));
     }
 
     public function render(): View

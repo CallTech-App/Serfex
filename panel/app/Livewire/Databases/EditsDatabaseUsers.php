@@ -71,20 +71,20 @@ trait EditsDatabaseUsers
             'editPassword' => $this->changePassword ? ['required', 'string', 'min:12', 'max:128', 'regex:/^\S+$/'] : [],
             'hostsText' => [function ($attr, $value, $fail) use ($hosts) {
                 if ($this->remote && $hosts === []) {
-                    $fail('En az bir adres girin ya da her yerden bağlantıya izin verin (%).');
+                    $fail(__('En az bir adres girin ya da her yerden bağlantıya izin verin (%).'));
                 }
                 if (count($hosts) > DatabaseHosts::MAX) {
-                    $fail('En fazla '.DatabaseHosts::MAX.' adres girilebilir.');
+                    $fail(__('En fazla :max adres girilebilir.', ['max' => DatabaseHosts::MAX]));
                 }
                 $bad = array_filter($hosts, fn ($h) => ! DatabaseHosts::valid($h));
                 if ($bad !== []) {
-                    $fail('Geçersiz adres: '.implode(', ', $bad).'. IP adresi, 10.0.0.0/24 gibi bir ağ, 10.8.0.% ya da % yazın.');
+                    $fail(__('Geçersiz adres: :bad. IP adresi, 10.0.0.0/24 gibi bir ağ, 10.8.0.% ya da % yazın.', ['bad' => implode(', ', $bad)]));
                 }
             }],
             'editGrants.*' => ['nullable', Rule::in(['', ...array_keys(DatabaseUser::ACCESS)])],
         ], [
-            'editPassword.min' => 'Parola en az 12 karakter olmalı.',
-            'editPassword.regex' => 'Parola boşluk içeremez.',
+            'editPassword.min' => __('Parola en az 12 karakter olmalı.'),
+            'editPassword.regex' => __('Parola boşluk içeremez.'),
         ], ['editPassword' => 'parola']);
 
         $allowed = $databases->grantable($user)->pluck('id')->all();
@@ -101,7 +101,7 @@ trait EditsDatabaseUsers
         } catch (AgentException $e) {
             $user->update(['hosts' => $before[0]]);
             $user->databases()->sync($before[1]);
-            $this->addError('hostsText', 'Sunucu değişikliği kabul etmedi: '.$e->reason);
+            $this->addError('hostsText', __('Sunucu değişikliği kabul etmedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
@@ -109,7 +109,7 @@ trait EditsDatabaseUsers
         if ($this->changePassword) {
             $this->credentials = $this->credentialsFor($user->name, $this->editPassword, $user->server, null);
         }
-        $this->dispatch('toast', message: "{$user->name} kullanıcısı güncellendi.");
+        $this->dispatch('toast', message: __(':name kullanıcısı güncellendi.', ['name' => $user->name]));
     }
 
     public function deleteUser(int $id, Databases $databases): void
@@ -118,7 +118,7 @@ trait EditsDatabaseUsers
         $databases->deleteUser($user);
         $this->userDialog = false;
         $this->dispatch('toast',
-            message: "{$user->name} kullanıcısı silindi; hiçbir veritabanına bağlanamaz.",
+            message: __(':name kullanıcısı silindi; hiçbir veritabanına bağlanamaz.', ['name' => $user->name]),
             source: $this->getId(),
             undo: ['method' => 'undoDeleteUser', 'args' => [$user->id]],
         );
@@ -133,7 +133,7 @@ trait EditsDatabaseUsers
         try {
             $databases->restoreUser($user);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Kullanıcı geri getirildi ama sunucuya uygulanamadı: '.$e->reason);
+            $this->dispatch('toast', message: __('Kullanıcı geri getirildi ama sunucuya uygulanamadı: :reason', ['reason' => $e->reason]));
         }
     }
 
