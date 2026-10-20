@@ -229,7 +229,7 @@ func sitesCreate(c *Ctx) error {
 
 func sitesDelete(c *Ctx) error {
 	domain := c.Args[0]
-	if err := c.confirmTyped(T("%s sitesi; dosyaları, veritabanları, e-postası ve DNS bölgesiyle silinecek.", domain), domain); err != nil {
+	if err := c.confirmTyped(T("%s sitesi dosyaları, veritabanları, e-postası ve DNS bölgesiyle birlikte silinecek.", domain), domain); err != nil {
 		return err
 	}
 	path := "/sites/" + esc(domain)
@@ -364,6 +364,9 @@ func domainsAdd(c *Ctx) error {
 	}
 	if err != nil {
 		return err
+	}
+	if !strings.Contains(name, ".") {
+		name += "." + site
 	}
 	return c.done(resp, T("%s eklendi; DNS ve SSL kendiliğinden ayarlanıyor.", name))
 }
@@ -661,7 +664,7 @@ func sslShow(c *Ctx) error {
 			)
 		}
 		if p := s.Pending; p != nil {
-			rows = append(rows, [2]string{T("Bekleyen"), strings.Join(p.Names, ", ") + " · " + c.status(p.Status)}, [2]string{T("Bekleyenin hatası"), c.red(p.Error)})
+			rows = append(rows, [2]string{T("Bekleyen sertifika"), strings.Join(p.Names, ", ") + " · " + c.status(p.Status)}, [2]string{T("Hata"), c.red(p.Error)})
 		}
 		c.pairs(rows)
 		return nil
@@ -680,7 +683,7 @@ func sslIssue(c *Ctx, renew string) error {
 		return err
 	}
 	if !c.Bool("wait") {
-		return c.done(resp, "")
+		return c.done(resp, T("%s için sertifika isteniyor. İzlemek için: servik ssl show %s", c.Args[0], c.Args[0]))
 	}
 	var s sslState
 	if err := c.waitUntil(3*c.env.Interval, T("Sertifika alınıyor…"), func() (bool, error) {
@@ -712,7 +715,10 @@ func sslHTTPS(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.done(resp, "")
+	if on {
+		return c.done(resp, T("%s: HTTP istekleri HTTPS'e yönlendiriliyor.", c.Args[0]))
+	}
+	return c.done(resp, T("%s: HTTP yönlendirmesi kapatıldı.", c.Args[0]))
 }
 
 func onOff(s string) (bool, error) {

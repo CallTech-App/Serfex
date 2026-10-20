@@ -353,6 +353,13 @@ class CliApiTest extends TestCase
 
         $this->postJson('/api/v1/apps/api.hizlikargo.com.tr/rollback', ['to' => 2], $this->bearer($token))->assertStatus(409);
         $this->postJson('/api/v1/apps/api.hizlikargo.com.tr/rollback', [], $this->bearer($token))->assertStatus(202);
+
+        // A rollback that went back to release 1 is the one marked live, not deployment 1 too.
+        LaravelDeployment::create(['laravel_app_id' => $app->id, 'number' => 4, 'release' => '1', 'kind' => 'rollback', 'status' => DeploymentStatus::Succeeded, 'run' => 'rollback-4']);
+        $app->update(['current_release' => '1']);
+        $live = collect($this->getJson('/api/v1/apps/api.hizlikargo.com.tr/deployments', $this->bearer($token))->assertOk()->json('data'))
+            ->where('live', true)->pluck('deployment')->all();
+        $this->assertSame([4], $live);
     }
 
     public function test_domains_ssl_and_databases_of_a_site(): void
@@ -413,6 +420,13 @@ class CliApiTest extends TestCase
             ->assertJsonPath('message', 'Sunucunun tamamını yalnızca yöneticiler yedekleyebilir; bir site belirtin.');
         $this->postJson('/api/v1/backups', ['site' => 'klinikmavi.com'], $this->bearer($plain))->assertNotFound();
         $this->getJson('/api/v1/backups', $this->bearer($plain))->assertOk()->assertJsonCount(0, 'data');
+
+        $this->mine->update(['provisioned_at' => now()]);
+        $id = $this->postJson('/api/v1/backups', ['site' => 'kahveatolyesi.com.tr'], $this->bearer($plain))->assertAccepted()->json('data.id');
+        $this->getJson('/api/v1/backups', $this->bearer($plain))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $id);
+        $this->getJson('/api/v1/backups?site=kahveatolyesi.com.tr', $this->bearer($plain))->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson("/api/v1/backups/{$id}", $this->bearer($plain))->assertOk()->assertJsonPath('data.id', $id);
+        $this->getJson("/api/v1/backups/{$id}", $this->bearer($this->cliKey(Customer::where('username', 'klinik')->first()->user)))->assertNotFound();
     }
 
     public function test_services_are_listed_and_protected_ones_are_not_stopped(): void
@@ -421,6 +435,27 @@ class CliApiTest extends TestCase
         $this->getJson('/api/v1/services', $this->bearer($plain))->assertOk();
         $this->getJson('/api/v1/services/yok.service', $this->bearer($plain))->assertNotFound();
         $this->postJson('/api/v1/services/ssh/stop', [], $this->bearer($plain))->assertStatus(409);
+    }
+
+    public function test_customers_are_shown_and_suspended_by_number(): void
+    {
+        $plain = $this->cliKey($this->admin);
+        $this->getJson("/api/v1/customers/{$this->customer->id}", $this->bearer($plain))->assertOk()
+            ->assertJsonPath('data.id', $this->customer->id);
+        $this->getJson('/api/v1/customers/999', $this->bearer($plain, 'en'))->assertNotFound()
+            ->assertJsonPath('message', 'There is no customer number 999.');
+        $this->postJson("/api/v1/customers/{$this->customer->id}/suspend", ['reason' => 'Ödeme'], $this->bearer($plain))->assertOk();
+        $this->assertNotNull($this->customer->fresh()->suspended_at);
+        $this->postJson("/api/v1/customers/{$this->customer->id}/unsuspend", [], $this->bearer($plain))->assertOk();
+        $this->assertNull($this->customer->fresh()->suspended_at);
+    }
+
+    public function test_me_names_the_role_and_key_in_the_readers_language(): void
+    {
+        $plain = $this->cliKey($this->admin);
+        $this->getJson('/api/v1/me', $this->bearer($plain, 'en'))->assertOk()
+            ->assertJsonPath('data.role_name', 'Full administrator')
+            ->assertJsonPath('data.key.name', 'Command line: dizüstü');
     }
 
     public function test_command_line_keys_are_closed_from_account_security_with_undo(): void

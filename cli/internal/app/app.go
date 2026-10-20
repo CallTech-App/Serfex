@@ -67,9 +67,15 @@ func System() *Env {
 	}
 }
 
+// isTerminal is a character device other than /dev/null (CI often
+// gives commands /dev/null as their input).
 func isTerminal(f *os.File) bool {
 	st, err := f.Stat()
-	return err == nil && st.Mode()&os.ModeCharDevice != 0
+	if err != nil || st.Mode()&os.ModeCharDevice == 0 {
+		return false
+	}
+	null, err := os.Stat(os.DevNull)
+	return err != nil || !os.SameFile(st, null)
 }
 
 func openBrowser(u string) error {
@@ -113,6 +119,10 @@ func globalFlags() *Flags {
 
 // Main runs the command line and returns its exit code.
 func Main(args []string, env *Env) int {
+	// "servik help deploy" is "servik deploy --help".
+	if len(args) > 0 && args[0] == "help" {
+		args = append(append([]string{}, args[1:]...), "--help")
+	}
 	SetLocale(Detect(preScan(args, "lang"), env.Getenv))
 	root := tree()
 	root.link()

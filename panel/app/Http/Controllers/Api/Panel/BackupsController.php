@@ -7,7 +7,6 @@ use App\Models\BackupItem;
 use App\Models\BackupRestore;
 use App\Services\Backups\Backups;
 use App\Services\Backups\Restores;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,7 +25,7 @@ class BackupsController extends ApiController
     {
         $user = $this->user($request);
         $site = $request->filled('site') ? mb_strtolower((string) $request->query('site')) : null;
-        $items = fn (Builder $q) => $q->visibleTo($user)->when($site !== null, fn ($q) => $q->where('name', $site));
+        $items = fn ($q) => $q->visibleTo($user)->when($site !== null, fn ($q) => $q->where('name', $site));
         $backups = Backup::with(['items' => $items])
             ->whereHas('items', $items)
             ->latest('id')
@@ -101,7 +100,7 @@ class BackupsController extends ApiController
 
     private function find(Request $request, int $id): Backup
     {
-        $items = fn (Builder $q) => $q->visibleTo($this->user($request));
+        $items = fn ($q) => $q->visibleTo($this->user($request));
 
         return Backup::with(['items' => $items])->whereHas('items', $items)->find($id)
             ?? $this->missing(__('Böyle bir yedek yok.'));

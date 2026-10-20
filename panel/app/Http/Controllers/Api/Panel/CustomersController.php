@@ -8,6 +8,7 @@ use App\Models\SystemUser;
 use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
 use App\Support\Hostnames;
+use App\Support\Locales;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -21,8 +22,9 @@ class CustomersController extends ApiController
         return response()->json(['data' => $customers->map(fn (Customer $c) => $this->customer($c))->values()]);
     }
 
-    public function show(Customer $customer, Quotas $quotas): JsonResponse
+    public function show(int $customer, Quotas $quotas): JsonResponse
     {
+        $customer = $this->findCustomer($customer);
         $usage = [];
         foreach ($quotas->report($customer->load('package')) as $kind => $row) {
             $usage[$kind] = ['used' => $row['used'], 'limit' => $row['limit'], 'level' => $row['level'], 'text' => $row['text']];
@@ -66,8 +68,9 @@ class CustomersController extends ApiController
         return response()->json(['data' => [...$this->customer($customer->load('package')), 'invitation_url' => route('invitation', $invite)]], 201);
     }
 
-    public function suspend(Request $request, Customer $customer, Customers $customers): JsonResponse
+    public function suspend(Request $request, int $customer, Customers $customers): JsonResponse
     {
+        $customer = $this->findCustomer($customer);
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:200']])['reason'] ?? null;
         if ($customer->suspended_at === null) {
             $customers->suspend($customer, $reason);
@@ -77,8 +80,9 @@ class CustomersController extends ApiController
         return response()->json(['data' => $this->customer($customer->fresh('package'))]);
     }
 
-    public function unsuspend(Request $request, Customer $customer, Customers $customers): JsonResponse
+    public function unsuspend(Request $request, int $customer, Customers $customers): JsonResponse
     {
+        $customer = $this->findCustomer($customer);
         if ($customer->suspended_at !== null) {
             $customers->unsuspend($customer);
             $this->audit($request, __('Müşteriler ve Paketler'), __(':name yeniden etkin.', ['name' => $customer->displayName()]), route('customers.show', $customer, false));
@@ -99,11 +103,16 @@ class CustomersController extends ApiController
             'email' => $c->email,
             'phone' => $c->phone,
             'username' => $c->username,
-            'package' => $c->package ? ['id' => $c->package->id, 'name' => $c->package->name] : null,
+            'package' => $c->package ? ['id' => $c->package->id, 'name' => Locales::label($c->package->name)] : null,
             'suspended' => $c->suspended_at !== null,
             'suspended_at' => $c->suspended_at?->toIso8601String(),
             'suspend_reason' => $c->suspend_reason,
             'created_at' => $c->created_at?->toIso8601String(),
         ];
+    }
+
+    private function findCustomer(int $id): Customer
+    {
+        return Customer::find($id) ?? $this->missing(__(':id numaralı bir müşteri yok.', ['id' => $id]));
     }
 }

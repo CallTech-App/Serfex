@@ -374,6 +374,30 @@ func TestListsAreTablesOrTheJSONAsItCame(t *testing.T) {
 	}
 }
 
+func TestAServiceShowsWhatStoppingItWouldAffect(t *testing.T) {
+	p := newPanel(t)
+	v, _ := signedIn(t, p)
+	p.on("GET /api/v1/services/nginx", reply(200, map[string]any{"data": map[string]any{
+		"unit": "nginx", "name": "Nginx", "state": "active", "sub_state": "running", "enabled": "enabled", "affects": "Tüm siteler (2 site) yanıt vermez.",
+	}}))
+	r := run(t, v, "", "services", "status", "nginx")
+	for _, want := range []string{"Çalışıyor", "Açılışta başlar:  evet", "Tüm siteler (2 site) yanıt vermez."} {
+		if r.code != 0 || !strings.Contains(r.out, want) {
+			t.Fatalf("no %q in %+v", want, r)
+		}
+	}
+}
+
+func TestColoredCellsStayAligned(t *testing.T) {
+	var out bytes.Buffer
+	c := &Ctx{env: &Env{Stdout: &out}, color: true}
+	c.table([]string{"Site", "Durum"}, [][]string{{"a.com", c.green("Etkin")}, {"uzun-ad.com.tr", "x"}})
+	lines := strings.Split(strings.TrimSpace(ansi.ReplaceAllString(out.String(), "")), "\n")
+	if len(lines) != 3 || strings.Index(lines[1], "Etkin") != strings.Index(lines[2], "x") {
+		t.Fatalf("%q", lines)
+	}
+}
+
 func TestPanelRefusalsAreShownAsTheySaid(t *testing.T) {
 	p := newPanel(t)
 	v, _ := signedIn(t, p)
@@ -489,6 +513,9 @@ func TestHelpIsInTheChosenLanguage(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 	if r := run(t, v, "", "sites"); r.code != 0 || !strings.Contains(r.out, "create") {
+		t.Fatalf("%+v", r)
+	}
+	if r := run(t, v, "", "help", "env", "set"); r.code != 0 || !strings.Contains(r.out, "servik env set") {
 		t.Fatalf("%+v", r)
 	}
 }

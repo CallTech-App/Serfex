@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\DeploymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\LaravelApp;
 use App\Models\LaravelDeployment;
@@ -22,6 +23,9 @@ use RuntimeException;
  */
 class DeployApiController extends Controller
 {
+    /** @var array<int, int|null> app id => live deployment number */
+    private array $live = [];
+
     private const REF = ['nullable', 'string', 'max:200', 'regex:~^[A-Za-z0-9][A-Za-z0-9._/-]*$~', 'not_regex:~\.\.~'];
 
     public function show(Request $request): JsonResponse
@@ -156,10 +160,26 @@ class DeployApiController extends Controller
             'finished_at' => $deployment->finished_at?->toIso8601String(),
             'triggered_by' => $deployment->triggered_by,
             'run' => $deployment->run,
-            'live' => $deployment->release !== null && $deployment->release === $app->current_release,
+            'live' => $deployment->number === $this->liveNumber($app),
             'done' => ! $deployment->status->isBusy(),
             'url' => route('laravel.show', ['app' => $app->id, 'bolum' => 'dagitimlar']),
         ];
+    }
+
+    /**
+     * The newest deployment that put the current release live (a rollback
+     * shares its release with the deployment it went back to).
+     */
+    private function liveNumber(LaravelApp $app): ?int
+    {
+        if ($app->current_release === null) {
+            return null;
+        }
+
+        return $this->live[$app->id] ??= $app->deployments()
+            ->where('release', $app->current_release)
+            ->where('status', DeploymentStatus::Succeeded)
+            ->max('number');
     }
 
     private function app(Request $request): LaravelApp

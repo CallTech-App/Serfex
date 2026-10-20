@@ -628,18 +628,49 @@ func backupsRestore(c *Ctx) error {
 // --- Hizmetler ---------------------------------------------------------
 
 type service struct {
-	Unit      string   `json:"unit"`
-	Name      string   `json:"name"`
-	Group     string   `json:"group"`
-	State     string   `json:"state"`
-	SubState  string   `json:"sub_state"`
-	Enabled   string   `json:"enabled"`
-	Since     string   `json:"since"`
-	PID       int      `json:"pid"`
-	Restarts  int      `json:"restarts"`
-	Memory    float64  `json:"memory"`
-	Protected string   `json:"protected"`
-	Affects   []string `json:"affects"`
+	Unit      string  `json:"unit"`
+	Name      string  `json:"name"`
+	Group     string  `json:"group"`
+	State     string  `json:"state"`
+	SubState  string  `json:"sub_state"`
+	Enabled   string  `json:"enabled"`
+	Since     string  `json:"since"`
+	PID       int     `json:"pid"`
+	Restarts  int     `json:"restarts"`
+	Memory    float64 `json:"memory"`
+	Protected string  `json:"protected"`
+	Affects   string  `json:"affects"`
+}
+
+// startsAtBoot is systemd's enabled state for people.
+func startsAtBoot(state string) string {
+	switch state {
+	case "enabled", "enabled-runtime", "static", "alias":
+		return yesNo(true)
+	case "disabled", "masked", "masked-runtime":
+		return yesNo(false)
+	}
+	return state
+}
+
+// serviceState is a unit's state for people: running, stopped, failing.
+func (c *Ctx) serviceState(s service) string {
+	labels := map[string]string{
+		"active":       T("Etkin"),
+		"inactive":     T("Durmuş"),
+		"failed":       T("Hata"),
+		"activating":   T("Başlıyor"),
+		"deactivating": T("Duruyor"),
+		"reloading":    T("Yeniden yükleniyor"),
+	}
+	text, ok := labels[s.State]
+	if !ok {
+		text = s.State
+	}
+	if s.State == "active" && s.SubState == "running" {
+		text = T("Çalışıyor")
+	}
+	return c.toneOf(s.State, text)
 }
 
 func serviceCommands() *Command {
@@ -691,7 +722,7 @@ func servicesList(c *Ctx) error {
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Group < list[j].Group })
 		var rows [][]string
 		for _, s := range list {
-			rows = append(rows, []string{s.Unit, s.Name, c.toneOf(s.State, s.State+" ("+s.SubState+")"), bytesText(s.Memory), when(s.Since)})
+			rows = append(rows, []string{s.Unit, s.Name, c.serviceState(s), bytesText(s.Memory), when(s.Since)})
 		}
 		c.table([]string{T("Hizmet"), T("Ad"), T("Durum"), T("Bellek"), T("Başlangıç")}, rows)
 		return nil
@@ -706,13 +737,13 @@ func servicesShow(c *Ctx) error {
 	return show(c, resp, func(s service) error {
 		c.pairs([][2]string{
 			{T("Hizmet"), c.bold(s.Name) + " (" + s.Unit + ")"},
-			{T("Durum"), c.toneOf(s.State, s.State+" ("+s.SubState+")")},
-			{T("Açılışta"), s.Enabled},
+			{T("Durum"), c.serviceState(s)},
+			{T("Açılışta başlar"), startsAtBoot(s.Enabled)},
 			{T("Başlangıç"), when(s.Since)},
 			{"PID", strconv.Itoa(s.PID)},
 			{T("Yeniden başlama"), strconv.Itoa(s.Restarts)},
 			{T("Bellek"), bytesText(s.Memory)},
-			{T("Etkiler"), strings.Join(s.Affects, ", ")},
+			{T("Etkiler"), s.Affects},
 			{T("Korumalı"), s.Protected},
 		})
 		return nil

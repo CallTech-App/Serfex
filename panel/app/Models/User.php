@@ -114,7 +114,7 @@ class User extends Authenticatable implements HasLocalePreference
 
     public function roleName(): string
     {
-        return self::ROLES[$this->adminRole()][0] ?? ($this->isCustomer() ? __('Müşteri') : __('Laravel ekibi'));
+        return isset(self::ROLES[$this->adminRole()]) ? __(self::ROLES[$this->adminRole()][0]) : ($this->isCustomer() ? __('Müşteri') : __('Laravel ekibi'));
     }
 
     /**

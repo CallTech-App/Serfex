@@ -136,7 +136,7 @@ func laravelCommands() []*Command {
 			Run: rollback,
 		},
 		{
-			Name: "preview", Aliases: []string{"previews"}, Group: group, Short: T("Önizleme ortamları (pr-<n>.alan-adı)"),
+			Name: "preview", Aliases: []string{"previews"}, Group: group, Short: T("Önizleme ortamları (<dal>.alan-adı)"),
 			Subs: []*Command{
 				{Name: "create", Args: T("<dal>"), MinArgs: 1, MaxArgs: 1, Short: T("Bir dal için önizleme ortamı açar"), Flags: appFlag, Run: previewCreate},
 				{Name: "delete", Aliases: []string{"rm"}, Args: T("<ad>"), MinArgs: 1, MaxArgs: 1, Short: T("Önizleme ortamını kaldırır"), Flags: appFlag, Run: previewDelete},
@@ -444,7 +444,7 @@ func deploymentsList(c *Ctx) error {
 			}
 			rows = append(rows, []string{number, c.status(d.Status), orDash(d.Ref), orDash(commit), when(d.StartedAt), orDash(d.TriggeredBy)})
 		}
-		c.table([]string{T("No"), T("Durum"), T("Ref"), "Commit", T("Başlangıç"), T("Başlatan")}, rows)
+		c.table([]string{T("No"), T("Durum"), T("Ref"), "COMMIT", T("Başlangıç"), T("Başlatan")}, rows)
 		return nil
 	})
 }
@@ -767,7 +767,7 @@ func queuesStatus(c *Ctx) error {
 		c.table([]string{T("İşçi"), T("Kuyruklar"), T("Çalışan")}, rows)
 		c.println()
 		for _, p := range q.Pending {
-			c.printf("%s %s: %d\n", c.dim(T("Bekleyen")), p.Queue, p.Size)
+			c.printf("%s %d\n", c.dim(T("Bekleyen iş (%s):", p.Queue)), p.Size)
 		}
 		if q.Failed != nil {
 			failed := strconv.Itoa(*q.Failed)

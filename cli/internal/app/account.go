@@ -510,7 +510,7 @@ func status(c *Ctx) error {
 	}) error {
 		c.pairs([][2]string{
 			{T("Sunucu"), s.Hostname},
-			{T("Panel"), fmt.Sprintf("%s:%d", orDash(s.Panel), s.Port)},
+			{T("Panel"), panelAddress(s.Panel, s.Port)},
 			{T("Sürüm"), "Servik " + s.Version},
 			{T("Saat dilimi"), s.Timezone},
 			{T("Siteler"), fmt.Sprint(s.Sites)},
@@ -593,4 +593,12 @@ func (c *Ctx) sleep(d time.Duration) error {
 	case <-t.C:
 		return nil
 	}
+}
+
+// panelAddress is host:port, or "—" before the panel's address is set.
+func panelAddress(host string, port int) string {
+	if strings.TrimSpace(host) == "" {
+		return "—"
+	}
+	return fmt.Sprintf("%s:%d", host, port)
 }

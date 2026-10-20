@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\AuthenticateApiKey;
+use App\Models\ApiKey;
 use App\Models\LaravelApiToken;
 use App\Models\Setting;
 use App\Services\Settings\ApiKeys;
@@ -43,7 +44,9 @@ class MeController extends Controller
                 'customer' => $user->isCustomer() ? $user->customer?->displayName() : null,
                 'locale' => $user->preferredLocale(),
                 'key' => [
-                    'name' => $key->name,
+                    // A command line key's name was written in its approver's
+                    // language; the reader's reads better.
+                    'name' => $key->kind === ApiKey::CLI && $key->client ? __('Komut satırı: :client', ['client' => $key->client]) : $key->name,
                     'kind' => $key->kind,
                     'scope' => $user->isReadOnly() ? 'read' : $key->scope,
                     'expires_at' => $key->expires_at?->toIso8601String(),

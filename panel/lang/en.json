@@ -271,6 +271,7 @@
     ":hours saat eklendi, :folded satır birleştirildi.": ":hours hour added, :folded rows merged.|:hours hours added, :folded rows merged.",
     ":hours site saati kaydedildi (:id).": ":hours site hour recorded (:id).|:hours site hours recorded (:id).",
     ":i. satır \"ad = değer\" biçiminde değil.": "Line :i. is not in the \"name = value\" form.",
+    ":id numaralı bir müşteri yok.": "There is no customer number :id.",
     ":ids adres :durations engellendi.": ":ids address blocked :durations.|:ids addresses blocked :durations.",
     ":ids adres kalıcı olarak engellendi.": ":ids address blocked permanently.|:ids addresses blocked permanently.",
     ":ids kayıt silindi.": ":ids record deleted.|:ids records deleted.",

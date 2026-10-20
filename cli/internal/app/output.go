@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -88,12 +88,13 @@ func show[T any](c *Ctx, resp *api.Response, render func(v T) error) error {
 	return render(v)
 }
 
-// table writes rows under headings, aligned.
+// table writes rows under headings, aligned. Headings are uppercased by
+// the language's rules (SİTE); a word written in capitals already, like a
+// loanword (COMMIT), is left as it is.
 func (c *Ctx) table(headings []string, rows [][]string) {
 	if len(rows) == 0 {
 		return
 	}
-	w := tabwriter.NewWriter(c.env.Stdout, 0, 0, 2, ' ', 0)
 	h := make([]string, len(headings))
 	for i, s := range headings {
 		if Locale() == "tr" {
@@ -102,12 +103,38 @@ func (c *Ctx) table(headings []string, rows [][]string) {
 			h[i] = strings.ToUpper(s)
 		}
 	}
-	fmt.Fprintln(w, c.dim(strings.Join(h, "\t")))
-	for _, r := range rows {
-		fmt.Fprintln(w, strings.Join(r, "\t"))
+	// Widths are counted without colors (tabwriter would count them).
+	widths := make([]int, len(h))
+	for _, r := range append([][]string{h}, rows...) {
+		for i, cell := range r {
+			if i < len(widths) {
+				widths[i] = max(widths[i], textWidth(cell))
+			}
+		}
 	}
-	w.Flush()
+	line := func(cells []string, paint func(string) string) {
+		var b strings.Builder
+		for i, cell := range cells {
+			if i == len(cells)-1 {
+				b.WriteString(paint(cell))
+				break
+			}
+			b.WriteString(paint(cell) + strings.Repeat(" ", widths[i]-textWidth(cell)+2))
+		}
+		c.println(b.String())
+	}
+	line(h, c.dim)
+	for _, r := range rows {
+		line(r, func(s string) string { return s })
+	}
 }
+
+// textWidth is how many columns s takes on a terminal, colors left out.
+func textWidth(s string) int {
+	return utf8.RuneCountInString(ansi.ReplaceAllString(s, ""))
+}
+
+var ansi = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 // pairs writes label: value lines, aligned.
 func (c *Ctx) pairs(rows [][2]string) {
