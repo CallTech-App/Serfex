@@ -276,7 +276,7 @@
                                         <button type="button" wire:click="openPermissions(@js($e['path']), @js($e['mode']))" class="hover:text-accent" title="{{ __('İzinleri değiştir') }}">{{ $e['mode'] }}</button>
                                     @endif
                                     @unless ($e['owned'])
-                                        <x-icon name="lock" class="ml-1 inline size-3.5 text-warn" title="{{ __('Sahibi site kullanıcısı değil; değiştirilemeyebilir') }}" />
+                                        <x-icon name="lock" class="ml-1 inline size-3.5 text-warn" :title="__('Sahibi site kullanıcısı değil; değiştirilemeyebilir')" />
                                     @endunless
                                 </td>
                                 <td class="py-2.5 pr-5 text-right">
@@ -359,7 +359,7 @@
     </div>
 
     {{-- İzinler --}}
-    <x-modal title="{{ __('İzinleri değiştir') }}" show="permOpen" size="max-w-md">
+    <x-modal :title="__('İzinleri değiştir')" show="permOpen" size="max-w-md">
         <form wire:submit="chmod">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('İzinleri değiştir') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -411,7 +411,7 @@
     </div>
 
     {{-- Sıkıştır --}}
-    <x-modal title="{{ __('Sıkıştır') }}" show="compressOpen" size="max-w-md">
+    <x-modal :title="__('Sıkıştır')" show="compressOpen" size="max-w-md">
         <form wire:submit="compress">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Sıkıştır: :selected öğe', ['selected' => count($selected)]) }}</h2>
             <div class="grid items-center gap-x-4 gap-y-3 p-5 text-[13.5px] sm:grid-cols-[6rem_minmax(0,1fr)]">
@@ -462,7 +462,7 @@
     </div>
 
     {{-- Silme onayı --}}
-    <x-modal title="{{ __('Sil') }}" show="deleteOpen" size="max-w-md">
+    <x-modal :title="__('Sil')" show="deleteOpen" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold">
                 @if (count($targets) === 1)
@@ -490,7 +490,7 @@
     </x-modal>
 
     {{-- Çöp kutusu --}}
-    <x-modal title="{{ __('Çöp kutusu') }}" show="trashOpen" size="max-w-2xl">
+    <x-modal :title="__('Çöp kutusu')" show="trashOpen" size="max-w-2xl">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Çöp kutusu') }}</h2>
         <div class="max-h-[60vh] overflow-y-auto">
             <table class="w-full text-[13.5px]">

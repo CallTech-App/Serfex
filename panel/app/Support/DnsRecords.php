@@ -50,7 +50,7 @@ class DnsRecords
             $ttl % 86400 === 0 => __(':ttl gün', ['ttl' => ($ttl / 86400)]),
             $ttl % 3600 === 0 => __(':ttl saat', ['ttl' => ($ttl / 3600)]),
             $ttl % 60 === 0 => __(':ttl dakika', ['ttl' => ($ttl / 60)]),
-            default => $ttl.' sn',
+            default => __(':seconds sn', ['seconds' => $ttl]),
         };
     }
 

@@ -112,7 +112,7 @@
     @endif
 
     {{-- Geçmiş --}}
-    <x-modal title="{{ __('.env geçmişi') }}" show="showingHistory">
+    <x-modal :title="__('.env geçmişi')" show="showingHistory">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('.env geçmişi') }}</h2>
         <ul class="scroll-thin max-h-96 divide-y divide-line overflow-y-auto px-5 text-[13.5px]">
             @forelse ($history as $v)

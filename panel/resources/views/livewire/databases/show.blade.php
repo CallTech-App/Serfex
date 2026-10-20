@@ -151,7 +151,7 @@
     @endunless
 
     {{-- Kullanıcı ekle --}}
-    <x-modal title="{{ __('Kullanıcı ekle') }}" show="adding">
+    <x-modal :title="__('Kullanıcı ekle')" show="adding">
         <form wire:submit="add">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Kullanıcı ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -204,7 +204,7 @@
     </x-modal>
 
     {{-- Veritabanını sil --}}
-    <x-modal title="{{ __('Veritabanını sil') }}" show="deleting" size="max-w-md">
+    <x-modal :title="__('Veritabanını sil')" show="deleting" size="max-w-md">
         <form wire:submit="delete" class="p-5 text-[13.5px]">
             <p class="font-semibold"><x-t text=":name silinsin mi?"><x-slot:name><span class="font-mono">{{ $database->name }}</span></x-slot:name></x-t></p>
             <p class="mt-1 text-[13px] text-muted">{{ __('Tüm tablolar ve veriler silinir. Kullanıcılar kalır ama bu veritabanına erişemez. 10 dakika içinde geri alabilirsiniz.') }}</p>

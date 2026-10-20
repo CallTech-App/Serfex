@@ -15,7 +15,7 @@
     $notes = fn (?string $md) => \App\Services\Ai\Transcript::markdown(trim((string) $md) ?: __('Bu sürüm için not yazılmamış.'));
     $link = 'text-[13px] text-accent hover:underline disabled:opacity-40 disabled:no-underline';
 @endphp
-<x-settings-page current="settings.updates" title="{{ __('Güncellemeler') }}">
+<x-settings-page current="settings.updates" :title="__('Güncellemeler')">
     <x-slot:description><x-t text="Servik panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar :link'nden güncellenir."><x-slot:link><a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></x-slot:description>
 
     @if ($agentError)
@@ -286,7 +286,7 @@
     </section>
 
     {{-- Onay --}}
-    <x-modal title="{{ __('Onay') }}" show="confirming" size="max-w-md">
+    <x-modal :title="__('Onay')" show="confirming" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             @if ($confirming === 'rollback')
                 <p class="font-semibold">{{ __('Servik :previous sürümüne dönülsün mü?', ['previous' => $previous]) }}</p>

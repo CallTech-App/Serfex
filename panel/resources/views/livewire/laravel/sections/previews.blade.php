@@ -110,7 +110,7 @@
     @endunless
 
     {{-- Dal önizlemesi aç --}}
-    <x-modal title="{{ __('Dal önizlemesi aç') }}" show="creating" size="max-w-md">
+    <x-modal :title="__('Dal önizlemesi aç')" show="creating" size="max-w-md">
         <form wire:submit="create">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Dal önizlemesi aç') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

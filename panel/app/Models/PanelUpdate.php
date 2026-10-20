@@ -62,6 +62,6 @@ class PanelUpdate extends Model
         }
         $s = max(0, (int) $this->started_at->diffInSeconds($this->finished_at));
 
-        return $s >= 60 ? intdiv($s, 60).' dk '.($s % 60).' sn' : $s.' sn';
+        return $s >= 60 ? __(':minutes dk :seconds sn', ['minutes' => intdiv($s, 60), 'seconds' => $s % 60]) : __(':seconds sn', ['seconds' => $s]);
     }
 }

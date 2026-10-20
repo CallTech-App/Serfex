@@ -195,7 +195,7 @@
     @endif
 
     {{-- Askıya al --}}
-    <x-modal title="{{ __('Müşteriyi askıya al') }}" show="suspending" size="max-w-md">
+    <x-modal :title="__('Müşteriyi askıya al')" show="suspending" size="max-w-md">
         <form wire:submit="suspend" class="p-5 text-[13.5px]">
             <p class="font-semibold">{{ __(':customer askıya alınsın mı?', ['customer' => $customer->displayName()]) }}</p>
             <p class="mt-1 text-[13px] text-muted">{{ __('Siteleri "hizmet dışı" sayfası gösterir, gelen posta bekletilir ve posta kutularına girilemez, Laravel kuyrukları ve süreçleri durur, müşteri panele giremez. Dosyalar, posta ve veritabanları silinmez; etkinleştirince her şey kaldığı yerden sürer.') }}</p>
@@ -210,7 +210,7 @@
     </x-modal>
 
     {{-- Sil --}}
-    <x-modal title="{{ __('Müşteriyi sil') }}" show="deleting" size="max-w-md">
+    <x-modal :title="__('Müşteriyi sil')" show="deleting" size="max-w-md">
         <form wire:submit="delete" class="p-5 text-[13.5px]">
             <p class="font-semibold">{{ __(':customer silinsin mi?', ['customer' => $customer->displayName()]) }}</p>
             <p class="mt-1 text-[13px] text-muted">{{ __('Müşteri ve panel girişi silinir. :undo_seconds dakika içinde müşteri listesinden geri alabilirsiniz; bu sürede siteleri askı sayfası gösterir.', ['undo_seconds' => \App\Services\Customers\Customers::UNDO_SECONDS / 60]) }}</p>
@@ -229,7 +229,7 @@
     </x-modal>
 
     {{-- Mevcut siteyi bağla --}}
-    <x-modal title="{{ __('Mevcut siteyi bağla') }}" show="attaching">
+    <x-modal :title="__('Mevcut siteyi bağla')" show="attaching">
         <form wire:submit="attach" class="p-5 text-[13.5px]">
             <p class="font-semibold">{{ __('Mevcut siteyi bağla') }}</p>
             <p class="mt-1 text-[13px] text-muted">{{ __('Siteler sistem kullanıcısıyla birlikte taşınır: hesap bağlanınca içindeki bütün siteler bu müşterinin olur ve paketine sayılır.') }}</p>

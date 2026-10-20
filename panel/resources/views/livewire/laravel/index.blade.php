@@ -130,7 +130,7 @@
 
     {{-- Kurulum --}}
     @if ($canInstall)
-    <x-modal title="{{ __('Laravel uygulaması kur') }}" show="installing" size="max-w-2xl">
+    <x-modal :title="__('Laravel uygulaması kur')" show="installing" size="max-w-2xl">
         <form wire:submit="install" class="flex max-h-[calc(100vh-2rem)] flex-col">
             <h2 class="flex h-12 shrink-0 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Laravel uygulaması kur') }}</h2>
             @if ($step === 'key')
@@ -287,7 +287,7 @@
     </x-modal>
 
     {{-- Tarama --}}
-    <x-modal title="{{ __('Mevcut Laravel uygulamaları') }}" show="scanning" size="max-w-2xl">
+    <x-modal :title="__('Mevcut Laravel uygulamaları')" show="scanning" size="max-w-2xl">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Mevcut Laravel uygulamaları') }}</h2>
         <div class="text-[13.5px]">
             @if ($agentError && $found === null)

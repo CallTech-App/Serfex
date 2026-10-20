@@ -166,3 +166,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         });
     });
 });
+
+// Unknown addresses go through the web middleware too, so the 404 page is
+// in the reader's language.
+Route::fallback(fn () => abort(404));

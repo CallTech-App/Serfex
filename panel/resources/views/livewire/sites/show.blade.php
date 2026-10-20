@@ -44,7 +44,7 @@
         [__('Alan adı ve DNS'), 'network', [
             $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns')] : ['network', __('DNS kayıtları'), $zone ? __(':records_count kayıt', ['records_count' => $zone->records_count]) : null, $zone ? route('dns.show', $zone) : null],
             ['globe', __('Alt alan adları'), $subdomainCount ? __(':subdomain_count alt alan adı', ['subdomain_count' => $subdomainCount]) : __('Yok'), route('sites.domains', $site)],
-            ['link', __('Ek alan adları'), $site->aliases ? count($site->aliases).' ad' : __('Yok'), route('sites.domains', ['site' => $site, 'sekme' => 'ek'])],
+            ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'sekme' => 'ek'])],
             ['corner-up-right', __('Yönlendirmeler'), $redirectCount ? __(':redirect_count yönlendirme', ['redirect_count' => $redirectCount]) : __('Yok'), route('sites.domains', ['site' => $site, 'sekme' => 'yonlendirmeler'])],
         ]],
         [__('E-posta'), 'mail', $missing('mail') ? [
@@ -52,7 +52,7 @@
             ['forward', __('Yönlendiriciler'), $missing('mail')],
             ['inbox', 'Webmail', $missing('mail')],
         ] : ($mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting ? [
-            ['mail', __('Posta kutuları'), $mail->mailboxes_count.' kutu', route('mail.show', $mail)],
+            ['mail', __('Posta kutuları'), trans_choice(':count kutu', $mail->mailboxes_count), route('mail.show', $mail)],
             ['forward', __('Yönlendiriciler'), $mail->forwarders_count ?: __('Yok'), route('mail.show', [$mail, 'tab' => 'yonlendiriciler'])],
             ['inbox', 'Webmail', $webmail ? 'Roundcube' : __('Kapalı'), $webmail, true],
         ] : [
@@ -220,7 +220,7 @@
     </div>
 
     {{-- Delete confirmation --}}
-    <x-modal title="{{ __('Siteyi sil') }}" show="deleting" size="max-w-md">
+    <x-modal :title="__('Siteyi sil')" show="deleting" size="max-w-md">
         <form wire:submit="delete" class="p-5 text-[13.5px]">
             <p class="font-semibold"><x-t text=":domain silinsin mi?"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t></p>
             <p class="mt-1 text-[13px] text-muted"><x-t text="Nginx ve PHP-FPM ayarları ile :document_root içindeki tüm dosyalar silinir. Bu işlem geri alınamaz."><x-slot:document_root><span class="font-mono">{{ $site->document_root ? dirname($site->document_root) : __('site klasörü') }}</span></x-slot:document_root></x-t></p>

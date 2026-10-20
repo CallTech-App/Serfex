@@ -3,7 +3,7 @@
     $field = 'h-9 rounded-md border bg-surface px-3 text-[13.5px] outline-none focus:border-accent';
     $btn = 'flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2 disabled:opacity-40';
 @endphp
-<x-modal title="{{ __('Adresi engelle') }}" show="blocking">
+<x-modal :title="__('Adresi engelle')" show="blocking">
     <form wire:submit="saveBlock">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Adresi engelle') }}</h2>
         <div class="grid items-start gap-x-4 gap-y-3 p-5 text-[13.5px] sm:grid-cols-[6rem_minmax(0,1fr)]">

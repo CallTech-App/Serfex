@@ -216,7 +216,7 @@
                 </button>
                 <p class="text-[13px] text-muted sm:ml-2">{{ __('Kurallardan birini aşan adresler. Panel kendiliğinden engellemez; Servik AI\'a izin verdiyseniz en fazla 24 saat engelleyebilir.') }}</p>
                 @if ($openCount > 0)
-                    <x-ask-ai question="{{ __('Canlı İzleme\'de engellenmemiş saldırgan adresler görünüyor. Hangileri gerçekten saldırı, ne yapmalıyım?') }}" class="ml-auto" />
+                    <x-ask-ai :question="__('Canlı İzleme\'de engellenmemiş saldırgan adresler görünüyor. Hangileri gerçekten saldırı, ne yapmalıyım?')" class="ml-auto" />
                 @endif
             </div>
             <div class="relative overflow-x-auto">
@@ -227,7 +227,7 @@
                             <th class="px-3 py-2.5 font-medium">{{ __('Hedef') }}</th>
                             <th class="px-3 py-2.5 font-medium">{{ __('Kural') }}</th>
                             <th class="px-3 py-2.5 text-right font-medium">{{ __('Yoğunluk') }}</th>
-                            <th class="px-3 py-2.5 font-medium">{{ __('Başlangıç') }}</th>
+                            <th class="px-3 py-2.5 font-medium">{{ __('Başlangıç (saldırı)') }}</th>
                             <th class="px-3 py-2.5 font-medium">{{ __('Durum') }}</th>
                             <th class="w-28 py-2.5 pr-5 pl-3"></th>
                         </tr>
@@ -489,7 +489,7 @@
     </section>
 
     {{-- Site dialog: what the site uses and the interventions. --}}
-    <x-modal title="{{ __('Siteye müdahale') }}" show="acting" size="max-w-2xl">
+    <x-modal :title="__('Siteye müdahale')" show="acting" size="max-w-2xl">
         @if ($site)
             <div class="flex h-12 items-center gap-3 border-b border-line px-5">
                 <h2 class="min-w-0 truncate text-[14.5px] font-semibold"><x-t text=":domain için müdahale"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t></h2>
@@ -622,7 +622,7 @@
     </x-modal>
 
     {{-- IP engelle --}}
-    <x-modal title="{{ __('IP engelle') }}" show="blocking">
+    <x-modal :title="__('IP engelle')" show="blocking">
         <form wire:submit="saveBlock">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('IP engelle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

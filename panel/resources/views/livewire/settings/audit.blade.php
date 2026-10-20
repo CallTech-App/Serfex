@@ -4,7 +4,7 @@
     $user = auth()->user();
     $field = 'h-9 rounded-md border border-line bg-surface px-3 text-[13px] outline-none focus:border-accent';
 @endphp
-<x-settings-page current="settings.audit" title="{{ __('İşlem günlüğü') }}">
+<x-settings-page current="settings.audit" :title="__('İşlem günlüğü')">
     <x-slot:description><x-t text="Panelden, API'den ve Servik AI'dan yapılan her işlem: kim, ne zaman, ne yaptı. Son :undo_minutes dakikadaki işlemler buradan da geri alınabilir. Servik AI'ın okuduğu ve önerdiği her şey :link." :with="['undo_minutes' => \App\Models\AuditEntry::UNDO_MINUTES]"><x-slot:link><a href="{{ route('ai.audit') }}" wire:navigate class="text-accent hover:underline">{{ __('AI kaydında') }}</a></x-slot:link></x-t></x-slot:description>
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
@@ -45,7 +45,7 @@
                                 @if ($entry->section)
                                     <span class="text-2xs text-muted">{{ $entry->section }}</span>
                                 @endif
-                                <span class="block break-words">{{ $entry->message }}</span>
+                                <span class="block break-words">{{ \App\Support\Locales::reword($entry->message) }}</span>
                                 @if ($entry->undone_at)
                                     <span class="mt-0.5 inline-block rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-muted">{{ __('Geri alındı') }}</span>
                                 @endif

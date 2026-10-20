@@ -100,7 +100,7 @@
     <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Her süreç ayrı bir systemd hizmeti olarak sürekli çalışır, çökerse yeniden başlar ve günlüğü :domain dosyasına yazılır. Her dağıtımdan ve .env kaydından sonra işçiler yeniden başlar. Uygulamaya ek bir Composer paketi gerekmez."><x-slot:domain><span class="font-mono">/var/log/servik/laravel/{{ $app->site->domain }}/queue.log</span></x-slot:domain></x-t></p>
 
     {{-- İşçi ayarları --}}
-    <x-modal title="{{ __('İşçi ayarları') }}" show="editing">
+    <x-modal :title="__('İşçi ayarları')" show="editing">
         <form wire:submit="saveWorker">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $workerId ? __('İşçi ayarları') : __('İşçi ekle') }}</h2>
             <div class="grid max-h-[60vh] grid-cols-1 gap-x-4 gap-y-3 overflow-y-auto p-5 text-[13.5px] sm:grid-cols-[140px_1fr]">
@@ -138,7 +138,7 @@
     </x-modal>
 
     {{-- Başarısız işler --}}
-    <x-modal title="{{ __('Başarısız işler') }}" show="showingFailed" size="max-w-3xl">
+    <x-modal :title="__('Başarısız işler')" show="showingFailed" size="max-w-3xl">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Başarısız işler') }}</h2>
         <div class="scroll-thin max-h-[60vh] overflow-auto">
             <table class="w-full min-w-[640px] text-[13px]">

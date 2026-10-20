@@ -333,7 +333,7 @@
     </section>
 
     {{-- Güvenlik duvarını aç --}}
-    <x-modal title="{{ __('Güvenlik duvarını aç') }}" show="confirmingFirewall">
+    <x-modal :title="__('Güvenlik duvarını aç')" show="confirmingFirewall">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Güvenlik duvarını aç') }}</h2>
         <div class="space-y-3 p-5 text-[13.5px]">
             <p>{{ __('Sunucu yalnızca listedeki açık kurallarla izin verilen portlarda yanıt verecek; diğer portlara gelen bağlantılar düşürülecek.') }}</p>
@@ -390,7 +390,7 @@
     </x-modal>
 
     {{-- WAF ayarları --}}
-    <x-modal title="{{ __('WAF ayarları') }}" show="configuringWaf">
+    <x-modal :title="__('WAF ayarları')" show="configuringWaf">
         <form wire:submit="saveWafSettings">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('WAF ayarları') }}</h2>
             <div class="grid items-start gap-x-4 gap-y-3 p-5 text-[13.5px] sm:grid-cols-[8rem_minmax(0,1fr)]">
@@ -421,7 +421,7 @@
     @include('livewire.security.block-modal')
 
     {{-- 2FA sıfırla --}}
-    <x-modal title="{{ __('İki adımlı doğrulamayı sıfırla') }}" show="resetting">
+    <x-modal :title="__('İki adımlı doğrulamayı sıfırla')" show="resetting">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('İki adımlı doğrulamayı sıfırla') }}</h2>
         <p class="p-5 text-[13.5px]">{{ __('Hesap yalnızca parolayla girebilecek ve doğrulama uygulamasını yeniden kurması gerekecek. Telefonunu ve kurtarma kodlarını kaybeden biri için kullanın; geri alınamaz.') }}</p>
         <div class="flex justify-end gap-2 border-t border-line px-5 py-3">

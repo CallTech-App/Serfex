@@ -149,7 +149,7 @@
     @endif
 
     {{-- İstisna ekle --}}
-    <x-modal title="{{ __('Kural istisnası') }}" show="excluding">
+    <x-modal :title="__('Kural istisnası')" show="excluding">
         <form wire:submit="saveExclusion">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Kural istisnası') }}</h2>
             <div class="grid items-start gap-x-4 gap-y-3 p-5 text-[13.5px] sm:grid-cols-[6rem_minmax(0,1fr)]">

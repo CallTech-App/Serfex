@@ -105,7 +105,7 @@
     </section>
 
     {{-- E-postayı aç --}}
-    <x-modal title="{{ __('E-postayı aç') }}" show="enabling">
+    <x-modal :title="__('E-postayı aç')" show="enabling">
         <form wire:submit="enable">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('E-postayı aç') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

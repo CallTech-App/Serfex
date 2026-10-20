@@ -1,4 +1,4 @@
-<x-layouts.app title="{{ __('Genel Bakış · Servik') }}">
+<x-layouts.app :title="__('Genel Bakış · Servik')">
     <div>
         <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Genel Bakış') }}</h1>
         <p class="mt-1 text-[13px] text-muted">{{ __('Sunucunun ve sitelerin durumu.') }}</p>
@@ -19,7 +19,7 @@
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
             @if ($monitorAttention)
-                <x-ask-ai question="{{ __('Canlı İzleme\'de ilgilenmem gereken siteler ya da saldırılar var. Neler oluyor, ne yapmalıyım?') }}" label="{{ __('AI\'ya sor') }}" class="mr-5" />
+                <x-ask-ai :question="__('Canlı İzleme\'de ilgilenmem gereken siteler ya da saldırılar var. Neler oluyor, ne yapmalıyım?')" :label="__('AI\'ya sor')" class="mr-5" />
             @endif
         </div>
         @php
@@ -36,7 +36,7 @@
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
             @if ($serviceProblems)
-                <x-ask-ai question="{{ __('Sunucuda çalışmayan hizmetler var: :service_names. Neden durmuş olabilir, nasıl düzeltirim?', ['service_names' => $serviceNames]) }}" label="{{ __('AI\'ya sor') }}" class="mr-5" />
+                <x-ask-ai :question="__('Sunucuda çalışmayan hizmetler var: :service_names. Neden durmuş olabilir, nasıl düzeltirim?', ['service_names' => $serviceNames])" :label="__('AI\'ya sor')" class="mr-5" />
             @endif
         </div>
         @php
@@ -87,7 +87,7 @@
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
             @if ($sslAttention)
-                <x-ask-ai question="{{ __('İlgilenmem gereken SSL sertifikaları var. Hangileri, neden ve nasıl düzeltirim?') }}" label="{{ __('AI\'ya sor') }}" class="mr-5" />
+                <x-ask-ai :question="__('İlgilenmem gereken SSL sertifikaları var. Hangileri, neden ve nasıl düzeltirim?')" :label="__('AI\'ya sor')" class="mr-5" />
             @endif
         </div>
         @php
@@ -104,7 +104,7 @@
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
             @if ($securityAttention)
-                <x-ask-ai question="{{ __('Güvenlik taramasında ciddi bulgular var. Hangileri, ne kadar tehlikeli ve nasıl düzeltirim?') }}" label="{{ __('AI\'ya sor') }}" class="mr-5" />
+                <x-ask-ai :question="__('Güvenlik taramasında ciddi bulgular var. Hangileri, ne kadar tehlikeli ve nasıl düzeltirim?')" :label="__('AI\'ya sor')" class="mr-5" />
             @endif
         </div>
         @if (! auth()->user()->hasTwoFactor())
@@ -133,7 +133,7 @@
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
             @if ($backupProblems)
-                <x-ask-ai question="{{ __('Yedeklemede sorun var: :text Neden olmuş olabilir, nasıl düzeltirim?', ['text' => $backupProblems[0]['text']]) }}" label="{{ __('AI\'ya sor') }}" class="mr-5" />
+                <x-ask-ai :question="__('Yedeklemede sorun var: :text Neden olmuş olabilir, nasıl düzeltirim?', ['text' => $backupProblems[0]['text']])" :label="__('AI\'ya sor')" class="mr-5" />
             @endif
         </div>
         @php $updateNotices = app(\App\Services\Updates\Updates::class)->notices(); @endphp

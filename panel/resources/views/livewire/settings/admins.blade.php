@@ -4,7 +4,7 @@
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
     $me = auth()->id();
 @endphp
-<x-settings-page current="settings.admins" title="{{ __('Yöneticiler') }}" description="{{ __('Sunucuyu kimlerin hangi rolle yönettiği. Müşterilerin girişleri Müşteriler ve Paketler\'de.') }}">
+<x-settings-page current="settings.admins" :title="__('Yöneticiler')" :description="__('Sunucuyu kimlerin hangi rolle yönettiği. Müşterilerin girişleri Müşteriler ve Paketler\'de.')">
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
             <button type="button" wire:click="openInvite" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
@@ -68,7 +68,7 @@
     </section>
 
     {{-- Yönetici ekle --}}
-    <x-modal title="{{ __('Yönetici ekle') }}" show="inviting">
+    <x-modal :title="__('Yönetici ekle')" show="inviting">
         <form wire:submit="invite">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Yönetici ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

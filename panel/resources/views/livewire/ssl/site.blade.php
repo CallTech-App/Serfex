@@ -166,7 +166,7 @@
     </section>
 
     {{-- Let's Encrypt --}}
-    <x-modal title="{{ __('Let\'s Encrypt sertifikası al') }}" show="requesting">
+    <x-modal :title="__('Let\'s Encrypt sertifikası al')" show="requesting">
         <form wire:submit="requestCertificate">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Let\'s Encrypt sertifikası al') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -200,7 +200,7 @@
     </x-modal>
 
     {{-- Upload --}}
-    <x-modal title="{{ __('Sertifika yükle') }}" show="uploading" size="max-w-2xl">
+    <x-modal :title="__('Sertifika yükle')" show="uploading" size="max-w-2xl">
         <form wire:submit="upload">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Sertifika yükle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -222,7 +222,7 @@
     </x-modal>
 
     {{-- Remove --}}
-    <x-modal title="{{ __('Sertifikayı kaldır') }}" show="confirmingRemove" size="max-w-md">
+    <x-modal :title="__('Sertifikayı kaldır')" show="confirmingRemove" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold">{{ __('Sertifika kaldırılsın mı?') }}</p>
             <p class="mt-1 text-[13px] text-muted"><x-t text=":domain yalnızca :part ile açılır; HTTPS ile gelen ziyaretçiler hata görür. 10 dakika içinde geri alabilirsiniz."><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain><x-slot:part><span class="font-mono">http://</span></x-slot:part></x-t></p>

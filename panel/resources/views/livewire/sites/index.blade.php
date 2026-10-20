@@ -98,7 +98,7 @@
     </section>
 
     {{-- Site ekle --}}
-    <x-modal title="{{ __('Site ekle') }}" show="creating">
+    <x-modal :title="__('Site ekle')" show="creating">
         <form wire:submit="create">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Site ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

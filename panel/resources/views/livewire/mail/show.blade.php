@@ -341,7 +341,7 @@
     </section>
 
     {{-- Posta kutusu --}}
-    <x-modal title="{{ __('Posta kutusu') }}" show="editingMailbox">
+    <x-modal :title="__('Posta kutusu')" show="editingMailbox">
         <form wire:submit="saveMailbox">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $mailboxId ? __('Posta kutusunu düzenle') : __('Posta kutusu oluştur') }}</h2>
             <div class="max-h-[70vh] space-y-4 overflow-y-auto p-5 text-[13.5px]">
@@ -425,7 +425,7 @@
     </x-modal>
 
     {{-- Yönlendirici --}}
-    <x-modal title="{{ __('Yönlendirici') }}" show="editingForwarder">
+    <x-modal :title="__('Yönlendirici')" show="editingForwarder">
         <form wire:submit="saveForwarder">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $forwarderId ? __('Yönlendiriciyi düzenle') : __('Yönlendirici ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -462,7 +462,7 @@
     </x-modal>
 
     {{-- E-postayı kapat --}}
-    <x-modal title="{{ __('E-postayı kapat') }}" show="disabling" size="max-w-md">
+    <x-modal :title="__('E-postayı kapat')" show="disabling" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold"><x-t text=":name için e-posta kapatılsın mı?"><x-slot:name><span class="font-mono">{{ $domain->name }}</span></x-slot:name></x-t></p>
             <p class="mt-1 text-[13px] text-muted">

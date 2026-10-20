@@ -3,7 +3,7 @@
     use App\Models\DatabaseUser;
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
 @endphp
-<x-modal title="{{ __('Kullanıcıyı düzenle') }}" show="userDialog" size="max-w-xl">
+<x-modal :title="__('Kullanıcıyı düzenle')" show="userDialog" size="max-w-xl">
     @if ($editUser)
         <form wire:submit="saveUser">
             <h2 class="flex h-12 items-center gap-2 border-b border-line px-5 text-[14.5px] font-semibold">

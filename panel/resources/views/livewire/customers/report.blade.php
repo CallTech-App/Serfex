@@ -91,7 +91,7 @@
                     <span class="font-medium">{{ __('Son 12 ay') }}</span>
                     <span class="num text-muted">{{ __('Bu ay :text:limit', ['text' => $report['traffic']['text'], 'limit' => $limit ? __(' · aylık sınır :limit', ['limit' => Bytes::format($limit)]) : '']) }}</span>
                 </div>
-                <x-bar-chart :points="$points" unit="{{ __('Aylık trafik') }}" />
+                <x-bar-chart :points="$points" :unit="__('Aylık trafik')" />
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[520px] text-[13.5px]">

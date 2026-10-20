@@ -92,7 +92,7 @@
     <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Yedekler sunucuda :domain altında tutulur ve yalnızca root okuyabilir. Bu uygulama, hesabın diğer sitelerine dokunmadan geri yüklenir. Önbellek, oturum ve günlük dosyaları yedeğe girmez."><x-slot:domain><span class="font-mono">/var/lib/servik/backups/laravel/{{ $app->site->domain }}/</span></x-slot:domain></x-t></p>
 
     {{-- Şimdi yedekle --}}
-    <x-modal title="{{ __('Şimdi yedekle') }}" show="creating" size="max-w-md">
+    <x-modal :title="__('Şimdi yedekle')" show="creating" size="max-w-md">
         <form wire:submit="create">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Şimdi yedekle') }}</h2>
             <div class="space-y-3 p-5 text-[13.5px]">
@@ -112,7 +112,7 @@
     </x-modal>
 
     {{-- Plan --}}
-    <x-modal title="{{ __('Yedekleme planı') }}" show="scheduling" size="max-w-md">
+    <x-modal :title="__('Yedekleme planı')" show="scheduling" size="max-w-md">
         <form wire:submit="saveSchedule">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Yedekleme planı') }}</h2>
             <div class="grid grid-cols-1 gap-x-4 gap-y-3 p-5 text-[13.5px] sm:grid-cols-[120px_1fr]">
@@ -144,7 +144,7 @@
     </x-modal>
 
     {{-- Geri yükle --}}
-    <x-modal title="{{ __('Geri yükle') }}" show="restoring" size="max-w-md">
+    <x-modal :title="__('Geri yükle')" show="restoring" size="max-w-md">
         @if ($restoreBackup)
             <form wire:submit="restore">
                 <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __(':created_at yedeği geri yüklensin mi?', ['created_at' => When::withTime($restoreBackup->created_at)]) }}</h2>
@@ -167,7 +167,7 @@
 
     {{-- Günlük --}}
     @if ($viewingLog && $logRun)
-        <x-modal title="{{ __('Günlük') }}" show="viewingLog" size="max-w-2xl">
+        <x-modal :title="__('Günlük')" show="viewingLog" size="max-w-2xl">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $logTitle }}</h2>
             <div class="p-5"><x-run-log :run="$logRun" /></div>
             <div class="flex justify-end border-t border-line px-5 py-3"><button type="button" wire:click="closeLog" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Kapat') }}</button></div>

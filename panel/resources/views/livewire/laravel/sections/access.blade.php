@@ -103,7 +103,7 @@
 
     @if ($manage)
     {{-- Kişi ekle --}}
-    <x-modal title="{{ __('Kişi ekle') }}" show="adding" size="max-w-md">
+    <x-modal :title="__('Kişi ekle')" show="adding" size="max-w-md">
         <form wire:submit="add">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Kişi ekle') }}</h2>
             <div class="grid grid-cols-1 gap-x-4 gap-y-3 p-5 text-[13.5px] sm:grid-cols-[90px_1fr]">
@@ -131,7 +131,7 @@
     </x-modal>
 
     {{-- Anahtar oluştur --}}
-    <x-modal title="{{ __('Anahtar oluştur') }}" show="tokenForm" size="max-w-md">
+    <x-modal :title="__('Anahtar oluştur')" show="tokenForm" size="max-w-md">
         <form wire:submit="createToken">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Dağıtım anahtarı oluştur') }}</h2>
             <div class="p-5 text-[13.5px]">

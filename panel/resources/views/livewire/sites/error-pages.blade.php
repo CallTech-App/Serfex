@@ -54,7 +54,7 @@
     </section>
 
     {{-- Düzenle --}}
-    <x-modal title="{{ __('Hata sayfası') }}" show="editing" close="$wire.editing = null" size="max-w-4xl">
+    <x-modal :title="__('Hata sayfası')" show="editing" close="$wire.editing = null" size="max-w-4xl">
         @if ($editing)
             <form wire:submit="save" x-data="{ preview: false }">
                 <div class="flex h-12 items-center gap-3 border-b border-line px-5">
@@ -78,7 +78,7 @@
     </x-modal>
 
     {{-- Varsayılana dön --}}
-    <x-modal title="{{ __('Varsayılana dön') }}" show="resetting" close="$wire.resetting = null" size="max-w-md">
+    <x-modal :title="__('Varsayılana dön')" show="resetting" close="$wire.resetting = null" size="max-w-md">
         @if ($resetting)
             <div class="p-5 text-[13.5px]">
                 <p class="font-semibold">{{ __(':pages için özel sayfa kaldırılsın mı?', ['pages' => SiteErrorPages::PAGES[$resetting][1]]) }}</p>

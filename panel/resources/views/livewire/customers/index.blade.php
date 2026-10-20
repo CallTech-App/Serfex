@@ -191,7 +191,7 @@
     </section>
 
     {{-- Müşteri ekle --}}
-    <x-modal title="{{ __('Müşteri ekle') }}" show="creating">
+    <x-modal :title="__('Müşteri ekle')" show="creating">
         <form wire:submit="create" class="flex max-h-[calc(100vh-2rem)] flex-col">
             <h2 class="flex h-12 shrink-0 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Müşteri ekle') }}</h2>
             <div class="space-y-4 overflow-y-auto p-5 text-[13.5px]">
@@ -246,7 +246,7 @@
     @endif
 
     {{-- Paket ekle / düzenle --}}
-    <x-modal title="{{ __('Paket') }}" show="editingPackage" size="max-w-2xl">
+    <x-modal :title="__('Paket')" show="editingPackage" size="max-w-2xl">
         <form wire:submit="savePackage" class="flex max-h-[calc(100vh-2rem)] flex-col">
             <h2 class="flex h-12 shrink-0 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $packageEditId ? __('Paketi düzenle') : __('Paket ekle') }}</h2>
             <div class="space-y-5 overflow-y-auto p-5 text-[13.5px]">

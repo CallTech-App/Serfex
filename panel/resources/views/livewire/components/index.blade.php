@@ -153,7 +153,7 @@
     @include('livewire.components.progress')
 
     {{-- ModSecurity ayarları --}}
-    <x-modal title="{{ __('ModSecurity ayarları') }}" show="configuring">
+    <x-modal :title="__('ModSecurity ayarları')" show="configuring">
         <form wire:submit="saveSettings">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('ModSecurity ayarları') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

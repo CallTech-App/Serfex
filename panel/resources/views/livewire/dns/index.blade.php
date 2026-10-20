@@ -145,7 +145,7 @@
     </section>
 
     {{-- Alan adı ekle --}}
-    <x-modal title="{{ __('Alan adı ekle') }}" show="creating">
+    <x-modal :title="__('Alan adı ekle')" show="creating">
         <form wire:submit="create">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Alan adı ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -172,7 +172,7 @@
     </x-modal>
 
     {{-- Silme onayı --}}
-    <x-modal title="{{ __('DNS bölgelerini sil') }}" show="confirmingDelete" size="max-w-md">
+    <x-modal :title="__('DNS bölgelerini sil')" show="confirmingDelete" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold">{{ __('Seçili DNS bölgeleri silinsin mi?') }}</p>
             <p class="mt-1 text-[13px] text-muted">

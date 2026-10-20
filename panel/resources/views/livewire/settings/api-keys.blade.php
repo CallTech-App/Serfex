@@ -4,7 +4,7 @@
     use App\Support\When;
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
 @endphp
-<x-settings-page current="settings.api" title="{{ __('API anahtarları') }}" description="{{ __('Faturalama sisteminiz, betikleriniz ya da izleme aracınız paneli bu anahtarlarla kullanır. Bir anahtar, onu oluşturan tam yöneticinin adına çalışır.') }}">
+<x-settings-page current="settings.api" :title="__('API anahtarları')" :description="__('Faturalama sisteminiz, betikleriniz ya da izleme aracınız paneli bu anahtarlarla kullanır. Bir anahtar, onu oluşturan tam yöneticinin adına çalışır.')">
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
             <button type="button" wire:click="openCreate" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
@@ -75,7 +75,7 @@
     </section>
 
     {{-- Anahtar oluştur --}}
-    <x-modal title="{{ __('Anahtar oluştur') }}" show="creating">
+    <x-modal :title="__('Anahtar oluştur')" show="creating">
         <form wire:submit="create">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Anahtar oluştur') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

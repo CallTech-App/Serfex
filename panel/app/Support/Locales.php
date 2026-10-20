@@ -123,6 +123,30 @@ final class Locales
     }
 
     /**
+     * A text saved in whoever wrote it's language (the activity log), in
+     * the reader's: a fixed sentence of the panel ("Panele giriş yaptı.")
+     * is swapped either way; anything else is shown as it was written.
+     */
+    public static function reword(string $text): string
+    {
+        static $turkish = [];
+        $label = self::label($text);
+        if ($label !== $text || app()->getLocale() !== 'tr') {
+            return $label;
+        }
+        foreach (array_keys(self::all()) as $locale) {
+            if ($locale !== 'tr') {
+                $turkish[$locale] ??= array_flip(array_filter(app('translator')->getLoader()->load($locale, '*', '*'), fn ($line) => is_string($line) && ! str_contains($line, ':')));
+                if (isset($turkish[$locale][$text])) {
+                    return $turkish[$locale][$text];
+                }
+            }
+        }
+
+        return $text;
+    }
+
+    /**
      * A translated sentence with markup in its placeholders, for <x-t>:
      * the sentence and plain values are escaped, Htmlable values (slots)
      * are kept as they are. $text comes from an HTML attribute, so its

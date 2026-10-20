@@ -172,7 +172,7 @@
     @endif
 
     {{-- Veritabanı oluştur --}}
-    <x-modal title="{{ __('Veritabanı oluştur') }}" show="creating">
+    <x-modal :title="__('Veritabanı oluştur')" show="creating">
         <form wire:submit="create">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Veritabanı oluştur') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -248,7 +248,7 @@
     </x-modal>
 
     {{-- Kullanıcı ekle --}}
-    <x-modal title="{{ __('Kullanıcı ekle') }}" show="addingUser">
+    <x-modal :title="__('Kullanıcı ekle')" show="addingUser">
         <form wire:submit="addUser">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Kullanıcı ekle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

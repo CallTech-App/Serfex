@@ -123,7 +123,7 @@
     @endif
 
     {{-- Dağıt --}}
-    <x-modal title="{{ __('Dağıt') }}" show="deploying" size="max-w-md">
+    <x-modal :title="__('Dağıt')" show="deploying" size="max-w-md">
         <form wire:submit="deploy">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Dağıt') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -144,7 +144,7 @@
     </x-modal>
 
     {{-- Kaldır --}}
-    <x-modal title="{{ __('Uygulamayı kaldır') }}" show="removing">
+    <x-modal :title="__('Uygulamayı kaldır')" show="removing">
         <form wire:submit="remove">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $app->previewOf ? __('Önizlemeyi sil') : __('Laravel uygulamasını kaldır') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

@@ -9,7 +9,7 @@
     $error = $panel?->renew_error ?? $panel?->last_error;
     $host = $savedHostname !== '' ? $savedHostname : request()->getHost();
 @endphp
-<x-settings-page current="settings.general" title="{{ __('Genel') }}" description="{{ __('Panelin adresi, portu, saat dilimi ve oturum süresi; panelin kendi sertifikası.') }}">
+<x-settings-page current="settings.general" :title="__('Genel')" :description="__('Panelin adresi, portu, saat dilimi ve oturum süresi; panelin kendi sertifikası.')">
     @if ($panelBusy)
         <div wire:poll.3s hidden></div>
     @endif
@@ -152,7 +152,7 @@
     </section>
 
     {{-- Port değiştir --}}
-    <x-modal title="{{ __('Panel portunu değiştir') }}" show="changingPort">
+    <x-modal :title="__('Panel portunu değiştir')" show="changingPort">
         <form wire:submit="savePort">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Panel portunu değiştir') }}</h2>
             <div class="space-y-3 p-5 text-[13.5px]">
@@ -176,7 +176,7 @@
     </x-modal>
 
     {{-- Sertifika yükle --}}
-    <x-modal title="{{ __('Panel sertifikası yükle') }}" show="uploading" size="max-w-2xl">
+    <x-modal :title="__('Panel sertifikası yükle')" show="uploading" size="max-w-2xl">
         <form wire:submit="uploadCertificate">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Panel sertifikası yükle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">

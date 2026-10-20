@@ -175,7 +175,7 @@
     @endif
 
     {{-- Dağıtım anahtarı --}}
-    <x-modal title="{{ __('Dağıtım anahtarı') }}" show="showingKey">
+    <x-modal :title="__('Dağıtım anahtarı')" show="showingKey">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Dağıtım anahtarı') }}</h2>
         <div class="space-y-2 p-5 text-[13.5px]" x-data="{ copied: false }">
             <p class="text-muted"><x-t text="Özel depolar bu anahtarla çekilir. Açık anahtarı deponun :part bölümüne :part2 olarak ekleyin."><x-slot:part><span class="font-medium text-fg">{{ __('Deploy keys') }}</span></x-slot:part><x-slot:part2><span class="font-medium text-fg">{{ __('salt okunur') }}</span></x-slot:part2></x-t>@if ($app->deployKeysUrl()) <a href="{{ $app->deployKeysUrl() }}" target="_blank" rel="noopener" class="text-accent hover:underline">{{ __(':app\'da aç', ['app' => $app->providerLabel()]) }}</a>@endif</p>
@@ -191,7 +191,7 @@
     </x-modal>
 
     {{-- Depo bağla --}}
-    <x-modal title="{{ __('Depo bağla') }}" show="connecting">
+    <x-modal :title="__('Depo bağla')" show="connecting">
         <form wire:submit="connect">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Git deposu bağla') }}</h2>
             <div class="space-y-3 p-5 text-[13.5px]">

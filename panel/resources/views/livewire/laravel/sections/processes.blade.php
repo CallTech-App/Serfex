@@ -126,7 +126,7 @@
     <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Süreçler sitenin hesabıyla (:name) systemd hizmeti olarak çalışır, çökerse yeniden başlar ve her dağıtımdan sonra yeni sürümle yeniden başlatılır. Nginx vekil ve WebSocket ayarları otomatik yazılır. Günlükler :domain altında."><x-slot:name><span class="font-mono">{{ $app->site->systemUser->name }}</span></x-slot:name><x-slot:domain><span class="font-mono">/var/log/servik/laravel/{{ $domain }}/</span></x-slot:domain></x-t></p>
 
     {{-- Ayarlar --}}
-    <x-modal title="{{ __('Süreç ayarları') }}" show="editing">
+    <x-modal :title="__('Süreç ayarları')" show="editing">
         <form wire:submit="save">
             @php $kind = $form['kind'] ?? 'custom'; @endphp
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $kind === 'octane' ? 'Octane' : ($processId ? __('Süreç ayarları') : __('Süreç ekle')) }}</h2>
@@ -171,7 +171,7 @@
 
     {{-- Günlük --}}
     @if ($viewingLog && $logName)
-        <x-modal title="{{ __('Süreç günlüğü') }}" show="viewingLog" size="max-w-3xl">
+        <x-modal :title="__('Süreç günlüğü')" show="viewingLog" size="max-w-3xl">
             <h2 class="flex h-12 items-center border-b border-line px-5 font-mono text-[14px] font-semibold">{{ __(':log_name günlüğü', ['log_name' => $logName]) }}</h2>
             <div class="p-5"><x-run-log :run="$logName" method="readProcessLog" :start="-1" class="h-96" /></div>
             <div class="flex justify-end border-t border-line px-5 py-3"><button type="button" wire:click="closeLog" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Kapat') }}</button></div>

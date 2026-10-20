@@ -7,7 +7,7 @@
     $btn = 'flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2';
     $channel = ['email' => __('E-posta'), 'webhook' => 'Webhook'];
 @endphp
-<x-settings-page current="settings.notifications" title="{{ __('Bildirimler') }}" description="{{ __('Bir sorun çıktığında ve düzeldiğinde kimin, nasıl haberdar olacağı. Her sorun bir kez bildirilir.') }}">
+<x-settings-page current="settings.notifications" :title="__('Bildirimler')" :description="__('Bir sorun çıktığında ve düzeldiğinde kimin, nasıl haberdar olacağı. Her sorun bir kez bildirilir.')">
     <section class="rounded-xl border border-line bg-surface">
         <form wire:submit="save" class="max-w-3xl px-5 py-5 text-[13.5px]">
             <div class="divide-y divide-line">

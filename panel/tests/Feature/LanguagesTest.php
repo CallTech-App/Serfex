@@ -15,6 +15,7 @@ use App\Models\Setting;
 use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
+use App\Services\Audit\AuditLog;
 use App\Services\Customers\Customers;
 use App\Services\Settings\Notifications;
 use App\Services\Settings\PanelSettings;
@@ -99,6 +100,27 @@ class LanguagesTest extends TestCase
 
         $admin->forceFill(['locale' => 'tr'])->save();
         $this->get('/', ['Accept-Language' => 'en'])->assertOk()->assertSee('Genel Bakış');
+    }
+
+    public function test_error_pages_are_in_the_reader_s_language(): void
+    {
+        $this->get('/no-such-page', ['Accept-Language' => 'en'])->assertNotFound()->assertSee('Page not found');
+        $this->get('/no-such-page')->assertNotFound()->assertSee('Sayfa bulunamadı');
+
+        $this->actingAs(User::factory()->create(['role' => 'full', 'locale' => 'en']));
+        $this->get('/no-such-page')->assertNotFound()->assertSee('Page not found');
+    }
+
+    public function test_the_activity_log_shows_the_panel_s_own_sentences_in_the_reader_s_language(): void
+    {
+        $sam = User::factory()->create(['role' => 'full', 'locale' => 'en']);
+        $ayse = User::factory()->create(['role' => 'full', 'locale' => 'tr']);
+        AuditLog::record('Signed in to the panel.', $sam);
+        AuditLog::record('Panele giriş yaptı.', $ayse);
+        AuditLog::record('acme.example sitesi oluşturuldu.', $ayse);
+
+        $this->actingAs($ayse)->get(route('settings.audit'))->assertOk()->assertDontSee('Signed in to the panel.')->assertSee('acme.example sitesi oluşturuldu.');
+        $this->actingAs($sam)->get(route('settings.audit'))->assertOk()->assertDontSee('Panele giriş yaptı.')->assertSee('Signed in to the panel.');
     }
 
     public function test_the_server_default_is_saved_in_general_settings_with_undo(): void
@@ -227,16 +249,20 @@ class LanguagesTest extends TestCase
             'monitor.index', 'security.index', 'backups.index', 'services.index', 'components.index', 'ai.index', 'account.security',
             'settings.general', 'settings.server', 'settings.notifications', 'settings.admins', 'settings.api', 'settings.audit', 'settings.updates',
             'ai.settings', 'ai.audit', 'dns.settings', 'mail.settings', 'ssl.settings', 'databases.settings'];
-        foreach ($routes as $route) {
-            $this->checkEnglish(route($route));
-        }
+        $urls = array_map(fn ($route) => route($route), $routes);
         foreach (['sites.show', 'sites.ssl', 'sites.domains', 'sites.php', 'sites.cron', 'sites.errors', 'sites.stats', 'sites.files', 'sites.ftp',
             'sites.logs', 'sites.disk', 'sites.protect', 'sites.waf', 'sites.scan', 'sites.directives'] as $route) {
-            $this->checkEnglish(route($route, $site));
+            $urls[] = route($route, $site);
         }
-        foreach ([route('dns.show', $zone), route('mail.show', $mail), route('databases.show', $database), route('laravel.show', $app),
-            route('customers.show', $customer), route('customers.usage', $customer)] as $url) {
+        array_push($urls, route('dns.show', $zone), route('mail.show', $mail), route('databases.show', $database), route('laravel.show', $app),
+            route('customers.show', $customer), route('customers.usage', $customer));
+        foreach ($urls as $url) {
             $this->checkEnglish($url);
+        }
+        // Turkish has apostrophes too ("AI'ya sor"): none of it escaped twice.
+        $admin->forceFill(['locale' => 'tr'])->save();
+        foreach ($urls as $url) {
+            $this->checkEscaping($url, (string) $this->get($url)->assertOk()->getContent());
         }
         $this->assertSame([], $this->turkish);
     }
@@ -264,6 +290,7 @@ class LanguagesTest extends TestCase
     {
         $html = $this->get($url, $headers)->assertOk()->getContent();
         $text = str_replace('Türkçe', '', $this->visibleText((string) $html));
+        $this->checkEscaping($url, (string) $html);
         $problems = [];
         foreach (['/[çğıöşüÇĞİÖŞÜ]/u', ...array_map(fn ($word) => '/(?<![\p{L}\d.\/-])'.preg_quote($word, '/').'(?![\p{L}\d.\/-])/u', self::TURKISH_WORDS)] as $pattern) {
             if (preg_match_all($pattern, $text, $m, PREG_OFFSET_CAPTURE)) {
@@ -273,7 +300,18 @@ class LanguagesTest extends TestCase
             }
         }
         if ($problems !== []) {
-            $this->turkish[$url] = array_values(array_unique($problems));
+            $this->turkish[$url] = [...$this->turkish[$url] ?? [], ...array_values(array_unique($problems))];
+        }
+    }
+
+    /**
+     * Text escaped twice (a translated component attribute) shows its
+     * entities on the page.
+     */
+    private function checkEscaping(string $url, string $html): void
+    {
+        if (preg_match('/&amp;(#0?39|quot|amp|lt|gt);/', $html, $m)) {
+            $this->turkish[$url.' ('.app()->getLocale().')'][] = 'escaped twice: '.$m[0];
         }
     }
 

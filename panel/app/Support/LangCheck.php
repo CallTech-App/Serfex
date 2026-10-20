@@ -14,7 +14,10 @@ use Illuminate\View\Compilers\BladeCompiler;
  *   (Locales::label) and placeholder values are translated;
  * - no Turkish text is written straight into a Blade view's HTML;
  * - lang/en.json has no keys nobody uses, and each English line keeps
- *   the key's :placeholders; a "|" only separates plural forms.
+ *   the key's :placeholders; a "|" only separates plural forms;
+ * - lang/tr.json only gives the Turkish of keys that carry a note to
+ *   tell two meanings apart ("Başlangıç (saldırı)" and the package
+ *   name "Başlangıç"), so each of its keys must be in use too.
  *
  * "Turkish text" here means a literal with a Turkish letter (ç ğ ı ö ş ü);
  * a label like "Olaylar" without one is not caught when it is missing,
@@ -63,6 +66,8 @@ final class LangCheck
     private const DYNAMIC = [
         // The agent names the panel's PostgreSQL service by its version.
         '/^Panel veritabanı \(PostgreSQL \d+\)$/u',
+        // The ready-made packages' names, written by a migration.
+        '/^(Başlangıç|Profesyonel|Kurumsal)$/u',
     ];
 
     /** @var array<string, list<string>> key => where it is asked for */
@@ -115,6 +120,12 @@ final class LangCheck
             }
         }
 
+        foreach (array_keys($this->turkishLines()) as $key) {
+            if (! isset($this->asked[$key])) {
+                $unused[] = 'tr.json: '.$key;
+            }
+        }
+
         return ['missing' => $missing, 'unused' => $unused, 'placeholders' => $placeholders, 'hard_coded' => $this->hardCoded];
     }
 
@@ -124,6 +135,16 @@ final class LangCheck
     public function english(): array
     {
         return (array) json_decode((string) file_get_contents($this->panel.'/lang/en.json'), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function turkishLines(): array
+    {
+        $file = $this->panel.'/lang/tr.json';
+
+        return is_file($file) ? (array) json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR) : [];
     }
 
     /**

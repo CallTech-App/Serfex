@@ -72,7 +72,7 @@
         @endif
     </section>
 
-    <x-modal title="{{ __('Yol engelle') }}" show="denying">
+    <x-modal :title="__('Yol engelle')" show="denying">
         <form wire:submit="saveDeny">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Yol engelle') }}</h2>
             <div class="p-5 text-[13.5px]">

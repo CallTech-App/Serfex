@@ -207,7 +207,7 @@
     @include('livewire.dns.record-modal', ['suffix' => '.'.$zone->name])
 
     {{-- Varsayılana dön --}}
-    <x-modal title="{{ __('Varsayılana dön') }}" show="confirmingReset" size="max-w-md">
+    <x-modal :title="__('Varsayılana dön')" show="confirmingReset" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold">{{ __('DNS bölgesi varsayılana dönsün mü?') }}</p>
             <p class="mt-1 text-[13px] text-muted">{{ __('Elle eklenen ve değiştirilen tüm kayıtlar silinir; sunucu şablonundaki kayıtlar yeniden yazılır. Hemen ardından "Geri al" ile eski kayıtlara dönebilirsiniz.') }}</p>

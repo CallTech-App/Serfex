@@ -11,7 +11,7 @@
         return $d > 0 ? __(':d gün :h saat', ['d' => $d, 'h' => $h]) : __(':h saat :s dakika', ['h' => $h, 's' => intdiv($s % 3600, 60)]);
     };
 @endphp
-<x-settings-page current="settings.server" title="{{ __('Sunucu') }}" description="{{ __('Sunucunun adı, adresleri ve donanımı.') }}">
+<x-settings-page current="settings.server" :title="__('Sunucu')" :description="__('Sunucunun adı, adresleri ve donanımı.')">
     @if ($agentError)
         <div class="rounded-xl border border-line bg-crit-soft px-5 py-4 text-[13.5px]"><p class="font-medium text-crit">{{ $agentError }}</p></div>
     @endif

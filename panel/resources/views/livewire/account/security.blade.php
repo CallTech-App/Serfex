@@ -52,7 +52,7 @@
                     @else
                         <p><x-status-badge :status="new Badge(__('Kapalı'), 'muted')" /></p>
                         <p class="mt-2 text-muted">{{ __('Parolanız ele geçse bile hesabınıza girilemesin: Google Authenticator, Microsoft Authenticator, 1Password ya da Bitwarden gibi bir uygulamanın ürettiği kod da sorulur.') }}</p>
-                        <button type="button" wire:click="startSetup" class="{{ $primary }} mt-3"><x-icon name="shield-check" />{{ __('Kur') }}</button>
+                        <button type="button" wire:click="startSetup" class="{{ $primary }} mt-3"><x-icon name="shield-check" />{{ __('Kur (iki adımlı doğrulama)') }}</button>
                     @endif
 
                     @if ($recoveryCodes)
@@ -104,7 +104,7 @@
     </section>
 
     {{-- Kurulum --}}
-    <x-modal title="{{ __('İki adımlı doğrulamayı kur') }}" show="settingUp">
+    <x-modal :title="__('İki adımlı doğrulamayı kur')" show="settingUp">
         <form wire:submit="confirmSetup">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('İki adımlı doğrulamayı kur') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
@@ -127,7 +127,7 @@
     </x-modal>
 
     {{-- Kapat --}}
-    <x-modal title="{{ __('İki adımlı doğrulamayı kapat') }}" show="disabling">
+    <x-modal :title="__('İki adımlı doğrulamayı kapat')" show="disabling">
         <form wire:submit="disable">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('İki adımlı doğrulamayı kapat') }}</h2>
             <div class="space-y-3 p-5 text-[13.5px]">

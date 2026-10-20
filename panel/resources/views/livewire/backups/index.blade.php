@@ -156,7 +156,7 @@
                                 <td class="hidden px-3 py-3 whitespace-nowrap text-muted md:table-cell">
                                     {{ $b->destinationLabel() }}
                                     @if ($b->encrypted)
-                                        <x-icon name="lock" class="ml-1 inline size-3.5" title="{{ __('Uzak kopya şifreli') }}" />
+                                        <x-icon name="lock" class="ml-1 inline size-3.5" :title="__('Uzak kopya şifreli')" />
                                     @endif
                                 </td>
                                 <td class="py-3 pr-5 pl-3 text-right">
@@ -413,7 +413,7 @@
     </x-modal>
 
     {{-- Geri yükle --}}
-    <x-modal title="{{ __('Yedeği geri yükle') }}" show="restoring">
+    <x-modal :title="__('Yedeği geri yükle')" show="restoring">
         @isset($restoreItem)
             @php $parts = $restoreItem->restorable(); @endphp
             <form wire:submit="restore">
@@ -628,7 +628,7 @@
         </x-modal>
 
         {{-- İçe aktar --}}
-        <x-modal title="{{ __('Yedek içe aktar') }}" show="importing">
+        <x-modal :title="__('Yedek içe aktar')" show="importing">
             <div>
                 <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Yedek içe aktar') }}</h2>
                 <div class="space-y-4 p-5 text-[13.5px]">

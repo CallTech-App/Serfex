@@ -213,7 +213,7 @@
     @endif
 
     {{-- Alt alan adı ekle --}}
-    <x-modal title="{{ __('Alt alan adı ekle') }}" show="adding === 'subdomain'" close="$wire.adding = null">
+    <x-modal :title="__('Alt alan adı ekle')" show="adding === 'subdomain'" close="$wire.adding = null">
         <form wire:submit="saveSubdomain">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Alt alan adı ekle') }}</h2>
             <div class="grid items-start gap-x-4 gap-y-1.5 p-5 text-[13.5px] sm:grid-cols-[7rem_minmax(0,1fr)]">
@@ -253,7 +253,7 @@
     </x-modal>
 
     {{-- Ek alan adı ekle --}}
-    <x-modal title="{{ __('Ek alan adı ekle') }}" show="adding === 'alias'" close="$wire.adding = null">
+    <x-modal :title="__('Ek alan adı ekle')" show="adding === 'alias'" close="$wire.adding = null">
         <form wire:submit="saveAlias">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Ek alan adı ekle') }}</h2>
             <div class="grid items-start gap-x-4 gap-y-1.5 p-5 text-[13.5px] sm:grid-cols-[7rem_minmax(0,1fr)]">
@@ -289,7 +289,7 @@
     </x-modal>
 
     {{-- Yönlendirme ekle / düzenle --}}
-    <x-modal title="{{ __('Yönlendirme') }}" show="adding === 'redirect'" close="$wire.adding = null">
+    <x-modal :title="__('Yönlendirme')" show="adding === 'redirect'" close="$wire.adding = null">
         <form wire:submit="saveRedirect">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ $editRedirectId ? __('Yönlendirmeyi düzenle') : ($redirectKind === 'domain' ? __('Alan adı yönlendir') : __('Yol yönlendir')) }}</h2>
             <div class="grid items-start gap-x-4 gap-y-1.5 p-5 text-[13.5px] sm:grid-cols-[7rem_minmax(0,1fr)]">
@@ -356,7 +356,7 @@
     </x-modal>
 
     {{-- Kaldırma onayı --}}
-    <x-modal title="{{ __('Kaldır') }}" show="removing" close="$wire.removing = null" size="max-w-md">
+    <x-modal :title="__('Kaldır')" show="removing" close="$wire.removing = null" size="max-w-md">
         @if ($removing)
             @php
                 [$rk, $rkey] = $removing;
