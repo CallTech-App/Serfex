@@ -94,7 +94,9 @@ step "servik services, db, ssl"
 "$cli" ssl show "$domain"
 
 step "Languages and refusals"
-"$cli" --lang en sites show "$domain" | grep -q '^State:' || fail "no English output"
+# Captured first: with pipefail, grep -q exiting early would SIGPIPE the CLI.
+shown=$("$cli" --lang en sites show "$domain")
+grep -q '^State:' <<< "$shown" || fail "no English output: $shown"
 "$cli" sites show nowhere.test 2> "$work/err" && fail "a missing site was found"
 grep -q 'nowhere.test adında bir site yok.' "$work/err" || fail "the panel's refusal is not shown in Turkish: $(cat "$work/err")"
 "$cli" --lang en sites show nowhere.test 2> "$work/err" || true
