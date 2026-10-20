@@ -51,6 +51,22 @@ Everything it prints is also written to `/var/log/servik/install.log`.
 | `--channel stable\|beta` | `beta` also considers pre-releases (`v0.2.0-beta.1`). |
 | `--no-components` | Do not install Nginx, PHP 8.4, Composer, Node.js and Fail2ban for sites now. |
 | `--source URL` | Where releases are listed: the GitHub API address of a repository (for forks and mirrors). |
+| `--token T` | A GitHub token for a private repository's releases (or `SERVIK_GITHUB_TOKEN`). It is kept in `/etc/servik/release-token`, readable only by root, so the panel's update check can read them too. |
+
+### From a private repository
+
+While a repository is private, GitHub serves neither its releases nor the
+installer without a token. A fine-grained token with read access to the
+repository's contents is enough:
+
+```sh
+export SERVIK_GITHUB_TOKEN=github_pat_...
+curl -fsSL -H "Authorization: Bearer $SERVIK_GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
+  https://api.github.com/repos/Winchester37/Servik/contents/scripts/install.sh | sudo -E bash
+```
+
+Once the repository is public, delete the token on GitHub and on the server
+(`sudo rm /etc/servik/release-token`).
 | `-y`, `--yes` | Do not ask before starting. |
 
 ### Ports

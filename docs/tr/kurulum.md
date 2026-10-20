@@ -53,6 +53,22 @@ Yazdığı her şey `/var/log/servik/install.log` dosyasına da gider.
 | `--channel stable\|beta` | `beta` ön sürümleri de (`v0.2.0-beta.1`) dikkate alır. |
 | `--no-components` | Siteler için Nginx, PHP 8.4, Composer, Node.js ve Fail2ban'ı şimdi kurmaz. |
 | `--source URL` | Sürümlerin listelendiği yer: bir deponun GitHub API adresi (çatallar ve aynalar için). |
+| `--token T` | Gizli bir deponun sürümleri için GitHub token'ı (ya da `SERVIK_GITHUB_TOKEN`). Panelin güncelleme denetimi de kullanabilsin diye yalnızca root'un okuyabildiği `/etc/servik/release-token` dosyasında saklanır. |
+
+### Gizli bir depodan
+
+Depo gizliyken GitHub ne sürümleri ne de kurulum betiğini token olmadan
+verir. Depo içeriğini okuma izni olan ince ayarlı (fine-grained) bir token
+yeterlidir:
+
+```sh
+export SERVIK_GITHUB_TOKEN=github_pat_...
+curl -fsSL -H "Authorization: Bearer $SERVIK_GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
+  https://api.github.com/repos/Winchester37/Servik/contents/scripts/install.sh | sudo -E bash
+```
+
+Depo herkese açılınca token'ı hem GitHub'da hem sunucuda silin
+(`sudo rm /etc/servik/release-token`).
 | `-y`, `--yes` | Başlamadan önce sormaz. |
 
 ### Portlar
