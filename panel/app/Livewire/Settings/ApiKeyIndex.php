@@ -79,7 +79,7 @@ class ApiKeyIndex extends Component
      */
     public function revokeNow(ApiKeys $keys, int $id): void
     {
-        $key = ApiKey::whereNull('revoked_at')->find($id);
+        $key = ApiKey::where('kind', ApiKey::PANEL)->whereNull('revoked_at')->find($id);
         if ($key === null) {
             return;
         }
@@ -89,12 +89,12 @@ class ApiKeyIndex extends Component
 
     public function confirmRevoke(int $id): void
     {
-        $this->revokingId = ApiKey::whereNull('revoked_at')->find($id)?->id;
+        $this->revokingId = ApiKey::where('kind', ApiKey::PANEL)->whereNull('revoked_at')->find($id)?->id;
     }
 
     public function revoke(ApiKeys $keys): void
     {
-        $key = $this->revokingId ? ApiKey::whereNull('revoked_at')->find($this->revokingId) : null;
+        $key = $this->revokingId ? ApiKey::where('kind', ApiKey::PANEL)->whereNull('revoked_at')->find($this->revokingId) : null;
         $this->revokingId = null;
         if ($key === null) {
             return;
@@ -105,7 +105,7 @@ class ApiKeyIndex extends Component
 
     public function restore(ApiKeys $keys, int $id): void
     {
-        $key = ApiKey::find($id);
+        $key = ApiKey::where('kind', ApiKey::PANEL)->find($id);
         if ($key !== null && $keys->restore($key)) {
             $this->dispatch('toast', message: __(':name API anahtarı yeniden geçerli.', ['name' => $key->name]));
         }
@@ -114,10 +114,12 @@ class ApiKeyIndex extends Component
     public function render(): View
     {
         return view('livewire.settings.api-keys', [
-            'keys' => ApiKey::with('user')
+            // Command line keys are their people's own (Hesap güvenliği).
+            'keys' => ApiKey::with('user')->where('kind', ApiKey::PANEL)
                 ->where(fn ($q) => $q->whereNull('revoked_at')->orWhere('revoked_at', '>', now()->subDays(30)))
                 ->orderByRaw('revoked_at is not null')->latest()->get(),
             'baseUrl' => url('/api/v1'),
+            'installUrl' => route('cli.install'),
         ]);
     }
 

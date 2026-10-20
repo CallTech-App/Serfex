@@ -13,9 +13,9 @@ use Illuminate\Validation\Rule;
 
 class DnsController extends ApiController
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => DnsZone::with('site')->withCount('records')->orderBy('name')->get()->map(fn (DnsZone $z) => [
+        return response()->json(['data' => DnsZone::visibleTo($request->user())->with('site')->withCount('records')->orderBy('name')->get()->map(fn (DnsZone $z) => [
             'name' => $z->name,
             'status' => $z->status->value,
             'site' => $z->site?->domain,
@@ -23,9 +23,9 @@ class DnsController extends ApiController
         ])->values()]);
     }
 
-    public function show(string $zone): JsonResponse
+    public function show(Request $request, string $zone): JsonResponse
     {
-        $zone = $this->find($zone);
+        $zone = $this->find($request, $zone);
 
         return response()->json(['data' => [
             'name' => $zone->name,
@@ -42,9 +42,9 @@ class DnsController extends ApiController
      */
     public function storeRecord(Request $request, Zones $zones, string $zone): JsonResponse
     {
-        $zone = $this->find($zone);
+        $zone = $this->find($request, $zone);
         if ($zone->status === ZoneStatus::Deleting) {
-            return $this->refuse('This zone is being deleted.', 409);
+            return $this->refuse(__('Bu bölge siliniyor.'), 409);
         }
         $data = $request->validate([
             'type' => ['required', Rule::in(DnsRecords::TYPES)],
@@ -52,10 +52,10 @@ class DnsController extends ApiController
             'content' => ['required', 'string', 'max:4000'],
             'priority' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'ttl' => ['nullable', 'integer', 'min:'.DnsRecords::MIN_TTL, 'max:'.DnsRecords::MAX_TTL],
-        ]);
+        ], [], ['type' => __('tür'), 'content' => __('değer')]);
         $name = DnsRecords::normalizeName((string) ($data['name'] ?? ''), $zone->name);
         if ($name === null) {
-            return $this->refuse('The name may hold letters, digits, - and _ only, such as www or _dmarc.');
+            return $this->refuse(__('Ana makine yalnızca harf, rakam, - ve _ içerebilir; örneğin www veya _dmarc.'));
         }
         [$content, $error] = DnsRecords::normalizeContent($data['type'], $data['content'], $zone->name);
         if ($error !== null) {
@@ -70,14 +70,16 @@ class DnsController extends ApiController
             'ttl' => (int) ($data['ttl'] ?? $zone->default_ttl ?? 3600),
         ];
         if ($record['type'] === 'CNAME' && $name === '@') {
-            return $this->refuse('A CNAME cannot be at the zone apex; use A or AAAA.');
+            return $this->refuse(__('Alan adının kendisine CNAME eklenemez; A veya AAAA kaydı kullanın.'));
         }
         foreach ($zone->records()->where('name', $name)->get() as $o) {
             if ($o->type === $record['type'] && $o->content === $record['content'] && $o->priority === $record['priority']) {
-                return $this->refuse('This record already exists.', 409);
+                return $this->refuse(__('Bu kayıt zaten var.'), 409);
             }
             if ($record['type'] === 'CNAME' || $o->type === 'CNAME') {
-                return $this->refuse('A CNAME must stand alone at its name.', 409);
+                return $this->refuse($record['type'] === 'CNAME'
+                    ? __('Bu ana makinede başka kayıtlar var; CNAME tek başına olmalı.')
+                    : __('Bu ana makinede CNAME kaydı var; yanına başka kayıt eklenemez.'), 409);
             }
         }
         $created = null;
@@ -93,10 +95,10 @@ class DnsController extends ApiController
 
     public function destroyRecord(Request $request, Zones $zones, string $zone, int $record): JsonResponse
     {
-        $zone = $this->find($zone);
-        $found = $zone->records()->findOrFail($record);
+        $zone = $this->find($request, $zone);
+        $found = $zone->records()->find($record) ?? $this->missing(__('Bu bölgede böyle bir kayıt yok.'));
         if ($found->name === '@' && $found->type === 'NS' && $zone->records()->where('name', '@')->where('type', 'NS')->count() <= 1) {
-            return $this->refuse('The zone must keep at least one NS record.', 409);
+            return $this->refuse(__('Bölgede en az bir NS kaydı kalmalı.'), 409);
         }
         $zones->change($zone, fn (DnsZone $zone) => $zone->records()->whereKey($found->id)->delete());
         $this->audit($request, __('Alan Adları ve DNS · :name', ['name' => $zone->name]), __(':type kaydı silindi: :name', ['type' => $found->type, 'name' => DnsRecords::fqdn($found->name, $zone->name)]), route('dns.show', $zone, false));
@@ -104,9 +106,10 @@ class DnsController extends ApiController
         return response()->json(null, 204);
     }
 
-    private function find(string $name): DnsZone
+    private function find(Request $request, string $name): DnsZone
     {
-        return DnsZone::with('site')->where('name', mb_strtolower(rtrim($name, '.')))->firstOrFail();
+        return DnsZone::visibleTo($request->user())->with('site')->where('name', mb_strtolower(rtrim($name, '.')))->first()
+            ?? $this->missing(__(':zone adında bir DNS bölgesi yok.', ['zone' => $name]));
     }
 
     /**

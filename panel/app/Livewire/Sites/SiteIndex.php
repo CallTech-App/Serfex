@@ -212,7 +212,15 @@ class SiteIndex extends Component
      */
     private function takenByOthers(Customer $customer): bool
     {
-        $labels = explode('.', $this->domain);
+        return self::zoneTakenByOthers($this->domain, $customer);
+    }
+
+    /**
+     * The same, for $domain (the panel API asks it too).
+     */
+    public static function zoneTakenByOthers(string $domain, Customer $customer): bool
+    {
+        $labels = explode('.', $domain);
         $names = [];
         for ($i = 0; $i < count($labels) - 1; $i++) {
             $names[] = implode('.', array_slice($labels, $i));

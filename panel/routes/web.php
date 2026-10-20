@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Backups\BackupDownloadController as ServerBackupDownloadController;
 use App\Http\Controllers\Backups\BackupUploadController;
+use App\Http\Controllers\CliDownloadController;
 use App\Http\Controllers\Customers\ImpersonationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Databases\DatabaseManagerController;
@@ -20,6 +21,7 @@ use App\Http\Middleware\EnsureHostingAccess;
 use App\Http\Middleware\EnsureTwoFactor;
 use App\Http\Middleware\RefuseReadOnlyChanges;
 use App\Livewire\Account\AccountSecurity;
+use App\Livewire\Account\CliApprove;
 use App\Livewire\Ai\AiAssistant;
 use App\Livewire\Ai\AiAudit;
 use App\Livewire\Ai\AiSettingsPage;
@@ -77,6 +79,11 @@ Route::post('/hooks/deploy/{token}', DeployWebhookController::class)
 Route::get('/davet/{token}', [InvitationController::class, 'show'])->where('token', '[A-Za-z0-9]{40,80}')->middleware('throttle:30,1')->name('invitation');
 Route::post('/davet/{token}', [InvitationController::class, 'store'])->where('token', '[A-Za-z0-9]{40,80}')->middleware('throttle:10,1');
 
+// The servik command line, for developers' own computers: the install
+// script and the binaries of this server's release.
+Route::get('/cli/install.sh', [CliDownloadController::class, 'script'])->middleware('throttle:30,1')->name('cli.install');
+Route::get('/cli/indir/{file}', [CliDownloadController::class, 'download'])->where('file', 'SHA256SUMS|servik-cli-(linux|darwin)-(amd64|arm64)')->middleware('throttle:30,1')->name('cli.download');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store']);
@@ -88,6 +95,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::post('/yoneticiye-don', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     Route::livewire('/hesap/guvenlik', AccountSecurity::class)->name('account.security');
+    Route::livewire('/cli/onay', CliApprove::class)->name('cli.approve');
 
     // Laravel pages are also for members of applications; each page
     // checks the account's role on the application.

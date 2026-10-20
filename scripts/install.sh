@@ -186,6 +186,14 @@ ln -sfn ../../../../../var/lib/servik/panel/storage "$rel/panel/storage"
 chown servik:servik "$rel/panel/bootstrap/cache"
 ln -sfn "releases/$VERSION" /opt/servik/current.new
 mv -T /opt/servik/current.new /opt/servik/current
+# The servik command line, with Tab completion for bash, zsh and fish.
+if [ -x /opt/servik/current/bin/servik ]; then
+	ln -sfn /opt/servik/current/bin/servik /usr/local/bin/servik
+	mkdir -p /usr/share/bash-completion/completions /usr/share/zsh/vendor-completions /usr/share/fish/vendor_completions.d
+	/usr/local/bin/servik completion bash > /usr/share/bash-completion/completions/servik
+	/usr/local/bin/servik completion zsh > /usr/share/zsh/vendor-completions/_servik
+	/usr/local/bin/servik completion fish > /usr/share/fish/vendor_completions.d/servik.fish
+fi
 
 step "$(t "Ayarlar" "Settings")"
 if [ ! -f /etc/servik/panel.env ]; then
@@ -292,6 +300,7 @@ if [ -n "$ADMIN_PASSWORD" ]; then
 else
 	printf "  $(t 'Yöneticiyi oluşturun:' 'Create the administrator:')\n    sudo -u servik php%s /opt/servik/current/panel/artisan servik:admin\n" "$PANEL_PHP"
 fi
+[ -x /usr/local/bin/servik ] && printf "  $(t 'Komut satırı: %s' 'Command line: %s')\n" "sudo servik login --local"
 printf '\n  %s\n  %s\n' \
 	"$(t "Panel kendi sertifikasını alana kadar kendinden imzalı bir sertifika kullanır: SSL → Ayarlar." "The panel uses a self-signed certificate until it gets its own: SSL → Settings.")" \
 	"$(t "Güvenlik duvarında 80, 443 ve $WEB_PORT portlarını (DNS ve posta için 53, 25, 587, 993) açın." "Open ports 80, 443 and $WEB_PORT (and 53, 25, 587, 993 for DNS and mail) in your firewall.")"

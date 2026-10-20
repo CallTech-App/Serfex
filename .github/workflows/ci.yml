@@ -37,6 +37,109 @@ jobs:
       - name: Build static binary
         run: CGO_ENABLED=0 go build -trimpath -o bin/servik-agent ./cmd/servik-agent
 
+  cli:
+    name: Command line (Go)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.mod
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+      - run: go vet ./...
+
+      # Includes the check that every message has its English.
+      - run: go test -race ./...
+
+      - name: Build for every system it ships for
+        run: |
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            CGO_ENABLED=0 GOOS=${target%/*} GOARCH=${target#*/} go build -trimpath -o /dev/null ./cmd/servik
+          done
+
+      - name: The installer script
+        run: sh -n ../scripts/install-cli.sh
+
+  cli-realhost:
+    name: Command line drives a real panel
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: servik
+          POSTGRES_PASSWORD: servik
+          POSTGRES_DB: servik
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U servik"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+
+      - name: Install Nginx and PHP-FPM
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm jq
+          sudo systemctl start nginx php8.3-fpm
+
+      # The agent runs as root, as on a server; its socket is open to the
+      # runner's group, as it is to the panel's account there.
+      - name: Build and start the agent
+        working-directory: agent
+        run: |
+          CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
+          sudo mkdir -p /run/servik-agent
+          sudo sh -c "nohup bin/servik-agent -socket /run/servik-agent/agent.sock -socket-group $(id -gn) > /tmp/servik-agent.log 2>&1 &"
+          for i in $(seq 50); do [ -S /run/servik-agent/agent.sock ] && break; sleep 0.1; done
+
+      - name: Install the panel
+        working-directory: panel
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci && npm run build
+
+      # Signs in with a key from servik:cli-key, creates a site and waits
+      # for it, checks Nginx serves it and a subdomain, lists services and
+      # databases, reads JSON in Turkish and English, deletes the site and
+      # signs out, all through the servik binary (see the script).
+      - name: Sites, domains and services through the command line
+        run: scripts/ci/cli-e2e.sh
+
+      - name: Logs
+        if: failure()
+        run: |
+          cat /tmp/servik-agent.log || true
+          sudo journalctl --no-pager -u nginx -u php8.3-fpm -n 50 || true
+
   agent-realhost:
     name: Agent on real Nginx and PHP-FPM
     runs-on: ubuntu-24.04

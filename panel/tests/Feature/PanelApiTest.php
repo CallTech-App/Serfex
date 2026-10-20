@@ -95,7 +95,10 @@ class PanelApiTest extends TestCase
 
         $plain = $this->key('read');
         ApiKey::where('token_hash', hash('sha256', $plain))->update(['expires_at' => now()->subMinute()]);
-        $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer '.$plain])->assertUnauthorized()->assertJson(['message' => 'This API key has expired.']);
+        $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer '.$plain])->assertUnauthorized()->assertJson(['message' => 'Bu API anahtarının süresi doldu.']);
+        // The API answers in the language asked for, English otherwise.
+        $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer '.$plain, 'Accept-Language' => 'en-US,en;q=0.8'])->assertJson(['message' => 'This API key has expired.']);
+        $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer '.$plain, 'Accept-Language' => 'de-DE'])->assertJson(['message' => 'This API key has expired.']);
     }
 
     public function test_a_read_key_only_reads_and_a_demoted_creator_stops_the_key(): void

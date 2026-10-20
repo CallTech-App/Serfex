@@ -511,7 +511,7 @@ class MailDomainShow extends Component
     /**
      * Why $name cannot be a new mailbox or forwarder, or null.
      */
-    private function nameError(MailDomain $domain, string $name, bool $forwarder = false): ?string
+    public static function nameError(MailDomain $domain, string $name, bool $forwarder = false): ?string
     {
         if ($name === '') {
             return __('Adresin @ işaretinden önceki kısmını yazın.');
@@ -541,28 +541,37 @@ class MailDomainShow extends Component
      */
     private function addresses(string $text, string $field, string $self): ?array
     {
+        [$list, $error] = self::parseAddresses($text, $self);
+        if ($error !== null) {
+            $this->addError($field, $error);
+        }
+
+        return $list;
+    }
+
+    /**
+     * The same for the panel API: the list, or null and why.
+     *
+     * @return array{0: list<string>|null, 1: string|null}
+     */
+    public static function parseAddresses(string $text, string $self): array
+    {
         $list = array_values(array_unique(array_filter(array_map(
             fn ($a) => mb_strtolower(trim($a)),
             preg_split('/[\s,;]+/', $text) ?: [],
         ))));
         if (count($list) > 50) {
-            $this->addError($field, __('En fazla 50 adres yazabilirsiniz.'));
-
-            return null;
+            return [null, __('En fazla 50 adres yazabilirsiniz.')];
         }
         foreach ($list as $a) {
             if (filter_var($a, FILTER_VALIDATE_EMAIL) === false) {
-                $this->addError($field, __('":a" geçerli bir e-posta adresi değil.', ['a' => $a]));
-
-                return null;
+                return [null, __('":a" geçerli bir e-posta adresi değil.', ['a' => $a])];
             }
             if ($a === $self) {
-                $this->addError($field, __('Bir adres kendisine yönlendirilemez.'));
-
-                return null;
+                return [null, __('Bir adres kendisine yönlendirilemez.')];
             }
         }
 
-        return $list;
+        return [$list, null];
     }
 }

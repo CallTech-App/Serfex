@@ -50,14 +50,14 @@ class CustomersController extends ApiController
             'username' => ['required', 'string', 'max:32', 'regex:'.Hostnames::SYSTEM_USER_PATTERN, Rule::notIn(Hostnames::RESERVED_USERS), Rule::unique('customers', 'username'),
                 function ($attr, $value, $fail) {
                     if (SystemUser::where('name', $value)->whereNotNull('customer_id')->exists()) {
-                        $fail('This account belongs to another customer.');
+                        $fail(__('Bu sistem kullanıcısı başka bir müşteriye ait.'));
                     }
                 }],
             'package_id' => ['nullable', 'integer', Rule::exists('packages', 'id')],
         ]);
         $package = $data['package_id'] ?? Package::default()?->id;
         if ($package === null) {
-            return $this->refuse('There is no package yet; create one in the panel first.');
+            return $this->refuse(__('Henüz paket yok; önce panelden bir paket oluşturun.'));
         }
         [$customer, $invite] = $customers->create([...$data, 'package_id' => $package]);
         Quotas::forget();

@@ -3,9 +3,7 @@
 namespace App\Livewire\Laravel\Sections;
 
 use App\Models\LaravelApp;
-use App\Services\Agent\AgentClient;
-use App\Services\Agent\AgentException;
-use App\Services\Laravel\Processes;
+use App\Services\Laravel\Maintenance as MaintenanceMode;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -59,35 +57,19 @@ class Maintenance extends Section
         $this->secret = self::newSecret();
     }
 
-    public function down(AgentClient $agent, Processes $processes): void
+    public function down(MaintenanceMode $maintenance): void
     {
         $this->validateForm();
-        $app = $this->app();
-        if ($this->mode === 'app') {
-            if ($this->artisan($agent, $app, true)) {
-                $app->update(['maintenance_mode' => 'app'] + $this->settings());
-                $this->toast(true);
-            }
-
-            return;
-        }
-        if ($this->web($processes, $app, ['maintenance_on' => true, 'maintenance_mode' => $this->mode] + $this->settings())) {
+        $this->agentError = $maintenance->down($this->app(), $this->mode, $this->settings());
+        if ($this->agentError === null) {
             $this->toast(true);
         }
     }
 
-    public function up(AgentClient $agent, Processes $processes): void
+    public function up(MaintenanceMode $maintenance): void
     {
-        $app = $this->app();
-        $ok = true;
-        if ($app->nginxMaintenance()) {
-            $ok = $this->web($processes, $app, ['maintenance_on' => false]);
-        }
-        $status = $this->agent('laravel.status', $app->agentApp(), []);
-        if ($ok && ($status['maintenance'] ?? null) !== null) {
-            $ok = $this->artisan($agent, $app, false);
-        }
-        if ($ok) {
+        $this->agentError = $maintenance->up($this->app());
+        if ($this->agentError === null) {
             $this->toast(false);
         }
     }
@@ -95,14 +77,15 @@ class Maintenance extends Section
     /**
      * Saves the address list, page and link while Nginx shows the page.
      */
-    public function save(Processes $processes): void
+    public function save(MaintenanceMode $maintenance): void
     {
         $app = $this->app();
         if (! $app->nginxMaintenance()) {
             return;
         }
         $this->validateForm();
-        if ($this->web($processes, $app, ['maintenance_mode' => $this->mode === 'app' ? $app->maintenance_mode : $this->mode] + $this->settings())) {
+        $this->agentError = $maintenance->web($app, ['maintenance_mode' => $this->mode === 'app' ? $app->maintenance_mode : $this->mode] + $this->settings());
+        if ($this->agentError === null) {
             $this->dispatch('toast', message: __('Bakım ayarları uygulandı.'));
         }
     }
@@ -157,48 +140,6 @@ class Maintenance extends Section
             'maintenance_allow' => $this->allow === '' ? null : $this->allow,
             'maintenance_html' => $this->html === '' ? null : $this->html,
         ];
-    }
-
-    /**
-     * Changes the application and rewrites its Nginx configuration; puts
-     * the old values back when the server refuses.
-     *
-     * @param  array<string, mixed>  $values
-     */
-    private function web(Processes $processes, LaravelApp $app, array $values): bool
-    {
-        $before = $app->only(array_keys($values));
-        $app->update($values);
-        try {
-            $processes->applyWeb($app);
-        } catch (AgentException $e) {
-            $app->update($before);
-            $this->agentError = self::agentMessage($e);
-
-            return false;
-        }
-        $this->agentError = null;
-
-        return true;
-    }
-
-    private function artisan(AgentClient $agent, LaravelApp $app, bool $down): bool
-    {
-        try {
-            $result = $agent->call('laravel.maintenance', $app->agentApp() + ['down' => $down, 'secret' => $this->secret, 'retry' => $this->retry], config('servik.agent.job_timeout'));
-        } catch (AgentException $e) {
-            $this->agentError = self::agentMessage($e);
-
-            return false;
-        }
-        if (($result['exit_code'] ?? 1) !== 0) {
-            $this->agentError = __('Komut başarısız oldu: :output', ['output' => trim((string) ($result['output'] ?? ''))]);
-
-            return false;
-        }
-        $this->agentError = null;
-
-        return true;
     }
 
     private function toast(bool $down): void

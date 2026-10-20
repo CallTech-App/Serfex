@@ -28,11 +28,13 @@ class ApiKeys
      * @param  list<string>  $ips  addresses or CIDR ranges; empty for any
      * @return array{0: ApiKey, 1: string} the key and its plain text
      */
-    public function create(User $by, string $name, string $scope, array $ips, ?\DateTimeInterface $expires): array
+    public function create(User $by, string $name, string $scope, array $ips, ?\DateTimeInterface $expires, string $kind = ApiKey::PANEL, ?string $client = null): array
     {
         $plain = self::PREFIX.Str::random(40);
         $key = ApiKey::create([
             'user_id' => $by->id,
+            'kind' => $kind,
+            'client' => $client,
             'name' => $name,
             'prefix' => substr($plain, 0, strlen(self::PREFIX) + 4),
             'token_hash' => hash('sha256', $plain),

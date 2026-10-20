@@ -244,7 +244,7 @@ func TestCheckFollowsTheChannel(t *testing.T) {
 
 func TestUpgradeSwitchesAndKeepsThePreviousRelease(t *testing.T) {
 	src := newSource(t)
-	src.publish(t, "0.2.0", false, nil)
+	src.publish(t, "0.2.0", false, map[string]string{"bin/servik": "#!/bin/sh\n"})
 	sim, m := installed(t, src)
 	ctx := context.Background()
 	var applied int
@@ -284,6 +284,10 @@ func TestUpgradeSwitchesAndKeepsThePreviousRelease(t *testing.T) {
 	}
 	if _, err := os.Stat(sim.Path(panel.ReleasesDir + "/0.2.0/panel/storage")); err != nil {
 		t.Errorf("storage link: %v", err)
+	}
+	// The command line is on the PATH and follows current.
+	if target, err := os.Readlink(sim.Path(panel.CLILink)); err != nil || target != "/opt/servik/current/bin/servik" {
+		t.Errorf("servik link %q, %v", target, err)
 	}
 	// Maintenance, migrations with the new code, workers restarted.
 	for _, want := range []string{
