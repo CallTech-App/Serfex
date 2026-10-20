@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (features). Customers read their package live, so a change applies to
  * all of them at once.
  */
-#[Fillable(['name', 'is_default', 'max_sites', 'max_disk_mb', 'max_traffic_gb', 'max_mailboxes', 'max_databases', 'max_laravel_apps', 'max_backups', 'max_ftp_accounts', 'max_cron_jobs',
+#[Fillable(['name', 'is_default', 'max_sites', 'max_disk_mb', 'max_traffic_gb', 'max_mailboxes', 'max_databases', 'max_laravel_apps', 'max_backups', 'max_ftp_accounts', 'max_cron_jobs', 'max_subdomains', 'max_aliases',
     'php_versions', 'allow_laravel', 'allow_shell', 'allow_mail', 'allow_dns', 'allow_backups', 'allow_security', 'allow_php_settings', 'max_php_memory_mb'])]
 class Package extends Model
 {
@@ -29,6 +29,8 @@ class Package extends Model
         'backups' => ['max_backups', 'Elle alınan yedek', ''],
         'ftp_accounts' => ['max_ftp_accounts', 'FTP hesabı', ''],
         'cron_jobs' => ['max_cron_jobs', 'Zamanlanmış görev', ''],
+        'subdomains' => ['max_subdomains', 'Alt alan adı', ''],
+        'aliases' => ['max_aliases', 'Ek alan adı ve yönlendirme', ''],
     ];
 
     /** Features: key => [column, label, explanation]. */

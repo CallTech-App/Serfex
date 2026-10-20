@@ -50,24 +50,7 @@ map $uri $servik_maint_{{.MaintVar}} {
     default $servik_maint_c_{{.MaintVar}};
 }
 {{- end}}
-{{- if .Redirect}}
-server {
-    listen 80;
-{{- if .IPv6}}
-    listen [::]:80;
-{{- end}}
-    server_name {{.ServerNames}};
-
-    access_log {{.LogDir}}/access.log;
-    error_log {{.LogDir}}/error.log;
-{{template "acme" .}}
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-{{- end}}
-server {
+{{- define "listen"}}
 {{- if not .Redirect}}
     listen 80;
 {{- if .IPv6}}
@@ -90,7 +73,8 @@ server {
     resolver {{.Resolvers}} valid=300s;
 {{- end}}
 {{- end}}
-    server_name {{.ServerNames}};
+{{- end}}
+{{- define "body"}}
 
     root {{.DocumentRoot}};
     index index.php index.html index.htm;
@@ -105,6 +89,11 @@ server {
     # Servik's additions for this site (Güvenlik): WAF mode, password
     # protected folders, blocked paths. Missing files are fine.
     include {{.ExtraConf}};
+{{- if .Directives}}
+
+    # The administrator's own directives (Web sunucusu yönergeleri).
+{{.Directives}}
+{{- end}}
 {{template "acme" .}}
 {{- if .Suspended}}
 
@@ -120,8 +109,28 @@ server {
     location / {
         return 503;
     }
-}
 {{- else}}
+{{- if .ErrorPages}}
+
+    # The site's own error pages (Hata sayfaları).
+{{- range .ErrorPages}}
+    error_page {{.Codes}} {{.URI}};
+    location = {{.URI}} {
+        root {{$.ErrorRoot}};
+        internal;
+    }
+{{- end}}
+{{- end}}
+{{- range .PathRedirects}}
+
+    # Redirect (Yönlendirmeler): {{.Path}} and everything below it.
+    location = {{.Path}} {
+        return {{.Code}} "{{.Exact}}";
+    }
+    location ~ "{{.Pattern}}" {
+        return {{.Code}} "{{.Below}}";
+    }
+{{- end}}
 {{- if .Maint}}
 
     error_page 503 @servik_maintenance;
@@ -221,6 +230,77 @@ server {
 
     location ~ /\.(?!well-known) {
         deny all;
+    }
+{{- end}}
+{{- end}}
+{{- define "group"}}
+{{- if .Redirect}}
+server {
+    listen 80;
+{{- if .IPv6}}
+    listen [::]:80;
+{{- end}}
+    server_name {{.ServerNames}};
+
+    access_log {{.LogDir}}/access.log;
+    error_log {{.LogDir}}/error.log;
+{{template "acme" .}}
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+{{- end}}
+server {
+{{- template "listen" .}}
+    server_name {{.ServerNames}};
+{{- template "body" .}}
+}
+{{- if .PlainNames}}
+
+# Not in the certificate yet (its DNS may not point here): plain HTTP
+# until the certificate covers it.
+server {
+    listen 80;
+{{- if .IPv6}}
+    listen [::]:80;
+{{- end}}
+    server_name {{.PlainNames}};
+{{- template "body" .}}
+}
+{{- end}}
+{{- end}}
+{{- template "group" .}}
+{{- range .Subdomains}}
+
+# Subdomain {{.ServerNames}}: its own document root, the site's PHP.
+{{- template "group" .}}
+{{- end}}
+{{- range .HostRedirects}}
+
+# Redirect (Yönlendirmeler): {{.Names}}
+server {
+    listen 80;
+{{- if $.IPv6}}
+    listen [::]:80;
+{{- end}}
+{{- if .TLS}}
+    listen 443 ssl http2;
+{{- if $.IPv6}}
+    listen [::]:443 ssl http2;
+{{- end}}
+    ssl_certificate {{$.CertFile}};
+    ssl_certificate_key {{$.KeyFile}};
+    include {{$.TLSConf}};
+{{- end}}
+    server_name {{.Names}};
+
+    access_log {{$.LogDir}}/access.log;
+    error_log {{$.LogDir}}/error.log;
+{{template "acme" $}}
+
+    location / {
+        return {{.Code}} "{{.Target}}";
     }
 }
 {{- end}}
@@ -347,6 +427,19 @@ type tmplData struct {
 
 	// ExtraConf is the glob of the site's extra snippets (ExtraDir).
 	ExtraConf string
+
+	// Names the certificate does not cover yet, served on plain HTTP
+	// while the others redirect to HTTPS.
+	PlainNames string
+	// Subdomains are full copies of this data with their own names and
+	// document root, rendered as server blocks of their own.
+	Subdomains       []tmplData
+	HostRedirects    []hostRedirect
+	PathRedirects    []pathRedirect
+	ErrorPages       []errorPage
+	ErrorRoot        string
+	Directives       string
+	ApacheDirectives string
 
 	// Pool holds the site's PHP-FPM pool settings (see php.go).
 	Pool pool

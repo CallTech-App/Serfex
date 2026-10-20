@@ -12,7 +12,9 @@ use App\Models\LaravelBackup;
 use App\Models\Mailbox;
 use App\Models\Package;
 use App\Models\Site;
+use App\Models\SiteRedirect;
 use App\Models\SiteTraffic;
+use App\Models\Subdomain;
 use App\Support\Bytes;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,7 +23,8 @@ use Illuminate\Support\Facades\Cache;
  * one more of something.
  *
  * Counts (sites, mailboxes, databases, Laravel applications, FTP accounts,
- * scheduled tasks) are refused at the limit. Disk is measured, not capped
+ * scheduled tasks, subdomains, additional domains) are refused at the
+ * limit. Disk is measured, not capped
  * by the file system: once it is full nothing new is created (sites, mailboxes, applications, previews,
  * backups) but everything that exists keeps working. Traffic is reported
  * only. Preview environments are not counted as sites; they have their
@@ -41,10 +44,12 @@ class Quotas
         'backups' => 'yedek sınırına',
         'ftp_accounts' => 'FTP hesabı sınırına',
         'cron_jobs' => 'zamanlanmış görev sınırına',
+        'subdomains' => 'alt alan adı sınırına',
+        'aliases' => 'ek alan adı sınırına',
     ];
 
     /** Kinds that take no disk space, so a full disk does not refuse them. */
-    private const DISKLESS = ['ftp_accounts', 'cron_jobs'];
+    private const DISKLESS = ['ftp_accounts', 'cron_jobs', 'aliases'];
 
     /**
      * Usage in the unit limits use (bytes for disk and traffic). Disk is
@@ -76,6 +81,11 @@ class Quotas
             'backups' => Backup::where('customer_id', $customer->id)->where('trigger', 'manual')->whereNotIn('status', ['failed', 'deleted'])->count(),
             'ftp_accounts' => FtpAccount::whereIn('system_user_id', $accounts)->count(),
             'cron_jobs' => CronJob::whereIn('site_id', $siteIds)->count(),
+            'subdomains' => Subdomain::whereIn('site_id', $siteIds)->count(),
+            // Additional names: aliases other than www.<domain>, and
+            // redirected domains.
+            'aliases' => Site::whereIn('id', $siteIds)->get(['domain', 'aliases'])->sum(fn (Site $s) => count($s->extraAliases()))
+                + SiteRedirect::whereIn('site_id', $siteIds)->where('kind', SiteRedirect::DOMAIN)->count(),
         ];
     }
 

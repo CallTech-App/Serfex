@@ -106,7 +106,10 @@ class SiteShow extends Component
         return view('livewire.sites.show', [
             'site' => $site,
             'otherSites' => $site->systemUser->sites()->whereKeyNot($site->id)->count(),
-            'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->first(),
+            // The site's own zone first; additional domains may have theirs.
+            'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->orderByRaw('name = ? desc', [$site->domain])->first(),
+            'subdomainCount' => $site->subdomains()->count(),
+            'redirectCount' => $site->redirects()->count(),
             'databases' => Database::where('site_id', $site->id)->count(),
             'ftpAccounts' => FtpAccount::where('site_id', $site->id)->count(),
             'cronJobs' => CronJob::where('site_id', $site->id)->count(),

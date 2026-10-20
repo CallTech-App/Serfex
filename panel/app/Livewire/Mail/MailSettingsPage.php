@@ -5,9 +5,9 @@ namespace App\Livewire\Mail;
 use App\Enums\CertificateStatus;
 use App\Jobs\SetupMailServer;
 use App\Models\Setting;
-use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Mail\MailSettings;
+use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
@@ -151,6 +151,6 @@ class MailSettingsPage extends Component
 
     private function usedBySite(string $hostname): bool
     {
-        return Site::query()->get(['domain', 'aliases'])->contains(fn (Site $s) => in_array($hostname, $s->hostnames(), true));
+        return app(SiteDomains::class)->siteFor($hostname) !== null;
     }
 }

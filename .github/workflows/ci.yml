@@ -307,8 +307,9 @@ jobs:
           sudo systemctl start nginx php8.3-fpm
 
       # Installs Apache and serves a site through Nginx -> Apache with a
-      # .htaccess rewrite, refuses to remove Apache while the site uses
-      # it, removes it with a backup, rolls back an install that fails
+      # .htaccess rewrite, a subdomain and the site's Apache directives
+      # (one Apache refuses is reported), refuses to remove Apache while
+      # the site uses it, removes it with a backup, rolls back an install that fails
       # (Memcached) and runs a site's own Redis instance.
       - name: Install, use and remove components for real
         run: >-
@@ -537,6 +538,42 @@ jobs:
         run: |
           sudo journalctl --no-pager -u cron -n 100 || true
           sudo sh -c 'cat /etc/cron.d/servik-*' || true
+
+  agent-domains:
+    name: Agent serves subdomains, aliases and redirects for real
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.mod
+
+      - name: Install Nginx and PHP-FPM
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx php8.3-fpm
+          sudo systemctl start nginx php8.3-fpm
+
+      # One site with an additional domain, two subdomains (one inside the
+      # main site), path and host redirects, its own 404 page and a
+      # directive: each answered by real Nginx; a directive Nginx refuses
+      # is reported and leaves the site as it was; the access log shows
+      # the requests; taking everything away again restores Nginx's pages.
+      - name: Domains for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestDomainsRealHost -v -timeout 10m ./internal/site
+
+      - name: Logs
+        if: failure()
+        run: |
+          sudo journalctl --no-pager -u nginx -n 100 || true
+          sudo sh -c 'cat /etc/nginx/sites-enabled/servik-alan.example.conf' || true
 
   update-realhost:
     name: Panel updates itself on a real server

@@ -12,6 +12,7 @@ use App\Http\Controllers\Laravel\DeployWebhookController;
 use App\Http\Controllers\Mail\WebmailController;
 use App\Http\Controllers\Settings\UpdateProgressController;
 use App\Http\Controllers\Sites\SiteFileController;
+use App\Http\Controllers\Sites\SiteLogController;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureFullAdmin;
@@ -50,9 +51,13 @@ use App\Livewire\Settings\NotificationSettings;
 use App\Livewire\Settings\ServerSettings;
 use App\Livewire\Settings\UpdatesPage;
 use App\Livewire\Sites\SiteCron;
+use App\Livewire\Sites\SiteDirectives;
+use App\Livewire\Sites\SiteDomainList;
+use App\Livewire\Sites\SiteErrorPages;
 use App\Livewire\Sites\SiteFiles;
 use App\Livewire\Sites\SiteFtp;
 use App\Livewire\Sites\SiteIndex;
+use App\Livewire\Sites\SiteLogs;
 use App\Livewire\Sites\SitePhp;
 use App\Livewire\Sites\SiteProtect;
 use App\Livewire\Sites\SiteScan;
@@ -104,6 +109,10 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/sites/{site}/tarama', SiteScan::class)->whereNumber('site')->name('sites.scan');
         Route::livewire('/sites/{site}/korumali-klasorler', SiteProtect::class)->whereNumber('site')->name('sites.protect');
         Route::livewire('/sites/{site}/zamanlanmis-gorevler', SiteCron::class)->whereNumber('site')->name('sites.cron');
+        Route::livewire('/sites/{site}/alan-adlari', SiteDomainList::class)->whereNumber('site')->name('sites.domains');
+        Route::livewire('/sites/{site}/hata-sayfalari', SiteErrorPages::class)->whereNumber('site')->name('sites.errors');
+        Route::livewire('/sites/{site}/gunlukler', SiteLogs::class)->whereNumber('site')->name('sites.logs');
+        Route::get('/sites/{site}/gunlukler/indir', SiteLogController::class)->whereNumber('site')->middleware('throttle:30,1')->name('sites.logs.download');
         Route::livewire('/dns', ZoneIndex::class)->name('dns.index');
         Route::livewire('/dns/{zone}', ZoneShow::class)->whereNumber('zone')->name('dns.show');
         Route::livewire('/mail', MailIndex::class)->name('mail.index');
@@ -119,6 +128,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
 
     Route::middleware(EnsureAdmin::class)->group(function () {
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
+        Route::livewire('/sites/{site}/yonergeler', SiteDirectives::class)->whereNumber('site')->name('sites.directives');
         Route::livewire('/guvenlik', SecurityIndex::class)->name('security.index');
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
         Route::livewire('/ai/kayit', AiAudit::class)->name('ai.audit');

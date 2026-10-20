@@ -70,6 +70,18 @@ type Spec struct {
 	WebServer string `json:"web_server"`
 	// PHP holds the site's own PHP settings; nil is the server's.
 	PHP *PHPSpec `json:"php"`
+	// Subdomains are served from their own document roots (see domains.go).
+	Subdomains []SubdomainSpec `json:"subdomains"`
+	// Redirects send host names or paths elsewhere.
+	Redirects []RedirectSpec `json:"redirects"`
+	// ErrorPages replaces the web server's own pages: "403", "404" and
+	// "50x" to HTML.
+	ErrorPages map[string]string `json:"error_pages"`
+	// NginxDirectives go into the site's Nginx server block, and
+	// ApacheDirectives into its Apache vhost. They are tested before they
+	// are used.
+	NginxDirectives  string `json:"nginx_directives"`
+	ApacheDirectives string `json:"apache_directives"`
 }
 
 // DefaultWebRoot is the document root of a new site.
@@ -292,16 +304,38 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		Aliases:      spec.Aliases,
 		ExtraConf:    ExtraDir(spec.Domain) + "/*.conf",
 	}
-	if err := m.tlsData(&data, spec.TLS); err != nil {
+	certNames, err := m.tlsData(&data, spec.TLS)
+	if err != nil {
 		return Result{}, err
 	}
 	webData(&data, spec)
+	domainData(&data, spec, p.siteDir, certNames)
 	poolData(&data, spec.PHP, m.tempLimit(spec.Domain))
 	if newDocroot {
 		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{public + "/index.html"}, Stdin: render(placeholderTmpl, data)})
 		if _, err := m.h.Run(ctx, index); err != nil {
 			return Result{}, err
 		}
+	}
+	// Subdomains: a missing document root is made, with a placeholder
+	// page, as the site's user.
+	for _, sub := range spec.Subdomains {
+		root := p.siteDir + "/" + sub.WebRoot
+		if _, err := os.Lstat(m.h.Path(root)); !errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err := t.UserDirs(ctx, u.Name, "0755", root); err != nil {
+			return Result{}, err
+		}
+		sd := data
+		sd.Domain = sub.Name
+		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{root + "/index.html"}, Stdin: render(placeholderTmpl, sd)})
+		if _, err := m.h.Run(ctx, index); err != nil {
+			return Result{}, err
+		}
+	}
+	if err := m.writeErrorPages(t, spec); err != nil {
+		return Result{}, err
 	}
 	if err := t.RootDir("/var/log/servik/sites", 0o755, 0, 0); err != nil {
 		return Result{}, err
@@ -481,6 +515,11 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 	if err := t.RemoveFile(suspendedPage(spec.Domain)); err != nil {
 		return fail(err)
 	}
+	for k := range errorCodes {
+		if err := t.RemoveFile(errorPageFile(spec.Domain, k)); err != nil {
+			return fail(err)
+		}
+	}
 	before := t.Changed
 	t.Changed = false
 	if err := m.removeApacheSite(t, spec.Domain); err != nil {
@@ -507,6 +546,9 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 	}
 	// From here on nothing serves the site, so file removal is final.
 	if err := os.RemoveAll(m.h.Path(ExtraDir(spec.Domain))); err != nil {
+		return res, &OperationError{err}
+	}
+	if err := os.RemoveAll(m.h.Path(ErrorPagesRoot + "/" + spec.Domain)); err != nil {
 		return res, &OperationError{err}
 	}
 
@@ -598,12 +640,12 @@ func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []s
 	// A vhost removed after Apache itself is gone needs no check.
 	apache = apache && m.exists("/usr/sbin/apache2")
 	if apache {
-		if _, err := m.h.Run(ctx, host.Command{Name: "apache2ctl", Args: []string{"configtest"}}); err != nil {
-			return fmt.Errorf("apache rejected the configuration: %w", err)
+		if out, err := m.h.Run(ctx, host.Command{Name: "apache2ctl", Args: []string{"configtest"}}); err != nil {
+			return configError("apache", out, err)
 		}
 	}
-	if _, err := m.h.Run(ctx, host.Command{Name: "nginx", Args: []string{"-t"}}); err != nil {
-		return fmt.Errorf("nginx rejected the configuration: %w", err)
+	if out, err := m.h.Run(ctx, host.Command{Name: "nginx", Args: []string{"-t"}}); err != nil {
+		return configError("nginx", out, err)
 	}
 
 	units := []string{}
@@ -630,23 +672,24 @@ func (m *Manager) checkAndReload(ctx context.Context, t *txn.Tx, phpVersions []s
 
 // tlsData fills in the HTTPS part of the vhost. The certificate must be
 // installed already (ssl.issue or ssl.install).
-func (m *Manager) tlsData(d *tmplData, spec *TLSSpec) error {
+// It returns the names the certificate serves.
+func (m *Manager) tlsData(d *tmplData, spec *TLSSpec) ([]string, error) {
 	if spec == nil {
-		return nil
+		return nil, nil
 	}
 	if err := cert.ValidateName(spec.Certificate); err != nil {
-		return err
+		return nil, err
 	}
 	full, key := cert.Files(spec.Certificate)
 	info, err := cert.ReadInfo(m.h.Path(full), spec.Certificate)
 	if errors.Is(err, os.ErrNotExist) {
-		return invalid("certificate %q is not installed", spec.Certificate)
+		return nil, invalid("certificate %q is not installed", spec.Certificate)
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := os.Stat(m.h.Path(key)); err != nil {
-		return invalid("the private key of certificate %q is missing", spec.Certificate)
+		return nil, invalid("the private key of certificate %q is missing", spec.Certificate)
 	}
 	d.TLS, d.Redirect = true, spec.Redirect
 	d.CertFile, d.KeyFile, d.TLSConf = full, key, cert.TLSConf
@@ -655,7 +698,7 @@ func (m *Manager) tlsData(d *tmplData, spec *TLSSpec) error {
 			d.Stapling, d.Resolvers = true, r
 		}
 	}
-	return nil
+	return info.Names, nil
 }
 
 // resolvers returns the upstream name servers from resolv.conf, for OCSP
@@ -688,6 +731,62 @@ func (m *Manager) resolvers() string {
 		}
 	}
 	return strings.Join(out, " ")
+}
+
+// writeErrorPages writes the site's own error pages and removes the ones
+// it no longer has.
+func (m *Manager) writeErrorPages(t *txn.Tx, spec Spec) error {
+	if len(spec.ErrorPages) > 0 {
+		if err := t.RootDir(ErrorPagesRoot, 0o755, 0, 0); err != nil {
+			return err
+		}
+		if err := t.RootDir(ErrorPagesRoot+"/"+spec.Domain, 0o755, 0, 0); err != nil {
+			return err
+		}
+	}
+	for k := range errorCodes {
+		html, ok := spec.ErrorPages[k]
+		if !ok {
+			if err := t.RemoveFile(errorPageFile(spec.Domain, k)); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := t.WriteFile(errorPageFile(spec.Domain, k), errorPageContent(html)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// configError describes a failed configuration test: a ConfigError when
+// the test ran and refused, a plain error when it could not run.
+func configError(server, out string, err error) error {
+	if host.ExitCode(err) <= 0 {
+		return fmt.Errorf("%s configuration test failed: %w", server, err)
+	}
+	return &ConfigError{Server: server, Output: testOutput(out, err)}
+}
+
+// testOutput is what a configuration test printed, without the lines that
+// only say the test is running.
+func testOutput(out string, err error) string {
+	text := out
+	if text == "" {
+		text = err.Error()
+	}
+	var keep []string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.Contains(line, "test failed") || strings.Contains(line, "syntax is ok") {
+			continue
+		}
+		keep = append(keep, line)
+	}
+	if len(keep) == 0 {
+		return err.Error()
+	}
+	return strings.Join(keep, "\n")
 }
 
 func (m *Manager) exists(abs string) bool {

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -33,6 +33,9 @@ class Site extends Model
 
     public const APACHE = 'apache';
 
+    /** The main document root of a site, inside its folder. */
+    public const PUBLIC_HTML = 'public_html';
+
     public const STACKS = [
         self::NGINX => 'Nginx + PHP-FPM',
         self::APACHE => 'Nginx + Apache + PHP-FPM',
@@ -47,6 +50,7 @@ class Site extends Model
             'provisioned_at' => 'datetime',
             'https_redirect' => 'boolean',
             'denied_paths' => 'array',
+            'error_pages' => 'array',
         ];
     }
 
@@ -123,6 +127,33 @@ class Site extends Model
     }
 
     /**
+     * @return HasMany<Subdomain, $this>
+     */
+    public function subdomains(): HasMany
+    {
+        return $this->hasMany(Subdomain::class)->orderBy('name');
+    }
+
+    /**
+     * @return HasMany<SiteRedirect, $this>
+     */
+    public function redirects(): HasMany
+    {
+        return $this->hasMany(SiteRedirect::class)->orderBy('id');
+    }
+
+    /**
+     * Aliases other than www.<domain>, which every site may have: the ones
+     * that count against the package.
+     *
+     * @return list<string>
+     */
+    public function extraAliases(): array
+    {
+        return array_values(array_filter($this->aliases ?? [], fn (string $a) => $a !== 'www.'.$this->domain));
+    }
+
+    /**
      * @return HasMany<WafExclusion, $this>
      */
     public function wafExclusions(): HasMany
@@ -185,13 +216,22 @@ class Site extends Model
     }
 
     /**
-     * Host names the site answers to.
+     * Host names the site answers to: its domain, aliases, subdomains and
+     * the domains it redirects. Its certificate covers them all.
      *
      * @return list<string>
      */
     public function hostnames(): array
     {
-        return [$this->domain, ...array_values($this->aliases ?? [])];
+        $names = [$this->domain, ...array_values($this->aliases ?? [])];
+        if ($this->exists) {
+            $names = [...$names, ...$this->subdomains->pluck('name')];
+            foreach ($this->redirects as $redirect) {
+                $names = [...$names, ...$redirect->hosts()];
+            }
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**
@@ -261,8 +301,25 @@ class Site extends Model
         if (($php = app(PhpVersions::class)->siteSpec($this)) !== null) {
             $spec['php'] = $php;
         }
+        if ($this->subdomains->isNotEmpty()) {
+            $spec['subdomains'] = $this->subdomains->map(fn (Subdomain $s) => ['name' => $s->name, 'web_root' => $s->web_root])->all();
+        }
         if ($this->isSuspended()) {
+            // Subdomains show the suspension page too; redirects and the
+            // administrator's directives wait for the account to return.
             return $spec + ['suspended' => true];
+        }
+        if ($this->redirects->isNotEmpty()) {
+            $spec['redirects'] = $this->redirects->map(fn (SiteRedirect $r) => $r->agentSpec())->all();
+        }
+        if ($this->error_pages) {
+            $spec['error_pages'] = $this->error_pages;
+        }
+        if (filled($this->nginx_directives)) {
+            $spec['nginx_directives'] = $this->nginx_directives;
+        }
+        if ($this->web_server === self::APACHE && filled($this->apache_directives)) {
+            $spec['apache_directives'] = $this->apache_directives;
         }
 
         return $spec + $this->laravelWeb();

@@ -12,10 +12,32 @@ class AgentException extends RuntimeException
     /** Servik: the request was valid but the server change failed. */
     public const OPERATION_FAILED = -32000;
 
+    /** Servik: Nginx or Apache refused the configuration when tested. */
+    public const CONFIG_REJECTED = -32010;
+
     /**
      * The agent's own explanation, without the panel's prefix.
      */
     public string $reason = '';
+
+    /**
+     * The reason in Turkish for the person who made the change: a web
+     * server's refusal with its own words, otherwise the agent's.
+     */
+    public function forPeople(): string
+    {
+        if ($this instanceof AgentUnavailableException) {
+            return 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.';
+        }
+        if ($this->getCode() === self::CONFIG_REJECTED) {
+            $server = str_starts_with($this->reason, 'apache') ? 'Apache' : 'Nginx';
+            $output = preg_replace('/^\w+ rejected the configuration: /', '', $this->reason);
+
+            return "{$server} yapılandırmayı kabul etmedi, hiçbir şey değişmedi: {$output}";
+        }
+
+        return $this->reason;
+    }
 
     public static function unavailable(string $socket, string $reason): self
     {

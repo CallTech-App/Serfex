@@ -28,7 +28,9 @@
             ['terminal', 'SSH terminali', null],
             ['clock', 'Zamanlanmış görevler', $cronJobs ? $cronJobs.' görev' : 'Yok', route('sites.cron', $site)],
             ['git-branch', 'Git dağıtımı', $laravel ? ($laravel->repository ? $laravel->repositoryName() : 'Bağlı değil') : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'dagitimlar']) : null],
-            ['file-text', 'Günlükler', null],
+            ['file-text', 'Günlükler', 'Erişim ve hata', route('sites.logs', $site)],
+            ['file-warning', 'Hata sayfaları', $site->error_pages ? count($site->error_pages).' özel sayfa' : 'Varsayılan', route('sites.errors', $site)],
+            ...($user->is_admin ? [['file-cog', 'Web sunucusu yönergeleri', filled($site->nginx_directives) || filled($site->apache_directives) ? 'Özel satırlar var' : 'Yok', route('sites.directives', $site)]] : []),
         ]],
         ['Uygulamalar', 'blocks', [
             ['blocks', 'WordPress', null],
@@ -37,9 +39,9 @@
         ]],
         ['Alan adı ve DNS', 'network', [
             $missing('dns') ? ['network', 'DNS kayıtları', $missing('dns')] : ['network', 'DNS kayıtları', $zone ? $zone->records_count.' kayıt' : null, $zone ? route('dns.show', $zone) : null],
-            ['globe', 'Alt alan adları', null],
-            ['link', 'Ek alan adları', $site->aliases ? implode(', ', $site->aliases) : 'Yok'],
-            ['corner-up-right', 'Yönlendirmeler', null],
+            ['globe', 'Alt alan adları', $subdomainCount ? $subdomainCount.' alt alan adı' : 'Yok', route('sites.domains', $site)],
+            ['link', 'Ek alan adları', $site->aliases ? count($site->aliases).' ad' : 'Yok', route('sites.domains', ['site' => $site, 'sekme' => 'ek'])],
+            ['corner-up-right', 'Yönlendirmeler', $redirectCount ? $redirectCount.' yönlendirme' : 'Yok', route('sites.domains', ['site' => $site, 'sekme' => 'yonlendirmeler'])],
         ]],
         ['E-posta', 'mail', $missing('mail') ? [
             ['mail', 'Posta kutuları', $missing('mail')],

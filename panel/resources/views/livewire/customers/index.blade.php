@@ -129,13 +129,13 @@
                 </button>
                 <p class="ml-auto text-[13px] text-muted">Paketteki değişiklik o paketi kullanan tüm müşterilere hemen uygulanır.</p>
             </div>
-            <div class="overflow-x-auto">
+            <div class="relative overflow-x-auto">
                 <table class="w-full min-w-[900px] text-[13.5px]">
                     <thead>
                         <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
                             <th class="py-2.5 pr-3 pl-5 font-medium">Paket</th>
                             @foreach (Package::LIMITS as [, $label])
-                                <th class="px-3 py-2.5 text-right font-medium">{{ $label === 'Laravel uygulaması' ? 'Laravel' : $label }}</th>
+                                <th class="px-3 py-2.5 text-right font-medium">{{ ['Laravel uygulaması' => 'Laravel', 'Ek alan adı ve yönlendirme' => 'Ek alan adı'][$label] ?? $label }}</th>
                             @endforeach
                             <th class="px-3 py-2.5 font-medium">Özellikler</th>
                             <th class="px-3 py-2.5 text-right font-medium">Müşteri</th>

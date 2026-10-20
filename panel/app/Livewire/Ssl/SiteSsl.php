@@ -58,9 +58,11 @@ class SiteSsl extends Component
             return;
         }
         $wildcard = $this->wildcard && $certificates->zoneFor($site->domain) !== null;
-        if (! $this->includeAliases && ! $wildcard && $site->aliases) {
-            // Only the domain itself: drop the aliases from this request.
+        if (! $this->includeAliases && ! $wildcard) {
+            // Only the domain itself: drop the other names from this request.
             $site->setAttribute('aliases', []);
+            $site->setRelation('subdomains', collect());
+            $site->setRelation('redirects', collect());
         }
         $certificate = $certificates->letsEncrypt($site, $wildcard);
         $this->requesting = false;

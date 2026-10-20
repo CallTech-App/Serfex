@@ -62,6 +62,10 @@ const CodeFileError = -32008
 // CodeWAFNotInstalled tells the panel to offer installing ModSecurity.
 const CodeWAFNotInstalled = -32009
 
+// CodeConfigRejected means Nginx or Apache refused the configuration when
+// it was tested; nothing was changed. The message carries the test output.
+const CodeConfigRejected = -32010
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -441,6 +445,10 @@ func mapError(err error) error {
 	}
 	if errors.Is(err, update.ErrBusy) {
 		return &rpc.Error{Code: CodeUpdateBusy, Message: err.Error()}
+	}
+	var ce *site.ConfigError
+	if errors.As(err, &ce) {
+		return &rpc.Error{Code: CodeConfigRejected, Message: ce.Error()}
 	}
 	var v *site.ValidationError
 	var dv *dns.ValidationError

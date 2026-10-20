@@ -5,9 +5,9 @@ namespace App\Livewire\Settings;
 use App\Enums\CertificateStatus;
 use App\Models\Certificate;
 use App\Models\Setting;
-use App\Models\Site;
 use App\Services\Agent\AgentException;
 use App\Services\Settings\PanelSettings;
+use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
@@ -289,6 +289,6 @@ class GeneralSettings extends Component
 
     private function usedBySite(string $hostname): bool
     {
-        return Site::query()->get(['domain', 'aliases'])->contains(fn (Site $s) => in_array($hostname, $s->hostnames(), true));
+        return app(SiteDomains::class)->siteFor($hostname) !== null;
     }
 }

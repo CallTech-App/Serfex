@@ -20,6 +20,7 @@ use App\Models\DnsZone;
 use App\Models\MailDomain;
 use App\Models\PanelUpdate;
 use App\Models\Site;
+use App\Models\SiteRedirect;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
@@ -30,6 +31,7 @@ use App\Services\Customers\Quotas;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailDomains;
 use App\Services\Mail\MailSettings;
+use App\Services\Sites\SiteDomains;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -327,15 +329,32 @@ class Restores
                 $account->update(['customer_id' => $customer->id]);
             }
 
-            return $account->sites()->create([
+            $domains = app(SiteDomains::class);
+            $site = $account->sites()->create([
                 'domain' => $s['domain'],
-                'aliases' => array_values($s['aliases'] ?? []),
+                'aliases' => array_values(array_filter($s['aliases'] ?? [], fn ($a) => is_string($a) && $domains->taken($a) === null)),
                 'php_version' => $php,
                 'web_server' => $stack,
                 'web_root' => $s['web_root'] ?? null,
                 'https_redirect' => (bool) ($s['https_redirect'] ?? true),
+                'error_pages' => array_intersect_key((array) ($s['error_pages'] ?? []), ['403' => 1, '404' => 1, '50x' => 1]) ?: null,
+                'nginx_directives' => $s['nginx_directives'] ?? null,
+                'apache_directives' => $s['apache_directives'] ?? null,
                 'status' => SiteStatus::Provisioning,
             ]);
+            // Names another site took meanwhile stay with it.
+            foreach ($s['subdomains'] ?? [] as $sub) {
+                if ($domains->taken($sub['name']) === null && SiteDomains::rootProblem((string) $sub['web_root']) === null) {
+                    $site->subdomains()->create(['name' => $sub['name'], 'web_root' => $sub['web_root']]);
+                }
+            }
+            foreach ($s['redirects'] ?? [] as $r) {
+                if ($r['kind'] !== SiteRedirect::DOMAIN || $domains->taken($r['source']) === null) {
+                    $site->redirects()->create($r);
+                }
+            }
+
+            return $site;
         });
         $this->provision($site->load('systemUser'));
         // Its DNS zone like any new site's, unless DNS comes from the backup.

@@ -102,7 +102,8 @@ class DeleteSite implements ShouldQueue
             }
         }
 
-        $zone = DnsZone::where('site_id', $site->id)->first();
+        // The site's zone, and the zones made for its additional domains.
+        $siteZones = DnsZone::where('site_id', $site->id)->get();
         $mailDomain = MailDomain::where('site_id', $site->id)->orWhere('name', $site->domain)->first();
         DB::transaction(function () use ($site, $user, $result) {
             // A preview environment's site deleted from the site list.
@@ -115,8 +116,8 @@ class DeleteSite implements ShouldQueue
         if ($mailDomain !== null && $this->removeMail) {
             app(MailDomains::class)->disable($mailDomain->fresh(), purgeNow: true);
         }
-        if ($zone !== null && $this->removeZone) {
-            $zones->delete($zone->fresh());
+        if ($this->removeZone && $siteZones->isNotEmpty()) {
+            $zones->delete(...$siteZones->map->fresh()->filter()->all());
         }
     }
 }
