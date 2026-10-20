@@ -2,12 +2,18 @@ name: Release
 
 # Pushing a version tag (v1.2.3, or v1.2.3-beta.1 for the beta channel)
 # builds the release archives and the servik command line for Linux and
-# macOS, and publishes them as a GitHub Release.
+# macOS, and publishes them as a GitHub Release. "Run workflow" on main
+# with a version does the same and creates the tag itself.
 # Installed servers find it with their daily check (or "Şimdi denetle")
 # under Araçlar ve Ayarlar → Güncellemeler.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release from the current main, for example 0.2.0 or 0.2.0-beta.1
+        required: true
 
 permissions:
   contents: write
@@ -37,10 +43,20 @@ jobs:
           cache-dependency-path: panel/package-lock.json
 
       - name: Check the tag
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          v=${GITHUB_REF_NAME#v}
-          [[ $v =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::$GITHUB_REF_NAME is not a version tag (v1.2.3 or v1.2.3-beta.1)"; exit 1; }
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::Run the release from main"; exit 1; }
+            tag=v${INPUT_VERSION#v}
+            git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null && { echo "::error::$tag already exists"; exit 1; }
+          else
+            tag=$GITHUB_REF_NAME
+          fi
+          v=${tag#v}
+          [[ $v =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::$tag is not a version tag (v1.2.3 or v1.2.3-beta.1)"; exit 1; }
           echo "VERSION=$v" >> "$GITHUB_ENV"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
 
       - name: Agent tests
         working-directory: agent
@@ -52,6 +68,14 @@ jobs:
 
       - name: Build the release
         run: scripts/build-release.sh "$VERSION" dist
+
+      # Only after a clean build, so a failed run leaves no tag behind.
+      # Tags pushed with the workflow's token do not start it again.
+      - name: Create the tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
 
       # Release notes: release-notes/<version>.md when there is one,
       # otherwise GitHub's list of the merged pull requests.
@@ -66,4 +90,4 @@ jobs:
           else
             args+=(--generate-notes)
           fi
-          gh release create "$GITHUB_REF_NAME" dist/* "${args[@]}"
+          gh release create "$TAG" dist/* "${args[@]}"
