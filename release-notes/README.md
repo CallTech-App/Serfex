@@ -12,6 +12,9 @@ in Turkish, for the administrators who read it:
 
 Without a file the release lists the merged pull requests instead.
 
-To publish: `git tag v0.2.0 && git push origin v0.2.0`. A tag with a
+To publish, either run the Release workflow on `main` from the Actions tab
+(Run workflow, version `0.2.0`), which tags the current `main` after a
+clean build, or push the tag yourself:
+`git tag v0.2.0 && git push origin v0.2.0`. A tag with a
 suffix (`v0.2.0-beta.1`) is a pre-release, offered only to servers on the
 beta channel.

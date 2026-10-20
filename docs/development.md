@@ -155,7 +155,8 @@ go test ./internal/app -run TestReferenceIsCurrent -update
 
 ## Releases
 
-A pushed `v*` tag runs [`.github/workflows/release.yml`](../.github/workflows/release.yml),
+A pushed `v*` tag, or running the Release workflow on `main` from the
+Actions tab with a version, runs [`.github/workflows/release.yml`](../.github/workflows/release.yml),
 which builds with [`scripts/build-release.sh`](../scripts/build-release.sh) and
 publishes a GitHub Release with the notes in `release-notes/<version>.md`
 (see [release-notes/README.md](../release-notes/README.md)). To try the build
