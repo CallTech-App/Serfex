@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/panel"
 )
 
@@ -32,6 +33,8 @@ type runSpec struct {
 	Sums    string `json:"sums,omitempty"`
 	// Batch is the migration batch a rollback undoes.
 	Batch int `json:"batch,omitempty"`
+	// Locale is the language of the person who started it, for the log.
+	Locale string `json:"locale,omitempty"`
 }
 
 // Execute performs a started run and records how it ended. The helper
@@ -45,6 +48,7 @@ func (m *Manager) Execute(ctx context.Context, run string) error {
 	if err != nil {
 		return opError(err)
 	}
+	ctx = i18n.WithLocale(ctx, spec.Locale)
 	w, err := os.OpenFile(m.h.Path(runDir+"/"+run+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return opError(err)
@@ -52,7 +56,7 @@ func (m *Manager) Execute(ctx context.Context, run string) error {
 	defer w.Close()
 	unlock, err := m.lock()
 	if err != nil {
-		fmt.Fprintln(w, "✗ Başka bir güncelleme sürüyor.")
+		fmt.Fprintln(w, "✗ "+i18n.T(ctx, "Başka bir güncelleme sürüyor."))
 		return err
 	}
 	defer unlock()
@@ -87,11 +91,11 @@ func (m *Manager) Execute(ctx context.Context, run string) error {
 	}
 	switch {
 	case err == nil && spec.Kind == "rollback":
-		fmt.Fprintf(w, "✓ Servik %s sürümüne dönüldü.\n", spec.To)
+		fmt.Fprintf(w, "✓ %s\n", i18n.T(ctx, "Servik %s sürümüne dönüldü.", spec.To))
 	case err == nil:
-		fmt.Fprintf(w, "✓ Servik %s kuruldu.\n", spec.To)
+		fmt.Fprintf(w, "✓ %s\n", i18n.T(ctx, "Servik %s kuruldu.", spec.To))
 	case x.recovered:
-		fmt.Fprintf(w, "✗ %s Servik %s ile çalışmaya devam ediyor.\n", lastLine(err.Error()), spec.From)
+		fmt.Fprintf(w, "✗ %s\n", i18n.T(ctx, "%s Servik %s ile çalışmaya devam ediyor.", lastLine(err.Error()), spec.From))
 	default:
 		fmt.Fprintf(w, "✗ %s\n", lastLine(err.Error()))
 	}
@@ -124,7 +128,7 @@ type execution struct {
 }
 
 func (x *execution) step(format string, a ...any) {
-	fmt.Fprintf(x.w, "▸ "+format+"\n", a...)
+	fmt.Fprintf(x.w, "▸ "+i18n.Translate(x.ctx, format)+"\n", a...)
 }
 
 func (x *execution) failpoint(step string) error {
@@ -260,7 +264,7 @@ func (x *execution) upgrade() (err error) {
 // release takes over. A failure brings the running release back.
 func (x *execution) rollback() (err error) {
 	s := x.spec
-	fmt.Fprintf(x.w, "Servik %s → %s (önceki sürüm)\n", s.From, s.To)
+	fmt.Fprintf(x.w, "%s\n", i18n.T(x.ctx, "Servik %s → %s (önceki sürüm)", s.From, s.To))
 	if err := x.prepare(); err != nil {
 		return err
 	}
@@ -323,7 +327,7 @@ func (x *execution) fetch(dir string) error {
 	if err != nil {
 		return fmt.Errorf("downloading %s: %w", name, err)
 	}
-	fmt.Fprintf(x.w, "%s indirildi\n", humanBytes(size))
+	fmt.Fprintln(x.w, i18n.T(x.ctx, "%s indirildi", humanBytes(size)))
 
 	x.step("Doğrulanıyor: SHA-256")
 	if err := x.failpoint("verify"); err != nil {
@@ -667,7 +671,7 @@ func (x *execution) check() error {
 	if err := x.m.health(x.ctx); err != nil {
 		return fmt.Errorf("health check failed: %w", err)
 	}
-	fmt.Fprintln(x.w, "Panel yanıt veriyor, hizmetler çalışıyor.")
+	fmt.Fprintln(x.w, i18n.T(x.ctx, "Panel yanıt veriyor, hizmetler çalışıyor."))
 	return nil
 }
 
@@ -676,13 +680,13 @@ func (x *execution) check() error {
 func (x *execution) recover(from, to string) {
 	ctx := context.WithoutCancel(x.ctx)
 	x.ctx = ctx
-	fmt.Fprintf(x.w, "↺ Servik %s sürümüne geri dönülüyor\n", from)
+	fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s sürümüne geri dönülüyor", from))
 	if !x.down {
 		_ = x.artisan(currentOr(x.m.h, from), "down", "--render=errors::updating", "--retry=10")
 	}
 	_ = x.systemctl(append([]string{"stop"}, panel.Units...)...)
 	if x.switched {
-		fmt.Fprintf(x.w, "↺ Servik %s yeniden etkinleştiriliyor\n", from)
+		fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s yeniden etkinleştiriliyor", from))
 		if err := setCurrent(x.m.h, from); err != nil {
 			fmt.Fprintf(x.w, "↺ %s\n", err)
 			return
@@ -690,9 +694,9 @@ func (x *execution) recover(from, to string) {
 		x.switched = false
 	}
 	if x.migrated && x.snapshot {
-		fmt.Fprintln(x.w, "↺ Panel veritabanı güncelleme öncesine döndürülüyor")
+		fmt.Fprintln(x.w, "↺ "+i18n.T(x.ctx, "Panel veritabanı güncelleme öncesine döndürülüyor"))
 		if err := x.restoreSnapshot(); err != nil {
-			fmt.Fprintf(x.w, "↺ Veritabanı geri yüklenemedi: %s\n", lastLine(err.Error()))
+			fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Veritabanı geri yüklenemedi: %s", lastLine(err.Error())))
 			return
 		}
 	}
@@ -700,12 +704,12 @@ func (x *execution) recover(from, to string) {
 		if x.m.RestartAgent != nil {
 			fmt.Fprintf(x.w, "$ systemctl restart %s\n", AgentUnit)
 			if err := x.m.RestartAgent(ctx, from); err != nil {
-				fmt.Fprintf(x.w, "↺ Ajan başlatılamadı: %s\n", lastLine(err.Error()))
+				fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Ajan başlatılamadı: %s", lastLine(err.Error())))
 			}
 		}
 		if x.m.ApplyPanel != nil {
 			if err := x.m.ApplyPanel(ctx); err != nil {
-				fmt.Fprintf(x.w, "↺ Panel ayarları uygulanamadı: %s\n", lastLine(err.Error()))
+				fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Panel ayarları uygulanamadı: %s", lastLine(err.Error())))
 			}
 		}
 	}
@@ -717,11 +721,11 @@ func (x *execution) recover(from, to string) {
 		return
 	}
 	if err := x.m.health(ctx); err != nil {
-		fmt.Fprintf(x.w, "↺ Servik %s de yanıt vermiyor: %s\n", from, lastLine(err.Error()))
+		fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s de yanıt vermiyor: %s", from, lastLine(err.Error())))
 		return
 	}
 	x.recovered = true
-	fmt.Fprintf(x.w, "↺ Servik %s yeniden çalışıyor\n", from)
+	fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s yeniden çalışıyor", from))
 }
 
 // currentOr is the release current points at, or fallback.

@@ -19,6 +19,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/site"
 )
@@ -290,7 +291,7 @@ func (m *Manager) Create(ctx context.Context, spec CreateSpec) (res CreateResult
 	defer closeLog()
 	defer func() {
 		if err != nil {
-			fmt.Fprintf(log, "✗ Yedek alınamadı: %s\n", err)
+			fmt.Fprintf(log, "✗ %s\n", i18n.T(ctx, "Yedek alınamadı: %s", err))
 			err = opError(err)
 		}
 	}()
@@ -304,8 +305,8 @@ func (m *Manager) Create(ctx context.Context, spec CreateSpec) (res CreateResult
 		}
 		return CreateResult{}, err
 	}
-	kind := map[bool]string{true: "artımlı", false: "tam"}[spec.Incremental]
-	fmt.Fprintf(log, "▸ Yedek başladı (%s, %d arşiv) · %s\n", kind, len(spec.Items), started.Format("2006-01-02 15:04"))
+	kind := i18n.T(ctx, map[bool]string{true: "artımlı", false: "tam"}[spec.Incremental])
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Yedek başladı (%s, %d arşiv) · %s", kind, len(spec.Items), started.Format("2006-01-02 15:04")))
 
 	res = CreateResult{Key: spec.Key, Local: true}
 	failed := 0
@@ -333,7 +334,7 @@ func (m *Manager) Create(ctx context.Context, spec CreateSpec) (res CreateResult
 		desc.Encrypted = res.Encrypted
 		if err := m.upload(ctx, spec, desc, log); err != nil {
 			res.RemoteError = err.Error()
-			fmt.Fprintf(log, "✗ Uzak hedefe gönderilemedi, yerel kopya saklandı: %s\n", err)
+			fmt.Fprintf(log, "✗ %s\n", i18n.T(ctx, "Uzak hedefe gönderilemedi, yerel kopya saklandı: %s", err))
 		} else {
 			res.Remote = true
 		}
@@ -344,10 +345,10 @@ func (m *Manager) Create(ctx context.Context, spec CreateSpec) (res CreateResult
 	if res.Remote && !spec.KeepLocal {
 		_ = os.RemoveAll(dir)
 		res.Local = false
-		fmt.Fprintln(log, "▸ Yerel kopya silindi (yedek uzak hedefte)")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Yerel kopya silindi (yedek uzak hedefte)"))
 	}
 	res.Seconds = int(m.now().Sub(started).Seconds())
-	fmt.Fprintf(log, "✓ Yedek tamamlandı: %s, %s\n", humanSize(res.Size), (time.Duration(res.Seconds) * time.Second).String())
+	fmt.Fprintf(log, "✓ %s\n", i18n.T(ctx, "Yedek tamamlandı: %s, %s", humanSize(res.Size), (time.Duration(res.Seconds)*time.Second).String()))
 	return res, nil
 }
 
@@ -375,7 +376,7 @@ func (m *Manager) item(ctx context.Context, spec CreateSpec, it ItemSpec, log io
 	var err error
 	if it.Name == "panel" {
 		man.Kind = "panel"
-		fmt.Fprintln(log, "▸ Panel yapılandırması")
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Panel yapılandırması"))
 		err = m.panelParts(ctx, it, tmp, &ir)
 	} else {
 		man.Kind = "site"
@@ -440,7 +441,7 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 		for _, e := range spec.Exclude {
 			excludes = append(excludes, "--exclude="+e)
 		}
-		fmt.Fprintln(log, "  Dosyalar arşivleniyor")
+		fmt.Fprintln(log, "  "+i18n.T(ctx, "Dosyalar arşivleniyor"))
 		commit, incr, warn, err := m.tarAs(ctx, account, "files", s.Domain, spec, s.webDir(), excludes, filepath.Join(tmp, "files.tar.gz"))
 		if err != nil {
 			return nil, fmt.Errorf("files: %w", err)
@@ -458,7 +459,7 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 		ir.Parts["files"] = fileSize(filepath.Join(tmp, "files.tar.gz"))
 	}
 	if it.Home {
-		fmt.Fprintln(log, "  Hesabın diğer dosyaları arşivleniyor")
+		fmt.Fprintln(log, "  "+i18n.T(ctx, "Hesabın diğer dosyaları arşivleniyor"))
 		_, _, warn, err := m.tarAs(ctx, account, "", s.Domain, CreateSpec{}, s.home(),
 			[]string{"--exclude=./web", "--exclude=./tmp", "--exclude=./.cache"}, filepath.Join(tmp, "home.tar.gz"))
 		if err != nil {
@@ -472,10 +473,10 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 
 	// Databases.
 	for _, d := range it.Databases {
-		fmt.Fprintf(log, "  Veritabanı dökümü: %s\n", d.Name)
+		fmt.Fprintf(log, "  %s\n", i18n.T(ctx, "Veritabanı dökümü: %s", d.Name))
 		if err := m.dumpDatabase(ctx, d, filepath.Join(tmp, dumpMember(d.Server, d.Name))); err != nil {
 			if errors.Is(err, database.ErrNotInstalled) {
-				ir.Skipped["database:"+d.Name] = "veritabanı sunucusu kurulu değil"
+				ir.Skipped["database:"+d.Name] = i18n.T(ctx, "veritabanı sunucusu kurulu değil")
 				continue
 			}
 			return nil, fmt.Errorf("database %s: %w", d.Name, err)
@@ -499,9 +500,9 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 		vmail, err := m.h.LookupUser(vmailUser)
 		switch {
 		case err != nil || !m.isDir(dir):
-			ir.Skipped["mail"] = "bu alan adında saklanan posta yok"
+			ir.Skipped["mail"] = i18n.T(ctx, "bu alan adında saklanan posta yok")
 		default:
-			fmt.Fprintln(log, "  Posta kutuları arşivleniyor")
+			fmt.Fprintln(log, "  "+i18n.T(ctx, "Posta kutuları arşivleniyor"))
 			commit, incr, warn, err := m.tarAs(ctx, vmail, "mail", s.Domain, spec, dir, nil, filepath.Join(tmp, "mail.tar.gz"))
 			if err != nil {
 				return nil, fmt.Errorf("mail: %w", err)
@@ -546,7 +547,7 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 		if len(id) > 60 {
 			id = id[:60]
 		}
-		fmt.Fprintf(log, "  Laravel veritabanı yedeği (%s)\n", app.Path)
+		fmt.Fprintf(log, "  %s\n", i18n.T(ctx, "Laravel veritabanı yedeği (%s)", app.Path))
 		r, err := m.laravel.Backup(ctx, laravel.BackupSpec{App: app.App, ID: id, Parts: []string{"database"}})
 		if err != nil {
 			ir.Skipped["laravel"] = err.Error()
@@ -672,7 +673,7 @@ func (m *Manager) tarAs(ctx context.Context, account host.User, part, domain str
 		if host.ExitCode(err) != 1 {
 			return nil, false, "", fmt.Errorf("tar failed: %s", firstLine(out))
 		}
-		warn = "bazı dosyalar okunurken değişti: " + firstLine(out)
+		warn = i18n.T(ctx, "bazı dosyalar okunurken değişti: %s", firstLine(out))
 	}
 	if err := f.Close(); err != nil {
 		return nil, false, "", err
@@ -798,7 +799,7 @@ func (m *Manager) upload(ctx context.Context, spec CreateSpec, desc Descriptor, 
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(log, "▸ Uzak hedefe gönderiliyor: %s%s\n", spec.Target.address(), map[bool]string{true: " (AES-256 ile şifreli)", false: ""}[spec.Passphrase != ""])
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Uzak hedefe gönderiliyor: %s%s", spec.Target.address(), map[bool]string{true: " " + i18n.T(ctx, "(AES-256 ile şifreli)"), false: ""}[spec.Passphrase != ""]))
 	for _, it := range desc.Items {
 		if it.Error != "" {
 			continue
@@ -820,7 +821,7 @@ func (m *Manager) upload(ctx context.Context, spec CreateSpec, desc Descriptor, 
 		if err != nil {
 			return fmt.Errorf("%s: %w", it.Name, err)
 		}
-		fmt.Fprintf(log, "  %s gönderildi\n", it.Name)
+		fmt.Fprintf(log, "  %s\n", i18n.T(ctx, "%s gönderildi", it.Name))
 	}
 	descFile := m.h.Path(setDir(spec.Key) + "/backup.json.upload")
 	if err := writeJSON(descFile, desc); err != nil {

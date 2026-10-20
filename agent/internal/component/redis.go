@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
@@ -114,7 +115,7 @@ func (m *Manager) ApplyRedis(ctx context.Context, spec RedisSpec) (res RedisResu
 		return res, invalid("max_memory_mb must be between 16 and 8192")
 	}
 	if !m.comps["redis"].isInstalled(m) {
-		return res, invalid("Redis is not installed; install it from Yazılım Yönetimi first")
+		return res, invalid("%s", i18n.T(ctx, "Redis is not installed; install it from Yazılım Yönetimi first"))
 	}
 	u, err := m.h.LookupUser(spec.User)
 	if err != nil {

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -84,7 +85,7 @@ func (m *Manager) ensureTools(ctx context.Context, w io.Writer, v string, node b
 		return err
 	}
 	if len(st.Missing) > 0 {
-		fmt.Fprintf(w, "▸ Gerekli paketler kuruluyor: %s\n", strings.Join(st.Missing, " "))
+		fmt.Fprintln(w, "▸ "+i18n.T(ctx, "Gerekli paketler kuruluyor: %s", strings.Join(st.Missing, " ")))
 		env := []string{"DEBIAN_FRONTEND=noninteractive"}
 		inst := host.Command{Name: "apt-get", Args: append([]string{"install", "-y", "-q", "--no-install-recommends"}, st.Missing...), Env: env}
 		if _, err := m.h.Run(ctx, inst); err != nil {
@@ -103,18 +104,18 @@ func (m *Manager) ensureTools(ctx context.Context, w io.Writer, v string, node b
 		return fmt.Errorf("the PHP %s command line is still missing", v)
 	}
 	if !st.Composer {
-		fmt.Fprintln(w, "▸ Composer indiriliyor (getcomposer.org)")
+		fmt.Fprintln(w, "▸ "+i18n.T(ctx, "Composer indiriliyor (getcomposer.org)"))
 		if err := m.InstallComposer(ctx); err != nil {
 			return err
 		}
 	}
 	if node && st.Node == "" {
-		fmt.Fprintln(w, "▸ Node.js indiriliyor (nodejs.org, v"+nodeLine+".x)")
+		fmt.Fprintln(w, "▸ "+i18n.T(ctx, "Node.js indiriliyor (nodejs.org, v%s.x)", nodeLine))
 		version, err := m.InstallNode(ctx, nodeLine)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(w, "  Node.js "+version+" kuruldu")
+		fmt.Fprintln(w, "  "+i18n.T(ctx, "Node.js %s kuruldu", version))
 	}
 	return m.writeShims(v)
 }

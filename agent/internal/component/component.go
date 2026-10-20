@@ -39,6 +39,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/laravel"
 	"github.com/winchester37/servik/agent/internal/php"
 	"github.com/winchester37/servik/agent/internal/site"
@@ -374,7 +375,7 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		fmt.Fprintf(w, "✗ %s\n", lastLine(err.Error()))
 		return Result{}, opError(err)
 	}
-	fmt.Fprintln(w, "✓ "+map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi"}[action])
+	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi"}[action]))
 	for _, s := range m.List(ctx).Components {
 		if s.ID == c.id {
 			return Result{Action: action, Status: s}, nil

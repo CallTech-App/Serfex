@@ -17,6 +17,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/laravel"
 )
 
@@ -126,7 +127,7 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 	defer closeLog()
 	defer func() {
 		if err != nil {
-			fmt.Fprintf(log, "✗ Geri yükleme durdu: %s\n", err)
+			fmt.Fprintf(log, "✗ %s\n", i18n.T(ctx, "Geri yükleme durdu: %s", err))
 			err = opError(err)
 		}
 	}()
@@ -134,7 +135,7 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 		return RestoreResult{}, err
 	}
 	last := spec.Chain[len(spec.Chain)-1]
-	fmt.Fprintf(log, "▸ Geri yükleme başladı: %s · yedek %s\n", spec.Site.Domain, last.Key)
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Geri yükleme başladı: %s · yedek %s", spec.Site.Domain, last.Key))
 	for _, c := range spec.Chain {
 		if err := m.ensureLocal(ctx, c, spec.Passphrase, log); err != nil {
 			return RestoreResult{}, err
@@ -184,12 +185,12 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 				continue
 			}
 			err = m.untarAs(ctx, spec.Site.User, filepath.Join(top, "home.tar.gz"), spec.Site.home(), false)
-			fmt.Fprintln(log, "▸ Hesabın diğer dosyaları geri yüklendi")
+			fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Hesabın diğer dosyaları geri yüklendi"))
 		case "databases":
 			err = m.restoreDatabases(ctx, spec, top, &res, log)
 		case "mail":
 			if _, lerr := m.h.LookupUser(vmailUser); lerr != nil {
-				res.Skipped[part] = "posta sunucusu kurulu değil"
+				res.Skipped[part] = i18n.T(ctx, "posta sunucusu kurulu değil")
 				continue
 			}
 			if !has("mail.tar.gz") {
@@ -209,7 +210,7 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 			res.Restored = append(res.Restored, part)
 		}
 	}
-	fmt.Fprintln(log, "✓ Geri yükleme bitti.")
+	fmt.Fprintln(log, "✓ "+i18n.T(ctx, "Geri yükleme bitti."))
 	return res, nil
 }
 
@@ -320,11 +321,11 @@ func (m *Manager) restoreTree(ctx context.Context, user, part string, dirs []str
 	if m.exists(old) {
 		_, _ = m.h.Run(ctx, host.AsUser(user, host.Command{Name: "rm", Args: []string{"-rf", "--one-file-system", old}}))
 	}
-	label := map[string]string{"files": "Dosyalar", "mail": "Posta kutuları"}[part]
+	label := i18n.T(ctx, map[string]string{"files": "Dosyalar", "mail": "Posta kutuları"}[part])
 	if n > 1 {
-		fmt.Fprintf(log, "▸ %s geri yüklendi (%d arşiv: tam + %d artımlı)\n", label, n, n-1)
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "%s geri yüklendi (%d arşiv: tam + %d artımlı)", label, n, n-1))
 	} else {
-		fmt.Fprintf(log, "▸ %s geri yüklendi\n", label)
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "%s geri yüklendi", label))
 	}
 	return nil
 }
@@ -354,7 +355,7 @@ func (m *Manager) restoreDatabases(ctx context.Context, spec RestoreSpec, top st
 	for _, d := range spec.Databases {
 		f, err := os.Open(filepath.Join(top, dumpMember(d.Server, d.Name)))
 		if err != nil {
-			res.Skipped["database:"+d.Name] = "yedekte bu veritabanı yok"
+			res.Skipped["database:"+d.Name] = i18n.T(ctx, "yedekte bu veritabanı yok")
 			continue
 		}
 		gz, err := gzip.NewReader(f)
@@ -362,7 +363,7 @@ func (m *Manager) restoreDatabases(ctx context.Context, spec RestoreSpec, top st
 			f.Close()
 			return fmt.Errorf("the dump of %s is damaged", d.Name)
 		}
-		fmt.Fprintf(log, "▸ Veritabanı yükleniyor: %s\n", d.Name)
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Veritabanı yükleniyor: %s", d.Name))
 		err = m.db.Load(ctx, d.Server, d.Name, spec.Site.Domain, gz)
 		f.Close()
 		if err != nil {
@@ -379,17 +380,17 @@ func (m *Manager) restoreDatabases(ctx context.Context, spec RestoreSpec, top st
 		if i < 0 {
 			// Not in the backup: the user keeps its password, if it exists.
 			if _, err := m.db.ApplyUser(ctx, database.UserSpec{Server: u.Server, Name: u.Name, Hosts: u.Hosts, Grants: u.Grants}); err != nil {
-				res.Skipped["user:"+u.Name] = "parolası yedekte yok"
+				res.Skipped["user:"+u.Name] = i18n.T(ctx, "parolası yedekte yok")
 			}
 			continue
 		}
 		if err := m.db.RestoreUser(ctx, u, creds[i].Credential); err != nil {
 			return fmt.Errorf("user %s: %w", u.Name, err)
 		}
-		fmt.Fprintf(log, "▸ Veritabanı kullanıcısı: %s\n", u.Name)
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Veritabanı kullanıcısı: %s", u.Name))
 	}
 	if loaded == 0 && len(spec.Databases) > 0 {
-		res.Skipped["databases"] = "yedekte veritabanı yok"
+		res.Skipped["databases"] = i18n.T(ctx, "yedekte veritabanı yok")
 	}
 	return nil
 }
@@ -405,7 +406,7 @@ func (m *Manager) restoreCertificates(ctx context.Context, top string, res *Rest
 		return errors.New("certificates.json is damaged")
 	}
 	if m.InstallCert == nil {
-		res.Skipped["certificates"] = "sertifikalar geri yüklenemiyor"
+		res.Skipped["certificates"] = i18n.T(ctx, "sertifikalar geri yüklenemiyor")
 		return nil
 	}
 	n := 0
@@ -415,16 +416,16 @@ func (m *Manager) restoreCertificates(ctx context.Context, top string, res *Rest
 		}
 		if err := m.InstallCert(ctx, cert.InstallSpec{Name: c.Name, Certificate: c.Certificate, PrivateKey: c.PrivateKey}); err != nil {
 			res.Skipped["certificate:"+c.Name] = err.Error()
-			fmt.Fprintf(log, "  ⚠ Sertifika %s geri yüklenmedi: %s\n", c.Name, err)
+			fmt.Fprintf(log, "  ⚠ %s\n", i18n.T(ctx, "Sertifika %s geri yüklenmedi: %s", c.Name, err))
 			continue
 		}
 		n++
 	}
 	if n == 0 {
-		res.Skipped["certificates"] = "yedekteki sertifikalar kullanılamıyor (süresi dolmuş olabilir)"
+		res.Skipped["certificates"] = i18n.T(ctx, "yedekteki sertifikalar kullanılamıyor (süresi dolmuş olabilir)")
 		return nil
 	}
-	fmt.Fprintf(log, "▸ %d sertifika geri yüklendi\n", n)
+	fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "%d sertifika geri yüklendi", n))
 	return nil
 }
 
@@ -449,11 +450,11 @@ func (m *Manager) restoreLaravel(ctx context.Context, spec RestoreSpec, man Mani
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(log, "▸ Laravel veritabanı geri yüklendi (%s)\n", strings.TrimSuffix(app.Path, "/current"))
+		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "Laravel veritabanı geri yüklendi (%s)", strings.TrimSuffix(app.Path, "/current")))
 		n++
 	}
 	if n == 0 {
-		res.Skipped["laravel"] = "yedekte Laravel veritabanı yok"
+		res.Skipped["laravel"] = i18n.T(ctx, "yedekte Laravel veritabanı yok")
 	}
 	return nil
 }
@@ -475,7 +476,7 @@ func (m *Manager) ensureLocal(ctx context.Context, c ChainRef, passphrase string
 	if err := os.MkdirAll(filepath.Dir(local), 0o700); err != nil {
 		return err
 	}
-	fmt.Fprintf(log, "▸ %s uzak hedeften indiriliyor\n", c.Name)
+	fmt.Fprintln(log, "▸ "+i18n.T(ctx, "%s uzak hedeften indiriliyor", c.Name))
 	dl := local + ".download"
 	f, err := os.OpenFile(dl, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {

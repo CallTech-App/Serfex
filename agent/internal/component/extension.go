@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/php"
 )
 
@@ -71,9 +72,9 @@ func (m *Manager) Extension(ctx context.Context, spec ExtensionSpec) (Result, er
 		return Result{}, opError(err)
 	}
 	if spec.Remove {
-		fmt.Fprintln(w, "✓ Kaldırıldı")
+		fmt.Fprintln(w, "✓ "+i18n.T(ctx, "Kaldırıldı"))
 	} else {
-		fmt.Fprintln(w, "✓ Kuruldu")
+		fmt.Fprintln(w, "✓ "+i18n.T(ctx, "Kuruldu"))
 	}
 	for _, s := range m.List(ctx).Components {
 		if s.ID == c.id {

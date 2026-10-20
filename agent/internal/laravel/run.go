@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/winchester37/servik/agent/internal/i18n"
 )
 
 // Output of deploys and long commands goes to a run log the panel reads
@@ -212,9 +214,9 @@ func (m *Manager) Run(ctx context.Context, spec RunSpec) (RunResult, error) {
 	_, err = m.h.Run(ctx, m.cmd(spec.Target, spec.dir(), log, name, args...))
 	code := host0(err)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		fmt.Fprintf(log, "\n✗ %s dakika sınırı aşıldı, komut durduruldu.\n", fmt.Sprint(int(runTimeout.Minutes())))
+		fmt.Fprintf(log, "\n✗ %s\n", i18n.T(ctx, "%d dakika sınırı aşıldı, komut durduruldu.", int(runTimeout.Minutes())))
 	} else if code != 0 {
-		fmt.Fprintf(log, "\n✗ Çıkış kodu %d\n", code)
+		fmt.Fprintf(log, "\n✗ %s\n", i18n.T(ctx, "Çıkış kodu %d", code))
 	}
 	return RunResult{ExitCode: code, Millis: time.Since(start).Milliseconds()}, nil
 }

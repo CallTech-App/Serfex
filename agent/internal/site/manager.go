@@ -29,6 +29,7 @@ import (
 
 	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/tuning"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
@@ -236,7 +237,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	}
 	apache := spec.WebServer == WebApache
 	if apache && !m.ApacheReady() {
-		return Result{}, invalid("Apache is not installed; install it from Yazılım Yönetimi first")
+		return Result{}, invalid("%s", i18n.T(ctx, "Apache is not installed; install it from Yazılım Yönetimi first"))
 	}
 	web, err := m.h.LookupUser(m.webUser)
 	if err != nil {

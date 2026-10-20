@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -101,7 +102,7 @@ type op struct {
 }
 
 func (o *op) step(format string, a ...any) {
-	fmt.Fprintf(o.w, "▸ "+format+"\n", a...)
+	fmt.Fprintf(o.w, "▸ "+i18n.Translate(o.ctx, format)+"\n", a...)
 }
 
 // failpoint lets tests break an operation at a named step.
@@ -275,10 +276,10 @@ func (o *op) finish(restart bool) error {
 func (o *op) rollback(wasInstalled bool) {
 	bg := context.WithoutCancel(o.ctx)
 	o.ctx = bg
-	fmt.Fprintln(o.w, "↺ Değişiklikler geri alınıyor")
+	fmt.Fprintln(o.w, "↺ "+i18n.T(o.ctx, "Değişiklikler geri alınıyor"))
 	if o.t != nil {
 		if err := o.t.Rollback(bg); err != nil {
-			fmt.Fprintf(o.w, "  geri alma: %v\n", err)
+			fmt.Fprintf(o.w, "  %s\n", i18n.T(o.ctx, "geri alma: %v", err))
 		}
 	}
 	units := o.c.unitsOf(o.m)
@@ -288,7 +289,7 @@ func (o *op) rollback(wasInstalled bool) {
 		}
 	}
 	if len(o.added) > 0 {
-		fmt.Fprintf(o.w, "↺ Kurulan paketler kaldırılıyor: %s\n", strings.Join(o.added, " "))
+		fmt.Fprintf(o.w, "↺ %s\n", i18n.T(o.ctx, "Kurulan paketler kaldırılıyor: %s", strings.Join(o.added, " ")))
 		_, _ = o.run(host.Command{Name: "apt-get", Args: append([]string{"purge", "-y", "-q"}, o.added...), Env: aptEnv})
 		_, _ = o.run(host.Command{Name: "apt-get", Args: []string{"autoremove", "-y", "-q"}, Env: aptEnv})
 	}
@@ -328,10 +329,10 @@ func (o *op) remove() (err error) {
 		if err == nil {
 			return
 		}
-		fmt.Fprintln(o.w, "↺ Değişiklikler geri alınıyor")
+		fmt.Fprintln(o.w, "↺ "+i18n.T(o.ctx, "Değişiklikler geri alınıyor"))
 		bg := context.WithoutCancel(o.ctx)
 		if rbErr := o.t.Rollback(bg); rbErr != nil {
-			fmt.Fprintf(o.w, "  geri alma: %v\n", rbErr)
+			fmt.Fprintf(o.w, "  %s\n", i18n.T(o.ctx, "geri alma: %v", rbErr))
 		}
 		if stopped {
 			for _, u := range c.unitsOf(m) {
@@ -456,7 +457,7 @@ func (o *op) update() (err error) {
 	o.t = txn.New(m.h)
 	defer func() {
 		if err != nil {
-			fmt.Fprintln(o.w, "↺ Yapılandırma geri alınıyor")
+			fmt.Fprintln(o.w, "↺ "+i18n.T(o.ctx, "Yapılandırma geri alınıyor"))
 			bg := context.WithoutCancel(o.ctx)
 			_ = o.t.Rollback(bg)
 			for _, u := range c.unitsOf(m) {
