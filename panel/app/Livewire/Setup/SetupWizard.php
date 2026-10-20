@@ -7,6 +7,7 @@ use App\Models\Certificate;
 use App\Models\DnsZone;
 use App\Models\Setting;
 use App\Models\Site;
+use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Backups\BackupSettings;
@@ -21,6 +22,7 @@ use App\Services\Settings\Notifications;
 use App\Services\Settings\OutgoingMail;
 use App\Services\Settings\PanelSettings;
 use App\Services\Setup\FirstRun;
+use App\Services\Sites\SiteCreator;
 use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Services\Updates\Updates;
@@ -71,6 +73,9 @@ class SetupWizard extends Component
     public bool $installDns = true;
 
     public bool $createZone = true;
+
+    // The domain as a site of its own (Siteler), the administrator's.
+    public bool $createSite = true;
 
     // Panel adresi: the server's name, a name of its own, or only the IP
     // address and port.
@@ -127,6 +132,7 @@ class SetupWizard extends Component
         $dnsState = Setting::get('dns.server', [])['state'] ?? null;
         $this->installDns = $dnsState !== 'ready';
         $this->createZone = $this->domain === '' || ! DnsZone::where('name', $this->domain)->exists();
+        $this->createSite = $this->siteWanted();
 
         $saved = (string) Setting::get('panel.hostname', '');
         // No name after the panel step was saved means IP address and port.
@@ -241,6 +247,7 @@ class SetupWizard extends Component
             $this->ns2 = $follows($this->ns2, 'ns2') ? 'ns2.'.$guess : $this->ns2;
             $this->domain = $guess;
             $this->createZone = ! DnsZone::where('name', $guess)->exists();
+            $this->createSite = $this->siteWanted();
         }
 
         return true;
@@ -258,6 +265,12 @@ class SetupWizard extends Component
             'ns2' => ['required', fn ($attr, $value, $fail) => $this->validNameserver($value) ? null : $fail(__('Tam adı yazın, örneğin ns2.ornek.com.tr.'))],
             'ns2Ip' => ['nullable', 'ipv4'],
         ], ['ns1.different' => __('İki ad sunucusu farklı adlar olmalı.')], ['domain' => __('alan adı'), 'ns1' => __('1. ad sunucusu'), 'ns2' => __('2. ad sunucusu'), 'ns2Ip' => __('2. ad sunucusunun IP adresi')]);
+        $site = $this->createSite ? $this->siteProblem() : null;
+        if ($site !== null) {
+            $this->addError('createSite', $site);
+
+            return false;
+        }
 
         $dns = app(DnsSettings::class);
         $dns->save(['nameservers' => [$this->ns1, $this->ns2]]);
@@ -276,8 +289,49 @@ class SetupWizard extends Component
         if (($zone = DnsZone::where('name', $this->domain)->first()) !== null) {
             $this->addAddress($zone, $this->hostname);
         }
+        if ($this->createSite && ! Site::where('domain', $this->domain)->exists()) {
+            // Like "Site ekle" with its suggestions; the zone made above
+            // becomes the site's.
+            $php = (string) app(PhpVersions::class)->default();
+            app(SiteCreator::class)->create($this->domain, Hostnames::suggestUser($this->domain), $php, true, null, null);
+        }
 
         return true;
+    }
+
+    /**
+     * Whether the step suggests making the domain a site: not when one
+     * exists, and not when the domain is the server's own name, which
+     * the panel may use.
+     */
+    private function siteWanted(): bool
+    {
+        return $this->domain === '' || (! Site::where('domain', $this->domain)->exists() && $this->domain !== strtolower($this->hostname));
+    }
+
+    /**
+     * Why the domain cannot become a site now, or null.
+     */
+    private function siteProblem(): ?string
+    {
+        if (Site::where('domain', $this->domain)->exists()) {
+            return null;
+        }
+        if (app(SiteDomains::class)->siteFor($this->domain) !== null) {
+            return __('Bu alan adı başka bir sitede kullanılıyor; site oluşturmayı kapatın.');
+        }
+        if ($this->domain === Setting::get('panel.hostname') || $this->domain === Setting::get('mail.hostname')) {
+            return __('Bu ad panelin ya da posta sunucusunun adı; site oluşturmayı kapatın.');
+        }
+        $account = SystemUser::where('name', Hostnames::suggestUser($this->domain))->first();
+        if ($account?->customer_id !== null) {
+            return __('Bu alan adının sistem kullanıcısı bir müşteriye ait; siteyi Siteler\'den ekleyin.');
+        }
+        if ((app(PhpVersions::class)->installed() ?? []) === []) {
+            return __('Sunucuda PHP kurulu değil; site oluşturmayı kapatın ya da önce Hizmetler → PHP sürümleri\'nden bir sürüm kurun.');
+        }
+
+        return null;
     }
 
     private function savePanel(): bool
@@ -510,6 +564,7 @@ class SetupWizard extends Component
             'checklist' => collect($firstRun->checklist())->keyBy('step'),
             'timezones' => $this->timezoneOptions($settings),
             'dnsServer' => Setting::get('dns.server', []),
+            'siteExists' => $this->step === 'ad-sunuculari' && $this->domain !== '' && Site::where('domain', $this->domain)->exists(),
             'glue' => [[$this->ns1, $dns->ipv4() ?: $this->ipv4], [$this->ns2, $this->ns2Ip ?: ($dns->ipv4() ?: $this->ipv4)]],
             'port' => $settings->port(),
             'serverName' => $this->step === 'panel' ? $this->serverName() : '',

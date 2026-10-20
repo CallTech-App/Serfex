@@ -5,9 +5,13 @@ import "text/template"
 type webData struct {
 	Marker string
 	// Ports are servik-web's ports, the primary first.
-	Ports                   []int
-	IPv6                    bool
-	Cert, Key, TLSConf      string
+	Ports              []int
+	IPv6               bool
+	Cert, Key, TLSConf string
+	// PanelNames are the names on the panel's own certificate, served
+	// with PanelCert and PanelKey; empty until it has one.
+	PanelNames              []string
+	PanelCert, PanelKey     string
 	Socket, WWW, Logs, Temp string
 	WebUser, AdminUser, PHP string
 	PhpMyAdmin, Adminer     bool
@@ -44,6 +48,9 @@ http {
     uwsgi_temp_path {{.Temp}}/uwsgi;
     scgi_temp_path {{.Temp}}/scgi;
 
+    # Opened by the server's IP address or any name but the panel's: the
+    # certificate the browser was shown first, so a certificate for the
+    # panel's name never breaks a page that is open on the address.
     server {
 {{- range .Ports}}
         listen {{.}} ssl http2 default_server;
@@ -53,6 +60,26 @@ http {
 {{- end}}
         ssl_certificate {{.Cert}};
         ssl_certificate_key {{.Key}};
+{{- template "body" .}}
+    }
+{{- if .PanelNames}}
+
+    # Opened by the panel's name: its own certificate.
+    server {
+{{- range .Ports}}
+        listen {{.}} ssl http2;
+{{- if $.IPv6}}
+        listen [::]:{{.}} ssl http2;
+{{- end}}
+{{- end}}
+        server_name{{range .PanelNames}} {{.}}{{end}};
+        ssl_certificate {{.PanelCert}};
+        ssl_certificate_key {{.PanelKey}};
+{{- template "body" .}}
+    }
+{{- end}}
+}
+{{define "body"}}
         include {{.TLSConf}};
 
         add_header X-Content-Type-Options nosniff always;
@@ -127,8 +154,7 @@ http {
             fastcgi_pass unix:{{.Socket}};
         }
 {{- end}}
-    }
-}
+{{- end}}
 `))
 
 var phpConfTmpl = template.Must(template.New("php").Parse(`; {{.Marker}}. Manual changes are overwritten.

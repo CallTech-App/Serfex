@@ -4130,5 +4130,14 @@
     "Şüpheli kod": "Suspicious code",
     "şifreleme": "encryption",
     "− engel :address": "− block :address",
-    "− sınır :domain": "− limit :domain"
+    "− sınır :domain": "− limit :domain",
+    ":domain için site oluştur": "Create a site for :domain",
+    "Siteler'de var.": "Already in Sites.",
+    "Siteler'e eklenir: www ile birlikte, varsayılan web sunucusu ve PHP sürümüyle. Sonra site ayrıntısından değiştirebilirsiniz.": "Added to Sites with www, the default web server and the default PHP version. You can change them on the site's page later.",
+    "Bu alan adı başka bir sitede kullanılıyor; site oluşturmayı kapatın.": "This domain is used by another site; turn off creating the site.",
+    "Bu ad panelin ya da posta sunucusunun adı; site oluşturmayı kapatın.": "This is the name of the panel or the mail server; turn off creating the site.",
+    "Bu alan adının sistem kullanıcısı bir müşteriye ait; siteyi Siteler'den ekleyin.": "The system user for this domain belongs to a customer; add the site from Sites.",
+    "Sunucuda PHP kurulu değil; site oluşturmayı kapatın ya da önce Hizmetler → PHP sürümleri'nden bir sürüm kurun.": "PHP is not installed on the server; turn off creating the site, or first install a version from Services → PHP versions.",
+    "Panele ulaşılamadı; son işlem gönderilmemiş olabilir. Sayfayı yenileyip yeniden deneyin.": "The panel could not be reached; your last action may not have been sent. Reload the page and try again.",
+    "Sayfayı yenile": "Reload the page"
 }

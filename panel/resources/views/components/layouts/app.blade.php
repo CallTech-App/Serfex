@@ -194,6 +194,7 @@
             <livewire:ai.ai-drawer />
         @endif
         <x-toasts />
+        <x-connection-lost />
         @livewireScripts
     </body>
 </html>

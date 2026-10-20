@@ -38,7 +38,10 @@ opens over plain http, and Servik tries again every hour.
 
 - The panel's own certificate is under Settings → General → Panel
   certificate: Let's Encrypt for the panel address, or an uploaded one.
-  Until then the panel uses a self-signed certificate.
+  Until then the panel uses a self-signed certificate. The panel's
+  certificate is served only when the panel is opened by that name; opened
+  by its IP address and port, the panel keeps the self-signed one, so a
+  page open on the address keeps working when the certificate arrives.
 - The mail server's certificate (for IMAP, SMTP and webmail) is under
   Email → Email settings, for the mail server's name.
 

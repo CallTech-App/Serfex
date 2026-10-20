@@ -11,3 +11,19 @@ window.servikToggleTheme = () => {
         // Storage may be blocked; the choice then lasts for this page only.
     }
 };
+
+// A Livewire request that never reaches the panel (network down, or a
+// connection the browser refused) shows <x-connection-lost> instead of a
+// button that waits forever; the next request that gets through hides it.
+const watchConnection = () => {
+    window.Livewire.interceptRequest(({ onFailure, onResponse }) => {
+        const tell = (ok) => window.dispatchEvent(new CustomEvent('servik-connection', { detail: { ok } }));
+        onFailure(() => tell(false));
+        onResponse(() => tell(true));
+    });
+};
+if (window.Livewire) {
+    watchConnection();
+} else {
+    document.addEventListener('livewire:init', watchConnection);
+}
