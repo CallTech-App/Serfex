@@ -35,7 +35,7 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-5 py-3 text-[13.5px]">
-            <p class="num min-w-0 flex-1 text-muted">
+            <p class="num w-full min-w-0 text-muted sm:w-auto sm:flex-1">
                 <span class="font-semibold text-fg">{{ $num($totals['visitors']) }}</span> ziyaretçi ·
                 <span class="font-semibold text-fg">{{ $num($totals['pages']) }}</span> sayfa görüntüleme ·
                 <span class="font-semibold text-fg">{{ $num($totals['requests']) }}</span> istek ·

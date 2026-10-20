@@ -238,6 +238,11 @@ class StatisticsTest extends TestCase
             ->set('span', '7g')
             ->assertSee('Saatlik ortalamalar')
             ->assertSee('40 GB / 100 GB (%40)');
+        // The panel's real cache store refuses objects: the cached history must come back intact.
+        config(['cache.default' => 'database']);
+        foreach ([1, 2] as $ignored) {
+            Livewire::test(LiveMonitor::class)->call('setTab', 'sistem')->set('span', '30g')->assertSee('Kaynak geçmişi');
+        }
 
         $this->get('/')->assertSee('Sunucu kaynakları')->assertSee('disk %40 dolu');
     }

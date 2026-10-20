@@ -12,8 +12,8 @@ use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
 
 /**
- * Creates the panel's administrator, or resets it. M1 has a single admin
- * account; customer and reseller logins come later.
+ * Creates the panel's first administrator, or resets it. Customer logins
+ * are never touched.
  */
 #[Signature('servik:admin {--email= : E-mail address used to sign in} {--name= : Display name} {--password= : Password (prompted when omitted)}')]
 #[Description('Create or reset the Servik administrator account')]
@@ -21,7 +21,7 @@ class CreateAdmin extends Command
 {
     public function handle(): int
     {
-        $admin = User::query()->oldest('id')->first();
+        $admin = User::query()->where('is_admin', true)->whereNull('customer_id')->oldest('id')->first();
 
         $email = $this->option('email') ?? text(
             label: 'E-mail address',

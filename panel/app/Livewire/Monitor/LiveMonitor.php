@@ -15,6 +15,7 @@ use App\Services\Monitor\MailQueue;
 use App\Services\Monitor\MonitorException;
 use App\Services\Monitor\ResourceLimits;
 use App\Services\Stats\ServerHistory;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -486,7 +487,12 @@ class LiveMonitor extends Component
             if (! isset(ServerHistory::RANGES[$this->span])) {
                 $this->span = '24s';
             }
-            $points = Cache::remember('servik.server-history.'.$this->span, 60, fn () => app(ServerHistory::class)->series($this->span));
+            // Cached as plain values: the cache does not unserialize objects.
+            $cached = Cache::remember('servik.server-history.'.$this->span, 60, fn () => array_map(
+                fn (array $p) => ['at' => $p['at']->getTimestamp()] + $p,
+                app(ServerHistory::class)->series($this->span),
+            ));
+            $points = array_map(fn (array $p) => ['at' => CarbonImmutable::createFromTimestamp($p['at'], config('servik.timezone'))] + $p, $cached);
             $server = ['points' => $points, 'summary' => ServerHistory::summary($points)];
         }
 
