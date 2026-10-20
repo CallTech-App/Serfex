@@ -78,6 +78,26 @@ func TestRealHost(t *testing.T) {
 	// Static files come from Nginx.
 	get(t, spec.Domain, "/style.css", "body{}")
 
+	// A subdomain goes through Apache too, in the same pool; the site's
+	// own Apache directives are tested and used.
+	withSub := spec
+	withSub.Subdomains = []site.SubdomainSpec{{Name: "blog." + spec.Domain, WebRoot: "subdomains/blog"}}
+	withSub.ApacheDirectives = "SetEnv SERVIK_ALAN evet"
+	if _, err := sites.Apply(ctx, withSub); err != nil {
+		t.Fatal(err)
+	}
+	writeAs(t, h, "servikc", filepath.Dir(res.DocumentRoot)+"/subdomains/blog/who.php", `<?php echo $_SERVER['SERVER_SOFTWARE'], '|', get_current_user();`)
+	writeAs(t, h, "servikc", res.DocumentRoot+"/env.php", `<?php echo 'alan=', $_SERVER['SERVIK_ALAN'] ?? '';`)
+	get(t, "blog."+spec.Domain, "/who.php", "Apache")
+	get(t, spec.Domain, "/env.php", "alan=evet")
+	bad := withSub
+	bad.ApacheDirectives = "ServikBilinmeyen on"
+	var ce *site.ConfigError
+	if _, err := sites.Apply(ctx, bad); !errors.As(err, &ce) || ce.Server != "apache" {
+		t.Fatalf("apply with a directive Apache refuses: %v", err)
+	}
+	get(t, spec.Domain, "/env.php", "alan=evet")
+
 	// Apache cannot go while the site uses it.
 	var inUse *InUseError
 	if _, err := m.Remove(ctx, OpSpec{ID: "apache", Run: "rh-apache-used"}); !errors.As(err, &inUse) || inUse.UsedBy[0] != spec.Domain {

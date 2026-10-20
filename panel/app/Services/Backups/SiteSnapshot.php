@@ -27,7 +27,7 @@ class SiteSnapshot
      */
     public function item(Site $site, bool $home): array
     {
-        $site->loadMissing('systemUser', 'laravelApp');
+        $site->loadMissing('systemUser', 'laravelApp', 'subdomains', 'redirects');
         $databases = $this->databases($site);
         $mail = $this->mailDomain($site);
         $app = $site->laravelApp;
@@ -55,10 +55,10 @@ class SiteSnapshot
      */
     public function meta(Site $site): array
     {
-        $site->loadMissing('systemUser', 'laravelApp');
+        $site->loadMissing('systemUser', 'laravelApp', 'subdomains', 'redirects');
         $databases = $this->databases($site);
         $mail = $this->mailDomain($site)?->load('mailboxes', 'forwarders');
-        $zone = DnsZone::with('records')->where('site_id', $site->id)->first();
+        $zone = DnsZone::with('records')->where('site_id', $site->id)->orderByRaw('name = ? desc', [$site->domain])->first();
 
         return [
             'version' => 1,
@@ -69,6 +69,11 @@ class SiteSnapshot
                 'web_server' => $site->web_server,
                 'web_root' => $site->web_root,
                 'https_redirect' => (bool) $site->https_redirect,
+                'subdomains' => $site->subdomains->map(fn ($d) => $d->only(['name', 'web_root']))->values()->all(),
+                'redirects' => $site->redirects->map(fn ($r) => $r->only(['kind', 'source', 'with_www', 'target', 'code', 'keep_path']))->values()->all(),
+                'error_pages' => $site->error_pages,
+                'nginx_directives' => $site->nginx_directives,
+                'apache_directives' => $site->apache_directives,
             ],
             'account' => ['name' => $site->systemUser->name, 'customer_id' => $site->systemUser->customer_id],
             'databases' => $databases->map(fn (Database $d) => ['server' => $d->server, 'name' => $d->name])->values()->all(),

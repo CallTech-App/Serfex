@@ -173,10 +173,10 @@
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">Let's Encrypt sertifikası al</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
                 <p class="text-muted">Alan adı: <span class="font-mono text-fg">{{ $site->domain }}</span></p>
-                @if ($site->aliases)
+                @if ($otherNames = array_slice($site->hostnames(), 1))
                     <label class="flex items-start gap-2.5">
                         <input type="checkbox" wire:model="includeAliases" class="mt-0.5 size-4 accent-accent">
-                        <span>Ek adları da kapsa: <span class="font-mono">{{ implode(', ', $site->aliases) }}</span></span>
+                        <span>Ek adları da kapsa: <span class="font-mono">{{ implode(', ', $otherNames) }}</span></span>
                     </label>
                 @endif
                 <div>

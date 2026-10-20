@@ -6,6 +6,8 @@ use App\Enums\CertificateStatus;
 use App\Jobs\IssueMailCertificate;
 use App\Jobs\IssuePanelCertificate;
 use App\Models\Certificate;
+use App\Models\Site;
+use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -15,13 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Runs hourly from the scheduler: renews Let's Encrypt certificates that
  * expire within servik.ssl.renew_days, retries the ones waiting for DNS,
- * and retries failed requests once a day.
+ * retries failed requests once a day, and reissues site certificates
+ * when names they lack now point here.
  */
 #[Signature('servik:ssl-renew')]
 #[Description("Renew Let's Encrypt certificates and retry pending ones")]
 class RenewCertificates extends Command
 {
-    public function handle(Certificates $certificates): int
+    public function handle(Certificates $certificates, SiteDomains $domains): int
     {
         $due = Certificate::query()
             ->where('source', Certificate::LETS_ENCRYPT)
@@ -55,6 +58,23 @@ class RenewCertificates extends Command
                 continue;
             }
             $count++;
+        }
+        // Names added to a site (aliases, subdomains, redirected domains)
+        // whose DNS points here now join its certificate.
+        $sites = Site::whereHas('certificate', fn (Builder $q) => $q
+            ->where('source', Certificate::LETS_ENCRYPT)
+            ->where('status', CertificateStatus::Active)
+            ->where('auto_renew', true)
+            ->where(fn (Builder $q) => $q->whereNull('attempted_at')->orWhere('attempted_at', '<=', now()->subMinutes(55))))
+            ->with('certificate', 'certificates', 'subdomains', 'redirects')
+            ->get();
+        foreach ($sites as $site) {
+            if ($site->certificate->renew_error !== null && $site->certificate->attempted_at?->gt(now()->subDay())) {
+                continue;
+            }
+            if ($domains->extendCertificate($site)) {
+                $count++;
+            }
         }
         $this->info("{$count} sertifika kuyruğa alındı.");
 

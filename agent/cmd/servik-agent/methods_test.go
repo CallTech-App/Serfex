@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/winchester37/servik/agent/internal/cert"
@@ -106,7 +107,19 @@ func TestSiteMethods(t *testing.T) {
 		}
 		return nil
 	}
+	// A configuration test that refuses comes back as such, with its
+	// output, so the panel can show it next to the directives.
 	resp := call(`{"jsonrpc":"2.0","id":6,"method":"site.apply","params":{"domain":"b.com","user":"b","php_version":"8.4"}}`)
+	if resp.Error == nil || resp.Error.Code != CodeConfigRejected || !strings.Contains(resp.Error.Message, "deadline") {
+		t.Fatalf("error = %+v, want config rejected", resp.Error)
+	}
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "php-fpm8.4" {
+			return context.DeadlineExceeded
+		}
+		return nil
+	}
+	resp = call(`{"jsonrpc":"2.0","id":7,"method":"site.apply","params":{"domain":"b.com","user":"b","php_version":"8.4"}}`)
 	if resp.Error == nil || resp.Error.Code != rpc.CodeOperationFailed {
 		t.Fatalf("error = %+v, want operation failed", resp.Error)
 	}

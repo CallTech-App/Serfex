@@ -45,11 +45,7 @@ func (m *Manager) ApacheReady() bool {
 
 var apacheTmpl = template.Must(template.New("apache").Parse(`# {{.Marker}}. Manual changes are overwritten.
 # Site: {{.Domain}} (user {{.User}}, PHP {{.PHPVersion}}), behind Nginx.
-<VirtualHost 127.0.0.1:{{.ApachePort}}>
-    ServerName {{.Domain}}
-{{- range .Aliases}}
-    ServerAlias {{.}}
-{{- end}}
+{{- define "vhostBody"}}
     DocumentRoot {{.DocumentRoot}}
     ErrorLog {{.LogDir}}/apache-error.log
 
@@ -71,5 +67,25 @@ var apacheTmpl = template.Must(template.New("apache").Parse(`# {{.Marker}}. Manu
             SetHandler "proxy:unix:{{.PHPSocket}}|fcgi://servik-{{.Domain}}/"
         </If>
     </FilesMatch>
+{{- end}}
+<VirtualHost 127.0.0.1:{{.ApachePort}}>
+    ServerName {{.Domain}}
+{{- range .Aliases}}
+    ServerAlias {{.}}
+{{- end}}
+{{- template "vhostBody" .}}
+{{- if .ApacheDirectives}}
+
+    # The administrator's own directives (Web sunucusu yönergeleri).
+{{.ApacheDirectives}}
+{{- end}}
 </VirtualHost>
+{{- range .Subdomains}}
+
+# Subdomain {{.ServerNames}}.
+<VirtualHost 127.0.0.1:{{.ApachePort}}>
+    ServerName {{.ServerNames}}
+{{- template "vhostBody" .}}
+</VirtualHost>
+{{- end}}
 `))

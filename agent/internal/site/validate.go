@@ -18,7 +18,7 @@ func invalid(format string, a ...any) error { return &ValidationError{fmt.Sprint
 var (
 	userRe    = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 	phpVerRe  = regexp.MustCompile(`^[5-9]\.[0-9]{1,2}$`)
-	maxAlias  = 20
+	maxAlias  = 100
 	reserved  = map[string]bool{}
 	reservedL = "root daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody " +
 		"systemd-network systemd-resolve systemd-timesync messagebus syslog ubuntu admin administrator " +
@@ -95,6 +95,9 @@ func (s Spec) validate() error {
 		return invalid("tls.certificate is required")
 	}
 	if err := s.validateWeb(); err != nil {
+		return err
+	}
+	if err := s.validateDomains(); err != nil {
 		return err
 	}
 	if s.WebServer != "" && s.WebServer != WebNginx && s.WebServer != WebApache {

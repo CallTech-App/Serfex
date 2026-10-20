@@ -98,6 +98,69 @@ class Zones
     }
 
     /**
+     * The zone on this server that holds $name: its own or a parent's.
+     */
+    public function holding(string $name): ?DnsZone
+    {
+        $zone = DnsZone::where('name', $name)->first() ?? $this->parentZone($name);
+
+        return $zone !== null && $zone->status !== ZoneStatus::Deleting ? $zone : null;
+    }
+
+    /**
+     * Point a name the site answers to (an alias, a subdomain, a
+     * redirected domain) at this server: address records in the zone that
+     * holds it, unless it has records already. With $create, a name no zone
+     * here holds gets a zone of its own for the site. Returns the zone, or
+     * null when its DNS is elsewhere.
+     */
+    public function addHost(string $name, Site $site, bool $create = false): ?DnsZone
+    {
+        $zone = $this->holding($name);
+        if ($zone === null) {
+            return $create ? $this->create($name, $site) : null;
+        }
+        $this->template->detectAddresses();
+        $label = $zone->name === $name ? '@' : substr($name, 0, -strlen('.'.$zone->name));
+        if ($zone->records()->where('name', $label)->whereIn('type', ['A', 'AAAA', 'CNAME'])->exists()) {
+            return $zone;
+        }
+        $wanted = [];
+        foreach (['A' => $this->settings->ipv4(), 'AAAA' => $this->settings->ipv6()] as $type => $ip) {
+            if ($ip !== null) {
+                $wanted[] = ['name' => $label, 'type' => $type, 'content' => $ip, 'ttl' => $zone->default_ttl];
+            }
+        }
+        if ($wanted !== []) {
+            $this->change($zone, fn (DnsZone $zone) => $zone->records()->createMany($wanted));
+        }
+
+        return $zone;
+    }
+
+    /**
+     * Take away the address records addHost() wrote for $name: A and AAAA
+     * records pointing at this server. A zone of its own stays; it may
+     * hold mail and other records. Returns an undo token, or null when
+     * nothing changed.
+     */
+    public function removeHost(string $name): ?string
+    {
+        $zone = $this->holding($name);
+        if ($zone === null || $zone->name === $name) {
+            return null;
+        }
+        $label = substr($name, 0, -strlen('.'.$zone->name));
+        $ours = $zone->records()->where('name', $label)->whereIn('type', ['A', 'AAAA'])
+            ->whereIn('content', array_filter([$this->settings->ipv4(), $this->settings->ipv6()]));
+        if ($ours->doesntExist()) {
+            return null;
+        }
+
+        return $this->change($zone, fn () => (clone $ours)->delete());
+    }
+
+    /**
      * The closest hosted zone that $domain is a subdomain of.
      */
     public function parentZone(string $domain): ?DnsZone

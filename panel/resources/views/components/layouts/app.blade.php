@@ -147,6 +147,9 @@
                         <span class="size-2 rounded-full bg-ok"></span>
                         <span class="font-mono">{{ \App\Models\Setting::get('server.hostname') ?: gethostname() }}</span>
                     </span>
+                    @if ($user)
+                        <livewire:quick-search />
+                    @endif
                     <div class="ml-auto flex items-center gap-1">
                         @if ($user?->is_admin && ! $user->isReadOnly())
                             @if (request()->routeIs('ai.*'))
