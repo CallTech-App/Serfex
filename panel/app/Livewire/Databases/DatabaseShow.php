@@ -75,19 +75,19 @@ class DatabaseShow extends Component
         $this->newUserSuffix = trim($this->newUserSuffix);
         $this->validate($this->addMode === 'new' ? [
             'newUserSuffix' => ['required', 'regex:'.Databases::NAME_PATTERN, 'max:'.(Databases::MAX_USER - strlen($prefix)),
-                fn ($a, $v, $fail) => DatabaseUser::withTrashed()->where('server', $database->server)->where('name', $prefix.$v)->exists() ? $fail('Bu adda bir kullanıcı zaten var.') : null],
+                fn ($a, $v, $fail) => DatabaseUser::withTrashed()->where('server', $database->server)->where('name', $prefix.$v)->exists() ? $fail(__('Bu adda bir kullanıcı zaten var.')) : null],
             'newUserPassword' => ['required', 'string', 'min:12', 'max:128', 'regex:/^\S+$/'],
             'addAccess' => ['required', Rule::in(array_keys(DatabaseUser::ACCESS))],
         ] : [
             'existingUser' => ['required', Rule::in($this->candidates($database)->pluck('id')->all())],
             'addAccess' => ['required', Rule::in(array_keys(DatabaseUser::ACCESS))],
         ], [
-            'newUserSuffix.regex' => 'Yalnızca küçük harf, rakam ve _ kullanın.',
-            'newUserSuffix.max' => 'Kullanıcı adı en fazla :max karakter olabilir.',
-            'newUserPassword.min' => 'Parola en az 12 karakter olmalı.',
-            'newUserPassword.regex' => 'Parola boşluk içeremez.',
-            'existingUser.required' => 'Bir kullanıcı seçin.',
-        ], ['newUserSuffix' => 'kullanıcı adı', 'newUserPassword' => 'parola']);
+            'newUserSuffix.regex' => __('Yalnızca küçük harf, rakam ve _ kullanın.'),
+            'newUserSuffix.max' => __('Kullanıcı adı en fazla :max karakter olabilir.'),
+            'newUserPassword.min' => __('Parola en az 12 karakter olmalı.'),
+            'newUserPassword.regex' => __('Parola boşluk içeremez.'),
+            'existingUser.required' => __('Bir kullanıcı seçin.'),
+        ], ['newUserSuffix' => __('kullanıcı adı'), 'newUserPassword' => 'parola']);
 
         try {
             if ($this->addMode === 'new') {
@@ -98,12 +98,12 @@ class DatabaseShow extends Component
                 $databases->grant($database, $user, $this->addAccess);
             }
         } catch (AgentException $e) {
-            $this->addError($this->addMode === 'new' ? 'newUserSuffix' : 'existingUser', 'Sunucu değişikliği kabul etmedi: '.$e->reason);
+            $this->addError($this->addMode === 'new' ? 'newUserSuffix' : 'existingUser', __('Sunucu değişikliği kabul etmedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->adding = false;
-        $this->dispatch('toast', message: "{$user->name} bu veritabanını kullanabilir.");
+        $this->dispatch('toast', message: __(':name bu veritabanını kullanabilir.', ['name' => $user->name]));
     }
 
     public function setAccess(int $userId, string $access, Databases $databases): void
@@ -115,7 +115,7 @@ class DatabaseShow extends Component
         try {
             $databases->grant($database, $user, $access);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Yetki değiştirilemedi: '.$e->reason);
+            $this->dispatch('toast', message: __('Yetki değiştirilemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
@@ -134,12 +134,12 @@ class DatabaseShow extends Component
         try {
             $databases->revoke($database, $user);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Erişim kaldırılamadı: '.$e->reason);
+            $this->dispatch('toast', message: __('Erişim kaldırılamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->dispatch('toast',
-            message: "{$user->name} artık bu veritabanına bağlanamaz.",
+            message: __(':name artık bu veritabanına bağlanamaz.', ['name' => $user->name]),
             source: $this->getId(),
             undo: ['method' => 'regrant', 'args' => [$user->id, $before]],
         );
@@ -164,14 +164,14 @@ class DatabaseShow extends Component
     {
         $database = $this->database();
         if ($this->confirmName !== $database->name) {
-            $this->addError('confirmName', 'Veritabanı adını tam olarak yazın.');
+            $this->addError('confirmName', __('Veritabanı adını tam olarak yazın.'));
 
             return;
         }
         $databases->delete($database, $this->backup);
         $this->deleting = false;
         $this->dispatch('toast',
-            message: "{$database->name} silindi.",
+            message: __(':name silindi.', ['name' => $database->name]),
             source: $this->getId(),
             undo: ['method' => 'undoDelete', 'args' => []],
         );
@@ -182,7 +182,7 @@ class DatabaseShow extends Component
         $database = $this->database();
         if ($database->trashed()) {
             $databases->restore($database);
-            $this->dispatch('toast', message: "{$database->name} geri geldi; kullanıcıların erişimi yerinde.");
+            $this->dispatch('toast', message: __(':name geri geldi; kullanıcıların erişimi yerinde.', ['name' => $database->name]));
         }
     }
 
@@ -198,7 +198,7 @@ class DatabaseShow extends Component
             'candidates' => $this->candidates($database),
             'prefix' => $database->systemUser ? Databases::prefix($database->systemUser) : '',
             ...$this->userDialogData(),
-        ])->title($database->name.' · Veritabanları · Servik');
+        ])->title(__(':name · Veritabanları · Servik', ['name' => $database->name]));
     }
 
     private function database(): Database

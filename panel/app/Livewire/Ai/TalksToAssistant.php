@@ -32,7 +32,7 @@ trait TalksToAssistant
             return;
         }
         if (mb_strlen($text) > 4000) {
-            $this->addError('question', 'Mesaj en fazla 4000 karakter olabilir.');
+            $this->addError('question', __('Mesaj en fazla 4000 karakter olabilir.'));
 
             return;
         }
@@ -85,7 +85,7 @@ trait TalksToAssistant
 
             return;
         }
-        $this->dispatch('toast', message: 'Uygulandı: '.$action->title.'.', source: $this->getId(),
+        $this->dispatch('toast', message: __('Uygulandı: :title.', ['title' => $action->title]), source: $this->getId(),
             undo: $actions->canUndo($action->refresh()) ? ['method' => 'undo', 'args' => [$action->id]] : null);
     }
 
@@ -94,7 +94,7 @@ trait TalksToAssistant
         $action = $this->action($id);
         if ($action !== null) {
             $actions->reject($action, auth()->user());
-            $this->dispatch('toast', message: 'Öneri uygulanmadı.');
+            $this->dispatch('toast', message: __('Öneri uygulanmadı.'));
         }
     }
 
@@ -111,7 +111,7 @@ trait TalksToAssistant
 
             return;
         }
-        $this->dispatch('toast', message: 'Geri alındı: '.$action->title.'.');
+        $this->dispatch('toast', message: __('Geri alındı: :title.', ['title' => $action->title]));
     }
 
     private function action(int $id): ?AiAction

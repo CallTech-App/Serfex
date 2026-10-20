@@ -60,11 +60,11 @@ class Ssh
     public static function message(AgentException $e): string
     {
         return match (true) {
-            $e instanceof AgentUnavailableException => 'Sunucu ajanına ulaşılamıyor.',
-            str_contains($e->reason, 'no administrator account') => 'Sunucuda SSH anahtarı olan bir yönetici hesabı yok. Parolayla girişi kapatmadan önce root ya da sudo yetkili bir hesaba anahtar ekleyin; yoksa sunucuya SSH ile giremezsiniz.',
-            str_contains($e->reason, 'not installed') => 'SSH sunucusu kurulu değil.',
-            str_contains($e->reason, 'sshd rejected') => 'SSH sunucusu yeni ayarı kabul etmedi; önceki ayar korundu.',
-            default => 'SSH ayarı uygulanamadı: '.$e->reason,
+            $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
+            str_contains($e->reason, 'no administrator account') => __('Sunucuda SSH anahtarı olan bir yönetici hesabı yok. Parolayla girişi kapatmadan önce root ya da sudo yetkili bir hesaba anahtar ekleyin; yoksa sunucuya SSH ile giremezsiniz.'),
+            str_contains($e->reason, 'not installed') => __('SSH sunucusu kurulu değil.'),
+            str_contains($e->reason, 'sshd rejected') => __('SSH sunucusu yeni ayarı kabul etmedi; önceki ayar korundu.'),
+            default => __('SSH ayarı uygulanamadı: :reason', ['reason' => $e->reason]),
         };
     }
 }

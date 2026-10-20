@@ -26,7 +26,7 @@ class ServerSettings extends Component
         try {
             $this->hostname = (string) ($settings->server()['hostname'] ?? '');
         } catch (AgentException $e) {
-            $this->agentError = 'Sunucu ajanına ulaşılamadı: '.$e->reason;
+            $this->agentError = __('Sunucu ajanına ulaşılamadı: :reason', ['reason' => $e->reason]);
         }
     }
 
@@ -35,21 +35,21 @@ class ServerSettings extends Component
         $this->hostname = strtolower(trim($this->hostname));
         $this->validate([
             'hostname' => ['required', 'max:253', 'regex:/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/'],
-        ], ['hostname.regex' => 'Geçerli bir sunucu adı girin, örneğin srv-ist-01 ya da srv-ist-01.ornek.com.tr.'], ['hostname' => 'sunucu adı']);
+        ], ['hostname.regex' => __('Geçerli bir sunucu adı girin, örneğin srv-ist-01 ya da srv-ist-01.ornek.com.tr.')], ['hostname' => __('sunucu adı')]);
         try {
             $previous = (string) ($settings->server()['hostname'] ?? '');
             if ($previous === $this->hostname) {
-                $this->dispatch('toast', message: 'Sunucu adı zaten '.$this->hostname.'.');
+                $this->dispatch('toast', message: __('Sunucu adı zaten :hostname.', ['hostname' => $this->hostname]));
 
                 return;
             }
             $settings->setHostname($this->hostname);
         } catch (AgentException $e) {
-            $this->addError('hostname', 'Sunucu adı değiştirilemedi: '.$e->reason);
+            $this->addError('hostname', __('Sunucu adı değiştirilemedi: :reason', ['reason' => $e->reason]));
 
             return;
         }
-        $this->dispatch('toast', message: 'Sunucunun adı '.$this->hostname.' oldu.', source: $this->getId(), undo: ['method' => 'undoHostname', 'args' => [$previous]]);
+        $this->dispatch('toast', message: __('Sunucunun adı :hostname oldu.', ['hostname' => $this->hostname]), source: $this->getId(), undo: ['method' => 'undoHostname', 'args' => [$previous]]);
     }
 
     public function undoHostname(PanelSettings $settings, string $previous): void
@@ -61,13 +61,13 @@ class ServerSettings extends Component
         try {
             $settings->setHostname($previous);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Sunucu adı geri alınamadı: '.$e->reason);
+            $this->dispatch('toast', message: __('Sunucu adı geri alınamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->hostname = $previous;
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Sunucunun adı yeniden '.$previous.' oldu.');
+        $this->dispatch('toast', message: __('Sunucunun adı yeniden :previous oldu.', ['previous' => $previous]));
     }
 
     public function render(PanelSettings $settings): View

@@ -21,12 +21,12 @@ class BackupUploadController extends Controller
         $offset = (int) $request->query('offset', 0);
         $data = $request->getContent();
         if ($offset < 0 || strlen($data) > BackupImports::UPLOAD_CHUNK) {
-            return response()->json(['error' => 'Parça çok büyük.'], 422);
+            return response()->json(['error' => __('Parça çok büyük.')], 422);
         }
         try {
             $result = $agent->call('backup.upload.write', ['upload' => $upload, 'offset' => $offset, 'data' => base64_encode($data)], 120);
         } catch (AgentException $e) {
-            return response()->json(['error' => $e->reason ?: 'Sunucu ajanına ulaşılamıyor.'], 422);
+            return response()->json(['error' => $e->reason ?: __('Sunucu ajanına ulaşılamıyor.')], 422);
         }
 
         return response()->json(['size' => (int) ($result['size'] ?? $offset + strlen($data))]);

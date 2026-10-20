@@ -58,7 +58,7 @@ class AuditEntry extends Model
         return match ($this->via) {
             'api' => 'API',
             'ai' => 'Servik AI',
-            'system' => 'Sistem',
+            'system' => __('Sistem'),
             default => 'Panel',
         };
     }

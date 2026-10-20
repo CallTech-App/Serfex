@@ -81,7 +81,7 @@ class SiteFileController extends Controller
         $input = is_array($input) ? $input : [];
         $content = $input['content'] ?? null;
         if (! is_string($content) || strlen($content) > FileManager::MAX_EDIT) {
-            return response()->json(['error' => 'Dosya düzenleyici için çok büyük (en fazla 2 MB).'], 422);
+            return response()->json(['error' => __('Dosya düzenleyici için çok büyük (en fazla 2 MB).')], 422);
         }
         try {
             $res = $this->files->call($model, 'save', [
@@ -107,10 +107,10 @@ class SiteFileController extends Controller
         $offset = (int) $request->query('offset', 0);
         $data = $request->getContent();
         if ($offset < 0 || strlen($data) > FileManager::CHUNK) {
-            return response()->json(['error' => 'Parça çok büyük.'], 422);
+            return response()->json(['error' => __('Parça çok büyük.')], 422);
         }
         if ($offset + strlen($data) > FileManager::MAX_UPLOAD) {
-            return response()->json(['error' => 'Dosyalar en fazla 2 GB olabilir. Daha büyükleri SFTP ile yükleyin.'], 422);
+            return response()->json(['error' => __('Dosyalar en fazla 2 GB olabilir. Daha büyükleri SFTP ile yükleyin.')], 422);
         }
         if ($offset === 0 && ($refusal = $this->files->uploadRefusal($model))) {
             return response()->json(['error' => $refusal], 422);

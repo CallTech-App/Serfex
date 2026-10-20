@@ -46,6 +46,6 @@ class WafExclusion extends Model
 
     public function pathLabel(): string
     {
-        return $this->path === '' ? 'Tüm site' : $this->path;
+        return $this->path === '' ? __('Tüm site') : $this->path;
     }
 }

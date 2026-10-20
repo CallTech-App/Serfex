@@ -27,7 +27,7 @@ class CheckComponentUpdates extends Command
             return self::FAILURE;
         }
         $updates = collect($components->statuses() ?? [])->filter(fn ($c) => ($c['latest'] ?? null) !== null)->keys();
-        $this->info($updates->isEmpty() ? 'Güncelleme yok.' : 'Güncelleme var: '.$updates->implode(', '));
+        $this->info($updates->isEmpty() ? __('Güncelleme yok.') : __('Güncelleme var: :implode', ['implode' => $updates->implode(', ')]));
 
         return self::SUCCESS;
     }

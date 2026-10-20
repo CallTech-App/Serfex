@@ -15,6 +15,7 @@ use App\Services\Databases\DatabaseServers;
 use App\Services\Settings\PanelSettings;
 use App\Support\ReadOnlyGuard;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -55,6 +56,9 @@ class AppServiceProvider extends ServiceProvider
 
         // The panel's time zone and session length (Araçlar ve Ayarlar).
         PanelSettings::apply();
+        // Fixed labels echoed in views are shown in the reader's language
+        // (see Locales::label).
+        Blade::setEchoFormat('e(\\App\\Support\\Locales::label(%s))');
 
         // Every Livewire mount and call is authorized here, before the
         // component runs (see Access).
@@ -70,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event) {
             if (request()->is('login', 'login/dogrulama', 'davet/*')) {
                 $event->user->forceFill(['last_login_at' => now(), 'last_login_ip' => request()->ip()])->saveQuietly();
-                AuditLog::record('Panele giriş yaptı.', $event->user);
+                AuditLog::record(__('Panele giriş yaptı.'), $event->user);
             }
         });
         // Updates of an open page pass the same checks as loading it: a

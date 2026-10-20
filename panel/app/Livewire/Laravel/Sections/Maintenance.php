@@ -103,7 +103,7 @@ class Maintenance extends Section
         }
         $this->validateForm();
         if ($this->web($processes, $app, ['maintenance_mode' => $this->mode === 'app' ? $app->maintenance_mode : $this->mode] + $this->settings())) {
-            $this->dispatch('toast', message: 'Bakım ayarları uygulandı.');
+            $this->dispatch('toast', message: __('Bakım ayarları uygulandı.'));
         }
     }
 
@@ -117,11 +117,11 @@ class Maintenance extends Section
             'allow' => ['nullable', function ($attr, $value, $fail) {
                 $lines = array_filter(explode("\n", (string) $value));
                 if (count($lines) > self::MAX_ALLOW) {
-                    $fail('En çok '.self::MAX_ALLOW.' adres yazılabilir.');
+                    $fail(__('En çok :max_allow adres yazılabilir.', ['max_allow' => self::MAX_ALLOW]));
                 }
                 foreach ($lines as $line) {
                     if (! self::validAddress($line)) {
-                        $fail("{$line} bir IP adresi veya ağ (örneğin 10.0.0.0/24) değil.");
+                        $fail(__(':line bir IP adresi veya ağ (örneğin 10.0.0.0/24) değil.', ['line' => $line]));
 
                         return;
                     }
@@ -129,9 +129,9 @@ class Maintenance extends Section
             }],
             'html' => [Rule::requiredIf($this->mode === 'custom'), 'nullable', 'string', 'max:200000'],
         ], [
-            'secret.regex' => 'Yalnızca harf, rakam, - ve _ kullanın.',
-            'html.required' => 'Ziyaretçilere gösterilecek HTML\'i yazın.',
-        ], ['secret' => 'gizli anahtar', 'retry' => 'tekrar deneme süresi', 'html' => 'sayfa']);
+            'secret.regex' => __('Yalnızca harf, rakam, - ve _ kullanın.'),
+            'html.required' => __('Ziyaretçilere gösterilecek HTML\'i yazın.'),
+        ], ['secret' => __('gizli anahtar'), 'retry' => __('tekrar deneme süresi'), 'html' => 'sayfa']);
     }
 
     public static function validAddress(string $value): bool
@@ -192,7 +192,7 @@ class Maintenance extends Section
             return false;
         }
         if (($result['exit_code'] ?? 1) !== 0) {
-            $this->agentError = 'Komut başarısız oldu: '.trim((string) ($result['output'] ?? ''));
+            $this->agentError = __('Komut başarısız oldu: :output', ['output' => trim((string) ($result['output'] ?? ''))]);
 
             return false;
         }
@@ -204,7 +204,7 @@ class Maintenance extends Section
     private function toast(bool $down): void
     {
         $this->dispatch('toast',
-            message: $down ? 'Uygulama bakım modunda.' : 'Uygulama yeniden açıldı.',
+            message: $down ? __('Uygulama bakım modunda.') : __('Uygulama yeniden açıldı.'),
             source: $this->getId(),
             undo: ['method' => $down ? 'up' : 'down', 'args' => []],
         );

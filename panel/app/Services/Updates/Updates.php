@@ -61,7 +61,7 @@ class Updates
         try {
             $status = (array) $this->agent->call('update.status');
         } catch (AgentException $e) {
-            $error = $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : $e->reason;
+            $error = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : $e->reason;
 
             return null;
         }
@@ -112,7 +112,7 @@ class Updates
         } catch (AgentException $e) {
             $this->forget();
 
-            return $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : 'Sürümler denetlenemedi: '.$e->reason;
+            return $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Sürümler denetlenemedi: :reason', ['reason' => $e->reason]);
         }
         $this->remember($status);
 
@@ -142,19 +142,19 @@ class Updates
     public function refusal(?array $status, ?string $error = null): ?string
     {
         if ($status === null) {
-            return $error ?: 'Sunucu ajanına ulaşılamıyor.';
+            return $error ?: __('Sunucu ajanına ulaşılamıyor.');
         }
         if (! ($status['installed'] ?? false)) {
-            return 'Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu); Servik kendini yalnızca install.sh ile kurulan sunucularda günceller.';
+            return __('Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu); Servik kendini yalnızca install.sh ile kurulan sunucularda günceller.');
         }
         if (PanelUpdate::running()->exists() || ($status['running'] ?? '') !== '') {
-            return 'Bir güncelleme sürüyor. Bitince yeniden deneyin.';
+            return __('Bir güncelleme sürüyor. Bitince yeniden deneyin.');
         }
         if (Backup::whereIn('status', ['queued', 'running'])->exists() || BackupRestore::whereIn('status', ['queued', 'running'])->exists()) {
-            return 'Bir yedekleme ya da geri yükleme sürüyor; güncelleme panelin iş kuyruklarını durdurur. Bitince yeniden deneyin.';
+            return __('Bir yedekleme ya da geri yükleme sürüyor; güncelleme panelin iş kuyruklarını durdurur. Bitince yeniden deneyin.');
         }
         if (ComponentOperation::running()->exists()) {
-            return 'Yazılım Yönetimi\'nde bir işlem sürüyor. Bitince yeniden deneyin.';
+            return __('Yazılım Yönetimi\'nde bir işlem sürüyor. Bitince yeniden deneyin.');
         }
 
         return null;
@@ -175,7 +175,7 @@ class Updates
             $release = collect((array) $status['releases'])->firstWhere('version', $version);
         }
         if ($release === null) {
-            return 'Kurulacak yeni bir sürüm yok. Önce "Şimdi denetle" ile yeni sürümleri arayın.';
+            return __('Kurulacak yeni bir sürüm yok. Önce "Şimdi denetle" ile yeni sürümleri arayın.');
         }
 
         return $this->queue('upgrade', (string) $status['version'], (string) $release['version'], $user);
@@ -191,7 +191,7 @@ class Updates
             return $refusal;
         }
         if (($status['previous'] ?? '') === '') {
-            return 'Dönülecek önceki sürüm bu sunucuda yok.';
+            return __('Dönülecek önceki sürüm bu sunucuda yok.');
         }
 
         return $this->queue('rollback', (string) $status['version'], (string) $status['previous'], $user);
@@ -223,8 +223,8 @@ class Updates
         $update->update(['backup_id' => $backup->id]);
         $item = $backup->items()->first();
         if ($backup->status !== 'succeeded' || ($item?->warnings ?? []) !== []) {
-            $why = $backup->error ?: $item?->error ?: ($item?->warnings[0] ?? null) ?: 'bilinmeyen hata';
-            $this->fail($update, 'Panel yedeği alınamadı, hiçbir şey değiştirilmedi: '.$why);
+            $why = $backup->error ?: $item?->error ?: ($item?->warnings[0] ?? null) ?: __('bilinmeyen hata');
+            $this->fail($update, __('Panel yedeği alınamadı, hiçbir şey değiştirilmedi: :why', ['why' => $why]));
 
             return;
         }
@@ -236,7 +236,7 @@ class Updates
                 30,
             );
         } catch (AgentException $e) {
-            $this->fail($update, $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamadı.' : $e->reason);
+            $this->fail($update, $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamadı.') : $e->reason);
         }
         $this->forget();
     }
@@ -267,7 +267,7 @@ class Updates
                 ]);
                 $this->forget();
             } elseif ($update->started_at?->lt(now()->subHours(2))) {
-                $this->fail($update, 'Güncelleme yarıda kaldı; sunucu ajanında kaydı yok.');
+                $this->fail($update, __('Güncelleme yarıda kaldı; sunucu ajanında kaydı yok.'));
             }
         }
     }
@@ -289,12 +289,12 @@ class Updates
         $last = PanelUpdate::whereNotIn('status', PanelUpdate::RUNNING)->latest('id')->first();
         if ($last !== null && in_array($last->status, ['failed', 'rolled_back'], true) && $last->created_at->gt(now()->subDays(7))) {
             $out[] = ['level' => 'warn', 'text' => $last->status === 'rolled_back'
-                ? 'Servik '.$last->to_version.' kurulamadı, '.$last->from_version.' sürümüne dönüldü'
-                : ($last->kind === 'rollback' ? 'Önceki sürüme dönülemedi' : 'Servik '.$last->to_version.' güncellemesi başarısız oldu')];
+                ? __('Servik :to_version kurulamadı, :from_version sürümüne dönüldü', ['to_version' => $last->to_version, 'from_version' => $last->from_version])
+                : ($last->kind === 'rollback' ? __('Önceki sürüme dönülemedi') : __('Servik :to_version güncellemesi başarısız oldu', ['to_version' => $last->to_version]))];
         }
         $release = Cache::get(self::KNOWN_KEY);
         if (is_array($release) && ($release['version'] ?? null) !== config('servik.version') && ($out === [] || $release['version'] !== $last?->to_version)) {
-            $out[] = ['level' => 'info', 'text' => 'Servik '.$release['version'].' hazır'];
+            $out[] = ['level' => 'info', 'text' => __('Servik :version hazır', ['version' => $release['version']])];
         }
 
         return $out;

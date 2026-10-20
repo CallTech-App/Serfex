@@ -103,25 +103,25 @@ class ComponentIndex extends Component
         try {
             $agent->call('component.check', [], 300);
         } catch (AgentException $e) {
-            $this->refused = $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : 'Güncellemeler denetlenemedi: '.$e->reason;
+            $this->refused = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Güncellemeler denetlenemedi: :reason', ['reason' => $e->reason]);
 
             return;
         }
-        $this->dispatch('toast', message: 'Paket listeleri yenilendi.');
+        $this->dispatch('toast', message: __('Paket listeleri yenilendi.'));
     }
 
     public function saveDefault(Components $components): void
     {
         $this->validate(['defaultStack' => ['required', Rule::in(array_keys(Site::STACKS))]]);
         if ($this->defaultStack === Site::APACHE && ! $components->isInstalled('apache')) {
-            $this->addError('defaultStack', 'Önce Apache\'yi kurun.');
+            $this->addError('defaultStack', __('Önce Apache\'yi kurun.'));
 
             return;
         }
         $previous = $components->defaultStack();
         Setting::put('web.default_stack', $this->defaultStack);
         $this->dispatch('toast',
-            message: 'Yeni siteler '.Site::STACKS[$this->defaultStack].' ile açılacak.',
+            message: __('Yeni siteler :stacks ile açılacak.', ['stacks' => Site::STACKS[$this->defaultStack]]),
             source: $this->getId(),
             undo: ['method' => 'undoDefault', 'args' => [$previous]],
         );
@@ -156,7 +156,7 @@ class ComponentIndex extends Component
         }
         $this->configuring = false;
         $this->dispatch('toast',
-            message: $this->modsecMode === 'block' ? 'ModSecurity saldırıları engelleyecek.' : 'ModSecurity yalnızca kaydedecek.',
+            message: $this->modsecMode === 'block' ? __('ModSecurity saldırıları engelleyecek.') : __('ModSecurity yalnızca kaydedecek.'),
             source: $this->getId(),
             undo: ['method' => 'undoSettings', 'args' => [$previous['mode'] ?? 'detect', (int) ($previous['paranoia'] ?? 1)]],
         );
@@ -173,7 +173,7 @@ class ComponentIndex extends Component
     {
         $error = null;
         $groups = $components->rows($this->tab, $error);
-        $this->agentError = $groups === null ? ($error ? 'Sunucu ajanı hata verdi: '.$error : 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.') : null;
+        $this->agentError = $groups === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $busy = ComponentOperation::running()->exists();
         $manager = null;
@@ -199,7 +199,7 @@ class ComponentIndex extends Component
         try {
             $agent->call('component.configure', ['id' => 'modsecurity', 'settings' => ['modsecurity_mode' => $mode, 'modsecurity_paranoia' => $paranoia]], config('servik.agent.job_timeout'));
         } catch (AgentException $e) {
-            $this->addError('modsecMode', $e instanceof AgentUnavailableException ? 'Sunucu ajanına ulaşılamıyor.' : 'Ayarlar uygulanamadı, önceki ayarlar korundu: '.$e->reason);
+            $this->addError('modsecMode', $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Ayarlar uygulanamadı, önceki ayarlar korundu: :reason', ['reason' => $e->reason]));
 
             return false;
         }
@@ -218,7 +218,7 @@ class ComponentIndex extends Component
         $mail->save(['webmail' => $on]);
         $mail->saveServer(['state' => 'installing', 'error' => null]);
         SetupMailServer::dispatch();
-        $this->dispatch('toast', message: $on ? 'Roundcube açılıyor.' : 'Roundcube kapatılıyor.');
+        $this->dispatch('toast', message: $on ? __('Roundcube açılıyor.') : __('Roundcube kapatılıyor.'));
     }
 
     /**
@@ -234,35 +234,35 @@ class ComponentIndex extends Component
 
         return match ($action) {
             'install' => [
-                'title' => "{$name} kurulsun mu?",
+                'title' => __(':name kurulsun mu?', ['name' => $name]),
                 'text' => match (true) {
-                    $id === 'roundcube' => 'Posta sunucusu yeniden ayarlanır ve webmail adresi açılır.',
-                    $id === 'clamav' => 'Servik Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.',
-                    str_starts_with($id, 'node') => 'Servik Agent Node.js\'i nodejs.org\'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.',
-                    $id === 'composer' => 'Servik Agent Composer\'ı getcomposer.org\'dan indirir ve imzasını denetler.',
-                    default => 'Servik Agent paketleri Ubuntu depolarından kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.',
+                    $id === 'roundcube' => __('Posta sunucusu yeniden ayarlanır ve webmail adresi açılır.'),
+                    $id === 'clamav' => __('Servik Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.'),
+                    str_starts_with($id, 'node') => __('Servik Agent Node.js\'i nodejs.org\'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.'),
+                    $id === 'composer' => __('Servik Agent Composer\'ı getcomposer.org\'dan indirir ve imzasını denetler.'),
+                    default => __('Servik Agent paketleri Ubuntu depolarından kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.'),
                 },
-                'button' => 'Kur',
+                'button' => __('Kur'),
                 'danger' => false,
             ],
             'update' => [
-                'title' => "{$name} güncellensin mi?",
-                'text' => 'Yeni sürüm'.($version ? " ({$version})" : '').' kurulur ve hizmet yeniden başlatılır; birkaç saniyelik kesinti olabilir. Yeni sürüm çalışmazsa ayarlar geri alınır.',
-                'button' => 'Güncelle',
+                'title' => __(':name güncellensin mi?', ['name' => $name]),
+                'text' => __('Yeni sürüm:version kurulur ve hizmet yeniden başlatılır; birkaç saniyelik kesinti olabilir. Yeni sürüm çalışmazsa ayarlar geri alınır.', ['version' => ($version ? " ({$version})" : '')]),
+                'button' => __('Güncelle'),
                 'danger' => false,
             ],
             default => [
-                'title' => "{$name} kaldırılsın mı?",
+                'title' => __(':name kaldırılsın mı?', ['name' => $name]),
                 'text' => match (true) {
-                    $id === 'roundcube' => 'Kullanıcılar postalarına tarayıcıdan ulaşamaz; posta programları çalışmaya devam eder.',
-                    $id === 'modsecurity' => 'Siteler güvenlik duvarı olmadan çalışır.',
-                    $id === 'fail2ban' => 'Kaba kuvvet saldırıları otomatik engellenmez. Canlı İzleme engellemeleri çalışmaya devam eder.',
-                    $id === 'clamav' => 'Posta virüs taraması kapanır.',
-                    in_array($id, ['mysql', 'mariadb'], true) => 'Paketler kaldırılır; veri klasörü silinmez, yedek klasörüne taşınır.',
-                    $id === 'postgresql' => 'Müşteri kümesi durdurulup silinir. Panelin kendi PostgreSQL\'i etkilenmez.',
-                    default => 'Bu bileşeni kullanan bir şey yok.',
-                }.' Kaldırmadan önce yapılandırması /var/lib/servik/backups/components altına yedeklenir.',
-                'button' => 'Kaldır',
+                    $id === 'roundcube' => __('Kullanıcılar postalarına tarayıcıdan ulaşamaz; posta programları çalışmaya devam eder.'),
+                    $id === 'modsecurity' => __('Siteler güvenlik duvarı olmadan çalışır.'),
+                    $id === 'fail2ban' => __('Kaba kuvvet saldırıları otomatik engellenmez. Canlı İzleme engellemeleri çalışmaya devam eder.'),
+                    $id === 'clamav' => __('Posta virüs taraması kapanır.'),
+                    in_array($id, ['mysql', 'mariadb'], true) => __('Paketler kaldırılır; veri klasörü silinmez, yedek klasörüne taşınır.'),
+                    $id === 'postgresql' => __('Müşteri kümesi durdurulup silinir. Panelin kendi PostgreSQL\'i etkilenmez.'),
+                    default => __('Bu bileşeni kullanan bir şey yok.'),
+                }.' '.__('Kaldırmadan önce yapılandırması /var/lib/servik/backups/components altına yedeklenir.'),
+                'button' => __('Kaldır'),
                 'danger' => true,
             ],
         };

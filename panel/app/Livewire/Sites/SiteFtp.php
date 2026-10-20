@@ -104,10 +104,10 @@ class SiteFtp extends Component
         $name = $account?->name ?? FtpAccounts::prefix($site->systemUser).trim($this->suffix);
         $problems = $accounts->problems($site, $name, $this->directory, $account?->id);
         if ($this->changePassword && (strlen($this->password) < 12 || strlen($this->password) > 128 || preg_match('/[\s:]/', $this->password))) {
-            $problems['password'] = 'Parola 12-128 karakter olmalı; boşluk ve iki nokta içeremez.';
+            $problems['password'] = __('Parola 12-128 karakter olmalı; boşluk ve iki nokta içeremez.');
         }
         if (mb_strlen($this->note) > 100) {
-            $problems['note'] = 'Not en fazla 100 karakter olabilir.';
+            $problems['note'] = __('Not en fazla 100 karakter olabilir.');
         }
         if ($problems !== []) {
             $this->resetValidation();
@@ -146,7 +146,7 @@ class SiteFtp extends Component
                 'Klasör' => $account->remoteFolder(),
             ];
         } else {
-            $this->dispatch('toast', message: $account->name.' kaydedildi.');
+            $this->dispatch('toast', message: __(':name kaydedildi.', ['name' => $account->name]));
         }
     }
 
@@ -169,7 +169,7 @@ class SiteFtp extends Component
 
             return;
         }
-        $this->dispatch('toast', message: $account->name.' silindi; artık bağlanamaz.', source: $this->getId(), undo: ['method' => 'restore', 'args' => [$account->id]]);
+        $this->dispatch('toast', message: __(':name silindi; artık bağlanamaz.', ['name' => $account->name]), source: $this->getId(), undo: ['method' => 'restore', 'args' => [$account->id]]);
     }
 
     public function restore(FtpAccounts $accounts, int $id): void
@@ -185,7 +185,7 @@ class SiteFtp extends Component
 
             return;
         }
-        $this->dispatch('toast', message: $account->name.' geri alındı.');
+        $this->dispatch('toast', message: __(':name geri alındı.', ['name' => $account->name]));
     }
 
     public function render(FtpAccounts $accounts): View
@@ -202,6 +202,6 @@ class SiteFtp extends Component
             'port' => $accounts->port(),
             'usage' => $usage,
             'refusal' => $accounts->refusal($site->systemUser),
-        ])->title('FTP hesapları · '.$site->domain.' · Servik');
+        ])->title(__('FTP hesapları · :domain · Servik', ['domain' => $site->domain]));
     }
 }

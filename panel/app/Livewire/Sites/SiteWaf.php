@@ -89,7 +89,7 @@ class SiteWaf extends Component
             return;
         }
         $this->dispatch('toast',
-            message: $site->domain.': WAF '.($this->mode === '' ? 'sunucu ayarını izliyor.' : mb_strtolower(Waf::MODES[$this->mode]).' kipinde.'),
+            message: $site->domain.': WAF '.($this->mode === '' ? __('sunucu ayarını izliyor.') : __(':mode kipinde.', ['mode' => mb_strtolower(__(Waf::MODES[$this->mode]))])),
             source: $this->getId(),
             undo: ['method' => 'undoMode', 'args' => [$previous]],
         );
@@ -128,7 +128,7 @@ class SiteWaf extends Component
         $this->note = trim($this->note);
         $problems = $waf->problems($site, $rule, $path);
         if (mb_strlen($this->note) > 200) {
-            $problems['note'] = 'Not en fazla 200 karakter olabilir.';
+            $problems['note'] = __('Not en fazla 200 karakter olabilir.');
         }
         if ($problems !== []) {
             foreach ($problems as $field => $message) {
@@ -145,7 +145,7 @@ class SiteWaf extends Component
             return;
         }
         $this->excluding = false;
-        $this->dispatch('toast', message: "Kural {$rule} ".($path === '' ? 'bu sitede' : $path.' altında').' kapatıldı.', source: $this->getId(),
+        $this->dispatch('toast', message: $path === '' ? __('Kural :rule bu sitede kapatıldı.', ['rule' => $rule]) : __('Kural :rule :path altında kapatıldı.', ['rule' => $rule, 'path' => $path]), source: $this->getId(),
             undo: ['method' => 'removeExclusion', 'args' => [$exclusion->id]]);
     }
 
@@ -162,7 +162,7 @@ class SiteWaf extends Component
 
             return;
         }
-        $this->dispatch('toast', message: "Kural {$exclusion->rule_id} yeniden açıldı.", source: $this->getId(),
+        $this->dispatch('toast', message: __('Kural :rule_id yeniden açıldı.', ['rule_id' => $exclusion->rule_id]), source: $this->getId(),
             undo: ['method' => 'restoreExclusion', 'args' => [$exclusion->id]]);
     }
 

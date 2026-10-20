@@ -54,16 +54,16 @@ class MailSettingsPage extends Component
         $this->validate([
             'hostname' => [
                 'required',
-                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) && substr_count($value, '.') >= 2 ? null : $fail('Tam bir ad girin, örneğin mail.ornek.com.tr.'),
-                fn ($attr, $value, $fail) => $value === Setting::get('panel.hostname') ? $fail('Bu ad panelin adresi; posta sunucusu için ayrı bir ad seçin, örneğin mail.'.preg_replace('/^[^.]+\./', '', $value).'.') : null,
-                fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail('Bu ad bir sitede kullanılıyor; posta sunucusu için ayrı bir ad seçin.') : null,
+                fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) && substr_count($value, '.') >= 2 ? null : $fail(__('Tam bir ad girin, örneğin mail.ornek.com.tr.')),
+                fn ($attr, $value, $fail) => $value === Setting::get('panel.hostname') ? $fail(__('Bu ad panelin adresi; posta sunucusu için ayrı bir ad seçin, örneğin mail.:value.', ['value' => preg_replace('/^[^.]+\./', '', $value)])) : null,
+                fn ($attr, $value, $fail) => $this->usedBySite($value) ? $fail(__('Bu ad bir sitede kullanılıyor; posta sunucusu için ayrı bir ad seçin.')) : null,
             ],
             'defaultQuota' => ['required', 'integer', Rule::in(array_keys(MailSettings::QUOTAS))],
             'hourlyLimit' => ['required', 'integer', 'min:0', 'max:100000'],
         ], [], [
-            'hostname' => 'posta sunucusunun adı',
-            'defaultQuota' => 'varsayılan kota',
-            'hourlyLimit' => 'saatlik gönderim sınırı',
+            'hostname' => __('posta sunucusunun adı'),
+            'defaultQuota' => __('varsayılan kota'),
+            'hourlyLimit' => __('saatlik gönderim sınırı'),
         ]);
 
         $previous = $this->current($settings);
@@ -77,7 +77,7 @@ class MailSettingsPage extends Component
         $applied = $this->applyToServer($settings, $previous);
 
         $this->dispatch('toast',
-            message: 'E-posta ayarları kaydedildi.'.($applied ? ' Posta sunucusu yeni ayarlarla yeniden yapılandırılıyor.' : ''),
+            message: $applied ? __('E-posta ayarları kaydedildi. Posta sunucusu yeni ayarlarla yeniden yapılandırılıyor.') : __('E-posta ayarları kaydedildi.'),
             source: $this->getId(),
             undo: ['method' => 'undoSave', 'args' => [$previous]],
         );
@@ -93,7 +93,7 @@ class MailSettingsPage extends Component
         $this->applyToServer($settings, $now);
         $this->mount($settings, $agent);
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     public function issueCertificate(MailSettings $settings, Certificates $certificates): void
@@ -103,7 +103,7 @@ class MailSettingsPage extends Component
             return;
         }
         $certificates->issueMail($hostname);
-        $this->dispatch('toast', message: 'Posta sunucusunun sertifikası alınıyor.');
+        $this->dispatch('toast', message: __('Posta sunucusunun sertifikası alınıyor.'));
     }
 
     public function render(MailSettings $settings): View

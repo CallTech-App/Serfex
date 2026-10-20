@@ -56,7 +56,7 @@ class SiteShow extends Component
     public function refreshStatus(): void
     {
         if ($this->site() === null) {
-            session()->flash('toast', 'Site silindi.');
+            session()->flash('toast', __('Site silindi.'));
             $this->redirectRoute('sites.index', navigate: true);
         }
     }
@@ -84,7 +84,7 @@ class SiteShow extends Component
             return;
         }
         if ($this->confirmDomain !== $site->domain) {
-            $this->addError('confirmDomain', 'Alan adını tam olarak yazın.');
+            $this->addError('confirmDomain', __('Alan adını tam olarak yazın.'));
 
             return;
         }

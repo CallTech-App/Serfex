@@ -103,12 +103,12 @@ class SitePhp extends Component
             'phpVersion' => ['required', Rule::in($this->versions)],
             'webServer' => ['required', Rule::in($stacks)],
         ], [
-            'webServer.in' => 'Apache kurulu değil.',
-        ], ['phpVersion' => 'PHP sürümü', 'webServer' => 'web sunucusu']);
+            'webServer.in' => __('Apache kurulu değil.'),
+        ], ['phpVersion' => __('PHP sürümü'), 'webServer' => __('web sunucusu')]);
 
         $app = $site->laravelApp;
         if ($app?->php_requirement && ! PhpConstraint::allows($app->php_requirement, $this->phpVersion)) {
-            $this->addError('phpVersion', "Laravel uygulaması PHP {$app->php_requirement} istiyor; PHP {$this->phpVersion} uymuyor.");
+            $this->addError('phpVersion', __('Laravel uygulaması PHP :php_requirement istiyor; PHP :php_version uymuyor.', ['php_requirement' => $app->php_requirement, 'php_version' => $this->phpVersion]));
 
             return;
         }
@@ -118,7 +118,7 @@ class SitePhp extends Component
         }
         $before = [$site->php_version, $site->web_server, $site->php_settings ?? []];
         if ($this->phpVersion === $before[0] && $this->webServer === $before[1] && $settings == $before[2]) {
-            $this->dispatch('toast', message: 'Değişiklik yok.');
+            $this->dispatch('toast', message: __('Değişiklik yok.'));
 
             return;
         }
@@ -126,7 +126,7 @@ class SitePhp extends Component
             return;
         }
         $this->dispatch('toast',
-            message: "{$site->domain} artık PHP {$site->php_version} ve {$site->stackLabel()} ile çalışıyor.",
+            message: __(':domain artık PHP :php_version ve :stack_label ile çalışıyor.', ['domain' => $site->domain, 'php_version' => $site->php_version, 'stack_label' => $site->stackLabel()]),
             source: $this->getId(),
             undo: ['method' => 'undo', 'args' => $before],
         );
@@ -149,7 +149,7 @@ class SitePhp extends Component
             $this->webServer = $web;
             $this->fillPhp($settings);
             $this->readServerValues();
-            $this->dispatch('toast', message: 'Önceki ayarlar geri yüklendi.');
+            $this->dispatch('toast', message: __('Önceki ayarlar geri yüklendi.'));
         }
     }
 
@@ -165,11 +165,11 @@ class SitePhp extends Component
         try {
             $agent->call('php.restart', ['domain' => $site->domain], 60);
         } catch (AgentException $e) {
-            $this->agentError = 'PHP-FPM yeniden başlatılamadı: '.self::agentMessage($e);
+            $this->agentError = __('PHP-FPM yeniden başlatılamadı: :value', ['value' => self::agentMessage($e)]);
 
             return;
         }
-        $this->dispatch('toast', message: "{$site->domain} için PHP-FPM yeniden başlatıldı.");
+        $this->dispatch('toast', message: __(':domain için PHP-FPM yeniden başlatıldı.', ['domain' => $site->domain]));
     }
 
     public function render(): View
@@ -186,7 +186,7 @@ class SitePhp extends Component
             'customerSite' => $site->customer() !== null,
             'memoryCap' => $site->customer()?->package?->max_php_memory_mb,
             'maxChildrenCap' => auth()->user()->is_admin ? 1000 : PhpVersions::CUSTOMER_MAX_CHILDREN,
-        ])->title('PHP ve Web Sunucusu · '.$site->domain.' · Servik');
+        ])->title(__('PHP ve Web Sunucusu · :domain · Servik', ['domain' => $site->domain]));
     }
 
     /**
@@ -207,7 +207,7 @@ class SitePhp extends Component
             $this->phpVersion = $before['php_version'];
             $this->webServer = $before['web_server'];
             $this->fillPhp($before['php_settings'] ?? []);
-            $this->agentError = 'Değişiklik uygulanamadı, site önceki ayarlarıyla çalışıyor: '.self::agentMessage($e);
+            $this->agentError = __('Değişiklik uygulanamadı, site önceki ayarlarıyla çalışıyor: :value', ['value' => self::agentMessage($e)]);
 
             return false;
         }
@@ -218,7 +218,7 @@ class SitePhp extends Component
             try {
                 $processes->apply($site->laravelApp);
             } catch (AgentException $e) {
-                $this->agentError = 'Site yeni PHP ile çalışıyor ama Laravel süreçleri güncellenemedi: '.self::agentMessage($e);
+                $this->agentError = __('Site yeni PHP ile çalışıyor ama Laravel süreçleri güncellenemedi: :value', ['value' => self::agentMessage($e)]);
             }
         }
 
@@ -250,14 +250,14 @@ class SitePhp extends Component
                 continue;
             }
             $error = match ($type) {
-                'size' => preg_match(PhpVersions::SIZE_PATTERN, $value) ? null : '128M, 1G ya da -1 gibi bir değer girin.',
-                'onoff' => in_array($value, ['On', 'Off'], true) ? null : 'On ya da Off seçin.',
-                default => preg_match('/^\d{1,7}$/', $value) ? null : 'Bir sayı girin.',
+                'size' => preg_match(PhpVersions::SIZE_PATTERN, $value) ? null : __('128M, 1G ya da -1 gibi bir değer girin.'),
+                'onoff' => in_array($value, ['On', 'Off'], true) ? null : __('On ya da Off seçin.'),
+                default => preg_match('/^\d{1,7}$/', $value) ? null : __('Bir sayı girin.'),
             };
             if ($error === null && $key === 'memory_limit' && $cap !== null) {
                 $mb = PhpVersions::megabytes($value);
                 if ($mb === null || $mb > $cap) {
-                    $error = "Paketiniz en fazla {$cap}M'ye izin veriyor.";
+                    $error = __('Paketiniz en fazla :capM\'ye izin veriyor.', ['cap' => $cap]);
                 }
             }
             if ($error !== null) {
@@ -270,19 +270,19 @@ class SitePhp extends Component
         $post = PhpVersions::megabytes($ini['post_max_size'] ?? $this->serverValues['post_max_size'] ?? null);
         $upload = PhpVersions::megabytes($ini['upload_max_filesize'] ?? $this->serverValues['upload_max_filesize'] ?? null);
         if ($post !== null && $upload !== null && $upload > $post && ! $this->getErrorBag()->has('ini.post_max_size')) {
-            $this->addError('ini.post_max_size', 'Form gönderimi sınırı, dosya yükleme sınırından küçük olamaz.');
+            $this->addError('ini.post_max_size', __('Form gönderimi sınırı, dosya yükleme sınırından küçük olamaz.'));
         }
         $custom = trim($this->custom);
         if ($custom !== '' && is_string($parsed = PhpVersions::parseCustom($custom, ! $admin && $customer !== null))) {
             $this->addError('custom', $parsed);
         }
         if (! array_key_exists($this->pm, PhpVersions::PM)) {
-            $this->addError('pm', 'Geçersiz seçim.');
+            $this->addError('pm', __('Geçersiz seçim.'));
         }
         foreach (['maxChildren' => [1, $childCap], 'maxRequests' => [0, 1000000], 'requestTimeout' => [0, 86400]] as $field => [$min, $max]) {
             $v = trim($this->{$field});
             if ($v !== '' && (! preg_match('/^\d{1,7}$/', $v) || (int) $v < $min || (int) $v > $max)) {
-                $this->addError($field, "{$min} ile {$max} arasında bir sayı girin.");
+                $this->addError($field, __(':min ile :max arasında bir sayı girin.', ['min' => $min, 'max' => $max]));
             }
         }
         if ($this->getErrorBag()->isNotEmpty()) {
@@ -349,7 +349,7 @@ class SitePhp extends Component
     private static function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.'
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
             : $e->reason;
     }
 }

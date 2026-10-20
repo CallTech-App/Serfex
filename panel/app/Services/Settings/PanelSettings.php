@@ -193,9 +193,9 @@ class PanelSettings
     public function portProblem(int $port): ?string
     {
         return match (true) {
-            $port < 1024 || $port > 65535 => 'Port 1024 ile 65535 arasında olmalı.',
-            in_array($port, self::RESERVED_PORTS, true) => $port.' sitelerin, Apache\'nin ya da DNS sunucusunun portu; başka bir port seçin.',
-            $port === $this->port() => 'Panel zaten bu portta.',
+            $port < 1024 || $port > 65535 => __('Port 1024 ile 65535 arasında olmalı.'),
+            in_array($port, self::RESERVED_PORTS, true) => __(':port sitelerin, Apache\'nin ya da DNS sunucusunun portu; başka bir port seçin.', ['port' => $port]),
+            $port === $this->port() => __('Panel zaten bu portta.'),
             default => null,
         };
     }

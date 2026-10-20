@@ -53,10 +53,10 @@ final class AuditLog
     {
         try {
             $user ??= auth()->user();
-            $actor = $user?->name ?? 'Sistem';
+            $actor = $user?->name ?? __('Sistem');
             $admin = Impersonation::administrator();
             if ($admin !== null && $user?->isCustomer()) {
-                $actor = $admin->name.' ('.$user->name.' olarak)';
+                $actor = __(':name (:name2 olarak)', ['name' => $admin->name, 'name2' => $user->name]);
             }
             $actor = $extra['actor'] ?? $actor;
 
@@ -190,7 +190,7 @@ final class AuditLog
             return;
         }
         if ($user->isReadOnly() || ! $entry->undoable() || ! ($entry->user_id === $user->id || $user->isFullAdmin())) {
-            session()->flash('toast', 'Bu işlem artık geri alınamıyor.');
+            session()->flash('toast', __('Bu işlem artık geri alınamıyor.'));
             $component->redirect(self::withoutUndo(), navigate: true);
 
             return;
@@ -201,7 +201,7 @@ final class AuditLog
         wrap($component)->{$method}(...$entry->undo['args'] ?? []);
         $entry->update(['undone_at' => now()]);
         $said = collect(array_slice(store($component)->get('dispatched', []), $before))
-            ->map(fn ($e) => $e->serialize())->firstWhere('name', 'toast')['params']['message'] ?? 'Geri alındı.';
+            ->map(fn ($e) => $e->serialize())->firstWhere('name', 'toast')['params']['message'] ?? __('Geri alındı.');
         self::record($said, $user, 'panel', ['section' => self::section($component), 'url' => self::withoutUndo(), 'component' => $component::class]);
         session()->flash('toast', $said);
         $component->redirect(self::withoutUndo(), navigate: true);

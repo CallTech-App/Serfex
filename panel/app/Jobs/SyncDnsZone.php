@@ -57,7 +57,7 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
             $zone->update([
                 'status' => ZoneStatus::Failed,
                 'last_error' => $e->getCode() === self::NOT_SET_UP
-                    ? 'DNS sunucusu henüz kurulmadı. Alan Adları ve DNS sayfasından kurun; bölge kurulumdan sonra otomatik yayınlanır.'
+                    ? __('DNS sunucusu henüz kurulmadı. Alan Adları ve DNS sayfasından kurun; bölge kurulumdan sonra otomatik yayınlanır.')
                     : $e->reason,
             ]);
 

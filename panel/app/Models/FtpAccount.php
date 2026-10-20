@@ -46,7 +46,7 @@ class FtpAccount extends Model
      */
     public function folderLabel(): string
     {
-        return $this->directory === '' ? 'Tüm site klasörü' : $this->directory.'/';
+        return $this->directory === '' ? __('Tüm site klasörü') : $this->directory.'/';
     }
 
     /**

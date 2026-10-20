@@ -93,7 +93,7 @@ class FileManager
     public static function message(AgentException $e): string
     {
         if ($e->getCode() !== self::ERROR) {
-            return $e->reason !== '' ? 'Sunucu işlemi tamamlayamadı: '.$e->reason : 'Sunucu ajanına ulaşılamıyor.';
+            return $e->reason !== '' ? __('Sunucu işlemi tamamlayamadı: :reason', ['reason' => $e->reason]) : __('Sunucu ajanına ulaşılamıyor.');
         }
         $parts = explode(': ', $e->reason, 3);
         $code = $parts[0];
@@ -101,22 +101,22 @@ class FileManager
         $name = $path !== '' ? '"'.basename($path).'"' : '';
 
         return match ($code) {
-            'exists' => trim(($name ?: 'Bu ad').' zaten var.'),
-            'not_found' => trim(($name ?: 'Dosya').' bulunamadı; başka biri silmiş ya da taşımış olabilir.'),
-            'not_dir' => trim($name.' bir klasör değil.'),
-            'is_dir' => trim($name.' bir klasör; dosya olarak açılamaz.'),
-            'outside' => 'Bu yol site klasörünün dışına çıkıyor; izin verilmez.',
-            'invalid_name' => 'Ad geçersiz: "/" içeremez, boş olamaz ve en fazla 255 bayt olabilir.',
-            'binary' => trim($name.' metin dosyası değil; düzenleyicide açılamaz. İndirebilirsiniz.'),
-            'too_big' => trim($name.' çok büyük.'),
-            'conflict' => 'Dosya siz düzenlerken değişti. Kaydetmeden önce yeniden açın.',
-            'denied' => 'İzin yok: site kullanıcısı bu dosyayı değiştiremiyor (sahibi başka bir kullanıcı olabilir).',
-            'archive' => 'Arşiv açılamadı: yalnızca zip, tar, tar.gz ve tar.bz2 desteklenir ve dosya bozuk olmamalı.',
-            'too_many' => 'Arşivde çok fazla dosya var.',
-            'into_itself' => 'Bir klasör kendi içine taşınamaz ya da kopyalanamaz.',
-            'no_space' => 'Diskte yer kalmadı.',
-            'invalid' => 'Geçersiz istek: '.($parts[count($parts) - 1] ?? ''),
-            default => 'İşlem tamamlanamadı: '.($parts[count($parts) - 1] ?? $e->reason),
+            'exists' => trim(__(':name zaten var.', ['name' => ($name ?: __('Bu ad'))])),
+            'not_found' => trim(__(':name bulunamadı; başka biri silmiş ya da taşımış olabilir.', ['name' => $name ?: __('Dosya')])),
+            'not_dir' => trim(__(':name bir klasör değil.', ['name' => $name])),
+            'is_dir' => trim(__(':name bir klasör; dosya olarak açılamaz.', ['name' => $name])),
+            'outside' => __('Bu yol site klasörünün dışına çıkıyor; izin verilmez.'),
+            'invalid_name' => __('Ad geçersiz: "/" içeremez, boş olamaz ve en fazla 255 bayt olabilir.'),
+            'binary' => trim(__(':name metin dosyası değil; düzenleyicide açılamaz. İndirebilirsiniz.', ['name' => $name])),
+            'too_big' => trim(__(':name çok büyük.', ['name' => $name])),
+            'conflict' => __('Dosya siz düzenlerken değişti. Kaydetmeden önce yeniden açın.'),
+            'denied' => __('İzin yok: site kullanıcısı bu dosyayı değiştiremiyor (sahibi başka bir kullanıcı olabilir).'),
+            'archive' => __('Arşiv açılamadı: yalnızca zip, tar, tar.gz ve tar.bz2 desteklenir ve dosya bozuk olmamalı.'),
+            'too_many' => __('Arşivde çok fazla dosya var.'),
+            'into_itself' => __('Bir klasör kendi içine taşınamaz ya da kopyalanamaz.'),
+            'no_space' => __('Diskte yer kalmadı.'),
+            'invalid' => __('Geçersiz istek: :parts', ['parts' => ($parts[count($parts) - 1] ?? '')]),
+            default => __('İşlem tamamlanamadı: :reason', ['reason' => ($parts[count($parts) - 1] ?? $e->reason)]),
         };
     }
 }

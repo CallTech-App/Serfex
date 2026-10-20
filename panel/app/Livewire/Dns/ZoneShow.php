@@ -69,7 +69,7 @@ class ZoneShow extends Component
     public function refreshStatus(): void
     {
         if ($this->zone() === null) {
-            session()->flash('toast', 'DNS bölgesi silindi.');
+            session()->flash('toast', __('DNS bölgesi silindi.'));
             $this->redirectRoute('dns.index', navigate: true);
         }
     }
@@ -119,7 +119,7 @@ class ZoneShow extends Component
             return;
         }
         if ($this->recordKey !== null && $record['name'] !== $this->originalName() && $this->isLastApexNs()) {
-            $this->addError('recordName', 'Alan adının en az bir NS kaydı kalmalı.');
+            $this->addError('recordName', __('Alan adının en az bir NS kaydı kalmalı.'));
 
             return;
         }
@@ -138,9 +138,11 @@ class ZoneShow extends Component
 
         $this->editingRecord = false;
         $name = DnsRecords::fqdn($record['name'], $zone->name);
-        $message = "{$record['type']} kaydı ".($key === null ? 'eklendi' : 'güncellendi').": {$name}";
+        $message = $key === null
+            ? __(':type kaydı eklendi: :name', ['type' => $record['type'], 'name' => $name])
+            : __(':type kaydı güncellendi: :name', ['type' => $record['type'], 'name' => $name]);
         if ($siblings->isNotEmpty()) {
-            $message .= '. Aynı ad ve türdeki '.$siblings->count().' kaydın TTL\'si de değişti.';
+            $message .= __('. Aynı ad ve türdeki :count kaydın TTL\'si de değişti.', ['count' => $siblings->count()]);
         }
         $this->dispatch('toast', message: $message, source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
@@ -153,14 +155,14 @@ class ZoneShow extends Component
         }
         $apexNs = $zone->records()->where('name', '@')->where('type', 'NS');
         if ((clone $apexNs)->whereKeyNot($this->selected)->doesntExist()) {
-            $this->dispatch('toast', message: 'Alan adının en az bir NS kaydı kalmalı; NS kayıtlarının hepsi silinemez.');
+            $this->dispatch('toast', message: __('Alan adının en az bir NS kaydı kalmalı; NS kayıtlarının hepsi silinemez.'));
 
             return;
         }
         $ids = $zone->records()->whereKey($this->selected)->pluck('id')->all();
         $token = $zones->change($zone, fn (DnsZone $zone) => $zone->records()->whereKey($ids)->delete());
         $this->selected = [];
-        $this->dispatch('toast', message: count($ids).' kayıt silindi.', source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $this->dispatch('toast', message: __(':ids kayıt silindi.', ['ids' => count($ids)]), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
     public function resetToTemplate(Zones $zones): void
@@ -172,7 +174,7 @@ class ZoneShow extends Component
         $token = $zones->reset($zone);
         $this->confirmingReset = false;
         $this->selected = [];
-        $this->dispatch('toast', message: 'DNS bölgesi şablon kayıtlarına döndü.', source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $this->dispatch('toast', message: __('DNS bölgesi şablon kayıtlarına döndü.'), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
     public function saveSettings(Zones $zones): void
@@ -190,12 +192,12 @@ class ZoneShow extends Component
             'expire' => ['required', 'integer', 'min:3600', 'max:4838400'],
             'minimum' => ['required', 'integer', 'min:60', 'max:86400'],
         ], [], [
-            'defaultTtl' => 'varsayılan TTL',
-            'hostmaster' => 'yönetici e-postası',
+            'defaultTtl' => __('varsayılan TTL'),
+            'hostmaster' => __('yönetici e-postası'),
             'refresh' => 'yenileme',
-            'retry' => 'yeniden deneme',
-            'expire' => 'sona erme',
-            'minimum' => 'negatif TTL',
+            'retry' => __('yeniden deneme'),
+            'expire' => __('sona erme'),
+            'minimum' => __('negatif TTL'),
         ]);
 
         $token = $zones->change($zone, fn (DnsZone $zone) => $zone->update([
@@ -206,18 +208,18 @@ class ZoneShow extends Component
             'expire' => $this->expire,
             'minimum' => $this->minimum,
         ]));
-        $this->dispatch('toast', message: 'DNS ayarları kaydedildi.', source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $this->dispatch('toast', message: __('DNS ayarları kaydedildi.'), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
     public function undo(string $token, Zones $zones): void
     {
         if ($zones->undo($token) === null) {
-            $this->dispatch('toast', message: 'Bu değişiklik artık geri alınamıyor.');
+            $this->dispatch('toast', message: __('Bu değişiklik artık geri alınamıyor.'));
 
             return;
         }
         $this->fillSettings();
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     public function export(): StreamedResponse

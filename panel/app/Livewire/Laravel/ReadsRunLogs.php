@@ -47,7 +47,7 @@ trait ReadsRunLogs
         try {
             $chunk = app(AgentClient::class)->call('laravel.run.read', ['domain' => $app->site->domain, 'run' => $run, 'offset' => max(0, $offset)]);
         } catch (AgentException $e) {
-            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => false, 'error' => 'Sunucu ajanına ulaşılamıyor.'];
+            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => false, 'error' => __('Sunucu ajanına ulaşılamıyor.')];
         }
         $next = (int) ($chunk['offset'] ?? 0);
 

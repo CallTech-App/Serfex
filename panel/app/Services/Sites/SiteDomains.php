@@ -52,16 +52,16 @@ class SiteDomains
     public function taken(string $name): ?string
     {
         if (Site::where('domain', $name)->exists()) {
-            return "{$name} zaten bir site.";
+            return __(':name zaten bir site.', ['name' => $name]);
         }
         if ($site = Site::whereJsonContains('aliases', $name)->first()) {
-            return "{$name} zaten {$site->domain} sitesinin ek alan adı.";
+            return __(':name zaten :domain sitesinin ek alan adı.', ['name' => $name, 'domain' => $site->domain]);
         }
         if ($sub = Subdomain::with('site')->where('name', $name)->first()) {
-            return "{$name} zaten {$sub->site->domain} sitesinin alt alan adı.";
+            return __(':name zaten :domain sitesinin alt alan adı.', ['name' => $name, 'domain' => $sub->site->domain]);
         }
         if ($redirect = $this->redirectFor($name)) {
-            return "{$name} zaten {$redirect->site->domain} sitesinde yönlendiriliyor.";
+            return __(':name zaten :domain sitesinde yönlendiriliyor.', ['name' => $name, 'domain' => $redirect->site->domain]);
         }
 
         return null;
@@ -95,7 +95,7 @@ class SiteDomains
     public function nameRefusal(Site $site, string $name, User $user): ?string
     {
         if (! Hostnames::isValidDomain($name)) {
-            return 'Geçerli bir alan adı girin, örneğin ornek.com.tr.';
+            return __('Geçerli bir alan adı girin, örneğin ornek.com.tr.');
         }
         if ($taken = $this->taken($name)) {
             return $taken;
@@ -109,7 +109,7 @@ class SiteDomains
             $customer = $user->customer;
             if (DnsZone::with('site.systemUser')->whereIn('name', $names)->get()
                 ->contains(fn (DnsZone $zone) => $zone->site === null || ! $customer->owns($zone->site))) {
-                return 'Bu alan adı ya da üst alan adı başka bir hesaba ait.';
+                return __('Bu alan adı ya da üst alan adı başka bir hesaba ait.');
             }
         }
 
@@ -272,7 +272,7 @@ class SiteDomains
         if (($saved['kind'] !== 'redirect' || $row['kind'] === SiteRedirect::DOMAIN) && ($taken = $this->taken($name))) {
             Cache::forget('site-domain-undo:'.$token);
 
-            return 'Geri alınamadı: '.$taken;
+            return __('Geri alınamadı: :taken', ['taken' => $taken]);
         }
         $this->change($site, fn () => match ($saved['kind']) {
             'subdomain' => $site->subdomains()->create($row),
@@ -284,7 +284,7 @@ class SiteDomains
             $this->zones->undo($dnsToken);
         }
 
-        return 'Geri alındı.';
+        return __('Geri alındı.');
     }
 
     /**
@@ -374,21 +374,21 @@ class SiteDomains
         $pointing = $this->pointing($name);
         if (! $pointing['ok']) {
             $here = implode(', ', $this->dns->serverAddresses()) ?: 'bilinmiyor';
-            $there = $pointing['found'] === [] ? 'hiçbir adrese çözülmüyor' : implode(', ', $pointing['found']).' adresine çözülüyor';
+            $there = $pointing['found'] === [] ? __('hiçbir adrese çözülmüyor') : __(':found adresine çözülüyor', ['found' => implode(', ', $pointing['found'])]);
 
-            return ['badge' => new Badge('DNS henüz işaret etmiyor', 'warn'), 'hint' => "Şu an {$there}; bu sunucu {$here}. HTTP ile açılır, sertifika DNS düzelince eklenir."];
+            return ['badge' => new Badge(__('DNS henüz işaret etmiyor'), 'warn'), 'hint' => __('Şu an :there; bu sunucu :here. HTTP ile açılır, sertifika DNS düzelince eklenir.', ['there' => $there, 'here' => $here])];
         }
         if ($certificate?->status === CertificateStatus::Issuing || $site->pendingCertificate()?->status === CertificateStatus::Issuing) {
-            return ['badge' => new Badge('Sertifika alınıyor', 'info', busy: true), 'hint' => 'Let\'s Encrypt sertifikası bu adla yenileniyor.'];
+            return ['badge' => new Badge(__('Sertifika alınıyor'), 'info', busy: true), 'hint' => __('Let\'s Encrypt sertifikası bu adla yenileniyor.')];
         }
         if ($certificate !== null && ! $certificate->isLetsEncrypt()) {
-            return ['badge' => new Badge('Sertifika kapsamıyor', 'warn'), 'hint' => 'Yüklenen sertifikada bu ad yok; HTTP ile açılır.'];
+            return ['badge' => new Badge(__('Sertifika kapsamıyor'), 'warn'), 'hint' => __('Yüklenen sertifikada bu ad yok; HTTP ile açılır.')];
         }
         if ($certificate?->isWildcard()) {
-            return ['badge' => new Badge('Sertifika kapsamıyor', 'warn'), 'hint' => 'Joker sertifika bu adı kapsamıyor; HTTP ile açılır.'];
+            return ['badge' => new Badge(__('Sertifika kapsamıyor'), 'warn'), 'hint' => __('Joker sertifika bu adı kapsamıyor; HTTP ile açılır.')];
         }
 
-        return ['badge' => new Badge('Yalnızca HTTP', 'muted'), 'hint' => 'Sertifikada henüz yok.'];
+        return ['badge' => new Badge(__('Yalnızca HTTP'), 'muted'), 'hint' => __('Sertifikada henüz yok.')];
     }
 
     /**
@@ -415,10 +415,10 @@ class SiteDomains
     public static function rootProblem(string $root): ?string
     {
         if ($root === '' || strlen($root) > 200 || ! preg_match('#^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*$#', $root)) {
-            return 'Site klasörüne göre bir yol yazın, örneğin public_html/blog. Nokta ya da / ile başlayamaz.';
+            return __('Site klasörüne göre bir yol yazın, örneğin public_html/blog. Nokta ya da / ile başlayamaz.');
         }
         if ($root === 'logs' || str_starts_with($root, 'logs/')) {
-            return 'Günlük klasörü belge kökü olamaz.';
+            return __('Günlük klasörü belge kökü olamaz.');
         }
 
         return null;

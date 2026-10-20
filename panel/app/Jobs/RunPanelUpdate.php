@@ -35,7 +35,7 @@ class RunPanelUpdate implements ShouldQueue
     {
         $update = $this->update->fresh();
         if ($update !== null && in_array($update->status, ['queued', 'backing_up'], true)) {
-            $update->update(['status' => 'failed', 'error' => $e?->getMessage() ?: 'Güncelleme başlatılamadı.', 'finished_at' => now()]);
+            $update->update(['status' => 'failed', 'error' => $e?->getMessage() ?: __('Güncelleme başlatılamadı.'), 'finished_at' => now()]);
         }
     }
 }

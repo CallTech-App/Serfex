@@ -2,21 +2,21 @@
     use App\Services\Updates\Updates;
     use App\Support\Badge;
     use Illuminate\Support\Carbon;
-    $when = fn ($d) => $d ? Carbon::parse($d)->timezone(config('servik.timezone'))->format('d.m.Y H:i') : '—';
+    $when = fn ($d) => $d ? \App\Support\When::dateTime(Carbon::parse($d)) : '—';
     $installed = (bool) ($status['installed'] ?? false);
     $version = $status['version'] ?? config('servik.version');
     $previous = ($status['previous'] ?? '') ?: null;
     $result = fn ($u) => match ($u->status) {
-        'succeeded' => new Badge($u->kind === 'rollback' ? 'Dönüldü' : 'Kuruldu', 'ok'),
-        'rolled_back' => new Badge('Geri alındı', 'warn'),
-        'failed' => new Badge('Başarısız', 'crit'),
-        default => new Badge('Sürüyor', 'info', true),
+        'succeeded' => new Badge($u->kind === 'rollback' ? __('Dönüldü') : __('Kuruldu'), 'ok'),
+        'rolled_back' => new Badge(__('Geri alındı'), 'warn'),
+        'failed' => new Badge(__('Başarısız'), 'crit'),
+        default => new Badge(__('Sürüyor'), 'info', true),
     };
-    $notes = fn (?string $md) => \App\Services\Ai\Transcript::markdown(trim((string) $md) ?: 'Bu sürüm için not yazılmamış.');
+    $notes = fn (?string $md) => \App\Services\Ai\Transcript::markdown(trim((string) $md) ?: __('Bu sürüm için not yazılmamış.'));
     $link = 'text-[13px] text-accent hover:underline disabled:opacity-40 disabled:no-underline';
 @endphp
-<x-settings-page current="settings.updates" title="Güncellemeler">
-    <x-slot:description>Servik panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar <a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">Yazılım Yönetimi</a>'nden güncellenir.</x-slot:description>
+<x-settings-page current="settings.updates" title="{{ __('Güncellemeler') }}">
+    <x-slot:description><x-t text="Servik panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar :link'nden güncellenir."><x-slot:link><a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></x-slot:description>
 
     @if ($agentError)
         <div class="rounded-xl border border-line bg-crit-soft px-5 py-4 text-[13.5px]">
@@ -27,7 +27,7 @@
         <div class="flex items-start gap-3 rounded-xl border border-line bg-warn-soft px-5 py-3 text-[13.5px]" role="alert">
             <x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />
             <p class="flex-1">{{ $refused }}</p>
-            <button type="button" wire:click="$set('refused', null)" class="text-muted hover:text-fg" aria-label="Kapat"><x-icon name="x" /></button>
+            <button type="button" wire:click="$set('refused', null)" class="text-muted hover:text-fg" aria-label="{{ __('Kapat') }}"><x-icon name="x" /></button>
         </div>
     @endif
     @if ($recent)
@@ -35,10 +35,10 @@
             <div class="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-ok-soft px-5 py-3 text-[13.5px]" role="status">
                 <x-icon name="circle-check" class="shrink-0 text-ok" />
                 <p class="flex-1">
-                    {{ $recent->kind === 'rollback' ? 'Servik '.$recent->to_version.' sürümüne dönüldü' : 'Servik '.$recent->to_version.' kuruldu' }}{{ $recent->duration() ? ' ('.$recent->duration().')' : '' }}.
+                    {{ $recent->kind === 'rollback' ? __('Servik :to_version sürümüne dönüldü', ['to_version' => $recent->to_version]) : __('Servik :to_version kuruldu', ['to_version' => $recent->to_version]) }}{{ $recent->duration() ? ' ('.$recent->duration().')' : '' }}.
                 </p>
                 @if ($recent->kind === 'upgrade' && $previous === $recent->from_version)
-                    <button type="button" wire:click="ask('rollback')" class="font-medium text-accent hover:underline">Geri al</button>
+                    <button type="button" wire:click="ask('rollback')" class="font-medium text-accent hover:underline">{{ __('Geri al') }}</button>
                 @endif
             </div>
         @else
@@ -46,9 +46,9 @@
                 <p class="flex items-center gap-3 font-medium">
                     <x-icon name="triangle-alert" class="shrink-0 text-warn" />
                     @if ($recent->status === 'rolled_back')
-                        Servik {{ $recent->to_version }} denetimden geçmedi; {{ $recent->from_version }} sürümüne otomatik dönüldü.
+                        {{ __('Servik :to_version denetimden geçmedi; :from_version sürümüne otomatik dönüldü.', ['to_version' => $recent->to_version, 'from_version' => $recent->from_version]) }}
                     @else
-                        {{ $recent->kind === 'rollback' ? 'Önceki sürüme dönülemedi.' : 'Servik '.$recent->to_version.' kurulamadı.' }}
+                        {{ $recent->kind === 'rollback' ? __('Önceki sürüme dönülemedi.') : __('Servik :to_version kurulamadı.', ['to_version' => $recent->to_version]) }}
                     @endif
                 </p>
                 @if ($recent->error)
@@ -63,18 +63,18 @@
         <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0 text-[13.5px]">
                 <p class="text-[15px] font-semibold">
-                    Servik <span class="font-mono">{{ $version }}</span> kurulu
+                    <x-t text="Servik :version kurulu"><x-slot:version><span class="font-mono">{{ $version }}</span></x-slot:version></x-t>
                     @if ($release)
-                        · <span class="font-mono text-accent">{{ $release['version'] }}</span> hazır
+                        <x-t text="· :version hazır"><x-slot:version><span class="font-mono text-accent">{{ $release['version'] }}</span></x-slot:version></x-t>
                     @elseif ($installed)
-                        · <span class="font-normal text-muted">güncel</span>
+                        · <span class="font-normal text-muted">{{ __('güncel') }}</span>
                     @endif
                 </p>
                 @if (! $installed && $status !== null)
-                    <p class="mt-1 max-w-2xl text-[13px] text-muted">Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu), bu yüzden Servik kendini burada güncelleyemez. Sunuculara Servik <span class="font-mono">install.sh</span> ile kurulur; güncellemeler o kurulumda bu sayfadan yapılır.</p>
+                    <p class="mt-1 max-w-2xl text-[13px] text-muted"><x-t text="Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu), bu yüzden Servik kendini burada güncelleyemez. Sunuculara Servik :part ile kurulur; güncellemeler o kurulumda bu sayfadan yapılır."><x-slot:part><span class="font-mono">install.sh</span></x-slot:part></x-t></p>
                 @elseif ($release)
                     <p class="mt-1 text-[13px] text-muted">
-                        {{ $release['published_at'] ? Carbon::parse($release['published_at'])->timezone(config('servik.timezone'))->format('d.m.Y') . ' yayımlandı · ' : '' }}{{ ($release['prerelease'] ?? false) ? 'beta sürüm · ' : '' }}panel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.
+                        {{ __(':published_at:prereleasepanel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.', ['published_at' => $release['published_at'] ? __(':published_at yayımlandı · ', ['published_at' => \App\Support\When::date(Carbon::parse($release['published_at']))]) : '', 'prerelease' => ($release['prerelease'] ?? false) ? __('beta sürüm · ') : '']) }}
                     </p>
                     @foreach ($releases as $r)
                         <div class="mt-3 max-w-2xl">
@@ -83,22 +83,22 @@
                             @endif
                             <div class="release-notes mt-1 text-[13px] leading-relaxed [&_a]:text-accent [&_a]:underline [&_code]:font-mono [&_code]:text-[12.5px] [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_li]:mt-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mt-1 [&_ul]:list-disc [&_ul]:pl-5">{!! $notes($r['notes'] ?? '') !!}</div>
                             @if ($r['url'] ?? null)
-                                <a href="{{ $r['url'] }}" target="_blank" rel="noopener noreferrer" class="mt-1 inline-block text-2xs text-muted hover:text-accent">Sürüm sayfası</a>
+                                <a href="{{ $r['url'] }}" target="_blank" rel="noopener noreferrer" class="mt-1 inline-block text-2xs text-muted hover:text-accent">{{ __('Sürüm sayfası') }}</a>
                             @endif
                         </div>
                     @endforeach
                 @elseif ($installed)
-                    <p class="mt-1 text-[13px] text-muted">{{ ($status['checked_at'] ?? null) ? 'Son denetimde yeni sürüm yoktu.' : 'Henüz denetlenmedi.' }}</p>
+                    <p class="mt-1 text-[13px] text-muted">{{ ($status['checked_at'] ?? null) ? __('Son denetimde yeni sürüm yoktu.') : __('Henüz denetlenmedi.') }}</p>
                 @endif
             </div>
             @if ($installed)
                 <div class="flex shrink-0 items-center gap-2">
                     @if ($release)
                         <button type="button" wire:click="ask('upgrade')" @disabled($blocked !== null) title="{{ $blocked }}" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
-                            <x-icon name="download" />Güncelle
+                            <x-icon name="download" />{{ __('Güncelle') }}
                         </button>
                     @else
-                        <span class="flex h-9 items-center gap-2 rounded-md border border-line px-3.5 text-[13.5px] text-muted"><x-icon name="check" />Güncel</span>
+                        <span class="flex h-9 items-center gap-2 rounded-md border border-line px-3.5 text-[13.5px] text-muted"><x-icon name="check" />{{ __('Güncel') }}</span>
                     @endif
                 </div>
             @endif
@@ -106,13 +106,13 @@
 
         @if ($running)
             @php
-                $title = $running->kind === 'rollback' ? 'Servik '.$running->to_version.' sürümüne dönülüyor' : 'Servik '.$running->to_version.' kuruluyor';
+                $title = $running->kind === 'rollback' ? __('Servik :to_version sürümüne dönülüyor', ['to_version' => $running->to_version]) : __('Servik :to_version kuruluyor', ['to_version' => $running->to_version]);
             @endphp
             <div wire:key="update-{{ $running->id }}" wire:ignore class="border-t border-line px-5 py-4 text-[13.5px]"
                  x-data="{
                     url: @js(route('settings.updates.progress', $running->run)),
                     offset: 0, status: @js($running->status), error: @js($running->error), agent: true, timer: null, final: false, log: '', rollback: false,
-                    steps: [{ text: 'Panel yedeği alınıyor', state: 'run' }],
+                    steps: [{ text: @js(__('Panel yedeği alınıyor')), state: 'run' }],
                     parse(text) {
                         for (const line of text.split('\n')) {
                             if (line === '') continue;
@@ -166,37 +166,37 @@
                         </li>
                     </template>
                     <li x-show="rollback && status === 'running'" x-cloak class="flex items-start gap-2.5 text-warn">
-                        <x-icon name="undo-2" class="mt-px size-4 shrink-0" /><span>Bir adım başarısız oldu; {{ $running->from_version }} sürümüne geri dönülüyor</span>
+                        <x-icon name="undo-2" class="mt-px size-4 shrink-0" /><span>{{ __('Bir adım başarısız oldu; :from_version sürümüne geri dönülüyor', ['from_version' => $running->from_version]) }}</span>
                     </li>
                 </ol>
-                <p x-show="! agent" x-cloak class="mt-3 flex items-center gap-2 text-[13px] text-muted"><x-icon name="loader-circle" class="size-4 animate-spin" />Panel yeniden başlatılıyor, bağlantı bekleniyor…</p>
+                <p x-show="! agent" x-cloak class="mt-3 flex items-center gap-2 text-[13px] text-muted"><x-icon name="loader-circle" class="size-4 animate-spin" />{{ __('Panel yeniden başlatılıyor, bağlantı bekleniyor…') }}</p>
                 <p x-show="status === 'failed' && error" x-cloak x-text="error" class="mt-3 rounded-lg bg-crit-soft p-3 font-mono text-[12.5px] break-words text-crit"></p>
                 <details class="mt-3 text-[13px]">
-                    <summary class="cursor-pointer text-muted hover:text-fg">Ayrıntılı günlük</summary>
+                    <summary class="cursor-pointer text-muted hover:text-fg">{{ __('Ayrıntılı günlük') }}</summary>
                     <pre x-ref="log" x-text="log" class="scroll-thin mt-2 h-56 overflow-auto rounded-md bg-[#0f1a1c] p-3 font-mono text-[12px] whitespace-pre-wrap text-[#d7e4e4]"></pre>
                 </details>
-                <p class="mt-3 text-2xs text-muted">Bu sayfayı kapatabilirsiniz; güncelleme sunucuda sürer. Panel geçiş sırasında kısa bir süre "Servik güncelleniyor" sayfasını gösterir.</p>
+                <p class="mt-3 text-2xs text-muted">{{ __('Bu sayfayı kapatabilirsiniz; güncelleme sunucuda sürer. Panel geçiş sırasında kısa bir süre "Servik güncelleniyor" sayfasını gösterir.') }}</p>
             </div>
         @endif
 
         @if ($installed)
             <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line px-5 py-3 text-[13px] text-muted">
                 @if ($release)
-                    <span class="flex items-center gap-1.5"><x-icon name="undo-2" class="size-4" />Önce panelin yedeği alınır; sorun çıkarsa otomatik olarak <span class="font-mono text-fg">{{ $version }}</span> sürümüne döner.</span>
+                    <span class="flex items-center gap-1.5"><x-icon name="undo-2" class="size-4" /><x-t text="Önce panelin yedeği alınır; sorun çıkarsa otomatik olarak :version sürümüne döner."><x-slot:version><span class="font-mono text-fg">{{ $version }}</span></x-slot:version></x-t></span>
                 @endif
                 <span class="num">
-                    Kanal: <span class="text-fg">{{ Updates::CHANNELS[$channel] ?? 'Kararlı' }}</span>
-                    · {{ ($status['checked_at'] ?? null) ? 'son denetim '.Carbon::parse($status['checked_at'])->diffForHumans() : 'henüz denetlenmedi' }}
+                    Kanal: <span class="text-fg">{{ Updates::CHANNELS[$channel] ?? __('Kararlı') }}</span>
+                    · {{ ($status['checked_at'] ?? null) ? __('son denetim :checked_at', ['checked_at' => Carbon::parse($status['checked_at'])->diffForHumans()]) : __('henüz denetlenmedi') }}
                 </span>
                 @if ($status['check_error'] ?? null)
-                    <span class="text-warn" title="{{ $status['check_error'] }}">Son denetim başarısız oldu</span>
+                    <span class="text-warn" title="{{ $status['check_error'] }}">{{ __('Son denetim başarısız oldu') }}</span>
                 @endif
                 <span class="ml-auto flex items-center gap-4">
                     @if ($previous)
-                        <button type="button" wire:click="ask('rollback')" @disabled($blocked !== null) class="{{ $link }}">Önceki sürüme dön ({{ $previous }})</button>
+                        <button type="button" wire:click="ask('rollback')" @disabled($blocked !== null) class="{{ $link }}">{{ __('Önceki sürüme dön (:previous)', ['previous' => $previous]) }}</button>
                     @endif
                     <button type="button" wire:click="check" wire:loading.attr="disabled" wire:target="check" @disabled($running !== null) class="flex items-center gap-1.5 {{ $link }}">
-                        <x-icon name="refresh-cw" class="size-4" wire:loading.class="animate-spin" wire:target="check" />Şimdi denetle
+                        <x-icon name="refresh-cw" class="size-4" wire:loading.class="animate-spin" wire:target="check" />{{ __('Şimdi denetle') }}
                     </button>
                 </span>
             </div>
@@ -206,7 +206,7 @@
     {{-- Geçmiş ve ilke --}}
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
-            @foreach (['gecmis' => 'Güncelleme geçmişi', 'ilke' => 'Güncelleme ilkesi'] as $key => $label)
+            @foreach (['gecmis' => __('Güncelleme geçmişi'), 'ilke' => __('Güncelleme ilkesi')] as $key => $label)
                 <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"
                         @class(['-mb-px h-12 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
                     {{ $label }}
@@ -219,10 +219,10 @@
                 <table class="w-full text-[13.5px]">
                     <thead>
                         <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                            <th class="py-2.5 pr-3 pl-5 font-medium">Sürüm</th>
-                            <th class="hidden px-3 py-2.5 font-medium sm:table-cell">Tarih</th>
-                            <th class="px-3 py-2.5 font-medium">Sonuç</th>
-                            <th class="hidden py-2.5 pr-5 pl-3 font-medium md:table-cell">Not</th>
+                            <th class="py-2.5 pr-3 pl-5 font-medium">{{ __('Sürüm') }}</th>
+                            <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('Tarih') }}</th>
+                            <th class="px-3 py-2.5 font-medium">{{ __('Sonuç') }}</th>
+                            <th class="hidden py-2.5 pr-5 pl-3 font-medium md:table-cell">{{ __('Not') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-line">
@@ -235,20 +235,20 @@
                                 <td class="num hidden px-3 py-3 whitespace-nowrap sm:table-cell">{{ $when($u->started_at ?? $u->created_at) }}</td>
                                 <td class="px-3 py-3"><x-status-badge :status="$result($u)" /></td>
                                 <td class="hidden max-w-md py-3 pr-5 pl-3 text-[13px] text-muted md:table-cell">
-                                    {{ collect([$u->kind === 'rollback' ? 'Önceki sürüme dönüş' : null, $u->user?->name, $u->duration()])->filter()->implode(' · ') }}
+                                    {{ collect([$u->kind === 'rollback' ? __('Önceki sürüme dönüş') : null, $u->user?->name, $u->duration()])->filter()->implode(' · ') }}
                                     @if ($u->error && $u->status !== 'succeeded')
                                         <span class="mt-0.5 block text-2xs break-words {{ $u->status === 'rolled_back' ? 'text-warn' : 'text-crit' }}">{{ \Illuminate\Support\Str::limit($u->error, 160) }}</span>
                                     @endif
                                     @if ($u->backup_id)
-                                        <a href="{{ route('backups.index') }}" wire:navigate class="mt-0.5 block text-2xs text-accent hover:underline">Önceki panel yedeği</a>
+                                        <a href="{{ route('backups.index') }}" wire:navigate class="mt-0.5 block text-2xs text-accent hover:underline">{{ __('Önceki panel yedeği') }}</a>
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="4" class="px-5 py-10 text-center">
-                                    <p class="font-medium">Henüz güncelleme yapılmadı</p>
-                                    <p class="mt-1 text-[13px] text-muted">Yeni bir sürüm çıktığında burada "Güncelle" ile kurulur.</p>
+                                    <p class="font-medium">{{ __('Henüz güncelleme yapılmadı') }}</p>
+                                    <p class="mt-1 text-[13px] text-muted">{{ __('Yeni bir sürüm çıktığında burada "Güncelle" ile kurulur.') }}</p>
                                 </td>
                             </tr>
                         @endforelse
@@ -259,46 +259,46 @@
             <form wire:submit="saveChannel" class="max-w-3xl px-5 py-2 text-[13.5px]">
                 <div class="divide-y divide-line">
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
-                        <label for="channel" class="sm:pt-2">Kanal</label>
+                        <label for="channel" class="sm:pt-2">{{ __('Kanal') }}</label>
                         <div>
                             <select id="channel" wire:model="channel" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 sm:w-60">
                                 @foreach (Updates::CHANNELS as $key => $label)
                                     <option value="{{ $key }}">{{ $label }}</option>
                                 @endforeach
                             </select>
-                            <p class="mt-1.5 text-2xs text-muted">Kararlı yalnızca yayımlanmış sürümleri, Beta deneme sürümlerini de getirir. Beta sürümler canlı sunucular için önerilmez.</p>
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Kararlı yalnızca yayımlanmış sürümleri, Beta deneme sürümlerini de getirir. Beta sürümler canlı sunucular için önerilmez.') }}</p>
                         </div>
                     </div>
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
-                        <span>Denetim</span>
-                        <p class="text-[13px] text-muted">Her gün 04:30'da yeni sürüm aranır; bulunursa Genel Bakış'ta ve menüde gösterilir. Güncellemeyi siz başlatırsınız, Servik kendiliğinden güncellenmez.</p>
+                        <span>{{ __('Denetim') }}</span>
+                        <p class="text-[13px] text-muted">{{ __('Her gün 04:30\'da yeni sürüm aranır; bulunursa Genel Bakış\'ta ve menüde gösterilir. Güncellemeyi siz başlatırsınız, Servik kendiliğinden güncellenmez.') }}</p>
                     </div>
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
-                        <span>Saklanan sürüm</span>
-                        <p class="text-[13px] text-muted">Bir önceki sürüm sunucuda kalır; "Önceki sürüme dön" onu birkaç saniyede geri getirir. Güncellemeden önce alınan panel yedekleri Yedekler'de {{ \App\Services\Backups\Backups::UPDATE_DAYS }} gün tutulur.</p>
+                        <span>{{ __('Saklanan sürüm') }}</span>
+                        <p class="text-[13px] text-muted">{{ __('Bir önceki sürüm sunucuda kalır; "Önceki sürüme dön" onu birkaç saniyede geri getirir. Güncellemeden önce alınan panel yedekleri Yedekler\'de :update_days gün tutulur.', ['update_days' => \App\Services\Backups\Backups::UPDATE_DAYS]) }}</p>
                     </div>
                 </div>
                 <div class="flex gap-2 border-t border-line py-4">
-                    <button type="submit" class="h-9 rounded-md bg-accent px-3.5 font-medium text-accent-fg hover:brightness-110">Kaydet</button>
+                    <button type="submit" class="h-9 rounded-md bg-accent px-3.5 font-medium text-accent-fg hover:brightness-110">{{ __('Kaydet') }}</button>
                 </div>
             </form>
         @endif
     </section>
 
     {{-- Onay --}}
-    <x-modal title="Onay" show="confirming" size="max-w-md">
+    <x-modal title="{{ __('Onay') }}" show="confirming" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             @if ($confirming === 'rollback')
-                <p class="font-semibold">Servik {{ $previous }} sürümüne dönülsün mü?</p>
-                <p class="mt-1 text-[13px] text-muted">Önce panelin yedeği alınır. {{ $version }} sürümünün veritabanı değişiklikleri geri alınır, ardından {{ $previous }} çalışır. Panel yaklaşık bir dakika bakımda kalır; siteler etkilenmez. Yeniden {{ $version }} sürümüne geçmek için Güncelle'ye basmanız yeter.</p>
+                <p class="font-semibold">{{ __('Servik :previous sürümüne dönülsün mü?', ['previous' => $previous]) }}</p>
+                <p class="mt-1 text-[13px] text-muted">{{ __('Önce panelin yedeği alınır. :version sürümünün veritabanı değişiklikleri geri alınır, ardından :previous çalışır. Panel yaklaşık bir dakika bakımda kalır; siteler etkilenmez. Yeniden :version sürümüne geçmek için Güncelle\'ye basmanız yeter.', ['version' => $version, 'previous' => $previous]) }}</p>
             @else
-                <p class="font-semibold">Servik {{ $release['version'] ?? '' }} sürümüne güncellensin mi?</p>
-                <p class="mt-1 text-[13px] text-muted">Önce panelin yedeği alınır. Panel yaklaşık bir dakika bakımda kalır; siteler, e-posta ve DNS çalışmaya devam eder. Yeni sürüm denetimden geçmezse {{ $version }} sürümüne otomatik dönülür.</p>
+                <p class="font-semibold">{{ __('Servik :version sürümüne güncellensin mi?', ['version' => $release['version'] ?? '']) }}</p>
+                <p class="mt-1 text-[13px] text-muted">{{ __('Önce panelin yedeği alınır. Panel yaklaşık bir dakika bakımda kalır; siteler, e-posta ve DNS çalışmaya devam eder. Yeni sürüm denetimden geçmezse :version sürümüne otomatik dönülür.', ['version' => $version]) }}</p>
             @endif
             <div class="mt-4 flex justify-end gap-2">
-                <button type="button" wire:click="$set('confirming', null)" class="h-9 rounded-md border border-line px-3.5 hover:bg-surface-2">Vazgeç</button>
+                <button type="button" wire:click="$set('confirming', null)" class="h-9 rounded-md border border-line px-3.5 hover:bg-surface-2">{{ __('Vazgeç') }}</button>
                 <button type="button" wire:click="confirm" wire:loading.attr="disabled" @class(['h-9 rounded-md px-3.5 font-medium disabled:opacity-40', 'bg-crit text-on-crit' => $confirming === 'rollback', 'bg-accent text-accent-fg hover:brightness-110' => $confirming !== 'rollback'])>
-                    {{ $confirming === 'rollback' ? 'Önceki sürüme dön' : 'Güncelle' }}
+                    {{ $confirming === 'rollback' ? __('Önceki sürüme dön') : __('Güncelle') }}
                 </button>
             </div>
         </div>

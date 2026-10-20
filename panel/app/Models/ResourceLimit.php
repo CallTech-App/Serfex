@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Num;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -60,13 +61,13 @@ class ResourceLimit extends Model
     {
         $parts = [];
         if ($this->cpu) {
-            $parts[] = 'CPU %'.$this->cpu;
+            $parts[] = 'CPU '.Num::percent($this->cpu);
         }
         if ($this->memory_mb) {
-            $parts[] = ($this->memory_mb >= 1024 && $this->memory_mb % 1024 === 0 ? ($this->memory_mb / 1024).' GB' : $this->memory_mb.' MB').' bellek';
+            $parts[] = __(':size bellek', ['size' => $this->memory_mb >= 1024 && $this->memory_mb % 1024 === 0 ? ($this->memory_mb / 1024).' GB' : $this->memory_mb.' MB']);
         }
         if ($this->php_workers) {
-            $parts[] = $this->php_workers.' PHP işçisi';
+            $parts[] = __(':php_workers PHP işçisi', ['php_workers' => $this->php_workers]);
         }
 
         return implode(' · ', $parts);

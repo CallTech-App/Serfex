@@ -23,7 +23,7 @@ class CheckServices extends Command
     {
         $error = null;
         if ($services->list($error) === null) {
-            $this->warn($error ?? 'Sunucu ajanına ulaşılamıyor.');
+            $this->warn($error ?? __('Sunucu ajanına ulaşılamıyor.'));
 
             return self::FAILURE;
         }
@@ -32,7 +32,7 @@ class CheckServices extends Command
             ApplySitePhp::forCustomers();
         }
         $n = count(SystemServices::problems());
-        $this->info($n === 0 ? 'Tüm hizmetler çalışıyor.' : "{$n} hizmet durmuş.");
+        $this->info($n === 0 ? __('Tüm hizmetler çalışıyor.') : __(':n hizmet durmuş.', ['n' => $n]));
 
         return self::SUCCESS;
     }

@@ -177,14 +177,14 @@ class BackupSettings
     {
         $s = $this->schedule();
         if (! $s['enabled']) {
-            return 'Otomatik yedekleme kapalı';
+            return __('Otomatik yedekleme kapalı');
         }
-        $day = mb_strtolower(self::WEEKDAYS[(int) $s['weekday']] ?? 'Pazar');
+        $day = mb_strtolower(__(self::WEEKDAYS[(int) $s['weekday']] ?? __('Pazar')));
 
         return match ($s['frequency']) {
-            'weekly' => 'Her '.$day.' '.$s['time'].($s['incremental'] ? ' (ayın ilki tam, diğerleri artımlı)' : ', tam'),
-            'monthly' => 'Her ayın 1\'i '.$s['time'].', tam',
-            default => 'Her gün '.$s['time'].($s['incremental'] ? ' ('.$day.' tam, diğer günler artımlı)' : ', tam'),
+            'weekly' => $s['incremental'] ? __('Her :day :time (ayın ilki tam, diğerleri artımlı)', ['day' => $day, 'time' => $s['time']]) : __('Her :day :time, tam', ['day' => $day, 'time' => $s['time']]),
+            'monthly' => __('Her ayın 1\'i :time, tam', ['time' => $s['time']]),
+            default => $s['incremental'] ? __('Her gün :time (:day tam, diğer günler artımlı)', ['day' => $day, 'time' => $s['time']]) : __('Her gün :time, tam', ['time' => $s['time']]),
         };
     }
 }

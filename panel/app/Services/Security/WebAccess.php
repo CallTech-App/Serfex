@@ -64,29 +64,29 @@ class WebAccess
     {
         $out = [];
         if ($path === '/' || ! self::validPath($path)) {
-            $out['path'] = 'Klasörü /yonetim/ gibi yazın; harf, rakam ve ._~%@+- içerebilir.';
+            $out['path'] = __('Klasörü /yonetim/ gibi yazın; harf, rakam ve ._~%@+- içerebilir.');
         } elseif (ProtectedDirectory::withTrashed()->where('site_id', $site->id)->where('path', $path)->whereKeyNot($dir?->id ?? 0)->exists()) {
-            $out['path'] = 'Bu klasör zaten korunuyor.';
+            $out['path'] = __('Bu klasör zaten korunuyor.');
         } elseif ($dir === null && ProtectedDirectory::where('site_id', $site->id)->count() >= self::MAX_PROTECTED) {
-            $out['path'] = 'Bir sitede en fazla '.self::MAX_PROTECTED.' korumalı klasör olabilir.';
+            $out['path'] = __('Bir sitede en fazla :max_protected korumalı klasör olabilir.', ['max_protected' => self::MAX_PROTECTED]);
         }
         if (! preg_match(self::REALM_PATTERN, $realm)) {
-            $out['realm'] = 'Başlık en fazla 60 karakter; harf, rakam, boşluk ve ._,:()- içerebilir.';
+            $out['realm'] = __('Başlık en fazla 60 karakter; harf, rakam, boşluk ve ._,:()- içerebilir.');
         }
         $names = array_map(fn ($l) => $l['name'], $logins);
         $old = $dir ? $dir->userNames() : [];
         if ($logins === [] || count($logins) > self::MAX_LOGINS) {
-            $out['logins'] = 'En az bir, en fazla '.self::MAX_LOGINS.' kullanıcı ekleyin.';
+            $out['logins'] = __('En az bir, en fazla :max_logins kullanıcı ekleyin.', ['max_logins' => self::MAX_LOGINS]);
         } elseif (count(array_unique($names)) !== count($names)) {
-            $out['logins'] = 'Aynı kullanıcı adı iki kez yazılmış.';
+            $out['logins'] = __('Aynı kullanıcı adı iki kez yazılmış.');
         } else {
             foreach ($logins as $l) {
                 if (! preg_match(self::LOGIN_PATTERN, $l['name'])) {
-                    $out['logins'] = "\"{$l['name']}\" geçerli bir kullanıcı adı değil (harf, rakam ve ._@-).";
+                    $out['logins'] = __('":name" geçerli bir kullanıcı adı değil (harf, rakam ve ._@-).', ['name' => $l['name']]);
                 } elseif ($l['password'] === '' && ! in_array($l['name'], $old, true)) {
-                    $out['logins'] = "{$l['name']} için bir parola yazın.";
+                    $out['logins'] = __(':name için bir parola yazın.', ['name' => $l['name']]);
                 } elseif ($l['password'] !== '' && (strlen($l['password']) < 8 || strlen($l['password']) > 128)) {
-                    $out['logins'] = 'Parolalar 8-128 karakter olmalı.';
+                    $out['logins'] = __('Parolalar 8-128 karakter olmalı.');
                 }
             }
         }

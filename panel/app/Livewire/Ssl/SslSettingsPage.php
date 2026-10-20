@@ -37,7 +37,7 @@ class SslSettingsPage extends Component
         Setting::put('ssl.email', $this->email ?: null);
         Setting::put('ssl.auto', $this->auto);
 
-        $this->dispatch('toast', message: 'SSL ayarları kaydedildi.', source: $this->getId(), undo: ['method' => 'undoSave', 'args' => [$previous]]);
+        $this->dispatch('toast', message: __('SSL ayarları kaydedildi.'), source: $this->getId(), undo: ['method' => 'undoSave', 'args' => [$previous]]);
     }
 
     /**
@@ -50,7 +50,7 @@ class SslSettingsPage extends Component
         Setting::put('ssl.auto', (bool) ($previous['ssl.auto'] ?? true));
         $this->mount();
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     public function render(): View

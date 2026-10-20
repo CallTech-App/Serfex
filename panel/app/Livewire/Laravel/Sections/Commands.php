@@ -71,7 +71,7 @@ class Commands extends Section
         $this->validate([
             'command' => ['required', 'max:4000'],
             'packageManager' => ['in:'.implode(',', LaravelApps::PACKAGE_MANAGERS)],
-        ], ['command.required' => 'Bir komut yazın.']);
+        ], ['command.required' => __('Bir komut yazın.')]);
         $line = $this->withoutPrefix($this->command);
         try {
             CommandLine::split($line);
@@ -82,7 +82,7 @@ class Commands extends Section
         }
         $app = $this->app();
         if ($app->commands()->where('tool', '!=', 'tinker')->whereIn('status', ['queued', 'running'])->count() >= 3) {
-            $this->addError('command', 'Aynı anda en fazla 3 komut çalışabilir; birinin bitmesini bekleyin.');
+            $this->addError('command', __('Aynı anda en fazla 3 komut çalışabilir; birinin bitmesini bekleyin.'));
 
             return;
         }
@@ -120,7 +120,7 @@ class Commands extends Section
         if ($session === null) {
             return;
         }
-        $this->validate(['code' => ['required', 'string', 'max:60000']], ['code.required' => 'Çalıştırılacak PHP kodunu yazın.']);
+        $this->validate(['code' => ['required', 'string', 'max:60000']], ['code.required' => __('Çalıştırılacak PHP kodunu yazın.')]);
         try {
             $state = app(AgentClient::class)->call('laravel.tinker.send', ['domain' => $this->app()->site->domain, 'session' => $session->run, 'code' => $this->code]);
         } catch (AgentException $e) {
@@ -130,7 +130,7 @@ class Commands extends Section
         }
         if (! ($state['running'] ?? false)) {
             $session->update(['status' => 'finished', 'finished_at' => now()]);
-            $this->addError('code', 'Oturum kapanmış; yeni bir oturum başlatın.');
+            $this->addError('code', __('Oturum kapanmış; yeni bir oturum başlatın.'));
 
             return;
         }
@@ -181,7 +181,7 @@ class Commands extends Section
             $saved[$this->tool][] = $command;
             $app->update(['saved_commands' => $saved]);
         }
-        $this->dispatch('toast', message: 'Komut kaydedildi.');
+        $this->dispatch('toast', message: __('Komut kaydedildi.'));
     }
 
     public function forget(string $command): void
@@ -191,7 +191,7 @@ class Commands extends Section
         $saved[$this->tool] = array_values(array_diff($saved[$this->tool], [$command]));
         $app->update(['saved_commands' => $saved]);
         $this->dispatch('toast',
-            message: 'Kayıtlı komut silindi.',
+            message: __('Kayıtlı komut silindi.'),
             source: $this->getId(),
             undo: ['method' => 'restoreSaved', 'args' => [$this->tool, $command]],
         );

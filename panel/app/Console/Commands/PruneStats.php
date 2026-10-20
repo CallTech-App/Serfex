@@ -17,7 +17,7 @@ class PruneStats extends Command
 {
     public function handle(StatsRetention $retention): int
     {
-        $this->info($retention->prune().' satır temizlendi.');
+        $this->info(__(':prune satır temizlendi.', ['prune' => $retention->prune()]));
 
         return self::SUCCESS;
     }

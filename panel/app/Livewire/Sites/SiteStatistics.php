@@ -63,6 +63,6 @@ class SiteStatistics extends Component
             'series' => $stats->series([$site->id], $this->period),
             'items' => $stats->items([$site->id], $this->period, $this->tab),
             'countriesReady' => SiteStats::countriesReady(),
-        ])->title('İstatistikler · '.$site->domain.' · Servik');
+        ])->title(__('İstatistikler · :domain · Servik', ['domain' => $site->domain]));
     }
 }

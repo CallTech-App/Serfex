@@ -100,10 +100,10 @@ class Notifications
         foreach ($certificates as $c) {
             $name = match ($c->kind) {
                 'panel' => 'Panel',
-                'mail' => 'Posta sunucusu',
+                'mail' => __('Posta sunucusu'),
                 default => $c->site?->domain ?? implode(', ', (array) $c->domains),
             };
-            $out['certificate:'.$c->id] = ['certificate', $name.' sertifikası: '.$c->state()->label(),
+            $out['certificate:'.$c->id] = ['certificate', __(':name sertifikası: :label', ['name' => $name, 'label' => $c->state()->label()]),
                 $c->renew_error ?? $c->last_error, $c->site ? route('sites.ssl', $c->site, false) : route('ssl.index', [], false)];
         }
         foreach (app(Backups::class)->problems() as $p) {
@@ -113,23 +113,23 @@ class Notifications
             $out['update:'.substr(sha1($n['text']), 0, 16)] = ['update', $n['text'], null, route('settings.updates', [], false)];
         }
         foreach ($this->disks() as $path => $ratio) {
-            $out['disk:'.$path] = ['disk', $path.' diski %'.(int) floor($ratio * 100).' dolu', 'Yer açın: eski yedekler, günlükler ve çöp kutuları.', route('backups.index', [], false)];
+            $out['disk:'.$path] = ['disk', __(':path diski %:ratio dolu', ['path' => $path, 'ratio' => (int) floor($ratio * 100)]), __('Yer açın: eski yedekler, günlükler ve çöp kutuları.'), route('backups.index', [], false)];
         }
         $quotas = app(Quotas::class);
         foreach (Customer::with('package')->get() as $customer) {
             $report = $quotas->report($customer);
             $disk = $report['disk'];
             if ($disk['level'] === 'crit') {
-                $out['disk:customer:'.$customer->id] = ['disk', $customer->displayName().' disk kotasını doldurdu ('.$disk['text'].')', null, route('customers.show', $customer, false)];
+                $out['disk:customer:'.$customer->id] = ['disk', __(':name disk kotasını doldurdu (:text)', ['name' => $customer->displayName(), 'text' => $disk['text']]), null, route('customers.show', $customer, false)];
             }
             $traffic = $report['traffic'];
             if ($traffic['level'] === 'crit') {
-                $out['traffic:customer:'.$customer->id] = ['traffic', $customer->displayName().' aylık trafik sınırını aştı ('.$traffic['text'].')',
-                    'Siteler çalışmaya devam ediyor; trafik ay başında sıfırlanır. Paketi yükseltmeyi düşünebilirsiniz.', route('customers.usage', ['customer' => $customer, 'sekme' => 'trafik'], false)];
+                $out['traffic:customer:'.$customer->id] = ['traffic', __(':name aylık trafik sınırını aştı (:text)', ['name' => $customer->displayName(), 'text' => $traffic['text']]),
+                    __('Siteler çalışmaya devam ediyor; trafik ay başında sıfırlanır. Paketi yükseltmeyi düşünebilirsiniz.'), route('customers.usage', ['customer' => $customer, 'sekme' => 'trafik'], false)];
             }
         }
         foreach (SystemServices::problems() as $s) {
-            $out['service:'.$s['unit']] = ['service', $s['name'].' çalışmıyor', null, route('services.show', $s['unit'], false)];
+            $out['service:'.$s['unit']] = ['service', __(':name çalışmıyor', ['name' => $s['name']]), null, route('services.show', $s['unit'], false)];
         }
 
         return $out;
@@ -205,8 +205,8 @@ class Notifications
     {
         $out = [];
         if ($this->recipients() !== []) {
-            $out['email'] = $this->mail->send($this->recipients(), 'Servik deneme bildirimi',
-                "Bu bir deneme bildirimidir. Servik'in bildirimleri bu adrese ulaşıyor.\n\n".$this->panelUrl()."\n");
+            $out['email'] = $this->mail->send($this->recipients(), __('Servik deneme bildirimi'),
+                __("Bu bir deneme bildirimidir. Servik'in bildirimleri bu adrese ulaşıyor.")."\n\n".$this->panelUrl()."\n");
         }
         if ($this->settings()['webhook_url'] !== '') {
             $out['webhook'] = $this->post(['event' => 'servik.test', 'problems' => [], 'resolved' => []]);
@@ -229,7 +229,7 @@ class Notifications
             $error = $this->mail->send($recipients, $this->subject($opened, $resolved), $this->body($opened, $resolved));
             $sent['email'] = $error === null;
             if ($error !== null) {
-                $errors[] = 'E-posta: '.$error;
+                $errors[] = __('E-posta: :error', ['error' => $error]);
             }
         }
         if ($settings['webhook_url'] !== '') {
@@ -267,7 +267,7 @@ class Notifications
             return Str::limit($e->getMessage(), 200);
         }
 
-        return $response->successful() ? null : 'adres HTTP '.$response->status().' yanıtı verdi';
+        return $response->successful() ? null : __('adres HTTP :status yanıtı verdi', ['status' => $response->status()]);
     }
 
     /**
@@ -278,10 +278,10 @@ class Notifications
     {
         $name = $this->serverName();
         if ($opened === []) {
-            return '[Servik] '.$name.': '.(count($resolved) === 1 ? 'düzeldi: '.$resolved[0]->title : count($resolved).' sorun düzeldi');
+            return '[Servik] '.$name.': '.(count($resolved) === 1 ? __('düzeldi: :title', ['title' => $resolved[0]->title]) : __(':resolved sorun düzeldi', ['resolved' => count($resolved)]));
         }
 
-        return '[Servik] '.$name.': '.(count($opened) === 1 ? $opened[0]->title : count($opened).' sorun');
+        return '[Servik] '.$name.': '.(count($opened) === 1 ? $opened[0]->title : __(':opened sorun', ['opened' => count($opened)]));
     }
 
     /**
@@ -292,7 +292,7 @@ class Notifications
     {
         $lines = [];
         if ($opened !== []) {
-            $lines[] = 'İlgilenmeniz gerekenler:';
+            $lines[] = __('İlgilenmeniz gerekenler:');
             foreach ($opened as $e) {
                 $lines[] = '';
                 $lines[] = '- '.$e->kindName().': '.$e->title;
@@ -306,13 +306,13 @@ class Notifications
         }
         if ($resolved !== []) {
             $lines[] = '';
-            $lines[] = 'Düzelenler:';
+            $lines[] = __('Düzelenler:');
             foreach ($resolved as $e) {
                 $lines[] = '- '.$e->kindName().': '.$e->title;
             }
         }
         $lines[] = '';
-        $lines[] = 'Bildirimleri Araçlar ve Ayarlar → Bildirimler\'den değiştirebilirsiniz: '.$this->panelUrl().route('settings.notifications', [], false);
+        $lines[] = __('Bildirimleri Araçlar ve Ayarlar → Bildirimler\'den değiştirebilirsiniz: :panel_url:value', ['panel_url' => $this->panelUrl(), 'value' => route('settings.notifications', [], false)]);
 
         return implode("\n", $lines);
     }

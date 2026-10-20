@@ -23,7 +23,7 @@ class Scheduler extends Section
         $app->update(['scheduler' => ! $app->scheduler]);
         $apps->syncProcesses($app);
         $this->dispatch('toast',
-            message: $app->scheduler ? 'Zamanlayıcı açılıyor.' : 'Zamanlayıcı kapatılıyor.',
+            message: $app->scheduler ? __('Zamanlayıcı açılıyor.') : __('Zamanlayıcı kapatılıyor.'),
             source: $this->getId(),
             undo: ['method' => 'toggle', 'args' => []],
         );

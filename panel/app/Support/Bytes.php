@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Sizes for people: "820 MB", "1,2 GB" (Turkish decimal comma).
+ * Sizes for people: "820 MB", "1,2 GB" in Turkish, "1.2 GB" in English.
  */
 final class Bytes
 {
@@ -18,6 +18,6 @@ final class Bytes
         }
         $decimals = $i >= 3 && $value < 100 && round($value, 1) !== round($value) ? 1 : 0;
 
-        return number_format($value, $decimals, ',', '.').' '.$units[$i];
+        return Num::format($value, $decimals).' '.$units[$i];
     }
 }

@@ -27,13 +27,13 @@ class AgentException extends RuntimeException
     public function forPeople(): string
     {
         if ($this instanceof AgentUnavailableException) {
-            return 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.';
+            return __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.');
         }
         if ($this->getCode() === self::CONFIG_REJECTED) {
             $server = str_starts_with($this->reason, 'apache') ? 'Apache' : 'Nginx';
             $output = preg_replace('/^\w+ rejected the configuration: /', '', $this->reason);
 
-            return "{$server} yapılandırmayı kabul etmedi, hiçbir şey değişmedi: {$output}";
+            return __(':server yapılandırmayı kabul etmedi, hiçbir şey değişmedi: :output', ['server' => $server, 'output' => $output]);
         }
 
         return $this->reason;

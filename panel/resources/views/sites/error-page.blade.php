@@ -18,7 +18,7 @@ a{color:#0d7479}
 <p class="code">{{ $code }}</p>
 <h1>{{ $title }}</h1>
 <p>{{ $text }}</p>
-<p><a href="/">{{ $domain }} ana sayfasına dönün</a></p>
+<p><a href="/">{{ __(':domain ana sayfasına dönün', ['domain' => $domain]) }}</a></p>
 <p class="en">{{ $english }}</p>
 </main>
 </html>

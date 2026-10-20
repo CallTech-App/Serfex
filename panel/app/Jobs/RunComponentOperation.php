@@ -64,7 +64,7 @@ class RunComponentOperation implements ShouldQueue
 
     public function failed(?\Throwable $e): void
     {
-        $this->operation->fresh()?->update(['status' => 'failed', 'error' => $e?->getMessage() ?: 'İşlem yarıda kaldı.', 'finished_at' => now()]);
+        $this->operation->fresh()?->update(['status' => 'failed', 'error' => $e?->getMessage() ?: __('İşlem yarıda kaldı.'), 'finished_at' => now()]);
     }
 
     /**

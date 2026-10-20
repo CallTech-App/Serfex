@@ -184,7 +184,7 @@ class SiteFiles extends Component
     {
         $name = trim($this->newName);
         if ($name === '' || str_contains($name, '/')) {
-            $this->addError('newName', 'Bir ad yazın; "/" kullanılamaz.');
+            $this->addError('newName', __('Bir ad yazın; "/" kullanılamaz.'));
 
             return;
         }
@@ -194,7 +194,7 @@ class SiteFiles extends Component
             return;
         }
         $this->newKind = '';
-        $this->undoToast(($folder ? 'Klasör' : 'Dosya').' oluşturuldu: '.$name, 'remove', [[$res['path']]]);
+        $this->undoToast(($folder ? __('Klasör oluşturuldu: :name', ['name' => $name]) : __('Dosya oluşturuldu: :name', ['name' => $name])), 'remove', [[$res['path']]]);
     }
 
     /**
@@ -206,7 +206,7 @@ class SiteFiles extends Component
     public function remove(array $paths): void
     {
         if ($this->run('delete', ['paths' => array_values($paths)]) !== null) {
-            $this->dispatch('toast', message: 'Geri alındı.');
+            $this->dispatch('toast', message: __('Geri alındı.'));
         }
     }
 
@@ -223,7 +223,7 @@ class SiteFiles extends Component
     {
         $name = trim($this->renameName);
         if ($name === '' || str_contains($name, '/')) {
-            $this->addError('renameName', 'Bir ad yazın; "/" kullanılamaz.');
+            $this->addError('renameName', __('Bir ad yazın; "/" kullanılamaz.'));
 
             return;
         }
@@ -235,14 +235,14 @@ class SiteFiles extends Component
         $this->renamePath = null;
         $this->selected = [];
         if (($res['path'] ?? $from) !== $from) {
-            $this->undoToast('Adı değiştirildi: '.$name, 'undoRename', [$res['path'], basename($from)]);
+            $this->undoToast(__('Adı değiştirildi: :name', ['name' => $name]), 'undoRename', [$res['path'], basename($from)]);
         }
     }
 
     public function undoRename(string $path, string $name): void
     {
         if ($this->run('rename', ['path' => $path, 'name' => $name]) !== null) {
-            $this->dispatch('toast', message: 'Geri alındı.');
+            $this->dispatch('toast', message: __('Geri alındı.'));
         }
     }
 
@@ -264,7 +264,7 @@ class SiteFiles extends Component
         $ids = $res['ids'] ?? [];
         $count = count($ids);
         $this->unselectTargets();
-        $this->undoToast(($count === 1 ? '1 öğe' : $count.' öğe').' çöp kutusuna taşındı.', 'restoreTrash', [$ids]);
+        $this->undoToast(trans_choice(':count öğe çöp kutusuna taşındı.', $count), 'restoreTrash', [$ids]);
     }
 
     /**
@@ -275,7 +275,7 @@ class SiteFiles extends Component
         $res = $this->run('trash.restore', ['ids' => array_values($ids)]);
         if ($res !== null) {
             $restored = $res['restored'] ?? [];
-            $this->dispatch('toast', message: count($restored) === 1 ? 'Geri yüklendi: '.$restored[0]['path'] : count($restored).' öğe geri yüklendi.');
+            $this->dispatch('toast', message: count($restored) === 1 ? __('Geri yüklendi: :path', ['path' => $restored[0]['path']]) : __(':restored öğe geri yüklendi.', ['restored' => count($restored)]));
         }
     }
 
@@ -284,7 +284,7 @@ class SiteFiles extends Component
         $this->emptyTrashOpen = false;
         $res = $this->run('trash.delete', ['ids' => []]);
         if ($res !== null) {
-            $this->dispatch('toast', message: 'Çöp kutusu boşaltıldı.');
+            $this->dispatch('toast', message: __('Çöp kutusu boşaltıldı.'));
         }
     }
 
@@ -317,10 +317,10 @@ class SiteFiles extends Component
         $this->selected = [];
         if ($kind === 'move') {
             $moved = $res['moved'] ?? [];
-            $this->undoToast(count($moved).' öğe taşındı: /'.$to, 'undoMove', [$moved]);
+            $this->undoToast(__(':moved öğe taşındı: /:to', ['moved' => count($moved), 'to' => $to]), 'undoMove', [$moved]);
         } else {
             $copied = $res['copied'] ?? [];
-            $this->undoToast(count($copied).' öğe kopyalandı: /'.$to, 'remove', [$copied]);
+            $this->undoToast(__(':copied öğe kopyalandı: /:to', ['copied' => count($copied), 'to' => $to]), 'remove', [$copied]);
         }
     }
 
@@ -335,7 +335,7 @@ class SiteFiles extends Component
                 return;
             }
         }
-        $this->dispatch('toast', message: 'Geri alındı.');
+        $this->dispatch('toast', message: __('Geri alındı.'));
     }
 
     // --- Permissions ---
@@ -358,7 +358,7 @@ class SiteFiles extends Component
     {
         foreach (['permMode', 'dirMode', 'fileMode'] as $field) {
             if (($field === 'permMode' || $this->recursive) && ! preg_match('/^[0-7]{3}$/', $this->{$field})) {
-                $this->addError($field, 'Üç rakam yazın, örneğin 644.');
+                $this->addError($field, __('Üç rakam yazın, örneğin 644.'));
 
                 return;
             }
@@ -370,9 +370,9 @@ class SiteFiles extends Component
         $this->permOpen = false;
         $this->unselectTargets();
         if ($this->recursive) {
-            $this->dispatch('toast', message: 'İzinler değiştirildi ('.($res['changed'] ?? 0).' öğe).');
+            $this->dispatch('toast', message: trans_choice('İzinler değiştirildi (:count öğe).', (int) ($res['changed'] ?? 0)));
         } else {
-            $this->undoToast('İzinler '.$this->permMode.' yapıldı.', 'undoChmod', [$res['before'] ?? []]);
+            $this->undoToast(__('İzinler :perm_mode yapıldı.', ['perm_mode' => $this->permMode]), 'undoChmod', [$res['before'] ?? []]);
         }
     }
 
@@ -392,7 +392,7 @@ class SiteFiles extends Component
                 return;
             }
         }
-        $this->dispatch('toast', message: 'Geri alındı.');
+        $this->dispatch('toast', message: __('Geri alındı.'));
     }
 
     // --- Archives ---
@@ -413,7 +413,7 @@ class SiteFiles extends Component
     {
         $name = trim($this->archiveName);
         if ($name === '' || str_contains($name, '/')) {
-            $this->addError('archiveName', 'Bir ad yazın; "/" kullanılamaz.');
+            $this->addError('archiveName', __('Bir ad yazın; "/" kullanılamaz.'));
 
             return;
         }
@@ -423,7 +423,7 @@ class SiteFiles extends Component
         }
         $this->compressOpen = false;
         $this->selected = [];
-        $this->undoToast('Arşiv oluşturuldu: '.basename($res['path']), 'remove', [[$res['path']]]);
+        $this->undoToast(__('Arşiv oluşturuldu: :path', ['path' => basename($res['path'])]), 'remove', [[$res['path']]]);
     }
 
     public function openExtract(string $path): void
@@ -442,7 +442,7 @@ class SiteFiles extends Component
             return;
         }
         $this->extractPath = null;
-        $this->dispatch('toast', message: ($res['entries'] ?? 0).' öğe çıkarıldı'.($this->extractOverwrite ? '; üzerine yazılan dosyalar çöp kutusunda.' : '.'));
+        $this->dispatch('toast', message: $this->extractOverwrite ? trans_choice(':count öğe çıkarıldı; üzerine yazılan dosyalar çöp kutusunda.', (int) ($res['entries'] ?? 0)) : trans_choice(':count öğe çıkarıldı.', (int) ($res['entries'] ?? 0)));
     }
 
     // --- Uploads and the editor (called by the page's script) ---
@@ -460,7 +460,7 @@ class SiteFiles extends Component
         if ($count === 0) {
             return;
         }
-        $this->undoToast(($count === 1 ? basename($paths[0]) : $count.' dosya').' yüklendi.', 'undoUpload', [$paths, $replaced]);
+        $this->undoToast($count === 1 ? __(':name yüklendi.', ['name' => basename($paths[0])]) : trans_choice(':count dosya yüklendi.', $count), 'undoUpload', [$paths, $replaced]);
         // Uploads are checked for web shells at once; the full scan runs weekly.
         $findings = app(Scans::class)->scanUploads($this->site(), array_values(array_slice($paths, 0, 200)));
         $this->flagged = $findings === [] ? null : array_values(array_unique(array_map(fn ($f) => $f->path, $findings)));
@@ -478,17 +478,17 @@ class SiteFiles extends Component
         if ($replaced !== [] && $this->run('trash.restore', ['ids' => array_values($replaced)]) === null) {
             return;
         }
-        $this->dispatch('toast', message: 'Geri alındı.');
+        $this->dispatch('toast', message: __('Geri alındı.'));
     }
 
     public function saved(string $path, string $trash): void
     {
         if ($trash === '') {
-            $this->dispatch('toast', message: basename($path).' kaydedildi.');
+            $this->dispatch('toast', message: __(':path kaydedildi.', ['path' => basename($path)]));
 
             return;
         }
-        $this->undoToast(basename($path).' kaydedildi.', 'restoreTrash', [[$trash]]);
+        $this->undoToast(__(':path kaydedildi.', ['path' => basename($path)]), 'restoreTrash', [[$trash]]);
     }
 
     public function render(): View
@@ -530,6 +530,6 @@ class SiteFiles extends Component
             'disk' => $disk,
             'ftpCount' => FtpAccount::where('site_id', $site->id)->count(),
             'date' => fn (int $t) => Date::createFromTimestamp($t)->timezone(config('servik.timezone'))->format('d.m.Y H:i'),
-        ])->title('Dosya Yöneticisi · '.$site->domain.' · Servik');
+        ])->title(__('Dosya Yöneticisi · :domain · Servik', ['domain' => $site->domain]));
     }
 }

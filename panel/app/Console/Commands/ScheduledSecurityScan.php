@@ -26,11 +26,11 @@ class ScheduledSecurityScan extends Command
         if ($this->option('now')) {
             $scans->run($scan->fresh());
             $scan->refresh();
-            $this->info("Tarama bitti: {$scan->files} dosya, ".$scan->findings()->count().' bulgu.');
+            $this->info(__('Tarama bitti: :files dosya, :count bulgu.', ['files' => $scan->files, 'count' => $scan->findings()->count()]));
 
             return $scan->status === 'failed' ? self::FAILURE : self::SUCCESS;
         }
-        $this->info('Tarama kuyruğa alındı.');
+        $this->info(__('Tarama kuyruğa alındı.'));
 
         return self::SUCCESS;
     }

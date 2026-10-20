@@ -29,12 +29,12 @@ class SiteLogs
     public static function kinds(Site $site): array
     {
         $kinds = [
-            'access' => ['Erişim', 'access.log'],
-            'error' => ['Web sunucusu hataları', 'error.log'],
-            'php' => ['PHP hataları', 'php-error.log'],
+            'access' => [__('Erişim'), 'access.log'],
+            'error' => [__('Web sunucusu hataları'), 'error.log'],
+            'php' => [__('PHP hataları'), 'php-error.log'],
         ];
         if ($site->web_server === Site::APACHE) {
-            $kinds['apache'] = ['Apache hataları', 'apache-error.log'];
+            $kinds['apache'] = [__('Apache hataları'), 'apache-error.log'];
         }
 
         return $kinds;

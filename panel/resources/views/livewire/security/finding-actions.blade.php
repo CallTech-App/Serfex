@@ -7,13 +7,13 @@
         @endif
     @endforeach
     @if ($f->isServer() && $f->settingsLink())
-        <a href="{{ $f->settingsLink() }}" wire:navigate class="text-[13px] text-accent hover:underline whitespace-nowrap">Ayara git</a>
+        <a href="{{ $f->settingsLink() }}" wire:navigate class="text-[13px] text-accent hover:underline whitespace-nowrap">{{ __('Ayara git') }}</a>
     @endif
     @if (! $f->isServer())
-        <button type="button" wire:click="ignoreFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">Yok say</button>
+        <button type="button" wire:click="ignoreFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">{{ __('Yok say') }}</button>
     @endif
 @elseif ($f->status === 'fixed')
-    <button type="button" wire:click="undoFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">Geri al</button>
+    <button type="button" wire:click="undoFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">{{ __('Geri al') }}</button>
 @elseif ($f->status === 'ignored')
-    <button type="button" wire:click="reopenFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">Yeniden aç</button>
+    <button type="button" wire:click="reopenFinding({{ $f->id }})" class="text-[13px] text-muted hover:text-fg">{{ __('Yeniden aç') }}</button>
 @endif

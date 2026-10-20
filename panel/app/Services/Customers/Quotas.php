@@ -150,17 +150,17 @@ class Quotas
             return null;
         }
         if ($customer->isSuspended()) {
-            return 'Hesap askıya alınmış; yeni bir şey oluşturulamaz.';
+            return __('Hesap askıya alınmış; yeni bir şey oluşturulamaz.');
         }
         $report = $this->report($customer);
         if (isset(self::KINDS[$kind])) {
             $limit = $report[$kind]['limit'];
             if ($limit !== null && $report[$kind]['used'] >= $limit) {
-                return 'Paketin '.self::KINDS[$kind].' ulaşıldı ('.$report[$kind]['text'].'). Paketi yükseltin ya da kullanılmayanları silin.';
+                return __('Paketin :kinds ulaşıldı (:text). Paketi yükseltin ya da kullanılmayanları silin.', ['kinds' => self::KINDS[$kind], 'text' => $report[$kind]['text']]);
             }
         }
         if ($report['disk']['level'] === 'crit' && ! in_array($kind, self::DISKLESS, true)) {
-            return 'Disk kotası doldu ('.$report['disk']['text'].'). Yer açın ya da paketi yükseltin.';
+            return __('Disk kotası doldu (:text). Yer açın ya da paketi yükseltin.', ['text' => $report['disk']['text']]);
         }
 
         return null;
@@ -172,9 +172,9 @@ class Quotas
     public function text(string $key, ?int $used, ?int $limit): string
     {
         $bytes = in_array($key, ['disk', 'traffic'], true);
-        $fmt = fn (int $n) => $bytes ? Bytes::format($n) : number_format($n, 0, ',', '.');
+        $fmt = fn (int $n) => $bytes ? Bytes::format($n) : \App\Support\Num::format($n, 0);
 
-        return ($used === null ? '—' : $fmt($used)).' / '.($limit === null ? 'Sınırsız' : $fmt($limit));
+        return ($used === null ? '—' : $fmt($used)).' / '.($limit === null ? __('Sınırsız') : $fmt($limit));
     }
 
     /**

@@ -61,7 +61,7 @@ class Previews
     {
         $by ??= $source === 'manual' ? $user?->name : self::trigger($source);
         if ($app->isPreview() || ! $app->isManaged() || $app->repository === null) {
-            throw new RuntimeException('Önizleme ortamı yalnızca Git deposundan dağıtılan uygulamalarda açılabilir.');
+            throw new RuntimeException(__('Önizleme ortamı yalnızca Git deposundan dağıtılan uygulamalarda açılabilir.'));
         }
         $name = self::nameFor($branch, $pr);
         $existing = $app->previews()->where('name', $name)->first();
@@ -81,13 +81,13 @@ class Previews
         }
         $domain = $name.'.'.$app->site->domain;
         if (! Hostnames::isValidDomain($domain) || strlen($domain) > 200) {
-            throw new RuntimeException("{$domain} geçerli bir alan adı değil; daha kısa bir dal adı seçin.");
+            throw new RuntimeException(__(':domain geçerli bir alan adı değil; daha kısa bir dal adı seçin.', ['domain' => $domain]));
         }
         if (Site::where('domain', $domain)->exists()) {
-            throw new RuntimeException("{$domain} zaten bir site; önizleme için başka bir ad gerekir.");
+            throw new RuntimeException(__(':domain zaten bir site; önizleme için başka bir ad gerekir.', ['domain' => $domain]));
         }
         if ($app->previews()->where('status', '!=', 'deleting')->count() >= $app->preview_limit) {
-            throw new RuntimeException("En fazla {$app->preview_limit} önizleme ortamı açılabilir; önce birini silin.");
+            throw new RuntimeException(__('En fazla :preview_limit önizleme ortamı açılabilir; önce birini silin.', ['preview_limit' => $app->preview_limit]));
         }
         $preview = $app->previews()->create([
             'name' => $name,

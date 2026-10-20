@@ -183,7 +183,7 @@ class SiteDomainList extends Component
         $name = $this->subdomainName($site);
         $label = Hostnames::normalize($this->label);
         if ($label === '' || str_contains($label, '/') || ! Hostnames::isValidDomain($name)) {
-            $this->addError('label', 'Harf, rakam ve tire kullanın; örneğin blog ya da api.v2.');
+            $this->addError('label', __('Harf, rakam ve tire kullanın; örneğin blog ya da api.v2.'));
 
             return;
         }
@@ -206,13 +206,13 @@ class SiteDomainList extends Component
         try {
             $subdomain = $domains->addSubdomain($site, $name, $root);
         } catch (AgentException $e) {
-            $this->addError('label', 'Sunucu alt alan adını ekleyemedi: '.$e->forPeople());
+            $this->addError('label', __('Sunucu alt alan adını ekleyemedi: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         Quotas::forget();
         $this->adding = null;
-        $this->dispatch('toast', message: "{$name} eklendi.", source: $this->getId(), undo: ['method' => 'undoAdd', 'args' => ['subdomain', $subdomain->id]]);
+        $this->dispatch('toast', message: __(':name eklendi.', ['name' => $name]), source: $this->getId(), undo: ['method' => 'undoAdd', 'args' => ['subdomain', $subdomain->id]]);
     }
 
     public function saveAlias(SiteDomains $domains): void
@@ -233,13 +233,13 @@ class SiteDomainList extends Component
         try {
             $domains->addAlias($site, $name, $this->createZone && auth()->user()->allows('dns'));
         } catch (AgentException $e) {
-            $this->addError('aliasName', 'Sunucu ek alan adını ekleyemedi: '.$e->forPeople());
+            $this->addError('aliasName', __('Sunucu ek alan adını ekleyemedi: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         Quotas::forget();
         $this->adding = null;
-        $this->dispatch('toast', message: "{$name} artık {$site->domain} sitesini açıyor.", source: $this->getId(), undo: ['method' => 'undoAdd', 'args' => ['alias', $name]]);
+        $this->dispatch('toast', message: __(':name artık :domain sitesini açıyor.', ['name' => $name, 'domain' => $site->domain]), source: $this->getId(), undo: ['method' => 'undoAdd', 'args' => ['alias', $name]]);
     }
 
     public function saveRedirect(SiteDomains $domains): void
@@ -248,7 +248,7 @@ class SiteDomainList extends Component
         $this->resetValidation();
         $this->target = trim($this->target);
         if (! isset(SiteRedirect::CODES[$this->code])) {
-            $this->addError('code', 'Listeden bir tür seçin.');
+            $this->addError('code', __('Listeden bir tür seçin.'));
         }
         $targetProblem = self::targetProblem($this->target, $this->redirectKind, $this->keepPath);
         if ($targetProblem) {
@@ -264,12 +264,12 @@ class SiteDomainList extends Component
             try {
                 $before = $domains->updateRedirect($site, $redirect, $values);
             } catch (AgentException $e) {
-                $this->addError('target', 'Sunucu yönlendirmeyi kaydedemedi: '.$e->forPeople());
+                $this->addError('target', __('Sunucu yönlendirmeyi kaydedemedi: :for_people', ['for_people' => $e->forPeople()]));
 
                 return;
             }
             $this->adding = null;
-            $this->dispatch('toast', message: 'Yönlendirme kaydedildi.', source: $this->getId(), undo: ['method' => 'undoEditRedirect', 'args' => [$redirect->id, $before]]);
+            $this->dispatch('toast', message: __('Yönlendirme kaydedildi.'), source: $this->getId(), undo: ['method' => 'undoEditRedirect', 'args' => [$redirect->id, $before]]);
 
             return;
         }
@@ -286,14 +286,14 @@ class SiteDomainList extends Component
                 $this->addError('source', $problem);
             }
             if (! $this->getErrorBag()->has('target') && $this->target !== '' && parse_url($this->target, PHP_URL_HOST) === $source) {
-                $this->addError('target', 'Hedef, yönlendirilen alan adının kendisi olamaz.');
+                $this->addError('target', __('Hedef, yönlendirilen alan adının kendisi olamaz.'));
             }
         } else {
             $source = '/'.trim(trim($this->source), '/');
             if ($problem = self::pathProblem($source)) {
                 $this->addError('source', $problem);
             } elseif ($site->redirects->where('kind', SiteRedirect::PATH)->contains('source', $source)) {
-                $this->addError('source', 'Bu yol için zaten bir yönlendirme var.');
+                $this->addError('source', __('Bu yol için zaten bir yönlendirme var.'));
             }
         }
         if ($this->getErrorBag()->isNotEmpty()) {
@@ -312,13 +312,13 @@ class SiteDomainList extends Component
                 ...$values,
             ], $this->createZone && auth()->user()->allows('dns'));
         } catch (AgentException $e) {
-            $this->addError('target', 'Sunucu yönlendirmeyi ekleyemedi: '.$e->forPeople());
+            $this->addError('target', __('Sunucu yönlendirmeyi ekleyemedi: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         Quotas::forget();
         $this->adding = null;
-        $this->dispatch('toast', message: 'Yönlendirme eklendi.', source: $this->getId(), undo: ['method' => 'undoAdd', 'args' => ['redirect', $redirect->id]]);
+        $this->dispatch('toast', message: __('Yönlendirme eklendi.'), source: $this->getId(), undo: ['method' => 'undoAdd', 'args' => ['redirect', $redirect->id]]);
     }
 
     /**
@@ -327,23 +327,23 @@ class SiteDomainList extends Component
     public static function targetProblem(string $target, string $kind, bool $keepPath): ?string
     {
         if ($target === '') {
-            return 'Hedef adresi yazın.';
+            return __('Hedef adresi yazın.');
         }
         if (strlen($target) > 2000 || preg_match('/[\s"\'\\\\$;{}`<>^|]/', $target)) {
-            return 'Hedefte boşluk, tırnak ya da $ ; { } gibi karakterler olamaz.';
+            return __('Hedefte boşluk, tırnak ya da $ ; { } gibi karakterler olamaz.');
         }
         $relative = str_starts_with($target, '/') && ! str_starts_with($target, '//');
         if ($relative && $kind === SiteRedirect::DOMAIN) {
-            return 'Alan adı yönlendirmesi için tam adres yazın, örneğin https://ornek.com.';
+            return __('Alan adı yönlendirmesi için tam adres yazın, örneğin https://ornek.com.');
         }
         if (! $relative) {
             $parts = parse_url($target);
             if ($parts === false || ! in_array($parts['scheme'] ?? '', ['http', 'https'], true) || empty($parts['host']) || isset($parts['user'])) {
-                return 'https:// ile başlayan bir adres ya da /yeni-sayfa gibi bir yol yazın.';
+                return __('https:// ile başlayan bir adres ya da /yeni-sayfa gibi bir yol yazın.');
             }
         }
         if ($keepPath && (str_contains($target, '?') || str_contains($target, '#'))) {
-            return 'Yolu koruyan yönlendirmenin hedefinde ? ya da # olamaz.';
+            return __('Yolu koruyan yönlendirmenin hedefinde ? ya da # olamaz.');
         }
 
         return null;
@@ -355,13 +355,13 @@ class SiteDomainList extends Component
     public static function pathProblem(string $path): ?string
     {
         if ($path === '/') {
-            return 'Sitenin tamamını yönlendirmek için alan adı yönlendirmesi ekleyin.';
+            return __('Sitenin tamamını yönlendirmek için alan adı yönlendirmesi ekleyin.');
         }
         if (strlen($path) > 200 || ! preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $path) || preg_match('#/\.\.?(/|$)#', $path)) {
-            return 'Yol /eski-sayfa gibi olmalı; harf, rakam, nokta, tire ve alt çizgi kullanın.';
+            return __('Yol /eski-sayfa gibi olmalı; harf, rakam, nokta, tire ve alt çizgi kullanın.');
         }
         if (str_starts_with($path, '/.well-known')) {
-            return 'Bu yol sertifika doğrulaması için ayrılmış.';
+            return __('Bu yol sertifika doğrulaması için ayrılmış.');
         }
 
         return null;
@@ -384,12 +384,12 @@ class SiteDomainList extends Component
         try {
             $domains->remove($site, $kind, $kind === 'alias' ? (string) $key : (int) $key);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Geri alınamadı: '.$e->forPeople());
+            $this->dispatch('toast', message: __('Geri alınamadı: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         Quotas::forget();
-        $this->dispatch('toast', message: 'Eklenen ad geri alındı.');
+        $this->dispatch('toast', message: __('Eklenen ad geri alındı.'));
     }
 
     /**
@@ -406,11 +406,11 @@ class SiteDomainList extends Component
         try {
             $domains->updateRedirect($site, $redirect, $values);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Geri alınamadı: '.$e->forPeople());
+            $this->dispatch('toast', message: __('Geri alınamadı: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
-        $this->dispatch('toast', message: 'Yönlendirmedeki değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Yönlendirmedeki değişiklik geri alındı.'));
     }
 
     public function confirmRemove(string $kind, string|int $key): void
@@ -439,15 +439,15 @@ class SiteDomainList extends Component
         try {
             $token = $domains->remove($site, $kind, $kind === 'alias' ? (string) $key : (int) $key);
         } catch (AgentException $e) {
-            $this->dispatch('toast', message: 'Sunucu değişikliği uygulayamadı: '.$e->forPeople());
+            $this->dispatch('toast', message: __('Sunucu değişikliği uygulayamadı: :for_people', ['for_people' => $e->forPeople()]));
 
             return;
         }
         Quotas::forget();
         $this->dispatch('toast', message: match ($kind) {
-            'subdomain' => "{$label} kaldırıldı; klasörü ve dosyaları duruyor.",
-            'alias' => "{$label} artık bu siteyi açmıyor.",
-            default => "{$label} yönlendirmesi kaldırıldı.",
+            'subdomain' => __(':label kaldırıldı; klasörü ve dosyaları duruyor.', ['label' => $label]),
+            'alias' => __(':label artık bu siteyi açmıyor.', ['label' => $label]),
+            default => __(':label yönlendirmesi kaldırıldı.', ['label' => $label]),
         }, source: $this->getId(), undo: ['method' => 'undoRemove', 'args' => [$token]]);
     }
 
@@ -456,7 +456,7 @@ class SiteDomainList extends Component
         try {
             $message = $domains->undo($this->site(), $token);
         } catch (AgentException $e) {
-            $message = 'Geri alınamadı: '.$e->forPeople();
+            $message = __('Geri alınamadı: :for_people', ['for_people' => $e->forPeople()]);
         }
         Quotas::forget();
         if ($message !== null) {
@@ -468,8 +468,8 @@ class SiteDomainList extends Component
     {
         $site = $this->site();
         $this->dispatch('toast', message: $domains->extendCertificate($site)
-            ? 'Sertifika yeni adlarla yeniden alınıyor.'
-            : 'Sertifikaya eklenebilecek ad yok: eksik adların DNS\'i henüz bu sunucuya işaret etmiyor.');
+            ? __('Sertifika yeni adlarla yeniden alınıyor.')
+            : __('Sertifikaya eklenebilecek ad yok: eksik adların DNS\'i henüz bu sunucuya işaret etmiyor.'));
     }
 
     public function render(SiteDomains $domains, Zones $zones, Quotas $quotas): View

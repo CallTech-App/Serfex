@@ -71,7 +71,7 @@ final class CommandLine
             $inArg = true;
         }
         if ($quote !== null) {
-            throw new InvalidArgumentException('Kapanmamış tırnak var.');
+            throw new InvalidArgumentException(__('Kapanmamış tırnak var.'));
         }
         if ($inArg) {
             $args[] = $current;

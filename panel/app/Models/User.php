@@ -104,7 +104,7 @@ class User extends Authenticatable
 
     public function roleName(): string
     {
-        return self::ROLES[$this->adminRole()][0] ?? ($this->isCustomer() ? 'Müşteri' : 'Laravel ekibi');
+        return self::ROLES[$this->adminRole()][0] ?? ($this->isCustomer() ? __('Müşteri') : __('Laravel ekibi'));
     }
 
     /**

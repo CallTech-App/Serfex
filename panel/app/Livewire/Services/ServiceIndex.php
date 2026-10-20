@@ -124,16 +124,16 @@ class ServiceIndex extends Component
         $functions = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\s,]+/', strtolower($this->disabledFunctions)) ?: []))));
         $this->validate([
             'defaultVersion' => ['required', Rule::in($installed)],
-        ], [], ['defaultVersion' => 'varsayılan PHP sürümü']);
+        ], [], ['defaultVersion' => __('varsayılan PHP sürümü')]);
         foreach ($functions as $f) {
             if (! preg_match('/^[a-z_][a-z0-9_]{0,63}$/', $f)) {
-                $this->addError('disabledFunctions', "\"{$f}\" bir PHP fonksiyon adı değil.");
+                $this->addError('disabledFunctions', __('":f" bir PHP fonksiyon adı değil.', ['f' => $f]));
 
                 return;
             }
         }
         if (count($functions) > 100) {
-            $this->addError('disabledFunctions', 'En fazla 100 fonksiyon kapatılabilir.');
+            $this->addError('disabledFunctions', __('En fazla 100 fonksiyon kapatılabilir.'));
 
             return;
         }
@@ -146,7 +146,7 @@ class ServiceIndex extends Component
             ApplySitePhp::forCustomers();
         }
         $this->dispatch('toast',
-            message: 'Yeni siteler PHP '.$this->defaultVersion.' ile açılacak.'.($changed ? ' Müşteri sitelerinin kapalı fonksiyonları güncelleniyor.' : ''),
+            message: __('Yeni siteler PHP :version ile açılacak.', ['version' => $this->defaultVersion]).($changed ? ' '.__('Müşteri sitelerinin kapalı fonksiyonları güncelleniyor.') : ''),
             source: $this->getId(),
             undo: ['method' => 'undoDefaults', 'args' => [(string) $before[0], $before[1]]],
         );
@@ -167,7 +167,7 @@ class ServiceIndex extends Component
             ApplySitePhp::forCustomers();
         }
         $this->disabledFunctions = implode(', ', $functions);
-        $this->dispatch('toast', message: 'Önceki ayarlar geri yüklendi.');
+        $this->dispatch('toast', message: __('Önceki ayarlar geri yüklendi.'));
     }
 
     public function render(SystemServices $services, PhpVersions $php, Components $components): View
@@ -187,7 +187,7 @@ class ServiceIndex extends Component
         return view('livewire.services.index', [
             'groups' => $groups ?? [],
             'phpRows' => $phpRows ?? [],
-            'agentError' => $failed ? ($error ? 'Sunucu ajanı hata verdi: '.$error : 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.') : null,
+            'agentError' => $failed ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null,
             'busy' => ComponentOperation::running()->exists(),
             'operation' => $operation,
             'operationName' => $operation ? $components->operationName($operation) : null,
@@ -218,12 +218,12 @@ class ServiceIndex extends Component
         }
         $name = $result['name'] ?? $unit;
         $message = match ($action) {
-            'start' => "{$name} başlatıldı.",
-            'stop' => "{$name} durduruldu.",
-            default => "{$name} yeniden başlatıldı.",
+            'start' => __(':name başlatıldı.', ['name' => $name]),
+            'stop' => __(':name durduruldu.', ['name' => $name]),
+            default => __(':name yeniden başlatıldı.', ['name' => $name]),
         };
         if (in_array($action, ['start', 'restart'], true) && ($result['state'] ?? '') !== 'active') {
-            $this->refused = "{$name} çalışmıyor; ayrıntılar için günlüğüne bakın.";
+            $this->refused = __(':name çalışmıyor; ayrıntılar için günlüğüne bakın.', ['name' => $name]);
         }
         $undo = $offerUndo ? ['start' => 'stop', 'stop' => 'start'][$action] ?? null : null;
         $this->dispatch('toast',
@@ -247,9 +247,9 @@ class ServiceIndex extends Component
             $sites = Site::where('php_version', $version)->count();
 
             return match ($ask['action']) {
-                'install' => ['title' => "{$name} kurulsun mu?", 'text' => 'PHP-FPM, komut satırı ve yaygın eklentiler kurulur; Ubuntu\'da olmayan sürümler ondrej/php deposundan gelir. Servik\'in php.ini varsayılanları yazılır. Bir adım başarısız olursa yapılanlar geri alınır.', 'button' => 'Kur', 'danger' => false],
-                'update' => ['title' => "{$name} güncellensin mi?", 'text' => 'Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır'.($sites ? "; bu sürümü kullanan {$sites} site birkaç saniye yanıt vermeyebilir." : '.'), 'button' => 'Güncelle', 'danger' => false],
-                default => ['title' => "{$name} kaldırılsın mı?", 'text' => 'Paketler kaldırılır; yapılandırma önce /var/lib/servik/backups/components altına yedeklenir.', 'button' => 'Kaldır', 'danger' => true],
+                'install' => ['title' => __(':name kurulsun mu?', ['name' => $name]), 'text' => __('PHP-FPM, komut satırı ve yaygın eklentiler kurulur; Ubuntu\'da olmayan sürümler ondrej/php deposundan gelir. Servik\'in php.ini varsayılanları yazılır. Bir adım başarısız olursa yapılanlar geri alınır.'), 'button' => __('Kur'), 'danger' => false],
+                'update' => ['title' => __(':name güncellensin mi?', ['name' => $name]), 'text' => $sites ? __('Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır; bu sürümü kullanan :sites site birkaç saniye yanıt vermeyebilir.', ['sites' => $sites]) : __('Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır.'), 'button' => __('Güncelle'), 'danger' => false],
+                default => ['title' => __(':name kaldırılsın mı?', ['name' => $name]), 'text' => __('Paketler kaldırılır; yapılandırma önce /var/lib/servik/backups/components altına yedeklenir.'), 'button' => __('Kaldır'), 'danger' => true],
             };
         }
 

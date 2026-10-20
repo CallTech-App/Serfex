@@ -21,7 +21,7 @@ class RollupStats extends Command
     {
         $hours = $history->rollup();
         $folded = $retention->fold(now(config('servik.timezone'))->subDay()->toDateString(), 200, 1000);
-        $this->info("{$hours} saat eklendi, {$folded} satır birleştirildi.");
+        $this->info(__(':hours saat eklendi, :folded satır birleştirildi.', ['hours' => $hours, 'folded' => $folded]));
 
         return self::SUCCESS;
     }

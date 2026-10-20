@@ -26,7 +26,7 @@ class CheckServikUpdates extends Command
             return self::FAILURE;
         }
         $release = $updates->available($status);
-        $this->info($release ? 'Servik '.$release['version'].' hazır.' : 'Servik güncel.');
+        $this->info($release ? __('Servik :version hazır.', ['version' => $release['version']]) : __('Servik güncel.'));
 
         return self::SUCCESS;
     }

@@ -87,9 +87,9 @@ class SystemServices
     public static function protectedReason(string $unit): string
     {
         return match ($unit) {
-            'ssh' => 'Sunucuya bağlanmanın yolu; durdurulursa sunucuya SSH ile giremezsiniz.',
-            'servik-agent' => 'Panel sunucuyu onunla yönetir; durdurulamaz.',
-            default => 'Panel onsuz çalışmaz; durdurulamaz.',
+            'ssh' => __('Sunucuya bağlanmanın yolu; durdurulursa sunucuya SSH ile giremezsiniz.'),
+            'servik-agent' => __('Panel sunucuyu onunla yönetir; durdurulamaz.'),
+            default => __('Panel onsuz çalışmaz; durdurulamaz.'),
         };
     }
 
@@ -175,11 +175,11 @@ class SystemServices
     public static function badge(array $s): Badge
     {
         return match ($s['state'] ?? '') {
-            'active', 'reloading' => new Badge('Çalışıyor', 'ok'),
-            'activating' => new Badge('Başlıyor', 'info', true),
+            'active', 'reloading' => new Badge(__('Çalışıyor'), 'ok'),
+            'activating' => new Badge(__('Başlıyor'), 'info', true),
             'deactivating' => new Badge('Duruyor', 'info', true),
-            'failed' => new Badge('Hata verdi', 'crit'),
-            default => self::isProblem($s) ? new Badge('Durdu', 'crit') : new Badge('Kapalı', 'muted'),
+            'failed' => new Badge(__('Hata verdi'), 'crit'),
+            default => self::isProblem($s) ? new Badge(__('Durdu'), 'crit') : new Badge(__('Kapalı'), 'muted'),
         };
     }
 
@@ -209,20 +209,20 @@ class SystemServices
      */
     public function affects(string $unit): ?string
     {
-        $sites = fn (int $n) => $n === 1 ? '1 site' : "{$n} site";
+        $sites = fn (int $n) => $n === 1 ? __('1 site') : __(':n site', ['n' => $n]);
         $text = match (true) {
-            $unit === 'nginx' => ($n = Site::count()) ? 'Tüm siteler ('.$sites($n).') yanıt vermez.' : null,
-            $unit === 'apache2' => ($n = Site::where('web_server', Site::APACHE)->count()) ? 'Apache arkasındaki '.$sites($n).' yanıt vermez.' : null,
-            (bool) preg_match('/^php(\d\.\d)-fpm$/', $unit, $m) => ($n = Site::where('php_version', $m[1])->count()) ? "PHP {$m[1]} kullanan ".$sites($n).' PHP sayfası açamaz.' : null,
-            in_array($unit, ['mysql', 'mariadb'], true) => ($n = Database::where('server', DatabaseServers::MYSQL)->count()) ? "{$n} veritabanına bağlanılamaz." : null,
-            str_starts_with($unit, 'postgresql@') && str_ends_with($unit, '-main') => ($n = Database::where('server', DatabaseServers::POSTGRESQL)->count()) ? "{$n} PostgreSQL veritabanına bağlanılamaz." : null,
-            $unit === 'pdns@servik' => ($n = DnsZone::count()) ? "{$n} alan adının DNS kayıtları yanıtlanmaz." : null,
-            in_array($unit, ['postfix', 'dovecot'], true) => ($n = Mailbox::count()) ? "{$n} posta kutusu ".($unit === 'postfix' ? 'posta gönderip alamaz.' : 'postalarına ulaşamaz.') : null,
-            $unit === 'rspamd', $unit === 'redis-server@servik-mail' => Mailbox::count() ? 'Gelen postalar spam denetiminden geçemez ve bekler.' : null,
-            $unit === 'clamav-daemon' => Mailbox::count() ? 'Postalar virüs taramasından geçemez.' : null,
-            $unit === 'memcached' => 'Memcached kullanan uygulamalar önbelleğe ulaşamaz.',
-            $unit === 'supervisor' => 'Supervisor\'daki programlar durur.',
-            $unit === 'cron' => 'Zamanlanmış görevler çalışmaz.',
+            $unit === 'nginx' => ($n = Site::count()) ? __('Tüm siteler (:n) yanıt vermez.', ['n' => $sites($n)]) : null,
+            $unit === 'apache2' => ($n = Site::where('web_server', Site::APACHE)->count()) ? __('Apache arkasındaki :n yanıt vermez.', ['n' => $sites($n)]) : null,
+            (bool) preg_match('/^php(\d\.\d)-fpm$/', $unit, $m) => ($n = Site::where('php_version', $m[1])->count()) ? __('PHP :m kullanan :n PHP sayfası açamaz.', ['m' => $m[1], 'n' => $sites($n)]) : null,
+            in_array($unit, ['mysql', 'mariadb'], true) => ($n = Database::where('server', DatabaseServers::MYSQL)->count()) ? __(':n veritabanına bağlanılamaz.', ['n' => $n]) : null,
+            str_starts_with($unit, 'postgresql@') && str_ends_with($unit, '-main') => ($n = Database::where('server', DatabaseServers::POSTGRESQL)->count()) ? __(':n PostgreSQL veritabanına bağlanılamaz.', ['n' => $n]) : null,
+            $unit === 'pdns@servik' => ($n = DnsZone::count()) ? __(':n alan adının DNS kayıtları yanıtlanmaz.', ['n' => $n]) : null,
+            in_array($unit, ['postfix', 'dovecot'], true) => ($n = Mailbox::count()) ? ($unit === 'postfix' ? __(':n posta kutusu posta gönderip alamaz.', ['n' => $n]) : __(':n posta kutusu postalarına ulaşamaz.', ['n' => $n])) : null,
+            $unit === 'rspamd', $unit === 'redis-server@servik-mail' => Mailbox::count() ? __('Gelen postalar spam denetiminden geçemez ve bekler.') : null,
+            $unit === 'clamav-daemon' => Mailbox::count() ? __('Postalar virüs taramasından geçemez.') : null,
+            $unit === 'memcached' => __('Memcached kullanan uygulamalar önbelleğe ulaşamaz.'),
+            $unit === 'supervisor' => __('Supervisor\'daki programlar durur.'),
+            $unit === 'cron' => __('Zamanlanmış görevler çalışmaz.'),
             default => null,
         };
 
@@ -240,12 +240,12 @@ class SystemServices
         $name = $service['name'] ?? $service['unit'];
         $affects = $this->affects($service['unit']);
         if ($action === 'stop') {
-            $boot = ($service['enabled'] ?? '') === 'enabled' ? ' Sunucu yeniden açılınca kendiliğinden başlar.' : '';
+            $boot = ($service['enabled'] ?? '') === 'enabled' ? __(' Sunucu yeniden açılınca kendiliğinden başlar.') : '';
 
-            return ['title' => "{$name} durdurulsun mu?", 'text' => ($affects ?? 'Bu hizmeti kullanan her şey durur.').' Siz başlatana kadar çalışmaz.'.$boot, 'button' => 'Durdur', 'danger' => true];
+            return ['title' => __(':name durdurulsun mu?', ['name' => $name]), 'text' => ($affects ?? __('Bu hizmeti kullanan her şey durur.')).' '.__('Siz başlatana kadar çalışmaz.').$boot, 'button' => __('Durdur'), 'danger' => true];
         }
 
-        return ['title' => "{$name} yeniden başlatılsın mı?", 'text' => trim('Birkaç saniyelik kesinti olur. '.$affects.' Ayar dosyası önce denetlenir; hatalıysa hizmete dokunulmaz.'), 'button' => 'Yeniden başlat', 'danger' => false];
+        return ['title' => __(':name yeniden başlatılsın mı?', ['name' => $name]), 'text' => trim(__('Birkaç saniyelik kesinti olur. :affects Ayar dosyası önce denetlenir; hatalıysa hizmete dokunulmaz.', ['affects' => $affects])), 'button' => __('Yeniden başlat'), 'danger' => false];
     }
 
     /**
@@ -313,15 +313,15 @@ class SystemServices
     public static function message(AgentException $e): string
     {
         if ($e instanceof AgentUnavailableException) {
-            return 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.';
+            return __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.');
         }
         // The agent's common refusals, in the panel's words.
         $patterns = [
-            '/^configuration test failed, .+? was left as it is: (.*)$/s' => 'Ayar dosyası denetimden geçmedi; hizmete dokunulmadı. Hata: $1',
-            '/^the service refused the settings, nothing was changed: (.*)$/s' => 'Hizmet yeni ayarları kabul etmedi; hiçbir şey değişmedi. Hata: $1',
-            '/^(.+) is not running; start it first$/' => '$1 çalışmıyor; önce başlatın.',
+            '/^configuration test failed, .+? was left as it is: (.*)$/s' => __('Ayar dosyası denetimden geçmedi; hizmete dokunulmadı. Hata: $1'),
+            '/^the service refused the settings, nothing was changed: (.*)$/s' => __('Hizmet yeni ayarları kabul etmedi; hiçbir şey değişmedi. Hata: $1'),
+            '/^(.+) is not running; start it first$/' => __('$1 çalışmıyor; önce başlatın.'),
             '/^(.+) cannot be stopped: .*$/s' => '$1 durdurulamaz.',
-            '/^.+ is not a service Servik manages.*$/s' => 'Bu hizmet sunucuda yok.',
+            '/^.+ is not a service Servik manages.*$/s' => __('Bu hizmet sunucuda yok.'),
         ];
         foreach ($patterns as $pattern => $text) {
             if (preg_match($pattern, $e->reason)) {

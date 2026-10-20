@@ -12,10 +12,10 @@ enum SiteStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Provisioning => 'Hazırlanıyor',
-            self::Active => 'Yayında',
-            self::Failed => 'Hata',
-            self::Deleting => 'Siliniyor',
+            self::Provisioning => __('Hazırlanıyor'),
+            self::Active => __('Yayında'),
+            self::Failed => __('Hata'),
+            self::Deleting => __('Siliniyor'),
         };
     }
 

@@ -109,22 +109,22 @@ class DatabaseIndex extends Component
         $this->dbSuffix = trim($this->dbSuffix);
         $this->userSuffix = trim($this->userSuffix);
         $this->validate([
-            'formSite' => ['required', fn ($a, $v, $fail) => $site === null ? $fail('Bir site seçin.') : null],
+            'formSite' => ['required', fn ($a, $v, $fail) => $site === null ? $fail(__('Bir site seçin.')) : null],
             'formServer' => ['required', Rule::in($servers->installed())],
             'dbSuffix' => ['required', 'regex:'.Databases::NAME_PATTERN, 'max:'.(Databases::MAX_DATABASE - strlen($prefix)),
-                fn ($a, $v, $fail) => Database::withTrashed()->where('server', $this->formServer)->where('name', $prefix.$v)->exists() ? $fail('Bu adda bir veritabanı zaten var.') : null],
+                fn ($a, $v, $fail) => Database::withTrashed()->where('server', $this->formServer)->where('name', $prefix.$v)->exists() ? $fail(__('Bu adda bir veritabanı zaten var.')) : null],
             'userSuffix' => $this->withUser ? ['required', 'regex:'.Databases::NAME_PATTERN, 'max:'.(Databases::MAX_USER - strlen($prefix)),
-                fn ($a, $v, $fail) => DatabaseUser::withTrashed()->where('server', $this->formServer)->where('name', $prefix.$v)->exists() ? $fail('Bu adda bir kullanıcı zaten var.') : null] : [],
+                fn ($a, $v, $fail) => DatabaseUser::withTrashed()->where('server', $this->formServer)->where('name', $prefix.$v)->exists() ? $fail(__('Bu adda bir kullanıcı zaten var.')) : null] : [],
             'password' => $this->withUser ? ['required', 'string', 'min:12', 'max:128', 'regex:/^\S+$/'] : [],
             'access' => [Rule::in(array_keys(DatabaseUser::ACCESS))],
         ], [
-            'dbSuffix.regex' => 'Yalnızca küçük harf, rakam ve _ kullanın.',
-            'userSuffix.regex' => 'Yalnızca küçük harf, rakam ve _ kullanın.',
-            'dbSuffix.max' => 'Ad en fazla :max karakter olabilir.',
-            'userSuffix.max' => 'Kullanıcı adı en fazla :max karakter olabilir.',
-            'password.min' => 'Parola en az 12 karakter olmalı.',
-            'password.regex' => 'Parola boşluk içeremez.',
-        ], ['dbSuffix' => 'veritabanı adı', 'userSuffix' => 'kullanıcı adı', 'password' => 'parola', 'formServer' => 'sunucu']);
+            'dbSuffix.regex' => __('Yalnızca küçük harf, rakam ve _ kullanın.'),
+            'userSuffix.regex' => __('Yalnızca küçük harf, rakam ve _ kullanın.'),
+            'dbSuffix.max' => __('Ad en fazla :max karakter olabilir.'),
+            'userSuffix.max' => __('Kullanıcı adı en fazla :max karakter olabilir.'),
+            'password.min' => __('Parola en az 12 karakter olmalı.'),
+            'password.regex' => __('Parola boşluk içeremez.'),
+        ], ['dbSuffix' => __('veritabanı adı'), 'userSuffix' => __('kullanıcı adı'), 'password' => 'parola', 'formServer' => 'sunucu']);
 
         if ($refusal = $databases->refusal($site->systemUser)) {
             $this->addError('dbSuffix', $refusal);
@@ -135,7 +135,7 @@ class DatabaseIndex extends Component
             $database = $databases->create($site, $this->formServer, $prefix.$this->dbSuffix,
                 $this->withUser ? $prefix.$this->userSuffix : null, $this->password, $this->access);
         } catch (AgentException $e) {
-            $this->addError('dbSuffix', 'Veritabanı oluşturulamadı: '.$e->reason);
+            $this->addError('dbSuffix', __('Veritabanı oluşturulamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
@@ -144,8 +144,8 @@ class DatabaseIndex extends Component
             $this->credentials = $this->credentialsFor($prefix.$this->userSuffix, $this->password, $database->server, $database->name);
         }
         $this->dispatch('toast', message: $this->withUser
-            ? "{$database->name} veritabanı ve {$prefix}{$this->userSuffix} kullanıcısı oluşturuldu."
-            : "{$database->name} veritabanı oluşturuldu.");
+            ? __(':name veritabanı ve :prefix:user_suffix kullanıcısı oluşturuldu.', ['name' => $database->name, 'prefix' => $prefix, 'user_suffix' => $this->userSuffix])
+            : __(':name veritabanı oluşturuldu.', ['name' => $database->name]));
     }
 
     public function openAddUser(): void
@@ -164,28 +164,28 @@ class DatabaseIndex extends Component
         $prefix = $database?->systemUser ? Databases::prefix($database->systemUser) : '';
         $this->newUserSuffix = trim($this->newUserSuffix);
         $this->validate([
-            'userDatabase' => ['required', fn ($a, $v, $fail) => $database?->systemUser === null ? $fail('Bir veritabanı seçin.') : null],
+            'userDatabase' => ['required', fn ($a, $v, $fail) => $database?->systemUser === null ? $fail(__('Bir veritabanı seçin.')) : null],
             'newUserSuffix' => ['required', 'regex:'.Databases::NAME_PATTERN, 'max:'.(Databases::MAX_USER - strlen($prefix)),
-                fn ($a, $v, $fail) => DatabaseUser::withTrashed()->where('server', $database?->server)->where('name', $prefix.$v)->exists() ? $fail('Bu adda bir kullanıcı zaten var.') : null],
+                fn ($a, $v, $fail) => DatabaseUser::withTrashed()->where('server', $database?->server)->where('name', $prefix.$v)->exists() ? $fail(__('Bu adda bir kullanıcı zaten var.')) : null],
             'newUserPassword' => ['required', 'string', 'min:12', 'max:128', 'regex:/^\S+$/'],
             'newUserAccess' => ['required', Rule::in(array_keys(DatabaseUser::ACCESS))],
         ], [
-            'newUserSuffix.regex' => 'Yalnızca küçük harf, rakam ve _ kullanın.',
-            'newUserSuffix.max' => 'Kullanıcı adı en fazla :max karakter olabilir.',
-            'newUserPassword.min' => 'Parola en az 12 karakter olmalı.',
-            'newUserPassword.regex' => 'Parola boşluk içeremez.',
-        ], ['newUserSuffix' => 'kullanıcı adı', 'newUserPassword' => 'parola']);
+            'newUserSuffix.regex' => __('Yalnızca küçük harf, rakam ve _ kullanın.'),
+            'newUserSuffix.max' => __('Kullanıcı adı en fazla :max karakter olabilir.'),
+            'newUserPassword.min' => __('Parola en az 12 karakter olmalı.'),
+            'newUserPassword.regex' => __('Parola boşluk içeremez.'),
+        ], ['newUserSuffix' => __('kullanıcı adı'), 'newUserPassword' => 'parola']);
 
         try {
             $user = $databases->createUser($database->systemUser, $database->server, $prefix.$this->newUserSuffix, $this->newUserPassword, [], [$database->id => $this->newUserAccess]);
         } catch (AgentException $e) {
-            $this->addError('newUserSuffix', 'Kullanıcı oluşturulamadı: '.$e->reason);
+            $this->addError('newUserSuffix', __('Kullanıcı oluşturulamadı: :reason', ['reason' => $e->reason]));
 
             return;
         }
         $this->addingUser = false;
         $this->credentials = $this->credentialsFor($user->name, $this->newUserPassword, $user->server, $database->name);
-        $this->dispatch('toast', message: "{$user->name} kullanıcısı eklendi.");
+        $this->dispatch('toast', message: __(':name kullanıcısı eklendi.', ['name' => $user->name]));
     }
 
     public function render(DatabaseServers $servers): View

@@ -48,7 +48,7 @@ trait ShowsComponentOperations
         try {
             $chunk = app(AgentClient::class)->call('component.run.read', ['run' => $run, 'offset' => max(0, $offset)]);
         } catch (AgentException) {
-            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => ! $op->isRunning(), 'status' => $op->status, 'error' => 'Sunucu ajanına ulaşılamıyor.'];
+            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => ! $op->isRunning(), 'status' => $op->status, 'error' => __('Sunucu ajanına ulaşılamıyor.')];
         }
         $next = (int) ($chunk['offset'] ?? 0);
 

@@ -136,41 +136,41 @@ class SecurityFinding extends Model
     public function title(): string
     {
         if (str_ends_with($this->code, '-more')) {
-            return (self::CHECKS[$this->check] ?? 'Aynı tür').': '.$this->count.' sorun daha (ilk 50 tanesi listede)';
+            return __(':check: :count sorun daha (ilk 50 tanesi listede)', ['check' => __(self::CHECKS[$this->check] ?? 'Aynı tür'), 'count' => $this->count]);
         }
         $served = $this->detail !== 'not served';
-        $kind = $this->code === 'dir' ? 'klasör' : 'dosya';
+        $kind = $this->code === 'dir' ? __('klasör') : 'dosya';
 
         return match ($this->check.'/'.$this->code) {
-            'malware/clamav' => 'Virüs imzası bulundu',
-            'webshell/eval-decoded' => 'Gizlenmiş kod çalıştıran PHP dosyası',
-            'webshell/exec-input' => 'Ziyaretçinin gönderdiği komutu çalıştıran PHP dosyası',
-            'webshell/call-input' => 'Ziyaretçinin seçtiği işlevi çağıran PHP dosyası',
-            'webshell/known-shell' => 'Bilinen bir web kabuğu (web shell)',
-            'webshell/backtick-input' => 'Ziyaretçi girdisini kabukta çalıştıran PHP dosyası',
-            'webshell/php-in-image', 'suspicious/php-in-image' => 'Resim uzantılı ama PHP kodu içeren dosya',
-            'webshell/preg-eval', 'suspicious/preg-eval' => 'Kod çalıştıran eski preg_replace /e kullanımı',
-            'webshell/encoded-blob', 'suspicious/encoded-blob' => 'Uzun şifrelenmiş blok içeren PHP dosyası',
-            'webshell/uploader', 'suspicious/uploader' => 'Kimlik doğrulamasız dosya yükleyici',
-            'suspicious/php-in-uploads' => 'Yükleme klasöründe PHP dosyası',
-            'writable/file', 'writable/dir' => 'Sunucudaki herkesin değiştirebildiği '.$kind,
-            'owner/file', 'owner/dir' => 'Site hesabına ait olmayan '.$kind,
-            'exposed/env' => $served ? '.env dosyası internetten okunabiliyor' : '.env dosyası web klasöründe',
-            'exposed/git' => $served ? '.git klasörü internetten okunabiliyor' : '.git klasörü web klasöründe',
-            'exposed/backup' => $served ? 'Yedek ya da döküm dosyası internetten indirilebiliyor' : 'Yedek ya da döküm dosyası web klasöründe',
-            'exposed/phpinfo' => 'phpinfo() sayfası sunucu bilgilerini gösteriyor',
-            'outdated/wordpress' => 'WordPress sürümü güvenlik desteği dışında',
-            'outdated/laravel' => 'Laravel sürümü güvenlik desteği dışında',
-            'outdated/php' => 'Site eski bir PHP sürümünde',
-            'debug/app-debug' => 'Laravel hata ayıklama modu canlıda açık',
-            'server/no-2fa' => 'Hiçbir yöneticide iki adımlı doğrulama yok',
-            'server/firewall-off' => 'Port güvenlik duvarı kapalı',
-            'server/ssh-root-password' => 'root kullanıcısı SSH ile parolayla girebiliyor',
-            'server/ssh-password' => 'SSH parolayla girişe açık',
-            'server/waf-missing' => 'Web uygulaması güvenlik duvarı (ModSecurity) kurulu değil',
-            'server/fail2ban-missing' => 'Fail2ban kurulu değil; panel ve SSH girişleri korunmuyor',
-            'server/panel-debug' => 'Panelin hata ayıklama modu açık',
-            default => (self::CHECKS[$this->check] ?? 'Sorun').': '.$this->code,
+            'malware/clamav' => __('Virüs imzası bulundu'),
+            'webshell/eval-decoded' => __('Gizlenmiş kod çalıştıran PHP dosyası'),
+            'webshell/exec-input' => __('Ziyaretçinin gönderdiği komutu çalıştıran PHP dosyası'),
+            'webshell/call-input' => __('Ziyaretçinin seçtiği işlevi çağıran PHP dosyası'),
+            'webshell/known-shell' => __('Bilinen bir web kabuğu (web shell)'),
+            'webshell/backtick-input' => __('Ziyaretçi girdisini kabukta çalıştıran PHP dosyası'),
+            'webshell/php-in-image', 'suspicious/php-in-image' => __('Resim uzantılı ama PHP kodu içeren dosya'),
+            'webshell/preg-eval', 'suspicious/preg-eval' => __('Kod çalıştıran eski preg_replace /e kullanımı'),
+            'webshell/encoded-blob', 'suspicious/encoded-blob' => __('Uzun şifrelenmiş blok içeren PHP dosyası'),
+            'webshell/uploader', 'suspicious/uploader' => __('Kimlik doğrulamasız dosya yükleyici'),
+            'suspicious/php-in-uploads' => __('Yükleme klasöründe PHP dosyası'),
+            'writable/file', 'writable/dir' => __('Sunucudaki herkesin değiştirebildiği :kind', ['kind' => $kind]),
+            'owner/file', 'owner/dir' => __('Site hesabına ait olmayan :kind', ['kind' => $kind]),
+            'exposed/env' => $served ? __('.env dosyası internetten okunabiliyor') : __('.env dosyası web klasöründe'),
+            'exposed/git' => $served ? __('.git klasörü internetten okunabiliyor') : __('.git klasörü web klasöründe'),
+            'exposed/backup' => $served ? __('Yedek ya da döküm dosyası internetten indirilebiliyor') : __('Yedek ya da döküm dosyası web klasöründe'),
+            'exposed/phpinfo' => __('phpinfo() sayfası sunucu bilgilerini gösteriyor'),
+            'outdated/wordpress' => __('WordPress sürümü güvenlik desteği dışında'),
+            'outdated/laravel' => __('Laravel sürümü güvenlik desteği dışında'),
+            'outdated/php' => __('Site eski bir PHP sürümünde'),
+            'debug/app-debug' => __('Laravel hata ayıklama modu canlıda açık'),
+            'server/no-2fa' => __('Hiçbir yöneticide iki adımlı doğrulama yok'),
+            'server/firewall-off' => __('Port güvenlik duvarı kapalı'),
+            'server/ssh-root-password' => __('root kullanıcısı SSH ile parolayla girebiliyor'),
+            'server/ssh-password' => __('SSH parolayla girişe açık'),
+            'server/waf-missing' => __('Web uygulaması güvenlik duvarı (ModSecurity) kurulu değil'),
+            'server/fail2ban-missing' => __('Fail2ban kurulu değil; panel ve SSH girişleri korunmuyor'),
+            'server/panel-debug' => __('Panelin hata ayıklama modu açık'),
+            default => __(self::CHECKS[$this->check] ?? 'Sorun').': '.$this->code,
         };
     }
 
@@ -181,8 +181,8 @@ class SecurityFinding extends Model
     {
         return match (true) {
             $this->detail === null, $this->detail === 'not served' => null,
-            $this->check === 'writable' => 'İzinler '.$this->detail,
-            $this->check === 'owner' => 'Sahibi '.$this->detail,
+            $this->check === 'writable' => __('İzinler :detail', ['detail' => $this->detail]),
+            $this->check === 'owner' => __('Sahibi :detail', ['detail' => $this->detail]),
             $this->check === 'debug' => $this->detail,
             default => $this->detail,
         };
@@ -205,10 +205,10 @@ class SecurityFinding extends Model
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'fixed' => self::FIXES[$this->fix_action][1] ?? 'Düzeltildi',
-            'ignored' => 'Yok sayıldı',
-            'gone' => 'Artık bulunmuyor',
-            default => 'Açık',
+            'fixed' => __(self::FIXES[$this->fix_action][1] ?? 'Düzeltildi'),
+            'ignored' => __('Yok sayıldı'),
+            'gone' => __('Artık bulunmuyor'),
+            default => __('Açık'),
         };
     }
 }

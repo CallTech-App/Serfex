@@ -27,7 +27,7 @@ class MeasureDiskUsage extends Command
 
             return self::FAILURE;
         }
-        $this->info("{$count} hesabın ve {$dbs} veritabanının disk kullanımı güncellendi.");
+        $this->info(__(':count hesabın ve :dbs veritabanının disk kullanımı güncellendi.', ['count' => $count, 'dbs' => $dbs]));
 
         return self::SUCCESS;
     }

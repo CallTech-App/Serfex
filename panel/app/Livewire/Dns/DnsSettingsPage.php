@@ -88,24 +88,24 @@ class DnsSettingsPage extends Component
             'expire' => ['required', 'integer', 'min:3600', 'max:4838400'],
             'minimum' => ['required', 'integer', 'min:60', 'max:86400'],
         ], [], [
-            'ipv4' => 'IPv4 adresi',
-            'ipv6' => 'IPv6 adresi',
-            'defaultTtl' => 'varsayılan TTL',
-            'hostmaster' => 'yönetici e-postası',
+            'ipv4' => __('IPv4 adresi'),
+            'ipv6' => __('IPv6 adresi'),
+            'defaultTtl' => __('varsayılan TTL'),
+            'hostmaster' => __('yönetici e-postası'),
             'refresh' => 'yenileme',
-            'retry' => 'yeniden deneme',
-            'expire' => 'sona erme',
-            'minimum' => 'negatif TTL',
+            'retry' => __('yeniden deneme'),
+            'expire' => __('sona erme'),
+            'minimum' => __('negatif TTL'),
         ]);
         foreach ($hosts as $h) {
             if (DnsRecords::hostname($h, 'invalid') === null || ! str_contains($h, '.')) {
-                $this->addError('nameservers', "\"{$h}\" geçerli bir ad sunucusu değil; tam adı yazın, örneğin ns1.ornek.com.tr.");
+                $this->addError('nameservers', __('":h" geçerli bir ad sunucusu değil; tam adı yazın, örneğin ns1.ornek.com.tr.', ['h' => $h]));
 
                 return;
             }
         }
         if (count($hosts) === 1) {
-            $this->addError('nameservers', 'En az iki ad sunucusu yazın ya da alanı boş bırakın.');
+            $this->addError('nameservers', __('En az iki ad sunucusu yazın ya da alanı boş bırakın.'));
 
             return;
         }
@@ -148,7 +148,7 @@ class DnsSettingsPage extends Component
         }
         $this->applyToZones = false;
 
-        $this->dispatch('toast', message: 'DNS ayarları kaydedildi.'.($updated ? " {$updated} bölgenin ad sunucuları güncellendi." : ''));
+        $this->dispatch('toast', message: __('DNS ayarları kaydedildi.').($updated ? ' '.trans_choice(':count bölgenin ad sunucuları güncellendi.', $updated) : ''));
     }
 
     public function openAdd(): void
@@ -183,7 +183,7 @@ class DnsSettingsPage extends Component
         }
         $record['content'] = strtr($record['content'], array_flip(self::SAMPLE));
         if ($record['type'] === 'NS' && $record['name'] === '@') {
-            $this->addError('recordName', 'Alan adının NS kayıtları yukarıdaki ad sunucusu ayarından gelir.');
+            $this->addError('recordName', __('Alan adının NS kayıtları yukarıdaki ad sunucusu ayarından gelir.'));
 
             return;
         }
@@ -200,7 +200,7 @@ class DnsSettingsPage extends Component
         }
         $settings->save(['template' => array_values($rows)]);
         $this->editingRecord = false;
-        $this->toastWithUndo($this->recordKey === null ? 'Şablona kayıt eklendi.' : 'Şablon kaydı güncellendi.', $previous);
+        $this->toastWithUndo($this->recordKey === null ? __('Şablona kayıt eklendi.') : __('Şablon kaydı güncellendi.'), $previous);
     }
 
     public function deleteRow(int $index, DnsSettings $settings): void
@@ -212,14 +212,14 @@ class DnsSettingsPage extends Component
         $previous = $rows;
         unset($rows[$index]);
         $settings->save(['template' => array_values($rows)]);
-        $this->toastWithUndo('Şablon kaydı silindi.', $previous);
+        $this->toastWithUndo(__('Şablon kaydı silindi.'), $previous);
     }
 
     public function restoreDefaults(DnsSettings $settings): void
     {
         $previous = $settings->template();
         $settings->save(['template' => DnsSettings::DEFAULT_TEMPLATE]);
-        $this->toastWithUndo('Şablon varsayılana döndü.', $previous);
+        $this->toastWithUndo(__('Şablon varsayılana döndü.'), $previous);
     }
 
     /**
@@ -228,7 +228,7 @@ class DnsSettingsPage extends Component
     public function undoTemplate(array $rows, DnsSettings $settings): void
     {
         $settings->save(['template' => array_values($rows)]);
-        $this->dispatch('toast', message: 'Değişiklik geri alındı.');
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
     public function render(DnsSettings $settings, ZoneTemplate $template): View

@@ -57,7 +57,7 @@ class AccountSecurity extends Component
         $this->resetValidation();
         $codes = $twoFactor->enable($user, $this->secret, $this->code);
         if ($codes === null) {
-            $this->addError('code', 'Kod doğru değil. Uygulamadaki güncel 6 haneli kodu yazın; telefonun saati doğru olmalı.');
+            $this->addError('code', __('Kod doğru değil. Uygulamadaki güncel 6 haneli kodu yazın; telefonun saati doğru olmalı.'));
 
             return;
         }
@@ -87,19 +87,19 @@ class AccountSecurity extends Component
         $user = auth()->user();
         $this->resetValidation();
         if ($twoFactor->isRequiredFor($user)) {
-            $this->addError('password', 'Sunucu yöneticisi iki adımlı doğrulamayı bu hesap için zorunlu tuttu.');
+            $this->addError('password', __('Sunucu yöneticisi iki adımlı doğrulamayı bu hesap için zorunlu tuttu.'));
 
             return;
         }
         if (! Hash::check($this->password, $user->password)) {
-            $this->addError('password', 'Parola yanlış.');
+            $this->addError('password', __('Parola yanlış.'));
 
             return;
         }
         $twoFactor->disable($user);
         $this->disabling = false;
         $this->password = '';
-        $this->dispatch('toast', message: 'İki adımlı doğrulama kapatıldı.');
+        $this->dispatch('toast', message: __('İki adımlı doğrulama kapatıldı.'));
     }
 
     public function revoke(string $id, Sessions $sessions): void
@@ -108,13 +108,13 @@ class AccountSecurity extends Component
             return;
         }
         $sessions->revoke(auth()->user(), $id);
-        $this->dispatch('toast', message: 'Oturum kapatıldı.');
+        $this->dispatch('toast', message: __('Oturum kapatıldı.'));
     }
 
     public function revokeOthers(Sessions $sessions): void
     {
         $n = $sessions->revokeOthers(auth()->user(), session()->getId());
-        $this->dispatch('toast', message: $n ? $n.' oturum kapatıldı.' : 'Başka oturum yok.');
+        $this->dispatch('toast', message: $n ? __(':n oturum kapatıldı.', ['n' => $n]) : __('Başka oturum yok.'));
     }
 
     public function render(TwoFactor $twoFactor, Sessions $sessions): View

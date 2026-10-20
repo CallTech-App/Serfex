@@ -52,7 +52,7 @@ class UpdatesPage extends Component
             return;
         }
         $release = $updates->available($result);
-        $this->dispatch('toast', message: $release ? 'Servik '.$release['version'].' hazır.' : 'Servik güncel.');
+        $this->dispatch('toast', message: $release ? __('Servik :version hazır.', ['version' => $release['version']]) : __('Servik güncel.'));
     }
 
     public function ask(string $kind): void
@@ -86,7 +86,7 @@ class UpdatesPage extends Component
         $updates->setChannel($this->channel);
         $updates->check();
         $this->dispatch('toast',
-            message: 'Kanal: '.Updates::CHANNELS[$this->channel].'.',
+            message: __('Kanal: :channels.', ['channels' => Updates::CHANNELS[$this->channel]]),
             source: $this->getId(),
             undo: ['method' => 'undoChannel', 'args' => [$previous]],
         );
@@ -110,7 +110,7 @@ class UpdatesPage extends Component
 
         return view('livewire.settings.updates', [
             'status' => $status,
-            'agentError' => $status === null ? ($error ?: 'Sunucu ajanına ulaşılamıyor.') : null,
+            'agentError' => $status === null ? ($error ?: __('Sunucu ajanına ulaşılamıyor.')) : null,
             'releases' => $releases,
             'release' => $releases[0] ?? null,
             'running' => $running,

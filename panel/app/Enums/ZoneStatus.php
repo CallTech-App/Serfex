@@ -12,10 +12,10 @@ enum ZoneStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Syncing => 'Uygulanıyor',
-            self::Active => 'Bu sunucuda',
-            self::Failed => 'Hata',
-            self::Deleting => 'Siliniyor',
+            self::Syncing => __('Uygulanıyor'),
+            self::Active => __('Bu sunucuda'),
+            self::Failed => __('Hata'),
+            self::Deleting => __('Siliniyor'),
         };
     }
 

@@ -68,14 +68,14 @@ class FtpAccounts
         $prefix = self::prefix($site->systemUser);
         $suffix = Str::after($name, $prefix);
         if (! str_starts_with($name, $prefix) || $suffix === '' || ! preg_match(self::NAME_PATTERN, $suffix)) {
-            $out['name'] = 'Ad yalnızca küçük harf, rakam ve alt çizgi içerebilir.';
+            $out['name'] = __('Ad yalnızca küçük harf, rakam ve alt çizgi içerebilir.');
         } elseif (strlen($name) > self::MAX_NAME) {
-            $out['name'] = 'Ad en fazla '.self::MAX_NAME.' karakter olabilir (önek dahil).';
+            $out['name'] = __('Ad en fazla :max_name karakter olabilir (önek dahil).', ['max_name' => self::MAX_NAME]);
         } elseif (FtpAccount::withTrashed()->where('name', $name)->whereKeyNot($ignore ?? 0)->exists() || SystemUser::where('name', $name)->exists()) {
-            $out['name'] = 'Bu ad kullanılıyor.';
+            $out['name'] = __('Bu ad kullanılıyor.');
         }
         if ($directory !== '' && (! preg_match(self::DIR_PATTERN, $directory) || strlen($directory) > 200 || in_array('..', explode('/', $directory), true))) {
-            $out['directory'] = 'Klasör, site klasörünün içinde bir yol olmalı (örneğin public_html).';
+            $out['directory'] = __('Klasör, site klasörünün içinde bir yol olmalı (örneğin public_html).');
         }
 
         return $out;

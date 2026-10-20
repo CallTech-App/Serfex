@@ -60,14 +60,14 @@ class MailPassword
     public static function weakness(string $password, string $address = ''): ?string
     {
         if (mb_strlen($password) < self::MIN_LENGTH) {
-            return 'Parola en az '.self::MIN_LENGTH.' karakter olmalı.';
+            return __('Parola en az :min_length karakter olmalı.', ['min_length' => self::MIN_LENGTH]);
         }
         if (! preg_match('/\pL/u', $password) || ! preg_match('/\d/', $password)) {
-            return 'Parolada hem harf hem rakam olmalı.';
+            return __('Parolada hem harf hem rakam olmalı.');
         }
         $local = strstr($address, '@', true) ?: $address;
         if ($local !== '' && mb_strlen($local) >= 3 && str_contains(mb_strtolower($password), mb_strtolower($local))) {
-            return 'Parola e-posta adresini içermemeli.';
+            return __('Parola e-posta adresini içermemeli.');
         }
 
         return null;

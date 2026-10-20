@@ -6,17 +6,17 @@
     $securityAttention = $user->allows('security') ? \App\Services\Security\Scans::attentionCount($user) : 0;
     $securitySite = $securityAttention ? \App\Models\SecurityFinding::open()->visibleTo($user)->whereIn('severity', ['critical', 'high'])->value('site_id') : null;
     $rows = array_filter([
-        ['sites.index', [], 'globe', 'Siteler', $report['sites']['used'].' site'],
-        $user->allows('mail') ? ['mail.index', [], 'mail', 'E-posta', $report['mailboxes']['used'].' posta kutusu'] : null,
-        $user->allows('laravel') ? ['laravel.index', [], 'layers', 'Laravel', $report['laravel_apps']['used'].' uygulama'] : null,
-        $user->allows('backups') ? ['backups.index', [], 'archive', 'Yedekler', ($last = \App\Models\BackupItem::visibleTo($user)->where('status', 'succeeded')->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first())
-            ? 'Son yedek '.$last->backup->created_at->timezone(config('servik.timezone'))->format('d.m.Y H:i') : 'Henüz yedek yok'] : null,
+        ['sites.index', [], 'globe', __('Siteler'), trans_choice(':count site', $report['sites']['used'])],
+        $user->allows('mail') ? ['mail.index', [], 'mail', __('E-posta'), trans_choice(':count posta kutusu', $report['mailboxes']['used'])] : null,
+        $user->allows('laravel') ? ['laravel.index', [], 'layers', 'Laravel', trans_choice(':count uygulama', $report['laravel_apps']['used'])] : null,
+        $user->allows('backups') ? ['backups.index', [], 'archive', __('Yedekler'), ($last = \App\Models\BackupItem::visibleTo($user)->where('status', 'succeeded')->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first())
+            ? __('Son yedek :when', ['when' => \App\Support\When::dateTime($last->backup->created_at)]) : __('Henüz yedek yok')] : null,
     ]);
 @endphp
-<x-layouts.app title="Genel Bakış · Servik">
+<x-layouts.app title="{{ __('Genel Bakış · Servik') }}">
     <div>
-        <h1 class="text-[22px] font-semibold tracking-tight">Genel Bakış</h1>
-        <p class="mt-1 text-[13px] text-muted">{{ $customer->displayName() }} · barındırma paketiniz ve kullanımınız.</p>
+        <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Genel Bakış') }}</h1>
+        <p class="mt-1 text-[13px] text-muted">{{ __(':customer · barındırma paketiniz ve kullanımınız.', ['customer' => $customer->displayName()]) }}</p>
     </div>
 
     @if ($worst !== 'ok')
@@ -25,9 +25,9 @@
             <x-icon name="triangle-alert" @class(['text-warn' => $worst === 'warn', 'text-crit' => $worst === 'crit']) />
             <p class="min-w-0 flex-1">
                 @if ($worst === 'crit')
-                    Paketinizin bir sınırı doldu. Yeni site, posta kutusu ya da uygulama açamazsınız; mevcutlar çalışmaya devam eder. Yer açın ya da paketinizi yükseltmek için barındırma sağlayıcınıza yazın.
+                    {{ __('Paketinizin bir sınırı doldu. Yeni site, posta kutusu ya da uygulama açamazsınız; mevcutlar çalışmaya devam eder. Yer açın ya da paketinizi yükseltmek için barındırma sağlayıcınıza yazın.') }}
                 @else
-                    Paketinizin bir sınırına yaklaştınız.
+                    {{ __('Paketinizin bir sınırına yaklaştınız.') }}
                 @endif
             </p>
         </div>
@@ -36,8 +36,8 @@
     <section class="rounded-xl border border-line bg-surface">
         <div class="flex items-center gap-3 border-b border-line px-5 py-3.5">
             <x-icon name="package" class="text-muted" />
-            <p class="font-medium">{{ $customer->package->name }} paketi</p>
-            <a href="{{ route('usage') }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">Kullanım raporu</a>
+            <p class="font-medium">{{ __(':name paketi', ['name' => $customer->package->name]) }}</p>
+            <a href="{{ route('usage') }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">{{ __('Kullanım raporu') }}</a>
         </div>
         @include('livewire.customers.usage', ['report' => $report])
     </section>
@@ -53,25 +53,25 @@
         @endforeach
         <a href="{{ route('ssl.index', $sslAttention ? ['durum' => 'problem'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="shield-check" @class(['text-muted' => ! $sslAttention, 'text-warn' => $sslAttention]) />
-            <span>SSL sertifikaları</span>
+            <span>{{ __('SSL sertifikaları') }}</span>
             <span @class(['num ml-auto text-right', 'text-muted' => ! $sslAttention, 'font-medium text-warn' => $sslAttention])>
-                {{ $sslAttention ? $sslAttention.' sertifika ilgilenmenizi bekliyor' : 'Sorun yok' }}
+                {{ $sslAttention ? trans_choice(':count sertifika ilgilenmenizi bekliyor', $sslAttention) : __('Sorun yok') }}
             </span>
             <x-icon name="chevron-right" class="text-muted" />
         </a>
         @if ($securityAttention)
             <a href="{{ route('sites.scan', $securitySite) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
                 <x-icon name="shield-alert" class="text-crit" />
-                <span>Güvenlik</span>
-                <span class="num ml-auto text-right font-medium text-crit">{{ $securityAttention }} ciddi güvenlik bulgusu var</span>
+                <span>{{ __('Güvenlik') }}</span>
+                <span class="num ml-auto text-right font-medium text-crit">{{ trans_choice(':count ciddi güvenlik bulgusu var', $securityAttention) }}</span>
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
         @endif
         @if (! $user->hasTwoFactor())
             <a href="{{ route('account.security') }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
                 <x-icon name="key-round" class="text-info" />
-                <span>Hesabınız</span>
-                <span class="num ml-auto truncate text-right font-medium text-info">İki adımlı doğrulama kapalı; açmanızı öneririz</span>
+                <span>{{ __('Hesabınız') }}</span>
+                <span class="num ml-auto truncate text-right font-medium text-info">{{ __('İki adımlı doğrulama kapalı; açmanızı öneririz') }}</span>
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
         @endif

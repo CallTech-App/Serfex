@@ -23,16 +23,16 @@ class WebmailController extends Controller
         $domain = MailDomain::visibleTo($user)->find($mailbox->mail_domain_id);
         abort_if($domain === null || ! $user->allows('mail'), 404);
         if ($domain->site?->isSuspended()) {
-            return $this->fail($mailbox, 'Hesap askıda; web postaya girilemez.');
+            return $this->fail($mailbox, __('Hesap askıda; web postaya girilemez.'));
         }
         if ($settings->webmailUrl() === null || $domain->status === MailDomainStatus::Deleting) {
-            return $this->fail($mailbox, 'Web posta kapalı. E-posta ayarlarından açabilirsiniz.');
+            return $this->fail($mailbox, __('Web posta kapalı. E-posta ayarlarından açabilirsiniz.'));
         }
 
         try {
             $login = $agent->call('mail.webmail.login', ['address' => $mailbox->address()], config('servik.agent.job_timeout'));
         } catch (AgentException $e) {
-            return $this->fail($mailbox, 'Web postaya giriş yapılamadı: '.$e->reason);
+            return $this->fail($mailbox, __('Web postaya giriş yapılamadı: :reason', ['reason' => $e->reason]));
         }
 
         return redirect()->away($login['url']);

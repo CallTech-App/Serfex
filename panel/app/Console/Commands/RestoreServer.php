@@ -47,7 +47,7 @@ class RestoreServer extends Command
         }
         $backup = Backup::with('items', 'target')->where('key', $key)->first();
         if ($backup === null || ! $backup->isUsable()) {
-            $this->error("Backup {$key} is not listed here. Import it in Yedekler first.");
+            $this->error(__('Backup :key is not listed here. Import it in Yedekler first.', ['key' => $key]));
 
             return self::FAILURE;
         }
@@ -58,7 +58,7 @@ class RestoreServer extends Command
         }
         if (! $this->option('force') && ! $this->confirm($this->option('panel')
             ? 'This replaces the panel\'s database with the backup\'s. Continue?'
-            : 'This restores every site of the backup over what is on this server. Continue?')) {
+            : __('This restores every site of the backup over what is on this server. Continue?'))) {
             return self::FAILURE;
         }
 
@@ -101,7 +101,7 @@ class RestoreServer extends Command
                 $this->info('  restored');
             }
             if ($failed > 0) {
-                $this->warn("{$failed} site(s) could not be restored.");
+                $this->warn(__(':failed site(s) could not be restored.', ['failed' => $failed]));
 
                 return self::FAILURE;
             }

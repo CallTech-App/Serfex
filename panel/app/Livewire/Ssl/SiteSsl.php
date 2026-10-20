@@ -67,8 +67,8 @@ class SiteSsl extends Component
         $certificate = $certificates->letsEncrypt($site, $wildcard);
         $this->requesting = false;
         $this->dispatch('toast', message: $certificate->isInstalled()
-            ? "{$site->domain} sertifikası yeniden alınıyor."
-            : "{$site->domain} için Let's Encrypt sertifikası alınıyor.");
+            ? __(':domain sertifikası yeniden alınıyor.', ['domain' => $site->domain])
+            : __(':domain için Let\'s Encrypt sertifikası alınıyor.', ['domain' => $site->domain]));
     }
 
     public function renew(Certificates $certificates): void
@@ -78,7 +78,7 @@ class SiteSsl extends Component
             return;
         }
         $certificates->reissue($certificate);
-        $this->dispatch('toast', message: 'Sertifika yenileniyor.');
+        $this->dispatch('toast', message: __('Sertifika yenileniyor.'));
     }
 
     public function openUpload(): void
@@ -98,14 +98,14 @@ class SiteSsl extends Component
             'certificatePem' => ['required', 'string', 'max:65536'],
             'privateKeyPem' => ['required', 'string', 'max:32768'],
             'chainPem' => ['nullable', 'string', 'max:65536'],
-        ], [], ['certificatePem' => 'sertifika', 'privateKeyPem' => 'özel anahtar', 'chainPem' => 'ara sertifikalar']);
+        ], [], ['certificatePem' => 'sertifika', 'privateKeyPem' => __('özel anahtar'), 'chainPem' => __('ara sertifikalar')]);
 
         $previous = $site->certificate_id;
         try {
             $certificates->upload($site, $agent, $this->certificatePem, $this->privateKeyPem, $this->chainPem);
         } catch (AgentException $e) {
             $this->addError('certificatePem', $e instanceof AgentUnavailableException
-                ? 'Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.'
+                ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
                 : self::uploadError($e->reason));
 
             return;
@@ -113,7 +113,7 @@ class SiteSsl extends Component
         $this->reset('certificatePem', 'privateKeyPem', 'chainPem');
         $this->uploading = false;
         $this->dispatch('toast',
-            message: 'Sertifika yüklendi, site HTTPS ayarları uygulanıyor.',
+            message: __('Sertifika yüklendi, site HTTPS ayarları uygulanıyor.'),
             source: $this->getId(),
             undo: ['method' => 'undoSwap', 'args' => [$previous]],
         );
@@ -127,7 +127,7 @@ class SiteSsl extends Component
         }
         $certificates->setRedirect($site, $on);
         $this->dispatch('toast',
-            message: $on ? 'HTTP istekleri HTTPS\'e yönlendirilecek.' : 'HTTP yönlendirmesi kapatıldı.',
+            message: $on ? __('HTTP istekleri HTTPS\'e yönlendirilecek.') : __('HTTP yönlendirmesi kapatıldı.'),
             source: $this->getId(),
             undo: ['method' => 'setRedirect', 'args' => [! $on]],
         );
@@ -141,7 +141,7 @@ class SiteSsl extends Component
         }
         $certificate->update(['auto_renew' => $on]);
         $this->dispatch('toast',
-            message: $on ? 'Otomatik yenileme açıldı.' : 'Otomatik yenileme kapatıldı; sertifika süresi dolunca site HTTPS hatası verir.',
+            message: $on ? __('Otomatik yenileme açıldı.') : __('Otomatik yenileme kapatıldı; sertifika süresi dolunca site HTTPS hatası verir.'),
             source: $this->getId(),
             undo: ['method' => 'setAutoRenew', 'args' => [! $on]],
         );
@@ -157,7 +157,7 @@ class SiteSsl extends Component
         $previous = $site->certificate_id;
         $certificates->use($site, null);
         $this->dispatch('toast',
-            message: 'Sertifika kaldırıldı; site yalnızca HTTP ile açılacak.',
+            message: __('Sertifika kaldırıldı; site yalnızca HTTP ile açılacak.'),
             source: $this->getId(),
             undo: ['method' => 'undoSwap', 'args' => [$previous]],
         );
@@ -175,12 +175,12 @@ class SiteSsl extends Component
         }
         $certificate = $previous === null ? null : $site->certificates()->find($previous);
         if ($previous !== null && $certificate === null) {
-            $this->dispatch('toast', message: 'Önceki sertifika artık sunucuda değil; geri alınamadı.');
+            $this->dispatch('toast', message: __('Önceki sertifika artık sunucuda değil; geri alınamadı.'));
 
             return;
         }
         $certificates->use($site, $certificate);
-        $this->dispatch('toast', message: 'Geri alındı.');
+        $this->dispatch('toast', message: __('Geri alındı.'));
     }
 
     public function render(Certificates $certificates): View
@@ -222,13 +222,13 @@ class SiteSsl extends Component
     public static function uploadError(string $reason): string
     {
         return match (true) {
-            str_contains($reason, 'does not belong') => 'Özel anahtar bu sertifikaya ait değil.',
-            str_contains($reason, 'expired') => 'Sertifikanın süresi dolmuş.',
-            str_contains($reason, 'does not cover') => 'Sertifika bu alan adını kapsamıyor. '.$reason,
-            str_contains($reason, 'password') => 'Özel anahtar parolalı; parolasız halini yükleyin.',
-            str_contains($reason, 'no PEM certificate') => 'Sertifika PEM biçiminde değil (-----BEGIN CERTIFICATE----- ile başlamalı).',
-            str_contains($reason, 'no PEM private key') => 'Özel anahtar PEM biçiminde değil (-----BEGIN PRIVATE KEY----- ile başlamalı).',
-            default => 'Sertifika kurulamadı: '.$reason,
+            str_contains($reason, 'does not belong') => __('Özel anahtar bu sertifikaya ait değil.'),
+            str_contains($reason, 'expired') => __('Sertifikanın süresi dolmuş.'),
+            str_contains($reason, 'does not cover') => __('Sertifika bu alan adını kapsamıyor. :reason', ['reason' => $reason]),
+            str_contains($reason, 'password') => __('Özel anahtar parolalı; parolasız halini yükleyin.'),
+            str_contains($reason, 'no PEM certificate') => __('Sertifika PEM biçiminde değil (-----BEGIN CERTIFICATE----- ile başlamalı).'),
+            str_contains($reason, 'no PEM private key') => __('Özel anahtar PEM biçiminde değil (-----BEGIN PRIVATE KEY----- ile başlamalı).'),
+            default => __('Sertifika kurulamadı: :reason', ['reason' => $reason]),
         };
     }
 }

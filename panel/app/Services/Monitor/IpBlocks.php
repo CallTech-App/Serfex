@@ -40,14 +40,14 @@ class IpBlocks
         $address = self::normalize($address);
         $minutes = $minutes ?: null;
         if ($minutes !== null && ($minutes < 1 || $minutes > 525600)) {
-            throw new MonitorException('Süre 1 dakika ile 1 yıl arasında olmalı.');
+            throw new MonitorException(__('Süre 1 dakika ile 1 yıl arasında olmalı.'));
         }
         if ($source === 'ai' && ($minutes === null || $minutes > self::AI_MAX_MINUTES)) {
-            throw new MonitorException('Servik AI bir adresi en fazla 24 saat engelleyebilir.');
+            throw new MonitorException(__('Servik AI bir adresi en fazla 24 saat engelleyebilir.'));
         }
         foreach ($protect as $own) {
             if ($own !== '' && self::contains($address, $own)) {
-                throw new MonitorException("{$address} sizin bağlantınızın adresi; engellerseniz panele ulaşamazsınız.");
+                throw new MonitorException(__(':address sizin bağlantınızın adresi; engellerseniz panele ulaşamazsınız.', ['address' => $address]));
             }
         }
 
@@ -134,20 +134,20 @@ class IpBlocks
         [$ip, $bits] = array_pad(explode('/', $address, 2), 2, null);
         $packed = filter_var($ip, FILTER_VALIDATE_IP) !== false ? inet_pton($ip) : false;
         if ($packed === false) {
-            throw new MonitorException("\"{$address}\" bir IP adresi değil.");
+            throw new MonitorException(__('":address" bir IP adresi değil.', ['address' => $address]));
         }
         $v4 = strlen($packed) === 4;
         $max = $v4 ? 32 : 128;
         if ($bits !== null && (! ctype_digit($bits) || (int) $bits > $max)) {
-            throw new MonitorException("\"{$address}\" geçerli bir adres aralığı değil.");
+            throw new MonitorException(__('":address" geçerli bir adres aralığı değil.', ['address' => $address]));
         }
         $bits = $bits === null ? $max : (int) $bits;
         if ($bits < ($v4 ? 16 : 48)) {
-            throw new MonitorException('Aralık çok geniş: en fazla /16 (IPv4) ya da /48 (IPv6) engellenebilir.');
+            throw new MonitorException(__('Aralık çok geniş: en fazla /16 (IPv4) ya da /48 (IPv6) engellenebilir.'));
         }
         $packed = self::mask($packed, $bits);
         if (self::contains('127.0.0.0/8', inet_ntop($packed)) || inet_ntop($packed) === '::1' || in_array(inet_ntop($packed), ['0.0.0.0', '::'], true)) {
-            throw new MonitorException('Sunucunun kendisine ait yerel adresler engellenemez.');
+            throw new MonitorException(__('Sunucunun kendisine ait yerel adresler engellenemez.'));
         }
         $text = inet_ntop($packed);
 
@@ -184,9 +184,9 @@ class IpBlocks
     private static function agentMessage(string $message): string
     {
         return match (true) {
-            str_contains($message, "this server's own address") => 'Bu, sunucunun kendi adresi; engellenemez.',
-            str_contains($message, 'overlaps') => 'Bu adres zaten engellenmiş bir aralığın içinde.',
-            default => 'Adres engellenemedi: '.$message,
+            str_contains($message, "this server's own address") => __('Bu, sunucunun kendi adresi; engellenemez.'),
+            str_contains($message, 'overlaps') => __('Bu adres zaten engellenmiş bir aralığın içinde.'),
+            default => __('Adres engellenemedi: :message', ['message' => $message]),
         };
     }
 }

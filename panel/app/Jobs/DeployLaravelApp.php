@@ -42,7 +42,7 @@ class DeployLaravelApp implements ShouldQueue
         }
         $app = $deployment->app;
         if ($app->status === LaravelAppStatus::Removing) {
-            $deployment->update(['status' => DeploymentStatus::Failed, 'error' => 'Uygulama kaldırılıyor.', 'finished_at' => now()]);
+            $deployment->update(['status' => DeploymentStatus::Failed, 'error' => __('Uygulama kaldırılıyor.'), 'finished_at' => now()]);
 
             return;
         }
@@ -51,9 +51,9 @@ class DeployLaravelApp implements ShouldQueue
 
         // Safety net: the database as it was before this deploy's migrations.
         if (! $first && $deployment->kind === 'deploy' && $app->backup_before_deploy) {
-            $backup = $backups->createNow($app, ['database'], 'deploy', note: 'Dağıtım #'.$deployment->number.' öncesi');
+            $backup = $backups->createNow($app, ['database'], 'deploy', note: __('Dağıtım #:number öncesi', ['number' => $deployment->number]));
             if ($backup->status !== 'succeeded') {
-                $this->fail($app, $deployment, 'Dağıtım öncesi veritabanı yedeği alınamadı: '.$backup->error);
+                $this->fail($app, $deployment, __('Dağıtım öncesi veritabanı yedeği alınamadı: :error', ['error' => $backup->error]));
 
                 return;
             }
@@ -71,7 +71,7 @@ class DeployLaravelApp implements ShouldQueue
         $problem = (string) ($result['problem'] ?? '');
         $deployment->fill([
             'commit' => ($result['commit'] ?? '') ?: $deployment->commit,
-            'message' => ($result['message'] ?? '') ?: ($app->repository === null ? 'Yeni proje: '.$app->package : null),
+            'message' => ($result['message'] ?? '') ?: ($app->repository === null ? __('Yeni proje: :package', ['package' => $app->package]) : null),
             'release' => $result['release'] ?? (string) $deployment->number,
         ]);
         $app->fill([
@@ -124,23 +124,23 @@ class DeployLaravelApp implements ShouldQueue
             $result = $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
             $site->update(['document_root' => $result['document_root'] ?? $site->document_root]);
         } catch (AgentException $e) {
-            $problems[] = 'Site yeni sürüme yönlendirilemedi: '.($e->reason ?: $e->getMessage());
+            $problems[] = __('Site yeni sürüme yönlendirilemedi: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
         }
         try {
             $processes->apply($app);
             $app->update(['processes_state' => 'ok', 'processes_error' => null]);
         } catch (AgentException $e) {
             $app->update(['processes_state' => 'failed', 'processes_error' => $e->reason ?: $e->getMessage()]);
-            $problems[] = 'Kuyruk işçileri veya zamanlayıcı başlatılamadı.';
+            $problems[] = __('Kuyruk işçileri veya zamanlayıcı başlatılamadı.');
         }
         if ($problems === []) {
             try {
                 $health = $agent->call('laravel.health', ['domain' => $site->domain, 'path' => $app->health_path], config('servik.agent.job_timeout'));
                 if (! ($health['ok'] ?? false)) {
-                    $problems[] = 'Sağlık kontrolü başarısız: '.(($health['status'] ?? 0) ? 'HTTP '.$health['status'] : ($health['error'] ?? 'yanıt yok'));
+                    $problems[] = __('Sağlık kontrolü başarısız: :reason', ['reason' => ($health['status'] ?? 0) ? 'HTTP '.$health['status'] : ($health['error'] ?? __('yanıt yok'))]);
                 }
             } catch (AgentException $e) {
-                $problems[] = 'Sağlık kontrolü yapılamadı: '.($e->reason ?: $e->getMessage());
+                $problems[] = __('Sağlık kontrolü yapılamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
             }
         }
 
@@ -188,7 +188,7 @@ class DeployLaravelApp implements ShouldQueue
     {
         $deployment = $this->deployment->fresh('app');
         if ($deployment !== null && $deployment->status->isBusy()) {
-            $this->fail($deployment->app, $deployment, $e?->getMessage() ?? 'Dağıtım yarıda kaldı.');
+            $this->fail($deployment->app, $deployment, $e?->getMessage() ?? __('Dağıtım yarıda kaldı.'));
         }
     }
 }

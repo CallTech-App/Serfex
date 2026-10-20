@@ -82,19 +82,19 @@ class Queues extends Section
             'form.max_time' => ['required', 'integer', 'min:0'],
             'form.memory' => ['required', 'integer', 'between:16,4096'],
         ], [
-            'form.name.regex' => 'Küçük harf, rakam ve - kullanın.',
-            'form.name.unique' => 'Bu adda bir işçi var.',
-            'form.queue.regex' => 'Kuyruk adlarını virgülle ayırın.',
+            'form.name.regex' => __('Küçük harf, rakam ve - kullanın.'),
+            'form.name.unique' => __('Bu adda bir işçi var.'),
+            'form.queue.regex' => __('Kuyruk adlarını virgülle ayırın.'),
         ], [
-            'form.name' => 'ad', 'form.queue' => 'kuyruk', 'form.processes' => 'süreç sayısı', 'form.timeout' => 'zaman aşımı',
-            'form.tries' => 'deneme', 'form.memory' => 'bellek', 'form.connection' => 'bağlantı',
+            'form.name' => 'ad', 'form.queue' => 'kuyruk', 'form.processes' => __('süreç sayısı'), 'form.timeout' => __('zaman aşımı'),
+            'form.tries' => 'deneme', 'form.memory' => 'bellek', 'form.connection' => __('bağlantı'),
         ]);
         $data = $this->form + ['laravel_app_id' => $app->id];
         $data['connection'] = $data['connection'] === '' ? null : $data['connection'];
         $this->workerId ? $this->worker($this->workerId)?->update($data) : LaravelWorker::create($data);
         $this->editing = false;
         $apps->syncProcesses($app);
-        $this->dispatch('toast', message: 'İşçi ayarları kaydedildi; sunucuya uygulanıyor.');
+        $this->dispatch('toast', message: __('İşçi ayarları kaydedildi; sunucuya uygulanıyor.'));
     }
 
     public function deleteWorker(int $id, LaravelApps $apps): void
@@ -107,7 +107,7 @@ class Queues extends Section
         $worker->delete();
         $apps->syncProcesses($this->app());
         $this->dispatch('toast',
-            message: "{$copy['name']} işçisi silindi.",
+            message: __(':name işçisi silindi.', ['name' => $copy['name']]),
             source: $this->getId(),
             undo: ['method' => 'restoreWorker', 'args' => [$copy]],
         );
@@ -134,7 +134,7 @@ class Queues extends Section
 
             return;
         }
-        $this->dispatch('toast', message: 'İşçiler yeniden başlatıldı.');
+        $this->dispatch('toast', message: __('İşçiler yeniden başlatıldı.'));
     }
 
     public function retrySync(LaravelApps $apps): void
@@ -164,13 +164,13 @@ class Queues extends Section
         }
         $result = $this->agent('laravel.run', $this->app()->agentApp() + ['tool' => 'artisan', 'args' => $args]);
         if ($result !== null && ($result['exit_code'] ?? 1) !== 0) {
-            $this->agentError = trim((string) ($result['output'] ?? '')) ?: 'Komut başarısız oldu.';
+            $this->agentError = trim((string) ($result['output'] ?? '')) ?: __('Komut başarısız oldu.');
         }
         $this->openFailed();
         $this->dispatch('toast', message: match ($action) {
-            'retry' => $id === '' ? 'Başarısız işler yeniden kuyruğa alındı.' : 'İş yeniden kuyruğa alındı.',
-            'forget' => 'İş silindi.',
-            default => 'Başarısız işler temizlendi.',
+            'retry' => $id === '' ? __('Başarısız işler yeniden kuyruğa alındı.') : __('İş yeniden kuyruğa alındı.'),
+            'forget' => __('İş silindi.'),
+            default => __('Başarısız işler temizlendi.'),
         });
     }
 

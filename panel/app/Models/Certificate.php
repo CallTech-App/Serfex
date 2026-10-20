@@ -130,7 +130,7 @@ class Certificate extends Model
     public function issuerLabel(): string
     {
         if ($this->issuer === null) {
-            return $this->isLetsEncrypt() ? "Let's Encrypt" : 'Kendi sertifikanız';
+            return $this->isLetsEncrypt() ? "Let's Encrypt" : __('Kendi sertifikanız');
         }
 
         return $this->isLetsEncrypt() && str_contains($this->issuer, "Let's Encrypt") ? "Let's Encrypt" : $this->issuer;
@@ -139,13 +139,13 @@ class Certificate extends Model
     public function state(): CertificateState
     {
         return match (true) {
-            $this->status === CertificateStatus::Issuing => new CertificateState($this->isInstalled() ? 'Yenileniyor' : 'Alınıyor', 'info', busy: true),
-            $this->isExpired() => new CertificateState('Süresi doldu', 'crit'),
-            $this->status === CertificateStatus::WaitingDns => new CertificateState('DNS bekleniyor', 'warn'),
-            $this->status === CertificateStatus::Failed => new CertificateState('Alınamadı', 'crit'),
-            $this->renew_error !== null => new CertificateState('Yenilenemedi', 'warn'),
-            $this->daysLeft() <= self::WARN_DAYS => new CertificateState($this->daysLeft().' gün kaldı', 'warn'),
-            default => new CertificateState('Geçerli', 'ok'),
+            $this->status === CertificateStatus::Issuing => new CertificateState($this->isInstalled() ? __('Yenileniyor') : __('Alınıyor'), 'info', busy: true),
+            $this->isExpired() => new CertificateState(__('Süresi doldu'), 'crit'),
+            $this->status === CertificateStatus::WaitingDns => new CertificateState(__('DNS bekleniyor'), 'warn'),
+            $this->status === CertificateStatus::Failed => new CertificateState(__('Alınamadı'), 'crit'),
+            $this->renew_error !== null => new CertificateState(__('Yenilenemedi'), 'warn'),
+            $this->daysLeft() <= self::WARN_DAYS => new CertificateState(__(':days_left gün kaldı', ['days_left' => $this->daysLeft()]), 'warn'),
+            default => new CertificateState(__('Geçerli'), 'ok'),
         };
     }
 

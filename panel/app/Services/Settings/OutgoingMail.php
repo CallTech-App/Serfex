@@ -70,12 +70,12 @@ class OutgoingMail
     {
         $s = $this->settings();
         if ($s['mode'] === 'smtp') {
-            return $s['host'] === '' ? 'SMTP sunucusu girilmedi.' : null;
+            return $s['host'] === '' ? __('SMTP sunucusu girilmedi.') : null;
         }
 
         return app(MailSettings::class)->isSetUp() || is_executable('/usr/sbin/sendmail')
             ? null
-            : 'Bu sunucuda posta sunucusu kurulu değil. E-posta bölümünden kurun ya da bir SMTP sunucusu girin.';
+            : __('Bu sunucuda posta sunucusu kurulu değil. E-posta bölümünden kurun ya da bir SMTP sunucusu girin.');
     }
 
     public function fromAddress(): string
@@ -97,7 +97,7 @@ class OutgoingMail
     public function send(array $to, string $subject, string $body): ?string
     {
         if ($to === []) {
-            return 'Alıcı yok.';
+            return __('Alıcı yok.');
         }
         if ($problem = $this->problem()) {
             return $problem;

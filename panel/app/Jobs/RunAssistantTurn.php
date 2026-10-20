@@ -39,6 +39,6 @@ class RunAssistantTurn implements ShouldQueue
 
     public function failed(?Throwable $e): void
     {
-        $this->conversation->update(['status' => 'failed', 'error' => 'Yanıt yarıda kaldı. Yeniden deneyin.']);
+        $this->conversation->update(['status' => 'failed', 'error' => __('Yanıt yarıda kaldı. Yeniden deneyin.')]);
     }
 }

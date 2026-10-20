@@ -161,9 +161,9 @@ class SiteStats
         return match ($kind) {
             'country' => self::country($value),
             'bot' => match ($value) {
-                '-' => 'Tarayıcı bilgisi göndermeyenler',
-                'other-tool' => 'Diğer araçlar ve kütüphaneler',
-                'other-bot' => 'Diğer botlar',
+                '-' => __('Tarayıcı bilgisi göndermeyenler'),
+                'other-tool' => __('Diğer araçlar ve kütüphaneler'),
+                'other-bot' => __('Diğer botlar'),
                 default => $value,
             },
             default => $value,
@@ -176,18 +176,17 @@ class SiteStats
     public static function country(string $code): string
     {
         if ($code === '-' || strlen($code) !== 2) {
-            return 'Bilinmiyor';
+            return __('Bilinmiyor');
         }
-        $name = class_exists(Locale::class) ? Locale::getDisplayRegion('-'.$code, 'tr') : '';
+        $name = class_exists(Locale::class) ? Locale::getDisplayRegion('-'.$code, app()->getLocale()) : '';
 
         return $name !== '' && $name !== $code ? $name : $code;
     }
 
     public static function monthName(CarbonImmutable $at): string
     {
-        $months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-
-        return $months[$at->month - 1].' '.$at->format('y');
+        // "Eki 26" / "Oct 26": Carbon's short month names in the reader's language.
+        return $at->locale(app()->getLocale())->isoFormat('MMM').' '.$at->format('y');
     }
 
     /**

@@ -63,10 +63,10 @@ class DatabaseUser extends Model
     {
         $hosts = $this->hosts ?? [];
         if ($hosts === []) {
-            return 'Yalnızca bu sunucu';
+            return __('Yalnızca bu sunucu');
         }
 
-        return in_array('%', $hosts, true) ? 'Her yerden' : implode(', ', $hosts);
+        return in_array('%', $hosts, true) ? __('Her yerden') : implode(', ', $hosts);
     }
 
     public static function accessLabel(string $access): string

@@ -35,7 +35,7 @@ class BackupLaravelApp implements ShouldQueue
     {
         $backup = $this->backup->fresh();
         if ($backup !== null && $backup->status === 'running') {
-            $backup->update(['status' => 'failed', 'error' => $e?->getMessage() ?? 'Yedekleme yarıda kaldı.', 'finished_at' => now()]);
+            $backup->update(['status' => 'failed', 'error' => $e?->getMessage() ?? __('Yedekleme yarıda kaldı.'), 'finished_at' => now()]);
         }
     }
 }

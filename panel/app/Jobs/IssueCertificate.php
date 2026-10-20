@@ -115,8 +115,8 @@ class IssueCertificate implements ShouldBeUnique, ShouldQueue
     private function dnsMessage(string $domain, array $found, DnsCheck $dns): string
     {
         $here = implode(', ', $dns->serverAddresses()) ?: 'bilinmiyor';
-        $there = $found === [] ? 'hiçbir adrese' : implode(', ', $found).' adresine';
+        $there = $found === [] ? __('hiçbir adrese') : __(':found adresine', ['found' => implode(', ', $found)]);
 
-        return "DNS henüz bu sunucuya işaret etmiyor: {$domain} şu an {$there} çözülüyor (bu sunucu: {$here}). Alan adının A kaydını bu sunucuya yönlendirin; Servik her saat yeniden dener.";
+        return __('DNS henüz bu sunucuya işaret etmiyor: :domain şu an :there çözülüyor (bu sunucu: :here). Alan adının A kaydını bu sunucuya yönlendirin; Servik her saat yeniden dener.', ['domain' => $domain, 'there' => $there, 'here' => $here]);
     }
 }

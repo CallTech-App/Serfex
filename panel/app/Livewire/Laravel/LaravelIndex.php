@@ -147,7 +147,7 @@ class LaravelIndex extends Component
             }
         } catch (AgentException $e) {
             $this->phpVersions = [];
-            $this->agentError = 'Sunucu ajanına ulaşılamıyor: '.($e->reason ?: $e->getMessage());
+            $this->agentError = __('Sunucu ajanına ulaşılamıyor: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
         }
         $this->siteId = $siteId ?? $this->freeSites()->first()?->id;
         $this->updatedSiteId();
@@ -174,17 +174,17 @@ class LaravelIndex extends Component
         $this->repository = trim($this->repository);
         $this->branch = trim($this->branch);
         $this->validate($this->rules(), [
-            'siteId.required' => 'Bir site seçin.',
-            'repository.required_if' => 'Depo adresini girin.',
-            'repository.regex' => 'Depo adresi "kullanıcı/depo", https://… veya git@… biçiminde olmalı.',
-            'branch.regex' => 'Dal veya etiket adı geçersiz.',
+            'siteId.required' => __('Bir site seçin.'),
+            'repository.required_if' => __('Depo adresini girin.'),
+            'repository.regex' => __('Depo adresi "kullanıcı/depo", https://… veya git@… biçiminde olmalı.'),
+            'branch.regex' => __('Dal veya etiket adı geçersiz.'),
         ], [
-            'phpVersion' => 'PHP sürümü',
-            'dbName' => 'veritabanı adı',
-            'dbUser' => 'kullanıcı adı',
+            'phpVersion' => __('PHP sürümü'),
+            'dbName' => __('veritabanı adı'),
+            'dbUser' => __('kullanıcı adı'),
             'dbHost' => 'sunucu',
             'dbPort' => 'port',
-            'newDbSuffix' => 'veritabanı adı',
+            'newDbSuffix' => __('veritabanı adı'),
         ]);
         $site = Site::visibleTo(auth()->user())->with('systemUser')->findOrFail($this->siteId);
         if (($refusal = $quotas->refusal($site->customer(), 'laravel_apps')) !== null) {
@@ -201,7 +201,7 @@ class LaravelIndex extends Component
             }
             if (Database::withTrashed()->where('server', $this->newDbServer)->where('name', $newDb)->exists()
                 || DatabaseUser::withTrashed()->where('server', $this->newDbServer)->where('name', Str::limit($newDb, Databases::MAX_USER, ''))->exists()) {
-                $this->addError('newDbSuffix', "{$newDb} adında bir veritabanı ya da kullanıcı zaten var; başka bir ad girin.");
+                $this->addError('newDbSuffix', __(':new_db adında bir veritabanı ya da kullanıcı zaten var; başka bir ad girin.', ['new_db' => $newDb]));
 
                 return;
             }
@@ -213,7 +213,7 @@ class LaravelIndex extends Component
                     'domain' => $site->domain, 'user' => $site->systemUser->name, 'php_version' => $site->php_version,
                 ], config('servik.agent.job_timeout'))['public_key'] ?? null;
             } catch (AgentException $e) {
-                $this->agentError = 'Dağıtım anahtarı oluşturulamadı: '.($e->reason ?: $e->getMessage());
+                $this->agentError = __('Dağıtım anahtarı oluşturulamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
 
                 return;
             }
@@ -232,7 +232,7 @@ class LaravelIndex extends Component
             try {
                 $database = app(Databases::class)->create($site, $this->newDbServer, $newDb, $user, $password);
             } catch (AgentException $e) {
-                $this->agentError = 'Veritabanı oluşturulamadı: '.$e->reason;
+                $this->agentError = __('Veritabanı oluşturulamadı: :reason', ['reason' => $e->reason]);
 
                 return;
             }
@@ -259,7 +259,7 @@ class LaravelIndex extends Component
             $app->update(['database_id' => $database->id]);
         }
 
-        session()->flash('toast', 'Kurulum başladı. Adımları bu sayfada canlı izleyebilirsiniz.');
+        session()->flash('toast', __('Kurulum başladı. Adımları bu sayfada canlı izleyebilirsiniz.'));
         $this->redirectRoute('laravel.show', $app, navigate: true);
     }
 
@@ -288,7 +288,7 @@ class LaravelIndex extends Component
                 'sites' => $sites->map(fn (Site $s) => ['domain' => $s->domain, 'user' => $s->systemUser->name])->values()->all(),
             ], config('servik.agent.job_timeout')) ?? [];
         } catch (AgentException $e) {
-            $this->agentError = 'Tarama yapılamadı: '.($e->reason ?: $e->getMessage());
+            $this->agentError = __('Tarama yapılamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
 
             return;
         }
@@ -330,7 +330,7 @@ class LaravelIndex extends Component
         unset($this->found[$index]);
         $this->found = array_values($this->found);
         $this->dispatch('toast',
-            message: "{$site->domain} Servik'e bağlandı.",
+            message: __(':domain Servik\'e bağlandı.', ['domain' => $site->domain]),
             source: $this->getId(),
             undo: ['method' => 'undoAdopt', 'args' => [$app->id, $before]],
         );
@@ -416,7 +416,7 @@ class LaravelIndex extends Component
                 'required',
                 $this->phpVersions !== [] ? Rule::in($this->phpVersions) : null,
                 ! $git ? fn ($attr, $value, $fail) => PhpConstraint::allows(self::NEW_PROJECT_PHP, $value) === false
-                    ? $fail('Laravel 13 PHP 8.3 veya üstünü ister.') : null : null,
+                    ? $fail(__('Laravel 13 PHP 8.3 veya üstünü ister.')) : null : null,
             ]),
             'database' => ['required', Rule::in(['sqlite', 'existing', 'none', ...(app(DatabaseServers::class)->installed() !== [] ? ['new'] : [])])],
             'newDbServer' => ['required_if:database,new', 'nullable', Rule::in(app(DatabaseServers::class)->installed())],

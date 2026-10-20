@@ -100,15 +100,40 @@ final class Locales
     }
 
     /**
+     * The reader's word for a fixed label that is not wrapped in __() where
+     * it is shown: Blade echoes ({{ }}) pass through here, so the labels in
+     * constants, badges and the agent's lists (tabs, roles, service names)
+     * come out in English too. Only exact keys of lang/<locale>.json are
+     * swapped; everything else is shown as it is.
+     */
+    public static function label(mixed $value): mixed
+    {
+        static $lines = [];
+        if (! is_string($value) || $value === '') {
+            return $value;
+        }
+        $locale = app()->getLocale();
+        if ($locale === 'tr') {
+            return $value;
+        }
+        $lines[$locale] ??= app('translator')->getLoader()->load($locale, '*', '*');
+
+        return $lines[$locale][$value] ?? $value;
+    }
+
+    /**
      * A translated sentence with markup in its placeholders, for <x-t>:
      * the sentence and plain values are escaped, Htmlable values (slots)
-     * are kept as they are.
+     * are kept as they are. $text comes from an HTML attribute, so its
+     * entities (&quot;) are decoded before it is looked up. With $count
+     * the line is a plural (trans_choice).
      *
      * @param  array<string, mixed>  $values
      */
-    public static function html(string $text, array $values = []): HtmlString
+    public static function html(string $text, array $values = [], ?int $count = null): HtmlString
     {
-        $line = e(__($text));
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5);
+        $line = e($count === null ? __($text) : trans_choice($text, $count, ['count' => $count]));
         $replace = [];
         foreach ($values as $key => $value) {
             $replace[':'.$key] = $value instanceof Htmlable ? trim($value->toHtml()) : e((string) $value);

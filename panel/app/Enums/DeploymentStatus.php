@@ -16,12 +16,12 @@ enum DeploymentStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Queued => 'Sırada',
-            self::Running => 'Sürüyor',
-            self::Succeeded => 'Başarılı',
-            self::Failed => 'Başarısız',
-            self::RolledBack => 'Sağlık kontrolü başarısız, geri dönüldü',
-            self::Unhealthy => 'Yayında, sağlık kontrolü başarısız',
+            self::Queued => __('Sırada'),
+            self::Running => __('Sürüyor'),
+            self::Succeeded => __('Başarılı'),
+            self::Failed => __('Başarısız'),
+            self::RolledBack => __('Sağlık kontrolü başarısız, geri dönüldü'),
+            self::Unhealthy => __('Yayında, sağlık kontrolü başarısız'),
         };
     }
 

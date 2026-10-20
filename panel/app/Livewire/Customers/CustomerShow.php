@@ -76,11 +76,11 @@ class CustomerShow extends Component
         try {
             $usage->measureDisk($this->customer()->systemUsers()->get());
         } catch (AgentException $e) {
-            $this->agentError = 'Disk ölçülemedi: '.($e->reason ?: $e->getMessage());
+            $this->agentError = __('Disk ölçülemedi: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
 
             return;
         }
-        $this->dispatch('toast', message: 'Disk kullanımı ölçüldü.');
+        $this->dispatch('toast', message: __('Disk kullanımı ölçüldü.'));
     }
 
     public function saveInfo(Customers $customers): void
@@ -95,9 +95,9 @@ class CustomerShow extends Component
             'notes' => ['nullable', 'max:5000'],
             'packageId' => ['required', Rule::exists('packages', 'id')],
         ], [
-            'email.unique' => 'Bu e-posta adresiyle bir panel hesabı zaten var.',
-            'phone.regex' => 'Telefon numarası geçersiz.',
-        ], ['company' => 'firma adı', 'name' => 'yetkili kişi', 'email' => 'e-posta', 'phone' => 'telefon', 'notes' => 'notlar', 'packageId' => 'paket']);
+            'email.unique' => __('Bu e-posta adresiyle bir panel hesabı zaten var.'),
+            'phone.regex' => __('Telefon numarası geçersiz.'),
+        ], ['company' => __('firma adı'), 'name' => __('yetkili kişi'), 'email' => 'e-posta', 'phone' => 'telefon', 'notes' => 'notlar', 'packageId' => 'paket']);
 
         $packageChanged = $customer->package_id !== (int) $this->packageId;
         $customer->update([
@@ -115,7 +115,7 @@ class CustomerShow extends Component
             // The new package's PHP memory limit applies to the sites.
             ApplySitePhp::forCustomer($customer);
         }
-        $this->dispatch('toast', message: 'Müşteri bilgileri kaydedildi.');
+        $this->dispatch('toast', message: __('Müşteri bilgileri kaydedildi.'));
     }
 
     public function newInvite(Customers $customers): void
@@ -139,14 +139,14 @@ class CustomerShow extends Component
         $this->validate(['reason' => ['nullable', 'max:200']]);
         $customers->suspend($this->customer(), trim($this->reason) ?: null);
         $this->suspending = false;
-        $this->dispatch('toast', message: 'Müşteri askıya alındı. Siteleri askı sayfası gösteriyor.', source: $this->getId(),
+        $this->dispatch('toast', message: __('Müşteri askıya alındı. Siteleri askı sayfası gösteriyor.'), source: $this->getId(),
             undo: ['method' => 'unsuspend', 'args' => []]);
     }
 
     public function unsuspend(Customers $customers): void
     {
         $customers->unsuspend($this->customer());
-        $this->dispatch('toast', message: 'Müşteri yeniden etkin.');
+        $this->dispatch('toast', message: __('Müşteri yeniden etkin.'));
     }
 
     public function openDelete(): void
@@ -160,13 +160,13 @@ class CustomerShow extends Component
     {
         $customer = $this->customer();
         if ($this->confirmName !== $customer->username) {
-            $this->addError('confirmName', 'Sistem kullanıcısını tam olarak yazın.');
+            $this->addError('confirmName', __('Sistem kullanıcısını tam olarak yazın.'));
 
             return;
         }
         $customers->delete($customer, $this->deleteSites);
         Quotas::forget();
-        session()->flash('toast', $customer->displayName().' silinecek. '.(Customers::UNDO_SECONDS / 60).' dakika içinde listeden geri alabilirsiniz.');
+        session()->flash('toast', __(':name silinecek. :undo_seconds dakika içinde listeden geri alabilirsiniz.', ['name' => $customer->displayName(), 'undo_seconds' => (Customers::UNDO_SECONDS / 60)]));
         $this->redirectRoute('customers.index', navigate: true);
     }
 
@@ -181,14 +181,14 @@ class CustomerShow extends Component
     {
         $account = $this->freeAccounts()->firstWhere('id', $this->accountId);
         if ($account === null) {
-            $this->addError('accountId', 'Bağlanacak bir hesap seçin.');
+            $this->addError('accountId', __('Bağlanacak bir hesap seçin.'));
 
             return;
         }
         $customers->attach($this->customer(), $account);
         Quotas::forget();
         $this->attaching = false;
-        $this->dispatch('toast', message: "{$account->name} hesabı ve siteleri müşteriye bağlandı.", source: $this->getId(),
+        $this->dispatch('toast', message: __(':name hesabı ve siteleri müşteriye bağlandı.', ['name' => $account->name]), source: $this->getId(),
             undo: ['method' => 'undoAttach', 'args' => [$account->id]]);
     }
 
@@ -209,7 +209,7 @@ class CustomerShow extends Component
         }
         $customers->detach($this->customer(), $account);
         Quotas::forget();
-        $this->dispatch('toast', message: "{$account->name} hesabı müşteriden ayrıldı; siteleri sunucuda kalıyor.", source: $this->getId(),
+        $this->dispatch('toast', message: __(':name hesabı müşteriden ayrıldı; siteleri sunucuda kalıyor.', ['name' => $account->name]), source: $this->getId(),
             undo: ['method' => 'undoDetach', 'args' => [$account->id]]);
     }
 

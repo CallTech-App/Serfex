@@ -81,26 +81,26 @@ class UsageNotices
         $url = app(Notifications::class)->panelUrl().route('usage', ['sekme' => $kind === 'disk' ? 'disk' : 'trafik'], false);
         $package = $customer->package->name;
         [$subject, $lines] = match ([$kind, $level]) {
-            ['disk', 'warn'] => ["Disk alanınız dolmak üzere (%{$pct})", [
-                "{$package} paketinizin disk alanı dolmak üzere: {$row['text']} kullanılıyor (%{$pct}).",
-                'Alan dolduğunda yeni site, posta kutusu ya da uygulama açılamaz; mevcutlar çalışmaya devam eder.',
-                'Eski yedekleri, günlükleri ya da kullanılmayan dosyaları silerek yer açabilirsiniz.',
+            ['disk', 'warn'] => [__('Disk alanınız dolmak üzere (%:pct)', ['pct' => $pct]), [
+                __(':package paketinizin disk alanı dolmak üzere: :text kullanılıyor (%:pct).', ['package' => $package, 'text' => $row['text'], 'pct' => $pct]),
+                __('Alan dolduğunda yeni site, posta kutusu ya da uygulama açılamaz; mevcutlar çalışmaya devam eder.'),
+                __('Eski yedekleri, günlükleri ya da kullanılmayan dosyaları silerek yer açabilirsiniz.'),
             ]],
-            ['disk', 'crit'] => ['Disk alanınız doldu', [
-                "{$package} paketinizin disk alanı doldu ({$row['text']}).",
-                'Yeni site, posta kutusu ya da uygulama açılamaz; siteleriniz ve postanız çalışmaya devam ediyor.',
-                'Yer açın ya da paketinizi yükseltmek için barındırma sağlayıcınıza yazın.',
+            ['disk', 'crit'] => [__('Disk alanınız doldu'), [
+                __(':package paketinizin disk alanı doldu (:text).', ['package' => $package, 'text' => $row['text']]),
+                __('Yeni site, posta kutusu ya da uygulama açılamaz; siteleriniz ve postanız çalışmaya devam ediyor.'),
+                __('Yer açın ya da paketinizi yükseltmek için barındırma sağlayıcınıza yazın.'),
             ]],
-            ['traffic', 'warn'] => ["Aylık trafik sınırınıza yaklaştınız (%{$pct})", [
-                "Sitelerinizin bu ayki trafiği {$package} paketinizin sınırına yaklaştı: {$row['text']} (%{$pct}).",
-                'Sınır aşılsa da siteleriniz kapanmaz. Trafik her ayın başında sıfırlanır.',
+            ['traffic', 'warn'] => [__('Aylık trafik sınırınıza yaklaştınız (%:pct)', ['pct' => $pct]), [
+                __('Sitelerinizin bu ayki trafiği :package paketinizin sınırına yaklaştı: :text (%:pct).', ['package' => $package, 'text' => $row['text'], 'pct' => $pct]),
+                __('Sınır aşılsa da siteleriniz kapanmaz. Trafik her ayın başında sıfırlanır.'),
             ]],
-            default => ['Aylık trafik sınırınızı aştınız', [
-                "Sitelerinizin bu ayki trafiği {$package} paketinizin sınırını aştı ({$row['text']}).",
-                'Siteleriniz çalışmaya devam ediyor; barındırma sağlayıcınız paketinizi yükseltmenizi isteyebilir. Trafik her ayın başında sıfırlanır.',
+            default => [__('Aylık trafik sınırınızı aştınız'), [
+                __('Sitelerinizin bu ayki trafiği :package paketinizin sınırını aştı (:text).', ['package' => $package, 'text' => $row['text']]),
+                __('Siteleriniz çalışmaya devam ediyor; barındırma sağlayıcınız paketinizi yükseltmenizi isteyebilir. Trafik her ayın başında sıfırlanır.'),
             ]],
         };
 
-        return [$subject, 'Merhaba '.$customer->name.",\n\n".implode("\n", $lines)."\n\nAyrıntılar: {$url}\n"];
+        return [$subject, __('Merhaba :name,', ['name' => $customer->name])."\n\n".implode("\n", $lines)."\n\n".__('Ayrıntılar: :url', ['url' => $url])."\n"];
     }
 }

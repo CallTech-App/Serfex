@@ -41,34 +41,34 @@ class QuickSearch extends Component
     private static function pages(): array
     {
         return [
-            ['Genel Bakış', 'dashboard', [], 'layout-dashboard', 'pano özet anasayfa', 'all'],
-            ['Canlı İzleme', 'monitor.index', [], 'activity', 'izleme saldırı kaynak cpu bellek posta kuyruğu', 'admin'],
+            [__('Genel Bakış'), 'dashboard', [], 'layout-dashboard', __('pano özet anasayfa'), 'all'],
+            [__('Canlı İzleme'), 'monitor.index', [], 'activity', __('izleme saldırı kaynak cpu bellek posta kuyruğu'), 'admin'],
             ['Servik AI', 'ai.index', [], 'sparkles', 'yapay zeka asistan claude', 'write'],
-            ['Siteler', 'sites.index', [], 'globe', 'site ekle web', 'all'],
-            ['Laravel', 'laravel.index', [], 'layers', 'uygulama dağıtım deploy kuyruk', 'laravel'],
-            ['Alan Adları ve DNS', 'dns.index', [], 'network', 'dns bölge kayıt zone', 'dns'],
-            ['DNS ayarları', 'dns.settings', [], 'network', 'ad sunucusu nameserver şablon', 'admin'],
-            ['E-posta', 'mail.index', [], 'mail', 'posta kutusu mailbox webmail', 'mail'],
-            ['E-posta ayarları', 'mail.settings', [], 'mail', 'posta sunucusu dkim spam', 'admin'],
-            ['Veritabanları', 'databases.index', [], 'database', 'mysql postgresql mariadb phpmyadmin', 'all'],
-            ['Veritabanı sunucuları', 'databases.settings', [], 'database', 'mysql mariadb postgresql kurulum', 'admin'],
-            ['SSL Sertifikaları', 'ssl.index', [], 'shield-check', 'https lets encrypt sertifika', 'all'],
-            ['SSL ayarları', 'ssl.settings', [], 'shield-check', 'otomatik ssl yenileme', 'admin'],
-            ['Müşteriler ve Paketler', 'customers.index', [], 'users', 'müşteri paket kota', 'admin'],
-            ['Güvenlik', 'security.index', [], 'shield-alert', 'güvenlik duvarı waf tarama fail2ban ssh 2fa', 'admin'],
-            ['Yedekler', 'backups.index', [], 'archive', 'yedek geri yükleme backup s3 sftp', 'backups'],
-            ['Hizmetler', 'services.index', [], 'server-cog', 'servis nginx mysql postfix yeniden başlat', 'admin'],
-            ['PHP sürümleri', 'services.index', ['sekme' => 'php'], 'code', 'php ini eklenti', 'admin'],
-            ['Yazılım Yönetimi', 'components.index', [], 'package-plus', 'bileşen apache redis node composer kurulum', 'admin'],
-            ['Araçlar ve Ayarlar', 'settings.general', [], 'settings', 'genel ayarlar panel adresi port saat dilimi', 'full'],
-            ['Sunucu ayarları', 'settings.server', [], 'settings', 'sunucu adı hostname ip', 'full'],
-            ['Bildirimler', 'settings.notifications', [], 'bell', 'e-posta webhook uyarı', 'full'],
-            ['Yöneticiler', 'settings.admins', [], 'users', 'yönetici rol davet', 'full'],
-            ['API anahtarları', 'settings.api', [], 'key-round', 'api token anahtar', 'full'],
-            ['İşlem günlüğü', 'settings.audit', [], 'file-text', 'kayıt denetim log geçmiş', 'full'],
-            ['Güncellemeler', 'settings.updates', [], 'refresh-cw', 'sürüm güncelle yükselt', 'full'],
-            ['Servik AI ayarları', 'ai.settings', [], 'sparkles', 'api anahtarı model bütçe', 'full'],
-            ['Hesap güvenliği', 'account.security', [], 'lock', 'parola iki adımlı 2fa oturum', 'everyone'],
+            [__('Siteler'), 'sites.index', [], 'globe', __('site ekle web'), 'all'],
+            ['Laravel', 'laravel.index', [], 'layers', __('uygulama dağıtım deploy kuyruk'), 'laravel'],
+            [__('Alan Adları ve DNS'), 'dns.index', [], 'network', __('dns bölge kayıt zone'), 'dns'],
+            [__('DNS ayarları'), 'dns.settings', [], 'network', __('ad sunucusu nameserver şablon'), 'admin'],
+            [__('E-posta'), 'mail.index', [], 'mail', __('posta kutusu mailbox webmail'), 'mail'],
+            [__('E-posta ayarları'), 'mail.settings', [], 'mail', __('posta sunucusu dkim spam'), 'admin'],
+            [__('Veritabanları'), 'databases.index', [], 'database', 'mysql postgresql mariadb phpmyadmin', 'all'],
+            [__('Veritabanı sunucuları'), 'databases.settings', [], 'database', __('mysql mariadb postgresql kurulum'), 'admin'],
+            [__('SSL Sertifikaları'), 'ssl.index', [], 'shield-check', __('https lets encrypt sertifika'), 'all'],
+            [__('SSL ayarları'), 'ssl.settings', [], 'shield-check', __('otomatik ssl yenileme'), 'admin'],
+            [__('Müşteriler ve Paketler'), 'customers.index', [], 'users', __('müşteri paket kota'), 'admin'],
+            [__('Güvenlik'), 'security.index', [], 'shield-alert', __('güvenlik duvarı waf tarama fail2ban ssh 2fa'), 'admin'],
+            [__('Yedekler'), 'backups.index', [], 'archive', __('yedek geri yükleme backup s3 sftp'), 'backups'],
+            [__('Hizmetler'), 'services.index', [], 'server-cog', __('servis nginx mysql postfix yeniden başlat'), 'admin'],
+            [__('PHP sürümleri'), 'services.index', ['sekme' => 'php'], 'code', __('php ini eklenti'), 'admin'],
+            [__('Yazılım Yönetimi'), 'components.index', [], 'package-plus', __('bileşen apache redis node composer kurulum'), 'admin'],
+            [__('Araçlar ve Ayarlar'), 'settings.general', [], 'settings', __('genel ayarlar panel adresi port saat dilimi'), 'full'],
+            [__('Sunucu ayarları'), 'settings.server', [], 'settings', __('sunucu adı hostname ip'), 'full'],
+            [__('Bildirimler'), 'settings.notifications', [], 'bell', __('e-posta webhook uyarı'), 'full'],
+            [__('Yöneticiler'), 'settings.admins', [], 'users', __('yönetici rol davet'), 'full'],
+            [__('API anahtarları'), 'settings.api', [], 'key-round', __('api token anahtar'), 'full'],
+            [__('İşlem günlüğü'), 'settings.audit', [], 'file-text', __('kayıt denetim log geçmiş'), 'full'],
+            [__('Güncellemeler'), 'settings.updates', [], 'refresh-cw', __('sürüm güncelle yükselt'), 'full'],
+            [__('Servik AI ayarları'), 'ai.settings', [], 'sparkles', __('api anahtarı model bütçe'), 'full'],
+            [__('Hesap güvenliği'), 'account.security', [], 'lock', __('parola iki adımlı 2fa oturum'), 'everyone'],
         ];
     }
 
@@ -77,7 +77,7 @@ class QuickSearch extends Component
      */
     public static function fold(string $text): string
     {
-        return strtr(mb_strtolower(str_replace(['İ', 'I'], ['i', 'ı'], $text)), ['ı' => 'i', 'ş' => 's', 'ğ' => 'g', 'ü' => 'u', 'ö' => 'o', 'ç' => 'c', 'i̇' => 'i']);
+        return strtr(mb_strtolower(str_replace([__('İ'), 'I'], ['i', __('ı')], $text)), ['ı' => 'i', 'ş' => 's', 'ğ' => 'g', 'ü' => 'u', 'ö' => 'o', 'ç' => 'c', 'i̇' => 'i']);
     }
 
     private static function mayOpen(User $user, string $who): bool
@@ -115,7 +115,7 @@ class QuickSearch extends Component
         };
 
         $folded = self::fold($q);
-        $add('Sayfalar', collect(self::pages())
+        $add(__('Sayfalar'), collect(self::pages())
             ->filter(fn ($p) => self::mayOpen($user, $p[5]) && str_contains(self::fold($p[0].' '.$p[4]), $folded))
             ->map(fn ($p) => ['label' => $p[0], 'detail' => null, 'url' => route($p[1], $p[2]), 'icon' => $p[3]]));
 
@@ -133,46 +133,46 @@ class QuickSearch extends Component
                 ->where('name', 'ilike', $like)->orderBy('name')->limit(self::PER_GROUP)->get();
             $redirects = SiteRedirect::with('site')->whereHas('site', fn ($s) => $s->visibleTo($user))
                 ->where('kind', SiteRedirect::DOMAIN)->where('source', 'ilike', $like)->limit(self::PER_GROUP)->get();
-            $add('Siteler ve alan adları', [
+            $add(__('Siteler ve alan adları'), [
                 ...$sites->map(function (Site $s) use ($q) {
                     $alias = collect($s->aliases ?? [])->first(fn ($a) => str_contains($a, mb_strtolower($q)));
-                    $detail = $alias && ! str_contains($s->domain, mb_strtolower($q)) ? 'Ek alan adı: '.$alias : 'Site · PHP '.$s->php_version;
+                    $detail = $alias && ! str_contains($s->domain, mb_strtolower($q)) ? __('Ek alan adı: :alias', ['alias' => $alias]) : __('Site · PHP :php_version', ['php_version' => $s->php_version]);
 
                     return ['label' => $s->domain, 'detail' => $detail, 'url' => route('sites.show', $s), 'icon' => 'globe', 'mono' => true];
                 }),
-                ...$subdomains->map(fn (Subdomain $s) => ['label' => $s->name, 'detail' => 'Alt alan adı · '.$s->site->domain, 'url' => route('sites.domains', $s->site), 'icon' => 'globe', 'mono' => true]),
-                ...$redirects->map(fn (SiteRedirect $r) => ['label' => $r->source, 'detail' => 'Yönlendirme · '.$r->site->domain, 'url' => route('sites.domains', ['site' => $r->site, 'sekme' => 'yonlendirmeler']), 'icon' => 'corner-up-right', 'mono' => true]),
+                ...$subdomains->map(fn (Subdomain $s) => ['label' => $s->name, 'detail' => __('Alt alan adı · :domain', ['domain' => $s->site->domain]), 'url' => route('sites.domains', $s->site), 'icon' => 'globe', 'mono' => true]),
+                ...$redirects->map(fn (SiteRedirect $r) => ['label' => $r->source, 'detail' => __('Yönlendirme · :domain', ['domain' => $r->site->domain]), 'url' => route('sites.domains', ['site' => $r->site, 'sekme' => 'yonlendirmeler']), 'icon' => 'corner-up-right', 'mono' => true]),
             ]);
 
             if ($user->allows('dns')) {
-                $add('DNS bölgeleri', DnsZone::visibleTo($user)->where('name', 'ilike', $like)->orderByRaw('length(name)')->limit(self::PER_GROUP)->get()
-                    ->map(fn (DnsZone $z) => ['label' => $z->name, 'detail' => 'DNS bölgesi', 'url' => route('dns.show', $z), 'icon' => 'network', 'mono' => true]));
+                $add(__('DNS bölgeleri'), DnsZone::visibleTo($user)->where('name', 'ilike', $like)->orderByRaw('length(name)')->limit(self::PER_GROUP)->get()
+                    ->map(fn (DnsZone $z) => ['label' => $z->name, 'detail' => __('DNS bölgesi'), 'url' => route('dns.show', $z), 'icon' => 'network', 'mono' => true]));
             }
             if ($user->is_admin) {
-                $add('Müşteriler', Customer::query()
+                $add(__('Müşteriler'), Customer::query()
                     ->where(fn (Builder $w) => $w->where('name', 'ilike', $like)->orWhere('company', 'ilike', $like)->orWhere('email', 'ilike', $like)->orWhere('username', 'ilike', $like))
                     ->orderBy('name')->limit(self::PER_GROUP)->get()
                     ->map(fn (Customer $c) => ['label' => $c->displayName(), 'detail' => $c->email, 'url' => route('customers.show', $c), 'icon' => 'user']));
             }
             if ($user->allows('mail')) {
                 $domains = MailDomain::visibleTo($user)->select('id');
-                $add('Posta kutuları', Mailbox::with('domain')->whereIn('mail_domain_id', $domains)
+                $add(__('Posta kutuları'), Mailbox::with('domain')->whereIn('mail_domain_id', $domains)
                     ->whereRaw("(mailboxes.name || '@' || (select name from mail_domains where mail_domains.id = mailboxes.mail_domain_id)) ilike ?", [$like])
                     ->orderBy('name')->limit(self::PER_GROUP)->get()
-                    ->map(fn (Mailbox $m) => ['label' => $m->address(), 'detail' => 'Posta kutusu', 'url' => route('mail.show', $m->domain), 'icon' => 'mail', 'mono' => true]));
+                    ->map(fn (Mailbox $m) => ['label' => $m->address(), 'detail' => __('Posta kutusu'), 'url' => route('mail.show', $m->domain), 'icon' => 'mail', 'mono' => true]));
             }
-            $add('Veritabanları', Database::visibleTo($user)->with('site')->where('name', 'ilike', $like)->orderBy('name')->limit(self::PER_GROUP)->get()
-                ->map(fn (Database $d) => ['label' => $d->name, 'detail' => 'Veritabanı'.($d->site ? ' · '.$d->site->domain : ''), 'url' => route('databases.show', $d), 'icon' => 'database', 'mono' => true]));
+            $add(__('Veritabanları'), Database::visibleTo($user)->with('site')->where('name', 'ilike', $like)->orderBy('name')->limit(self::PER_GROUP)->get()
+                ->map(fn (Database $d) => ['label' => $d->name, 'detail' => __('Veritabanı').($d->site ? ' · '.$d->site->domain : ''), 'url' => route('databases.show', $d), 'icon' => 'database', 'mono' => true]));
         }
 
         if (self::mayOpen($user, 'laravel')) {
-            $add('Laravel uygulamaları', LaravelApp::with('site')->whereNull('preview_of_id')
+            $add(__('Laravel uygulamaları'), LaravelApp::with('site')->whereNull('preview_of_id')
                 ->when(! $user->is_admin, fn ($w) => $w->where(fn ($w) => $w
                     ->whereIn('id', $user->laravelMemberships()->select('laravel_app_id'))
                     ->when($user->isCustomer(), fn ($w) => $w->orWhereHas('site', fn ($s) => $s->visibleTo($user)))))
                 ->whereHas('site', fn ($s) => $s->where('domain', 'ilike', $like))
                 ->limit(self::PER_GROUP)->get()
-                ->map(fn (LaravelApp $a) => ['label' => $a->site->domain, 'detail' => 'Laravel uygulaması', 'url' => route('laravel.show', $a), 'icon' => 'layers', 'mono' => true]));
+                ->map(fn (LaravelApp $a) => ['label' => $a->site->domain, 'detail' => __('Laravel uygulaması'), 'url' => route('laravel.show', $a), 'icon' => 'layers', 'mono' => true]));
         }
 
         return $groups;
