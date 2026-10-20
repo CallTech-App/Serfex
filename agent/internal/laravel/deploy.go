@@ -377,7 +377,7 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 	res.Releases = m.releases(spec.Target)
 	res.Millis = time.Since(start).Milliseconds()
 	if problem == "" {
-		fmt.Fprintf(log, "✓ %s\n", i18n.T(ctx, "releases/%s yayında. Toplam %s.", spec.Release, humanDuration(time.Since(start))))
+		fmt.Fprintf(log, "✓ %s\n", i18n.T(ctx, "releases/%s yayında. Toplam %s.", spec.Release, humanDuration(ctx, time.Since(start))))
 	}
 	return res, nil
 }
@@ -799,10 +799,10 @@ func indent(s, prefix string) string {
 	return prefix + strings.ReplaceAll(s, "\n", "\n"+prefix)
 }
 
-func humanDuration(d time.Duration) string {
+func humanDuration(ctx context.Context, d time.Duration) string {
 	d = d.Round(time.Second)
 	if d < time.Minute {
-		return fmt.Sprintf("%d sn", int(d.Seconds()))
+		return i18n.T(ctx, "%d sn", int(d.Seconds()))
 	}
-	return fmt.Sprintf("%d dk %02d sn", int(d.Minutes()), int(d.Seconds())%60)
+	return i18n.T(ctx, "%d dk %02d sn", int(d.Minutes()), int(d.Seconds())%60)
 }

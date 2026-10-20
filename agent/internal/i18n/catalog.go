@@ -3,7 +3,9 @@ package i18n
 // english translates the agent's Turkish messages. Keep the verbs (%s,
 // %d) in the same order; TestEveryMessageIsTranslated checks the counts.
 var english = map[string]string{
-	"%d dakika işlem yapılmadı":                                       "no activity for %d minutes",
+	"%d sn":                     "%d s",
+	"%d dk %02d sn":             "%d min %02d s",
+	"%d dakika işlem yapılmadı": "no activity for %d minutes",
 	"%d dakika sınırı aşıldı, komut durduruldu.":                      "The %d minute limit was reached; the command was stopped.",
 	"%d sertifika geri yüklendi":                                      "%d certificates restored",
 	"%s Servik %s ile çalışmaya devam ediyor.":                        "%s Servik %s keeps running.",

@@ -170,16 +170,28 @@ func TestRealHost(t *testing.T) {
 	if b, _ := os.ReadFile("/sys/fs/cgroup" + cg + "/memory.max"); strings.TrimSpace(string(b)) != fmt.Sprint(256<<20) {
 		t.Errorf("memory.max = %q", b)
 	}
-	inScope := 0
-	for _, p := range readProcs(h) {
-		if p.Cmd == "php-fpm: pool "+domain {
-			if p.Unit != scope {
-				t.Errorf("worker %d is in %s", p.PID, p.Unit)
+	// StartTransientUnit only queues the job; systemd moves the workers
+	// when it runs.
+	workers := func() (in, out []proc) {
+		for _, p := range readProcs(h) {
+			if p.Cmd == "php-fpm: pool "+domain {
+				if p.Unit == scope {
+					in = append(in, p)
+				} else {
+					out = append(out, p)
+				}
 			}
-			inScope++
 		}
+		return in, out
 	}
-	if inScope == 0 {
+	in, out := workers()
+	for end := time.Now().Add(5 * time.Second); (len(in) == 0 || len(out) > 0) && time.Now().Before(end); in, out = workers() {
+		time.Sleep(200 * time.Millisecond)
+	}
+	for _, p := range out {
+		t.Errorf("worker %d is in %s", p.PID, p.Unit)
+	}
+	if len(in) == 0 {
 		t.Fatal("no worker in the scope")
 	}
 	m.Sample(ctx)

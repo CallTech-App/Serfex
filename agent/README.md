@@ -10,7 +10,8 @@ CGO_ENABLED=0 go build -ldflags "-X github.com/winchester37/servik/agent/interna
   -o bin/servik-agent ./cmd/servik-agent
 ```
 
-Methods so far:
+The core methods are below; [docs/architecture.md](../docs/architecture.md)
+lists every method by area.
 
 | Method | Params | Result |
 |--------|--------|--------|

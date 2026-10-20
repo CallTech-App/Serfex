@@ -7,3 +7,6 @@ Thumbs.db
 
 # Agent build output
 /agent/bin/
+
+# Release builds (scripts/build-release.sh)
+/dist/

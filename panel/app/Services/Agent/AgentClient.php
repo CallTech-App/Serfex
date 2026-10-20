@@ -3,6 +3,7 @@
 namespace App\Services\Agent;
 
 use App\Support\ReadOnlyGuard;
+use Illuminate\Foundation\Application;
 
 /**
  * JSON-RPC 2.0 client for servik-agent.
@@ -34,7 +35,12 @@ class AgentClient
         $id = $this->nextId++;
 
         // locale: the language of the agent's progress lines and messages.
-        $request = ['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'locale' => app()->getLocale()];
+        // Without the application (the agent integration tests) the agent
+        // uses its own default.
+        $request = ['jsonrpc' => '2.0', 'id' => $id, 'method' => $method];
+        if (app() instanceof Application && app()->bound('config')) {
+            $request['locale'] = app()->getLocale();
+        }
         if ($params !== []) {
             $request['params'] = $params;
         }

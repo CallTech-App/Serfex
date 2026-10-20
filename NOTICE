@@ -1,0 +1,35 @@
+Servik
+Copyright (C) 2026 The Servik authors
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License, version 3, as
+published by the Free Software Foundation (AGPL-3.0-only). See LICENSE for
+the full text.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+General Public License for more details.
+
+Every source file in this repository is covered by the license above
+unless it says otherwise. Servik includes or installs third-party
+software under its own licenses, among them:
+
+- Laravel, Livewire and the other PHP packages listed in
+  panel/composer.lock (MIT and compatible licenses; see panel/vendor/*/
+  in a release).
+- The JavaScript packages listed in panel/package-lock.json, compiled
+  into the panel's assets.
+- Lucide icons in panel/resources/icons (ISC License).
+- IBM Plex Sans and IBM Plex Mono fonts (SIL Open Font License 1.1).
+- golang.org/x/crypto, used by the agent (BSD 3-Clause License).
+
+Servik installs, but does not include, Nginx, Apache, PHP, PostgreSQL,
+MySQL or MariaDB, PowerDNS, Postfix, Dovecot, Rspamd, Roundcube,
+phpMyAdmin, Adminer, Redis, ModSecurity and the OWASP Core Rule Set,
+ClamAV, Fail2ban and Node.js, from Ubuntu's archive or their own
+distributors, each under its own license.
+
+"Laravel" is a trademark of Taylor Otwell. "Claude" is a trademark of
+Anthropic. Servik is not affiliated with either. cPanel and Plesk are
+trademarks of their owners and are mentioned only for comparison.
