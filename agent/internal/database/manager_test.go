@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/winchester37/servik/agent/internal/cert"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/panel"
 )
@@ -350,10 +351,55 @@ func TestPanelCertificateChanged(t *testing.T) {
 	if _, err := m.SetupManager(ctx, ManagerSpec{Port: 8443}); err != nil {
 		t.Fatal(err)
 	}
+	// No certificate of its own yet: one server with servik-web's.
 	if err := m.PanelCertificateChanged(ctx); err != nil {
 		t.Fatal(err)
 	}
-	contains(t, "nginx", read(t, sim, webConf), "ssl_certificate /etc/servik/panel/ssl/fullchain.pem;", "ssl_certificate_key /etc/servik/panel/ssl/privkey.pem;")
+	conf := read(t, sim, webConf)
+	contains(t, "nginx", conf, "listen 8443 ssl http2 default_server;", "ssl_certificate /etc/servik/web/tls/fullchain.pem;")
+	if strings.Contains(conf, "server_name") || strings.Contains(conf, "/etc/servik/panel/ssl/") {
+		t.Fatalf("panel certificate served before it exists:\n%s", conf)
+	}
+
+	// With one, the panel's name gets it and the IP address keeps the
+	// certificate a browser already accepted.
+	full, key := cert.PanelFiles()
+	certPEM, keyPEM, err := selfSigned("server.ornek.com.tr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, data := range map[string][]byte{full: certPEM, key: keyPEM} {
+		if err := os.MkdirAll(filepath.Dir(sim.Path(path)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(sim.Path(path), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := m.PanelCertificateChanged(ctx); err != nil {
+		t.Fatal(err)
+	}
+	conf = read(t, sim, webConf)
+	byIP, byName, ok := strings.Cut(conf, "server_name server.ornek.com.tr;")
+	if !ok {
+		t.Fatalf("no server for the panel's name:\n%s", conf)
+	}
+	contains(t, "default server", byIP, "listen 8443 ssl http2 default_server;", "ssl_certificate /etc/servik/web/tls/fullchain.pem;", "location ^~ /phpmyadmin/")
+	contains(t, "panel's name", byName, "ssl_certificate /etc/servik/panel/ssl/fullchain.pem;", "ssl_certificate_key /etc/servik/panel/ssl/privkey.pem;", "location ^~ /phpmyadmin/")
+	if strings.Contains(byIP, "/etc/servik/panel/ssl/") {
+		t.Errorf("the IP address serves the panel's certificate:\n%s", byIP)
+	}
+	if n := strings.Count(conf, " ssl http2 default_server;"); n == 0 || strings.Count(conf, " ssl http2;") != n {
+		t.Errorf("the name's server must listen on the same ports without default_server:\n%s", conf)
+	}
+}
+
+func TestPanelNamesKeepServerNameSafe(t *testing.T) {
+	for n, want := range map[string]bool{"server.ornek.com.tr": true, "*.ornek.com.tr": true, "bad name;": false, "a..b": false, "-x.com": false, "": false} {
+		if got := validServerName(n); got != want {
+			t.Errorf("validServerName(%q) = %v", n, got)
+		}
+	}
 }
 
 // recorder answers mysql with canned output and keeps the scripts.

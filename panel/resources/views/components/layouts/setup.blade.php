@@ -24,6 +24,7 @@
             {{ $slot }}
         </main>
         <x-toasts />
+        <x-connection-lost />
         @livewireScripts
     </body>
 </html>

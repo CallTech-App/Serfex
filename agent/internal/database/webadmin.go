@@ -3,8 +3,10 @@ package database
 import (
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -315,16 +317,11 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		}
 	}
 
-	certFile, keyFile, err := m.webTLS(t)
+	data, err := m.webConfData(t, ports, mysql, pg, withPanel)
 	if err != nil {
 		return "", err
 	}
-	data := webData{
-		Marker: txn.Marker, Ports: ports, IPv6: m.hasIPv6(), Cert: certFile, Key: keyFile, Socket: phpSocket,
-		WWW: adminWWW, Logs: webLogs, Temp: webTemp, WebUser: WebUser, AdminUser: AdminUser, PHP: php,
-		PhpMyAdmin: mysql, Adminer: pg, Tokens: adminTokens, Sessions: adminSess, Tmp: adminTmp, TLSConf: cert.TLSConf,
-		Panel: withPanel, PanelRoot: panel.CurrentLink + "/panel/public", PanelSocket: panel.Socket, PanelUser: panel.User,
-	}
+	data.PHP = php
 	if err := t.RootDir("/etc/servik/nginx", 0o755, 0, 0); err != nil {
 		return "", err
 	}
@@ -457,13 +454,27 @@ func phpLess(a, b string) bool {
 	return len(an) < len(bn) || (len(an) == len(bn) && an < bn)
 }
 
-// webTLS returns the certificate servik-web serves: the panel's own once
-// it has one, a self-signed one until then.
-func (m *Manager) webTLS(t *txn.Tx) (string, string, error) {
-	full, key := cert.PanelFiles()
-	if m.exists(full) && m.exists(key) {
-		return full, key, nil
+// webConfData is what servik-web's configuration is made from.
+func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool) (webData, error) {
+	certFile, keyFile, err := m.webTLS(t)
+	if err != nil {
+		return webData{}, err
 	}
+	data := webData{
+		Marker: txn.Marker, Ports: ports, IPv6: m.hasIPv6(), Cert: certFile, Key: keyFile, Socket: phpSocket,
+		WWW: adminWWW, Logs: webLogs, Temp: webTemp, WebUser: WebUser, AdminUser: AdminUser,
+		PhpMyAdmin: mysql, Adminer: pg, Tokens: adminTokens, Sessions: adminSess, Tmp: adminTmp, TLSConf: cert.TLSConf,
+		Panel: withPanel, PanelRoot: panel.CurrentLink + "/panel/public", PanelSocket: panel.Socket, PanelUser: panel.User,
+	}
+	data.PanelCert, data.PanelKey = cert.PanelFiles()
+	data.PanelNames = m.panelNames(data.PanelCert, data.PanelKey)
+	return data, nil
+}
+
+// webTLS returns servik-web's own self-signed certificate, made on first
+// use. It answers on the IP address and every name but the panel's, so a
+// page opened before the panel had a certificate keeps working after.
+func (m *Manager) webTLS(t *txn.Tx) (string, string, error) {
 	if m.exists(webCert) && m.exists(webKey) {
 		return webCert, webKey, nil
 	}
@@ -481,22 +492,87 @@ func (m *Manager) webTLS(t *txn.Tx) (string, string, error) {
 	return webCert, webKey, t.WriteOwned(webCert, certPEM, 0o644, 0, 0)
 }
 
-// PanelCertificateChanged points servik-web at the panel's certificate
-// once it has one; the certificate store reloads servik-web afterwards.
-func (m *Manager) PanelCertificateChanged(context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	data, err := os.ReadFile(m.h.Path(webConf))
-	if err != nil {
-		return nil // not set up
-	}
-	full, key := cert.PanelFiles()
-	conf := strings.NewReplacer("ssl_certificate "+webCert+";", "ssl_certificate "+full+";", "ssl_certificate_key "+webKey+";", "ssl_certificate_key "+key+";").Replace(string(data))
-	if conf == string(data) {
+// panelNames are the names on the panel's own certificate (Let's Encrypt
+// or uploaded), or none while it has none.
+func (m *Manager) panelNames(full, key string) []string {
+	if !m.exists(key) {
 		return nil
 	}
+	data, err := os.ReadFile(m.h.Path(full))
+	if err != nil {
+		return nil
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil
+	}
+	c, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, n := range c.DNSNames {
+		if n = strings.ToLower(n); validServerName(n) && !slices.Contains(names, n) {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// validServerName keeps a certificate's names to what server_name takes
+// safely: host names, with a leading "*." for wildcards.
+func validServerName(n string) bool {
+	n = strings.TrimPrefix(n, "*.")
+	if n == "" || len(n) > 253 {
+		return false
+	}
+	for _, label := range strings.Split(n, ".") {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// PanelCertificateChanged serves the panel's new certificate on the
+// panel's name, while the IP address keeps servik-web's own; the
+// certificate store reloads servik-web afterwards.
+func (m *Manager) PanelCertificateChanged(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.exists(webConf) {
+		return nil // not set up
+	}
+	st, err := m.loadState()
+	if err != nil {
+		return err
+	}
+	_, mysql := m.installedProduct(MySQL)
+	_, pg := m.installedProduct(PostgreSQL)
+	if st.Manager == nil {
+		mysql, pg = false, false
+	}
+	_, withPanel := panel.Load(m.h)
+	withPanel = withPanel && panel.Installed(m.h)
 	t := txn.New(m.h)
-	return t.WriteFile(webConf, []byte(conf))
+	data, err := m.webConfData(t, m.webPorts(st), mysql, pg, withPanel)
+	if err == nil {
+		err = t.WriteFile(webConf, render(webConfTmpl, data))
+	}
+	if err == nil && t.Changed {
+		if _, err = m.h.Run(ctx, host.Command{Name: "nginx", Args: []string{"-t", "-q", "-c", webConf}}); err != nil {
+			err = fmt.Errorf("nginx rejected the configuration: %w", err)
+		}
+	}
+	if err != nil {
+		return errors.Join(err, t.Rollback(context.WithoutCancel(ctx)))
+	}
+	return nil
 }
 
 // blowfishSecret keeps phpMyAdmin's cookie encryption key across setups.

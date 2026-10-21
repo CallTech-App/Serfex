@@ -159,6 +159,13 @@
                                         <span class="block text-2xs text-muted">{{ __('Ad sunucularının ve sunucunun A kayıtları içine yazılır.') }}</span>
                                     </span>
                                 </label>
+                                <label class="flex items-start gap-2">
+                                    <input type="checkbox" wire:model="createSite" class="mt-0.5 size-4 accent-accent" @disabled($siteExists)>
+                                    <span>
+                                        <x-t text=":domain için site oluştur"><x-slot:domain><span class="font-mono">{{ $domain ?: 'ornek.com.tr' }}</span></x-slot:domain></x-t>
+                                        @error('createSite')<span class="block text-[13px] text-crit">{{ $message }}</span>@else<span class="block text-2xs text-muted">{{ $siteExists ? __('Siteler\'de var.') : __('Siteler\'e eklenir: www ile birlikte, varsayılan web sunucusu ve PHP sürümüyle. Sonra site ayrıntısından değiştirebilirsiniz.') }}</span>@enderror
+                                    </span>
+                                </label>
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\IssuePanelCertificate;
+use App\Jobs\ProvisionSite;
 use App\Jobs\SetupDnsServer;
 use App\Jobs\SyncDnsZone;
 use App\Livewire\Setup\SetupWizard;
@@ -173,6 +174,14 @@ class SetupTest extends TestCase
         $this->assertContains('srv1 A 203.0.113.10', $records);
         Queue::assertPushed(SyncDnsZone::class);
 
+        // The domain is a site too, the administrator's, in the same zone.
+        $site = Site::where('domain', 'ornek.com.tr')->sole();
+        $this->assertSame('ornek', $site->systemUser->name);
+        $this->assertSame('8.4', $site->php_version);
+        $this->assertSame(['www.ornek.com.tr'], $site->aliases);
+        $this->assertSame($site->id, $zone->fresh()->site_id);
+        Queue::assertPushed(ProvisionSite::class);
+
         // The panel opens on the server's own name unless another is chosen.
         $wizard->assertSet('panelMode', 'hostname')
             ->assertSee('https://srv1.ornek.com.tr:8443')
@@ -277,6 +286,36 @@ class SetupTest extends TestCase
         Queue::assertNotPushed(IssuePanelCertificate::class);
         Livewire::test(SetupWizard::class)->assertSet('panelMode', 'ip');
         $this->assertSame('IP adresi ve port', collect(app(FirstRun::class)->checklist())->keyBy('step')['panel']['detail']);
+    }
+
+    public function test_the_name_servers_step_can_leave_the_site_out(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'full']));
+        Setting::put('server.hostname', 'srv1.kahve.com.tr');
+
+        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+            ->assertSet('domain', 'kahve.com.tr')
+            ->assertSet('createSite', true)
+            ->assertSee('için site oluştur')
+            ->set('createSite', false)
+            ->call('save')->assertHasNoErrors()->assertSet('step', 'panel');
+        $this->assertTrue(DnsZone::where('name', 'kahve.com.tr')->exists());
+        $this->assertFalse(Site::where('domain', 'kahve.com.tr')->exists());
+
+        // A site that is already there is left as it is.
+        Site::factory()->create(['domain' => 'kahve.com.tr']);
+        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+            ->assertSet('createSite', false)
+            ->assertSee('Siteler\'de var.')
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame(1, Site::where('domain', 'kahve.com.tr')->count());
+
+        // Without PHP on the server the step says so instead of failing later.
+        Site::query()->delete();
+        $this->agent->answers['php.versions'] = [];
+        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+            ->set('createSite', true)
+            ->call('save')->assertHasErrors('createSite')->assertSet('step', 'ad-sunuculari');
     }
 
     public function test_only_full_administrators_open_the_wizard(): void
