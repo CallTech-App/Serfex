@@ -80,13 +80,12 @@ regenerate them with `go test ./internal/app -run TestReferenceIsCurrent -update
 CI also runs real-server jobs that change the machine (`-tags realhost`).
 Run those only on a throwaway server or VM.
 
-To keep Actions minutes down, CI comes in two sizes. A draft pull request
-gets the quick checks above, on PHP 8.4, for the parts it changes. Marking
-it ready for review runs everything: PHP 8.5 and the real-server jobs. Open
-your pull request as a draft, mark it ready once it is finished, and wait
-for that run before merging. Maintainers can start the full run on any
-branch from Actions → CI → Run workflow. Changes to documentation alone run
-no CI.
+To keep Actions minutes down, CI never starts on its own: pushes and pull
+requests run nothing. Maintainers start it from Actions → CI → Run workflow
+on the branch. The quick size (the default) runs the checks above on PHP
+8.4, in about eight minutes. The full size adds PHP 8.5 and the real-server
+jobs and takes an hour or more; use it for changes to the agent, the
+installer or the update path. Run the tests locally before you push.
 
 ## Text and translations
 
