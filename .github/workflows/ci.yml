@@ -1,9 +1,52 @@
 name: CI
 
+# GitHub bills every job by the started minute, so CI runs in two sizes.
+#
+# Quick: Go format/vet/tests, the panel's tests and translations on PHP 8.4.
+# Runs on every push to a draft pull request, and only for the parts the
+# pull request touches (see the plan job).
+#
+# Full: the quick set, PHP 8.5, and the real-server jobs that install
+# Nginx, PowerDNS, Postfix, the database servers and Servik itself. Runs
+# when a pull request is ready for review (and on every push after that),
+# and from Actions → CI → Run workflow on any branch. Mark a pull request
+# ready only when it is about to be merged, and wait for the full run.
+#
+# Pushes to main run the quick set on both PHP versions. Changes to
+# documentation, release notes, the design mockup or Markdown alone run
+# nothing.
 on:
   push:
     branches: [main]
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!design/**'
+      - '!release-notes/**'
+      - '!**/*.md'
+      - '!**/*.png'
+      - '!LICENSE'
+      - '!NOTICE'
+      - '!.github/ISSUE_TEMPLATE/**'
+      # Generated from the commands; the command line's tests compare them.
+      - 'docs/cli.md'
+      - 'docs/tr/cli.md'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!design/**'
+      - '!release-notes/**'
+      - '!**/*.md'
+      - '!**/*.png'
+      - '!LICENSE'
+      - '!NOTICE'
+      - '!.github/ISSUE_TEMPLATE/**'
+      # Generated from the commands; the command line's tests compare them.
+      - 'docs/cli.md'
+      - 'docs/tr/cli.md'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,9 +56,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides which jobs this run needs. A pull request runs the jobs for the
+  # directories it changes (all of them when it changes a workflow), and
+  # the real-server jobs only when it is not a draft.
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.plan.outputs.full }}
+      php: ${{ steps.plan.outputs.php }}
+      agent: ${{ steps.plan.outputs.agent }}
+      cli: ${{ steps.plan.outputs.cli }}
+      panel: ${{ steps.plan.outputs.panel }}
+      scripts: ${{ steps.plan.outputs.scripts }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          parts=(agent cli panel scripts)
+          full=false
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+            for part in "${parts[@]}"; do
+              if grep -qE "^($part/|\.github/workflows/)" <<< "$files"; then
+                echo "$part=true"
+              else
+                echo "$part=false"
+              fi
+            done >> "$GITHUB_OUTPUT"
+            [ "$DRAFT" = true ] || full=true
+          else
+            printf '%s=true\n' "${parts[@]}" >> "$GITHUB_OUTPUT"
+            [ "$GITHUB_EVENT_NAME" = push ] || full=true
+          fi
+          if [ $full = true ] || [ "$GITHUB_EVENT_NAME" = push ]; then
+            php='["8.4","8.5"]'
+          else
+            php='["8.4"]'
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "php=$php" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
   agent:
     name: Agent (Go)
     runs-on: ubuntu-24.04
+    needs: [plan]
+    if: ${{ needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: agent
@@ -32,14 +127,16 @@ jobs:
 
       - run: go vet ./...
 
+      # The panel job, which runs whenever the agent changes, builds the
+      # static binary.
       - run: go test -race ./...
-
-      - name: Build static binary
-        run: CGO_ENABLED=0 go build -trimpath -o bin/servik-agent ./cmd/servik-agent
 
   cli:
     name: Command line (Go)
     runs-on: ubuntu-24.04
+    needs: [plan]
+    if: ${{ needs.plan.outputs.cli == 'true' || needs.plan.outputs.scripts == 'true' }}
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: cli
@@ -71,6 +168,9 @@ jobs:
   cli-realhost:
     name: Command line drives a real panel
     runs-on: ubuntu-24.04
+    needs: [plan, agent, cli, panel]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && (needs.plan.outputs.agent == 'true' || needs.plan.outputs.cli == 'true' || needs.plan.outputs.panel == 'true' || needs.plan.outputs.scripts == 'true') }}
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -143,6 +243,9 @@ jobs:
   agent-realhost:
     name: Agent on real Nginx and PHP-FPM
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -165,6 +268,9 @@ jobs:
   agent-dns:
     name: Agent on real PowerDNS
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -188,6 +294,9 @@ jobs:
   agent-ssl:
     name: Agent issues certificates with Pebble
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -233,6 +342,9 @@ jobs:
   agent-mail:
     name: Agent runs a real mail server
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -268,6 +380,9 @@ jobs:
   agent-laravel:
     name: Agent installs and deploys Laravel
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -308,6 +423,9 @@ jobs:
   agent-monitor:
     name: Agent monitors, blocks and limits a real site
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -344,6 +462,9 @@ jobs:
   agent-stats:
     name: Agent collects traffic statistics from a real site
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -379,6 +500,9 @@ jobs:
   agent-databases:
     name: Agent runs a real ${{ matrix.product }} server
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -422,6 +546,9 @@ jobs:
   agent-components:
     name: Agent installs software for real
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -463,6 +590,9 @@ jobs:
   agent-files:
     name: Agent manages files and SFTP accounts for real
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -501,6 +631,9 @@ jobs:
   agent-security:
     name: Agent secures a real site
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -546,6 +679,9 @@ jobs:
   agent-services:
     name: Agent manages services and PHP versions for real
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -586,6 +722,9 @@ jobs:
   agent-backups:
     name: Agent backs up and restores a real site
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -636,6 +775,9 @@ jobs:
   agent-cron:
     name: Agent runs scheduled tasks and changes server settings for real
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -680,6 +822,9 @@ jobs:
   agent-domains:
     name: Agent serves subdomains, aliases and redirects for real
     runs-on: ubuntu-24.04
+    needs: [plan, agent]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && needs.plan.outputs.agent == 'true' }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: agent
@@ -716,6 +861,9 @@ jobs:
   update-realhost:
     name: Panel updates itself on a real server
     runs-on: ubuntu-24.04
+    needs: [plan, agent, cli, panel]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && (needs.plan.outputs.agent == 'true' || needs.plan.outputs.panel == 'true' || needs.plan.outputs.scripts == 'true') }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
 
@@ -768,6 +916,9 @@ jobs:
   panel-realhost:
     name: Panel suspends a customer on a real server
     runs-on: ubuntu-24.04
+    needs: [plan, agent, panel]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.full == 'true' && (needs.plan.outputs.agent == 'true' || needs.plan.outputs.panel == 'true' || needs.plan.outputs.scripts == 'true') }}
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -839,10 +990,13 @@ jobs:
   panel:
     name: Panel (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
+    needs: [plan]
+    if: ${{ needs.plan.outputs.panel == 'true' || needs.plan.outputs.agent == 'true' || needs.plan.outputs.scripts == 'true' }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.4', '8.5']
+        php: ${{ fromJSON(needs.plan.outputs.php) }}
     services:
       postgres:
         image: postgres:16
