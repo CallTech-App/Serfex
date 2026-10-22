@@ -1,52 +1,25 @@
 name: CI
 
-# GitHub bills every job by the started minute, so CI runs in two sizes.
+# CI runs only when started by hand: Actions → CI → Run workflow, on any
+# branch. Pushes, pull requests and releases start nothing, because every
+# job is billed by the started minute and the real-server jobs install a
+# whole hosting stack. Run it before merging a change that needs it.
 #
-# Quick: Go format/vet/tests, the panel's tests and translations on PHP 8.4.
-# Runs on every push to a draft pull request, and only for the parts the
-# pull request touches (see the plan job).
+# Quick (the default): Go format/vet/tests, the panel's tests and
+# translations on PHP 8.4. About 8 minutes.
 #
 # Full: the quick set, PHP 8.5, and the real-server jobs that install
-# Nginx, PowerDNS, Postfix, the database servers and Servik itself. Runs
-# when a pull request is ready for review (and on every push after that),
-# and from Actions → CI → Run workflow on any branch. Mark a pull request
-# ready only when it is about to be merged, and wait for the full run.
-#
-# Pushes to main run the quick set on both PHP versions. Changes to
-# documentation, release notes, the design mockup or Markdown alone run
-# nothing.
+# Nginx, PowerDNS, Postfix, the database servers and Servik itself. About
+# 60 to 120 minutes; only for changes to the agent, the installer or the
+# update path.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '**'
-      - '!docs/**'
-      - '!design/**'
-      - '!release-notes/**'
-      - '!**/*.md'
-      - '!**/*.png'
-      - '!LICENSE'
-      - '!NOTICE'
-      - '!.github/ISSUE_TEMPLATE/**'
-      # Generated from the commands; the command line's tests compare them.
-      - 'docs/cli.md'
-      - 'docs/tr/cli.md'
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - '**'
-      - '!docs/**'
-      - '!design/**'
-      - '!release-notes/**'
-      - '!**/*.md'
-      - '!**/*.png'
-      - '!LICENSE'
-      - '!NOTICE'
-      - '!.github/ISSUE_TEMPLATE/**'
-      # Generated from the commands; the command line's tests compare them.
-      - 'docs/cli.md'
-      - 'docs/tr/cli.md'
   workflow_dispatch:
+    inputs:
+      size:
+        description: quick (Go and panel tests) or full (also PHP 8.5 and the real-server jobs)
+        type: choice
+        options: [quick, full]
+        default: quick
 
 permissions:
   contents: read
@@ -56,16 +29,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Decides which jobs this run needs. A pull request runs the jobs for the
-  # directories it changes (all of them when it changes a workflow), and
-  # the real-server jobs only when it is not a draft.
+  # Decides which jobs this run needs: every part, and the real-server
+  # jobs only for a full run.
   plan:
     name: Plan
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
     outputs:
       full: ${{ steps.plan.outputs.full }}
       php: ${{ steps.plan.outputs.php }}
@@ -76,33 +45,16 @@ jobs:
     steps:
       - id: plan
         env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          DRAFT: ${{ github.event.pull_request.draft }}
+          SIZE: ${{ inputs.size }}
         run: |
-          parts=(agent cli panel scripts)
-          full=false
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
-            for part in "${parts[@]}"; do
-              if grep -qE "^($part/|\.github/workflows/)" <<< "$files"; then
-                echo "$part=true"
-              else
-                echo "$part=false"
-              fi
-            done >> "$GITHUB_OUTPUT"
-            [ "$DRAFT" = true ] || full=true
+          printf '%s=true\n' agent cli panel scripts >> "$GITHUB_OUTPUT"
+          if [ "$SIZE" = full ]; then
+            echo 'full=true' >> "$GITHUB_OUTPUT"
+            echo 'php=["8.4","8.5"]' >> "$GITHUB_OUTPUT"
           else
-            printf '%s=true\n' "${parts[@]}" >> "$GITHUB_OUTPUT"
-            [ "$GITHUB_EVENT_NAME" = push ] || full=true
+            echo 'full=false' >> "$GITHUB_OUTPUT"
+            echo 'php=["8.4"]' >> "$GITHUB_OUTPUT"
           fi
-          if [ $full = true ] || [ "$GITHUB_EVENT_NAME" = push ]; then
-            php='["8.4","8.5"]'
-          else
-            php='["8.4"]'
-          fi
-          echo "full=$full" >> "$GITHUB_OUTPUT"
-          echo "php=$php" >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
 
   agent:
