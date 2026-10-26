@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\CertificateStatus;
 use App\Enums\SiteStatus;
 use App\Services\Php\PhpVersions;
+use App\Services\Settings\Notifications;
 use App\Support\CertificateState;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -299,6 +300,11 @@ class Site extends Model
             'php_version' => $this->php_version,
             'aliases' => array_values($this->aliases ?? []),
         ];
+        // The sign-in button on the default page of a new document root;
+        // a panel reached only by its IP address is left off the page.
+        if (filled(Setting::get('panel.hostname'))) {
+            $spec['panel_url'] = app(Notifications::class)->panelUrl().'/';
+        }
         if ($this->web_server === self::APACHE) {
             $spec['web_server'] = self::APACHE;
         }

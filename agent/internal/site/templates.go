@@ -369,17 +369,6 @@ php_value[{{.Key}}] = {{.Value}}
 {{- end}}
 `))
 
-const placeholderHTML = `<!doctype html>
-<html lang="tr">
-<meta charset="utf-8">
-<title>{{.Domain}}</title>
-<style>body{font-family:system-ui,sans-serif;margin:15vh auto;max-width:36rem;padding:0 1rem;color:#11191c}</style>
-<h1>{{.Domain}}</h1>
-<p>Bu site Servik ile oluşturuldu. Dosyalarınızı <code>public_html</code> klasörüne yükleyin.</p>
-`
-
-var placeholderTmpl = template.Must(template.New("index").Parse(placeholderHTML))
-
 type tmplData struct {
 	Marker       string
 	Domain       string

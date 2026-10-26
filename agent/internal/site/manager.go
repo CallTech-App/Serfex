@@ -83,6 +83,10 @@ type Spec struct {
 	// are used.
 	NginxDirectives  string `json:"nginx_directives"`
 	ApacheDirectives string `json:"apache_directives"`
+	// PanelURL is the panel's address (https://name:port/) for the
+	// sign-in button on the default page of a new document root; empty
+	// leaves the button out.
+	PanelURL string `json:"panel_url"`
 }
 
 // DefaultWebRoot is the document root of a new site.
@@ -313,7 +317,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	domainData(&data, spec, p.siteDir, certNames)
 	poolData(&data, spec.PHP, m.tempLimit(spec.Domain))
 	if newDocroot {
-		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{public + "/index.html"}, Stdin: render(placeholderTmpl, data)})
+		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{public + "/index.html"}, Stdin: placeholderPage(spec.Domain, spec.PHPVersion, spec.PanelURL)})
 		if _, err := m.h.Run(ctx, index); err != nil {
 			return Result{}, err
 		}
@@ -328,9 +332,7 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		if err := t.UserDirs(ctx, u.Name, "0755", root); err != nil {
 			return Result{}, err
 		}
-		sd := data
-		sd.Domain = sub.Name
-		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{root + "/index.html"}, Stdin: render(placeholderTmpl, sd)})
+		index := host.AsUser(u.Name, host.Command{Name: "tee", Args: []string{root + "/index.html"}, Stdin: placeholderPage(sub.Name, spec.PHPVersion, spec.PanelURL)})
 		if _, err := m.h.Run(ctx, index); err != nil {
 			return Result{}, err
 		}
