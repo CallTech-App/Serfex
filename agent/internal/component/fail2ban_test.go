@@ -2,6 +2,9 @@ package component
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -51,5 +54,64 @@ func TestFail2banJailsAndBans(t *testing.T) {
 	}
 	if changed, err := m.Fail2banRefresh(ctx); err != nil || changed {
 		t.Fatalf("refresh of current jails: %v %v", changed, err)
+	}
+}
+
+// Mail set up after Fail2ban gets its jails without reinstalling Fail2ban,
+// and a stopped Fail2ban is not started by it.
+func TestFail2banFollowsMailServer(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if changed, err := m.Fail2banSync(ctx); err != nil || changed {
+		t.Fatalf("sync without Fail2ban: %v %v", changed, err)
+	}
+	if _, err := m.Install(ctx, OpSpec{ID: "fail2ban", Run: "f2b"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(read(t, sim, jailConf), "[dovecot]") {
+		t.Fatal("mail jails without a mail server")
+	}
+	for _, f := range []string{"/usr/sbin/postfix", "/usr/sbin/dovecot"} {
+		if err := os.MkdirAll(filepath.Dir(sim.Path(f)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(sim.Path(f), nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if st, _ := m.Fail2ban(ctx); st.Current {
+		t.Fatal("jails count as current after the mail server came")
+	}
+	m.op.Lock()
+	if _, err := m.Fail2banSync(ctx); !errors.Is(err, ErrBusy) {
+		t.Fatalf("sync during an operation: %v", err)
+	}
+	m.op.Unlock()
+	changed, err := m.Fail2banSync(ctx)
+	if err != nil || !changed {
+		t.Fatalf("sync: %v %v", changed, err)
+	}
+	jails := read(t, sim, jailConf)
+	if !strings.Contains(jails, "[dovecot]") || !strings.Contains(jails, "[postfix-sasl]") {
+		t.Fatalf("jails:\n%s", jails)
+	}
+	if !ran(sim, "systemctl try-reload-or-restart fail2ban") {
+		t.Fatal("Fail2ban not reloaded")
+	}
+	if st, _ := m.Fail2ban(ctx); !st.Current {
+		t.Fatal("jails not current after sync")
+	}
+	if changed, err := m.Fail2banSync(ctx); err != nil || changed {
+		t.Fatalf("second sync: %v %v", changed, err)
+	}
+
+	// The mail server removed by hand: its jails go too.
+	for _, f := range []string{"/usr/sbin/postfix", "/usr/sbin/dovecot"} {
+		if err := os.Remove(sim.Path(f)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if changed, err := m.Fail2banSync(ctx); err != nil || !changed || strings.Contains(read(t, sim, jailConf), "[dovecot]") {
+		t.Fatalf("sync after removal: %v %v", changed, err)
 	}
 }

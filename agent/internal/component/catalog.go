@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -543,7 +544,11 @@ func writeJails(t *txn.Tx, m *Manager) error {
 func renderJails(m *Manager) []byte {
 	ignore := []string{"127.0.0.1/8", "::1"}
 	if m.Addresses != nil {
-		ignore = append(ignore, m.Addresses()...)
+		// Sorted, so the order interfaces are listed in never counts as a
+		// change (the panel rewrites jails that are not current).
+		own := slices.Clone(m.Addresses())
+		slices.Sort(own)
+		ignore = append(ignore, slices.Compact(own)...)
 	}
 	mail := m.exists("/usr/sbin/postfix") && m.exists("/usr/sbin/dovecot")
 	var b strings.Builder
