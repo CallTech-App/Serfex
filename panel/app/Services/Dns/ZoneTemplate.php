@@ -30,7 +30,8 @@ class ZoneTemplate
 
     /**
      * Starting records for $zone: NS records, address records for name
-     * servers inside the zone (ns1.<zone>), then the template rows.
+     * servers inside the zone (ns1.<zone>, at their own address when they
+     * have one), then the template rows.
      *
      * @param  bool  $onlyNameservers  for an empty zone (NS and SOA only)
      * @return list<array{name: string, type: string, content: string, priority: ?int, ttl: int}>
@@ -55,9 +56,17 @@ class ZoneTemplate
         foreach ($nameservers as $ns) {
             $add('@', 'NS', $ns);
         }
+        $own = $this->settings->nameserverIps();
         foreach ($nameservers as $ns) {
             if (str_ends_with($ns, '.'.$zone.'.')) {
                 $label = substr($ns, 0, -strlen('.'.$zone.'.'));
+                // A name server on an address of its own gets only that A
+                // record; this server's IPv6 address may not be its.
+                if (($ip4 = $own[rtrim($ns, '.')] ?? null) !== null && $ip4 !== $ip['<ip4>']) {
+                    $add($label, 'A', $ip4);
+
+                    continue;
+                }
                 foreach (['A' => '<ip4>', 'AAAA' => '<ip6>'] as $type => $placeholder) {
                     if ($ip[$placeholder]) {
                         $add($label, $type, $ip[$placeholder]);

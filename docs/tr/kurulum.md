@@ -124,8 +124,9 @@ aynı ayarları kaydeder ve "Sonra" ile ertelenebilir:
 1. **Sunucu:** sunucunun tam adı (posta için sağlayıcınızın panelinde IP'nin
    PTR kaydını da bu ada yönlendirin), DNS kayıtlarında kullanılan IPv4 ve IPv6
    adresleri, saat dilimi ve sunucunun dili.
-2. **Ad sunucuları:** kendi alan adınız, altında `ns1`/`ns2` (sunucunun ikinci
-   bir IP'si varsa `ns2` için o), DNS sunucusunun kurulması ve alan adınızın DNS
+2. **Ad sunucuları:** kendi alan adınız, altında `ns1`/`ns2` ve her birinin IP
+   adresi (boşsa sunucunun adresi; ad sunucusu ikinci bir sunucuda ya da
+   ikinci bir IP'deyse o adres), DNS sunucusunun kurulması ve alan adınızın DNS
    bölgesinin oluşturulması. Bu iki adı IP adresleriyle alan adı firmanızda
    glue (host) kaydı olarak açın, sonra alan adının ad sunucuları yapın;
    sihirbaz tam adları ve adresleri gösterir.

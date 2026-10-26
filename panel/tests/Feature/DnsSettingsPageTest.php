@@ -8,6 +8,7 @@ use App\Models\DnsZone;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Dns\DnsSettings;
+use App\Services\Dns\ZoneTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -60,6 +61,46 @@ class DnsSettingsPageTest extends TestCase
         $this->assertSame(['ns1.servik.net.tr.', 'ns2.servik.net.tr.'], $old->fresh()->nameservers());
         $this->assertSame(['ns.cloudflare.com.'], $custom->fresh()->nameservers());
         Queue::assertPushed(SyncDnsZone::class, 1);
+    }
+
+    public function test_a_name_server_on_another_address_moves_its_a_record(): void
+    {
+        $zone = DnsZone::factory()->create(['name' => 'servik.net.tr']);
+        $zone->records()->createMany([
+            ['name' => 'ns1', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600],
+            ['name' => 'ns2', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600],
+            ['name' => 'ns2', 'type' => 'AAAA', 'content' => '2001:db8::10', 'ttl' => 3600],
+        ]);
+        $records = fn () => $zone->records()->where('name', 'like', 'ns%')->orderBy('name')->orderBy('type')->get()->map(fn ($r) => $r->name.' '.$r->type.' '.$r->content)->all();
+
+        $page = Livewire::test(DnsSettingsPage::class)
+            ->set('nameservers', 'ns1.servik.net.tr, ns2.servik.net.tr')
+            ->assertSet('nameserverIps', [['host' => 'ns1.servik.net.tr', 'ip' => ''], ['host' => 'ns2.servik.net.tr', 'ip' => '']])
+            ->assertSee('Ad sunucularının IP adresleri')
+            ->set('nameserverIps.1.ip', '198.51.100')
+            ->call('save')
+            ->assertHasErrors('nameserverIps.1.ip')
+            ->set('nameserverIps.1.ip', '198.51.100.20')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast', fn ($n, $p) => str_contains($p['message'], '1 bölgede'));
+
+        $this->assertSame(['ns2.servik.net.tr' => '198.51.100.20'], app(DnsSettings::class)->nameserverIps());
+        $this->assertSame(['ns1 A 203.0.113.10', 'ns2 A 198.51.100.20'], $records());
+
+        // New zones under the same name get it too.
+        $template = app(ZoneTemplate::class)->records('servik.net.tr', true);
+        $this->assertContains(['name' => 'ns2', 'type' => 'A', 'content' => '198.51.100.20', 'priority' => null, 'ttl' => 3600], $template);
+        $this->assertEmpty(array_filter($template, fn ($r) => $r['name'] === 'ns2' && $r['type'] === 'AAAA'));
+
+        // The names follow the field; emptying the address points it back here.
+        $page->set('nameservers', 'ns2.servik.net.tr, ns1.servik.net.tr')
+            ->assertSet('nameserverIps', [['host' => 'ns2.servik.net.tr', 'ip' => '198.51.100.20'], ['host' => 'ns1.servik.net.tr', 'ip' => '']])
+            ->set('nameserverIps.0.ip', '')
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame([], app(DnsSettings::class)->nameserverIps());
+        $this->assertSame(['ns1 A 203.0.113.10', 'ns2 A 203.0.113.10', 'ns2 AAAA 2001:db8::10'], $records());
     }
 
     public function test_validates_settings(): void

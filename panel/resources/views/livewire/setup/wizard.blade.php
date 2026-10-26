@@ -123,25 +123,23 @@
                                 @error('domain')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1.5 text-2xs text-muted">{{ __('Ad sunucularınızın adı bu alan adının altında olur.') }}</p>@enderror
                             </div>
                         </div>
-                        <div class="{{ $row }}">
-                            <label for="ns1" class="sm:pt-2">{{ __('1. ad sunucusu') }}</label>
-                            <div>
-                                <input id="ns1" wire:model.live.debounce.400ms="ns1" spellcheck="false" autocomplete="off" placeholder="ns1.ornek.com.tr" class="{{ $field }} font-mono sm:w-80 {{ $error('ns1') }}">
-                                @error('ns1')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@enderror
-                            </div>
-                        </div>
-                        <div class="{{ $row }}">
-                            <label for="ns2" class="sm:pt-2">{{ __('2. ad sunucusu') }}</label>
-                            <div>
-                                <input id="ns2" wire:model.live.debounce.400ms="ns2" spellcheck="false" autocomplete="off" placeholder="ns2.ornek.com.tr" class="{{ $field }} font-mono sm:w-80 {{ $error('ns2') }}">
-                                @error('ns2')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@enderror
-                                <div class="mt-2 flex flex-wrap items-center gap-2">
-                                    <label for="ns2-ip" class="text-[13px] text-muted">{{ __('IP adresi') }}</label>
-                                    <input id="ns2-ip" wire:model.live.debounce.400ms="ns2Ip" spellcheck="false" autocomplete="off" placeholder="{{ $ipv4 }}" class="{{ $field }} font-mono sm:w-48 {{ $error('ns2Ip') }}">
+                        @foreach ([1, 2] as $n)
+                            <div class="{{ $row }}">
+                                <label for="ns{{ $n }}" class="sm:pt-2">{{ $n === 1 ? __('1. ad sunucusu') : __('2. ad sunucusu') }}</label>
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <input id="ns{{ $n }}" wire:model.live.debounce.400ms="ns{{ $n }}" spellcheck="false" autocomplete="off" placeholder="ns{{ $n }}.ornek.com.tr" class="{{ $field }} font-mono sm:w-60 {{ $error('ns'.$n) }}">
+                                        <label for="ns{{ $n }}-ip" class="text-[13px] text-muted">{{ __('IP adresi') }}</label>
+                                        <input id="ns{{ $n }}-ip" wire:model.live.debounce.400ms="ns{{ $n }}Ip" spellcheck="false" autocomplete="off" placeholder="{{ $ipv4 }}" class="{{ $field }} font-mono sm:w-36 {{ $error('ns'.$n.'Ip') }}">
+                                    </div>
+                                    @error('ns'.$n)<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@enderror
+                                    @error('ns'.$n.'Ip')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@enderror
+                                    @if ($n === 2 && ! $errors->hasAny(['ns2', 'ns2Ip']))
+                                        <p class="mt-1.5 text-2xs text-muted"><x-t text="Boş bırakılan IP adresi bu sunucununkidir (:ip). Ad sunucusu başka bir sunucudaysa ya da sunucunun ikinci bir IP adresi varsa onu yazın."><x-slot:ip><span class="font-mono">{{ $ipv4 }}</span></x-slot:ip></x-t></p>
+                                    @endif
                                 </div>
-                                @error('ns2Ip')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1.5 text-2xs text-muted">{{ __('Sunucunun ikinci bir IP adresi varsa yazın. Yoksa iki ad da aynı adresi gösterir; çoğu alan adı firması bunu kabul eder.') }}</p>@enderror
                             </div>
-                        </div>
+                        @endforeach
                         <div class="{{ $row }}">
                             <span>{{ __('Bu sunucuda') }}</span>
                             <div class="space-y-2">
