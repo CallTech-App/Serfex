@@ -32,7 +32,9 @@ yeni site, posta kutusu, yükleme ve yedeği durdurur.
 **Siteler → Site ekle**: alan adını yazın ve PHP sürümünü seçin. Site birkaç
 saniyede `/home/<kullanıcınız>/web/<alan adı>/public_html` klasöründe açılır;
 alan adı sunucuyu gösterdiğinde ücretsiz SSL sertifikası alınır (o zamana kadar
-"DNS henüz bu sunucuya işaret etmiyor" yazar).
+"DNS henüz bu sunucuya işaret etmiyor" yazar). Kendi `index.html` ya da
+`index.php` dosyanızı yükleyene kadar ziyaretçiler Servik'in varsayılan
+sayfasını görür.
 
 Bir sitenin sayfasında:
 

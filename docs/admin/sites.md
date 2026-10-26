@@ -20,7 +20,11 @@ Sites → **Add site**:
 Servik then, in one transaction that is rolled back if any step fails:
 
 - creates the account (`/usr/sbin/nologin` shell) and
-  `/home/<user>/web/<domain>/public_html` with a welcome page;
+  `/home/<user>/web/<domain>/public_html` with Servik's default page
+  (`index.html`: the domain, how to upload files, a "Sign in to the panel"
+  button when a panel address is set under Settings → General, Turkish
+  with an English link). New subdomain folders get the same page. The
+  customer's own `index.html` or `index.php` replaces it;
 - writes the Nginx site and a PHP-FPM pool that runs as the account, with
   `open_basedir` limited to its home;
 - opens the DNS zone from the server template, if the DNS server is installed;

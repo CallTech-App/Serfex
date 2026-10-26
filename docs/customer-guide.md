@@ -32,7 +32,8 @@ uploads and backups.
 **Sites → Add site**: type the domain and choose the PHP version. The site
 opens in a few seconds at `/home/<your user>/web/<domain>/public_html`, and
 gets a free SSL certificate once the domain points at the server (until then
-it says "DNS does not point to this server yet").
+it says "DNS does not point to this server yet"). Until you upload your own
+`index.html` or `index.php`, visitors see Servik's default page.
 
 On a site's page:
 
