@@ -309,6 +309,10 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	if err := svc.cron.Reconcile(ctx); err != nil {
 		log.Error("restoring scheduled tasks", "err", err)
 	}
+	// Versions set up by older agents have their defaults for PHP-FPM only.
+	if err := svc.php.SyncCLI(ctx); err != nil {
+		log.Error("copying PHP defaults to the command line", "err", err)
+	}
 	go svc.monitor.Run(ctx)
 	go svc.databases.Run(ctx)
 	if svc.geoFile != "" {
