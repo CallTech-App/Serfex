@@ -8,7 +8,12 @@ PostgreSQL. You install them from the panel when you need them.
 **Databases → Database servers** installs and repairs:
 
 - **MySQL** (default) or **MariaDB**: the two exclude each other.
-- **PostgreSQL**, alongside either of them.
+- **PostgreSQL**, alongside either of them. It comes from the PostgreSQL
+  project's own archive (apt.postgresql.org), which Servik adds to apt, in the
+  newest stable major version at install time (Ubuntu itself ships only one
+  version per release). The server then stays on that major version;
+  Software → Database servers → **Update** installs its minor releases. If
+  the archive cannot be reached, Ubuntu's own version is installed instead.
 - The **web database manager**: phpMyAdmin for MySQL and MariaDB, Adminer for
   PostgreSQL, served by the panel's own web server on the panel port (8443).
 
@@ -50,5 +55,6 @@ application (`<prefix>laravel` by default) and writes `DB_*` into its `.env`.
 On a database's page, **Link** connects an existing database to a Laravel
 application.
 
-The panel's own PostgreSQL is a separate cluster on port 5433; a customer
-PostgreSQL server uses the standard port 5432.
+The panel's own PostgreSQL is a separate cluster on port 5433, on the version
+the installer gave it; a customer PostgreSQL server uses the standard port
+5432.

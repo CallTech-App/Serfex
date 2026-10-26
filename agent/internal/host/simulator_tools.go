@@ -25,6 +25,8 @@ import (
 
 var phpBinary = regexp.MustCompile(`^php[5-9]\.[0-9]{1,2}$`)
 
+var simPGServer = regexp.MustCompile(`^postgresql-(\d+)$`)
+
 // runTool simulates the commands not handled in Run. Unknown commands
 // succeed without output.
 func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (string, error) {
@@ -113,6 +115,14 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return s.postfixQueue(c)
 	case c.Name == "git":
 		return s.git(args, cwd)
+	case c.Name == "apt-cache" && len(args) == 2 && args[0] == "pkgnames" && args[1] == "postgresql-":
+		// Ubuntu 24.04 has PostgreSQL 16; the PostgreSQL archive, once
+		// listed, every supported version up to 18.
+		names := "postgresql-16\npostgresql-client-16\npostgresql-common\n"
+		if _, err := os.Stat(s.Path("/etc/apt/sources.list.d/pgdg.sources")); err == nil {
+			names += "postgresql-14\npostgresql-15\npostgresql-17\npostgresql-18\npostgresql-client-18\n"
+		}
+		return names, nil
 	case (c.Name == "pg_createcluster" || c.Name == "pg_dropcluster") && len(args) >= 2:
 		// pg_createcluster VERSION NAME, pg_dropcluster [--stop] VERSION NAME
 		dir := "/etc/postgresql/" + args[len(args)-2] + "/" + args[len(args)-1]

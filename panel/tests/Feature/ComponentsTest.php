@@ -22,7 +22,6 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
 use App\Services\Customers\Customers;
-use App\Services\Databases\DatabaseServers;
 use App\Services\Dns\Zones;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -139,7 +138,7 @@ class ComponentsTest extends TestCase
         // A second operation waits for the first.
         $this->assertSame('Başka bir kurulum sürüyor. Bitince yeniden deneyin.', app(Components::class)->start('memcached', 'install', null));
 
-        (new RunComponentOperation($op))->handle($this->agent, app(Components::class), app(DatabaseServers::class));
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
         $this->assertSame([['id' => 'apache', 'run' => $op->run]], $this->agent->called('component.install'));
         $this->assertSame('succeeded', $op->fresh()->status);
 
@@ -156,7 +155,7 @@ class ComponentsTest extends TestCase
     {
         $this->agent->answers['component.install'] = AgentException::rpcError('component.install', -32000, 'apache2ctl configtest: Syntax error');
         $op = app(Components::class)->start('apache', 'install', null);
-        (new RunComponentOperation($op))->handle($this->agent, app(Components::class), app(DatabaseServers::class));
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
 
         $op->refresh();
         $this->assertSame('failed', $op->status);
@@ -164,6 +163,63 @@ class ComponentsTest extends TestCase
         $chunk = Livewire::test(ComponentIndex::class)->instance()->readRun($op->run, 0);
         $this->assertSame('apache2ctl configtest: Syntax error', $chunk['error']);
         $this->assertTrue($chunk['done']);
+    }
+
+    public function test_operation_whose_worker_died_is_closed_from_its_run_log(): void
+    {
+        // The install finished on the server, but a package upgrade of
+        // that very install restarted the worker that waited for it.
+        $this->components['postgresql'] = ['id' => 'postgresql', 'installed' => true, 'version' => '18.1', 'running' => true, 'units' => ['postgresql@18-main']];
+        $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => true, 'product' => 'mysql', 'running' => true], 'postgresql' => ['installed' => true, 'product' => 'postgresql', 'running' => true]], 'manager' => ['configured' => true]];
+        $this->agent->answers['component.run.read'] = ['data' => "▸ PostgreSQL kuruluyor ve ayarlanıyor\n▸ Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor\n✓ Kuruldu\n", 'offset' => 90, 'size' => 90, 'done' => true];
+        $op = ComponentOperation::create(['component' => 'postgresql', 'action' => 'install', 'run' => 'cstuckpostgres', 'status' => 'running']);
+        $this->travel(5)->minutes();
+
+        $this->assertInstanceOf(ComponentOperation::class, app(Components::class)->start('memcached', 'install', null));
+        $op->refresh();
+        $this->assertSame(['succeeded', null], [$op->status, $op->error]);
+        $this->assertNotNull($op->finished_at);
+        $this->assertSame('ready', Setting::get('databases.setup')['state']);
+        $this->assertSame([['run' => 'cstuckpostgres', 'offset' => 0]], $this->agent->called('component.run.read'));
+    }
+
+    public function test_operation_is_closed_only_once_the_agent_is_done_with_it(): void
+    {
+        $this->agent->answers['component.run.read'] = ['data' => "▸ Paketler kuruluyor: apache2\n", 'offset' => 30, 'size' => 30, 'done' => false];
+        $running = ComponentOperation::create(['component' => 'apache', 'action' => 'install', 'run' => 'capache', 'status' => 'running']);
+        $queued = ComponentOperation::create(['component' => 'memcached', 'action' => 'install', 'run' => 'cmemcached']);
+
+        // Just started: the job is about to call the agent.
+        app(Components::class)->statuses();
+        $this->assertSame('running', $running->fresh()->status);
+
+        // The agent still works on it.
+        $this->travel(10)->minutes();
+        $this->components['apache']['busy'] = 'install';
+        app(Components::class)->statuses();
+        $this->assertSame('running', $running->fresh()->status);
+        $this->assertSame([], $this->agent->called('component.run.read'));
+
+        // The agent stopped without finishing the log; the queued job
+        // never started.
+        unset($this->components['apache']['busy']);
+        $this->travel(1)->hours();
+        app(Components::class)->statuses();
+        $this->assertSame(['failed', 'İşlem yarıda kaldı.'], [$running->fresh()->status, $running->fresh()->error]);
+        $this->assertSame('failed', $queued->fresh()->status);
+    }
+
+    public function test_job_that_dies_after_the_agent_finished_records_the_outcome(): void
+    {
+        $op = app(Components::class)->start('apache', 'install', null);
+        $op->update(['status' => 'running']);
+        (new RunComponentOperation($op))->failed(new \RuntimeException('has been attempted too many times.'));
+        $this->assertSame('succeeded', $op->fresh()->status);
+
+        $op = ComponentOperation::create(['component' => 'redis', 'action' => 'update', 'run' => 'credis', 'status' => 'running']);
+        $this->agent->answers['component.run.read'] = ['data' => "▸ Yeni sürüm kuruluyor\n✗ apt-get install failed: exit status 100\n", 'offset' => 60, 'size' => 60, 'done' => true];
+        (new RunComponentOperation($op))->failed(new \RuntimeException('has been attempted too many times.'));
+        $this->assertSame(['failed', 'apt-get install failed: exit status 100'], [$op->fresh()->status, $op->fresh()->error]);
     }
 
     public function test_component_in_use_cannot_be_removed(): void
@@ -199,7 +255,7 @@ class ComponentsTest extends TestCase
         $op = app(Components::class)->start('postgresql', 'install', null);
         $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => false], 'postgresql' => ['installed' => true, 'product' => 'postgresql', 'running' => true]], 'manager' => ['configured' => true]];
 
-        (new RunComponentOperation($op))->handle($this->agent, app(Components::class), app(DatabaseServers::class));
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
 
         $this->assertSame([['id' => 'postgresql', 'run' => $op->run, 'port' => 8444]], $this->agent->called('component.install'));
         $this->assertSame(['postgresql' => 'postgresql'], Setting::get('databases.products'));

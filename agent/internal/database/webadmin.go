@@ -276,7 +276,7 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		missing = missing || !m.exists(f)
 	}
 	if missing {
-		if err := installPackages(ctx, m.h, packages, pmaPreseed); err != nil {
+		if err := installPackages(ctx, m.h, packages, pmaPreseed, nil); err != nil {
 			return "", err
 		}
 	}

@@ -566,6 +566,9 @@ func TestSetupWritesThePanelUnits(t *testing.T) {
 	ctx := context.Background()
 	webs := 0
 	m.Web = func(context.Context) (any, error) { webs++; return map[string]int{"port": 8443}, nil }
+	if err := os.MkdirAll(sim.Path("/etc/needrestart"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	res, err := m.Setup(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -579,6 +582,12 @@ func TestSetupWritesThePanelUnits(t *testing.T) {
 	}
 	if !strings.Contains(string(unit), "ExecStart=/usr/bin/php8.5 /opt/servik/current/panel/artisan queue:work backups --queue=backups") || !strings.Contains(string(unit), "User=servik") {
 		t.Errorf("unit:\n%s", unit)
+	}
+	// needrestart leaves the workers alone: a restart would kill a job
+	// waiting on the agent.
+	conf, err := os.ReadFile(sim.Path("/etc/needrestart/conf.d/servik.conf"))
+	if err != nil || !strings.Contains(string(conf), "$nrconf{override_rc}->{qr(^servik-panel-)} = 0;") {
+		t.Errorf("needrestart: %v\n%s", err, conf)
 	}
 	res, err = m.Setup(ctx)
 	if err != nil {

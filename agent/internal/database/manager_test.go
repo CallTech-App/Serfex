@@ -72,14 +72,14 @@ func TestInstallAndExclusivity(t *testing.T) {
 	if _, err := m.Install(ctx, InstallSpec{Product: PostgreSQL}); err != nil {
 		t.Fatal(err)
 	}
-	contains(t, "pg conf", read(t, sim, "/etc/postgresql/16/main/conf.d/servik.conf"), "listen_addresses = 'localhost'", "hba_file = '/etc/servik/databases/pg_hba.conf'")
+	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/servik.conf"), "listen_addresses = 'localhost'", "hba_file = '/etc/servik/databases/pg_hba.conf'")
 	contains(t, "pg_hba", read(t, sim, pgHBA), "local   all             postgres                                peer", "host    all             all             127.0.0.1/32            scram-sha-256")
 
 	st := m.Status(ctx)
 	if s := st.Servers[MySQL]; !s.Installed || !s.Running || s.Product != MariaDB {
 		t.Errorf("mysql status %+v", s)
 	}
-	if s := st.Servers[PostgreSQL]; !s.Installed || s.Version != "16.10" {
+	if s := st.Servers[PostgreSQL]; !s.Installed || s.Version != "18.1" {
 		t.Errorf("pg status %+v", s)
 	}
 
@@ -165,7 +165,7 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	contains(t, "pg_hba", read(t, sim, pgHBA), `"acme_bi"`, "0.0.0.0/0", "::/0", "10.8.0.0/24")
-	contains(t, "pg conf", read(t, sim, "/etc/postgresql/16/main/conf.d/servik.conf"), "listen_addresses = '*'")
+	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/servik.conf"), "listen_addresses = '*'")
 
 	// Removing the last remote user closes the server again.
 	if _, err := m.DeleteUser(ctx, UserRef{Server: PostgreSQL, Name: "acme_bi"}); err != nil {
@@ -174,7 +174,7 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 	if hba := read(t, sim, pgHBA); strings.Contains(hba, "acme_bi") {
 		t.Errorf("pg_hba still lists the user:\n%s", hba)
 	}
-	contains(t, "pg conf", read(t, sim, "/etc/postgresql/16/main/conf.d/servik.conf"), "listen_addresses = 'localhost'")
+	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/servik.conf"), "listen_addresses = 'localhost'")
 
 	l, err := m.List(ctx, MySQL)
 	if err != nil {
@@ -512,4 +512,66 @@ func TestPanelWeb(t *testing.T) {
 	if m.WebPort() != DefaultPort {
 		t.Errorf("web port %d", m.WebPort())
 	}
+}
+
+func TestPostgreSQLComesFromItsArchive(t *testing.T) {
+	ctx := context.Background()
+
+	// Servik's own cluster runs on Ubuntu's 16; the customers' cluster
+	// gets the archive's newest version on port 5432.
+	m, sim := newSim(t)
+	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-16"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sim.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{"--port", "5433", "16", "servik"}}); err != nil {
+		t.Fatal(err)
+	}
+	if st := m.Status(ctx); st.Servers[PostgreSQL].Installed {
+		t.Fatalf("Servik's own cluster counts as the customers': %+v", st.Servers[PostgreSQL])
+	}
+	res, err := m.Install(ctx, InstallSpec{Product: PostgreSQL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Installed || res.Version != "18.1" {
+		t.Errorf("result %+v", res)
+	}
+	contains(t, "pgdg", read(t, sim, pgdgSources), "URIs: https://apt.postgresql.org/pub/repos/apt", "Suites: noble-pgdg", "Components: main", "Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc")
+	for _, want := range []string{"apt-get install -y -q --no-install-recommends postgresql-18 postgresql-client-18", "pg_createcluster --port 5432 18 main", "systemctl restart postgresql@18-main"} {
+		if !sim.Ran(want) {
+			t.Errorf("did not run %q: %v", want, sim.Commands())
+		}
+	}
+	if got := m.Installed()[PostgreSQL]; got != [2]string{PostgreSQL, "postgresql@18-main"} {
+		t.Errorf("installed %v", got)
+	}
+
+	// A cluster made earlier keeps its version; nothing is added to apt.
+	m, sim = newSim(t)
+	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql"}}); err != nil {
+		t.Fatal(err)
+	}
+	if res, err := m.Install(ctx, InstallSpec{Product: PostgreSQL}); err != nil || res.Version != "16.10" || res.Installed {
+		t.Fatalf("existing 16: %+v %v", res, err)
+	}
+	if sim.Ran("apt-cache pkgnames postgresql-") || m.exists(pgdgSources) {
+		t.Errorf("the archive was added for an existing cluster: %v", sim.Commands())
+	}
+
+	// Without the archive Ubuntu's own version serves.
+	m, sim = newSim(t)
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "apt-get update -q" && m.exists(pgdgSources) {
+			return errors.New("E: Failed to fetch https://apt.postgresql.org/pub/repos/apt/dists/noble-pgdg/InRelease")
+		}
+		return nil
+	}
+	var log strings.Builder
+	if res, err := m.Install(ctx, InstallSpec{Product: PostgreSQL, Log: &log}); err != nil || res.Version != "16.10" {
+		t.Fatalf("offline: %+v %v", res, err)
+	}
+	if m.exists(pgdgSources) || !sim.Ran("pg_createcluster --port 5432 16 main") {
+		t.Errorf("offline install: %v", sim.Commands())
+	}
+	contains(t, "log", log.String(), "the PostgreSQL archive could not be read, Ubuntu's packages are used")
 }

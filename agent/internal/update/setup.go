@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"text/template"
 
 	"github.com/winchester37/servik/agent/internal/host"
@@ -46,6 +48,10 @@ func (m *Manager) Setup(ctx context.Context) (SetupResult, error) {
 		}
 		t.Changed = t.Changed || before
 	}
+	if err := writeNeedrestart(t); err != nil {
+		_ = t.Rollback(context.WithoutCancel(ctx))
+		return SetupResult{}, opError(err)
+	}
 	if len(changed) > 0 {
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"daemon-reload"}}); err != nil {
 			_ = t.Rollback(context.WithoutCancel(ctx))
@@ -76,6 +82,32 @@ type SetupResult struct {
 	Units   []string `json:"units"`
 	Changed []string `json:"changed"`
 	Web     any      `json:"web,omitempty"`
+}
+
+// needrestartConf keeps Ubuntu's needrestart from restarting Servik's
+// own services after a package upgrade. A worker waits on the agent while
+// it installs software; the PHP or library upgrade of that very install
+// would otherwise get it killed mid-job, and the job's outcome is lost.
+// The workers pick up new binaries on their hourly restart (--max-time).
+const needrestartConf = "/etc/needrestart/conf.d/servik.conf"
+
+var needrestartTmpl = "# " + txn.Marker + `. Manual changes are overwritten.
+# Servik restarts its own services itself; a restart in the middle of a
+# job (software install, deploy, update) would lose the job's outcome.
+$nrconf{override_rc}->{qr(^servik-agent\b)} = 0;
+$nrconf{override_rc}->{qr(^servik-panel-)} = 0;
+$nrconf{override_rc}->{qr(^servik-update-)} = 0;
+`
+
+// writeNeedrestart writes needrestartConf where needrestart is installed.
+func writeNeedrestart(t *txn.Tx) error {
+	if _, err := os.Stat(t.H.Path("/etc/needrestart")); err != nil {
+		return nil
+	}
+	if err := os.MkdirAll(t.H.Path(filepath.Dir(needrestartConf)), 0o755); err != nil {
+		return err
+	}
+	return t.WriteFile(needrestartConf, []byte(needrestartTmpl))
 }
 
 type unitSpec struct{ name, description, args, stop string }
