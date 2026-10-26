@@ -168,6 +168,14 @@ func New() *Aggregator {
 	}
 }
 
+// SetClock replaces the clock that ages counts out, for tests that
+// replay logs from a fixed day.
+func (a *Aggregator) SetClock(now func() time.Time) {
+	a.mu.Lock()
+	a.now = now
+	a.mu.Unlock()
+}
+
 // SetGeo installs the country table.
 func (a *Aggregator) SetGeo(g *Geo) {
 	a.mu.Lock()

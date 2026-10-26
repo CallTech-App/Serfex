@@ -610,6 +610,9 @@ func TestDescribeUnit(t *testing.T) {
 func TestStatisticsAndNetworkAreFed(t *testing.T) {
 	f := newFixture(t)
 	f.m.Stats = stats.New()
+	// The log lines are from the fixture's day, which is older than the
+	// week the aggregator keeps by the real clock.
+	f.m.Stats.SetClock(func() time.Time { return f.now })
 	f.m.Stats.MailDomains = func() map[string]bool { return map[string]bool{"magaza.com.tr": true} }
 	f.write("/proc/net/dev", "Inter-|   Receive |  Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets\n    lo: 999 1 0 0 0 0 0 0 999 1 0 0 0 0 0 0\n  eth0: 1000 10 0 0 0 0 0 0 5000 20 0 0 0 0 0 0\n")
 	f.tick(0)
