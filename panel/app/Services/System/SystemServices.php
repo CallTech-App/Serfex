@@ -31,7 +31,11 @@ class SystemServices
         'servik' => 'Servik\'in kendi hizmetleri',
     ];
 
-    /** Settings the page offers: section => [key => [label, unit, min, max, help]]. */
+    /**
+     * Settings the page offers: section => [key => [label, unit, min, max,
+     * help, kind]]. kind is "number" when left out, "switch" for on/off,
+     * "list" for addresses one per line.
+     */
     public const SETTINGS = [
         'nginx' => [
             'worker_processes' => ['İşçi süreç sayısı', '', null, null, '"auto" her işlemci çekirdeğine bir işçi verir.'],
@@ -47,7 +51,20 @@ class SystemServices
         'postfix' => [
             'message_size_mb' => ['En büyük ileti', 'MB', 1, 2048, 'Ekler dahil; base64 yüzünden dosyalar yaklaşık %35 büyür.'],
         ],
+        'apache' => [
+            'max_request_workers' => ['Eşzamanlı istek sınırı', '', 25, 2000, 'Apache\'nin aynı anda işlediği istek sayısı; fazlası sırada bekler. Apache\'yi kullanan tüm siteler için toplam.'],
+            'timeout' => ['İstek zaman aşımı', 'saniye', 10, 300, 'Yavaş bir istek en çok bu kadar beklenir. Nginx de Apache\'yi en çok 300 saniye bekler.'],
+        ],
+        'powerdns' => [
+            'cache_ttl' => ['Yanıt önbelleği', 'saniye', 0, 86400, 'Aynı sorunun yanıtı bu süre bellekte tutulur; 0 önbelleği kapatır. Panelden yapılan kayıt değişiklikleri önbelleği hemen temizler.'],
+            'negquery_cache_ttl' => ['Olumsuz yanıt önbelleği', 'saniye', 0, 86400, '"Böyle bir kayıt yok" yanıtları bu süre bellekte tutulur.'],
+            'log_queries' => ['Sorgu kaydı', '', null, null, 'Açıkken her DNS sorgusu bu hizmetin günlüğüne yazılır. Günlüğü hızla büyütür; sorun ararken açın.', 'switch'],
+            'axfr_allow' => ['Bölge aktarımı izni', '', null, null, 'Bölgelerinizi kopyalayabilecek ikincil ad sunucularının IP adresleri ya da ağları, her satıra bir tane. Boşsa kimse kopyalayamaz. Değişiklik bildirimi gönderilmez; ikincil sunucu SOA yenileme süresinde denetler.', 'list'],
+        ],
     ];
+
+    /** How many addresses may transfer zones (the agent's limit). */
+    public const MAX_AXFR = 32;
 
     /** @var list<array<string, mixed>>|null */
     private ?array $list = null;
