@@ -57,6 +57,10 @@ lists every method by area.
 | `laravel.key` | target | the site's deploy key (ed25519), created on first use |
 | `laravel.health` | `domain`, `path` | requests the path through the site's own Nginx; returns `ok`, `status`, `ms` |
 | `laravel.remove` | target, `remove_files` | stops workers and the timer, and with `remove_files` deletes the releases |
+| `site.git.deploy` | target, `run`, `repository`, `branch`, `path`, `token`, `commit`, `undo`, `commands` | Git dağıtımı of a plain site: fetches the branch (or takes an earlier `commit`) and checks it out into the folder `path`, then runs `commands` as the site's user; with `undo`, removes the deployed files and restores what the first deploy overwrote. Returns `commit`, `message`, `author`, `previous`, `changed`, `saved`, `problem` |
+| `site.git.key` | target | the deploy key (ed25519) for the site's Git deploys, created on first use |
+| `site.git.read` | `domain`, `run`, `offset` | the next part of a Git deploy's log |
+| `site.git.remove` | target | forgets the site's repository clone, key and logs; the deployed files stay |
 | `monitor.live` | `window`, `history` | averages over the last `window` seconds (2–600): per site CPU, memory, disk I/O, PHP-FPM pool, requests, errors, database connections, mail, top addresses, limit and `traffic` (bytes sent since `started`); accounts, system services, the server (with `net_rx`/`net_tx` bytes per second), and suspect addresses; with `history` the samples of that site |
 | `stats.collect` | `ack` | statistics counted since the last collection, by site and UTC hour (requests, bytes, visitors, pages, bot requests and bytes, 2xx–5xx, and the pages, referrers, countries and bots behind them) and by mail domain and hour (sent, received, rejected, bounced), as a batch with an `id`; the batch is handed out again until the next call names it in `ack`; `countries` tells whether the country table is loaded |
 | `monitor.limit.apply` | `domain`, `cpu`, `memory_mb`, `php_workers`, `seconds` | caps a site for a while (replacing its limit); returns the limit with `expires_at` |
@@ -306,6 +310,14 @@ Migrations are not reverted on rollback.
 - Long runs (deploys, commands started from the panel) write their output
   to `/var/lib/servik/laravel/<domain>/runs/<run>.log`; the panel follows
   it with `laravel.run.read`. Logs older than 90 days are removed.
+- Git deploys of plain sites keep a bare clone in
+  `/home/<user>/.servik/git/<domain>/repo.git` whose work tree is the
+  site's folder: changed files are written, files the repository deleted
+  are removed, untracked files stay. `refs/servik/live` is the deployed
+  commit; the first deploy packs the files it overwrites into
+  `before.tar` for its undo. An access token is written to a file for
+  the fetch only, never put on a command line. Logs:
+  `/var/lib/servik/git/<domain>/runs/`.
 - Queue workers are systemd template units
   `servik-queue-<domain>_<worker>@<n>.service`; the scheduler is
   `servik-schedule-<domain>.timer`, running `schedule:run` every minute.

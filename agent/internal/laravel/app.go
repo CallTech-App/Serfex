@@ -354,7 +354,11 @@ func (m *Manager) DeployKey(ctx context.Context, t Target) (string, error) {
 	if !m.isDir(siteDir(t)) {
 		return "", invalid("site %s does not exist", t.Domain)
 	}
-	dir := baseDir(t) + "/.ssh"
+	return m.deployKey(ctx, t, baseDir(t)+"/.ssh")
+}
+
+// deployKey returns the public half of the key in dir, creating it first.
+func (m *Manager) deployKey(ctx context.Context, t Target, dir string) (string, error) {
 	if m.exists(dir+"/id_ed25519") && m.exists(dir+"/id_ed25519.pub") {
 		b, err := m.readFile(ctx, t, dir+"/id_ed25519.pub", 4096)
 		if err != nil {

@@ -47,6 +47,12 @@ Bir sitenin sayfasında:
   `upload_max_filesize` gibi ayarlar.
 - **Zamanlanmış görevler:** bir komutu her gece, her saat ya da birkaç
   dakikada bir çalıştırın.
+- **Git dağıtımı:** sitenin klasörü (varsayılan public_html) bir Git
+  deposundan gelir. Herkese açık bir `https://` adresi, erişim anahtarıyla
+  açılan bir depo ya da Servik'in oluşturduğu dağıtım anahtarıyla bir SSH
+  adresi bağlayın; sonra **Dağıt**'a basın ya da webhook adresini depoya
+  ekleyip her push'ta dağıtın. Depoda olmayan dosyalarınız silinmez; önceki
+  her dağıtıma dönülebilir, ilk dağıtım geri alınabilir.
 - **İstatistikler:** ziyaretçiler, sayfalar, bant genişliği, yönlendirenler,
   ülkeler ve botlar.
 - **Günlükler:** sitenin erişim ve hata günlükleri.

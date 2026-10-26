@@ -555,6 +555,21 @@ func registerLaravel(srv *rpc.Server, svc services) {
 	})
 	handle(srv, "laravel.remove", func(ctx context.Context, p laravel.RemoveSpec) (any, error) { return l.Remove(ctx, p) })
 
+	// Git deploys of plain sites share the Laravel toolkit's helpers.
+	handle(srv, "site.git.deploy", func(ctx context.Context, p laravel.GitSpec) (any, error) { return l.GitDeploy(ctx, p) })
+	handle(srv, "site.git.key", func(ctx context.Context, p laravel.Target) (any, error) {
+		key, err := l.GitKey(ctx, p)
+		return map[string]string{"public_key": key}, err
+	})
+	handle(srv, "site.git.remove", func(ctx context.Context, p laravel.Target) (any, error) { return l.GitRemove(ctx, p) })
+	handle(srv, "site.git.read", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+		Run    string `json:"run"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return l.ReadGitRun(q.Domain, q.Run, q.Offset)
+	})
+
 	handle(srv, "laravel.process.apply", func(ctx context.Context, p laravel.ProcessSpec) (any, error) { return l.ApplyProcesses(ctx, p) })
 	handle(srv, "laravel.process.restart", func(ctx context.Context, p laravel.ProcessAction) (any, error) { return l.RestartProcess(ctx, p) })
 	handle(srv, "laravel.process.log", func(_ context.Context, q struct {

@@ -1,6 +1,7 @@
 package host
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -113,6 +114,8 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return s.postfixQueue(c)
 	case c.Name == "git":
 		return s.git(args, cwd)
+	case c.Name == "xargs":
+		return s.xargs(c, cwd)
 	case (c.Name == "pg_createcluster" || c.Name == "pg_dropcluster") && len(args) >= 2:
 		// pg_createcluster VERSION NAME, pg_dropcluster [--stop] VERSION NAME
 		dir := "/etc/postgresql/" + args[len(args)-2] + "/" + args[len(args)-1]
@@ -238,6 +241,9 @@ func (s *Simulator) git(args []string, cwd string) (string, error) {
 	if len(args) > 1 && args[0] == "-C" {
 		cwd, args = args[1], args[2:]
 	}
+	if len(args) > 0 && (strings.HasPrefix(args[0], "--git-dir=") || args[0] == "init") {
+		return s.siteGit(args, cwd)
+	}
 	if len(args) == 0 {
 		return "", nil
 	}
@@ -250,6 +256,138 @@ func (s *Simulator) git(args []string, cwd string) (string, error) {
 		return hex.EncodeToString(sum[:]) + "\n", nil
 	case "log":
 		return "Update dependencies\n", nil
+	}
+	return "", nil
+}
+
+// simCommits are the messages of the commits a simulated fetch brings,
+// in turn.
+var simCommits = []string{"Update the home page", "Fix the contact form on mobile", "Add the autumn campaign banner", "Compress product images"}
+
+// siteGit simulates a Git deploy of a plain site: refs and settings are
+// files in the --git-dir, each fetch brings a new commit, and a checkout
+// writes a small static site into the --work-tree.
+func (s *Simulator) siteGit(args []string, cwd string) (string, error) {
+	dir, work := "", ""
+opts:
+	for len(args) > 0 {
+		switch {
+		case strings.HasPrefix(args[0], "--git-dir="):
+			dir, args = s.Path(args[0][len("--git-dir="):]), args[1:]
+		case strings.HasPrefix(args[0], "--work-tree="):
+			work, args = s.Path(args[0][len("--work-tree="):]), args[1:]
+		case args[0] == "-c" && len(args) > 1:
+			args = args[2:]
+		default:
+			break opts
+		}
+	}
+	if len(args) == 0 {
+		return "", nil
+	}
+	file := func(name string) string {
+		return filepath.Join(dir, "sim", strings.NewReplacer("/", "_", "^{commit}", "").Replace(name))
+	}
+	write := func(name, value string) error {
+		if err := os.MkdirAll(filepath.Join(dir, "sim"), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(file(name), []byte(value), 0o644)
+	}
+	read := func(name string) (string, error) {
+		b, err := os.ReadFile(file(name))
+		return string(b), err
+	}
+	last := args[len(args)-1]
+	switch args[0] {
+	case "init":
+		repo := s.Path(s.abs(cwd, []string{last})[0])
+		if err := os.MkdirAll(repo, 0o755); err != nil {
+			return "", err
+		}
+		return "", os.WriteFile(filepath.Join(repo, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+	case "config":
+		if args[1] == "--get" {
+			v, err := read("config-" + args[2])
+			if err != nil {
+				return "", errors.New("exit status 1")
+			}
+			return v + "\n", nil
+		}
+		return "", write("config-"+args[1], args[2])
+	case "fetch":
+		n := 0
+		if v, err := read("count"); err == nil {
+			n, _ = strconv.Atoi(v)
+		}
+		n++
+		sum := sha1.Sum([]byte(fmt.Sprintf("commit-%d-%s", n, dir)))
+		sha := hex.EncodeToString(sum[:])
+		_, ref, _ := strings.Cut(last, ":")
+		for name, value := range map[string]string{"count": strconv.Itoa(n), ref: sha, "commit-" + sha: simCommits[(n-1)%len(simCommits)]} {
+			if err := write(name, value); err != nil {
+				return "", err
+			}
+		}
+		remote, _ := read("config-remote.origin.url")
+		return "From " + remote + "\n * [new branch]      " + strings.TrimPrefix(ref, "refs/remotes/origin/") + " -> origin/" + strings.TrimPrefix(ref, "refs/remotes/origin/") + "\n", nil
+	case "rev-parse":
+		ref := strings.TrimSuffix(last, "^{commit}")
+		if _, err := read("commit-" + ref); err == nil {
+			return ref + "\n", nil
+		}
+		v, err := read(ref)
+		if err != nil {
+			return "", errors.New("exit status 1")
+		}
+		return v + "\n", nil
+	case "cat-file":
+		if _, err := read("commit-" + strings.TrimSuffix(last, "^{commit}")); err != nil {
+			return "", errors.New("exit status 1")
+		}
+	case "update-ref":
+		if args[1] == "-d" {
+			_ = os.Remove(file(last))
+			return "", nil
+		}
+		return "", write(args[1], args[2])
+	case "log":
+		msg, _ := read("commit-" + last)
+		return msg + "\nServik\n", nil
+	case "ls-tree":
+		return "index.html\x00assets/site.css\x00", nil
+	case "diff":
+		return " 2 files changed, 6 insertions(+), 2 deletions(-)\n", nil
+	case "checkout":
+		msg, _ := read("commit-" + last)
+		if err := os.MkdirAll(filepath.Join(work, "assets"), 0o755); err != nil {
+			return "", err
+		}
+		page := "<!doctype html>\n<title>" + msg + "</title>\n<link rel=\"stylesheet\" href=\"assets/site.css\">\n<h1>" + msg + "</h1>\n"
+		if err := os.WriteFile(filepath.Join(work, "index.html"), []byte(page), 0o644); err != nil {
+			return "", err
+		}
+		return "", os.WriteFile(filepath.Join(work, "assets/site.css"), []byte("body { font-family: sans-serif; }\n"), 0o644)
+	}
+	return "", nil
+}
+
+// xargs simulates "xargs -0 rm -f --" and "xargs -0 rmdir ...", the way
+// a Git deploy is undone: the names come on standard input.
+func (s *Simulator) xargs(c Command, cwd string) (string, error) {
+	if len(c.Args) < 2 || c.Args[0] != "-0" {
+		return "", fmt.Errorf("xargs: unsupported arguments %v", c.Args)
+	}
+	for _, name := range strings.Split(string(c.Stdin), "\x00") {
+		if name == "" {
+			continue
+		}
+		p := s.Path(s.abs(cwd, []string{name})[0])
+		if c.Args[1] == "rmdir" {
+			_ = os.Remove(p)
+		} else {
+			_ = os.RemoveAll(p)
+		}
 	}
 	return "", nil
 }
@@ -447,12 +585,18 @@ func (s *Simulator) tar(c Command, cwd string) (string, error) {
 		if args[i] == "-C" && i+1 < len(args) {
 			args[i+1] = s.Path(s.abs(cwd, args[i+1:i+2])[0])
 		}
+		if (args[i] == "-cf" || args[i] == "-xf") && i+1 < len(args) && strings.HasPrefix(args[i+1], "/") {
+			args[i+1] = s.Path(args[i+1])
+		}
 		if f, ok := strings.CutPrefix(args[i], "--listed-incremental="); ok && f != "/dev/null" {
 			args[i] = "--listed-incremental=" + s.Path(f)
 		}
 	}
 	cmd := exec.Command("tar", args...)
 	cmd.Stdin, cmd.Stdout = c.Input, c.Stdout
+	if c.Input == nil && c.Stdin != nil {
+		cmd.Stdin = bytes.NewReader(c.Stdin)
+	}
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

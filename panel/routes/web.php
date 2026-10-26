@@ -62,6 +62,7 @@ use App\Livewire\Sites\SiteDomainList;
 use App\Livewire\Sites\SiteErrorPages;
 use App\Livewire\Sites\SiteFiles;
 use App\Livewire\Sites\SiteFtp;
+use App\Livewire\Sites\SiteGit;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SiteLogs;
 use App\Livewire\Sites\SitePhp;
@@ -127,6 +128,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/sites/{site}/tarama', SiteScan::class)->whereNumber('site')->name('sites.scan');
         Route::livewire('/sites/{site}/korumali-klasorler', SiteProtect::class)->whereNumber('site')->name('sites.protect');
         Route::livewire('/sites/{site}/zamanlanmis-gorevler', SiteCron::class)->whereNumber('site')->name('sites.cron');
+        Route::livewire('/sites/{site}/git', SiteGit::class)->whereNumber('site')->name('sites.git');
         Route::livewire('/sites/{site}/alan-adlari', SiteDomainList::class)->whereNumber('site')->name('sites.domains');
         Route::livewire('/sites/{site}/hata-sayfalari', SiteErrorPages::class)->whereNumber('site')->name('sites.errors');
         Route::livewire('/sites/{site}/gunlukler', SiteLogs::class)->whereNumber('site')->name('sites.logs');

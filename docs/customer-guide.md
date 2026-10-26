@@ -46,6 +46,12 @@ On a site's page:
   `memory_limit` and `upload_max_filesize`.
 - **Scheduled tasks**: run a command every night, every hour or every few
   minutes.
+- **Git deployment**: the site's folder (public_html by default) comes from
+  a Git repository. Connect a public `https://` address, one opened with an
+  access token, or an SSH address with the deploy key Servik makes; then
+  **Deploy**, or add the webhook address to the repository to deploy on
+  every push. Files the repository does not track stay; any earlier deploy
+  can be put back, and the first one undone.
 - **Statistics**: visitors, pages, bandwidth, referrers, countries and bots.
 - **Logs**: the site's access and error logs.
 - **Domains**: subdomains, other domains that open the same site, and

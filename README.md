@@ -133,9 +133,8 @@ PostgreSQL are kept apart from the ones customer sites use. Read
 0.1 covers everything a single server needs to host sites, mail and Laravel
 applications for paying customers. Known gaps, planned for later releases:
 
-- WordPress toolkit, an SSH terminal in the browser, Git deployment for
-  non-Laravel sites, and moving sites from another server (shown as "Soon"
-  in the panel);
+- WordPress toolkit, an SSH terminal in the browser, and moving sites from
+  another server (shown as "Soon" in the panel);
 - DNSSEC and secondary DNS servers;
 - importing cPanel and Plesk backups, backing up mailboxes on their own, CalDAV and CardDAV;
 - Slack and Telegram notifications;

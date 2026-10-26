@@ -19,10 +19,15 @@ import (
 
 // openRun creates the log of a run, root-owned and readable only by root.
 func (m *Manager) openRun(domain, run string) (*os.File, error) {
+	return m.openLog(runDir(domain), run)
+}
+
+// openLog creates the log of a run in dir.
+func (m *Manager) openLog(dir, run string) (*os.File, error) {
 	if err := validateID("run", run); err != nil {
 		return nil, err
 	}
-	dir := m.h.Path(runDir(domain))
+	dir = m.h.Path(dir)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}

@@ -144,6 +144,9 @@ type Manager struct {
 
 	tmu     sync.Mutex
 	tinkers map[string]*tinkerSession
+
+	// localRepos lets tests deploy from a repository on disk.
+	localRepos bool
 }
 
 // NewManager returns a Manager. On a simulator, health checks pass and

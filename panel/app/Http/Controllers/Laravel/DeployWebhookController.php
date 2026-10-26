@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Laravel;
 
 use App\Http\Controllers\Controller;
+use App\Models\GitRepository;
 use App\Models\LaravelApp;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\Previews;
+use App\Services\Sites\GitDeploys;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -18,13 +20,20 @@ use RuntimeException;
  * Pull request (merge request) events open, update and remove preview
  * environments when they are on. Pull requests from forks are ignored:
  * their code is not the repository owner's.
+ *
+ * The same address deploys sites set up for Git dağıtımı (GitRepository);
+ * the token says which.
  */
 class DeployWebhookController extends Controller
 {
-    public function __invoke(Request $request, string $token, LaravelApps $apps, Previews $previews): JsonResponse
+    public function __invoke(Request $request, string $token, LaravelApps $apps, Previews $previews, GitDeploys $sites): JsonResponse
     {
-        $app = LaravelApp::with('site')->where('webhook_token', $token)->first();
-        if ($app === null || strlen($token) < 32) {
+        $app = strlen($token) < 32 ? null : LaravelApp::with('site')->where('webhook_token', $token)->first();
+        $repo = $app !== null || strlen($token) < 32 ? null : GitRepository::with('site')->where('webhook_token', $token)->first();
+        if ($repo !== null) {
+            return $this->site($request, $repo, $sites);
+        }
+        if ($app === null) {
             return response()->json(['message' => 'Unknown deploy hook.'], 404);
         }
         if ($request->header('X-GitHub-Event') === 'ping') {
@@ -56,6 +65,38 @@ class DeployWebhookController extends Controller
 
         $ref = $pushed ?? (is_string($request->query('ref')) && $request->query('ref') !== '' ? $request->query('ref') : null);
         $deployment = $apps->deploy($app, $ref, triggeredBy: $this->trigger($request));
+
+        return response()->json(['message' => 'Deploy queued.', 'deployment' => $deployment->number], 202);
+    }
+
+    /**
+     * A push to the site's branch (when automatic deploys are on) or a
+     * plain POST deploys the branch into the site's folder.
+     */
+    private function site(Request $request, GitRepository $repo, GitDeploys $sites): JsonResponse
+    {
+        if ($request->header('X-GitHub-Event') === 'ping') {
+            return response()->json(['message' => 'pong']);
+        }
+        if ($this->pullRequest($request) !== null) {
+            return response()->json(['message' => 'Nothing to do for pull request events.'], 202);
+        }
+        $pushed = $this->pushedBranch($request);
+        if ($pushed !== null) {
+            if (! $repo->auto_deploy) {
+                return response()->json(['message' => 'Automatic deploys are off for this site.'], 202);
+            }
+            if ($pushed !== $repo->branch) {
+                return response()->json(['message' => "Push to {$pushed} ignored; the site deploys {$repo->branch}."], 202);
+            }
+        }
+        if ($repo->site->status->isBusy() || $repo->site->isSuspended()) {
+            return response()->json(['message' => 'This site cannot be deployed now.'], 409);
+        }
+        if ($repo->hasRunningDeployment()) {
+            return response()->json(['message' => 'A deploy is already running.'], 409);
+        }
+        $deployment = $sites->deploy($repo, triggeredBy: $this->trigger($request));
 
         return response()->json(['message' => 'Deploy queued.', 'deployment' => $deployment->number], 202);
     }
