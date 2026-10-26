@@ -122,8 +122,9 @@ step saves with the same settings as its own page and can be left for later
 1. **Server**: the server's fully qualified host name (also set it as the
    PTR record of the IP address at your provider, for mail), the IPv4 and
    IPv6 addresses DNS records use, the time zone and the server's language.
-2. **Name servers**: your own domain, `ns1`/`ns2` under it (and a second IP
-   address for `ns2` if the server has one), installing the DNS server and
+2. **Name servers**: your own domain, `ns1`/`ns2` under it, each with its
+   IP address (empty means the server's; enter another one when a name
+   server runs on a second server or address), installing the DNS server and
    creating your domain's zone. Register the two names with their addresses as
    glue (host) records at your domain registrar, then make them the domain's
    name servers; the wizard shows the exact names and addresses.

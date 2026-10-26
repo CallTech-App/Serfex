@@ -318,6 +318,49 @@ class SetupTest extends TestCase
             ->call('save')->assertHasErrors('createSite')->assertSet('step', 'ad-sunuculari');
     }
 
+    public function test_each_name_server_can_have_its_own_address(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'full']));
+        Setting::put('server.hostname', 'srv1.kahve.com.tr');
+        $records = fn () => DnsZone::where('name', 'kahve.com.tr')->sole()->records()->where('name', 'like', 'ns%')
+            ->orderBy('name')->orderBy('type')->get()->map(fn ($r) => $r->name.' '.$r->type.' '.$r->content)->all();
+
+        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+            ->assertSeeHtml('id="ns1-ip"')
+            ->assertSeeHtml('id="ns2-ip"')
+            ->set('createSite', false)
+            ->set('ns1Ip', '203.0.113')
+            ->call('save')->assertHasErrors('ns1Ip')
+            ->set('ns1Ip', '203.0.113.10')
+            ->set('ns2Ip', '198.51.100.20')
+            ->call('save')->assertHasNoErrors()->assertSet('step', 'panel');
+        // The server's own address is the default and is not kept apart.
+        $this->assertSame(['ns2.kahve.com.tr' => '198.51.100.20'], app(DnsSettings::class)->nameserverIps());
+        $this->assertSame(['ns1 A 203.0.113.10', 'ns1 AAAA 2001:db8::10', 'ns2 A 198.51.100.20'], $records());
+
+        // Coming back to the step shows the addresses and moves the records
+        // of the zone made the first time.
+        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+            ->assertSet('ns1Ip', '')
+            ->assertSet('ns2Ip', '198.51.100.20')
+            ->assertSee('198.51.100.20')
+            ->set('ns2Ip', '198.51.100.30')
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame(['ns1 A 203.0.113.10', 'ns1 AAAA 2001:db8::10', 'ns2 A 198.51.100.30'], $records());
+    }
+
+    public function test_the_second_name_servers_address_from_an_older_wizard_is_kept(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'full']));
+        app(DnsSettings::class)->save(['nameservers' => ['ns1.kahve.com.tr', 'ns2.kahve.com.tr'], 'ipv4' => '203.0.113.10']);
+        Setting::put('setup.ns2_ip', '198.51.100.20');
+
+        $this->assertSame(['ns2.kahve.com.tr' => '198.51.100.20'], app(DnsSettings::class)->nameserverIps());
+        $this->assertSame('198.51.100.20', app(DnsSettings::class)->nameserverIp('NS2.kahve.com.tr.'));
+        $this->assertSame('203.0.113.10', app(DnsSettings::class)->nameserverIp('ns1.kahve.com.tr'));
+        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')->assertSet('ns2Ip', '198.51.100.20');
+    }
+
     public function test_only_full_administrators_open_the_wizard(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'support']));

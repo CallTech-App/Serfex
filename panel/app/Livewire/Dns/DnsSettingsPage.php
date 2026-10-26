@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\DnsSettings;
+use App\Services\Dns\NameserverIps;
 use App\Services\Dns\Zones;
 use App\Services\Dns\ZoneTemplate;
 use App\Support\DnsRecords;
@@ -32,6 +33,13 @@ class DnsSettingsPage extends Component
 
     public bool $applyToZones = false;
 
+    /**
+     * Each name server above with its IPv4 address, empty for the server's.
+     *
+     * @var list<array{host: string, ip: string}>
+     */
+    public array $nameserverIps = [];
+
     public string $ipv4 = '';
 
     public string $ipv6 = '';
@@ -55,6 +63,7 @@ class DnsSettingsPage extends Component
     {
         $template->detectAddresses();
         $this->nameservers = implode(', ', $settings->nameservers());
+        $this->nameserverIps = $this->ipRows($settings->nameserverIps());
         $this->ipv4 = (string) $settings->ipv4();
         $this->ipv6 = (string) $settings->ipv6();
         $this->defaultTtl = $settings->defaultTtl();
@@ -68,15 +77,21 @@ class DnsSettingsPage extends Component
         }
     }
 
-    public function save(DnsSettings $settings, ZoneTemplate $template, Zones $zones): void
+    /**
+     * The address rows follow the names typed above.
+     */
+    public function updatedNameservers(): void
+    {
+        $this->nameserverIps = $this->ipRows(array_column($this->nameserverIps, 'ip', 'host'));
+    }
+
+    public function save(DnsSettings $settings, ZoneTemplate $template, Zones $zones, NameserverIps $ips): void
     {
         $this->ipv4 = trim($this->ipv4);
         $this->ipv6 = trim($this->ipv6);
         $this->hostmaster = trim($this->hostmaster);
-        $hosts = array_values(array_unique(array_filter(array_map(
-            fn ($h) => rtrim(mb_strtolower(trim($h)), '.'),
-            preg_split('/[\s,]+/', $this->nameservers) ?: [],
-        ))));
+        $hosts = $this->hosts();
+        $this->nameserverIps = $this->ipRows(array_column($this->nameserverIps, 'ip', 'host'));
 
         $this->validate([
             'ipv4' => ['nullable', 'ipv4'],
@@ -87,6 +102,7 @@ class DnsSettingsPage extends Component
             'retry' => ['required', 'integer', 'min:180', 'max:2419200'],
             'expire' => ['required', 'integer', 'min:3600', 'max:4838400'],
             'minimum' => ['required', 'integer', 'min:60', 'max:86400'],
+            'nameserverIps.*.ip' => ['nullable', 'ipv4'],
         ], [], [
             'ipv4' => __('IPv4 adresi'),
             'ipv6' => __('IPv6 adresi'),
@@ -96,6 +112,7 @@ class DnsSettingsPage extends Component
             'retry' => __('yeniden deneme'),
             'expire' => __('sona erme'),
             'minimum' => __('negatif TTL'),
+            'nameserverIps.*.ip' => __('ad sunucusunun IP adresi'),
         ]);
         foreach ($hosts as $h) {
             if (DnsRecords::hostname($h, 'invalid') === null || ! str_contains($h, '.')) {
@@ -125,6 +142,8 @@ class DnsSettingsPage extends Component
             'soa' => ['refresh' => $this->refresh, 'retry' => $this->retry, 'expire' => $this->expire, 'minimum' => $this->minimum],
         ]);
         $this->nameservers = implode(', ', $hosts);
+        $moved = $ips->save(array_column($this->nameserverIps, 'ip', 'host'));
+        $this->nameserverIps = $this->ipRows($settings->nameserverIps());
 
         $updated = 0;
         foreach ($before as $id => $old) {
@@ -148,7 +167,9 @@ class DnsSettingsPage extends Component
         }
         $this->applyToZones = false;
 
-        $this->dispatch('toast', message: __('DNS ayarları kaydedildi.').($updated ? ' '.trans_choice(':count bölgenin ad sunucuları güncellendi.', $updated) : ''));
+        $this->dispatch('toast', message: __('DNS ayarları kaydedildi.')
+            .($updated ? ' '.trans_choice(':count bölgenin ad sunucuları güncellendi.', $updated) : '')
+            .($moved ? ' '.trans_choice(':count bölgede ad sunucusunun A kaydı yeni adrese taşındı.', $moved) : ''));
     }
 
     public function openAdd(): void
@@ -238,6 +259,28 @@ class DnsSettingsPage extends Component
             'example' => $template->nameservers('ornek.com.tr'),
             'server' => Setting::get('dns.server', []),
         ]);
+    }
+
+    /**
+     * The name servers typed in the field, as plain lowercase names.
+     *
+     * @return list<string>
+     */
+    private function hosts(): array
+    {
+        return array_values(array_unique(array_filter(array_map(
+            fn ($h) => rtrim(mb_strtolower(trim($h)), '.'),
+            preg_split('/[\s,]+/', $this->nameservers) ?: [],
+        ))));
+    }
+
+    /**
+     * @param  array<string, string>  $ips
+     * @return list<array{host: string, ip: string}>
+     */
+    private function ipRows(array $ips): array
+    {
+        return array_map(fn ($host) => ['host' => $host, 'ip' => (string) ($ips[$host] ?? '')], $this->hosts());
     }
 
     /**

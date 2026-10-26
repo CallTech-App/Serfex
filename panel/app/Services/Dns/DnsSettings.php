@@ -36,6 +36,33 @@ class DnsSettings
         return array_values(Setting::get('dns.nameservers', []));
     }
 
+    /**
+     * Name servers that answer on an IPv4 address other than the server's,
+     * by name: a second server, or a second address of this one. The
+     * others point at ipv4().
+     *
+     * @return array<string, string>
+     */
+    public function nameserverIps(): array
+    {
+        $ips = Setting::get('dns.nameserver_ips');
+        $ns2 = $this->nameservers()[1] ?? null;
+        if ($ips === null && $ns2 !== null && ($ip = Setting::get('setup.ns2_ip'))) {
+            // Saved by the setup wizard before 0.1.6.
+            return [$ns2 => $ip];
+        }
+
+        return (array) $ips;
+    }
+
+    /**
+     * The IPv4 address a name server's A record shows.
+     */
+    public function nameserverIp(string $host): ?string
+    {
+        return $this->nameserverIps()[rtrim(mb_strtolower($host), '.')] ?? $this->ipv4();
+    }
+
     public function ipv4(): ?string
     {
         return Setting::get('dns.ipv4');
@@ -85,7 +112,7 @@ class DnsSettings
     }
 
     /**
-     * @param  array{nameservers?: list<string>, ipv4?: ?string, ipv6?: ?string, default_ttl?: int, hostmaster?: ?string, soa?: array<string, int>, template?: list<array<string, mixed>>}  $values
+     * @param  array{nameservers?: list<string>, nameserver_ips?: array<string, string>, ipv4?: ?string, ipv6?: ?string, default_ttl?: int, hostmaster?: ?string, soa?: array<string, int>, template?: list<array<string, mixed>>}  $values
      */
     public function save(array $values): void
     {

@@ -17,6 +17,11 @@ there (for example the mail records).
    - *Name servers*: `ns1.example.com, ns2.example.com`. Register them at
      your registrar as glue records with the server's address. Changing them
      later can also update existing zones that use the old names.
+   - *Name server IP addresses*: one field per name server above. Empty
+     means the server's IPv4 address; enter another address when a name
+     server runs on a second server (or on this server's second address).
+     Its A record in its zone here moves to that address, and it gets no
+     AAAA record from this server.
    - *Server IPv4 / IPv6 address*: what new zones point at. With no IPv6
      address, new zones get no AAAA record.
    - *Default TTL* and the SOA defaults (administrator email, refresh,

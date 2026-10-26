@@ -13,6 +13,7 @@ use App\Services\Agent\AgentException;
 use App\Services\Backups\BackupSettings;
 use App\Services\Components\Components;
 use App\Services\Dns\DnsSettings;
+use App\Services\Dns\NameserverIps;
 use App\Services\Dns\Zones;
 use App\Services\Monitor\MonitorException;
 use App\Services\Php\PhpVersions;
@@ -67,6 +68,9 @@ class SetupWizard extends Component
     public string $ns1 = '';
 
     public string $ns2 = '';
+
+    // Empty means the server's IPv4 address.
+    public string $ns1Ip = '';
 
     public string $ns2Ip = '';
 
@@ -128,7 +132,9 @@ class SetupWizard extends Component
         $nameservers = $dns->nameservers();
         $this->ns1 = $nameservers[0] ?? ($this->domain !== '' ? 'ns1.'.$this->domain : '');
         $this->ns2 = $nameservers[1] ?? ($this->domain !== '' ? 'ns2.'.$this->domain : '');
-        $this->ns2Ip = (string) Setting::get('setup.ns2_ip', '');
+        $ips = $dns->nameserverIps();
+        $this->ns1Ip = (string) ($ips[$this->ns1] ?? '');
+        $this->ns2Ip = (string) ($ips[$this->ns2] ?? '');
         $dnsState = Setting::get('dns.server', [])['state'] ?? null;
         $this->installDns = $dnsState !== 'ready';
         $this->createZone = $this->domain === '' || ! DnsZone::where('name', $this->domain)->exists();
@@ -258,13 +264,15 @@ class SetupWizard extends Component
         $this->domain = Hostnames::normalize($this->domain);
         $this->ns1 = rtrim(mb_strtolower(trim($this->ns1)), '.');
         $this->ns2 = rtrim(mb_strtolower(trim($this->ns2)), '.');
+        $this->ns1Ip = trim($this->ns1Ip);
         $this->ns2Ip = trim($this->ns2Ip);
         $this->validate([
             'domain' => ['required', fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir alan adı girin, örneğin ornek.com.tr.'))],
             'ns1' => ['required', 'different:ns2', fn ($attr, $value, $fail) => $this->validNameserver($value) ? null : $fail(__('Tam adı yazın, örneğin ns1.ornek.com.tr.'))],
             'ns2' => ['required', fn ($attr, $value, $fail) => $this->validNameserver($value) ? null : $fail(__('Tam adı yazın, örneğin ns2.ornek.com.tr.'))],
+            'ns1Ip' => ['nullable', 'ipv4'],
             'ns2Ip' => ['nullable', 'ipv4'],
-        ], ['ns1.different' => __('İki ad sunucusu farklı adlar olmalı.')], ['domain' => __('alan adı'), 'ns1' => __('1. ad sunucusu'), 'ns2' => __('2. ad sunucusu'), 'ns2Ip' => __('2. ad sunucusunun IP adresi')]);
+        ], ['ns1.different' => __('İki ad sunucusu farklı adlar olmalı.')], ['domain' => __('alan adı'), 'ns1' => __('1. ad sunucusu'), 'ns2' => __('2. ad sunucusu'), 'ns1Ip' => __('1. ad sunucusunun IP adresi'), 'ns2Ip' => __('2. ad sunucusunun IP adresi')]);
         $site = $this->createSite ? $this->siteProblem() : null;
         if ($site !== null) {
             $this->addError('createSite', $site);
@@ -275,7 +283,8 @@ class SetupWizard extends Component
         $dns = app(DnsSettings::class);
         $dns->save(['nameservers' => [$this->ns1, $this->ns2]]);
         Setting::put('setup.domain', $this->domain);
-        Setting::put('setup.ns2_ip', $this->ns2Ip !== '' && $this->ns2Ip !== $dns->ipv4() ? $this->ns2Ip : null);
+        // Also moves the name servers' A records in a zone made before.
+        app(NameserverIps::class)->save([$this->ns1 => $this->ns1Ip, $this->ns2 => $this->ns2Ip]);
 
         $state = Setting::get('dns.server', [])['state'] ?? null;
         if ($this->installDns && ! in_array($state, ['ready', 'installing'], true)) {
@@ -283,8 +292,7 @@ class SetupWizard extends Component
             SetupDnsServer::dispatch();
         }
         if ($this->createZone && ! DnsZone::where('name', $this->domain)->exists()) {
-            $zone = app(Zones::class)->create($this->domain);
-            $this->pointNs2($zone);
+            app(Zones::class)->create($this->domain);
         }
         if (($zone = DnsZone::where('name', $this->domain)->first()) !== null) {
             $this->addAddress($zone, $this->hostname);
@@ -527,21 +535,6 @@ class SetupWizard extends Component
     }
 
     /**
-     * The second name server on its own address, when one was given.
-     */
-    private function pointNs2(DnsZone $zone): void
-    {
-        $ip = Setting::get('setup.ns2_ip');
-        if (! $ip || ! str_ends_with($this->ns2, '.'.$zone->name)) {
-            return;
-        }
-        $label = substr($this->ns2, 0, -strlen('.'.$zone->name));
-        app(Zones::class)->change($zone, function (DnsZone $zone) use ($label, $ip) {
-            $zone->records()->where('name', $label)->where('type', 'A')->update(['content' => $ip]);
-        });
-    }
-
-    /**
      * The server's own name as saved (Sunucu step) or read from the server.
      */
     private function serverName(): string
@@ -565,7 +558,7 @@ class SetupWizard extends Component
             'timezones' => $this->timezoneOptions($settings),
             'dnsServer' => Setting::get('dns.server', []),
             'siteExists' => $this->step === 'ad-sunuculari' && $this->domain !== '' && Site::where('domain', $this->domain)->exists(),
-            'glue' => [[$this->ns1, $dns->ipv4() ?: $this->ipv4], [$this->ns2, $this->ns2Ip ?: ($dns->ipv4() ?: $this->ipv4)]],
+            'glue' => [[$this->ns1, $this->ns1Ip ?: ($dns->ipv4() ?: $this->ipv4)], [$this->ns2, $this->ns2Ip ?: ($dns->ipv4() ?: $this->ipv4)]],
             'port' => $settings->port(),
             'serverName' => $this->step === 'panel' ? $this->serverName() : '',
             'panelIp' => $dns->ipv4() ?: $this->ipv4,

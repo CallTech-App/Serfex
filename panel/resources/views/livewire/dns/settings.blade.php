@@ -24,7 +24,7 @@
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                     <label for="nameservers" class="sm:pt-2">{{ __('Ad sunucuları') }}</label>
                     <div>
-                        <input id="nameservers" wire:model="nameservers" placeholder="{{ __('ns1.ornek.net.tr, ns2.ornek.net.tr') }}" spellcheck="false" autocomplete="off"
+                        <input id="nameservers" wire:model.blur="nameservers" placeholder="{{ __('ns1.ornek.net.tr, ns2.ornek.net.tr') }}" spellcheck="false" autocomplete="off"
                                class="{{ $field }} font-mono text-[13px] sm:w-96 {{ $errors->has('nameservers') ? 'border-crit' : 'border-line' }}">
                         @error('nameservers')
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
@@ -39,6 +39,24 @@
                         </label>
                     </div>
                 </div>
+                @if ($nameserverIps !== [])
+                    <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                        <span class="sm:pt-2">{{ __('Ad sunucularının IP adresleri') }}</span>
+                        <div class="space-y-2">
+                            @foreach ($nameserverIps as $i => $row)
+                                <div wire:key="ns-ip-{{ $row['host'] }}">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <label for="ns-ip-{{ $i }}" class="w-full truncate font-mono text-[13px] sm:w-56">{{ $row['host'] }}</label>
+                                        <input id="ns-ip-{{ $i }}" wire:model="nameserverIps.{{ $i }}.ip" placeholder="{{ $ipv4 }}" spellcheck="false" autocomplete="off"
+                                               class="{{ $field }} font-mono text-[13px] sm:w-44 {{ $errors->has('nameserverIps.'.$i.'.ip') ? 'border-crit' : 'border-line' }}">
+                                    </div>
+                                    @error('nameserverIps.'.$i.'.ip')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@enderror
+                                </div>
+                            @endforeach
+                            <p class="text-2xs text-muted">{{ __('Boş bırakılan ad sunucusu bu sunucunun IPv4 adresini gösterir. Başka bir sunucudaki ya da sunucunun ikinci IP adresindeki ad sunucusu için o adresi yazın; bu sunucudaki bölgesinde A kaydı da o adrese taşınır.') }}</p>
+                        </div>
+                    </div>
+                @endif
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                     <label for="ipv4" class="sm:pt-2">{{ __('Sunucu IPv4 adresi') }}</label>
                     <div>
