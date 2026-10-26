@@ -28,7 +28,7 @@ func TestApplyServesSubdomainsFromTheirOwnRoots(t *testing.T) {
 			t.Errorf("%s was not created", f)
 		}
 	}
-	if page := read(t, sim, site+"/subdomains/blog/index.html"); !strings.Contains(page, "<h1>blog.kahveatolyesi.com.tr</h1>") {
+	if page := read(t, sim, site+"/subdomains/blog/index.html"); !strings.Contains(page, `<span class="domain">blog.kahveatolyesi.com.tr</span>`) {
 		t.Errorf("placeholder names the subdomain:\n%s", page)
 	}
 	vhost := read(t, sim, res.NginxConfig)

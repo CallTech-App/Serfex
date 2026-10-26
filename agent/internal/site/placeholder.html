@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{.Domain}}</title>
+<style>
+/* Servik varsayılan site sayfası. Dış kaynak yok; görsel satır içi SVG.
+   Yerleşim: koyu gece zemini; üstte metin + çizim, altında üç kart, sonra "Servik nedir" ve özellikler. */
+:root {
+  --bg: #091113; --bg-2: #0d181b; --fg: #e6eeef; --muted: #93a4a8; --dim: #62757a;
+  --accent: #34b8bc; --accent-hi: #6fd8da; --accent-deep: #0d7479;
+  --glass: rgba(255, 255, 255, .045); --glass-line: rgba(255, 255, 255, .09);
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh; color: var(--fg); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 520px at 78% 18%, rgba(52, 184, 188, .16), transparent 65%),
+    radial-gradient(700px 500px at 8% 92%, rgba(13, 116, 121, .14), transparent 70%),
+    radial-gradient(1.2px 1.2px at 12% 14%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(1px 1px at 27% 33%, rgba(255,255,255,.35), transparent 60%),
+    radial-gradient(1.4px 1.4px at 44% 8%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(1px 1px at 61% 41%, rgba(255,255,255,.3), transparent 60%),
+    radial-gradient(1.2px 1.2px at 89% 52%, rgba(255,255,255,.45), transparent 60%),
+    radial-gradient(1px 1px at 7% 58%, rgba(255,255,255,.35), transparent 60%),
+    radial-gradient(1.3px 1.3px at 35% 71%, rgba(255,255,255,.4), transparent 60%),
+    radial-gradient(1px 1px at 72% 83%, rgba(255,255,255,.3), transparent 60%),
+    radial-gradient(1.2px 1.2px at 95% 9%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(1px 1px at 53% 94%, rgba(255,255,255,.3), transparent 60%),
+    radial-gradient(1.6px 1.6px at 19% 86%, rgba(111,216,218,.6), transparent 60%),
+    radial-gradient(1.6px 1.6px at 83% 30%, rgba(111,216,218,.55), transparent 60%);
+  background-attachment: fixed;
+}
+a { color: var(--accent-hi); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 3px; border-radius: 6px; }
+.mono { font-family: var(--mono); }
+
+/* Dil: varsayılan Türkçe; #en adresiyle İngilizce (JavaScript gerekmez). */
+body [lang="en"] { display: none !important; }
+#en:target [lang="tr"] { display: none !important; }
+#en:target [lang="en"] { display: revert !important; }
+
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+
+/* Üst şerit */
+.top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 22px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 600; font-size: 20px; letter-spacing: -.02em; }
+.brand svg { display: block; filter: drop-shadow(0 0 14px rgba(52, 184, 188, .45)); }
+.lang { margin-left: auto; font-size: 14px; color: var(--muted); text-decoration: none; border: 1px solid var(--glass-line); border-radius: 999px; padding: 4px 12px; }
+.lang:hover { color: var(--fg); border-color: var(--accent); }
+
+/* Giriş */
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 32px; align-items: center; padding-block: 24px 40px; }
+.kicker {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0 0 18px; padding: 5px 12px 5px 10px; border-radius: 999px;
+  background: rgba(52, 184, 188, .12); border: 1px solid rgba(52, 184, 188, .3); color: var(--accent-hi); font-size: 13.5px; font-weight: 500;
+}
+.kicker i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-hi); box-shadow: 0 0 0 4px rgba(111, 216, 218, .18); }
+h1 { margin: 0; font-size: clamp(32px, 4.6vw, 54px); line-height: 1.1; letter-spacing: -.03em; font-weight: 700; text-wrap: balance; }
+h1 .domain { display: block; font-family: var(--mono); font-weight: 600; letter-spacing: -.04em; color: var(--accent-hi); overflow-wrap: anywhere; text-shadow: 0 0 32px rgba(52, 184, 188, .35); }
+.sub { margin: 20px 0 0; font-size: 18.5px; color: var(--muted); max-width: 34em; text-wrap: pretty; }
+.sub b { color: var(--fg); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 24px; border-radius: 12px;
+  font-size: 17px; font-weight: 600; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.btn-primary { background: var(--accent); color: #051618; box-shadow: 0 10px 34px -8px rgba(52, 184, 188, .6); }
+.btn-primary:hover { background: var(--accent-hi); transform: translateY(-1px); }
+.btn-ghost { color: var(--fg); border: 1px solid var(--glass-line); background: var(--glass); }
+.btn-ghost:hover { border-color: rgba(52, 184, 188, .5); }
+.btn svg { width: 18px; height: 18px; }
+.panel-url { margin: 12px 0 0; font: 13px var(--mono); color: var(--dim); }
+
+.art { position: relative; min-width: 0; }
+.art svg { display: block; width: 100%; max-width: 560px; height: auto; margin-inline: auto; overflow: visible; }
+.float { animation: float 7s ease-in-out infinite; }
+.blink { animation: blink 2.4s ease-in-out infinite; }
+.blink.d2 { animation-delay: .8s; } .blink.d3 { animation-delay: 1.6s; }
+@keyframes float { 50% { transform: translateY(-10px); } }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .float, .blink { animation: none; } }
+
+/* Kartlar */
+.cards .wrap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-block: 8px 56px; }
+.card {
+  display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; align-items: start;
+  padding: 22px; border-radius: 16px; background: var(--glass); border: 1px solid var(--glass-line);
+  backdrop-filter: blur(6px);
+}
+.ico { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: rgba(52, 184, 188, .14); color: var(--accent-hi); border: 1px solid rgba(52, 184, 188, .25); }
+.ico svg { width: 24px; height: 24px; }
+.card h2 { margin: 0 0 6px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.card p { margin: 0; font-size: 14.5px; color: var(--muted); }
+.card code { font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(255, 255, 255, .07); border-radius: 5px; padding: 1px 5px; }
+
+/* Servik nedir */
+.about { border-top: 1px solid var(--glass-line); background: linear-gradient(180deg, rgba(13, 24, 27, .0), rgba(13, 24, 27, .7)); }
+.about .wrap { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; padding-block: 56px 64px; align-items: start; }
+.about h2 { margin: 0 0 14px; font-size: 28px; letter-spacing: -.02em; font-weight: 700; }
+.about p { margin: 0; color: var(--muted); font-size: 16.5px; max-width: 36em; }
+.about p b { color: var(--fg); font-weight: 600; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 24px; font-size: 15px; font-weight: 500; }
+.links a { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.links a:hover { text-decoration: underline; }
+.feat { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.feat li { padding: 18px; border-radius: 14px; border: 1px solid var(--glass-line); background: rgba(255, 255, 255, .025); }
+.feat svg { width: 22px; height: 22px; color: var(--accent-hi); display: block; margin-bottom: 12px; }
+.feat strong { display: block; font-size: 15px; font-weight: 600; }
+.feat .d { display: block; font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+
+footer .wrap { padding-block: 22px 28px; font-size: 13px; color: var(--dim); text-align: center; }
+footer a { color: var(--muted); }
+
+@media (max-width: 960px) {
+  .hero .wrap { grid-template-columns: minmax(0, 1fr); }
+  .art { order: -1; }
+  .art svg { max-width: 420px; }
+  .cards .wrap { grid-template-columns: minmax(0, 1fr); }
+  .about .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+}
+@media (max-width: 560px) {
+  .sub { font-size: 16.5px; }
+  .btn { width: 100%; justify-content: center; }
+  .feat { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<div id="en">
+<header class="top">
+  <div class="wrap">
+    <span class="brand">
+      <svg width="34" height="34" viewBox="0 0 26 26" aria-hidden="true">
+        <rect width="26" height="26" rx="6" fill="#34b8bc"/>
+        <rect x="6" y="6.5" width="14" height="3" rx="1.5" fill="#051618"/>
+        <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="#051618" opacity=".7"/>
+        <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="#051618"/>
+      </svg>
+      servik
+    </span>
+    <a class="lang" href="#en" lang="tr">English</a>
+    <a class="lang" href="#top" lang="en">Türkçe</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="kicker"><i></i><span lang="tr">Barındırma hazır</span><span lang="en">Hosting is ready</span></p>
+      <h1>
+        <span class="domain">{{.Domain}}</span>
+        <span lang="tr">için varsayılan sayfa</span><span lang="en">default page</span>
+      </h1>
+      <p class="sub" lang="tr">Bu alan adı <b>Servik</b> ile barındırılıyor. Site sahibi kendi dosyalarını yüklediğinde bu sayfanın yerini gerçek site alır.</p>
+      <p class="sub" lang="en">This domain is hosted with <b>Servik</b>. Once the site owner uploads their own files, the real site replaces this page.</p>
+      <div class="actions">
+        {{- if .PanelURL}}
+        <a class="btn btn-primary" href="{{.PanelURL}}">
+          <span lang="tr">Panele giriş yap</span><span lang="en">Sign in to the panel</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        {{- end}}
+        <a class="btn btn-ghost" href="#servik"><span lang="tr">Servik nedir?</span><span lang="en">What is Servik?</span></a>
+      </div>
+      {{- if .PanelURL}}
+      <p class="panel-url">{{.PanelHost}}</p>
+      {{- end}}
+    </div>
+
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 520 440">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0" stop-color="#34b8bc" stop-opacity=".55"/>
+            <stop offset="1" stop-color="#34b8bc" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="left" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#16292d"/><stop offset="1" stop-color="#0e1b1e"/>
+          </linearGradient>
+          <linearGradient id="right" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1d363b"/><stop offset="1" stop-color="#132428"/>
+          </linearGradient>
+          <linearGradient id="topf" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2a4c52"/><stop offset="1" stop-color="#1c3539"/>
+          </linearGradient>
+        </defs>
+
+        <ellipse cx="260" cy="340" rx="210" ry="58" fill="url(#glow)" opacity=".7"/>
+        <!-- yörünge (arka yarı) -->
+        <path d="M30 236 A230 92 0 0 1 490 236" fill="none" stroke="#34b8bc" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 7"/>
+
+        <g class="float">
+          <!-- alt katman -->
+          <g transform="translate(0 108)">
+            <polygon points="140,170 260,230 260,276 140,216" fill="url(#left)" stroke="#2c4a50"/>
+            <polygon points="380,170 260,230 260,276 380,216" fill="url(#right)" stroke="#2c4a50"/>
+            <polygon points="260,110 380,170 260,230 140,170" fill="url(#topf)" stroke="#2c4a50"/>
+            <path d="M156 186 L244 230 M156 198 L244 242" stroke="#34b8bc" stroke-opacity=".25" stroke-width="2"/>
+            <circle class="blink" cx="290" cy="237" r="3.2" fill="#6fd8da"/>
+            <circle class="blink d2" cx="304" cy="230" r="3.2" fill="#6fd8da"/>
+            <circle class="blink d3" cx="318" cy="223" r="3.2" fill="#34b8bc"/>
+          </g>
+          <!-- orta katman -->
+          <g transform="translate(0 54)">
+            <polygon points="140,170 260,230 260,276 140,216" fill="url(#left)" stroke="#2c4a50"/>
+            <polygon points="380,170 260,230 260,276 380,216" fill="url(#right)" stroke="#2c4a50"/>
+            <polygon points="260,110 380,170 260,230 140,170" fill="url(#topf)" stroke="#2c4a50"/>
+            <path d="M156 186 L244 230 M156 198 L244 242" stroke="#34b8bc" stroke-opacity=".25" stroke-width="2"/>
+            <circle class="blink d2" cx="290" cy="237" r="3.2" fill="#6fd8da"/>
+            <circle class="blink d3" cx="304" cy="230" r="3.2" fill="#34b8bc"/>
+            <circle class="blink" cx="318" cy="223" r="3.2" fill="#6fd8da"/>
+          </g>
+          <!-- üst katman -->
+          <g>
+            <polygon points="140,170 260,230 260,276 140,216" fill="url(#left)" stroke="#2c4a50"/>
+            <polygon points="380,170 260,230 260,276 380,216" fill="url(#right)" stroke="#2c4a50"/>
+            <polygon points="260,110 380,170 260,230 140,170" fill="url(#topf)" stroke="#3d6a71"/>
+            <path d="M156 186 L244 230 M156 198 L244 242" stroke="#34b8bc" stroke-opacity=".25" stroke-width="2"/>
+            <circle class="blink d3" cx="290" cy="237" r="3.2" fill="#34b8bc"/>
+            <circle class="blink" cx="304" cy="230" r="3.2" fill="#6fd8da"/>
+            <circle class="blink d2" cx="318" cy="223" r="3.2" fill="#6fd8da"/>
+            <!-- üst yüzde Servik işareti -->
+            <ellipse cx="260" cy="170" rx="80" ry="40" fill="url(#glow)" opacity=".6"/>
+            <g transform="matrix(2.4 1.2 -2.4 1.2 260 138.8)">
+              <rect width="26" height="26" rx="6" fill="#34b8bc"/>
+              <rect x="6" y="6.5" width="14" height="3" rx="1.5" fill="#051618"/>
+              <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="#051618" opacity=".7"/>
+              <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="#051618"/>
+            </g>
+          </g>
+        </g>
+
+        <!-- yörünge (ön yarı) ve hizmetler -->
+        <path d="M30 236 A230 92 0 0 0 490 236" fill="none" stroke="#34b8bc" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="3 7"/>
+        <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#e6eeef">
+          <g transform="translate(20 180)"><rect width="62" height="28" rx="14" fill="#0d1b1e" stroke="#34b8bc" stroke-opacity=".6"/><circle cx="15" cy="14" r="3.5" fill="#6fd8da"/><text x="25" y="18.5">DNS</text></g>
+          <g transform="translate(18 270)"><rect width="62" height="28" rx="14" fill="#0d1b1e" stroke="#34b8bc" stroke-opacity=".6"/><circle cx="15" cy="14" r="3.5" fill="#6fd8da"/><text x="25" y="18.5">SSL</text></g>
+          <g transform="translate(196 312)"><rect width="86" height="28" rx="14" fill="#0d1b1e" stroke="#34b8bc" stroke-opacity=".6"/><circle cx="15" cy="14" r="3.5" fill="#6fd8da"/><text x="25" y="18.5">PHP {{.PHPVersion}}</text></g>
+          <g transform="translate(398 268)"><rect width="88" height="28" rx="14" fill="#0d1b1e" stroke="#34b8bc" stroke-opacity=".6"/><circle cx="15" cy="14" r="3.5" fill="#6fd8da"/><text x="25" y="18.5">Laravel</text></g>
+          <g transform="translate(430 180)"><rect width="70" height="28" rx="14" fill="#0d1b1e" stroke="#34b8bc" stroke-opacity=".6"/><circle cx="15" cy="14" r="3.5" fill="#6fd8da"/><text x="25" y="18.5">Mail</text></g>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="cards">
+  <div class="wrap">
+    <article class="card">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+      <div>
+        <h2><span lang="tr">Site sahibiyseniz</span><span lang="en">If you own this site</span></h2>
+        <p lang="tr">Dosyalarınızı panelin Dosya Yöneticisi ya da SFTP (port 22) ile <code>public_html/</code> klasörüne yükleyin. Kendi <code>index.html</code> ya da <code>index.php</code> dosyanız bu sayfanın yerine geçer.</p>
+        <p lang="en">Upload your files to <code>public_html/</code> with the panel's File Manager or over SFTP (port 22). Your own <code>index.html</code> or <code>index.php</code> replaces this page.</p>
+      </div>
+    </article>
+    <article class="card">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 5 9-5" opacity=".6"/></svg></span>
+      <div>
+        <h2><span lang="tr">Laravel geliştiriciyseniz</span><span lang="en">If you build with Laravel</span></h2>
+        <p lang="tr">Panelin Laravel bölümünden tek adımda uygulama kurun ya da Git deponuzdan dağıtın. Kuyruk, zamanlayıcı, Horizon ve önizleme ortamları hazır.</p>
+        <p lang="en">Install an app in one step from the Laravel section of the panel, or deploy from your Git repository. Queues, the scheduler, Horizon and preview environments are ready.</p>
+      </div>
+    </article>
+    <article class="card">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+      <div>
+        <h2><span lang="tr">Ziyaretçiyseniz</span><span lang="en">If you are a visitor</span></h2>
+        <p lang="tr">Doğru adrestesiniz. Site henüz hazırlanıyor; içerik yayına alındığında burada görünecek.</p>
+        <p lang="en">You are in the right place. The site is still being prepared and its content will appear here once it is published.</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="about" id="servik">
+  <div class="wrap">
+    <div>
+      <h2><span lang="tr">Servik nedir?</span><span lang="en">What is Servik?</span></h2>
+      <p lang="tr"><b>Servik</b>, açık kaynak bir web barındırma panelidir. Siteleri, alan adlarını, DNS'i, e-postayı, veritabanlarını ve yedekleri tek yerden yönetir. Laravel uygulamaları için hazır araçlar ve sunucuyu izleyip sorunları açıklayan yerleşik bir yapay zekâ asistanı sunar.</p>
+      <p lang="en"><b>Servik</b> is an open-source web hosting panel. It manages sites, domains, DNS, email, databases and backups in one place. It comes with ready-made tools for Laravel apps and a built-in AI assistant that watches the server and explains problems.</p>
+      <div class="links">
+        <a href="https://github.com/Winchester37/Servik/tree/main/docs"><span lang="tr">Belgeler</span><span lang="en">Documentation</span></a>
+        <a href="https://github.com/Winchester37/Servik/blob/main/docs/laravel.md"><span lang="tr">Laravel rehberi</span><span lang="en">Laravel guide</span></a>
+        <a href="https://github.com/Winchester37/Servik/releases"><span lang="tr">Sürümler</span><span lang="en">Releases</span></a>
+        <a href="https://github.com/Winchester37/Servik">GitHub</a>
+      </div>
+    </div>
+    <ul class="feat">
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></svg>
+        <strong><span lang="tr">Kendi DNS'i</span><span lang="en">Built-in DNS</span></strong>
+        <span class="d"><span lang="tr">Ad sunucuları ve kayıtlar</span><span lang="en">Name servers and records</span></span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        <strong><span lang="tr">E-posta</span><span lang="en">Email</span></strong>
+        <span class="d"><span lang="tr">DKIM, SPF, DMARC kendiliğinden</span><span lang="en">DKIM, SPF, DMARC set up for you</span></span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <strong>SSL</strong>
+        <span class="d"><span lang="tr">Ücretsiz, kendiliğinden yenilenir</span><span lang="en">Free and renews on its own</span></span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+        <strong><span lang="tr">Laravel araçları</span><span lang="en">Laravel toolkit</span></strong>
+        <span class="d"><span lang="tr">Dağıtım, kuyruk, Octane</span><span lang="en">Deploys, queues, Octane</span></span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg>
+        <strong><span lang="tr">Canlı izleme</span><span lang="en">Live monitoring</span></strong>
+        <span class="d"><span lang="tr">Tek tıkla müdahale</span><span lang="en">One-click fixes</span></span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg>
+        <strong>Servik AI</strong>
+        <span class="d"><span lang="tr">Sorunu bulur, açıklar</span><span lang="en">Finds and explains issues</span></span>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span lang="tr">Bu sayfa <b>Servik</b> tarafından oluşturuldu. Servik, açık kaynak (AGPL-3.0) bir web barındırma panelidir.</span>
+    <span lang="en">This page was created by <b>Servik</b>, an open-source (AGPL-3.0) web hosting panel.</span>
+  </div>
+</footer>
+</div>
+</body>
+</html>

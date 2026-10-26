@@ -12,6 +12,7 @@ use App\Models\Certificate;
 use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\Package;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SiteRedirect;
 use App\Models\Subdomain;
@@ -280,6 +281,14 @@ class SiteDomainsTest extends TestCase
         $this->assertSame('Header set X-A b', $this->site->fresh()->load('systemUser')->agentSpec()['apache_directives']);
         $this->site->update(['web_server' => Site::NGINX]);
         $this->assertArrayNotHasKey('apache_directives', $this->site->fresh()->load('systemUser')->agentSpec());
+    }
+
+    public function test_the_default_page_links_to_the_panel_only_when_it_has_a_name(): void
+    {
+        $this->assertArrayNotHasKey('panel_url', $this->site->fresh()->agentSpec());
+
+        Setting::put('panel.hostname', 'server.kahve.com.tr');
+        $this->assertMatchesRegularExpression('#^https://server\.kahve\.com\.tr:\d+/$#', $this->site->fresh()->agentSpec()['panel_url']);
     }
 
     public function test_a_suspended_site_drops_redirects_and_directives(): void
