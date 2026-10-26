@@ -196,6 +196,14 @@ class PhpVersions
     }
 
     /**
+     * When the package lists were last checked for updates (after rows()).
+     */
+    public function checkedAt(): ?string
+    {
+        return $this->components->checkedAt();
+    }
+
+    /**
      * Megabytes of a php.ini size such as 128M or 1G; null for -1 or
      * nonsense.
      */

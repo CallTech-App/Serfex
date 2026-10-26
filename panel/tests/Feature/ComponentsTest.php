@@ -138,6 +138,10 @@ class ComponentsTest extends TestCase
 
         // A second operation waits for the first.
         $this->assertSame('Başka bir kurulum sürüyor. Bitince yeniden deneyin.', app(Components::class)->start('memcached', 'install', null));
+        // With its progress closed, the page says what the buttons wait for.
+        $page->call('closeOperation')
+            ->assertSee('Apache kuruluyor. 0 saniye önce başladı. Bitene kadar başka kurulum, güncelleme veya kaldırma başlatılamaz.')
+            ->assertSeeHtml('wire:click="show('.$op->id.')"');
 
         (new RunComponentOperation($op))->handle($this->agent, app(Components::class), app(DatabaseServers::class));
         $this->assertSame([['id' => 'apache', 'run' => $op->run]], $this->agent->called('component.install'));
