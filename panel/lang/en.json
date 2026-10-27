@@ -1516,6 +1516,7 @@
     "Fail2ban çalışmıyor": "Fail2ban is not running",
     "Fail2ban çalışıyor": "Fail2ban is running",
     "Fail2ban: :name için çok sayıda hatalı deneme": "Fail2ban: too many failed attempts for :name",
+    "Fail2ban kuralları sunucudaki değişikliğe göre güncellendi.": "Fail2ban rules were updated to match a change on the server.",
     "Farklı": "Different",
     "Faturalama sistemi": "Billing system",
     "Faturalama sisteminiz, betikleriniz ya da izleme aracınız paneli bu anahtarlarla kullanır. Bir anahtar, onu oluşturan tam yöneticinin adına çalışır.": "Your billing system, scripts or monitoring tool use the panel with these keys. A key acts on behalf of the full administrator who created it.",
