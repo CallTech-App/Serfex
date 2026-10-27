@@ -110,14 +110,25 @@
                         <p class="mx-5 mt-4 rounded-lg bg-warn-soft px-3 py-2 text-[13px]">{{ __('Ayarlar hizmet çalışırken değiştirilebilir; önce başlatın.') }}</p>
                     @endif
                     <div class="grid grid-cols-1 gap-x-6 gap-y-5 p-5 text-[13.5px] md:grid-cols-[220px_1fr]">
-                        @foreach ($fields as $key => [$label, $suffix, $min, $max, $help])
-                            <label for="set-{{ $key }}" class="font-medium md:pt-2">{{ $label }}</label>
+                        @foreach ($fields as $key => $field)
+                            @php [$label, $suffix, $min, $max, $help] = $field; $kind = $field[5] ?? 'number'; @endphp
+                            <label for="set-{{ $key }}" @class(['font-medium', 'md:pt-2' => $kind !== 'switch', 'md:pt-0.5' => $kind === 'switch'])>{{ $label }}</label>
                             <div class="max-w-xl">
-                                <div class="flex items-center gap-2">
-                                    <input id="set-{{ $key }}" type="text" inputmode="{{ $key === 'worker_processes' ? 'text' : 'numeric' }}" wire:model="settings.{{ $key }}" @disabled(! $running)
-                                           class="h-9 w-40 rounded-md border border-line bg-surface px-2.5 font-mono text-[13px]">
-                                    @if ($suffix)<span class="text-[13px] text-muted">{{ $suffix }}</span>@endif
-                                </div>
+                                @if ($kind === 'switch')
+                                    <label class="flex items-center gap-2.5">
+                                        <input id="set-{{ $key }}" type="checkbox" wire:model="settings.{{ $key }}" @disabled(! $running) class="size-4 accent-accent">
+                                        {{ __('Açık') }}
+                                    </label>
+                                @elseif ($kind === 'list')
+                                    <textarea id="set-{{ $key }}" wire:model="settings.{{ $key }}" rows="3" @disabled(! $running) placeholder="192.0.2.10&#10;2001:db8::/48"
+                                              class="w-full rounded-md border border-line bg-surface px-2.5 py-2 font-mono text-[13px] sm:w-80"></textarea>
+                                @else
+                                    <div class="flex items-center gap-2">
+                                        <input id="set-{{ $key }}" type="text" inputmode="{{ $key === 'worker_processes' ? 'text' : 'numeric' }}" wire:model="settings.{{ $key }}" @disabled(! $running)
+                                               class="h-9 w-40 rounded-md border border-line bg-surface px-2.5 font-mono text-[13px]">
+                                        @if ($suffix)<span class="text-[13px] text-muted">{{ $suffix }}</span>@endif
+                                    </div>
+                                @endif
                                 @error('settings.'.$key) <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                                 <p class="mt-1.5 text-[13px] text-muted">{{ $help }}@if ($min !== null) <span class="whitespace-nowrap">({{ \App\Support\Num::format($min, 0) }}–{{ \App\Support\Num::format($max, 0) }})</span>@endif</p>
                             </div>
