@@ -320,6 +320,14 @@ func (s *Simulator) install(args []string) error {
 
 // rm -rf --one-file-system PATH...
 func (s *Simulator) rm(args []string) error {
+	if len(args) > 1 && args[0] == "-f" {
+		for _, p := range args[1:] {
+			if err := os.Remove(s.Path(p)); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+		}
+		return nil
+	}
 	if len(args) < 3 || args[0] != "-rf" || args[1] != "--one-file-system" {
 		return fmt.Errorf("rm: unsupported arguments %v", args)
 	}

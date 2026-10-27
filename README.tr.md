@@ -135,8 +135,8 @@ ayrıdır. Ayrıntılar: [Mimari](docs/architecture.md) (İngilizce).
 uygulaması barındırması için gereken her şeyi kapsar. Bilinen eksikler,
 sonraki sürümler için planlı:
 
-- WordPress araç seti, tarayıcıda SSH terminali, Laravel dışı siteler için Git
-  dağıtımı ve başka sunucudan site taşıma (panelde "Yakında" olarak görünür);
+- WordPress araç seti, tarayıcıda SSH terminali ve başka sunucudan site taşıma
+  (panelde "Yakında" olarak görünür);
 - DNSSEC ve ikincil DNS sunucuları;
 - cPanel ve Plesk yedeklerini içe aktarma, posta kutularının ayrı yedeği,
   CalDAV ve CardDAV;

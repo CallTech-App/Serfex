@@ -189,6 +189,16 @@ class Site extends Model
     }
 
     /**
+     * The Git repository the site's folder is deployed from, if any.
+     *
+     * @return HasOne<GitRepository, $this>
+     */
+    public function gitRepository(): HasOne
+    {
+        return $this->hasOne(GitRepository::class);
+    }
+
+    /**
      * The site's mail domain, when e-mail is on.
      *
      * @return HasOne<MailDomain, $this>

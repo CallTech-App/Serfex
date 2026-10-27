@@ -31,7 +31,8 @@
             $laravelTool,
             ['terminal', __('SSH terminali'), null],
             ['clock', __('Zamanlanmış görevler'), $cronJobs ? __(':cron_jobs görev', ['cron_jobs' => $cronJobs]) : __('Yok'), route('sites.cron', $site)],
-            ['git-branch', __('Git dağıtımı'), $laravel ? ($laravel->repository ? $laravel->repositoryName() : __('Bağlı değil')) : null, $laravel ? route('laravel.show', [$laravel, 'bolum' => 'dagitimlar']) : null],
+            $laravel ? ['git-branch', __('Git dağıtımı'), $laravel->repository ? $laravel->repositoryName() : __('Bağlı değil'), route('laravel.show', [$laravel, 'bolum' => 'dagitimlar'])]
+                : ['git-branch', __('Git dağıtımı'), $site->gitRepository ? $site->gitRepository->repositoryName() : __('Bağlı değil'), route('sites.git', $site)],
             ['file-text', __('Günlükler'), __('Erişim ve hata'), route('sites.logs', $site)],
             ['file-warning', __('Hata sayfaları'), $site->error_pages ? __(':error_pages özel sayfa', ['error_pages' => count($site->error_pages)]) : __('Varsayılan'), route('sites.errors', $site)],
             ...($user->is_admin ? [['file-cog', __('Web sunucusu yönergeleri'), filled($site->nginx_directives) || filled($site->apache_directives) ? __('Özel satırlar var') : __('Yok'), route('sites.directives', $site)]] : []),
