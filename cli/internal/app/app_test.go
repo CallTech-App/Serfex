@@ -130,7 +130,7 @@ func signedIn(t *testing.T, p *panel) (map[string]string, *httptest.Server) {
 	t.Cleanup(srv.Close)
 	p.on("GET /api/v1/me", reply(200, adminMe))
 	v := vars(t)
-	if r := run(t, v, "", "login", srv.URL, "--token", "svk_panel_abc"); r.code != 0 {
+	if r := run(t, v, "", "login", srv.URL, "--token", "sfx_panel_abc"); r.code != 0 {
 		t.Fatalf("login: %d %s %s", r.code, r.out, r.err)
 	}
 	return v, srv
@@ -144,14 +144,14 @@ func TestLoginWithATokenKeepsAProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	name, prof := cfg.Get("")
-	if name != "127.0.0.1" || prof.Token != "svk_panel_abc" || prof.Account != "admin" || prof.URL != srv.URL {
+	if name != "127.0.0.1" || prof.Token != "sfx_panel_abc" || prof.Account != "admin" || prof.URL != srv.URL {
 		t.Fatalf("profile %s %+v", name, prof)
 	}
 	if st, _ := os.Stat(v["SERFEX_CONFIG"]); st.Mode().Perm() != 0o600 {
 		t.Fatalf("config mode %v", st.Mode().Perm())
 	}
 	me := p.last("GET", "/api/v1/me")
-	if me.Auth != "Bearer svk_panel_abc" || me.Lang != "tr" || !strings.HasPrefix(me.Agent, "serfex/") {
+	if me.Auth != "Bearer sfx_panel_abc" || me.Lang != "tr" || !strings.HasPrefix(me.Agent, "serfex/") {
 		t.Fatalf("headers %+v", me)
 	}
 
@@ -177,7 +177,7 @@ func TestLoginThroughTheBrowser(t *testing.T) {
 			reply(202, map[string]string{"status": "pending"})(w, r)
 			return
 		}
-		reply(200, map[string]string{"status": "approved", "key": "svk_panel_new"})(w, r)
+		reply(200, map[string]string{"status": "approved", "key": "sfx_panel_new"})(w, r)
 	})
 	p.on("GET /api/v1/me", reply(200, adminMe))
 	v := vars(t)
@@ -196,7 +196,7 @@ func TestLoginThroughTheBrowser(t *testing.T) {
 		t.Fatalf("collected after %d", asked)
 	}
 	cfg, _ := config.Load(v["SERFEX_CONFIG"])
-	if cfg.Current != "web1" || cfg.Profiles["web1"].Token != "svk_panel_new" {
+	if cfg.Current != "web1" || cfg.Profiles["web1"].Token != "sfx_panel_new" {
 		t.Fatalf("%+v", cfg)
 	}
 	if !strings.Contains(r.out, "Sercan olarak giriş yapıldı") {
@@ -230,17 +230,17 @@ func TestASelfSignedPanelIsPinnedByItsFingerprint(t *testing.T) {
 	v := vars(t)
 
 	// Not asked: no terminal, so the fingerprint must be given.
-	r := run(t, v, "", "login", srv.URL, "--token", "svk_panel_abc")
+	r := run(t, v, "", "login", srv.URL, "--token", "sfx_panel_abc")
 	if r.code != 2 || !strings.Contains(r.err, api.Format(fp)) || !strings.Contains(r.err, "--fingerprint "+fp) {
 		t.Fatalf("%+v", r)
 	}
-	r = run(t, v, "", "login", srv.URL, "--token", "svk_panel_abc", "--fingerprint", strings.Repeat("ab", 32))
+	r = run(t, v, "", "login", srv.URL, "--token", "sfx_panel_abc", "--fingerprint", strings.Repeat("ab", 32))
 	if r.code != 1 || !strings.Contains(r.err, "beklenen değil") {
 		t.Fatalf("%+v", r)
 	}
 	// Asked at a terminal.
 	v["interactive"] = "1"
-	r = run(t, v, "e\n", "login", srv.URL, "--token", "svk_panel_abc")
+	r = run(t, v, "e\n", "login", srv.URL, "--token", "sfx_panel_abc")
 	if r.code != 0 {
 		t.Fatalf("%+v", r)
 	}
@@ -268,13 +268,13 @@ func TestCIUsesTheEnvironmentWithoutAProfile(t *testing.T) {
 	p.on("GET /api/v1/me", reply(200, map[string]any{"data": map[string]any{"kind": "token", "name": "GitHub Actions", "account": "token", "role": "deploy", "role_name": "Dağıtım", "app": "api.ornek.com.tr"}}))
 	p.on("POST /api/v1/apps/api.ornek.com.tr/deploy", reply(202, map[string]any{"message": "Dağıtım sıraya alındı.", "deployment": 7, "status": "queued", "run": "deploy-7"}))
 	v := vars(t)
-	v["SERFEX_URL"], v["SERFEX_TOKEN"], v["LANG"] = srv.URL, "svk_tok", "C.UTF-8"
+	v["SERFEX_URL"], v["SERFEX_TOKEN"], v["LANG"] = srv.URL, "sfx_tok", "C.UTF-8"
 	r := run(t, v, "", "deploy", "--ref", "v1.2.0", "--no-migrate")
 	if r.code != 0 || !strings.Contains(r.out, "Deployment 7") {
 		t.Fatalf("%+v", r)
 	}
 	d := p.last("POST", "/api/v1/apps/api.ornek.com.tr/deploy")
-	if d.Auth != "Bearer svk_tok" || d.Body["ref"] != "v1.2.0" || d.Body["migrate"] != false || d.Lang != "en" {
+	if d.Auth != "Bearer sfx_tok" || d.Body["ref"] != "v1.2.0" || d.Body["migrate"] != false || d.Lang != "en" {
 		t.Fatalf("%+v", d)
 	}
 }

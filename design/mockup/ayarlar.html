@@ -292,9 +292,9 @@
               <table class="w-full text-[13.5px] min-w-[560px]">
                 <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Ad</th><th class="font-medium px-3 py-2.5">Anahtar</th><th class="font-medium px-3 py-2.5">Yetki</th><th class="font-medium px-3 py-2.5">Son kullanım</th><th class="px-3"></th></tr></thead>
                 <tbody id="keys" class="divide-y divide-line">
-                  <tr><td class="px-5 py-3">WHMCS entegrasyonu</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••a91c</td><td class="px-3 py-3">Müşteri ve paket</td><td class="px-3 py-3 num text-muted">Bugün 22:58</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
-                  <tr><td class="px-5 py-3">GitHub Actions dağıtımı</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••4e07</td><td class="px-3 py-3">Dağıtım</td><td class="px-3 py-3 num text-muted">Bugün 18:31</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
-                  <tr><td class="px-5 py-3">İzleme betiği</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••b3d2</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 num text-muted">3 Eki 04:00</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
+                  <tr><td class="px-5 py-3">WHMCS entegrasyonu</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••a91c</td><td class="px-3 py-3">Müşteri ve paket</td><td class="px-3 py-3 num text-muted">Bugün 22:58</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
+                  <tr><td class="px-5 py-3">GitHub Actions dağıtımı</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••4e07</td><td class="px-3 py-3">Dağıtım</td><td class="px-3 py-3 num text-muted">Bugün 18:31</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
+                  <tr><td class="px-5 py-3">İzleme betiği</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••b3d2</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 num text-muted">3 Eki 04:00</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
                 </tbody>
               </table>
             </div>
@@ -333,7 +333,7 @@
   document.getElementById('newKey').onclick = () => {
     const k = Math.random().toString(16).slice(2, 6);
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="px-5 py-3">Yeni anahtar</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••${k}</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 text-muted">Hiç</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td>`;
+    tr.innerHTML = `<td class="px-5 py-3">Yeni anahtar</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••${k}</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 text-muted">Hiç</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td>`;
     document.getElementById('keys').prepend(tr);
     toast('Anahtar oluşturuldu. Tam değeri yalnızca bir kez gösterilir.');
   };

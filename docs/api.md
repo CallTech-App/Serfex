@@ -8,16 +8,16 @@ command line uses it, and so can your billing system, scripts or monitoring.
 Send a key as a bearer token:
 
 ```sh
-curl -H "Authorization: Bearer svk_panel_..." https://panel.example.com:8443/api/v1/sites
+curl -H "Authorization: Bearer sfx_panel_..." https://panel.example.com:8443/api/v1/sites
 ```
 
 There are three kinds of keys:
 
 | Key | Made under | Acts as |
 |-----|------------|---------|
-| **Panel API key** (`svk_panel_…`) | Settings → API keys (full administrators) | The full administrator who made it. *Read* keys may only `GET`; *write* keys may change things. Optional address allowlist and expiry (one year by default). |
-| **Command line key** (`svk_panel_…`) | `serfex login`, approved in the browser; listed under Account security | Its person, within their role: a customer reaches only their own hosting, a read-only administrator changes nothing. Valid 365 days. |
-| **Application token** (`svk_…`) | Laravel → the application → Access & API | One Laravel application only. *Deploy* tokens deploy and manage previews; *Developer* tokens also use `.env`, commands, queues, maintenance and logs. |
+| **Panel API key** (`sfx_panel_…`) | Settings → API keys (full administrators) | The full administrator who made it. *Read* keys may only `GET`; *write* keys may change things. Optional address allowlist and expiry (one year by default). |
+| **Command line key** (`sfx_panel_…`) | `serfex login`, approved in the browser; listed under Account security | Its person, within their role: a customer reaches only their own hosting, a read-only administrator changes nothing. Valid 365 days. |
+| **Application token** (`sfx_…`) | Laravel → the application → Access & API | One Laravel application only. *Deploy* tokens deploy and manage previews; *Developer* tokens also use `.env`, commands, queues, maintenance and logs. |
 
 Only a hash of each key is stored; a key is shown once when it is made.
 

@@ -175,7 +175,7 @@ login. Invite by email; they set their password from the link.
 Server administrators own every application. Team members see only the
 applications they were added to.
 
-**Deployment keys** (`svk_…`) are for CI. *Deploy* keys deploy, follow
+**Deployment keys** (`sfx_…`) are for CI. *Deploy* keys deploy, follow
 deployments and open and remove previews; *Developer* keys can also use
 `.env`, commands, queues, maintenance mode and logs.
 

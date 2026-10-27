@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
  */
 class ApiKeys
 {
-    public const PREFIX = 'svk_panel_';
+    public const PREFIX = 'sfx_panel_';
 
     /** Requests per minute per key. */
     public const PER_MINUTE = 60;

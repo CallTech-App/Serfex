@@ -256,21 +256,21 @@ func portFilter(t *testing.T, fw *firewall.Manager) {
 	t.Helper()
 	ctx := context.Background()
 	for _, c := range [][]string{
-		{"ip", "netns", "add", "svk"},
-		{"ip", "link", "add", "svk0", "type", "veth", "peer", "name", "svk1"},
-		{"ip", "link", "set", "svk1", "netns", "svk"},
-		{"ip", "addr", "add", "10.99.0.1/24", "dev", "svk0"},
-		{"ip", "link", "set", "svk0", "up"},
-		{"ip", "netns", "exec", "svk", "ip", "addr", "add", "10.99.0.2/24", "dev", "svk1"},
-		{"ip", "netns", "exec", "svk", "ip", "link", "set", "svk1", "up"},
+		{"ip", "netns", "add", "sfx"},
+		{"ip", "link", "add", "sfx0", "type", "veth", "peer", "name", "sfx1"},
+		{"ip", "link", "set", "sfx1", "netns", "sfx"},
+		{"ip", "addr", "add", "10.99.0.1/24", "dev", "sfx0"},
+		{"ip", "link", "set", "sfx0", "up"},
+		{"ip", "netns", "exec", "sfx", "ip", "addr", "add", "10.99.0.2/24", "dev", "sfx1"},
+		{"ip", "netns", "exec", "sfx", "ip", "link", "set", "sfx1", "up"},
 	} {
 		if out, err := exec.Command(c[0], c[1:]...).CombinedOutput(); err != nil {
 			t.Fatalf("%v: %v %s", c, err, out)
 		}
 	}
 	t.Cleanup(func() {
-		_ = exec.Command("ip", "link", "del", "svk0").Run()
-		_ = exec.Command("ip", "netns", "del", "svk").Run()
+		_ = exec.Command("ip", "link", "del", "sfx0").Run()
+		_ = exec.Command("ip", "netns", "del", "sfx").Run()
 	})
 	srv := exec.Command("python3", "-m", "http.server", "8099", "--bind", "0.0.0.0", "--directory", "/tmp")
 	if err := srv.Start(); err != nil {
@@ -278,7 +278,7 @@ func portFilter(t *testing.T, fw *firewall.Manager) {
 	}
 	t.Cleanup(func() { _ = srv.Process.Kill(); _ = srv.Wait() })
 	reach := func(port string) bool {
-		err := exec.Command("ip", "netns", "exec", "svk", "curl", "-s", "-o", "/dev/null", "-m", "3", "http://10.99.0.1:"+port+"/").Run()
+		err := exec.Command("ip", "netns", "exec", "sfx", "curl", "-s", "-o", "/dev/null", "-m", "3", "http://10.99.0.1:"+port+"/").Run()
 		return err == nil
 	}
 	waitFor(t, "port 8099 reachable before the filter", func() bool { return reach("8099") })

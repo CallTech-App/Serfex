@@ -114,7 +114,7 @@ func laravelCommands() []*Command {
 			},
 			Examples: []string{
 				"serfex deploy -a api.ornek.com.tr --wait",
-				"SERFEX_URL=https://panel.ornek.com.tr:8443 SERFEX_TOKEN=svk_… serfex deploy --ref \"$GITHUB_SHA\" --wait",
+				"SERFEX_URL=https://panel.ornek.com.tr:8443 SERFEX_TOKEN=sfx_… serfex deploy --ref \"$GITHUB_SHA\" --wait",
 			},
 			Run: deploy,
 		},

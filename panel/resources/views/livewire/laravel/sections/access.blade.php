@@ -84,7 +84,7 @@
             @foreach ($tokens as $t)
                 <li wire:key="t-{{ $t->id }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
                     <span class="font-medium">{{ $t->name }}</span>
-                    <span class="font-mono text-[12.5px] text-muted">svk_…{{ $t->last_four }}</span>
+                    <span class="font-mono text-[12.5px] text-muted">sfx_…{{ $t->last_four }}</span>
                     <x-status-badge :status="new Badge(__(LaravelApiToken::ABILITIES[$t->ability][0] ?? $t->ability), $t->ability === 'operate' ? 'info' : 'muted')" />
                     <span class="text-2xs text-muted">{{ $t->created_by ? $t->created_by.' · ' : '' }}{{ When::withTime($t->created_at) }} · {{ $t->last_used_at ? __('son kullanım :last_used_at (:last_used_ip)', ['last_used_at' => When::withTime($t->last_used_at), 'last_used_ip' => $t->last_used_ip]) : __('hiç kullanılmadı') }}</span>
                     @if ($manage)<button type="button" wire:click="revoke({{ $t->id }})" class="ml-auto {{ $link }} hover:text-crit">{{ __('İptal et') }}</button>@endif

@@ -195,7 +195,7 @@ class RestoreServer extends Command
 
     private function read(AgentClient $agent, string $key, string $member): string
     {
-        $file = tempnam(sys_get_temp_dir(), 'svk');
+        $file = tempnam(sys_get_temp_dir(), 'sfx');
         try {
             $this->download($agent, $key, $member, $file);
 

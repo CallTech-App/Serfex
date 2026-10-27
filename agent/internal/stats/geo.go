@@ -40,7 +40,7 @@ const GeoFile = "/var/lib/serfex/stats/countries.bin"
 // GeoMaxAge is how old the table may get before it is downloaded again.
 const GeoMaxAge = 30 * 24 * time.Hour
 
-const geoMagic = "SVKGEO1\n"
+const geoMagic = "SFXGEO1\n"
 
 type range4 struct {
 	start, end uint32

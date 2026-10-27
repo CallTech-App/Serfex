@@ -47,7 +47,7 @@ CI ya da betikler için --token ile bir API anahtarı ya da bir uygulamanın Eri
 
 ```sh
 serfex login panel.ornek.com.tr:8443
-serfex login https://panel.ornek.com.tr:8443 --token svk_…
+serfex login https://panel.ornek.com.tr:8443 --token sfx_…
 sudo serfex login --local
 ```
 
@@ -864,7 +864,7 @@ Uygulamayı deposundan dağıtır: yeni sürüm releases/ altına kurulur, sağl
 
 ```sh
 serfex deploy -a api.ornek.com.tr --wait
-SERFEX_URL=https://panel.ornek.com.tr:8443 SERFEX_TOKEN=svk_… serfex deploy --ref "$GITHUB_SHA" --wait
+SERFEX_URL=https://panel.ornek.com.tr:8443 SERFEX_TOKEN=sfx_… serfex deploy --ref "$GITHUB_SHA" --wait
 ```
 
 ### serfex deployments

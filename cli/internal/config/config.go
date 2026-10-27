@@ -21,7 +21,7 @@ import (
 type Profile struct {
 	// URL is the panel's address, https://panel.example.com:8443.
 	URL string `json:"url"`
-	// Token is a command line key (svk_panel_…) or an application token (svk_…).
+	// Token is a command line key (sfx_panel_…) or an application token (sfx_…).
 	Token string `json:"token"`
 	// Fingerprint pins the panel's certificate (SHA-256, hex) when it is
 	// not one the computer trusts, such as the panel's own first one.

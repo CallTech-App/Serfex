@@ -18,7 +18,7 @@ import (
 // so the storage provider can neither read nor change them. The file is a
 // header followed by chunks:
 //
-//	"SVKENC01" | salt (16) | iterations (uint32) | nonce prefix (4)
+//	"SFXENC01" | salt (16) | iterations (uint32) | nonce prefix (4)
 //	chunk: length of ciphertext (uint32) | ciphertext (≤ 1 MiB + tag)
 //
 // Chunk n is sealed with the nonce prefix followed by n (uint64), and the
@@ -26,7 +26,7 @@ import (
 // reordered, dropped or cut off without the reader noticing.
 
 const (
-	encMagic      = "SVKENC01"
+	encMagic      = "SFXENC01"
 	encChunk      = 1 << 20
 	encIterations = 600_000
 	encHeaderLen  = len(encMagic) + 16 + 4 + 4

@@ -183,9 +183,9 @@ class LaravelAccessTest extends TestCase
         $page = Livewire::withoutLazyLoading()->test(Access::class, ['appId' => $app->id])
             ->call('openToken')->set('tokenName', 'Deploy CLI')->call('createToken');
         $plain = $page->get('secret');
-        $this->assertStringStartsWith('svk_', $plain);
+        $this->assertStringStartsWith('sfx_', $plain);
         $this->assertSame($app->id, LaravelApiToken::findPlain($plain)->laravel_app_id);
-        $page->call('closeSecret')->assertSet('secret', null)->assertSee('svk_…'.substr($plain, -4));
+        $page->call('closeSecret')->assertSet('secret', null)->assertSee('sfx_…'.substr($plain, -4));
 
         $token = $app->apiTokens()->sole();
         $page->call('revoke', $token->id);

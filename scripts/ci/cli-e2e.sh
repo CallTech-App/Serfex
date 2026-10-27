@@ -68,7 +68,7 @@ php artisan queue:work --queue=default --sleep=1 --tries=1 > "$work/worker.log" 
 worker=$!
 for i in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:8000/up && break; sleep 0.2; done
 key=$(php artisan serfex:cli-key --client "CI" | tail -n 1 | jq -r .key)
-[[ $key == svk_panel_* ]] || fail "serfex:cli-key gave no key"
+[[ $key == sfx_panel_* ]] || fail "serfex:cli-key gave no key"
 
 step "serfex login --token"
 "$cli" login http://127.0.0.1:8000 --token "$key" --profile ci
