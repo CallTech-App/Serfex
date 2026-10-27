@@ -242,6 +242,54 @@ class CertificateJobsTest extends TestCase
         $this->assertSame(0, Certificate::count());
     }
 
+    public function test_a_request_that_did_not_reach_lets_encrypt_is_retried_within_the_hour(): void
+    {
+        Queue::fake();
+        $site = $this->site();
+        $certificate = app(Certificates::class)->letsEncrypt($site);
+        $other = app(Certificates::class)->letsEncrypt(Site::factory()->create(['domain' => 'cay.com.tr']));
+        $unreachable = AgentException::rpcError('ssl.issue', AgentException::CA_UNREACHABLE, 'could not reach the certificate authority (acme-v02.api.letsencrypt.org): lookup acme-v02.api.letsencrypt.org on 127.0.0.53:53: server misbehaving');
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->once()->andThrow($unreachable);
+        (new IssueCertificate($certificate))->handle($agent, $this->dns(['kahve.com.tr' => true]), app(Certificates::class));
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->once()->andThrow(AgentException::rpcError('ssl.issue', -32000, 'rate limited'));
+        (new IssueCertificate($other))->handle($agent, $this->dns(['cay.com.tr' => true]), app(Certificates::class));
+
+        $certificate->refresh();
+        $this->assertSame(CertificateStatus::Failed, $certificate->status);
+        $this->assertStringContainsString("Let's Encrypt'e ulaşılamadı", $certificate->last_error);
+        $this->assertStringContainsString('server misbehaving', $certificate->last_error);
+        $this->assertNotNull($certificate->retry_at);
+        $this->assertNull($other->fresh()->retry_at);
+
+        Queue::fake();
+        $this->travel(10)->minutes();
+        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        Queue::assertPushed(IssueCertificate::class, 1);
+        Queue::assertPushed(IssueCertificate::class, fn ($job) => $job->certificate->is($certificate));
+    }
+
+    public function test_a_panel_request_that_did_not_reach_lets_encrypt_is_retried_within_the_hour(): void
+    {
+        Queue::fake();
+        Setting::put('panel.hostname', 'panel.kahve.com.tr');
+        $certificate = app(Certificates::class)->issuePanel('panel.kahve.com.tr');
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->once()->andThrow(AgentException::rpcError('ssl.panel.issue', AgentException::CA_UNREACHABLE, 'could not reach the certificate authority (acme-v02.api.letsencrypt.org): connection refused'));
+
+        (new IssuePanelCertificate($certificate))->handle($agent, $this->dns(['panel.kahve.com.tr' => true]));
+
+        $certificate->refresh();
+        $this->assertSame(CertificateStatus::Failed, $certificate->status);
+        $this->assertNotNull($certificate->retry_at);
+
+        Queue::fake();
+        $this->travel(10)->minutes();
+        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        Queue::assertPushed(IssuePanelCertificate::class, fn ($job) => $job->certificate->is($certificate));
+    }
+
     public function test_renew_command_picks_due_certificates(): void
     {
         Queue::fake();

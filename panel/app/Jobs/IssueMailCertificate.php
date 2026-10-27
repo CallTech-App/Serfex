@@ -12,6 +12,7 @@ use App\Services\Ssl\DnsCheck;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Carbon;
 
 /**
  * Obtains (or renews) the Let's Encrypt certificate of the mail server's
@@ -57,7 +58,8 @@ class IssueMailCertificate implements ShouldBeUnique, ShouldQueue
                 'email' => Certificates::email(),
             ]), config('servik.agent.ssl_timeout'));
         } catch (AgentException $e) {
-            $this->markFailed($certificate, CertificateStatus::Failed, $e->reason);
+            [$reason, $retryAt] = Certificates::failure($e);
+            $this->markFailed($certificate, CertificateStatus::Failed, $reason, $retryAt);
 
             return;
         }
@@ -68,14 +70,14 @@ class IssueMailCertificate implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function markFailed(Certificate $certificate, CertificateStatus $status, string $message): void
+    private function markFailed(Certificate $certificate, CertificateStatus $status, string $message, ?Carbon $retryAt = null): void
     {
         if ($certificate->isInstalled() && ! $certificate->isExpired() && $certificate->domains === [$this->hostname()]) {
             $certificate->update(['status' => CertificateStatus::Active, 'renew_error' => $message, 'attempted_at' => now()]);
 
             return;
         }
-        $certificate->update(['status' => $status, 'last_error' => $message, 'attempted_at' => now()]);
+        $certificate->update(['status' => $status, 'last_error' => $message, 'attempted_at' => now(), 'retry_at' => $retryAt]);
     }
 
     private function hostname(): ?string

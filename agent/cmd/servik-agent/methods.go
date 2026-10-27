@@ -67,6 +67,10 @@ const CodeWAFNotInstalled = -32009
 // it was tested; nothing was changed. The message carries the test output.
 const CodeConfigRejected = -32010
 
+// CodeCAUnreachable means the certificate authority could not be reached
+// (lookup, connection or server error); trying again soon is safe.
+const CodeCAUnreachable = -32011
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -455,6 +459,10 @@ func mapError(err error) error {
 	}
 	if errors.Is(err, update.ErrBusy) {
 		return &rpc.Error{Code: CodeUpdateBusy, Message: err.Error()}
+	}
+	var ue *cert.UnreachableError
+	if errors.As(err, &ue) {
+		return &rpc.Error{Code: CodeCAUnreachable, Message: err.Error()}
 	}
 	var ce *site.ConfigError
 	if errors.As(err, &ce) {

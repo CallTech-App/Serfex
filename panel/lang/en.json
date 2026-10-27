@@ -4239,5 +4239,6 @@
     "MariaDB deposu (dlm.mariadb.com)": "MariaDB archive (dlm.mariadb.com)",
     "Paket sürümü henüz bilinmiyor; \"Güncellemeleri denetle\" ile öğrenilir.": "Package version not known yet; \"Check for updates\" finds out.",
     "Kurarken :versions de seçilebilir": ":versions can be chosen when installing",
-    "kurulabilir sürümler": "versions offered"
+    "kurulabilir sürümler": "versions offered",
+    "Let's Encrypt'e ulaşılamadı: bu sunucunun ağ bağlantısı ya da DNS çözümlemesi o an çalışmıyordu. Servik bir saat içinde yeniden dener. Ayrıntı: :reason": "Let's Encrypt could not be reached: this server's network connection or DNS resolution was not working at that moment. Servik will try again within the hour. Details: :reason"
 }

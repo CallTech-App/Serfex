@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\Zones;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -69,6 +70,26 @@ class Certificates
         IssueCertificate::dispatch($certificate, auto: $auto, zone: $zone?->name);
 
         return $certificate;
+    }
+
+    /**
+     * Why a request through the agent failed, for people, and when to try
+     * again early: a request that never reached Let's Encrypt (this
+     * server's network or DNS was down for a moment) is retried within the
+     * hour instead of the next day.
+     *
+     * @return array{0: string, 1: Carbon|null}
+     */
+    public static function failure(AgentException $e): array
+    {
+        if ($e->getCode() !== AgentException::CA_UNREACHABLE) {
+            return [$e->reason, null];
+        }
+
+        return [
+            __("Let's Encrypt'e ulaşılamadı: bu sunucunun ağ bağlantısı ya da DNS çözümlemesi o an çalışmıyordu. Servik bir saat içinde yeniden dener. Ayrıntı: :reason", ['reason' => $e->reason]),
+            now()->addMinutes(5),
+        ];
     }
 
     /**

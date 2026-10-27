@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -66,6 +67,71 @@ type ACME struct {
 	H            host.Host
 	DirectoryURL string
 	HTTPClient   *http.Client
+	// RetryDelays are the pauses between attempts to reach the ACME
+	// server; nil means reachDelays.
+	RetryDelays []time.Duration
+}
+
+// reachDelays cover a short network or DNS outage, such as the seconds in
+// which this server's resolver moves away from 127.0.0.53 while PowerDNS
+// is set up (Go programs re-read resolv.conf at most every five seconds).
+var reachDelays = []time.Duration{3 * time.Second, 6 * time.Second, 12 * time.Second}
+
+// UnreachableError means the ACME server could not be reached: its name
+// did not resolve, the connection failed, or it answered with a server
+// error. Nothing was asked of it, so trying again soon is safe.
+type UnreachableError struct {
+	URL string
+	Err error
+}
+
+func (e *UnreachableError) Error() string {
+	host := e.URL
+	if u, err := url.Parse(e.URL); err == nil && u.Host != "" {
+		host = u.Host
+	}
+	return fmt.Sprintf("could not reach the certificate authority (%s): %v", host, e.Err)
+}
+
+func (e *UnreachableError) Unwrap() error { return e.Err }
+
+// reach fetches the ACME directory, trying again after a network failure
+// or a server error.
+func (a *ACME) reach(ctx context.Context, c *acme.Client) error {
+	delays := a.RetryDelays
+	if delays == nil {
+		delays = reachDelays
+	}
+	for i := 0; ; i++ {
+		_, err := c.Discover(ctx)
+		if err == nil {
+			return nil
+		}
+		if !transient(err) || ctx.Err() != nil {
+			return err
+		}
+		if i == len(delays) {
+			return &UnreachableError{URL: a.DirectoryURL, Err: err}
+		}
+		select {
+		case <-ctx.Done():
+			return &UnreachableError{URL: a.DirectoryURL, Err: err}
+		case <-time.After(delays[i]):
+		}
+	}
+}
+
+// transient reports whether err is a failure to reach the server rather
+// than an answer from it: a lookup or connection error, or a 5xx.
+func transient(err error) bool {
+	var ae *acme.Error
+	if errors.As(err, &ae) {
+		return ae.StatusCode >= 500
+	}
+	var dnsErr *net.DNSError
+	var opErr *net.OpError
+	var urlErr *url.Error
+	return errors.As(err, &dnsErr) || errors.As(err, &opErr) || errors.As(err, &urlErr)
 }
 
 type account struct {
@@ -94,6 +160,9 @@ func (a *ACME) client(ctx context.Context, email string) (*acme.Client, error) {
 		return nil, err
 	}
 	c := &acme.Client{Key: key, DirectoryURL: a.DirectoryURL, HTTPClient: a.HTTPClient, UserAgent: "servik-agent/" + version.Version}
+	if err := a.reach(ctx, c); err != nil {
+		return nil, err
+	}
 
 	var acct account
 	if data, err := os.ReadFile(filepath.Join(dir, "account.json")); err == nil {
