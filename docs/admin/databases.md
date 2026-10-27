@@ -56,5 +56,5 @@ On a database's page, **Link** connects an existing database to a Laravel
 application.
 
 The panel's own PostgreSQL is a separate cluster on port 5433, on the version
-the installer gave it; a customer PostgreSQL server uses the standard port
-5432.
+the installer gave it (the newest stable one for new installs; servers installed
+before PostgreSQL came from apt.postgresql.org keep 16); a customer PostgreSQL server uses the standard port 5432.

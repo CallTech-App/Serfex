@@ -561,7 +561,7 @@ func TestPostgreSQLComesFromItsArchive(t *testing.T) {
 	// Without the archive Ubuntu's own version serves.
 	m, sim = newSim(t)
 	sim.Fail = func(c host.Command) error {
-		if c.String() == "apt-get update -q" && m.exists(pgdgSources) {
+		if c.String() == "apt-get update -q --error-on=any" && m.exists(pgdgSources) {
 			return errors.New("E: Failed to fetch https://apt.postgresql.org/pub/repos/apt/dists/noble-pgdg/InRelease")
 		}
 		return nil

@@ -30,7 +30,9 @@ Kurulum ne yapacağını gösterir ve başlamadan önce sorar. Sırasıyla:
 1. işletim sistemini ve mimariyi denetler;
 2. en yeni sürümü indirir ve `SHA256SUMS` ile doğrular;
 3. panelin kendi PHP 8.5'ini (Ondřej Surý arşivinden), 5433 portunda kendi
-   PostgreSQL kümesi `servik`'i ve kendi web sunucusu `servik-web`'i kurar;
+   PostgreSQL kümesi `servik`'i (apt.postgresql.org'dan en yeni kararlı
+   PostgreSQL; o depoya ulaşılamazsa Ubuntu'nunki) ve kendi web sunucusu
+   `servik-web`'i kurar;
    bunlar müşteri sitelerinin kullanacaklarından ayrıdır;
 4. `servik-agent`'ı systemd hizmeti olarak ve `servik` komut satırını kurar;
 5. paneli kendinden imzalı bir sertifikayla `https://<sunucu adı>:8443`
@@ -192,8 +194,8 @@ Bkz. [Komut satırı başvurusu](cli.md).
 | `/var/log/servik/` | Kurulum ve güncelleme günlükleri, sitelerin web sunucusu günlükleri |
 | `/home/<kullanıcı>/web/<alan adı>/` | Bir sitenin dosyaları |
 
-Hizmetler: `servik-agent`, `servik-web`, `servik-php`, `postgresql@16-servik`
-(panelin veritabanı), `servik-panel-queue`, `servik-panel-backups` ve
+Hizmetler: `servik-agent`, `servik-web`, `servik-php`, `postgresql@18-servik`
+(panelin veritabanı; sayı PostgreSQL sürümüdür), `servik-panel-queue`, `servik-panel-backups` ve
 `servik-panel-scheduler`. Hizmetler sayfası bunları müşteri hizmetlerinden
 ayrı gösterir ve yanlışlıkla durdurulmalarına izin vermez.
 

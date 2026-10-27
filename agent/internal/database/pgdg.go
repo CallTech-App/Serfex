@@ -129,7 +129,11 @@ func (m *Manager) ensurePGDG(ctx context.Context, t *txn.Tx, log io.Writer) erro
 		_, err := m.h.Run(ctx, update)
 		return err
 	})
-	if _, err := m.h.Run(ctx, update); err != nil {
+	// apt-get update only warns about a list it could not fetch;
+	// --error-on=any makes that a failure.
+	strict := update
+	strict.Args = []string{"update", "-q", "--error-on=any"}
+	if _, err := m.h.Run(ctx, strict); err != nil {
 		// Unreachable or refused: Ubuntu's own packages serve instead.
 		_ = os.Remove(m.h.Path(pgdgSources))
 		_, _ = m.h.Run(ctx, update)
