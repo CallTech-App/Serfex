@@ -155,6 +155,53 @@ class ComponentsTest extends TestCase
         $this->assertNull($page->instance()->readRun('cnosuchrun', 0));
     }
 
+    public function test_shows_the_version_an_install_would_bring(): void
+    {
+        $this->components['apache'] += ['candidate' => '2.4.58-1ubuntu8.8', 'candidate_from' => 'archive.ubuntu.com/ubuntu'];
+        $this->components['mysql'] = ['id' => 'mysql', 'installed' => false, 'running' => false, 'candidate' => '8.0.46-0ubuntu0.24.04.4', 'candidate_from' => 'archive.ubuntu.com/ubuntu'];
+        $this->components['mariadb'] += ['candidate' => '1:10.11.14-0ubuntu0.24.04.1', 'candidate_from' => 'archive.ubuntu.com/ubuntu'];
+        $this->components['postgresql'] += ['candidate' => '18.1-1.pgdg24.04+2', 'candidate_from' => 'apt.postgresql.org/pub/repos/apt'];
+        $this->components['php8.5'] = ['id' => 'php8.5', 'installed' => false, 'running' => false, 'candidate' => '8.5.0-1+ubuntu24.04.1+deb.sury.org+1', 'candidate_from' => 'ppa.launchpadcontent.net/ondrej/php/ubuntu'];
+
+        Livewire::test(ComponentIndex::class)
+            ->assertSee('2.4.58-1ubuntu8.8')
+            ->assertSee('kurulacak · Ubuntu deposu')
+            ->call('ask', 'apache', 'install')
+            ->assertSee('Kurulacak sürüm')
+            ->assertSee('Ubuntu deposu');
+
+        Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
+            // Epoch and build suffix are left out, as for installed versions.
+            ->assertSee('8.0.46-0ubuntu0.24.04.4')
+            ->assertSee('10.11.14-0ubuntu0.24.04.1')
+            ->assertSee('18.1-1.pgdg24.04')
+            ->assertSee('kurulacak · apt.postgresql.org')
+            ->call('ask', 'postgresql', 'install')
+            ->assertSee('PostgreSQL kurulsun mu?')
+            ->assertSee('18.1-1.pgdg24.04');
+
+        // Node.js is looked up by the update check; until then it is unknown.
+        $this->components['node22'] = ['id' => 'node22', 'installed' => false, 'running' => false];
+        Livewire::test(ComponentIndex::class)->set('tab', 'diger')
+            ->call('ask', 'node22', 'install')
+            ->assertSee('Henüz bilinmiyor; "Güncellemeleri denetle" ile öğrenilir.')
+            ->assertSee('nodejs.org');
+
+        $this->assertSame(['version' => '8.5.0-1', 'source' => 'ppa:ondrej/php'], app(Components::class)->candidate('php8.5'));
+        $this->assertNull(app(Components::class)->candidate('nginx'));
+        $this->assertSame('mirror.example.net', Components::source('nginx', 'mirror.example.net/ubuntu'));
+
+        // The Veritabanları setup card says it too.
+        $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => false], 'postgresql' => ['installed' => false]], 'manager' => ['configured' => false]];
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        $this->get(route('databases.index'))->assertOk()
+            ->assertSee('Veritabanı sunucusunu kurun')
+            ->assertSee('Kurulacak sürüm:')
+            ->assertSee('8.0.46-0ubuntu0.24.04.4')
+            ->assertSee('10.11.14-0ubuntu0.24.04.1')
+            ->assertSee('18.1-1.pgdg24.04');
+    }
+
     public function test_failed_install_reports_the_rollback(): void
     {
         $this->agent->answers['component.install'] = AgentException::rpcError('component.install', -32000, 'apache2ctl configtest: Syntax error');

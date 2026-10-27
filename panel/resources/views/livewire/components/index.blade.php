@@ -80,14 +80,11 @@
                                         <span class="ml-1.5 rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-muted">{{ __('varsayılan') }}</span>
                                     @endif
                                     <span class="mt-0.5 block text-2xs text-muted">{{ $r['description'] }}</span>
-                                    <span class="mt-0.5 block font-mono text-2xs text-muted sm:hidden">{{ $r['installed'] ? ($r['version'] ?? '') : '' }}</span>
+                                    <span class="mt-0.5 block font-mono text-2xs text-muted sm:hidden">{{ $r['installed'] ? ($r['version'] ?? '') : ($r['candidate'] ? __('Kurulacak: :version', ['version' => $r['candidate']]) : '') }}</span>
                                     <div class="mt-2 sm:hidden">@include('livewire.components.actions')</div>
                                 </td>
                                 <td @class(['hidden px-3 py-3 font-mono text-[13px] whitespace-nowrap sm:table-cell', 'text-muted' => ! $r['installed']])>
-                                    {{ $r['installed'] ? ($r['version'] ?: '—') : '—' }}
-                                    @if ($r['latest'])
-                                        <span class="block text-2xs text-warn">→ {{ $r['latest'] }}</span>
-                                    @endif
+                                    @include('livewire.components.version')
                                 </td>
                                 <td class="px-3 py-3"><x-status-badge :status="$badge($r)" /></td>
                                 <td class="hidden px-3 py-3 text-[13px] text-muted md:table-cell">{{ $r['usage'] }}</td>
@@ -142,6 +139,7 @@
             <div class="p-5 text-[13.5px]">
                 <p class="font-semibold">{{ $confirm['title'] }}</p>
                 <p class="mt-1 text-[13px] text-muted">{{ $confirm['text'] }}</p>
+                @include('livewire.components.candidate')
                 <div class="mt-4 flex justify-end gap-2">
                     <button type="button" wire:click="$set('confirming', null)" class="h-9 rounded-md border border-line px-3.5 hover:bg-surface-2">{{ __('Vazgeç') }}</button>
                     <button type="button" wire:click="confirm" wire:loading.attr="disabled" @class(['h-9 rounded-md px-3.5 font-medium disabled:opacity-40', 'bg-crit text-on-crit' => $confirm['danger'], 'bg-accent text-accent-fg hover:brightness-110' => ! $confirm['danger']])>{{ $confirm['button'] }}</button>

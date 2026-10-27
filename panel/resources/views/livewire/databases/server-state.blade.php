@@ -8,6 +8,10 @@
     <div wire:poll.3s="refreshServer" hidden></div>
 @endif
 @if ($state === 'missing' && $admin)
+    @php
+        $components = app(\App\Services\Components\Components::class);
+        $candidates = ['mysql' => $components->candidate('mysql'), 'mariadb' => $components->candidate('mariadb'), 'postgresql' => $components->candidate('postgresql')];
+    @endphp
     <section class="rounded-xl border border-line bg-surface">
         <div class="border-b border-line px-5 py-4">
             <h2 class="text-[15px] font-semibold">{{ __('Veritabanı sunucusunu kurun') }}</h2>
@@ -20,14 +24,24 @@
                     @foreach (['mysql' => ['MySQL', __('Varsayılan. WordPress, Laravel ve çoğu PHP uygulaması için.')], 'mariadb' => ['MariaDB', __('MySQL ile uyumlu topluluk sürümü. İkisi aynı anda kurulamaz.')]] as $key => [$label, $hint])
                         <label class="flex cursor-pointer gap-3 rounded-lg border p-3 {{ $setupProduct === $key ? 'border-accent bg-accent-soft' : 'border-line hover:bg-surface-2' }}">
                             <input type="radio" wire:model.live="setupProduct" value="{{ $key }}" class="mt-0.5 size-4 accent-accent">
-                            <span><span class="block font-medium">{{ $label }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ $hint }}</span></span>
+                            <span>
+                                <span class="block font-medium">{{ $label }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ $hint }}</span>
+                                @if ($candidates[$key]['version'] ?? null)
+                                    <span class="mt-1 block text-2xs text-muted">{{ __('Kurulacak sürüm:') }} <span class="font-mono">{{ $candidates[$key]['version'] }}</span>{{ $candidates[$key]['source'] ? ' · '.$candidates[$key]['source'] : '' }}</span>
+                                @endif
+                            </span>
                         </label>
                     @endforeach
                 </div>
             </fieldset>
             <label class="flex items-start gap-3">
                 <input type="checkbox" wire:model="setupPostgres" class="mt-0.5 size-4 accent-accent">
-                <span><span class="block font-medium">{{ __('PostgreSQL de kurulsun') }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ __('Yanında çalışır; isteyen siteler PostgreSQL veritabanı açabilir. Sonradan da kurulabilir.') }}</span></span>
+                <span>
+                    <span class="block font-medium">{{ __('PostgreSQL de kurulsun') }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ __('Yanında çalışır; isteyen siteler PostgreSQL veritabanı açabilir. Sonradan da kurulabilir.') }}</span>
+                    @if ($candidates['postgresql']['version'] ?? null)
+                        <span class="mt-1 block text-2xs text-muted">{{ __('Kurulacak sürüm:') }} <span class="font-mono">{{ $candidates['postgresql']['version'] }}</span>{{ $candidates['postgresql']['source'] ? ' · '.$candidates['postgresql']['source'] : '' }}</span>
+                    @endif
+                </span>
             </label>
             @error('setupProduct') <p class="text-[13px] text-crit">{{ $message }}</p> @enderror
             @if (! empty($server['error']))

@@ -9,9 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/winchester37/servik/agent/internal/aptcache"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
@@ -70,7 +73,13 @@ func (m *Manager) pgTarget(ctx context.Context, t *txn.Tx, log io.Writer) (strin
 	if err := m.ensurePGDG(ctx, t, log); err != nil {
 		fmt.Fprintf(log, "  %v\n", err)
 	}
-	out, err := m.h.Run(ctx, host.Command{Name: "apt-cache", Args: []string{"pkgnames", "postgresql-"}})
+	return m.pgNewest(ctx, nil)
+}
+
+// pgNewest is the newest PostgreSQL major version apt offers; opts point
+// apt at other package lists.
+func (m *Manager) pgNewest(ctx context.Context, opts []string) (string, error) {
+	out, err := m.h.Run(ctx, host.Command{Name: "apt-cache", Args: append(slices.Clone(opts), "pkgnames", "postgresql-")})
 	if err != nil {
 		return "", fmt.Errorf("listing PostgreSQL versions: %w", err)
 	}
@@ -88,36 +97,108 @@ func (m *Manager) pgTarget(ctx context.Context, t *txn.Tx, log io.Writer) (strin
 	return strconv.Itoa(best), nil
 }
 
+// pgProbeDir holds a copy of the PostgreSQL archive's package lists, so
+// the version an install would bring is known before the archive is
+// listed for apt.
+const pgProbeDir = "/var/lib/servik/components/pgdg-probe"
+
+func (m *Manager) pgdgListed() bool {
+	return m.exists(pgdgSources) || m.exists("/etc/apt/sources.list.d/pgdg.list")
+}
+
+// PGCandidate is what a new customers' cluster would get now: the newest
+// major version and the package version apt would install. When the
+// PostgreSQL archive is not listed for apt yet and probe is set, its
+// lists are read into a directory of their own, leaving apt as it is;
+// without probe the answer is then unknown (no version). An archive that
+// cannot be read leaves Ubuntu's version, as Install does.
+func (m *Manager) PGCandidate(ctx context.Context, probe bool) (aptcache.Candidate, error) {
+	var opts []string
+	if !m.pgdgListed() {
+		if !probe {
+			return aptcache.Candidate{}, nil
+		}
+		o, err := m.probePGDG(ctx)
+		if err == nil {
+			opts = o
+		}
+	}
+	v, err := m.pgNewest(ctx, opts)
+	if err != nil {
+		return aptcache.Candidate{}, err
+	}
+	pkg := "postgresql-" + v
+	out, _ := m.h.Run(ctx, host.Command{Name: "apt-cache", Args: append(slices.Clone(opts), "policy", pkg), Env: []string{"LC_ALL=C"}})
+	return aptcache.Policy(out)[pkg], nil
+}
+
+// probePGDG refreshes the probe's copy of the archive's lists and returns
+// the apt options that read it instead of apt's own lists.
+func (m *Manager) probePGDG(ctx context.Context) ([]string, error) {
+	codename := osCodename(m.h.Path("/etc/os-release"))
+	keyring := m.pgdgKeyring()
+	if codename == "" || keyring == "" {
+		// Servik's own PostgreSQL brings postgresql-common and its key,
+		// so this is a release Servik does not know.
+		return nil, errors.New("the PostgreSQL archive cannot be read here")
+	}
+	parts := pgProbeDir + "/sources.list.d"
+	if err := os.MkdirAll(m.h.Path(parts), 0o755); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(m.h.Path(parts+"/pgdg.sources"), []byte(pgdgSource(codename, keyring)), 0o644); err != nil {
+		return nil, err
+	}
+	opts := []string{
+		"-o", "Dir::Etc::SourceList=/dev/null",
+		"-o", "Dir::Etc::SourceParts=" + parts,
+		"-o", "Dir::State::Lists=" + pgProbeDir + "/lists",
+		"-o", "Dir::Cache::pkgcache=", "-o", "Dir::Cache::srcpkgcache=",
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: append(slices.Clone(opts), "update", "-q", "--error-on=any"), Env: aptEnv}); err != nil {
+		return nil, err
+	}
+	return opts, nil
+}
+
+func (m *Manager) pgdgKeyring() string {
+	for _, k := range pgdgKeyrings {
+		if m.exists(k) {
+			return k
+		}
+	}
+	return ""
+}
+
+func pgdgSource(codename, keyring string) string {
+	return fmt.Sprintf("# %s. Added for the customers' PostgreSQL.\nTypes: deb\nURIs: https://apt.postgresql.org/pub/repos/apt\nSuites: %s-pgdg\nComponents: main\nSigned-By: %s\n", txn.Marker, codename, keyring)
+}
+
 // ensurePGDG lists the PostgreSQL archive for apt when it is not listed
 // yet, and refreshes the package lists. A failure leaves apt as it was.
 func (m *Manager) ensurePGDG(ctx context.Context, t *txn.Tx, log io.Writer) error {
-	if m.exists(pgdgSources) || m.exists("/etc/apt/sources.list.d/pgdg.list") {
+	if m.pgdgListed() {
 		return nil
 	}
 	codename := osCodename(m.h.Path("/etc/os-release"))
 	if codename == "" {
 		return errors.New("the PostgreSQL archive is skipped: the release's codename is unknown")
 	}
-	keyring := ""
-	for i := 0; i < 2 && keyring == ""; i++ {
-		for _, k := range pgdgKeyrings {
-			if m.exists(k) {
-				keyring = k
-				break
-			}
+	keyring := m.pgdgKeyring()
+	if keyring == "" {
+		// postgresql-common carries the archive's key.
+		if err := installPackages(ctx, m.h, []string{"postgresql-common"}, "", log); err != nil {
+			return err
 		}
-		if keyring == "" && i == 0 {
-			// postgresql-common carries the archive's key.
-			if err := installPackages(ctx, m.h, []string{"postgresql-common"}, "", log); err != nil {
-				return err
-			}
-		}
+		keyring = m.pgdgKeyring()
 	}
 	if keyring == "" {
 		return errors.New("the PostgreSQL archive is skipped: postgresql-common has no key for it")
 	}
 	fmt.Fprintln(log, "▸ "+i18n.T(ctx, "PostgreSQL paket deposu ekleniyor (apt.postgresql.org)"))
-	src := fmt.Sprintf("# %s. Added for the customers' PostgreSQL.\nTypes: deb\nURIs: https://apt.postgresql.org/pub/repos/apt\nSuites: %s-pgdg\nComponents: main\nSigned-By: %s\n", txn.Marker, codename, keyring)
+	src := pgdgSource(codename, keyring)
 	if err := os.MkdirAll(m.h.Path(filepath.Dir(pgdgSources)), 0o755); err != nil {
 		return err
 	}

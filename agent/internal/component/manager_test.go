@@ -604,3 +604,54 @@ func TestPostgreSQLNewestVersionAndMinorUpdates(t *testing.T) {
 		t.Errorf("update: %v", sim.Commands())
 	}
 }
+
+func TestCandidatesBeforeInstall(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	// Servik's own PostgreSQL brought postgresql-common and the
+	// PostgreSQL archive's key.
+	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-common"}}); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string][2]string{
+		"mysql":   {"8.0.43-0ubuntu0.24.04.2", "archive.ubuntu.com/ubuntu"},
+		"mariadb": {"1:10.11.13-0ubuntu0.24.04.1", "archive.ubuntu.com/ubuntu"},
+		"php8.4":  {"8.4.13-1+ubuntu24.04.1+deb.sury.org+1", "ppa.launchpadcontent.net/ondrej/php/ubuntu"},
+		"apache":  {"2.4.58-1ubuntu8.8", "archive.ubuntu.com/ubuntu"},
+		// Not known before component.check: no apt list says it.
+		"postgresql": {"", ""},
+		"node24":     {"", ""},
+	} {
+		if s := status(t, m, id); s.Installed || s.Candidate != want[0] || s.CandidateFrom != want[1] {
+			t.Errorf("%s = %+v", id, s)
+		}
+	}
+	// Installed ones show their version, not a candidate.
+	if s := status(t, m, "nginx"); s.Candidate != "" {
+		t.Errorf("nginx = %+v", s)
+	}
+
+	if _, err := m.Check(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string][2]string{
+		"postgresql": {"18.1-1.pgdg24.04+2", "apt.postgresql.org/pub/repos/apt"},
+		"node24":     {"v24.21.0", "nodejs.org"},
+		"composer":   {"2.8.12", "getcomposer.org"},
+	} {
+		if s := status(t, m, id); s.Candidate != want[0] || s.CandidateFrom != want[1] {
+			t.Errorf("%s after check = %+v", id, s)
+		}
+	}
+	if exists(sim, "/etc/apt/sources.list.d/pgdg.sources") {
+		t.Error("the check listed the PostgreSQL archive for apt")
+	}
+
+	// What was installed shows its version and no stale update.
+	if _, err := m.Install(ctx, OpSpec{ID: "node24", Run: "n"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "node24"); s.Candidate != "" || s.Latest != "" || s.Version == "" {
+		t.Errorf("installed node24 = %+v", s)
+	}
+}

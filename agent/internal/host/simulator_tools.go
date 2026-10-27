@@ -118,14 +118,8 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return s.git(args, cwd)
 	case c.Name == "xargs":
 		return s.xargs(c, cwd)
-	case c.Name == "apt-cache" && len(args) == 2 && args[0] == "pkgnames" && args[1] == "postgresql-":
-		// Ubuntu 24.04 has PostgreSQL 16; the PostgreSQL archive, once
-		// listed, every supported version up to 18.
-		names := "postgresql-16\npostgresql-client-16\npostgresql-common\n"
-		if _, err := os.Stat(s.Path("/etc/apt/sources.list.d/pgdg.sources")); err == nil {
-			names += "postgresql-14\npostgresql-15\npostgresql-17\npostgresql-18\npostgresql-client-18\n"
-		}
-		return names, nil
+	case c.Name == "apt-cache":
+		return s.aptCache(args), nil
 	case (c.Name == "pg_createcluster" || c.Name == "pg_dropcluster") && len(args) >= 2:
 		// pg_createcluster VERSION NAME, pg_dropcluster [--stop] VERSION NAME
 		dir := "/etc/postgresql/" + args[len(args)-2] + "/" + args[len(args)-1]
@@ -613,4 +607,52 @@ func (s *Simulator) tar(c Command, cwd string) (string, error) {
 		return stderr.String(), err
 	}
 	return stderr.String(), nil
+}
+
+// aptCache answers "apt-cache [-o OPT]... pkgnames postgresql-" and
+// "apt-cache [-o OPT]... policy PKG...": Ubuntu 24.04 has PostgreSQL 16;
+// the PostgreSQL archive, once listed (or read by a probe through
+// Dir::Etc::SourceParts), every supported version up to 18.
+func (s *Simulator) aptCache(args []string) string {
+	pgdg := s.exists("/etc/apt/sources.list.d/pgdg.sources")
+	for len(args) > 1 && args[0] == "-o" {
+		if dir, ok := strings.CutPrefix(args[1], "Dir::Etc::SourceParts="); ok {
+			pgdg = s.exists(dir + "/pgdg.sources")
+		}
+		args = args[2:]
+	}
+	if len(args) == 0 {
+		return ""
+	}
+	switch {
+	case len(args) == 2 && args[0] == "pkgnames" && args[1] == "postgresql-":
+		names := "postgresql-16\npostgresql-client-16\npostgresql-common\n"
+		if pgdg {
+			names += "postgresql-14\npostgresql-15\npostgresql-17\npostgresql-18\npostgresql-client-18\n"
+		}
+		return names
+	case args[0] == "policy":
+		var b strings.Builder
+		for _, p := range args[1:] {
+			v, from := "", ""
+			switch {
+			case p == "postgresql-16":
+				v, from = "16.10-0ubuntu0.24.04.1", "http://archive.ubuntu.com/ubuntu noble-updates/main"
+			case pgdg && simPGServer.MatchString(p):
+				v, from = strings.TrimPrefix(p, "postgresql-")+".1-1.pgdg24.04+2", "https://apt.postgresql.org/pub/repos/apt noble-pgdg/main"
+			}
+			if v == "" {
+				fmt.Fprintf(&b, "%s:\n  Installed: (none)\n  Candidate: (none)\n  Version table:\n", p)
+				continue
+			}
+			fmt.Fprintf(&b, "%s:\n  Installed: (none)\n  Candidate: %s\n  Version table:\n     %s 500\n        500 %s amd64 Packages\n", p, v, v, from)
+		}
+		return b.String()
+	}
+	return ""
+}
+
+func (s *Simulator) exists(abs string) bool {
+	_, err := os.Stat(s.Path(abs))
+	return err == nil
 }

@@ -575,3 +575,46 @@ func TestPostgreSQLComesFromItsArchive(t *testing.T) {
 	}
 	contains(t, "log", log.String(), "the PostgreSQL archive could not be read, Ubuntu's packages are used")
 }
+
+func TestPostgreSQLCandidate(t *testing.T) {
+	ctx := context.Background()
+	m, sim := newSim(t)
+	// Servik's own PostgreSQL brought postgresql-common and the archive's key.
+	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-common", "postgresql-16"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Not listed for apt: unknown without a probe.
+	if c, err := m.PGCandidate(ctx, false); err != nil || c.Version != "" {
+		t.Fatalf("without probe: %+v %v", c, err)
+	}
+	// The probe reads the archive in its own directory; apt stays as it is.
+	c, err := m.PGCandidate(ctx, true)
+	if err != nil || c.Version != "18.1-1.pgdg24.04+2" || c.From != "apt.postgresql.org/pub/repos/apt" {
+		t.Fatalf("probe: %+v %v", c, err)
+	}
+	if m.exists(pgdgSources) || !sim.Ran("apt-get -o Dir::Etc::SourceList=/dev/null -o Dir::Etc::SourceParts="+pgProbeDir+"/sources.list.d -o Dir::State::Lists="+pgProbeDir+"/lists -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= update -q --error-on=any") {
+		t.Errorf("probe changed apt or did not run: %v", sim.Commands())
+	}
+	contains(t, "probe sources", read(t, sim, pgProbeDir+"/sources.list.d/pgdg.sources"), "Suites: noble-pgdg")
+
+	// An unreachable archive leaves Ubuntu's version, as an install would.
+	sim.Fail = func(c host.Command) error {
+		if strings.HasSuffix(c.String(), "update -q --error-on=any") {
+			return errors.New("E: Failed to fetch https://apt.postgresql.org/pub/repos/apt/dists/noble-pgdg/InRelease")
+		}
+		return nil
+	}
+	if c, err := m.PGCandidate(ctx, true); err != nil || c.Version != "16.10-0ubuntu0.24.04.1" || c.From != "archive.ubuntu.com/ubuntu" {
+		t.Fatalf("offline: %+v %v", c, err)
+	}
+	sim.Fail = nil
+
+	// Listed: apt's own lists answer, no probe needed.
+	if _, err := m.Install(ctx, InstallSpec{Product: PostgreSQL}); err != nil {
+		t.Fatal(err)
+	}
+	if c, err := m.PGCandidate(ctx, false); err != nil || c.Version != "18.1-1.pgdg24.04+2" {
+		t.Fatalf("listed: %+v %v", c, err)
+	}
+}
