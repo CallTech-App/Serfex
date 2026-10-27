@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,9 +17,31 @@ import (
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
-// WebmailPackages are installed when webmail is on. php-fpm keeps apt
-// from pulling in Apache for Roundcube's PHP.
-var WebmailPackages = []string{"roundcube-core", "roundcube-sqlite3", "roundcube-plugins", "sqlite3", "php-fpm"}
+// WebmailPackages are installed when webmail is on. php-cgi keeps apt
+// from pulling in Apache (or another PHP-FPM service) for the php
+// package Roundcube depends on; webmail runs on its own PHP-FPM pool of
+// webmailPHP's version.
+var WebmailPackages = []string{"roundcube-core", "roundcube-sqlite3", "roundcube-plugins", "sqlite3", "php-cgi"}
+
+// webmailMaxPHP is the newest PHP Ubuntu's Roundcube (1.6) runs on: PHP
+// 8.5 made array_first() a built-in function, which Roundcube 1.6
+// declares itself ("Cannot redeclare function array_first()").
+const webmailMaxPHP = "8.4"
+
+// webmailPHPParts are what Roundcube needs of a PHP version: the package
+// suffix and the file that marks it installed (%s is the version).
+var webmailPHPParts = []struct{ pkg, file string }{
+	{"fpm", "/usr/sbin/php-fpm%s"},
+	{"cli", "/usr/bin/php%s"},
+	{"sqlite3", "/etc/php/%s/mods-available/pdo_sqlite.ini"},
+	{"intl", "/etc/php/%s/mods-available/intl.ini"},
+	{"mbstring", "/etc/php/%s/mods-available/mbstring.ini"},
+	{"xml", "/etc/php/%s/mods-available/xml.ini"},
+}
+
+// roundcubeJobs are the package's systemd housekeeping jobs; Servik's
+// drop-ins run them on webmail's database, account and PHP version.
+var roundcubeJobs = map[string]string{"roundcube-gc": "gc.sh", "roundcube-cleandb": "cleandb.sh"}
 
 var webmailFiles = []string{"/usr/share/roundcube/index.php", "/usr/share/roundcube/plugins/managesieve/managesieve.php", "/usr/bin/sqlite3"}
 
@@ -46,10 +69,14 @@ func webmailPool(version string) string {
 	return "/etc/php/" + version + "/fpm/pool.d/servik-webmail.conf"
 }
 
+func roundcubeJobDropIn(unit string) string {
+	return "/etc/systemd/system/" + unit + ".service.d/servik.conf"
+}
+
 // writeWebmail writes the mail vhost (always, for certificate validation
 // and mail client settings) and, with webmail on, Roundcube's account,
-// configuration, database and PHP-FPM pool. It reports whether Nginx or
-// PHP-FPM need a reload.
+// configuration, database and PHP-FPM pool on s.PHPVersion. It reports
+// whether Nginx or PHP-FPM need a reload.
 func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data tmplData) (bool, error) {
 	return changes(t, func() error {
 		data.Webmail = s.Webmail
@@ -76,11 +103,7 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		if err != nil {
 			return err
 		}
-		s.PHPVersion = ""
 		if s.Webmail {
-			if s.PHPVersion, err = m.webmailPHP(versions); err != nil {
-				return err
-			}
 			if err := m.writeRoundcube(ctx, t, s, data); err != nil {
 				return err
 			}
@@ -95,6 +118,11 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		if !s.Webmail {
 			if err := t.Unlink(roundcubeRoot + "/plugins/servik_sso"); err != nil {
 				return err
+			}
+			for unit := range roundcubeJobs {
+				if err := t.RemoveFile(roundcubeJobDropIn(unit)); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -158,6 +186,17 @@ func (m *Manager) writeRoundcube(ctx context.Context, t *txn.Tx, s *server, data
 	if err := t.WriteFile(webmailPool(s.PHPVersion), render(webmailPoolTmpl, data)); err != nil {
 		return err
 	}
+	// Roundcube's scripts start with "#!/usr/bin/env php", which is the
+	// newest PHP on the server; they are run with webmail's PHP instead.
+	php := "/usr/bin/php" + s.PHPVersion
+	for unit, script := range roundcubeJobs {
+		if err := t.RootDir("/etc/systemd/system/"+unit+".service.d", 0o755, 0, 0); err != nil {
+			return err
+		}
+		if err := t.WriteFile(roundcubeJobDropIn(unit), roundcubeJobUnit(php, script)); err != nil {
+			return err
+		}
+	}
 
 	// The database is created once and upgraded on every setup, after a
 	// Roundcube package update too.
@@ -173,7 +212,7 @@ func (m *Manager) writeRoundcube(ctx context.Context, t *txn.Tx, s *server, data
 		t.Changed = true
 	}
 	if _, err := m.h.Run(ctx, host.AsUser(WebmailUser, host.Command{Name: "env", Args: []string{
-		"ROUNDCUBE_CONFIG_DIR=" + webmailConfig, "/usr/share/roundcube/bin/updatedb.sh", "--package=roundcube", "--dir=" + roundcubeSQL,
+		"ROUNDCUBE_CONFIG_DIR=" + webmailConfig, php, "/usr/share/roundcube/bin/updatedb.sh", "--package=roundcube", "--dir=" + roundcubeSQL,
 	}})); err != nil {
 		return fmt.Errorf("upgrading Roundcube's database: %w", err)
 	}
@@ -199,15 +238,61 @@ func (m *Manager) phpVersions() ([]string, error) {
 	return out, nil
 }
 
-// webmailPHP picks the newest PHP version that has the SQLite driver
-// Roundcube's package installed.
-func (m *Manager) webmailPHP(versions []string) (string, error) {
-	for i := len(versions) - 1; i >= 0; i-- {
-		if m.exists("/etc/php/" + versions[i] + "/mods-available/pdo_sqlite.ini") {
-			return versions[i], nil
+// webmailPHP picks the PHP version webmail runs on: the newest one up to
+// webmailMaxPHP that has everything Roundcube needs. Without one, the
+// newest version up to webmailMaxPHP on the server (or webmailMaxPHP
+// itself) gets the missing parts installed.
+func (m *Manager) webmailPHP(ctx context.Context) (string, error) {
+	entries, err := os.ReadDir(m.h.Path("/etc/php"))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	var versions []string
+	for _, e := range entries {
+		if site.ValidatePHPVersion(e.Name()) == nil && !phpNewer(e.Name(), webmailMaxPHP) {
+			versions = append(versions, e.Name())
 		}
 	}
-	return "", errors.New("no PHP-FPM version with the SQLite extension is installed for webmail")
+	// Newest first.
+	sort.Slice(versions, func(i, j int) bool { return phpNewer(versions[i], versions[j]) })
+	for _, v := range versions {
+		if len(m.webmailPHPMissing(v)) == 0 {
+			return v, nil
+		}
+	}
+	v := webmailMaxPHP
+	if len(versions) > 0 {
+		v = versions[0]
+	}
+	if err := m.install(ctx, "PHP "+v+" for webmail", m.webmailPHPMissing(v)); err != nil {
+		return "", err
+	}
+	if missing := m.webmailPHPMissing(v); len(missing) > 0 {
+		return "", fmt.Errorf("PHP %s for webmail is incomplete after installing it: %s missing", v, strings.Join(missing, " "))
+	}
+	return v, nil
+}
+
+// webmailPHPMissing lists the packages version v lacks for Roundcube.
+func (m *Manager) webmailPHPMissing(v string) []string {
+	var out []string
+	for _, p := range webmailPHPParts {
+		if !m.exists(fmt.Sprintf(p.file, v)) {
+			out = append(out, "php"+v+"-"+p.pkg)
+		}
+	}
+	return out
+}
+
+// phpNewer reports whether PHP version a (such as "8.10") is newer than b.
+func phpNewer(a, b string) bool {
+	n := func(s string) int { v, _ := strconv.Atoi(s); return v }
+	amaj, amin, _ := strings.Cut(a, ".")
+	bmaj, bmin, _ := strings.Cut(b, ".")
+	if amaj != bmaj {
+		return n(amaj) > n(bmaj)
+	}
+	return n(amin) > n(bmin)
 }
 
 // checkWeb tests the PHP-FPM and Nginx configuration.

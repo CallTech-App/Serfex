@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -333,6 +334,13 @@ func (o *op) remove() (err error) {
 	if c.remove != nil {
 		return c.remove(o)
 	}
+	purge := c.packages
+	if c.purge != nil {
+		purge = c.purge(m)
+	}
+	if used := o.takenAlong(purge); len(used) > 0 {
+		return &InUseError{ID: c.id, UsedBy: used}
+	}
 	o.t = txn.New(m.h)
 	stopped := false
 	defer func() {
@@ -369,10 +377,6 @@ func (o *op) remove() (err error) {
 	if err := o.failpoint("stop"); err != nil {
 		return err
 	}
-	purge := c.packages
-	if c.purge != nil {
-		purge = c.purge(m)
-	}
 	if len(purge) > 0 {
 		o.step("Paketler kaldırılıyor: %s", strings.Join(purge, " "))
 		if _, err := o.run(host.Command{Name: "apt-get", Args: append([]string{"purge", "-y", "-q"}, purge...), Env: aptEnv}); err != nil {
@@ -381,6 +385,41 @@ func (o *op) remove() (err error) {
 		_, _ = o.run(host.Command{Name: "apt-get", Args: []string{"autoremove", "-y", "-q"}, Env: aptEnv})
 	}
 	return nil
+}
+
+// dependents are software apt would remove along with a purge: purging
+// PHP 8.5's packages also removes Roundcube while Ubuntu's php package
+// (which Roundcube depends on) points at PHP 8.5.
+var dependents = map[string]string{
+	"roundcube-core": "webmail (Roundcube)",
+	"phpmyadmin":     "phpMyAdmin",
+	"adminer":        "Adminer",
+}
+
+// takenAlong asks apt (a dry run) which dependents purging the patterns
+// would remove besides the patterns' own packages.
+func (o *op) takenAlong(purge []string) []string {
+	if len(purge) == 0 {
+		return nil
+	}
+	out, err := o.m.h.Run(o.ctx, host.Command{Name: "apt-get", Args: append([]string{"-s", "purge"}, purge...), Env: aptEnv})
+	if err != nil {
+		// The purge itself fails the same way.
+		return nil
+	}
+	var used []string
+	for _, line := range strings.Split(out, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 || (f[0] != "Purg" && f[0] != "Remv") {
+			continue
+		}
+		label, ok := dependents[f[1]]
+		if !ok || slices.Contains(used, label) || slices.ContainsFunc(purge, func(p string) bool { ok, _ := filepath.Match(p, f[1]); return ok }) {
+			continue
+		}
+		used = append(used, label)
+	}
+	return used
 }
 
 // archive keeps the component's configuration before a removal, as a

@@ -189,7 +189,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		files = append(files, webmailFiles...)
 	}
 	if !m.installed(files) {
-		if err := m.install(ctx, packages); err != nil {
+		if err := m.install(ctx, "the mail server", packages); err != nil {
 			return SetupResult{}, err
 		}
 		res.Installed = true
@@ -197,11 +197,20 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", "redis-server.service"}})
 	}
 
+	// Like the packages, PHP parts installed for webmail stay on a
+	// failure.
+	php := ""
+	if spec.Webmail {
+		if php, err = m.webmailPHP(ctx); err != nil {
+			return SetupResult{}, err
+		}
+	}
+
 	prev, err := m.loadServer()
 	if err != nil && !errors.Is(err, ErrNotSetUp) {
 		return SetupResult{}, err
 	}
-	s := &server{SetupSpec: spec}
+	s := &server{SetupSpec: spec, PHPVersion: php}
 	if prev != nil {
 		s.MasterPassword, s.DESKey = prev.MasterPassword, prev.DESKey
 	}
@@ -348,6 +357,8 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	if err != nil {
 		return SetupResult{}, err
 	}
+	// Roundcube's job drop-ins are part of webmail's files.
+	daemonReload = daemonReload || webChanged
 
 	state, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
@@ -413,9 +424,9 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	return res, nil
 }
 
-// install installs packages, refreshing the package lists once if the
-// first attempt fails.
-func (m *Manager) install(ctx context.Context, packages []string) error {
+// install installs packages (what names them in errors), refreshing the
+// package lists once if the first attempt fails.
+func (m *Manager) install(ctx context.Context, what string, packages []string) error {
 	if _, err := m.h.Run(ctx, host.Command{Name: "debconf-set-selections", Stdin: []byte(preseed)}); err != nil {
 		return fmt.Errorf("preparing the mail packages: %w", err)
 	}
@@ -425,10 +436,10 @@ func (m *Manager) install(ctx context.Context, packages []string) error {
 		return nil
 	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: env}); err != nil {
-		return fmt.Errorf("installing the mail server: %w", err)
+		return fmt.Errorf("installing %s: %w", what, err)
 	}
 	if _, err := m.h.Run(ctx, inst); err != nil {
-		return fmt.Errorf("installing the mail server: %w", err)
+		return fmt.Errorf("installing %s: %w", what, err)
 	}
 	return nil
 }
