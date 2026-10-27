@@ -15,6 +15,9 @@ class AgentException extends RuntimeException
     /** Servik: Nginx or Apache refused the configuration when tested. */
     public const CONFIG_REJECTED = -32010;
 
+    /** Servik: the certificate authority could not be reached; nothing was asked of it. */
+    public const CA_UNREACHABLE = -32011;
+
     /**
      * The agent's own explanation, without the panel's prefix.
      */

@@ -307,3 +307,11 @@ func TestMailSetupRefreshesFail2ban(t *testing.T) {
 		t.Fatal("Fail2ban not reloaded")
 	}
 }
+
+func TestMapErrorMarksUnreachableCA(t *testing.T) {
+	err := &cert.OperationError{Err: &cert.UnreachableError{URL: cert.LetsEncrypt, Err: &net.DNSError{Err: "server misbehaving", Name: "acme-v02.api.letsencrypt.org"}}}
+	rpcErr, ok := mapError(err).(*rpc.Error)
+	if !ok || rpcErr.Code != CodeCAUnreachable {
+		t.Fatalf("mapError = %#v", mapError(err))
+	}
+}

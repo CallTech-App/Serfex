@@ -158,6 +158,12 @@ func (m *Manager) Setup(ctx context.Context) (res SetupResult, err error) {
 
 	// Free port 53 from systemd-resolved's stub listener.
 	if target, err := os.Readlink(m.h.Path(resolvConf)); err == nil && strings.HasSuffix(target, "stub-resolv.conf") {
+		// Without the stub, this server looks names up through the servers
+		// resolved itself uses. With none listed, every lookup would end
+		// at PowerDNS, which answers only for its own zones.
+		if !hasNameserver(m.h.Path(resolvedUplink)) {
+			return SetupResult{}, fmt.Errorf("systemd-resolved lists no upstream DNS server in %s; turning off its local resolver would leave this server unable to look up other names. Add a DNS server to the network configuration (for example nameservers in netplan) and try again", resolvedUplink)
+		}
 		if err := t.RootDir(filepath.Dir(resolvedDropIn), 0o755, 0, 0); err != nil {
 			return SetupResult{}, err
 		}
@@ -207,6 +213,12 @@ func (m *Manager) Setup(ctx context.Context) (res SetupResult, err error) {
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"restart", "systemd-resolved"}}); err != nil {
 			return SetupResult{}, err
 		}
+		// Go programs, this agent among them, notice a changed resolv.conf
+		// only by its modification time. resolved writes the stub and
+		// uplink files in the same instant, so a Go program would keep
+		// asking 127.0.0.53, where PowerDNS now refuses other names.
+		now := time.Now()
+		_ = os.Chtimes(m.h.Path(resolvedUplink), now, now)
 	}
 	for _, args := range [][]string{{"enable", unit}, {"restart", unit}} {
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: args}); err != nil {
@@ -312,4 +324,21 @@ func (m *Manager) readConfig() (APIConfig, error) {
 func (m *Manager) hasIPv6() bool {
 	_, err := os.Stat(m.h.Path("/proc/net/if_inet6"))
 	return err == nil
+}
+
+// hasNameserver reports whether the resolv.conf file at path lists a
+// name server.
+func hasNameserver(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if fields := strings.Fields(sc.Text()); len(fields) >= 2 && fields[0] == "nameserver" {
+			return true
+		}
+	}
+	return false
 }

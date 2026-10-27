@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Runs hourly from the scheduler: renews Let's Encrypt certificates that
  * expire within servik.ssl.renew_days, retries the ones waiting for DNS,
- * retries failed requests once a day, and reissues site certificates
+ * retries failed requests once a day (within the hour when Let's Encrypt
+ * was not reached), and reissues site certificates
  * when names they lack now point here.
  */
 #[Signature('servik:ssl-renew')]
@@ -33,9 +34,11 @@ class RenewCertificates extends Command
                 // Waiting for DNS: every hour.
                 ->where(fn (Builder $q) => $q->where('status', CertificateStatus::WaitingDns)
                     ->where(fn (Builder $q) => $q->whereNull('attempted_at')->orWhere('attempted_at', '<=', now()->subMinutes(55))))
-                // Failed requests: once a day.
+                // Failed requests: once a day, or when set to retry early
+                // (Let's Encrypt was not reached).
                 ->orWhere(fn (Builder $q) => $q->where('status', CertificateStatus::Failed)
-                    ->where('attempted_at', '<=', now()->subDay()->addMinutes(5)))
+                    ->where(fn (Builder $q) => $q->where('attempted_at', '<=', now()->subDay()->addMinutes(5))
+                        ->orWhere('retry_at', '<=', now())))
                 // Expiring: when due, then twice a day while renewals fail.
                 ->orWhere(fn (Builder $q) => $q->where('status', CertificateStatus::Active)
                     ->where('auto_renew', true)

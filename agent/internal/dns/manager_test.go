@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
 )
@@ -50,6 +51,17 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	}
 	if err := os.Symlink("../run/systemd/resolve/stub-resolv.conf", sim.Path("/etc/resolv.conf")); err != nil {
 		t.Fatal(err)
+	}
+	// resolved writes both files in the same instant.
+	boot := time.Now().Add(-time.Hour)
+	for f, body := range map[string]string{"stub-resolv.conf": "nameserver 127.0.0.53\n", "resolv.conf": "nameserver 192.0.2.53\n"} {
+		p := sim.Path("/run/systemd/resolve/" + f)
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(p, boot, boot); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	res, err := m.Setup(context.Background())
@@ -94,6 +106,10 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	if b, _ := os.ReadFile(sim.Path(resolvedDropIn)); !strings.Contains(string(b), "DNSStubListener=no") {
 		t.Errorf("resolved drop-in = %q", b)
 	}
+	// Go programs that read the stub file must see resolv.conf change.
+	if fi, err := os.Stat(sim.Path(resolvedUplink)); err != nil || !fi.ModTime().After(boot) {
+		t.Errorf("resolv.conf modification time not moved on: %v, %v", fi, err)
+	}
 	if st := m.Status(context.Background()); !st.Installed || !st.Configured || !st.Running {
 		t.Fatalf("status after setup = %+v", st)
 	}
@@ -114,6 +130,33 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 		if strings.Contains(c.String(), "restart") || strings.HasPrefix(c.String(), "apt-get") {
 			t.Errorf("second setup ran %q", c)
 		}
+	}
+}
+
+func TestSetupKeepsStubResolverWithoutUpstreamServers(t *testing.T) {
+	m, _, sim := newTest(t)
+	if err := os.MkdirAll(sim.Path("/run/systemd/resolve"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../run/systemd/resolve/stub-resolv.conf", sim.Path("/etc/resolv.conf")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sim.Path("/run/systemd/resolve/resolv.conf"), []byte("# No DNS servers known.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := m.Setup(context.Background())
+	var op *OperationError
+	if !errors.As(err, &op) || !strings.Contains(err.Error(), "no upstream DNS server") {
+		t.Fatalf("err = %v", err)
+	}
+	if target, _ := os.Readlink(sim.Path("/etc/resolv.conf")); target != "../run/systemd/resolve/stub-resolv.conf" {
+		t.Errorf("resolv.conf -> %s, want the stub kept", target)
+	}
+	if _, err := os.Stat(sim.Path(resolvedDropIn)); !os.IsNotExist(err) {
+		t.Error("the stub listener was turned off")
+	}
+	if sim.Ran("systemctl restart pdns@servik") {
+		t.Error("PowerDNS was started")
 	}
 }
 

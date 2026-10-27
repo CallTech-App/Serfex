@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['site_id', 'kind', 'name', 'source', 'domains', 'challenge', 'issuer', 'serial', 'fingerprint', 'not_before', 'not_after', 'auto_renew', 'status', 'last_error', 'renew_error', 'attempted_at', 'issued_at'])]
+#[Fillable(['site_id', 'kind', 'name', 'source', 'domains', 'challenge', 'issuer', 'serial', 'fingerprint', 'not_before', 'not_after', 'auto_renew', 'status', 'last_error', 'renew_error', 'attempted_at', 'retry_at', 'issued_at'])]
 class Certificate extends Model
 {
     /** @use HasFactory<CertificateFactory> */
@@ -45,6 +45,7 @@ class Certificate extends Model
             'not_before' => 'datetime',
             'not_after' => 'datetime',
             'attempted_at' => 'datetime',
+            'retry_at' => 'datetime',
             'issued_at' => 'datetime',
         ];
     }
