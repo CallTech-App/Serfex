@@ -88,7 +88,8 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 		"postfix check", "doveconf -n", "rspamadm configtest",
 		"sievec /etc/dovecot/servik/sieve/spam.sieve",
 		"runuser -u servik-webmail -- sqlite3 /var/lib/servik/webmail/data/roundcube.db",
-		"runuser -u servik-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail /usr/share/roundcube/bin/updatedb.sh",
+		"apt-get install -y -q --no-install-recommends php8.3-fpm php8.3-cli php8.3-intl php8.3-mbstring php8.3-xml",
+		"runuser -u servik-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail /usr/bin/php8.3 /usr/share/roundcube/bin/updatedb.sh",
 		"php-fpm8.3 -t", "nginx -t",
 		"systemctl daemon-reload",
 		"systemctl enable redis-server@servik-mail rspamd dovecot postfix",
@@ -116,6 +117,8 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	contains(t, "vhost", read(t, sim, mailVhost), "server_name mail.example.net ~^autoconfig", "listen 443 ssl http2", "fastcgi_pass unix:/run/php/servik-webmail.sock", "autodiscover")
 	contains(t, "roundcube", read(t, sim, webmailConfig+"/config.inc.php"), "'servik_sso'", "sqlite:////var/lib/servik/webmail/data/roundcube.db")
 	contains(t, "pool", read(t, sim, webmailPool("8.3")), "env[ROUNDCUBE_CONFIG_DIR] = /etc/servik/webmail", "user = servik-webmail")
+	contains(t, "gc job", read(t, sim, roundcubeJobDropIn("roundcube-gc")), "User=servik-webmail", "Environment=ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail", "ExecStart=\nExecStart=/usr/bin/php8.3 /usr/share/roundcube/bin/gc.sh")
+	contains(t, "cleandb job", read(t, sim, roundcubeJobDropIn("roundcube-cleandb")), "ExecStart=/usr/bin/php8.3 /usr/share/roundcube/bin/cleandb.sh")
 	if names, err := certNames([]byte(read(t, sim, selfCert))); err != nil || names[0] != "mail.example.net" {
 		t.Fatalf("self-signed certificate names = %v, %v", names, err)
 	}
@@ -182,6 +185,123 @@ func TestSetupChangesHostnameAndCertificate(t *testing.T) {
 	}
 	if _, err := os.Lstat(sim.Path(roundcubeRoot + "/plugins/servik_sso")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("plugin link still exists")
+	}
+	if _, err := os.Stat(sim.Path(roundcubeJobDropIn("roundcube-gc"))); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("Roundcube's job drop-in still exists")
+	}
+}
+
+// writeFiles creates empty files in the simulator.
+func writeFiles(t *testing.T, sim *host.Simulator, files ...string) {
+	t.Helper()
+	for _, f := range files {
+		if err := os.MkdirAll(filepath.Dir(sim.Path(f)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(sim.Path(f), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// completePHP gives the simulator PHP v with everything webmail needs.
+func completePHP(t *testing.T, sim *host.Simulator, v string) {
+	t.Helper()
+	writeFiles(t, sim, "/etc/php/"+v+"/fpm/pool.d/www.conf", "/usr/sbin/php-fpm"+v, "/usr/bin/php"+v)
+	for _, ext := range []string{"pdo_sqlite", "intl", "mbstring", "xml"} {
+		writeFiles(t, sim, "/etc/php/"+v+"/mods-available/"+ext+".ini")
+	}
+}
+
+// Roundcube 1.6 fails on PHP 8.5 ("Cannot redeclare function
+// array_first()"): webmail stays on 8.4 when both are installed.
+func TestWebmailStaysOnPHP84(t *testing.T) {
+	m, sim := newTest(t)
+	completePHP(t, sim, "8.4")
+	completePHP(t, sim, "8.5")
+	// A pool left from when webmail ran on 8.5.
+	writeFiles(t, sim, webmailPool("8.5"))
+	if err := os.WriteFile(sim.Path(webmailPool("8.5")), render(webmailPoolTmpl, tmplData{}), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	setUp(t, m)
+
+	for _, c := range []string{
+		"runuser -u servik-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail /usr/bin/php8.4 /usr/share/roundcube/bin/updatedb.sh",
+		"php-fpm8.4 -t", "systemctl daemon-reload",
+	} {
+		if !sim.Ran(c) {
+			t.Errorf("did not run %q", c)
+		}
+	}
+	for _, c := range sim.Commands() {
+		if s := c.String(); strings.Contains(s, "/usr/bin/php8.5") || strings.Contains(s, "php-fpm8.5") || strings.HasPrefix(s, "apt-get install -y -q --no-install-recommends php8") {
+			t.Errorf("ran %q", s)
+		}
+	}
+	contains(t, "pool", read(t, sim, webmailPool("8.4")), "user = servik-webmail")
+	if _, err := os.Stat(sim.Path(webmailPool("8.5"))); !errors.Is(err, os.ErrNotExist) {
+		t.Error("the PHP 8.5 pool was left")
+	}
+	contains(t, "gc job", read(t, sim, roundcubeJobDropIn("roundcube-gc")), "ExecStart=/usr/bin/php8.4 /usr/share/roundcube/bin/gc.sh")
+	s, err := m.loadServer()
+	if err != nil || s.PHPVersion != "8.4" {
+		t.Fatalf("stored PHP = %+v, %v", s, err)
+	}
+}
+
+func TestWebmailInstallsPHP84WhenOnlyNewerIsThere(t *testing.T) {
+	sim, err := host.NewSimulator(t.TempDir(), "8.5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := NewManager(sim, "www-data")
+	completePHP(t, sim, "8.5")
+	v, err := m.webmailPHP(context.Background())
+	if err != nil || v != "8.4" {
+		t.Fatalf("webmailPHP = %q, %v", v, err)
+	}
+	if !sim.Ran("apt-get install -y -q --no-install-recommends php8.4-fpm php8.4-cli php8.4-sqlite3 php8.4-intl php8.4-mbstring php8.4-xml") {
+		t.Errorf("PHP 8.4 not installed: %v", sim.Commands())
+	}
+	if !phpNewer("8.10", "8.4") || phpNewer("8.4", "8.4") || !phpNewer("9.0", "8.5") {
+		t.Error("phpNewer compares as text")
+	}
+}
+
+// A failed setup leaves nothing of webmail behind, and the next one works.
+func TestFailedWebmailSetupLeavesNothing(t *testing.T) {
+	m, sim := newTest(t)
+	completePHP(t, sim, "8.4")
+	sim.Fail = func(c host.Command) error {
+		if strings.Contains(c.String(), "updatedb.sh") {
+			return errors.New("PHP Fatal error: Cannot redeclare function array_first()")
+		}
+		return nil
+	}
+	ctx := context.Background()
+	spec := SetupSpec{Hostname: "mail.example.net", HourlyLimit: 500, Webmail: true}
+	if _, err := m.Setup(ctx, spec); err == nil || !strings.Contains(err.Error(), "array_first") {
+		t.Fatalf("err = %v", err)
+	}
+	for _, f := range []string{
+		webmailDir, webmailConfig, webmailPool("8.4"), roundcubeRoot + "/plugins/servik_sso",
+		roundcubeJobDropIn("roundcube-gc"), roundcubeJobDropIn("roundcube-cleandb"), serverState, mailVhost, postfixMain + ".before-servik",
+	} {
+		if _, err := os.Lstat(sim.Path(f)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s was left behind", f)
+		}
+	}
+	if !errors.Is(func() error { _, err := m.loadServer(); return err }(), ErrNotSetUp) {
+		t.Error("the mail server counts as set up")
+	}
+
+	sim.Fail = nil
+	if _, err := m.Setup(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if !m.Status(ctx).Configured {
+		t.Error("the retry did not set the mail server up")
 	}
 }
 

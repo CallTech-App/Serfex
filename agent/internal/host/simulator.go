@@ -177,7 +177,11 @@ unwrap:
 	case "tee":
 		err = s.tee(s.abs(cwd, inner.Args), inner.Stdin)
 	case "apt-get":
-		err = s.aptGet(inner.Args)
+		if len(inner.Args) > 0 && inner.Args[0] == "-s" {
+			out = s.aptDryRun(inner.Args[1:])
+		} else {
+			err = s.aptGet(inner.Args)
+		}
 	case "sqlite3":
 		// sqlite3 DB < schema: the database file appears.
 		if len(inner.Args) == 1 {
@@ -392,6 +396,7 @@ var simPackages = map[string][]string{
 	"postgresql-common":             {"/usr/bin/pg_createcluster", "/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc"},
 	"nginx":                         {"/usr/sbin/nginx"},
 	"php-fpm":                       {"/usr/sbin/php-fpm8.3"},
+	"php-cgi":                       {"/usr/bin/php-cgi8.3", "/etc/php/8.3/cgi/php.ini"},
 	"php-mbstring":                  {"/etc/php/8.3/mods-available/mbstring.ini"},
 	"php-xml":                       {"/etc/php/8.3/mods-available/xml.ini"},
 	"php-mysql":                     {"/etc/php/8.3/mods-available/mysqli.ini"},
@@ -479,6 +484,9 @@ func (s *Simulator) aptGet(args []string) error {
 				ext = "mysqli"
 			}
 			files = []string{"/etc/php/" + strings.TrimPrefix(v, "php") + "/mods-available/" + ext + ".ini"}
+			if ext == "sqlite3" {
+				files = append(files, "/etc/php/"+strings.TrimPrefix(v, "php")+"/mods-available/pdo_sqlite.ini")
+			}
 		}
 		for _, f := range files {
 			if err := os.MkdirAll(filepath.Dir(s.Path(f)), 0o755); err != nil {
@@ -490,6 +498,42 @@ func (s *Simulator) aptGet(args []string) error {
 		}
 	}
 	return nil
+}
+
+// simDefaultPHP is the PHP version Ubuntu's php packages (php-fpm,
+// php-cgi, the ones Roundcube and phpMyAdmin depend on) point at.
+const simDefaultPHP = "8.3"
+
+// apt-get -s purge|remove PATTERN... lists ("Purg NAME") the installed
+// packages a purge would remove; purging the default PHP version takes
+// the software that depends on Ubuntu's php packages along.
+func (s *Simulator) aptDryRun(args []string) string {
+	if len(args) == 0 || (args[0] != "purge" && args[0] != "remove") {
+		return ""
+	}
+	var b strings.Builder
+	for _, a := range args[1:] {
+		if v, ok := strings.CutSuffix(a, "-*"); ok && phpBinary.MatchString(v) {
+			ver := strings.TrimPrefix(v, "php")
+			if _, err := os.Stat(s.Path("/usr/sbin/php-fpm" + ver)); err == nil {
+				b.WriteString("Purg " + v + "-fpm\n")
+			}
+			if ver == simDefaultPHP {
+				for _, dep := range []string{"roundcube-core", "phpmyadmin", "adminer"} {
+					if s.PackageInstalled(dep) {
+						b.WriteString("Purg " + dep + "\n")
+					}
+				}
+			}
+			continue
+		}
+		for name := range simPackages {
+			if ok, _ := filepath.Match(a, name); ok && s.PackageInstalled(name) {
+				b.WriteString("Purg " + name + "\n")
+			}
+		}
+	}
+	return b.String()
 }
 
 // addAccounts adds passwd lines (and a group of the same name and id)

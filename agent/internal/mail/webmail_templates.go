@@ -2,6 +2,8 @@ package mail
 
 import (
 	"text/template"
+
+	"github.com/winchester37/servik/agent/internal/txn"
 )
 
 var mailVhostTmpl = template.Must(template.New("vhost").Parse(`# {{.Marker}}. Manual changes are overwritten.
@@ -145,6 +147,21 @@ php_admin_value[error_log] = {{.LogDir}}/php-error.log
 php_admin_flag[log_errors] = on
 php_admin_flag[display_errors] = off
 `))
+
+// roundcubeJobUnit is the drop-in that runs one of Roundcube's systemd
+// housekeeping jobs on webmail's database and PHP version, instead of the
+// package's own configuration and the newest PHP.
+func roundcubeJobUnit(php, script string) []byte {
+	return []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
+# Runs Roundcube's job for Servik's webmail.
+[Service]
+User=` + WebmailUser + `
+Group=` + WebmailUser + `
+Environment=ROUNDCUBE_CONFIG_DIR=` + webmailConfig + `
+ExecStart=
+ExecStart=` + php + ` /usr/share/roundcube/bin/` + script + `
+`)
+}
 
 var roundcubeConfigTmpl = template.Must(template.New("config").Parse(`<?php // {{.Marker}}. Manual changes are overwritten.
 // Roundcube for Servik. Read through ROUNDCUBE_CONFIG_DIR instead of

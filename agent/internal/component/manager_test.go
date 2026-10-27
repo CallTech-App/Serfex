@@ -668,3 +668,34 @@ func TestCandidatesBeforeInstall(t *testing.T) {
 		t.Errorf("installed node24 = %+v", s)
 	}
 }
+
+// Removing the PHP version Ubuntu's php package points at would take
+// Roundcube along (apt removes what depends on it): that is refused.
+func TestRemovingPHPKeepsRoundcube(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	for _, f := range []string{"/usr/share/roundcube/index.php", "/usr/share/roundcube/SQL/sqlite.initial.sql", "/etc/roundcube/defaults.inc.php", "/etc/roundcube/mimetypes.php", "/var/lib/roundcube/plugins/.keep"} {
+		if err := os.MkdirAll(filepath.Dir(sim.Path(f)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(sim.Path(f), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := m.Install(ctx, OpSpec{ID: "php8.4", Run: "a"}); err != nil {
+		t.Fatal(err)
+	}
+	var inUse *InUseError
+	if _, err := m.Remove(ctx, OpSpec{ID: "php8.3", Run: "b"}); !errors.As(err, &inUse) || inUse.UsedBy[0] != "webmail (Roundcube)" {
+		t.Fatalf("removing the PHP Roundcube depends on: %v", err)
+	}
+	if ran(sim, "apt-get purge -y -q php8.3-*") || !exists(sim, "/usr/share/roundcube/index.php") {
+		t.Fatal("PHP 8.3 was purged with Roundcube")
+	}
+	if _, err := m.Remove(ctx, OpSpec{ID: "php8.4", Run: "c"}); err != nil {
+		t.Fatal(err)
+	}
+	if !ran(sim, "apt-get -s purge php8.4-*") || !ran(sim, "apt-get purge -y -q php8.4-*") {
+		t.Error("PHP 8.4 was not checked and purged")
+	}
+}
