@@ -74,7 +74,7 @@
                                     <p class="text-muted">{{ __('Aramanızla eşleşen site yok.') }}</p>
                                 @else
                                     <p class="font-medium">{{ __('Henüz site yok') }}</p>
-                                    <p class="mt-1 text-[13px] text-muted">{{ __('İlk sitenizi ekleyin; Servik sistem kullanıcısını, Nginx ve PHP-FPM ayarlarını hazırlar.') }}</p>
+                                    <p class="mt-1 text-[13px] text-muted">{{ __('İlk sitenizi ekleyin; Serfex sistem kullanıcısını, Nginx ve PHP-FPM ayarlarını hazırlar.') }}</p>
                                 @endif
                             </td>
                         </tr>

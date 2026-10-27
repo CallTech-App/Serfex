@@ -21,7 +21,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
-#[Title('Alan Adları ve DNS · Servik')]
+#[Title('Alan Adları ve DNS · Serfex')]
 #[ForCustomers(feature: 'dns', except: ['setupServer', 'openCreate', 'create', 'undoCreate', 'confirmDelete', 'deleteSelected', 'undoDelete'])]
 class ZoneIndex extends Component
 {

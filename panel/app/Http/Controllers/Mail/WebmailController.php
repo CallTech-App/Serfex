@@ -30,7 +30,7 @@ class WebmailController extends Controller
         }
 
         try {
-            $login = $agent->call('mail.webmail.login', ['address' => $mailbox->address()], config('servik.agent.job_timeout'));
+            $login = $agent->call('mail.webmail.login', ['address' => $mailbox->address()], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             return $this->fail($mailbox, __('Web postaya giriş yapılamadı: :reason', ['reason' => $e->reason]));
         }

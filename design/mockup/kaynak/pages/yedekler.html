@@ -130,7 +130,7 @@
                 <label class="flex items-center gap-2.5"><input type="checkbox" class="rc w-4 h-4 accent-[rgb(var(--accent))]">DNS</label>
               </div>
             </fieldset>
-            <p class="text-[13px] text-muted">Seçilen öğelerin şu anki hali yedektekiyle değiştirilir. Servik başlamadan önce mevcut hali ayrıca yedekler.</p>
+            <p class="text-[13px] text-muted">Seçilen öğelerin şu anki hali yedektekiyle değiştirilir. Serfex başlamadan önce mevcut hali ayrıca yedekler.</p>
           </div>
           <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
             <button type="button" id="resCancel" class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
@@ -174,8 +174,8 @@
 
   // Hedefler
   const dest = [
-    ['Yerel disk', '/var/backups/servik', '38,2 GB / 120 GB', 'ok', 'Bağlı'],
-    ['S3 uyumlu (Wasabi)', 's3.eu-central-2.wasabisys.com · servik-srv-ist-01', '412 GB', 'ok', 'Bağlı'],
+    ['Yerel disk', '/var/backups/serfex', '38,2 GB / 120 GB', 'ok', 'Bağlı'],
+    ['S3 uyumlu (Wasabi)', 's3.eu-central-2.wasabisys.com · serfex-srv-ist-01', '412 GB', 'ok', 'Bağlı'],
     ['SFTP', 'yedek@yedek.atlasyayin.com:/srv-ist-01', '96 GB', 'warn', 'Son test başarısız'],
   ];
   const TONE = { ok: ['bg-ok-soft text-ok', 'bg-ok'], warn: ['bg-warn-soft text-warn', 'bg-warn'] };

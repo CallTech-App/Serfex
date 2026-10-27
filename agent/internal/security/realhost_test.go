@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	rhDomain = "servik-sec.example"
-	rhUser   = "serviksec"
+	rhDomain = "serfex-sec.example"
+	rhUser   = "serfexsec"
 	// attack is a classic SQL injection the Core Rule Set catches at
 	// paranoia level 1 (rule 942100).
 	attack = "/?id=" + "1%27%20OR%20%271%27=%271"
@@ -47,8 +47,8 @@ func TestRealHost(t *testing.T) {
 	}
 	ctx := context.Background()
 	h := host.System{}
-	bin := "/usr/local/lib/servik-test/servik-agent"
-	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/servik-agent").CombinedOutput(); err != nil {
+	bin := "/usr/local/lib/serfex-test/serfex-agent"
+	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/serfex-agent").CombinedOutput(); err != nil {
 		t.Fatalf("building the agent: %v\n%s", err, out)
 	}
 	_ = os.Chmod(filepath.Dir(bin), 0o755)
@@ -233,7 +233,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	st, err := comps.Fail2ban(ctx)
-	if err != nil || !st.Running || !st.Current || !banned(st, "sshd", "192.0.2.77") || !hasJail(st, "servik-panel") {
+	if err != nil || !st.Running || !st.Current || !banned(st, "sshd", "192.0.2.77") || !hasJail(st, "serfex-panel") {
 		t.Fatalf("fail2ban: %+v %v", st, err)
 	}
 	if err := comps.Fail2banUnban(ctx, component.BanSpec{Jail: "sshd", Address: "192.0.2.77"}); err != nil {
@@ -242,13 +242,13 @@ func TestRealHost(t *testing.T) {
 	// The panel logs failed logins to the journal; ten of them close the
 	// panel's port to that address.
 	for i := 0; i < 10; i++ {
-		if out, err := exec.Command("logger", "-t", "servik-panel", "Failed panel login from 192.0.2.88 for ali@example.com").CombinedOutput(); err != nil {
+		if out, err := exec.Command("logger", "-t", "serfex-panel", "Failed panel login from 192.0.2.88 for ali@example.com").CombinedOutput(); err != nil {
 			t.Fatalf("logger: %v %s", err, out)
 		}
 	}
 	waitFor(t, "the panel jail bans 192.0.2.88", func() bool {
 		st, _ := comps.Fail2ban(ctx)
-		return banned(st, "servik-panel", "192.0.2.88") && !banned(st, "sshd", "192.0.2.77")
+		return banned(st, "serfex-panel", "192.0.2.88") && !banned(st, "sshd", "192.0.2.77")
 	})
 }
 

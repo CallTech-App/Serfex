@@ -202,6 +202,6 @@ class SiteFtp extends Component
             'port' => $accounts->port(),
             'usage' => $usage,
             'refusal' => $accounts->refusal($site->systemUser),
-        ])->title(__('FTP hesapları · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('FTP hesapları · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

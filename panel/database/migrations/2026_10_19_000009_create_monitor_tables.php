@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignId('site_id')->nullable()->constrained()->nullOnDelete();
             // The rule that flagged the address: flood, login, scan, mail, ssh.
             $table->string('kind', 16)->nullable();
-            // Who asked: panel (a person), ai (Servik AI) or api.
+            // Who asked: panel (a person), ai (Serfex AI) or api.
             $table->string('source', 16)->default('panel');
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             // Null blocks until removed.

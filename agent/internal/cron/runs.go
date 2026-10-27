@@ -107,7 +107,7 @@ func (m *Manager) recordOwner(u host.User) int {
 }
 
 func taskParts(domain string, id int) []string {
-	return []string{".servik", "cron", domain, strconv.Itoa(id)}
+	return []string{".serfex", "cron", domain, strconv.Itoa(id)}
 }
 
 // records reads up to limit run records of a task, newest first.
@@ -181,10 +181,10 @@ func (m *Manager) spawn(ctx context.Context, user, domain string, id int) error 
 	}
 	args := []string{"-u", user, "--", m.Exe, "cron-exec", "--manual", domain, strconv.Itoa(id)}
 	if m.exists("/run/systemd/system") {
-		unit := fmt.Sprintf("servik-cron-%d-%d", id, m.now().UnixNano())
+		unit := fmt.Sprintf("serfex-cron-%d-%d", id, m.now().UnixNano())
 		_, err := m.h.Run(ctx, host.Command{Name: "systemd-run", Args: append([]string{
 			"--unit", unit, "--collect", "--quiet",
-			"--description", fmt.Sprintf("Servik scheduled task %d of %s", id, domain),
+			"--description", fmt.Sprintf("Serfex scheduled task %d of %s", id, domain),
 			"runuser"}, args...)})
 		return err
 	}

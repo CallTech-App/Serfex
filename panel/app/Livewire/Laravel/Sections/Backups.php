@@ -195,7 +195,7 @@ class Backups extends Section
 
     /**
      * Parts of $backup that can be put back: code only for applications
-     * Servik deploys.
+     * Serfex deploys.
      *
      * @return list<string>
      */

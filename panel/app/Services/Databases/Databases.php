@@ -79,7 +79,7 @@ class Databases
     public function create(Site $site, string $server, string $name, ?string $userName = null, ?string $password = null, string $access = 'all', array $existing = []): Database
     {
         $account = $site->systemUser;
-        $this->agent->call('db.database.create', ['server' => $server, 'name' => $name, 'site' => $site->domain], config('servik.agent.job_timeout'));
+        $this->agent->call('db.database.create', ['server' => $server, 'name' => $name, 'site' => $site->domain], config('serfex.agent.job_timeout'));
         $database = Database::create(['server' => $server, 'name' => $name, 'system_user_id' => $account->id, 'site_id' => $site->id]);
         Quotas::forget();
 
@@ -92,7 +92,7 @@ class Databases
             }
         } catch (AgentException $e) {
             // The database without its user is not what was asked for.
-            $this->agent->call('db.database.delete', ['server' => $server, 'name' => $name, 'backup' => false], config('servik.agent.job_timeout'));
+            $this->agent->call('db.database.delete', ['server' => $server, 'name' => $name, 'backup' => false], config('serfex.agent.job_timeout'));
             $database->forceDelete();
             throw $e;
         }
@@ -134,7 +134,7 @@ class Databases
             'password' => (string) $password,
             'hosts' => $closed ? [] : array_values($user->hosts ?? []),
             'grants' => $grants,
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
     }
 
     /**
@@ -228,7 +228,7 @@ class Databases
             'server' => $database->server,
             'name' => $database->name,
             'backup' => (bool) $database->backup_on_delete,
-        ], config('servik.agent.backup_timeout'));
+        ], config('serfex.agent.backup_timeout'));
         $database->forceDelete();
         Quotas::forget();
 
@@ -254,7 +254,7 @@ class Databases
 
     public function purgeUser(DatabaseUser $user): void
     {
-        $this->agent->call('db.user.delete', ['server' => $user->server, 'name' => $user->name], config('servik.agent.job_timeout'));
+        $this->agent->call('db.user.delete', ['server' => $user->server, 'name' => $user->name], config('serfex.agent.job_timeout'));
         $user->forceDelete();
     }
 
@@ -284,7 +284,7 @@ class Databases
      */
     public function managerUrl(Database $database, string $host): string
     {
-        $login = $this->agent->call('db.manager.login', ['server' => $database->server, 'database' => $database->name], config('servik.agent.job_timeout'));
+        $login = $this->agent->call('db.manager.login', ['server' => $database->server, 'database' => $database->name], config('serfex.agent.job_timeout'));
         $host = str_contains($host, ':') && ! str_starts_with($host, '[') ? '['.$host.']' : $host;
 
         return 'https://'.$host.':'.(int) $login['port'].$login['path'];
@@ -298,7 +298,7 @@ class Databases
     {
         $count = 0;
         foreach ($this->servers->installed() as $server) {
-            $listing = $this->agent->call('db.list', ['server' => $server], config('servik.agent.job_timeout'));
+            $listing = $this->agent->call('db.list', ['server' => $server], config('serfex.agent.job_timeout'));
             $found = collect($listing['databases'] ?? [])->keyBy('name');
             Database::withTrashed()->where('server', $server)->each(function (Database $database) use ($found, &$count) {
                 if ($info = $found->get($database->name)) {

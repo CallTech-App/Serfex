@@ -36,7 +36,7 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
         }
 
         try {
-            $result = $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+            $result = $agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $site->update(['status' => SiteStatus::Failed, 'last_error' => $e->getMessage()]);
 

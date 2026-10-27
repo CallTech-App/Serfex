@@ -94,7 +94,7 @@ func (m *Manager) sim() bool {
 
 // What a dry run reports.
 const (
-	simHostname = "srv-ist-01.servik.test"
+	simHostname = "srv-ist-01.serfex.test"
 	simOS       = "Ubuntu 24.04.3 LTS"
 	simKernel   = "6.8.0-85-generic"
 	simCPUs     = 8

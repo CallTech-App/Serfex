@@ -20,7 +20,7 @@ import (
 )
 
 // Backups of one application: its live code, .env, storage and database,
-// in one tar file per backup under /var/lib/servik/backups/laravel/<domain>,
+// in one tar file per backup under /var/lib/serfex/backups/laravel/<domain>,
 // readable only by root. The customer's account produces and consumes the
 // archives (tar, the database tools) through pipes, so nothing in the
 // customer's home is ever read or written as root, and the customer can
@@ -36,7 +36,7 @@ import (
 //	database.sqlite.gz   or the SQLite database file
 
 const (
-	backupDir     = "/var/lib/servik/backups/laravel"
+	backupDir     = "/var/lib/serfex/backups/laravel"
 	backupTimeout = 2 * time.Hour
 	readChunkSize = 4 << 20
 )
@@ -108,7 +108,7 @@ func backupFile(domain, id string) string { return backupDir + "/" + domain + "/
 func BackupFile(domain, id string) string { return backupFile(domain, id) }
 
 // envPath and storagePath are where an application keeps its .env and
-// storage: shared/ for releases Servik deploys, the application directory
+// storage: shared/ for releases Serfex deploys, the application directory
 // otherwise.
 func (a App) envPath() string {
 	if a.Path == CurrentPath {
@@ -241,12 +241,12 @@ func partLabel(ctx context.Context, part string) string {
 	return part
 }
 
-// backupDirs creates /var/lib/servik/backups/laravel/<domain>, root only.
+// backupDirs creates /var/lib/serfex/backups/laravel/<domain>, root only.
 func (m *Manager) backupDirs(domain string) error {
 	t := txn.New(m.h)
-	for _, d := range []string{"/var/lib/servik", "/var/lib/servik/backups", backupDir, backupDir + "/" + domain} {
+	for _, d := range []string{"/var/lib/serfex", "/var/lib/serfex/backups", backupDir, backupDir + "/" + domain} {
 		mode := os.FileMode(0o700)
-		if d == "/var/lib/servik" {
+		if d == "/var/lib/serfex" {
 			mode = 0o755
 		}
 		if err := t.RootDir(d, mode, 0, 0); err != nil {
@@ -477,7 +477,7 @@ func writeTar(out, dir string, files []string) error {
 }
 
 // extractTar unpacks the members of a backup into dir. Only plain files
-// with the names Servik writes are taken.
+// with the names Serfex writes are taken.
 func extractTar(file, dir string) (Manifest, error) {
 	var man Manifest
 	f, err := os.Open(file)
@@ -540,7 +540,7 @@ func (m *Manager) Restore(ctx context.Context, spec RestoreSpec) (res RestoreRes
 		}
 	}
 	if contains(spec.Parts, "code") && spec.Path != CurrentPath {
-		return RestoreResult{}, invalid("code can only be restored for applications Servik deploys")
+		return RestoreResult{}, invalid("code can only be restored for applications Serfex deploys")
 	}
 	if !m.exists(backupFile(spec.Domain, spec.ID)) {
 		return RestoreResult{}, invalid("backup %s is no longer on the server", spec.ID)
@@ -661,7 +661,7 @@ func (m *Manager) restoreCode(ctx context.Context, a App, man Manifest, id, arch
 // restoreStorage unpacks storage next to the live one and swaps them.
 func (m *Manager) restoreStorage(ctx context.Context, a App, archive string) error {
 	live := a.storagePath()
-	next, old := live+".servik-restore", live+".servik-old"
+	next, old := live+".serfex-restore", live+".serfex-old"
 	for _, p := range []string{next, old} {
 		if m.exists(p) {
 			if _, err := m.userRun(ctx, a.Target, "/", "rm", "-rf", "--one-file-system", p); err != nil {
@@ -715,7 +715,7 @@ func (m *Manager) restoreDatabase(ctx context.Context, a App, tmp string, log io
 		return fmt.Errorf("the database dump is damaged: %w", err)
 	}
 	if db.Driver == "sqlite" {
-		next := db.Database + ".servik-restore"
+		next := db.Database + ".serfex-restore"
 		c := m.cmd(a.Target, "/", nil, "dd", "of="+next, "status=none")
 		c.Input = gz
 		if _, err := m.h.Run(ctx, c); err != nil {

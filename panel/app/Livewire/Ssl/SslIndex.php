@@ -20,7 +20,7 @@ use Livewire\WithPagination;
  * certificate.
  */
 #[Layout('components.layouts.app')]
-#[Title('SSL Sertifikaları · Servik')]
+#[Title('SSL Sertifikaları · Serfex')]
 #[ForCustomers]
 class SslIndex extends Component
 {

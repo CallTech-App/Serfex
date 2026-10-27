@@ -20,12 +20,12 @@ import (
 
 const (
 	nginxConf   = "/etc/nginx/nginx.conf"
-	mysqlTuning = "/etc/mysql/mysql.conf.d/zz-servik-tuning.cnf"
-	mariaTuning = "/etc/mysql/mariadb.conf.d/91-servik-tuning.cnf"
+	mysqlTuning = "/etc/mysql/mysql.conf.d/zz-serfex-tuning.cnf"
+	mariaTuning = "/etc/mysql/mariadb.conf.d/91-serfex-tuning.cnf"
 	postfixMain = "/etc/postfix/main.cf"
-	pdnsConf    = "/etc/powerdns/pdns-servik.conf"
-	// apacheEnabled is Servik's Apache configuration switched on.
-	apacheEnabled = "/etc/apache2/conf-enabled/servik.conf"
+	pdnsConf    = "/etc/powerdns/pdns-serfex.conf"
+	// apacheEnabled is Serfex's Apache configuration switched on.
+	apacheEnabled = "/etc/apache2/conf-enabled/serfex.conf"
 )
 
 // SettingsSpec names a service whose settings are read or changed; for a
@@ -409,11 +409,11 @@ func (m *Manager) applyPowerDNS(ctx context.Context, t *txn.Tx, p tuning.PowerDN
 	if err := t.WriteFileMode(pdnsConf, tuning.SetPowerDNS(conf, p), 0o640, 0, gid); err != nil {
 		return err
 	}
-	if err := m.test(ctx, "pdns_server", "--config-name=servik", "--config=check"); err != nil {
+	if err := m.test(ctx, "pdns_server", "--config-name=serfex", "--config=check"); err != nil {
 		return err
 	}
 	// PowerDNS cannot reload its settings; a restart takes a moment.
-	if out, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"restart", "pdns@servik.service"}}); err != nil {
+	if out, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"restart", "pdns@serfex.service"}}); err != nil {
 		return fmt.Errorf("PowerDNS did not start with the new settings: %s", tail(out, err))
 	}
 	return nil

@@ -24,7 +24,7 @@ use function Livewire\wrap;
  * Panel pages already tell the person what they did in a toast ("DNS
  * kaydı silindi."), with Undo when it can be undone. Every toast a
  * Livewire call sends becomes an entry, so new pages are logged without
- * extra code; the API, Servik AI's automatic actions, sign-ins and the
+ * extra code; the API, Serfex AI's automatic actions, sign-ins and the
  * few plain HTTP actions record themselves.
  *
  * Undo from the log opens the page the action was taken on and calls the
@@ -40,7 +40,7 @@ final class AuditLog
         'Sites' => 'Siteler', 'Dns' => 'Alan Adları ve DNS', 'Mail' => 'E-posta', 'Databases' => 'Veritabanları',
         'Ssl' => 'SSL Sertifikaları', 'Laravel' => 'Laravel', 'Customers' => 'Müşteriler ve Paketler', 'Backups' => 'Yedekler',
         'Security' => 'Güvenlik', 'Services' => 'Hizmetler', 'Components' => 'Yazılım Yönetimi', 'Monitor' => 'Canlı İzleme',
-        'Ai' => 'Servik AI', 'Settings' => 'Araçlar ve Ayarlar', 'Account' => 'Hesap güvenliği',
+        'Ai' => 'Serfex AI', 'Settings' => 'Araçlar ve Ayarlar', 'Account' => 'Hesap güvenliği',
     ];
 
     /**

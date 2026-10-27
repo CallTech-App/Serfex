@@ -8,7 +8,7 @@ use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 
 /**
- * The server's SSH settings Servik manages: whether root may log in (and
+ * The server's SSH settings Serfex manages: whether root may log in (and
  * how) and whether passwords are accepted at all. SFTP accounts keep
  * their passwords either way. The agent refuses to turn passwords off
  * while no administrator account that may log in has an SSH key.
@@ -54,7 +54,7 @@ class Ssh
      */
     public function apply(string $rootLogin, bool $passwordAuth): array
     {
-        return (array) $this->agent->call('ssh.apply', ['root_login' => $rootLogin, 'password_auth' => $passwordAuth], config('servik.agent.job_timeout'));
+        return (array) $this->agent->call('ssh.apply', ['root_login' => $rootLogin, 'password_auth' => $passwordAuth], config('serfex.agent.job_timeout'));
     }
 
     public static function message(AgentException $e): string

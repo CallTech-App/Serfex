@@ -194,7 +194,7 @@ class LaravelShow extends Component
             'install' => $install,
             'component' => $this->component($this->section),
             'running' => $app->deployments()->whereIn('status', ['queued', 'running'])->first(),
-        ])->title($app->site->domain.' · Laravel · Servik');
+        ])->title($app->site->domain.' · Laravel · Serfex');
     }
 
     protected function app(): ?LaravelApp

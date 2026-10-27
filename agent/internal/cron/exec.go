@@ -54,7 +54,7 @@ type marker struct {
 // SIGKILL.
 var killGrace = 10 * time.Second
 
-// Exec is the command "servik-agent cron-exec [--manual] <domain> <id>".
+// Exec is the command "serfex-agent cron-exec [--manual] <domain> <id>".
 // The cron daemon starts it as the site's user for scheduled runs, the
 // agent (with runuser) for manual ones. It returns the exit status.
 func Exec(args []string) int {
@@ -68,7 +68,7 @@ func execute(h host.Host, uid int, args []string, stderr io.Writer) int {
 		manual, args = true, args[1:]
 	}
 	if len(args) != 2 {
-		fmt.Fprintln(stderr, "usage: servik-agent cron-exec [--manual] DOMAIN ID")
+		fmt.Fprintln(stderr, "usage: serfex-agent cron-exec [--manual] DOMAIN ID")
 		return 2
 	}
 	domain := args[0]
@@ -123,7 +123,7 @@ func execute(h host.Host, uid int, args []string, stderr io.Writer) int {
 		trigger: TriggerSchedule,
 		env: []string{
 			"HOME=" + h.Path(home), "USER=" + st.User, "LOGNAME=" + st.User, "SHELL=/bin/sh",
-			"LANG=C.UTF-8", "PATH=" + path, "SERVIK_SITE=" + domain,
+			"LANG=C.UTF-8", "PATH=" + path, "SERFEX_SITE=" + domain,
 		},
 		now: time.Now,
 	}

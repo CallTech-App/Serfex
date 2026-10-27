@@ -161,7 +161,7 @@ class FtpAccounts
         if ($password !== null) {
             $params['password'] = $password;
         }
-        $this->agent->call('ftp.account.apply', $params, config('servik.agent.job_timeout'));
+        $this->agent->call('ftp.account.apply', $params, config('serfex.agent.job_timeout'));
     }
 
     /**
@@ -197,7 +197,7 @@ class FtpAccounts
      */
     public function purge(FtpAccount $account): void
     {
-        $this->agent->call('ftp.account.delete', ['name' => $account->name], config('servik.agent.job_timeout'));
+        $this->agent->call('ftp.account.delete', ['name' => $account->name], config('serfex.agent.job_timeout'));
         $account->forceDelete();
     }
 
@@ -228,7 +228,7 @@ class FtpAccounts
      */
     public function port(): int
     {
-        return (int) Cache::remember('servik.ftp.port', 600, function () {
+        return (int) Cache::remember('serfex.ftp.port', 600, function () {
             try {
                 return (int) ($this->agent->call('ftp.status')['port'] ?? 22);
             } catch (AgentException) {

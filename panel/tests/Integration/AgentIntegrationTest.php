@@ -8,8 +8,8 @@ use App\Services\Mail\MailPassword;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Talks to a real servik-agent binary in dry-run mode, so site changes land
- * in a scratch directory instead of the machine. Set SERVIK_AGENT_BIN to its
+ * Talks to a real serfex-agent binary in dry-run mode, so site changes land
+ * in a scratch directory instead of the machine. Set SERFEX_AGENT_BIN to its
  * path (CI builds it from ../agent); the test is skipped otherwise.
  */
 class AgentIntegrationTest extends TestCase
@@ -23,12 +23,12 @@ class AgentIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        $bin = getenv('SERVIK_AGENT_BIN');
+        $bin = getenv('SERFEX_AGENT_BIN');
         if (! $bin || ! is_executable($bin)) {
-            $this->markTestSkipped('SERVIK_AGENT_BIN is not set.');
+            $this->markTestSkipped('SERFEX_AGENT_BIN is not set.');
         }
 
-        $dir = sys_get_temp_dir().'/servik-agent-'.getmypid().'-'.bin2hex(random_bytes(4));
+        $dir = sys_get_temp_dir().'/serfex-agent-'.getmypid().'-'.bin2hex(random_bytes(4));
         $this->socket = $dir.'/agent.sock';
         $this->root = $dir.'/root';
         $this->process = proc_open(
@@ -108,13 +108,13 @@ class AgentIntegrationTest extends TestCase
         $issued = $client->call('ssl.issue', ['name' => 'kahveatolyesi.com.tr', 'names' => ['kahveatolyesi.com.tr', 'www.kahveatolyesi.com.tr'], 'challenge' => 'http-01'], 30);
         $this->assertSame(['kahveatolyesi.com.tr', 'www.kahveatolyesi.com.tr'], $issued['names']);
         $this->assertGreaterThan(time(), strtotime($issued['not_after']));
-        $this->assertFileExists($this->root.'/etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem');
-        $this->assertSame('0600', substr(sprintf('%o', fileperms($this->root.'/etc/servik/ssl/certs/kahveatolyesi.com.tr/privkey.pem')), -4));
+        $this->assertFileExists($this->root.'/etc/serfex/ssl/certs/kahveatolyesi.com.tr/fullchain.pem');
+        $this->assertSame('0600', substr(sprintf('%o', fileperms($this->root.'/etc/serfex/ssl/certs/kahveatolyesi.com.tr/privkey.pem')), -4));
 
         $client->call('site.apply', [...$spec, 'tls' => ['certificate' => 'kahveatolyesi.com.tr', 'redirect' => true]], 30);
         $vhost = file_get_contents($this->root.'/etc/nginx/sites-available/kahveatolyesi.com.tr.conf');
         $this->assertStringContainsString('listen 443 ssl', $vhost);
-        $this->assertStringContainsString('ssl_certificate /etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem;', $vhost);
+        $this->assertStringContainsString('ssl_certificate /etc/serfex/ssl/certs/kahveatolyesi.com.tr/fullchain.pem;', $vhost);
         $this->assertStringContainsString('return 301 https://$host$request_uri;', $vhost);
         $this->assertStringContainsString('/.well-known/acme-challenge/', $vhost);
 
@@ -128,7 +128,7 @@ class AgentIntegrationTest extends TestCase
 
         $client->call('site.apply', $spec, 30);
         $this->assertTrue($client->call('ssl.delete', ['name' => 'kahveatolyesi.com.tr'])['deleted']);
-        $this->assertFileDoesNotExist($this->root.'/etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem');
+        $this->assertFileDoesNotExist($this->root.'/etc/serfex/ssl/certs/kahveatolyesi.com.tr/fullchain.pem');
     }
 
     public function test_invalid_site_is_rejected_with_a_reason(): void
@@ -159,7 +159,7 @@ class AgentIntegrationTest extends TestCase
         $setup = $client->call('dns.setup', [], 30);
         $this->assertTrue($setup['installed']);
         $this->assertSame(['installed' => true, 'configured' => true, 'running' => true, 'version' => 'simulated'], $client->call('dns.status'));
-        $this->assertStringContainsString('launch=lmdb', file_get_contents($this->root.'/etc/powerdns/pdns-servik.conf'));
+        $this->assertStringContainsString('launch=lmdb', file_get_contents($this->root.'/etc/powerdns/pdns-serfex.conf'));
         $this->assertSame(['ipv4' => ['203.0.113.10'], 'ipv6' => ['2001:db8::10']], $client->call('system.addresses'));
 
         $spec = [
@@ -202,9 +202,9 @@ class AgentIntegrationTest extends TestCase
             $this->assertSame(-32002, $e->getCode());
         }
 
-        $setup = $client->call('mail.setup', ['hostname' => 'mail.servik.net.tr', 'certificate' => '', 'hourly_limit' => 500, 'webmail' => true], 60);
+        $setup = $client->call('mail.setup', ['hostname' => 'mail.serfex.net.tr', 'certificate' => '', 'hourly_limit' => 500, 'webmail' => true], 60);
         $this->assertTrue($setup['installed']);
-        $this->assertSame('https://mail.servik.net.tr/', $setup['webmail_url']);
+        $this->assertSame('https://mail.serfex.net.tr/', $setup['webmail_url']);
         $status = $client->call('mail.status');
         $this->assertTrue($status['configured']);
 
@@ -220,14 +220,14 @@ class AgentIntegrationTest extends TestCase
             'catch_all' => ['siparis@kahveatolyesi.com.tr'],
         ];
         $applied = $client->call('mail.domain.apply', $spec, 30);
-        $this->assertSame('servik._domainkey', $applied['dkim']['name']);
+        $this->assertSame('serfex._domainkey', $applied['dkim']['name']);
         $this->assertStringStartsWith('v=DKIM1; k=rsa; p=', $applied['dkim']['record']);
         $this->assertFalse($client->call('mail.domain.apply', $spec, 30)['changed'], 'apply must be idempotent');
-        $this->assertStringContainsString('siparis@kahveatolyesi.com.tr:{SHA512-CRYPT}', file_get_contents($this->root.'/etc/dovecot/servik/users'));
+        $this->assertStringContainsString('siparis@kahveatolyesi.com.tr:{SHA512-CRYPT}', file_get_contents($this->root.'/etc/dovecot/serfex/users'));
 
         $this->assertSame(['siparis' => 0], $client->call('mail.usage', ['domain' => 'kahveatolyesi.com.tr'])['mailboxes']);
         $login = $client->call('mail.webmail.login', ['address' => 'siparis@kahveatolyesi.com.tr']);
-        $this->assertStringStartsWith('https://mail.servik.net.tr/?_task=login&_action=servik-sso&_token=', $login['url']);
+        $this->assertStringStartsWith('https://mail.serfex.net.tr/?_task=login&_action=serfex-sso&_token=', $login['url']);
 
         try {
             $client->call('mail.domain.apply', [...$spec, 'mailboxes' => [[...$spec['mailboxes'][0], 'password_hash' => 'plain']]], 30);
@@ -276,15 +276,15 @@ class AgentIntegrationTest extends TestCase
         $client->call('laravel.env.set', $app + ['content' => $env['env']."APP_NAME='Hızlı Kargo'\n"], 30);
         $this->assertStringContainsString("APP_NAME='Hızlı Kargo'", $client->call('laravel.env.get', $app)['env']);
 
-        $client->call('laravel.maintenance', $app + ['down' => true, 'secret' => 'servik-bypass', 'retry' => 60], 30);
-        $this->assertSame('servik-bypass', $client->call('laravel.status', $app)['maintenance']['secret']);
+        $client->call('laravel.maintenance', $app + ['down' => true, 'secret' => 'serfex-bypass', 'retry' => 60], 30);
+        $this->assertSame('serfex-bypass', $client->call('laravel.status', $app)['maintenance']['secret']);
         $client->call('laravel.maintenance', $app + ['down' => false], 30);
         $this->assertNull($client->call('laravel.status', $app)['maintenance']);
 
         $client->call('laravel.queue.apply', $app + ['workers' => [['name' => 'default', 'connection' => '', 'queue' => 'default', 'processes' => 2, 'timeout' => 60, 'tries' => 3, 'backoff' => 0, 'sleep' => 3, 'max_jobs' => 0, 'max_time' => 3600, 'memory' => 128]]], 30);
-        $this->assertFileExists($this->root.'/etc/systemd/system/servik-queue-api.hizlikargo.app_default@.service');
+        $this->assertFileExists($this->root.'/etc/systemd/system/serfex-queue-api.hizlikargo.app_default@.service');
         $client->call('laravel.schedule.apply', $app + ['enabled' => true], 30);
-        $this->assertFileExists($this->root.'/etc/systemd/system/servik-schedule-api.hizlikargo.app.timer');
+        $this->assertFileExists($this->root.'/etc/systemd/system/serfex-schedule-api.hizlikargo.app.timer');
 
         try {
             $client->call('laravel.run', $app + ['run' => 'cmd-1', 'tool' => 'rm', 'args' => ['-rf', '/']], 30);
@@ -294,8 +294,8 @@ class AgentIntegrationTest extends TestCase
         }
 
         $client->call('laravel.remove', $target + ['remove_files' => true], 30);
-        $this->assertFileDoesNotExist($this->root.'/etc/systemd/system/servik-queue-api.hizlikargo.app_default@.service');
-        $this->assertFileDoesNotExist($this->root.'/etc/systemd/system/servik-schedule-api.hizlikargo.app.timer');
+        $this->assertFileDoesNotExist($this->root.'/etc/systemd/system/serfex-queue-api.hizlikargo.app_default@.service');
+        $this->assertFileDoesNotExist($this->root.'/etc/systemd/system/serfex-schedule-api.hizlikargo.app.timer');
         $this->assertDirectoryDoesNotExist($this->root.'/home/hizlikargo/web/api.hizlikargo.app/laravel');
         $client->call('site.delete', ['domain' => $target['domain'], 'user' => $target['user'], 'remove_files' => true, 'remove_user' => true], 30);
     }
@@ -411,7 +411,7 @@ class AgentIntegrationTest extends TestCase
 
         $ftp = $client->call('ftp.account.apply', $site + ['name' => 'kahve_deploy', 'dir' => 'public_html', 'password' => 'Uzun-Parola-2026', 'locked' => false], 60);
         $this->assertSame('/public_html', $ftp['folder']);
-        $this->assertFileExists($this->root.'/etc/ssh/sshd_config.d/50-servik-sftp.conf');
+        $this->assertFileExists($this->root.'/etc/ssh/sshd_config.d/50-serfex-sftp.conf');
         $this->assertSame(['kahve_deploy'], array_column($client->call('ftp.account.list', [], 30), 'name'));
         $client->call('ftp.account.delete', ['name' => 'kahve_deploy'], 60);
         $this->assertSame([], $client->call('ftp.account.list', [], 30));

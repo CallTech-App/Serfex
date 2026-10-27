@@ -42,7 +42,7 @@
         @unless ($compact)
             <span class="grid size-7 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><x-icon name="sparkles" class="size-3.5 animate-pulse" /></span>
         @endunless
-        <span class="flex items-center gap-2"><x-icon name="loader-circle" class="size-3.5 animate-spin" />{{ __('Servik AI sunucuya bakıyor…') }}</span>
+        <span class="flex items-center gap-2"><x-icon name="loader-circle" class="size-3.5 animate-spin" />{{ __('Serfex AI sunucuya bakıyor…') }}</span>
     </div>
 @elseif ($conversation?->status === 'failed')
     <div class="flex items-start gap-3 rounded-lg border border-crit/30 bg-crit-soft/60 px-4 py-3 text-[13px]">

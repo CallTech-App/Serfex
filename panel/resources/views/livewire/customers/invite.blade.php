@@ -7,7 +7,7 @@
                 <input readonly value="{{ $link }}" aria-label="{{ __('Bağlantı') }}" class="h-9 min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 font-mono text-[13px]">
                 <button type="button" @click="navigator.clipboard.writeText(@js($link)); copied = true" class="h-9 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2"><span x-show="! copied">{{ __('Kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span></button>
             </div>
-            <p class="text-2xs text-muted">{{ __('Bağlantıyı müşteriye iletin; açınca şifresini belirler ve paneline girer. :days gün geçerlidir. Servik bu bağlantıyı e-postayla göndermez.', ['days' => \App\Http\Controllers\Auth\InvitationController::DAYS]) }}</p>
+            <p class="text-2xs text-muted">{{ __('Bağlantıyı müşteriye iletin; açınca şifresini belirler ve paneline girer. :days gün geçerlidir. Serfex bu bağlantıyı e-postayla göndermez.', ['days' => \App\Http\Controllers\Auth\InvitationController::DAYS]) }}</p>
         </div>
         <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
             @if ($next ?? null)

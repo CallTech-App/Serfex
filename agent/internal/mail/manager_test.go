@@ -84,16 +84,16 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 		"debconf-set-selections",
 		"apt-get install -y -q --no-install-recommends postfix dovecot-core",
 		"useradd --system --user-group --no-create-home --home-dir /var/vmail",
-		"useradd --system --user-group --no-create-home --home-dir /var/lib/servik/webmail",
+		"useradd --system --user-group --no-create-home --home-dir /var/lib/serfex/webmail",
 		"postfix check", "doveconf -n", "rspamadm configtest",
-		"sievec /etc/dovecot/servik/sieve/spam.sieve",
-		"runuser -u servik-webmail -- sqlite3 /var/lib/servik/webmail/data/roundcube.db",
+		"sievec /etc/dovecot/serfex/sieve/spam.sieve",
+		"runuser -u serfex-webmail -- sqlite3 /var/lib/serfex/webmail/data/roundcube.db",
 		"apt-get install -y -q --no-install-recommends php8.3-fpm php8.3-cli php8.3-intl php8.3-mbstring php8.3-xml",
-		"runuser -u servik-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail /usr/bin/php8.3 /usr/share/roundcube/bin/updatedb.sh",
+		"runuser -u serfex-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/serfex/webmail /usr/bin/php8.3 /usr/share/roundcube/bin/updatedb.sh",
 		"php-fpm8.3 -t", "nginx -t",
 		"systemctl daemon-reload",
-		"systemctl enable redis-server@servik-mail rspamd dovecot postfix",
-		"systemctl restart redis-server@servik-mail", "systemctl restart postfix",
+		"systemctl enable redis-server@serfex-mail rspamd dovecot postfix",
+		"systemctl restart redis-server@serfex-mail", "systemctl restart postfix",
 		"systemctl reload php8.3-fpm", "systemctl reload nginx",
 	} {
 		if !sim.Ran(c) {
@@ -102,27 +102,27 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	}
 
 	// The package's own files are kept aside, not overwritten.
-	if _, err := os.Stat(sim.Path("/etc/postfix/master.cf.before-servik")); err != nil {
+	if _, err := os.Stat(sim.Path("/etc/postfix/master.cf.before-serfex")); err != nil {
 		t.Error("stock master.cf was not kept")
 	}
 	contains(t, "main.cf", read(t, sim, postfixMain),
-		"Managed by Servik", "myhostname = mail.example.net", "virtual_transport = lmtp:unix:private/dovecot-lmtp",
-		"smtpd_tls_chain_files = /etc/servik/mail/tls/privkey.pem, /etc/servik/mail/tls/fullchain.pem",
+		"Managed by Serfex", "myhostname = mail.example.net", "virtual_transport = lmtp:unix:private/dovecot-lmtp",
+		"smtpd_tls_chain_files = /etc/serfex/mail/tls/privkey.pem, /etc/serfex/mail/tls/fullchain.pem",
 		"smtpd_milters = inet:127.0.0.1:11332", "inet_protocols = ipv4")
 	contains(t, "master.cf", read(t, sim, postfixMaster), "submission inet", "submissions inet", "smtpd_tls_wrappermode=yes", "reject_sender_login_mismatch")
 	contains(t, "dovecot.conf", read(t, sim, dovecotConf), "ssl = required", "first_valid_uid = ", "auth_master_user_separator = *", "quota = count:User quota")
-	contains(t, "master users", read(t, sim, dovecotMasters), "servik-webmail:{SSHA512}", "allow_nets=127.0.0.1,::1")
+	contains(t, "master users", read(t, sim, dovecotMasters), "serfex-webmail:{SSHA512}", "allow_nets=127.0.0.1,::1")
 	contains(t, "ratelimit", read(t, sim, rspamdLocal+"/ratelimit.conf"), `rate = "500 / 1h"`)
-	contains(t, "redis", read(t, sim, redisConf), "port 0", "unixsocket /run/redis-servik-mail/redis-server.sock")
-	contains(t, "vhost", read(t, sim, mailVhost), "server_name mail.example.net ~^autoconfig", "listen 443 ssl http2", "fastcgi_pass unix:/run/php/servik-webmail.sock", "autodiscover")
-	contains(t, "roundcube", read(t, sim, webmailConfig+"/config.inc.php"), "'servik_sso'", "sqlite:////var/lib/servik/webmail/data/roundcube.db")
-	contains(t, "pool", read(t, sim, webmailPool("8.3")), "env[ROUNDCUBE_CONFIG_DIR] = /etc/servik/webmail", "user = servik-webmail")
-	contains(t, "gc job", read(t, sim, roundcubeJobDropIn("roundcube-gc")), "User=servik-webmail", "Environment=ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail", "ExecStart=\nExecStart=/usr/bin/php8.3 /usr/share/roundcube/bin/gc.sh")
+	contains(t, "redis", read(t, sim, redisConf), "port 0", "unixsocket /run/redis-serfex-mail/redis-server.sock")
+	contains(t, "vhost", read(t, sim, mailVhost), "server_name mail.example.net ~^autoconfig", "listen 443 ssl http2", "fastcgi_pass unix:/run/php/serfex-webmail.sock", "autodiscover")
+	contains(t, "roundcube", read(t, sim, webmailConfig+"/config.inc.php"), "'serfex_sso'", "sqlite:////var/lib/serfex/webmail/data/roundcube.db")
+	contains(t, "pool", read(t, sim, webmailPool("8.3")), "env[ROUNDCUBE_CONFIG_DIR] = /etc/serfex/webmail", "user = serfex-webmail")
+	contains(t, "gc job", read(t, sim, roundcubeJobDropIn("roundcube-gc")), "User=serfex-webmail", "Environment=ROUNDCUBE_CONFIG_DIR=/etc/serfex/webmail", "ExecStart=\nExecStart=/usr/bin/php8.3 /usr/share/roundcube/bin/gc.sh")
 	contains(t, "cleandb job", read(t, sim, roundcubeJobDropIn("roundcube-cleandb")), "ExecStart=/usr/bin/php8.3 /usr/share/roundcube/bin/cleandb.sh")
 	if names, err := certNames([]byte(read(t, sim, selfCert))); err != nil || names[0] != "mail.example.net" {
 		t.Fatalf("self-signed certificate names = %v, %v", names, err)
 	}
-	if target, err := os.Readlink(sim.Path(roundcubeRoot + "/plugins/servik_sso")); err != nil || target != webmailPlugin {
+	if target, err := os.Readlink(sim.Path(roundcubeRoot + "/plugins/serfex_sso")); err != nil || target != webmailPlugin {
 		t.Fatalf("plugin link = %q, %v", target, err)
 	}
 
@@ -158,7 +158,7 @@ func TestSetupChangesHostnameAndCertificate(t *testing.T) {
 	// The failed attempt left the previous configuration in place.
 	contains(t, "main.cf", read(t, sim, postfixMain), "myhostname = mail.example.net")
 
-	for _, f := range []string{"/etc/servik/ssl/certs/mail/fullchain.pem", "/etc/servik/ssl/certs/mail/privkey.pem"} {
+	for _, f := range []string{"/etc/serfex/ssl/certs/mail/fullchain.pem", "/etc/serfex/ssl/certs/mail/privkey.pem"} {
 		if err := os.MkdirAll(filepath.Dir(sim.Path(f)), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -169,8 +169,8 @@ func TestSetupChangesHostnameAndCertificate(t *testing.T) {
 	if _, err := m.Setup(ctx, SetupSpec{Hostname: "mx.example.net", Certificate: "mail"}); err != nil {
 		t.Fatal(err)
 	}
-	contains(t, "main.cf", read(t, sim, postfixMain), "myhostname = mx.example.net", "/etc/servik/ssl/certs/mail/fullchain.pem")
-	contains(t, "dovecot.conf", read(t, sim, dovecotConf), "ssl_cert = </etc/servik/ssl/certs/mail/fullchain.pem")
+	contains(t, "main.cf", read(t, sim, postfixMain), "myhostname = mx.example.net", "/etc/serfex/ssl/certs/mail/fullchain.pem")
+	contains(t, "dovecot.conf", read(t, sim, dovecotConf), "ssl_cert = </etc/serfex/ssl/certs/mail/fullchain.pem")
 	contains(t, "ratelimit", read(t, sim, rspamdLocal+"/ratelimit.conf"), "No limit is set")
 	if !m.UsesCertificate("mail") || m.UsesCertificate("example.com") {
 		t.Fatal("UsesCertificate does not follow the setup")
@@ -183,7 +183,7 @@ func TestSetupChangesHostnameAndCertificate(t *testing.T) {
 	if _, err := os.Stat(sim.Path(webmailPool("8.3"))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("webmail pool still exists")
 	}
-	if _, err := os.Lstat(sim.Path(roundcubeRoot + "/plugins/servik_sso")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Lstat(sim.Path(roundcubeRoot + "/plugins/serfex_sso")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("plugin link still exists")
 	}
 	if _, err := os.Stat(sim.Path(roundcubeJobDropIn("roundcube-gc"))); !errors.Is(err, os.ErrNotExist) {
@@ -227,7 +227,7 @@ func TestWebmailStaysOnPHP84(t *testing.T) {
 	setUp(t, m)
 
 	for _, c := range []string{
-		"runuser -u servik-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/servik/webmail /usr/bin/php8.4 /usr/share/roundcube/bin/updatedb.sh",
+		"runuser -u serfex-webmail -- env ROUNDCUBE_CONFIG_DIR=/etc/serfex/webmail /usr/bin/php8.4 /usr/share/roundcube/bin/updatedb.sh",
 		"php-fpm8.4 -t", "systemctl daemon-reload",
 	} {
 		if !sim.Ran(c) {
@@ -239,7 +239,7 @@ func TestWebmailStaysOnPHP84(t *testing.T) {
 			t.Errorf("ran %q", s)
 		}
 	}
-	contains(t, "pool", read(t, sim, webmailPool("8.4")), "user = servik-webmail")
+	contains(t, "pool", read(t, sim, webmailPool("8.4")), "user = serfex-webmail")
 	if _, err := os.Stat(sim.Path(webmailPool("8.5"))); !errors.Is(err, os.ErrNotExist) {
 		t.Error("the PHP 8.5 pool was left")
 	}
@@ -285,8 +285,8 @@ func TestFailedWebmailSetupLeavesNothing(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 	for _, f := range []string{
-		webmailDir, webmailConfig, webmailPool("8.4"), roundcubeRoot + "/plugins/servik_sso",
-		roundcubeJobDropIn("roundcube-gc"), roundcubeJobDropIn("roundcube-cleandb"), serverState, mailVhost, postfixMain + ".before-servik",
+		webmailDir, webmailConfig, webmailPool("8.4"), roundcubeRoot + "/plugins/serfex_sso",
+		roundcubeJobDropIn("roundcube-gc"), roundcubeJobDropIn("roundcube-cleandb"), serverState, mailVhost, postfixMain + ".before-serfex",
 	} {
 		if _, err := os.Lstat(sim.Path(f)); !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("%s was left behind", f)
@@ -314,7 +314,7 @@ func TestApplyDomainWritesMaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Changed || res.DKIM.Name != "servik._domainkey" || !strings.HasPrefix(res.DKIM.Record, "v=DKIM1; k=rsa; p=MIIBIjAN") {
+	if !res.Changed || res.DKIM.Name != "serfex._domainkey" || !strings.HasPrefix(res.DKIM.Record, "v=DKIM1; k=rsa; p=MIIBIjAN") {
 		t.Fatalf("result = %+v", res)
 	}
 	contains(t, "domains", read(t, sim, postfixMaps+"/domains"), "example.com OK")
@@ -326,9 +326,9 @@ func TestApplyDomainWritesMaps(t *testing.T) {
 		"@example.com info@example.com\n")
 	contains(t, "senders", read(t, sim, postfixMaps+"/senders"), "satis@example.com info@example.com, ali@example.com\n")
 	contains(t, "users", read(t, sim, dovecotUsers),
-		"info@example.com:"+hash+"::::::userdb_quota_rule=*:storage=1024M userdb_sieve_before=/etc/dovecot/servik/sieve/spam.sieve\n",
-		"ali@example.com:"+hash+"::::::userdb_sieve_before=/etc/dovecot/servik/sieve/spam.sieve\n")
-	contains(t, "dkim_signing", read(t, sim, rspamdLocal+"/dkim_signing.conf"), `"example.com" {`, `path = "/etc/servik/mail/dkim/example.com.key";`)
+		"info@example.com:"+hash+"::::::userdb_quota_rule=*:storage=1024M userdb_sieve_before=/etc/dovecot/serfex/sieve/spam.sieve\n",
+		"ali@example.com:"+hash+"::::::userdb_sieve_before=/etc/dovecot/serfex/sieve/spam.sieve\n")
+	contains(t, "dkim_signing", read(t, sim, rspamdLocal+"/dkim_signing.conf"), `"example.com" {`, `path = "/etc/serfex/mail/dkim/example.com.key";`)
 	if fi, err := os.Stat(sim.Path(dkimKey("example.com"))); err != nil || fi.Mode().Perm() != 0o640 {
 		t.Fatalf("DKIM key: %v %v", fi, err)
 	}
@@ -355,7 +355,7 @@ func TestSuspendedDomain(t *testing.T) {
 	m, sim := newTest(t)
 	setUp(t, m)
 	ctx := context.Background()
-	contains(t, "main.cf", read(t, sim, "/etc/postfix/main.cf"), "reject_unknown_recipient_domain, check_recipient_access texthash:/etc/postfix/servik/suspended, permit_mynetworks,")
+	contains(t, "main.cf", read(t, sim, "/etc/postfix/main.cf"), "reject_unknown_recipient_domain, check_recipient_access texthash:/etc/postfix/serfex/suspended, permit_mynetworks,")
 	if got := read(t, sim, postfixMaps+"/suspended"); strings.Contains(got, "450") {
 		t.Fatalf("suspended map before any domain:\n%s", got)
 	}
@@ -528,7 +528,7 @@ func TestWebmailLogin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, ok := strings.CutPrefix(login.URL, "https://mail.example.net/?_task=login&_action=servik-sso&_token=")
+	token, ok := strings.CutPrefix(login.URL, "https://mail.example.net/?_task=login&_action=serfex-sso&_token=")
 	if !ok || len(token) != 64 {
 		t.Fatalf("url = %s", login.URL)
 	}

@@ -37,8 +37,8 @@ class MailJobsTest extends TestCase
         parent::setUp();
         Queue::fake();
         Setting::put('dns.ipv4', '203.0.113.10');
-        Setting::put('mail.hostname', 'mail.servik.net.tr');
-        config(['servik.ssl.check_dns' => false]);
+        Setting::put('mail.hostname', 'mail.serfex.net.tr');
+        config(['serfex.ssl.check_dns' => false]);
     }
 
     public function test_sync_sends_the_whole_domain_stores_dkim_and_writes_dns(): void
@@ -70,7 +70,7 @@ class MailJobsTest extends TestCase
             $this->assertSame(['ali@kahve.com.tr'], $spec['catch_all']);
 
             return true;
-        }), 120.0)->andReturn(['domain' => 'kahve.com.tr', 'changed' => true, 'dkim' => ['selector' => 'servik', 'name' => 'servik._domainkey', 'record' => self::DKIM]]);
+        }), 120.0)->andReturn(['domain' => 'kahve.com.tr', 'changed' => true, 'dkim' => ['selector' => 'serfex', 'name' => 'serfex._domainkey', 'record' => self::DKIM]]);
 
         (new SyncMailDomain($domain))->handle($agent, app(MailDns::class));
 
@@ -78,7 +78,7 @@ class MailJobsTest extends TestCase
         $this->assertSame(MailDomainStatus::Active, $domain->status);
         $this->assertSame(self::DKIM, $domain->dkim_record);
         $this->assertNotNull($domain->synced_at);
-        $this->assertTrue($zone->records()->where('name', 'servik._domainkey')->where('content', self::DKIM)->exists());
+        $this->assertTrue($zone->records()->where('name', 'serfex._domainkey')->where('content', self::DKIM)->exists());
         $this->assertTrue($zone->records()->where('type', 'MX')->exists());
     }
 
@@ -100,7 +100,7 @@ class MailJobsTest extends TestCase
         $zone = DnsZone::factory()->withRecords()->create(['name' => 'kahve.com.tr']);
         $domain = MailDomain::factory()->create(['name' => 'kahve.com.tr', 'status' => MailDomainStatus::Syncing, 'manage_dns' => false]);
         $agent = Mockery::mock(AgentClient::class);
-        $agent->shouldReceive('call')->andReturn(['dkim' => ['name' => 'servik._domainkey', 'record' => self::DKIM]]);
+        $agent->shouldReceive('call')->andReturn(['dkim' => ['name' => 'serfex._domainkey', 'record' => self::DKIM]]);
 
         (new SyncMailDomain($domain))->handle($agent, app(MailDns::class));
 
@@ -159,28 +159,28 @@ class MailJobsTest extends TestCase
     {
         Setting::put('mail.hourly_limit', 200);
         $failed = MailDomain::factory()->create(['status' => MailDomainStatus::Failed, 'last_error' => 'kurulmadı']);
-        $zone = DnsZone::factory()->withRecords()->create(['name' => 'servik.net.tr']);
+        $zone = DnsZone::factory()->withRecords()->create(['name' => 'serfex.net.tr']);
 
         $agent = Mockery::mock(AgentClient::class);
         $agent->shouldReceive('call')->once()->with('mail.setup', [
-            'hostname' => 'mail.servik.net.tr',
+            'hostname' => 'mail.serfex.net.tr',
             'certificate' => '',
             'hourly_limit' => 200,
             'webmail' => true,
-        ], 840)->andReturn(['installed' => true, 'changed' => true, 'hostname' => 'mail.servik.net.tr', 'webmail_url' => 'https://mail.servik.net.tr/']);
+        ], 840)->andReturn(['installed' => true, 'changed' => true, 'hostname' => 'mail.serfex.net.tr', 'webmail_url' => 'https://mail.serfex.net.tr/']);
 
         (new SetupMailServer)->handle($agent, app(MailSettings::class), app(Certificates::class), app(MailServerDns::class));
 
         $settings = app(MailSettings::class);
         $this->assertSame('ready', $settings->server()['state']);
         $this->assertTrue($settings->isSetUp());
-        $this->assertSame('https://mail.servik.net.tr/', $settings->webmailUrl());
+        $this->assertSame('https://mail.serfex.net.tr/', $settings->webmailUrl());
         $this->assertSame(MailDomainStatus::Syncing, $failed->fresh()->status);
         Queue::assertPushed(SyncMailDomain::class, fn ($job) => $job->domain->is($failed));
         // The server's name points here in its zone.
         $this->assertTrue($zone->records()->where('name', 'mail')->where('type', 'A')->where('content', '203.0.113.10')->exists());
         $certificate = Certificate::where('kind', 'mail')->first();
-        $this->assertSame(['mail.servik.net.tr'], $certificate->domains);
+        $this->assertSame(['mail.serfex.net.tr'], $certificate->domains);
         $this->assertSame(CertificateStatus::Issuing, $certificate->status);
         Queue::assertPushed(IssueMailCertificate::class);
     }
@@ -201,10 +201,10 @@ class MailJobsTest extends TestCase
     public function test_certificate_switches_the_mail_server_to_it(): void
     {
         app(MailSettings::class)->saveServer(['state' => 'ready', 'certificate' => '', 'setup_at' => now()->toIso8601String()]);
-        $certificate = Certificate::create(['kind' => 'mail', 'name' => 'mail', 'source' => 'letsencrypt', 'domains' => ['mail.servik.net.tr'], 'challenge' => 'http-01', 'status' => CertificateStatus::Issuing]);
+        $certificate = Certificate::create(['kind' => 'mail', 'name' => 'mail', 'source' => 'letsencrypt', 'domains' => ['mail.serfex.net.tr'], 'challenge' => 'http-01', 'status' => CertificateStatus::Issuing]);
         $agent = Mockery::mock(AgentClient::class);
-        $agent->shouldReceive('call')->once()->with('ssl.issue', Mockery::on(fn ($p) => $p['name'] === 'mail' && $p['names'] === ['mail.servik.net.tr'] && $p['challenge'] === 'http-01'), 300.0)
-            ->andReturn(['names' => ['mail.servik.net.tr'], 'issuer' => "Let's Encrypt R11", 'not_before' => now()->toIso8601String(), 'not_after' => now()->addDays(90)->toIso8601String()]);
+        $agent->shouldReceive('call')->once()->with('ssl.issue', Mockery::on(fn ($p) => $p['name'] === 'mail' && $p['names'] === ['mail.serfex.net.tr'] && $p['challenge'] === 'http-01'), 300.0)
+            ->andReturn(['names' => ['mail.serfex.net.tr'], 'issuer' => "Let's Encrypt R11", 'not_before' => now()->toIso8601String(), 'not_after' => now()->addDays(90)->toIso8601String()]);
 
         (new IssueMailCertificate($certificate))->handle($agent, app(DnsCheck::class), app(MailSettings::class));
 
@@ -215,10 +215,10 @@ class MailJobsTest extends TestCase
 
     public function test_certificate_waits_for_dns(): void
     {
-        config(['servik.ssl.check_dns' => true]);
+        config(['serfex.ssl.check_dns' => true]);
         $check = Mockery::mock(DnsCheck::class);
         $check->shouldReceive('check')->andReturn(['ok' => false, 'found' => ['198.51.100.7']]);
-        $certificate = Certificate::create(['kind' => 'mail', 'name' => 'mail', 'source' => 'letsencrypt', 'domains' => ['mail.servik.net.tr'], 'status' => CertificateStatus::Issuing]);
+        $certificate = Certificate::create(['kind' => 'mail', 'name' => 'mail', 'source' => 'letsencrypt', 'domains' => ['mail.serfex.net.tr'], 'status' => CertificateStatus::Issuing]);
         $agent = Mockery::mock(AgentClient::class);
         $agent->shouldNotReceive('call');
 
@@ -231,10 +231,10 @@ class MailJobsTest extends TestCase
 
     public function test_renewal_command_renews_the_mail_certificate(): void
     {
-        $certificate = Certificate::create(['kind' => 'mail', 'name' => 'mail', 'source' => 'letsencrypt', 'domains' => ['mail.servik.net.tr'],
+        $certificate = Certificate::create(['kind' => 'mail', 'name' => 'mail', 'source' => 'letsencrypt', 'domains' => ['mail.serfex.net.tr'],
             'status' => CertificateStatus::Active, 'not_after' => now()->addDays(10), 'auto_renew' => true]);
 
-        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        $this->artisan('serfex:ssl-renew')->assertSuccessful();
 
         $this->assertSame(CertificateStatus::Issuing, $certificate->fresh()->status);
         Queue::assertPushed(IssueMailCertificate::class);
@@ -248,7 +248,7 @@ class MailJobsTest extends TestCase
         $agent->shouldReceive('call')->with('mail.usage', ['domain' => 'kahve.com.tr'])->andReturn(['domain' => 'kahve.com.tr', 'mailboxes' => ['ali' => 5242880]]);
         $this->app->instance(AgentClient::class, $agent);
 
-        $this->artisan('servik:mail-usage')->assertSuccessful();
+        $this->artisan('serfex:mail-usage')->assertSuccessful();
 
         $this->assertSame(5242880, $ali->fresh()->usage_bytes);
     }

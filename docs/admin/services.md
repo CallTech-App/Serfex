@@ -4,8 +4,8 @@
 
 **Services** lists the systemd services on the server in three groups:
 
-- **Panel**: the services Servik itself needs (`servik-agent`, `servik-web`,
-  `servik-php`, the panel's PostgreSQL and its queue, backup and scheduler
+- **Panel**: the services Serfex itself needs (`serfex-agent`, `serfex-web`,
+  `serfex-php`, the panel's PostgreSQL and its queue, backup and scheduler
   workers). Customer sites never use them. SSH, the agent and the panel
   cannot be stopped from the panel.
 - **Shared services**: the web, PHP, database and mail servers that all sites
@@ -13,7 +13,7 @@
 - **Other system services** of the operating system.
 
 A service is a problem when it has failed, or when it starts at boot but is
-not running; services you disabled on purpose do not count. Servik checks
+not running; services you disabled on purpose do not count. Serfex checks
 every minute and notifies you.
 
 Start, stop, restart and reload ask first when sites would be affected, and
@@ -58,7 +58,7 @@ an administrator can allow them for one site on its PHP page.
 
 These values apply to PHP-FPM and to command-line PHP (Artisan, queue
 workers, the scheduler, cron tasks, Composer), which reads a copy in
-`/etc/php/<version>/cli/conf.d/90-servik.ini`. The settings marked *web
+`/etc/php/<version>/cli/conf.d/90-serfex.ini`. The settings marked *web
 only* (`memory_limit`, `max_execution_time`, `max_input_time`,
 `display_errors`) stay at the command line's own values: no memory or time
 limit, errors printed to the terminal. A site's own PHP settings apply to
@@ -79,25 +79,25 @@ install would bring and where it comes from (the Ubuntu archive,
 `ppa:ondrej/php`, repo.mysql.com, dlm.mariadb.com, apt.postgresql.org,
 nodejs.org or getcomposer.org); the install confirmation and the Databases
 setup card repeat it. For packages apt already lists this is apt's own
-candidate. Database servers can be installed only in the versions Servik
+candidate. Database servers can be installed only in the versions Serfex
 supports, and their confirmation lets you choose one (see
 [Databases](databases.md#supported-versions)). Node.js, Composer and the
 database archives apt does not list yet are looked up by **Check for
 updates** and the nightly check: each archive's lists are read into
-`/var/lib/servik/components/probe` without adding it to apt.
+`/var/lib/serfex/components/probe` without adding it to apt.
 
 An operation outlives the page and the panel's worker: if the worker is
 restarted while it waits (a package upgrade restarting services, for one),
 the page reads the outcome from the operation's log instead of waiting on
-it forever. Servik also tells Ubuntu's `needrestart` to leave its own
-services (`servik-agent`, `servik-panel-*`) alone after package upgrades;
+it forever. Serfex also tells Ubuntu's `needrestart` to leave its own
+services (`serfex-agent`, `serfex-panel-*`) alone after package upgrades;
 the workers pick up new PHP binaries on their hourly restart.
 
 | Tab | Components |
 |-----|------------|
 | Web server | Nginx (always in front), Apache (behind Nginx on 127.0.0.1:7080 for sites that choose it), and the default stack for new sites |
 | Database servers | MySQL or MariaDB, PostgreSQL, phpMyAdmin and Adminer |
-| Other components | Redis, Memcached, Supervisor, Node.js (22, 24, 26 from nodejs.org in `/opt/servik/node`), Composer, Python, Fail2ban, ModSecurity, ClamAV; Roundcube is turned on under Email settings |
+| Other components | Redis, Memcached, Supervisor, Node.js (22, 24, 26 from nodejs.org in `/opt/serfex/node`), Composer, Python, Fail2ban, ModSecurity, ClamAV; Roundcube is turned on under Email settings |
 
 Notes:
 

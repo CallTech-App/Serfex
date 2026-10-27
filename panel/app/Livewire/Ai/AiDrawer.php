@@ -12,7 +12,7 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * The drawer behind the top-bar Servik AI button: the newest conversation,
+ * The drawer behind the top-bar Serfex AI button: the newest conversation,
  * and where "Bunu AI'ya sor" buttons send their question.
  */
 class AiDrawer extends Component

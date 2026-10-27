@@ -27,7 +27,7 @@ $app = fn (string $ability, ?string $feature = null) => AuthenticateAppAccess::c
 $feature = fn (string $name) => EnsureApiFeature::class.':'.$name;
 
 Route::prefix('v1')->middleware(ApiLocale::class)->group(function () use ($domain, $key, $app, $feature) {
-    // The servik command line signs in through the browser: it asks for a
+    // The serfex command line signs in through the browser: it asks for a
     // sign-in, the person approves it at /cli/onay, the command line
     // collects its key.
     Route::middleware('throttle:30,1')->group(function () {
@@ -35,7 +35,7 @@ Route::prefix('v1')->middleware(ApiLocale::class)->group(function () use ($domai
         Route::post('/cli/login/token', [CliLoginController::class, 'collect'])->name('api.cli.token');
     });
 
-    // Who a key or an application token belongs to; servik logout closes
+    // Who a key or an application token belongs to; serfex logout closes
     // its own command line key.
     Route::get('/me', [MeController::class, 'show'])->middleware('throttle:60,1')->name('api.me');
     Route::delete('/me', [MeController::class, 'destroy'])->middleware('throttle:60,1');

@@ -280,7 +280,7 @@ class SiteCron extends Component
             'tasks' => CronJob::where('site_id', $site->id)->orderBy('id')->get(),
             'usage' => $customer ? app(Quotas::class)->report($customer)['cron_jobs'] : null,
             'refusal' => $jobs->refusal($site->systemUser),
-        ])->title(__('Zamanlanmış görevler · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Zamanlanmış görevler · :domain · Serfex', ['domain' => $site->domain]));
     }
 
     /**

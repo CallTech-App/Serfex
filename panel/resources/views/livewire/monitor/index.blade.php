@@ -8,7 +8,7 @@
     use App\Support\Load;
     use Illuminate\Support\Carbon;
     $field = 'h-9 w-full rounded-md border border-line bg-surface px-2.5 text-[13.5px] outline-none focus:border-accent';
-    $tz = config('servik.timezone');
+    $tz = config('serfex.timezone');
     $hasDb = ($snap['databases'] ?? []) !== [];
     $blockedBy = function (string $ip) use ($blocks) {
         foreach ($blocks as $b) {
@@ -214,7 +214,7 @@
                 <button type="button" wire:click="openBlock" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                     <x-icon name="ban" />{{ __('IP engelle') }}
                 </button>
-                <p class="text-[13px] text-muted sm:ml-2">{{ __('Kurallardan birini aşan adresler. Panel kendiliğinden engellemez; Servik AI\'a izin verdiyseniz en fazla 24 saat engelleyebilir.') }}</p>
+                <p class="text-[13px] text-muted sm:ml-2">{{ __('Kurallardan birini aşan adresler. Panel kendiliğinden engellemez; Serfex AI\'a izin verdiyseniz en fazla 24 saat engelleyebilir.') }}</p>
                 @if ($openCount > 0)
                     <x-ask-ai :question="__('Canlı İzleme\'de engellenmemiş saldırgan adresler görünüyor. Hangileri gerçekten saldırı, ne yapmalıyım?')" class="ml-auto" />
                 @endif
@@ -447,7 +447,7 @@
             @php
                 $groups = collect($snap['services'] ?? [])->groupBy('group');
                 $groupLabels = [
-                    'servik' => [__('Servik\'in kendi hizmetleri'), __('Panelin çalışması için gereken hizmetler; müşteri siteleri bunları kullanmaz.')],
+                    'serfex' => [__('Serfex\'in kendi hizmetleri'), __('Panelin çalışması için gereken hizmetler; müşteri siteleri bunları kullanmaz.')],
                     'shared' => [__('Paylaşılan hizmetler'), __('Bütün sitelerin birlikte kullandığı web, PHP, veritabanı ve posta sunucuları.')],
                     'system' => [__('Diğer sistem hizmetleri'), __('İşletim sisteminin kendi hizmetleri.')],
                 ];

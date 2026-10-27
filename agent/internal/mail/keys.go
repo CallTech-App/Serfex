@@ -53,7 +53,7 @@ func selfSigned(hostname string) (certPEM, keyPEM []byte, err error) {
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber:          serial,
-		Subject:               pkix.Name{CommonName: hostname, Organization: []string{"Servik (self-signed)"}},
+		Subject:               pkix.Name{CommonName: hostname, Organization: []string{"Serfex (self-signed)"}},
 		DNSNames:              []string{hostname},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().AddDate(10, 0, 0),

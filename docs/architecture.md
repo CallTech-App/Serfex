@@ -1,17 +1,17 @@
 # Architecture
 
-This is how Servik is built, as of 0.1. For running it from a checkout see
+This is how Serfex is built, as of 0.1. For running it from a checkout see
 [Development](development.md).
 
 ```
- browser ──https:8443──▶ servik-web (Nginx) ──▶ servik-php (PHP-FPM 8.5, user servik)
- servik CLI ──/api/v1──▶        │                     │  Laravel 13 + Livewire 4 panel
- Git webhooks ─────────▶        │                     ├─▶ PostgreSQL cluster "servik" :5433
+ browser ──https:8443──▶ serfex-web (Nginx) ──▶ serfex-php (PHP-FPM 8.5, user serfex)
+ serfex CLI ──/api/v1──▶        │                     │  Laravel 13 + Livewire 4 panel
+ Git webhooks ─────────▶        │                     ├─▶ PostgreSQL cluster "serfex" :5433
                                 │                     └─▶ queue workers + scheduler (systemd)
                                 │                              │
-                                │      JSON-RPC 2.0 over /run/servik-agent/agent.sock
+                                │      JSON-RPC 2.0 over /run/serfex-agent/agent.sock
                                 │                              ▼
-                                │                      servik-agent (Go, root)
+                                │                      serfex-agent (Go, root)
                                 │                              │
  visitors ──80/443──▶ Nginx (+ Apache) ─▶ PHP-FPM pool per site, as the site's user
  mail ──25/465/587/993──▶ Postfix, Dovecot, Rspamd       PowerDNS ◀── 53
@@ -21,7 +21,7 @@ This is how Servik is built, as of 0.1. For running it from a checkout see
 
 | | Language | Runs as | Role |
 |-|----------|---------|------|
-| `panel/` | PHP 8.5, Laravel 13, Livewire 4 | `servik` | The UI, the API, the database of record, every decision |
+| `panel/` | PHP 8.5, Laravel 13, Livewire 4 | `serfex` | The UI, the API, the database of record, every decision |
 | `agent/` | Go, one static binary (its only dependency is `golang.org/x/crypto` for ACME) | `root` | Every change to the server |
 | `cli/` | Go, standard library only | anyone | A client of `/api/v1` |
 
@@ -33,9 +33,9 @@ agent to make the server match it. The agent offers narrow, validated
 methods (`site.apply`, `dns.zone.apply`, `db.user.apply`…), never "run this
 command", so a compromised panel can only do what those methods allow.
 
-The agent listens only on a Unix socket, `/run/servik-agent/agent.sock`, mode
-0660, group `servik` (`-socket-group`). Each request and response is one line
-of JSON-RPC 2.0. Errors use JSON-RPC codes plus Servik's own:
+The agent listens only on a Unix socket, `/run/serfex-agent/agent.sock`, mode
+0660, group `serfex` (`-socket-group`). Each request and response is one line
+of JSON-RPC 2.0. Errors use JSON-RPC codes plus Serfex's own:
 
 | Code | |
 |------|---|
@@ -57,17 +57,17 @@ in Turkish or English.
   (`nginx -t`, `php-fpm -t`, `postfix check`, `apachectl configtest`…) and
   then put in place; if a test or a reload fails, every file goes back.
   Applying the same request twice changes nothing.
-- **Ownership marks.** Files it writes start with `Managed by Servik`; system
-  accounts it creates carry the comment `Servik site user`. It never
+- **Ownership marks.** Files it writes start with `Managed by Serfex`; system
+  accounts it creates carry the comment `Serfex site user`. It never
   overwrites or deletes a file or account without the mark. Stock
-  configuration it takes over is kept with a `.before-servik` suffix.
+  configuration it takes over is kept with a `.before-serfex` suffix.
 - **Acting as the customer.** Anything inside a customer's home (creating
   sites, the file manager, archives for backups, Laravel builds, cron jobs)
   runs as that customer through `runuser`, so a symlink planted in a home
   folder cannot turn a root write against the system.
-- **State** lives in `/etc/servik/` (DNS, mail, firewall, cron, limits, FTP)
-  and `/var/lib/servik/` (backups, components, updates, statistics).
-- **Dry run.** `servik-agent -dry-run -root DIR` keeps every change under
+- **State** lives in `/etc/serfex/` (DNS, mail, firewall, cron, limits, FTP)
+  and `/var/lib/serfex/` (backups, components, updates, statistics).
+- **Dry run.** `serfex-agent -dry-run -root DIR` keeps every change under
   `DIR` and only logs the commands it would run. Development and the panel's
   screenshots use it.
 
@@ -102,20 +102,20 @@ in Turkish or English.
   a list first, then a detail page with its tools.
 - **Services** under `app/Services/` hold the logic (`Sites`, `Dns\Zones`,
   `Mail\MailDomains`, `Laravel\LaravelApps`, `Backups\Backups`…). Livewire,
-  the API, Servik AI and the console commands all go through them;
+  the API, Serfex AI and the console commands all go through them;
   `Agent\AgentClient` is the only way to the agent.
 - **Jobs** on the database queue do anything slow (provisioning, certificates,
   deployments, component installs). Backups and restores have their own queue
   (`backups`) so a long backup never holds up site work.
 - **Scheduled commands** (`routes/console.php`), every minute unless noted:
-  `servik:monitor-record`, `servik:stats-collect`, `servik:services-check`,
-  `servik:fail2ban-sync`, `servik:settings-check`; every 5 minutes
-  `servik:backups`, `servik:laravel-backups`, `servik:notify`,
-  `servik:cron-history`; every 30 minutes `servik:disk-usage`,
-  `servik:mail-usage`; hourly `servik:ssl-renew`, `servik:stats-rollup`;
-  daily `servik:files-trash` (03:40), `servik:stats-prune` (04:10),
-  `servik:components-check` and `servik:update-check` (04:30); weekly
-  `servik:security-scan` (Sunday 03:20).
+  `serfex:monitor-record`, `serfex:stats-collect`, `serfex:services-check`,
+  `serfex:fail2ban-sync`, `serfex:settings-check`; every 5 minutes
+  `serfex:backups`, `serfex:laravel-backups`, `serfex:notify`,
+  `serfex:cron-history`; every 30 minutes `serfex:disk-usage`,
+  `serfex:mail-usage`; hourly `serfex:ssl-renew`, `serfex:stats-rollup`;
+  daily `serfex:files-trash` (03:40), `serfex:stats-prune` (04:10),
+  `serfex:components-check` and `serfex:update-check` (04:30); weekly
+  `serfex:security-scan` (Sunday 03:20).
 - **Access control** in layers: middleware (`EnsureHostingAccess`,
   `EnsureAdmin`, `EnsureFullAdmin`, `RefuseReadOnlyChanges`), the `Access`
   checks on every Livewire mount and action, and `visibleTo()` scopes on the
@@ -124,7 +124,7 @@ in Turkish or English.
 - **Audit**: every change becomes an activity log entry, most with a
   10-minute undo.
 - **Languages**: the Turkish text is the key (`__('Siteler')`), English is in
-  `lang/en.json`; `servik:lang-check` fails CI on missing, unused or
+  `lang/en.json`; `serfex:lang-check` fails CI on missing, unused or
   untranslated text.
 
 ### Who signs in
@@ -141,13 +141,13 @@ The panel's stack is separate from the customers':
 
 | | Panel | Customer sites |
 |-|-------|----------------|
-| Web server | `servik-web` (own Nginx config in `/etc/servik/web`), port 8443 | `nginx` (and `apache2` on 127.0.0.1:7080), ports 80/443 |
-| PHP | `servik-php`, PHP 8.5, user `servik` | one PHP-FPM pool per site, per version, as the site's user |
-| Database | PostgreSQL cluster `servik` on 5433 | MySQL or MariaDB on 3306, PostgreSQL on 5432 |
+| Web server | `serfex-web` (own Nginx config in `/etc/serfex/web`), port 8443 | `nginx` (and `apache2` on 127.0.0.1:7080), ports 80/443 |
+| PHP | `serfex-php`, PHP 8.5, user `serfex` | one PHP-FPM pool per site, per version, as the site's user |
+| Database | PostgreSQL cluster `serfex` on 5433 | MySQL or MariaDB on 3306, PostgreSQL on 5432 |
 | Cache, queue, sessions | the panel's PostgreSQL | per-application Redis instances |
 
-phpMyAdmin and Adminer are served by `servik-web` from their own pool in
-`servik-php` (`dbadmin`), apart from the panel's pool (`panel`).
+phpMyAdmin and Adminer are served by `serfex-web` from their own pool in
+`serfex-php` (`dbadmin`), apart from the panel's pool (`panel`).
 
 ## Optional components
 
@@ -167,20 +167,20 @@ A `v*` tag builds a GitHub Release with `scripts/build-release.sh`:
 
 | Asset | |
 |-------|---|
-| `servik-<version>-linux-{amd64,arm64}.tar.gz` | `VERSION`, `bin/servik-agent`, `bin/servik`, `panel/` (with `vendor/` and built assets), `downloads/` (the CLI builds the panel serves) |
-| `servik-cli-{linux,darwin}-{amd64,arm64}` | The command line |
+| `serfex-<version>-linux-{amd64,arm64}.tar.gz` | `VERSION`, `bin/serfex-agent`, `bin/serfex`, `panel/` (with `vendor/` and built assets), `downloads/` (the CLI builds the panel serves) |
+| `serfex-cli-{linux,darwin}-{amd64,arm64}` | The command line |
 | `install.sh`, `install-cli.sh` | The installers |
 | `SHA256SUMS` | Checksums of all of the above |
 
 On a server:
 
 ```
-/opt/servik/releases/<version>/   one directory per release
-/opt/servik/current -> releases/<version>
-/etc/servik/panel.env             linked as panel/.env (root:servik 0640)
-/etc/servik/panel.json            PHP version, release source, host name
-/var/lib/servik/panel/storage     linked as panel/storage
-/usr/local/bin/servik -> current/bin/servik
+/opt/serfex/releases/<version>/   one directory per release
+/opt/serfex/current -> releases/<version>
+/etc/serfex/panel.env             linked as panel/.env (root:serfex 0640)
+/etc/serfex/panel.json            PHP version, release source, host name
+/var/lib/serfex/panel/storage     linked as panel/storage
+/usr/local/bin/serfex -> current/bin/serfex
 ```
 
 An update (`update.start`) runs in its own transient systemd unit, so it

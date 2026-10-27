@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Servik's own updates and rollbacks (Araçlar ve Ayarlar →
+     * Serfex's own updates and rollbacks (Araçlar ve Ayarlar →
      * Güncellemeler). The agent performs them; this is their history.
      */
     public function up(): void

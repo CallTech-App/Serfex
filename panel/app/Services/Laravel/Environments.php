@@ -28,7 +28,7 @@ class Environments
      */
     public function read(LaravelApp $app): array
     {
-        $files = $this->agent->call('laravel.env.get', $app->agentApp(), config('servik.agent.job_timeout'));
+        $files = $this->agent->call('laravel.env.get', $app->agentApp(), config('serfex.agent.job_timeout'));
 
         return ['env' => $files['env'] ?? null, 'example' => $files['example'] ?? null];
     }
@@ -43,7 +43,7 @@ class Environments
      */
     public function save(LaravelApp $app, string $before, string $content, ?string $by): array
     {
-        $result = $this->agent->call('laravel.env.set', $app->agentApp() + ['content' => $content], config('servik.agent.job_timeout'));
+        $result = $this->agent->call('laravel.env.set', $app->agentApp() + ['content' => $content], config('serfex.agent.job_timeout'));
         $version = $app->envVersions()->create([
             'content' => $before,
             'summary' => EnvFile::summary($before, $content),

@@ -1,6 +1,6 @@
 # Customer guide
 
-This guide is for people whose hosting runs on a Servik server: your hosting
+This guide is for people whose hosting runs on a Serfex server: your hosting
 company gives you a sign-in link, and everything below is in your own panel.
 What you can use depends on your plan; anything your plan does not include is
 marked "Not in your plan".
@@ -33,7 +33,7 @@ uploads and backups.
 opens in a few seconds at `/home/<your user>/web/<domain>/public_html`, and
 gets a free SSL certificate once the domain points at the server (until then
 it says "DNS does not point to this server yet"). Until you upload your own
-`index.html` or `index.php`, visitors see Servik's default page.
+`index.html` or `index.php`, visitors see Serfex's default page.
 
 On a site's page:
 
@@ -48,7 +48,7 @@ On a site's page:
   minutes.
 - **Git deployment**: the site's folder (public_html by default) comes from
   a Git repository. Connect a public `https://` address, one opened with an
-  access token, or an SSH address with the deploy key Servik makes; then
+  access token, or an SSH address with the deploy key Serfex makes; then
   **Deploy**, or add the webhook address to the repository to deploy on
   every push. Files the repository does not track stay; any earlier deploy
   can be put back, and the first one undone.
@@ -103,12 +103,12 @@ so you can undo.
 
 ## Command line
 
-The `servik` command line works with your account too:
+The `serfex` command line works with your account too:
 
 ```sh
 curl -fsSL https://<panel address>:8443/cli/install.sh | sh
-servik login <panel address>:8443
-servik sites list
+serfex login <panel address>:8443
+serfex sites list
 ```
 
 See the [command line reference](cli.md).

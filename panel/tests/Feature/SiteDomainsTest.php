@@ -49,7 +49,7 @@ class SiteDomainsTest extends TestCase
     {
         parent::setUp();
         Queue::fake();
-        config(['servik.ssl.check_dns' => false]);
+        config(['serfex.ssl.check_dns' => false]);
         app(DnsSettings::class)->save(['ipv4' => '203.0.113.10']);
         $this->agent = new FakeAgent([
             'site.apply' => fn ($p) => ['document_root' => '/home/kahve/web/'.$p['domain'].'/public_html', 'changed' => true],
@@ -249,7 +249,7 @@ class SiteDomainsTest extends TestCase
             ->assertHasNoErrors();
         $this->assertSame(['404' => '<h1>Kahve bulunamadı</h1>'], $this->site->fresh()->error_pages);
         $this->assertSame(['404' => '<h1>Kahve bulunamadı</h1>'], $this->lastSpec()['error_pages']);
-        // The starting page is Servik's own, in the site's name.
+        // The starting page is Serfex's own, in the site's name.
         $this->assertStringContainsString('kahve.com.tr ana sayfasına dönün', SiteErrorPages::template('50x', 'kahve.com.tr'));
 
         $page->call('confirmReset', '404')->call('restoreDefault');
@@ -308,14 +308,14 @@ class SiteDomainsTest extends TestCase
     public function test_hourly_renewal_adds_names_whose_dns_points_here(): void
     {
         Subdomain::create(['site_id' => $this->site->id, 'name' => 'blog.kahve.com.tr', 'web_root' => 'subdomains/blog']);
-        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        $this->artisan('serfex:ssl-renew')->assertSuccessful();
         Queue::assertPushed(IssueCertificate::class, 1);
         $this->assertSame(CertificateStatus::Issuing, $this->site->certificate->fresh()->status);
 
         // Nothing to add: nothing asked.
         Queue::fake();
         $this->site->certificate->update(['status' => CertificateStatus::Active, 'domains' => ['kahve.com.tr', 'www.kahve.com.tr', 'blog.kahve.com.tr']]);
-        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        $this->artisan('serfex:ssl-renew')->assertSuccessful();
         Queue::assertNotPushed(IssueCertificate::class);
     }
 

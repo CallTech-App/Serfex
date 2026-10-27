@@ -6,8 +6,8 @@
 //
 // Layout:
 //
-//	/etc/php/<v>/fpm/conf.d/90-servik.ini   Servik's defaults for PHP-FPM, read after php.ini
-//	/etc/php/<v>/cli/conf.d/90-servik.ini   the same for the command line, without WebOnly
+//	/etc/php/<v>/fpm/conf.d/90-serfex.ini   Serfex's defaults for PHP-FPM, read after php.ini
+//	/etc/php/<v>/cli/conf.d/90-serfex.ini   the same for the command line, without WebOnly
 //	/etc/php/<v>/mods-available/<ext>.ini   extensions, switched on with phpenmod
 package php
 
@@ -41,11 +41,11 @@ type OperationError struct{ Err error }
 func (e *OperationError) Error() string { return e.Err.Error() }
 func (e *OperationError) Unwrap() error { return e.Err }
 
-// Optional are extensions Servik offers to install, each from the package
+// Optional are extensions Serfex offers to install, each from the package
 // php<v>-<name>. The others (mysql, intl, gd, ...) come with every version.
 var Optional = []string{"apcu", "bz2", "gmp", "igbinary", "imagick", "ldap", "memcached", "mongodb", "redis", "soap", "tidy", "xdebug"}
 
-// Defaults are the php.ini settings Servik gives a new PHP version:
+// Defaults are the php.ini settings Serfex gives a new PHP version:
 // enough memory, uploads and input variables for WordPress, Laravel and
 // shop software, errors logged rather than shown, OPcache on.
 func Defaults(timezone string) map[string]string {
@@ -82,7 +82,7 @@ var (
 	prioRe    = regexp.MustCompile(`(?m)^;\s*priority\s*=\s*(\d+)`)
 )
 
-// reserved are settings Servik keeps per site or that load code.
+// reserved are settings Serfex keeps per site or that load code.
 var reserved = map[string]bool{
 	"open_basedir": true, "upload_tmp_dir": true, "sys_temp_dir": true, "session.save_path": true,
 	"error_log": true, "extension": true, "zend_extension": true, "extension_dir": true,
@@ -102,12 +102,12 @@ func NewManager(h host.Host) *Manager {
 	return &Manager{h: h, sim: sim}
 }
 
-// IniFile is where Servik's defaults for a version live.
-func IniFile(v string) string { return "/etc/php/" + v + "/fpm/conf.d/90-servik.ini" }
+// IniFile is where Serfex's defaults for a version live.
+func IniFile(v string) string { return "/etc/php/" + v + "/fpm/conf.d/90-serfex.ini" }
 
 // CLIIniFile is the command line's copy of them: artisan, queue workers,
 // the scheduler, cron tasks and Composer read it.
-func CLIIniFile(v string) string { return "/etc/php/" + v + "/cli/conf.d/90-servik.ini" }
+func CLIIniFile(v string) string { return "/etc/php/" + v + "/cli/conf.d/90-serfex.ini" }
 
 // WebOnly are defaults the command line goes without: long-running and
 // heavy commands keep PHP's own command-line values (no memory or time
@@ -140,9 +140,9 @@ type Extension struct {
 type Info struct {
 	Version string `json:"version"`
 	// Values are the effective php.ini settings of PHP-FPM: php.ini with
-	// Servik's defaults on top.
+	// Serfex's defaults on top.
 	Values map[string]string `json:"values"`
-	// Managed is false until Servik's defaults file exists.
+	// Managed is false until Serfex's defaults file exists.
 	Managed    bool              `json:"managed"`
 	Defaults   map[string]string `json:"defaults"`
 	Extensions []Extension       `json:"extensions"`
@@ -249,7 +249,7 @@ func (m *Manager) enabled(v, ext string) bool {
 	return false
 }
 
-// SettingsSpec replaces Servik's php.ini defaults of a version.
+// SettingsSpec replaces Serfex's php.ini defaults of a version.
 type SettingsSpec struct {
 	Version string            `json:"version"`
 	Values  map[string]string `json:"values"`
@@ -288,7 +288,7 @@ func (m *Manager) Apply(ctx context.Context, spec SettingsSpec) (Info, error) {
 	return m.Info(spec.Version)
 }
 
-// WriteDefaults gives a newly installed version Servik's defaults, unless
+// WriteDefaults gives a newly installed version Serfex's defaults, unless
 // it has its own already; those reach the command line too.
 func (m *Manager) WriteDefaults(t *txn.Tx, v string) error {
 	if own := parseINI(m.h.Path(IniFile(v))); own != nil {
@@ -303,7 +303,7 @@ func (m *Manager) WriteDefaults(t *txn.Tx, v string) error {
 func (m *Manager) SyncCLI(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	files, _ := filepath.Glob(m.h.Path("/etc/php/*/fpm/conf.d/90-servik.ini"))
+	files, _ := filepath.Glob(m.h.Path("/etc/php/*/fpm/conf.d/90-serfex.ini"))
 	var errs []error
 	for _, f := range files {
 		v := filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(f))))
@@ -494,7 +494,7 @@ session.gc_maxlifetime = 1440
 `
 
 // SeedSimulator gives a dry run's PHP versions what Ubuntu's packages
-// would: php.ini, the usual extensions switched on and Servik's defaults.
+// would: php.ini, the usual extensions switched on and Serfex's defaults.
 func SeedSimulator(h host.Host, versions ...string) error {
 	m := NewManager(h)
 	for _, v := range versions {

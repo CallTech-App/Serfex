@@ -151,7 +151,7 @@ func TestSettingsAndCronMethods(t *testing.T) {
 	srv := rpc.NewServer(nil)
 	dnsm := dns.NewSimulatedManager(sim, dns.NewMemory())
 	c := cron.NewManager(sim)
-	c.Exe = "/opt/servik/current/bin/servik-agent"
+	c.Exe = "/opt/serfex/current/bin/serfex-agent"
 	registerMethods(srv, services{
 		sites: site.NewManager(sim, "www-data"), dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
 		databases: database.NewSimulated(sim), cron: c, system: system.NewManager(sim), dryRun: true,
@@ -230,7 +230,7 @@ func TestSettingsAndCronMethods(t *testing.T) {
 
 	// The server's settings.
 	info := call("system.info", `{}`, 0)
-	want("hostname", info["hostname"], "srv-ist-01.servik.test")
+	want("hostname", info["hostname"], "srv-ist-01.serfex.test")
 	want("timezone", info["timezone"], "Europe/Istanbul")
 	want("cpus", info["cpus"], 8)
 	want("addresses", info["addresses"], map[string]any{"ipv4": []any{"203.0.113.10"}, "ipv6": []any{"2001:db8::10"}})
@@ -296,7 +296,7 @@ func TestMailSetupRefreshesFail2ban(t *testing.T) {
 	if err := json.Unmarshal(line, &resp); err != nil || resp.Error != nil {
 		t.Fatalf("mail.setup: %s %v", line, err)
 	}
-	jails, err := os.ReadFile(sim.Path("/etc/fail2ban/jail.d/servik.conf"))
+	jails, err := os.ReadFile(sim.Path("/etc/fail2ban/jail.d/serfex.conf"))
 	if err != nil {
 		t.Fatal(err)
 	}

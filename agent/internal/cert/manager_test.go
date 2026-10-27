@@ -189,7 +189,7 @@ func TestIssueFailureKeepsOldCertificate(t *testing.T) {
 func enableSite(t *testing.T, sim *host.Simulator, name string) {
 	t.Helper()
 	full, _ := Files(name)
-	if err := os.WriteFile(sim.Path("/etc/nginx/sites-enabled/"+name+".conf"), []byte("# Managed by Servik\nssl_certificate "+full+";\n"), 0o644); err != nil {
+	if err := os.WriteFile(sim.Path("/etc/nginx/sites-enabled/"+name+".conf"), []byte("# Managed by Serfex\nssl_certificate "+full+";\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

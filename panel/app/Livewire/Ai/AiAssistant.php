@@ -13,11 +13,11 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * The Servik AI page: earlier conversations on the left, the open one on
+ * The Serfex AI page: earlier conversations on the left, the open one on
  * the right.
  */
 #[Layout('components.layouts.app')]
-#[Title('Servik AI · Servik')]
+#[Title('Serfex AI · Serfex')]
 class AiAssistant extends Component
 {
     use TalksToAssistant;
@@ -27,7 +27,7 @@ class AiAssistant extends Component
 
     public function mount(): void
     {
-        // Salt okunur accounts do not use Servik AI: it acts and it costs.
+        // Salt okunur accounts do not use Serfex AI: it acts and it costs.
         abort_if(auth()->user()->isReadOnly(), 403);
         if ($this->conversationId !== null && $this->conversation() === null) {
             $this->conversationId = null;

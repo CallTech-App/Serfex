@@ -18,14 +18,14 @@ import (
 // The port filter is a second table, so blocks keep working whether it
 // is on or off:
 //
-//	table inet servik-ports
+//	table inet serfex-ports
 //	  chain input   loopback, replies, ICMP and DHCP pass; then the
 //	                panel's deny rules, its allow rules, and a drop
-//	/etc/servik/firewall/rules.json   the rules as last applied
+//	/etc/serfex/firewall/rules.json   the rules as last applied
 //
 // Off, the table does not exist and every port is reachable as before.
 const (
-	PortsTable = "servik-ports"
+	PortsTable = "serfex-ports"
 	rulesFile  = stateDir + "/rules.json"
 	// MaxRules bounds the rule list.
 	MaxRules = 100

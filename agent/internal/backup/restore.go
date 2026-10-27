@@ -278,7 +278,7 @@ func (m *Manager) restoreTree(ctx context.Context, user, part string, dirs []str
 		return errors.New("the chain has no full backup of this part")
 	}
 	parent, base := filepath.Dir(live), filepath.Base(live)
-	next, old := parent+"/."+base+".servik-restore", parent+"/."+base+".servik-old"
+	next, old := parent+"/."+base+".serfex-restore", parent+"/."+base+".serfex-old"
 	if !m.isDir(parent) {
 		return fmt.Errorf("%s does not exist", parent)
 	}

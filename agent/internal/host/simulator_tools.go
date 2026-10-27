@@ -22,7 +22,7 @@ import (
 // enough for dry runs: file commands act under Root, "git clone" and
 // "composer create-project" write a small Laravel application, Artisan's
 // down and up switch maintenance mode, and the panel's probe script
-// answers from the application's .servik-sim directory.
+// answers from the application's .serfex-sim directory.
 
 var phpBinary = regexp.MustCompile(`^php[5-9]\.[0-9]{1,2}$`)
 
@@ -85,7 +85,7 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return s.tar(c, cwd)
 	case c.Name == "mysqldump" || c.Name == "pg_dump":
 		if c.Stdout != nil {
-			fmt.Fprintf(c.Stdout, "-- Simulated %s output\nCREATE TABLE users (id integer primary key, name text);\nINSERT INTO users VALUES (1, 'Servik');\n", c.Name)
+			fmt.Fprintf(c.Stdout, "-- Simulated %s output\nCREATE TABLE users (id integer primary key, name text);\nINSERT INTO users VALUES (1, 'Serfex');\n", c.Name)
 		}
 	case c.Name == "mysql" || c.Name == "psql":
 		if c.Input != nil {
@@ -176,13 +176,13 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 			}
 		}
 	case c.Name == "systemctl" && len(args) > 1 && args[0] == "is-active":
-		// Servik's own Laravel units are always running in a dry run.
+		// Serfex's own Laravel units are always running in a dry run.
 		var b strings.Builder
 		for _, u := range args[1:] {
 			switch {
-			case strings.HasPrefix(u, "servik-queue-") || strings.HasPrefix(u, "servik-schedule-"):
+			case strings.HasPrefix(u, "serfex-queue-") || strings.HasPrefix(u, "serfex-schedule-"):
 				b.WriteString("active\n")
-			case strings.HasPrefix(u, "servik-proc-"):
+			case strings.HasPrefix(u, "serfex-proc-"):
 				// A process runs while it is enabled.
 				if _, err := os.Lstat(s.Path("/etc/systemd/system/multi-user.target.wants/" + u)); err == nil {
 					b.WriteString("active\n")
@@ -199,7 +199,7 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 // SimMailQueue holds the simulated Postfix queue, one "postqueue -j"
 // line per message. "postsuper -h -" and "-H -" move the messages named on
 // standard input to and from the hold queue.
-const SimMailQueue = "/var/spool/postfix/servik-sim-queue.jsonl"
+const SimMailQueue = "/var/spool/postfix/serfex-sim-queue.jsonl"
 
 func (s *Simulator) postfixQueue(c Command) (string, error) {
 	b, err := os.ReadFile(s.Path(SimMailQueue))
@@ -357,7 +357,7 @@ opts:
 		return "", write(args[1], args[2])
 	case "log":
 		msg, _ := read("commit-" + last)
-		return msg + "\nServik\n", nil
+		return msg + "\nSerfex\n", nil
 	case "ls-tree":
 		return "index.html\x00assets/site.css\x00", nil
 	case "diff":
@@ -399,12 +399,12 @@ func (s *Simulator) xargs(c Command, cwd string) (string, error) {
 func (s *Simulator) php(c Command, cwd string, env map[string]string) (string, error) {
 	args := c.Args
 	if len(args) == 0 {
-		// The panel's probe script on stdin: answer from .servik-sim.
-		b, err := os.ReadFile(s.Path(filepath.Join(cwd, ".servik-sim", env["SERVIK_PROBE"]+".json")))
+		// The panel's probe script on stdin: answer from .serfex-sim.
+		b, err := os.ReadFile(s.Path(filepath.Join(cwd, ".serfex-sim", env["SERFEX_PROBE"]+".json")))
 		if err != nil {
 			b = []byte("null")
 		}
-		return "SERVIK-PROBE:" + strings.TrimSpace(string(b)) + "\n", nil
+		return "SERFEX-PROBE:" + strings.TrimSpace(string(b)) + "\n", nil
 	}
 	if strings.HasSuffix(args[0], "composer.phar") {
 		if len(args) > 1 && args[1] == "create-project" {
@@ -471,11 +471,11 @@ func (s *Simulator) writeLaravelApp(dir string) error {
 			"[stacktrace]\n#0 app/Services/Carrier/GatewayClient.php(84): Illuminate\\Http\\Client\\PendingRequest->send()\n#1 app/Jobs/SyncCarrierStatus.php(41): App\\Services\\Carrier\\GatewayClient->status()\n" +
 			"[2026-10-18 23:48:03] production.WARNING: Slow query (1840 ms): select * from shipments where carrier_id = ?\n",
 		"storage/framework/views/.gitignore": "*\n",
-		".servik-sim/about.json":             `{"laravel":"13.6.0","php":"8.4.0","environment":"production","debug":false,"queue":"database","cache":"database","database":"sqlite","session":"database"}`,
-		".servik-sim/queues.json":            `{"sizes":[{"connection":"","queue":"default","size":3}],"failed":2}`,
-		".servik-sim/failed.json": `[{"id":"9b2f1c3e-6a1d-4f5e-8a7b-0c9d8e7f6a5b","connection":"database","queue":"default","job":"App\\Jobs\\SyncCarrierStatus","error":"Illuminate\\Http\\Client\\ConnectionException: Connection timed out","failed_at":"2026-10-18 23:12:04"},` +
+		".serfex-sim/about.json":             `{"laravel":"13.6.0","php":"8.4.0","environment":"production","debug":false,"queue":"database","cache":"database","database":"sqlite","session":"database"}`,
+		".serfex-sim/queues.json":            `{"sizes":[{"connection":"","queue":"default","size":3}],"failed":2}`,
+		".serfex-sim/failed.json": `[{"id":"9b2f1c3e-6a1d-4f5e-8a7b-0c9d8e7f6a5b","connection":"database","queue":"default","job":"App\\Jobs\\SyncCarrierStatus","error":"Illuminate\\Http\\Client\\ConnectionException: Connection timed out","failed_at":"2026-10-18 23:12:04"},` +
 			`{"id":"1e4a7b0c-3d6f-4a2b-9c8d-7e6f5a4b3c2d","connection":"database","queue":"default","job":"App\\Jobs\\GenerateManifestPdf","error":"Allowed memory size of 268435456 bytes exhausted","failed_at":"2026-10-18 22:47:55"}]`,
-		".servik-sim/schedule.json": fmt.Sprintf(`[{"command":"inspire","description":"","expression":"0 * * * *","next":%q,"timezone":"UTC"},`+
+		".serfex-sim/schedule.json": fmt.Sprintf(`[{"command":"inspire","description":"","expression":"0 * * * *","next":%q,"timezone":"UTC"},`+
 			`{"command":"shipments:sync-carriers","description":"","expression":"*/5 * * * *","next":%q,"timezone":"UTC"},`+
 			`{"command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`,
 			now.Truncate(time.Hour).Add(time.Hour).Format(time.RFC3339), now.Truncate(5*time.Minute).Add(5*time.Minute).Format(time.RFC3339),

@@ -54,15 +54,15 @@ func TestRealHost(t *testing.T) {
 		t.Fatal("an unknown time zone was accepted")
 	}
 
-	if _, err := m.SetHostname(ctx, HostnameSpec{Hostname: "Servik-CI-01.example.com."}); err != nil {
+	if _, err := m.SetHostname(ctx, HostnameSpec{Hostname: "Serfex-CI-01.example.com."}); err != nil {
 		t.Fatal(err)
 	}
 	info := m.Info()
-	if info.Hostname != "servik-ci-01.example.com" {
+	if info.Hostname != "serfex-ci-01.example.com" {
 		t.Fatalf("host name after set: %q", info.Hostname)
 	}
 	hosts, _ := os.ReadFile(hostsFile)
-	if !strings.Contains(string(hosts), "servik-ci-01.example.com") {
+	if !strings.Contains(string(hosts), "serfex-ci-01.example.com") {
 		t.Fatalf("/etc/hosts does not name the new host:\n%s", hosts)
 	}
 	if _, err := m.SetHostname(ctx, HostnameSpec{Hostname: "bad_name!"}); err == nil {

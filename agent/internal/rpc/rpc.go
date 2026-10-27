@@ -25,7 +25,7 @@ const (
 	CodeInvalidParams  = -32602
 	CodeInternalError  = -32603
 
-	// CodeOperationFailed is Servik's server error: the request was valid
+	// CodeOperationFailed is Serfex's server error: the request was valid
 	// but the server change failed. The message says why.
 	CodeOperationFailed = -32000
 )
@@ -40,7 +40,7 @@ type Request struct {
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
-	// Locale is Servik's addition: the language of the panel user the
+	// Locale is Serfex's addition: the language of the panel user the
 	// call is for, for messages written for people (see i18n).
 	Locale string `json:"locale,omitempty"`
 }

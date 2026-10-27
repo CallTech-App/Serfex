@@ -21,18 +21,18 @@ import (
 
 const (
 	// instance is the PowerDNS virtual instance name; systemd runs it as
-	// pdns@servik and it reads /etc/powerdns/pdns-servik.conf only, so the
+	// pdns@serfex and it reads /etc/powerdns/pdns-serfex.conf only, so the
 	// distribution's pdns.conf and pdns.d/ are never touched.
-	instance   = "servik"
+	instance   = "serfex"
 	unit       = "pdns@" + instance
-	configPath = "/etc/powerdns/pdns-servik.conf"
+	configPath = "/etc/powerdns/pdns-serfex.conf"
 	pdnsBinary = "/usr/sbin/pdns_server"
 	lmdbModule = "/usr/lib/*/pdns/liblmdbbackend.so"
 	apiAddress = "127.0.0.1"
 	apiPort    = "8081"
 
 	resolvConf     = "/etc/resolv.conf"
-	resolvedDropIn = "/etc/systemd/resolved.conf.d/servik-dns.conf"
+	resolvedDropIn = "/etc/systemd/resolved.conf.d/serfex-dns.conf"
 	resolvedUplink = "/run/systemd/resolve/resolv.conf"
 )
 
@@ -40,9 +40,9 @@ const (
 var Packages = []string{"pdns-server", "pdns-backend-lmdb"}
 
 var configTmpl = template.Must(template.New("pdns").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# PowerDNS Authoritative instance for Servik (pdns@servik.service).
+# PowerDNS Authoritative instance for Serfex (pdns@serfex.service).
 launch=lmdb
-lmdb-filename=/var/lib/powerdns/servik.lmdb
+lmdb-filename=/var/lib/powerdns/serfex.lmdb
 lmdb-sync-mode=sync
 
 local-address={{.Listen}}
@@ -112,7 +112,7 @@ type SetupResult struct {
 	Version   string `json:"version"`
 }
 
-// Setup installs PowerDNS when missing, writes the Servik instance's
+// Setup installs PowerDNS when missing, writes the Serfex instance's
 // configuration and starts it. Running it again repairs a stopped or
 // changed server. Configuration changes are rolled back if PowerDNS does
 // not come up with them; installed packages stay.

@@ -31,7 +31,7 @@ class PurgeMailbox implements ShouldQueue
         }
 
         try {
-            $agent->call('mail.mailbox.purge', ['domain' => $mailbox->domain->name, 'name' => $mailbox->name], config('servik.agent.job_timeout'));
+            $agent->call('mail.mailbox.purge', ['domain' => $mailbox->domain->name, 'name' => $mailbox->name], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             if ($e->getCode() !== SyncMailDomain::NOT_SET_UP) {
                 throw $e;

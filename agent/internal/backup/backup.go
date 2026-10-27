@@ -10,14 +10,14 @@
 //
 // Layout on the server:
 //
-//	/var/lib/servik/backups/sets/<key>/<name>.tar   one archive per site ("example.com") or "panel", root 0600
-//	/var/lib/servik/backups/sets/<key>/backup.json  what the set holds
-//	/var/lib/servik/backups/state/<domain>.<part>.snar  GNU tar snapshot of the last scheduled backup, for incrementals
-//	/var/lib/servik/backups/runs/<run>.log          progress of a backup or restore
-//	/var/lib/servik/backups/uploads/<id>.part       archives being uploaded from the panel
-//	/var/lib/servik/backups/import/                 archives copied to the server by hand, for importing
-//	/var/lib/servik/backup-work/<random>/           scratch space of one account during a backup, 0711 above it
-//	/etc/servik/backups/ssh/id_ed25519              the key the agent signs in to SFTP targets with
+//	/var/lib/serfex/backups/sets/<key>/<name>.tar   one archive per site ("example.com") or "panel", root 0600
+//	/var/lib/serfex/backups/sets/<key>/backup.json  what the set holds
+//	/var/lib/serfex/backups/state/<domain>.<part>.snar  GNU tar snapshot of the last scheduled backup, for incrementals
+//	/var/lib/serfex/backups/runs/<run>.log          progress of a backup or restore
+//	/var/lib/serfex/backups/uploads/<id>.part       archives being uploaded from the panel
+//	/var/lib/serfex/backups/import/                 archives copied to the server by hand, for importing
+//	/var/lib/serfex/backup-work/<random>/           scratch space of one account during a backup, 0711 above it
+//	/etc/serfex/backups/ssh/id_ed25519              the key the agent signs in to SFTP targets with
 //
 // On a target the same set is <prefix>/<key>/<name>.tar (".tar.enc" when
 // encrypted) and <prefix>/<key>/backup.json.
@@ -32,7 +32,7 @@
 //	database-users.json            password hashes of the site's database users
 //	mail.tar.gz                    /var/vmail/<domain>, made by vmail
 //	certificates.json              the site's certificates and keys
-//	laravel-<n>.tar                a Laravel application backup (M6 format) of a database Servik does not manage
+//	laravel-<n>.tar                a Laravel application backup (M6 format) of a database Serfex does not manage
 //
 // Files and mail can be incremental: GNU tar's listed-incremental archives
 // that hold what changed since the previous backup of the chain. They are
@@ -64,16 +64,16 @@ import (
 )
 
 const (
-	// Dir holds every backup Servik takes.
-	Dir        = "/var/lib/servik/backups"
+	// Dir holds every backup Serfex takes.
+	Dir        = "/var/lib/serfex/backups"
 	setsDir    = Dir + "/sets"
 	stateDir   = Dir + "/state"
 	runsDir    = Dir + "/runs"
 	uploadsDir = Dir + "/uploads"
 	// ImportDir is where archives copied to the server are imported from.
 	ImportDir = Dir + "/import"
-	workRoot  = "/var/lib/servik/backup-work"
-	keyDir    = "/etc/servik/backups/ssh"
+	workRoot  = "/var/lib/serfex/backup-work"
+	keyDir    = "/etc/serfex/backups/ssh"
 	keyFile   = keyDir + "/id_ed25519"
 	vmailDir  = "/var/vmail"
 	vmailUser = "vmail"
@@ -173,7 +173,7 @@ func (m *Manager) openTarget(t TargetSpec) (Target, error) {
 		if t.Type == "sftp" {
 			root = t.Host
 		}
-		return dirTarget{dir: m.h.Path("/var/lib/servik-sim/remote/" + t.Type + "/" + root)}, nil
+		return dirTarget{dir: m.h.Path("/var/lib/serfex-sim/remote/" + t.Type + "/" + root)}, nil
 	}
 	switch t.Type {
 	case "s3":
@@ -229,7 +229,7 @@ func (m *Manager) dirs() error {
 		path string
 		mode os.FileMode
 	}{
-		{"/var/lib/servik", 0o755}, {Dir, 0o700}, {setsDir, 0o700}, {stateDir, 0o700}, {runsDir, 0o700}, {uploadsDir, 0o700}, {ImportDir, 0o700},
+		{"/var/lib/serfex", 0o755}, {Dir, 0o700}, {setsDir, 0o700}, {stateDir, 0o700}, {runsDir, 0o700}, {uploadsDir, 0o700}, {ImportDir, 0o700},
 		{workRoot, 0o711},
 	} {
 		if err := t.RootDir(d.path, d.mode, 0, 0); err != nil {

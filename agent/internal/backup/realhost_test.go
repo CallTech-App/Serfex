@@ -5,12 +5,12 @@
 // destroys the site, and restores it from each of them. It needs root
 // and changes the machine, so it only builds with -tags realhost:
 //
-//	sudo SERVIK_S3_ENDPOINT=http://127.0.0.1:9000 SERVIK_S3_ACCESS_KEY=... SERVIK_S3_SECRET_KEY=... \
+//	sudo SERFEX_S3_ENDPOINT=http://127.0.0.1:9000 SERFEX_S3_ACCESS_KEY=... SERFEX_S3_SECRET_KEY=... \
 //	    go test -tags realhost -run TestRealHost ./internal/backup
 //
-// Without SERVIK_S3_ENDPOINT the S3 copy goes to an in-process fake; CI
+// Without SERFEX_S3_ENDPOINT the S3 copy goes to an in-process fake; CI
 // runs moto's S3 server. The SFTP target is this machine's own sshd, signed in to
-// as a local "servikbak" account.
+// as a local "serfexbak" account.
 package backup
 
 import (
@@ -39,7 +39,7 @@ const (
 	realDB       = "yedekt_shop"
 	realDBUser   = "yedekt_app"
 	realPassword = "Gizli-parola-42"
-	sftpAccount  = "servikbak"
+	sftpAccount  = "serfexbak"
 )
 
 func hasSystemd() bool {
@@ -117,13 +117,13 @@ func sqlAs(user, password, query string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// s3Spec is the server at SERVIK_S3_ENDPOINT when set, else a fake.
+// s3Spec is the server at SERFEX_S3_ENDPOINT when set, else a fake.
 func s3Spec(t *testing.T) TargetSpec {
 	t.Helper()
-	spec := TargetSpec{Type: "s3", Prefix: "servik/realhost", Bucket: "servik-yedek", Region: "us-east-1", PathStyle: true,
-		Endpoint: os.Getenv("SERVIK_S3_ENDPOINT"), AccessKey: os.Getenv("SERVIK_S3_ACCESS_KEY"), SecretKey: os.Getenv("SERVIK_S3_SECRET_KEY")}
+	spec := TargetSpec{Type: "s3", Prefix: "serfex/realhost", Bucket: "serfex-yedek", Region: "us-east-1", PathStyle: true,
+		Endpoint: os.Getenv("SERFEX_S3_ENDPOINT"), AccessKey: os.Getenv("SERFEX_S3_ACCESS_KEY"), SecretKey: os.Getenv("SERFEX_S3_SECRET_KEY")}
 	if spec.Endpoint == "" {
-		t.Log("SERVIK_S3_ENDPOINT is not set; using an in-process S3")
+		t.Log("SERFEX_S3_ENDPOINT is not set; using an in-process S3")
 		srv := httptest.NewServer(&fakeS3{objects: map[string][]byte{}, parts: map[string]map[string][]byte{}})
 		t.Cleanup(srv.Close)
 		spec.Endpoint, spec.Bucket, spec.AccessKey, spec.SecretKey = srv.URL, "yedek", "AK", "SK"

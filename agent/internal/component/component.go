@@ -9,19 +9,19 @@
 // the panel shows live: lines starting with "▸ " are steps, "✓ " the
 // result, "✗ " a failure and "↺ " the rollback.
 //
-// An install that fails part way is undone: Servik's configuration files
+// An install that fails part way is undone: Serfex's configuration files
 // go back to how they were and the packages the install added are purged.
 // Removal refuses software something still uses (a site behind Apache, a
 // PHP version with sites, a Redis instance, Supervisor programs) and
 // archives the configuration before purging. The panel's own services
-// (servik-web, servik-php and the panel database) are never touched.
+// (serfex-web, serfex-php and the panel database) are never touched.
 //
 // Layout:
 //
-//	/var/lib/servik/components/runs/<run>.log   operation logs, kept 90 days
-//	/var/lib/servik/components/latest.json      newest Node.js and Composer versions, from component.check
-//	/var/lib/servik/backups/components/         configuration archived before a removal
-//	/etc/servik/components.json                 settings (ModSecurity mode and paranoia level)
+//	/var/lib/serfex/components/runs/<run>.log   operation logs, kept 90 days
+//	/var/lib/serfex/components/latest.json      newest Node.js and Composer versions, from component.check
+//	/var/lib/serfex/backups/components/         configuration archived before a removal
+//	/etc/serfex/components.json                 settings (ModSecurity mode and paranoia level)
 package component
 
 import (
@@ -48,10 +48,10 @@ import (
 )
 
 const (
-	stateDir     = "/var/lib/servik/components"
+	stateDir     = "/var/lib/serfex/components"
 	runDir       = stateDir + "/runs"
 	latestFile   = stateDir + "/latest.json"
-	settingsFile = "/etc/servik/components.json"
+	settingsFile = "/etc/serfex/components.json"
 	// BackupDir keeps configuration archived before a removal.
 	BackupDir = database.ComponentBackups
 
@@ -577,7 +577,7 @@ func (m *Manager) Configure(ctx context.Context, spec ConfigureSpec) (Status, er
 // puts the previous ones back.
 func (m *Manager) writeSettings(t *txn.Tx, s Settings) error {
 	data, _ := json.MarshalIndent(s, "", "  ")
-	if err := t.RootDir("/etc/servik", 0o755, 0, 0); err != nil {
+	if err := t.RootDir("/etc/serfex", 0o755, 0, 0); err != nil {
 		return err
 	}
 	return t.WriteOwned(settingsFile, append(data, '\n'), 0o644, 0, 0)

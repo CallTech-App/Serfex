@@ -9,8 +9,8 @@
     $pre = 'scroll-thin overflow-x-auto rounded-md border border-line bg-surface-2 p-3 font-mono text-[12.5px] whitespace-pre';
     $panelUrl = url('/');
     $installUrl = route('cli.install');
-    $cli = "curl -fsSL {$installUrl} | sh\nservik login {$panelUrl}\nservik deploy -a {$domain} --wait";
-    $actions = '- name: '.__('Servik ile dağıt')."\n  env:\n    SERVIK_URL: {$panelUrl}\n    SERVIK_TOKEN: \${{ secrets.SERVIK_TOKEN }}\n  run: |\n    curl -fsSL {$installUrl} | sh\n    servik deploy --ref \${{ github.ref_name }} --wait";
+    $cli = "curl -fsSL {$installUrl} | sh\nserfex login {$panelUrl}\nserfex deploy -a {$domain} --wait";
+    $actions = '- name: '.__('Serfex ile dağıt')."\n  env:\n    SERFEX_URL: {$panelUrl}\n    SERFEX_TOKEN: \${{ secrets.SERFEX_TOKEN }}\n  run: |\n    curl -fsSL {$installUrl} | sh\n    serfex deploy --ref \${{ github.ref_name }} --wait";
 @endphp
 <div>
     @if ($agentError)
@@ -96,12 +96,12 @@
         <p class="font-medium md:pt-2">{{ __('Komut satırından') }}</p>
         <div class="min-w-0 max-w-2xl space-y-1">
             <pre class="{{ $pre }}">{{ $cli }}</pre>
-            <p class="text-2xs text-muted"><x-t text="servik aracını kurar, girişi tarayıcıda onaylatır ve dağıtımı sonuna kadar izler. Diğer komutlar için :help."><x-slot:help><span class="font-mono">servik help</span></x-slot:help></x-t></p>
+            <p class="text-2xs text-muted"><x-t text="serfex aracını kurar, girişi tarayıcıda onaylatır ve dağıtımı sonuna kadar izler. Diğer komutlar için :help."><x-slot:help><span class="font-mono">serfex help</span></x-slot:help></x-t></p>
         </div>
         <p class="font-medium md:pt-2">{{ __('CI\'dan (GitHub Actions)') }}</p>
         <div class="min-w-0 max-w-2xl space-y-1">
             <pre class="{{ $pre }}">{{ $actions }}</pre>
-            <p class="text-2xs text-muted"><x-t text="Anahtarı deponun gizli değerlerine :part adıyla ekleyin. --wait dağıtım başarısız olursa adımı da başarısız yapar. Araç olmadan: :domain (Authorization: Bearer)."><x-slot:part><span class="font-mono">SERVIK_TOKEN</span></x-slot:part><x-slot:domain><span class="font-mono">{{ __('POST :domain', ['domain' => $deployUrl]) }}</span></x-slot:domain></x-t></p>
+            <p class="text-2xs text-muted"><x-t text="Anahtarı deponun gizli değerlerine :part adıyla ekleyin. --wait dağıtım başarısız olursa adımı da başarısız yapar. Araç olmadan: :domain (Authorization: Bearer)."><x-slot:part><span class="font-mono">SERFEX_TOKEN</span></x-slot:part><x-slot:domain><span class="font-mono">{{ __('POST :domain', ['domain' => $deployUrl]) }}</span></x-slot:domain></x-t></p>
         </div>
     </div>
 

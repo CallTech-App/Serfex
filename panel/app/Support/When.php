@@ -26,7 +26,7 @@ final class When
             return '—';
         }
         $at = self::local($at);
-        $now = now(config('servik.timezone'));
+        $now = now(config('serfex.timezone'));
 
         return match (true) {
             $at->isSameDay($now) => __('Bugün :time', ['time' => self::time($at)]),
@@ -93,7 +93,7 @@ final class When
 
     private static function local(CarbonInterface $at): CarbonInterface
     {
-        return $at->copy()->timezone(config('servik.timezone'));
+        return $at->copy()->timezone(config('serfex.timezone'));
     }
 
     private static function english(): bool

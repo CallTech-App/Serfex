@@ -200,11 +200,11 @@ class AppApiController extends Controller
     {
         $app = $this->app($request);
         $workers = $app->workers()->get();
-        $status = $this->agentDo(fn () => $agent->call('laravel.status', $app->agentApp(), config('servik.agent.job_timeout')));
+        $status = $this->agentDo(fn () => $agent->call('laravel.status', $app->agentApp(), config('serfex.agent.job_timeout')));
         $sizes = $workers->isEmpty() ? [] : $this->agentDo(fn () => $agent->call('laravel.probe', $app->agentApp() + [
             'kind' => 'queues',
             'queues' => $workers->flatMap(fn ($w) => collect($w->queues())->map(fn ($q) => [(string) $w->connection, $q]))->unique()->values()->all(),
-        ], config('servik.agent.job_timeout')));
+        ], config('serfex.agent.job_timeout')));
         $states = collect($status['workers'] ?? [])->groupBy('worker');
 
         return response()->json(['data' => [
@@ -232,13 +232,13 @@ class AppApiController extends Controller
     {
         $app = $this->app($request);
 
-        return response()->json(['data' => array_values((array) $this->agentDo(fn () => $agent->call('laravel.probe', $app->agentApp() + ['kind' => 'failed'], config('servik.agent.job_timeout'))))]);
+        return response()->json(['data' => array_values((array) $this->agentDo(fn () => $agent->call('laravel.probe', $app->agentApp() + ['kind' => 'failed'], config('serfex.agent.job_timeout'))))]);
     }
 
     public function restartQueues(Request $request, AgentClient $agent): JsonResponse
     {
         $app = $this->app($request);
-        $this->agentDo(fn () => $agent->call('laravel.queue.restart', $app->target(), config('servik.agent.job_timeout')));
+        $this->agentDo(fn () => $agent->call('laravel.queue.restart', $app->target(), config('serfex.agent.job_timeout')));
         $this->audit($request, $app, __('Kuyruklar'), __('İşçiler yeniden başlatıldı.'));
 
         return response()->json(['message' => __('İşçiler yeniden başlatıldı.')]);
@@ -252,7 +252,7 @@ class AppApiController extends Controller
     {
         $app = $this->app($request);
         $id = (string) ($request->validate(['id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9-]+$/']])['id'] ?? '');
-        $result = $this->agentDo(fn () => $agent->call('laravel.run', $app->agentApp() + ['tool' => 'artisan', 'args' => ['queue:retry', $id === '' ? 'all' : $id]], config('servik.agent.job_timeout')));
+        $result = $this->agentDo(fn () => $agent->call('laravel.run', $app->agentApp() + ['tool' => 'artisan', 'args' => ['queue:retry', $id === '' ? 'all' : $id]], config('serfex.agent.job_timeout')));
         if (($result['exit_code'] ?? 1) !== 0) {
             return $this->refuse(trim((string) ($result['output'] ?? '')) ?: __('Komut başarısız oldu.'), 502);
         }
@@ -272,7 +272,7 @@ class AppApiController extends Controller
 
     /**
      * POST /api/v1/apps/{domain}/maintenance {down, mode?, allow?, secret?, retry?, html?}:
-     * mode servik (default), custom (html) or app (php artisan down);
+     * mode serfex (default), custom (html) or app (php artisan down);
      * allow lists addresses or networks that still get through.
      */
     public function setMaintenance(Request $request, Maintenance $maintenance): JsonResponse
@@ -296,7 +296,7 @@ class AppApiController extends Controller
 
             return response()->json(['message' => __('Uygulama yeniden açıldı.'), 'data' => $this->maintenanceState($app->fresh(['site']), $maintenance)]);
         }
-        $mode = $data['mode'] ?? ($app->maintenance_mode === 'app' ? 'servik' : $app->maintenance_mode);
+        $mode = $data['mode'] ?? ($app->maintenance_mode === 'app' ? 'serfex' : $app->maintenance_mode);
         $html = $data['html'] ?? $app->maintenance_html;
         if ($mode === 'custom' && ($html === null || $html === '')) {
             return $this->refuse(__('Ziyaretçilere gösterilecek HTML\'i yazın.'));
@@ -328,7 +328,7 @@ class AppApiController extends Controller
         if ($file !== '' && ! preg_match('/^[A-Za-z0-9._-]+\.log$/', $file)) {
             return $this->refuse(__('Günlük dosyası adı geçersiz.'));
         }
-        $logs = $this->agentDo(fn () => $agent->call('laravel.logs', $app->agentApp() + ['file' => $file, 'bytes' => 512 * 1024], config('servik.agent.job_timeout')));
+        $logs = $this->agentDo(fn () => $agent->call('laravel.logs', $app->agentApp() + ['file' => $file, 'bytes' => 512 * 1024], config('serfex.agent.job_timeout')));
         $entries = collect(LogParser::parse((string) ($logs['content'] ?? '')))
             ->when($level !== '', fn ($c) => $c->filter(fn ($e) => LogParser::atLeast($e['level'], $level)))
             ->when($search !== '', fn ($c) => $c->filter(fn ($e) => mb_stripos($e['message'].' '.$e['detail'], $search) !== false))

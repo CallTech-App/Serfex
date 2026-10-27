@@ -54,9 +54,9 @@ func render(t *template.Template, d tmplData) []byte {
 const ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305"
 
 var postfixMainTmpl = template.Must(template.New("main.cf").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# Postfix for Servik: virtual mail domains delivered to Dovecot over LMTP,
+# Postfix for Serfex: virtual mail domains delivered to Dovecot over LMTP,
 # Rspamd as milter, authentication through Dovecot. The distribution's
-# file, if there was one, is kept as main.cf.before-servik.
+# file, if there was one, is kept as main.cf.before-serfex.
 compatibility_level = 3.6
 myhostname = {{.Hostname}}
 myorigin = $myhostname
@@ -75,7 +75,7 @@ mailbox_size_limit = 0
 disable_vrfy_command = yes
 smtpd_helo_required = yes
 
-# Mail domains, mailboxes and forwarders (rebuilt by servik-agent).
+# Mail domains, mailboxes and forwarders (rebuilt by serfex-agent).
 virtual_mailbox_domains = texthash:{{.Maps}}/domains
 virtual_mailbox_maps = texthash:{{.Maps}}/mailboxes
 virtual_alias_maps = texthash:{{.Maps}}/aliases
@@ -122,7 +122,7 @@ const submissionOpts = `  -o smtpd_sasl_auth_enable=yes
 `
 
 var postfixMasterTmpl = template.Must(template.New("master.cf").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# The distribution's file is kept as master.cf.before-servik.
+# The distribution's file is kept as master.cf.before-serfex.
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 smtp      inet  n       -       n       -       -       smtpd
 submission inet n       -       n       -       -       smtpd
@@ -160,9 +160,9 @@ postlog   unix-dgram n  -       n       -       1       postlogd
 `))
 
 var dovecotTmpl = template.Must(template.New("dovecot.conf").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# Dovecot for Servik: IMAP, POP3, LMTP delivery from Postfix and Sieve for
+# Dovecot for Serfex: IMAP, POP3, LMTP delivery from Postfix and Sieve for
 # every virtual mailbox. conf.d/ is not read; the distribution's file is
-# kept as dovecot.conf.before-servik.
+# kept as dovecot.conf.before-serfex.
 protocols = imap pop3 lmtp sieve
 listen = *{{if .IPv6}}, ::{{end}}
 hostname = {{.Hostname}}
@@ -319,7 +319,7 @@ upstream "local" {
 }
 `)),
 	"redis.conf": template.Must(template.New("redis").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# Rspamd's own Redis instance (redis-server@servik-mail), not the one
+# Rspamd's own Redis instance (redis-server@serfex-mail), not the one
 # customers may use.
 servers = "{{.RedisSocket}}";
 `)),
@@ -337,7 +337,7 @@ enabled = false;
 # Sending limit per mailbox (authenticated senders).
 {{- if .HourlyLimit}}
 rates {
-  servik_mailbox = {
+  serfex_mailbox = {
     selector = "user.lower";
     bucket = {
       burst = {{.HourlyLimit}};
@@ -364,10 +364,10 @@ var redisTmpl = template.Must(template.New("redis").Parse(`# {{.Marker}}. Manual
 port 0
 unixsocket {{.RedisSocket}}
 unixsocketperm 660
-pidfile /run/redis-servik-mail/redis-server.pid
-logfile /var/log/redis/redis-server-servik-mail.log
+pidfile /run/redis-serfex-mail/redis-server.pid
+logfile /var/log/redis/redis-server-serfex-mail.log
 dir /var/lib/redis
-dbfilename servik-mail.rdb
+dbfilename serfex-mail.rdb
 save 900 1
 maxmemory 128mb
 maxmemory-policy volatile-lru

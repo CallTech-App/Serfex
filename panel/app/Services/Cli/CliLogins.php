@@ -9,9 +9,9 @@ use App\Services\Settings\ApiKeys;
 use Illuminate\Support\Str;
 
 /**
- * Signing the servik command line in through the browser:
+ * Signing the serfex command line in through the browser:
  *
- *   1. `servik login` asks for a sign-in (start) and shows its code and a
+ *   1. `serfex login` asks for a sign-in (start) and shows its code and a
  *      link to /cli/onay.
  *   2. The person, signed in to the panel, checks the code and approves
  *      it (approve) or refuses it (deny).
@@ -56,7 +56,7 @@ class CliLogins
         $login = CliLogin::create([
             'code' => $code,
             'device_hash' => hash('sha256', $device),
-            'client' => Str::limit(trim($client) ?: 'servik', 120, ''),
+            'client' => Str::limit(trim($client) ?: 'serfex', 120, ''),
             'ip' => $ip,
             'expires_at' => now()->addMinutes(self::MINUTES),
         ]);

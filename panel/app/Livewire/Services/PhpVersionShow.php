@@ -38,7 +38,7 @@ class PhpVersionShow extends Component
     /** @var array<string, string> as the server has them */
     public array $current = [];
 
-    /** @var array<string, string> Servik's defaults */
+    /** @var array<string, string> Serfex's defaults */
     public array $defaults = [];
 
     public bool $managed = true;
@@ -113,7 +113,7 @@ class PhpVersionShow extends Component
     }
 
     /**
-     * Fills the form with Servik's defaults; saving applies them.
+     * Fills the form with Serfex's defaults; saving applies them.
      */
     public function resetToDefaults(): void
     {
@@ -213,7 +213,7 @@ class PhpVersionShow extends Component
             'busy' => ComponentOperation::running()->exists(),
             'bodyLimit' => $bodyLimit !== null && $post !== null && $post > $bodyLimit ? (int) $bodyLimit : null,
             'confirm' => $this->confirming ? $this->confirmText() : null,
-        ])->title(__('PHP :version · Hizmetler · Servik', ['version' => $this->version]));
+        ])->title(__('PHP :version · Hizmetler · Serfex', ['version' => $this->version]));
     }
 
     private function load(PhpVersions $php): void

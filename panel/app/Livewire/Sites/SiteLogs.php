@@ -80,6 +80,6 @@ class SiteLogs extends Component
             'log' => $log,
             'error' => $error,
             'lines' => $log ? Logs::lines($log['content'], $log['truncated'], $this->kind, $this->filter, $this->problems, $this->count) : [],
-        ])->title(__('Günlükler · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Günlükler · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

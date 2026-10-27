@@ -150,6 +150,6 @@ class SiteScan extends Component
             'findings' => $this->findingScope()->with('resolver')->where('status', $status)->worstFirst()->paginate(50),
             'statusCounts' => $this->findingScope()->whereIn('status', ['open', 'fixed', 'ignored'])->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->all(),
             'denied' => $site->denied_paths ?? [],
-        ])->title(__('Güvenlik taraması · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Güvenlik taraması · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

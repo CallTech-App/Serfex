@@ -40,7 +40,7 @@ class SiteSnapshot
             'database_users' => $this->users($databases)->map(fn (DatabaseUser $u) => ['server' => $u->server, 'name' => $u->name])->values()->all(),
             'mail' => $mail !== null,
             'certificates' => $this->certificates($site)->pluck('name')->values()->all(),
-            // An application whose database Servik does not manage (SQLite,
+            // An application whose database Serfex does not manage (SQLite,
             // or one elsewhere) is dumped the way its own backups do it.
             'laravel' => $app !== null && $app->status === LaravelAppStatus::Active && $app->database_id === null && ! $app->isPreview()
                 ? [$app->agentApp()] : [],

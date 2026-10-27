@@ -159,7 +159,7 @@
                 <fieldset>
                     <legend class="mb-2 font-medium">{{ __('Kip') }}</legend>
                     <div class="grid gap-2">
-                        @foreach (['detect' => [__('Yalnızca izle'), __('Saldırılar /var/log/servik/modsecurity altına yazılır, istekler engellenmez. Yanlış alarmları görmek için önerilen başlangıç.')], 'block' => [__('Engelle'), __('Kurallara takılan istekler 403 ile reddedilir.')]] as $key => [$label, $hint])
+                        @foreach (['detect' => [__('Yalnızca izle'), __('Saldırılar /var/log/serfex/modsecurity altına yazılır, istekler engellenmez. Yanlış alarmları görmek için önerilen başlangıç.')], 'block' => [__('Engelle'), __('Kurallara takılan istekler 403 ile reddedilir.')]] as $key => [$label, $hint])
                             <label class="flex cursor-pointer gap-3 rounded-lg border p-3 {{ $modsecMode === $key ? 'border-accent bg-accent-soft' : 'border-line hover:bg-surface-2' }}">
                                 <input type="radio" wire:model.live="modsecMode" value="{{ $key }}" class="mt-0.5 size-4 accent-accent">
                                 <span><span class="block font-medium">{{ $label }}</span><span class="mt-0.5 block text-[12.5px] text-muted">{{ $hint }}</span></span>

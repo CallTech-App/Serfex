@@ -38,17 +38,17 @@ type MaintenanceSpec struct {
 	Secret string `json:"secret"`
 	// Retry is the Retry-After header in seconds; 0 leaves it out.
 	Retry int `json:"retry"`
-	// HTML is the page shown; empty shows Servik's own.
+	// HTML is the page shown; empty shows Serfex's own.
 	HTML string `json:"html"`
 }
 
 const (
 	// MaintenanceDir holds the maintenance pages, readable by Nginx.
-	MaintenanceDir = "/var/lib/servik/maintenance"
+	MaintenanceDir = "/var/lib/serfex/maintenance"
 	// SuspendedDir holds the pages of suspended sites.
-	SuspendedDir = "/var/lib/servik/suspended"
+	SuspendedDir = "/var/lib/serfex/suspended"
 	// websocketConf defines the Connection header map proxied vhosts use.
-	websocketConf = "/etc/nginx/conf.d/servik-websocket.conf"
+	websocketConf = "/etc/nginx/conf.d/serfex-websocket.conf"
 	maxAllow      = 100
 	maxPageSize   = 256 << 10
 )
@@ -149,8 +149,8 @@ p{margin:.25rem 0;line-height:1.55;color:#4b5b60}
 </html>
 `))
 
-// pageContent returns the maintenance page with Servik's marker on top,
-// so the file stays recognisable as Servik's.
+// pageContent returns the maintenance page with Serfex's marker on top,
+// so the file stays recognisable as Serfex's.
 func pageContent(domain, html string) []byte {
 	if strings.TrimSpace(html) == "" {
 		var b strings.Builder
@@ -195,7 +195,7 @@ func suspendedContent(domain string) []byte {
 
 var wsConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 # Connection header for vhosts that proxy WebSockets (Octane, Reverb).
-map $http_upgrade $servik_connection_upgrade {
+map $http_upgrade $serfex_connection_upgrade {
     default upgrade;
     ''      close;
 }

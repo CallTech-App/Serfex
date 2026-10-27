@@ -1,7 +1,7 @@
 // Package cron runs the scheduled tasks of sites (Zamanlanmış Görevler).
 //
 // The system's cron daemon starts the tasks: each site has a file in
-// /etc/cron.d whose lines start "servik-agent cron-exec" as the site's
+// /etc/cron.d whose lines start "serfex-agent cron-exec" as the site's
 // user. cron-exec (Exec) reads the task from the site's state, runs its
 // command with /bin/sh in the site folder with a small, fixed
 // environment, enforces the task's timeout, refuses to start a run while
@@ -11,10 +11,10 @@
 //
 // Layout (for user kahve and site kahve.com):
 //
-//	/etc/servik/cron/kahve.com.json             the site's tasks, root:kahve 0640 (cron-exec reads it as kahve)
-//	/etc/cron.d/servik-kahve_com                the enabled tasks as crontab lines, root 0644
-//	/var/lib/servik/cron/php/<version>/php      the site's PHP, first on the tasks' PATH
-//	/home/kahve/.servik/cron/kahve.com/<id>/    lock, running.json and runs/<start>.json (the newest RunsKept)
+//	/etc/serfex/cron/kahve.com.json             the site's tasks, root:kahve 0640 (cron-exec reads it as kahve)
+//	/etc/cron.d/serfex-kahve_com                the enabled tasks as crontab lines, root 0644
+//	/var/lib/serfex/cron/php/<version>/php      the site's PHP, first on the tasks' PATH
+//	/home/kahve/.serfex/cron/kahve.com/<id>/    lock, running.json and runs/<start>.json (the newest RunsKept)
 //
 // A suspended site keeps its tasks with none enabled: its crontab file
 // is removed, its state stays.
@@ -42,14 +42,14 @@ import (
 
 const (
 	// StateDir holds one state file per site.
-	StateDir = "/etc/servik/cron"
+	StateDir = "/etc/serfex/cron"
 	// CronDir is where the cron daemon reads system crontabs.
 	CronDir = "/etc/cron.d"
 	// ShimRoot holds a folder per PHP version with a php link to it.
-	ShimRoot = "/var/lib/servik/cron/php"
+	ShimRoot = "/var/lib/serfex/cron/php"
 	// InstalledExe is the agent of an installed server. It stays put
 	// across updates; the release folder os.Executable names does not.
-	InstalledExe = panel.CurrentLink + "/bin/servik-agent"
+	InstalledExe = panel.CurrentLink + "/bin/serfex-agent"
 
 	// MaxTasks bounds the tasks of one site.
 	MaxTasks = 100
@@ -167,7 +167,7 @@ func CronFile(domain string) string {
 			b[i] = '_'
 		}
 	}
-	return CronDir + "/servik-" + string(b)
+	return CronDir + "/serfex-" + string(b)
 }
 
 // ShimDir is the folder put first on the tasks' PATH for a PHP version.
@@ -179,7 +179,7 @@ func TaskDir(user, domain string, id int) string {
 }
 
 // SitesDir holds the run records of a site's tasks.
-func SitesDir(user, domain string) string { return "/home/" + user + "/.servik/cron/" + domain }
+func SitesDir(user, domain string) string { return "/home/" + user + "/.serfex/cron/" + domain }
 
 func siteDir(user, domain string) string { return "/home/" + user + "/web/" + domain }
 
@@ -372,7 +372,7 @@ func (m *Manager) shim(t *txn.Tx, php string) error {
 	if php == "" || !m.exists("/usr/bin/php"+php) {
 		return nil
 	}
-	for _, d := range []string{"/var/lib/servik", "/var/lib/servik/cron", ShimRoot, ShimDir(php)} {
+	for _, d := range []string{"/var/lib/serfex", "/var/lib/serfex/cron", ShimRoot, ShimDir(php)} {
 		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 			return err
 		}
@@ -390,7 +390,7 @@ func Crontab(spec Spec, exe string) string {
 		}
 		if n == 0 {
 			fmt.Fprintf(&b, "# %s. Manual changes are overwritten.\n", txn.Marker)
-			fmt.Fprintf(&b, "# Scheduled tasks of %s: each runs as %s through servik-agent cron-exec.\n", spec.Domain, spec.User)
+			fmt.Fprintf(&b, "# Scheduled tasks of %s: each runs as %s through serfex-agent cron-exec.\n", spec.Domain, spec.User)
 			b.WriteString("SHELL=/bin/sh\nMAILTO=\"\"\n\n")
 		}
 		n++
@@ -466,7 +466,7 @@ func (m *Manager) remove(ctx context.Context, domain string) error {
 
 // Reconcile writes every site's crontab and PHP folder again from its
 // state, with the current Exe (after an update the agent's path may
-// have changed), and removes crontabs Servik wrote for sites without
+// have changed), and removes crontabs Serfex wrote for sites without
 // state. The agent calls it when it starts.
 func (m *Manager) Reconcile(ctx context.Context) error {
 	m.mu.Lock()
@@ -490,7 +490,7 @@ func (m *Manager) Reconcile(ctx context.Context) error {
 	files, _ := os.ReadDir(m.h.Path(CronDir))
 	for _, f := range files {
 		abs := CronDir + "/" + f.Name()
-		if !strings.HasPrefix(f.Name(), "servik-") || want[abs] {
+		if !strings.HasPrefix(f.Name(), "serfex-") || want[abs] {
 			continue
 		}
 		// Files without the marker are someone else's.

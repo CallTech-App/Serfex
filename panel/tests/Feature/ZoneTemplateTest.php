@@ -43,7 +43,7 @@ class ZoneTemplateTest extends TestCase
     public function test_server_name_servers_ttl_and_custom_rows(): void
     {
         app(DnsSettings::class)->save([
-            'nameservers' => ['ns1.servik.net.tr', 'ns2.servik.net.tr'],
+            'nameservers' => ['ns1.serfex.net.tr', 'ns2.serfex.net.tr'],
             'ipv4' => '203.0.113.10',
             'ipv6' => null,
             'default_ttl' => 300,
@@ -57,22 +57,22 @@ class ZoneTemplateTest extends TestCase
         ]);
 
         $this->assertSame([
-            '@ NS ns1.servik.net.tr. 300',
-            '@ NS ns2.servik.net.tr. 300',
+            '@ NS ns1.serfex.net.tr. 300',
+            '@ NS ns2.serfex.net.tr. 300',
             '@ A 203.0.113.10 300',
             'mail A 203.0.113.10 86400',
             '@ MX 10 mail.kahve.com.tr. 300',
             '@ TXT v=spf1 a mx ~all 300',
         ], $this->records('kahve.com.tr'));
 
-        $this->assertSame(['@ NS ns1.servik.net.tr. 300', '@ NS ns2.servik.net.tr. 300'], $this->records('kahve.com.tr', empty: true));
+        $this->assertSame(['@ NS ns1.serfex.net.tr. 300', '@ NS ns2.serfex.net.tr. 300'], $this->records('kahve.com.tr', empty: true));
     }
 
     public function test_glue_records_for_name_servers_inside_the_zone(): void
     {
-        app(DnsSettings::class)->save(['nameservers' => ['ns1.servik.net.tr', 'ns2.servik.net.tr'], 'ipv4' => '203.0.113.10']);
+        app(DnsSettings::class)->save(['nameservers' => ['ns1.serfex.net.tr', 'ns2.serfex.net.tr'], 'ipv4' => '203.0.113.10']);
 
-        $records = $this->records('servik.net.tr', empty: true);
+        $records = $this->records('serfex.net.tr', empty: true);
 
         $this->assertContains('ns1 A 203.0.113.10 3600', $records);
         $this->assertContains('ns2 A 203.0.113.10 3600', $records);

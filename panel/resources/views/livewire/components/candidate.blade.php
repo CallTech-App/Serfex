@@ -1,4 +1,4 @@
-{{-- In an install confirmation: the version that will be installed and where it comes from; for a database server, the versions Servik offers to choose from. --}}
+{{-- In an install confirmation: the version that will be installed and where it comes from; for a database server, the versions Serfex offers to choose from. --}}
 @php($candidate = $confirm['candidate'] ?? null)
 @if ($candidate !== null && ($candidate['choices'] ?? []) !== [])
     <fieldset class="mt-3">

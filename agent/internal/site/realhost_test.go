@@ -55,7 +55,7 @@ func TestRealHost(t *testing.T) {
 	startIfStopped(t, "/run/php/php"+php+"-fpm.pid", "php-fpm"+php)
 
 	ctx := context.Background()
-	spec := Spec{Domain: "servik-test.example", User: "servikt", PHPVersion: php, Aliases: []string{"www.servik-test.example"}}
+	spec := Spec{Domain: "serfex-test.example", User: "serfext", PHPVersion: php, Aliases: []string{"www.serfex-test.example"}}
 	t.Cleanup(func() {
 		_, _ = m.Delete(ctx, DeleteSpec{Domain: spec.Domain, User: spec.User, RemoveFiles: true, RemoveUser: true})
 	})
@@ -69,29 +69,29 @@ func TestRealHost(t *testing.T) {
 	}
 
 	// Static placeholder is served by Nginx.
-	if body := get(t, "www.servik-test.example", "/", "servik-test.example"); !strings.Contains(body, "servik-test.example") {
+	if body := get(t, "www.serfex-test.example", "/", "serfex-test.example"); !strings.Contains(body, "serfex-test.example") {
 		t.Fatalf("placeholder not served: %q", body)
 	}
 
 	// PHP runs as the site's own user, confined to its home.
-	script := host.AsUser("servikt", host.Command{Name: "tee", Args: []string{res.DocumentRoot + "/whoami.php"},
+	script := host.AsUser("serfext", host.Command{Name: "tee", Args: []string{res.DocumentRoot + "/whoami.php"},
 		Stdin: []byte(`<?php echo get_current_user(), ':', trim(shell_exec('id -un') ?? posix_getpwuid(posix_geteuid())['name']), ':', ini_get('open_basedir');`)})
 	if _, err := h.Run(ctx, script); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, func() bool { return fileExists(res.PHPSocket) })
-	body := get(t, "servik-test.example", "/whoami.php", "servikt")
-	if !strings.HasPrefix(body, "servikt:servikt:/home/servikt/") {
+	body := get(t, "serfex-test.example", "/whoami.php", "serfext")
+	if !strings.HasPrefix(body, "serfext:serfext:/home/serfext/") {
 		t.Fatalf("PHP did not run as the site user: %q", body)
 	}
 
 	// The account's home is measured, a 3 MB file included.
-	blob := host.AsUser("servikt", host.Command{Name: "dd", Args: []string{"if=/dev/zero", "of=" + res.DocumentRoot + "/blob.bin", "bs=1M", "count=3"}})
+	blob := host.AsUser("serfext", host.Command{Name: "dd", Args: []string{"if=/dev/zero", "of=" + res.DocumentRoot + "/blob.bin", "bs=1M", "count=3"}})
 	if _, err := h.Run(ctx, blob); err != nil {
 		t.Fatal(err)
 	}
-	disk, err := m.DiskUsage(ctx, DiskSpec{Users: []string{"servikt"}})
-	if err != nil || disk["servikt"].Bytes < 3<<20 || disk["servikt"].Files < 3 {
+	disk, err := m.DiskUsage(ctx, DiskSpec{Users: []string{"serfext"}})
+	if err != nil || disk["serfext"].Bytes < 3<<20 || disk["serfext"].Files < 3 {
 		t.Fatalf("disk usage = %+v, %v", disk, err)
 	}
 
@@ -102,13 +102,13 @@ func TestRealHost(t *testing.T) {
 	if _, err := m.Apply(ctx, suspended); err != nil {
 		t.Fatal(err)
 	}
-	if body := getStatus(t, "servik-test.example", "/whoami.php", 503, "hizmet dışı"); strings.Contains(body, "servikt:") {
+	if body := getStatus(t, "serfex-test.example", "/whoami.php", 503, "hizmet dışı"); strings.Contains(body, "serfext:") {
 		t.Fatalf("PHP ran on a suspended site: %q", body)
 	}
 	if _, err := m.Apply(ctx, spec); err != nil {
 		t.Fatal(err)
 	}
-	get(t, "servik-test.example", "/whoami.php", "servikt")
+	get(t, "serfex-test.example", "/whoami.php", "serfext")
 
 	// Applying again changes nothing.
 	again, err := m.Apply(ctx, spec)
@@ -117,7 +117,7 @@ func TestRealHost(t *testing.T) {
 	}
 
 	// Other customers cannot read the site's files.
-	if fi, err := os.Stat("/home/servikt"); err != nil || fi.Mode().Perm() != 0o710 {
+	if fi, err := os.Stat("/home/serfext"); err != nil || fi.Mode().Perm() != 0o710 {
 		t.Fatalf("home mode: %v %v", fi.Mode(), err)
 	}
 
@@ -125,10 +125,10 @@ func TestRealHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !del.UserRemoved || fileExists("/home/servikt") {
+	if !del.UserRemoved || fileExists("/home/serfext") {
 		t.Fatalf("site not fully removed: %+v", del)
 	}
-	if _, err := h.LookupUser("servikt"); !errors.Is(err, host.ErrUserNotFound) {
+	if _, err := h.LookupUser("serfext"); !errors.Is(err, host.ErrUserNotFound) {
 		t.Fatal("account still exists")
 	}
 }

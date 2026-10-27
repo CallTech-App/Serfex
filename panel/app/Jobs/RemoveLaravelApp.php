@@ -42,13 +42,13 @@ class RemoveLaravelApp implements ShouldQueue
             return;
         }
         try {
-            $agent->call('laravel.remove', $app->target() + ['remove_files' => $this->removeFiles && $app->isManaged()], config('servik.agent.job_timeout'));
+            $agent->call('laravel.remove', $app->target() + ['remove_files' => $this->removeFiles && $app->isManaged()], config('serfex.agent.job_timeout'));
             if ($app->redis_port !== null) {
-                $agent->call('redis.remove', ['domain' => $site->domain], config('servik.agent.job_timeout'));
+                $agent->call('redis.remove', ['domain' => $site->domain], config('serfex.agent.job_timeout'));
             }
             if ($site->web_root !== null) {
                 $site->update(['web_root' => null]);
-                $result = $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+                $result = $agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
                 $site->update(['document_root' => $result['document_root'] ?? $site->document_root]);
             }
         } catch (AgentException $e) {

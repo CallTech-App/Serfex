@@ -10,7 +10,7 @@ use App\Models\User;
  */
 final class Impersonation
 {
-    public const KEY = 'servik.impersonator';
+    public const KEY = 'serfex.impersonator';
 
     public const SUSPENDED = 'Hesabınız askıya alındı. Barındırma sağlayıcınızla iletişime geçin.';
 

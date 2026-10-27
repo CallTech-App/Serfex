@@ -1,4 +1,4 @@
-{{-- Shown while Servik updates itself (artisan down --render=errors::updating).
+{{-- Shown while Serfex updates itself (artisan down --render=errors::updating).
      Pre-rendered and self-contained: the release's built assets change
      during the update. --}}
 <!DOCTYPE html>
@@ -7,9 +7,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="refresh" content="10">
-        <title>{{ __('Servik güncelleniyor') }}</title>
+        <title>{{ __('Serfex güncelleniyor') }}</title>
         <script>
-            try { const t = localStorage.getItem('servik-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+            try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
         <style>
             :root { color-scheme: light dark; --bg: #f6f7f9; --fg: #16181d; --muted: #5d6470; --line: #e3e6eb; --surface: #fff; --accent: #0f8b8d; }
@@ -28,7 +28,7 @@
     <body>
         <main>
             <div class="spin" aria-hidden="true"></div>
-            <h1>{{ __('Servik güncelleniyor') }}</h1>
+            <h1>{{ __('Serfex güncelleniyor') }}</h1>
             <p>{{ __('Panel birkaç dakika içinde geri gelecek; bu sayfa kendiliğinden yenilenir. Siteleriniz ve e-postanız bu sırada çalışmaya devam eder.') }}</p>
         </main>
     </body>

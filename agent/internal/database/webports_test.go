@@ -38,13 +38,13 @@ func TestWebPorts(t *testing.T) {
 		t.Fatalf("status %+v %v", st, err)
 	}
 
-	// Without servik-web (a development setup) the ports are only kept.
+	// Without serfex-web (a development setup) the ports are only kept.
 	res, err := m.SetWebPorts(ctx, WebPortsSpec{Ports: []int{9443}})
 	if err != nil || res.Port != 9443 || m.WebPort() != 9443 {
 		t.Fatalf("set %+v %v (web port %d)", res, err, m.WebPort())
 	}
 	if _, err := os.Stat(sim.Path(webConf)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("servik-web configured without a panel")
+		t.Fatal("serfex-web configured without a panel")
 	}
 
 	for name, ports := range map[string][]int{
@@ -65,7 +65,7 @@ func TestWebPorts(t *testing.T) {
 		}
 	}
 
-	// With the panel installed, servik-web listens on every port while a
+	// With the panel installed, serfex-web listens on every port while a
 	// change waits for confirmation.
 	installPanel(t, m)
 	if _, err := m.SetupPanelWeb(ctx); err != nil {
@@ -78,8 +78,8 @@ func TestWebPorts(t *testing.T) {
 	}
 	conf := read(t, sim, webConf)
 	contains(t, "nginx", conf, "    server {\n        listen 9443 ssl http2 default_server;\n        listen 10443 ssl http2 default_server;\n        ssl_certificate ")
-	if !sim.Ran("systemctl restart servik-php servik-web") && !sim.Ran("systemctl restart servik-web") {
-		t.Errorf("servik-web not restarted: %v", sim.Commands())
+	if !sim.Ran("systemctl restart serfex-php serfex-web") && !sim.Ran("systemctl restart serfex-web") {
+		t.Errorf("serfex-web not restarted: %v", sim.Commands())
 	}
 	if res, err := m.SetWebPorts(ctx, WebPortsSpec{Ports: []int{10443}}); err != nil || res.Port != 10443 || m.WebPort() != 10443 {
 		t.Fatalf("confirm %+v %v", res, err)

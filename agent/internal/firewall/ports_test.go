@@ -10,7 +10,7 @@ import (
 func defaultRules() []PortRule {
 	return []PortRule{
 		{ID: "web", Name: "Web", Ports: "80, 443", Protocol: TCP},
-		{ID: "panel", Name: "Servik paneli", Ports: "8443", Protocol: TCP},
+		{ID: "panel", Name: "Serfex paneli", Ports: "8443", Protocol: TCP},
 		{ID: "dns", Name: "DNS", Ports: "53", Protocol: Both},
 		{ID: "mysql", Name: "MySQL", Ports: "3306", Protocol: TCP, Sources: []string{"10.0.0.0/8", "2001:db8::/48"}},
 		{ID: "bad", Name: "Kötü ağ", Ports: "1-65535", Protocol: Both, Sources: []string{"198.51.100.0/24"}, Action: "deny"},
@@ -27,7 +27,7 @@ func TestPortFilter(t *testing.T) {
 	s := scripts(sim)
 	script := s[len(s)-1]
 	for _, want := range []string{
-		"delete table inet servik-ports",
+		"delete table inet serfex-ports",
 		"policy drop;",
 		"iif \"lo\" accept",
 		"ct state established,related accept",

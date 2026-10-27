@@ -14,9 +14,9 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
-// Marker is the first line of every file Servik manages. Files without it
+// Marker is the first line of every file Serfex manages. Files without it
 // are never overwritten or removed.
-const Marker = "Managed by Servik"
+const Marker = "Managed by Serfex"
 
 // HasMarker reports whether content starts with a line carrying Marker.
 func HasMarker(content []byte) bool {
@@ -52,7 +52,7 @@ func (t *Tx) Rollback(ctx context.Context) error {
 }
 
 // ReadManaged returns the file's content, or nil if it does not exist. It
-// refuses to touch files that Servik did not write.
+// refuses to touch files that Serfex did not write.
 func (t *Tx) ReadManaged(abs string) ([]byte, error) {
 	old, err := os.ReadFile(t.H.Path(abs))
 	if errors.Is(err, os.ErrNotExist) {
@@ -62,7 +62,7 @@ func (t *Tx) ReadManaged(abs string) ([]byte, error) {
 		return nil, err
 	}
 	if !HasMarker(old) {
-		return nil, fmt.Errorf("%s exists and is not managed by Servik; move it away first", abs)
+		return nil, fmt.Errorf("%s exists and is not managed by Serfex; move it away first", abs)
 	}
 	return old, nil
 }
@@ -101,7 +101,7 @@ func (t *Tx) WriteFileMode(abs string, data []byte, mode os.FileMode, uid, gid i
 	return nil
 }
 
-// WriteOwned atomically replaces a file in a directory that only Servik
+// WriteOwned atomically replaces a file in a directory that only Serfex
 // writes (certificates, keys), where a marker line cannot be used. Mode and
 // owner are fixed even when the content is already right.
 func (t *Tx) WriteOwned(abs string, data []byte, mode os.FileMode, uid, gid int) error {
@@ -132,7 +132,7 @@ func (t *Tx) WriteOwned(abs string, data []byte, mode os.FileMode, uid, gid int)
 
 // TakeOver makes room for a managed file where the distribution put its
 // own (Postfix's main.cf, Dovecot's dovecot.conf): a file without the
-// marker is renamed to abs.before-servik, never deleted. Managed and
+// marker is renamed to abs.before-serfex, never deleted. Managed and
 // missing files are left alone.
 func (t *Tx) TakeOver(abs string) error {
 	p := t.H.Path(abs)
@@ -143,9 +143,9 @@ func (t *Tx) TakeOver(abs string) error {
 	if err != nil {
 		return err
 	}
-	saved := p + ".before-servik"
+	saved := p + ".before-serfex"
 	if _, err := os.Lstat(saved); err == nil {
-		return fmt.Errorf("%s exists and is not managed by Servik, and %s.before-servik is taken; move one of them away first", abs, abs)
+		return fmt.Errorf("%s exists and is not managed by Serfex, and %s.before-serfex is taken; move one of them away first", abs, abs)
 	}
 	if err := os.Rename(p, saved); err != nil {
 		return err
@@ -217,7 +217,7 @@ func (t *Tx) ReplaceSymlink(target, link string) error {
 	case err != nil && !errors.Is(err, os.ErrNotExist):
 		return fmt.Errorf("%s exists and is not a symlink", link)
 	}
-	tmp := p + ".servik-new"
+	tmp := p + ".serfex-new"
 	_ = os.Remove(tmp)
 	if err := os.Symlink(target, tmp); err != nil {
 		return err
@@ -290,7 +290,7 @@ func (t *Tx) UserDirs(ctx context.Context, user string, mode string, dirs ...str
 }
 
 func (t *Tx) atomicWrite(path string, data []byte, mode os.FileMode, uid, gid int) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".servik-*")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".serfex-*")
 	if err != nil {
 		return err
 	}

@@ -154,7 +154,7 @@ func TestLanguageComesFromTheFlagThenTheLocale(t *testing.T) {
 		{"", map[string]string{"LC_ALL": "C", "LANG": "tr_TR.UTF-8"}, "tr"},
 		{"", map[string]string{"LC_ALL": "de_DE.UTF-8", "LANG": "tr_TR.UTF-8"}, "en"},
 		{"tr", map[string]string{"LANG": "en_US.UTF-8"}, "tr"},
-		{"", map[string]string{"SERVIK_LANG": "tr", "LANG": "en_US.UTF-8"}, "tr"},
+		{"", map[string]string{"SERFEX_LANG": "tr", "LANG": "en_US.UTF-8"}, "tr"},
 		{"", map[string]string{}, "en"},
 	}
 	for _, tc := range cases {

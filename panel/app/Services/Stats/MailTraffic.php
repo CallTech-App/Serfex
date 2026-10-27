@@ -21,7 +21,7 @@ class MailTraffic
      */
     public function days(array $domains, int $days = 30): array
     {
-        $today = CarbonImmutable::now(config('servik.timezone'))->startOfDay();
+        $today = CarbonImmutable::now(config('serfex.timezone'))->startOfDay();
         $from = $today->subDays($days - 1);
         $rows = DB::table('mail_stats_daily')->whereIn('domain', $domains)->whereBetween('day', [$from->toDateString(), $today->toDateString()])
             ->groupBy('day')->selectRaw('day::text as day, sum(received) as received, sum(sent) as sent, sum(rejected) as rejected, sum(bounced) as bounced')

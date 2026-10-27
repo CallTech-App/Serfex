@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 
 /**
  * Backups of one Laravel application, kept by the agent under
- * /var/lib/servik/backups/laravel/<domain>/ and listed in the panel.
+ * /var/lib/serfex/backups/laravel/<domain>/ and listed in the panel.
  */
 class Backups
 {
@@ -66,7 +66,7 @@ class Backups
                 'id' => $backup->key,
                 'parts' => $backup->parts,
                 'run' => $backup->run,
-            ], config('servik.agent.backup_timeout'));
+            ], config('serfex.agent.backup_timeout'));
         } catch (AgentException $e) {
             $backup->update(['status' => 'failed', 'error' => $e->reason ?: $e->getMessage(), 'finished_at' => now()]);
 
@@ -131,7 +131,7 @@ class Backups
     {
         $backup->loadMissing('app.site');
         try {
-            $this->agent->call('laravel.backup.delete', ['domain' => $backup->app->site->domain, 'id' => $backup->key], config('servik.agent.job_timeout'));
+            $this->agent->call('laravel.backup.delete', ['domain' => $backup->app->site->domain, 'id' => $backup->key], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             // A backup the agent cannot reach stays listed as failed rather
             // than leaving a file nobody sees.
@@ -166,7 +166,7 @@ class Backups
         }
         [$h, $m] = array_map('intval', explode(':', $app->backup_time ?: '03:00') + [1 => 0]);
         // The time is the panel's (Araçlar ve Ayarlar → Genel).
-        $at = $now->copy()->timezone(config('servik.timezone'))->setTime($h, $m);
+        $at = $now->copy()->timezone(config('serfex.timezone'))->setTime($h, $m);
         if ($now->lt($at)) {
             $at->subDay();
         }

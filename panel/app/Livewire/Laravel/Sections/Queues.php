@@ -128,7 +128,7 @@ class Queues extends Section
     public function restart(AgentClient $agent): void
     {
         try {
-            $agent->call('laravel.queue.restart', $this->app()->target(), config('servik.agent.job_timeout'));
+            $agent->call('laravel.queue.restart', $this->app()->target(), config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $this->agentError = self::agentMessage($e);
 

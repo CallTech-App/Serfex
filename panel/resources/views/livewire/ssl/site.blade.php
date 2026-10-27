@@ -20,7 +20,7 @@
         </nav>
         <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('SSL sertifikası') }}</h1>
         <p class="mt-1 text-[13px] text-muted">
-            <x-t text=":domain için HTTPS sertifikası. Let's Encrypt sertifikaları bitişten :config gün önce otomatik yenilenir." :with="['config' => config('servik.ssl.renew_days')]"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t>
+            <x-t text=":domain için HTTPS sertifikası. Let's Encrypt sertifikaları bitişten :config gün önce otomatik yenilenir." :with="['config' => config('serfex.ssl.renew_days')]"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t>
         </p>
     </div>
 
@@ -112,7 +112,7 @@
                         @if ($certificate->isLetsEncrypt())
                             <label class="flex items-center gap-2">
                                 <input type="checkbox" @checked($certificate->auto_renew) wire:change="setAutoRenew($event.target.checked)" class="size-4 accent-accent">
-                                {{ __('Bitişten :config gün önce yenile', ['config' => config('servik.ssl.renew_days')]) }}
+                                {{ __('Bitişten :config gün önce yenile', ['config' => config('serfex.ssl.renew_days')]) }}
                             </label>
                         @else
                             <span class="text-muted">{{ __('Yüklenen sertifikalar elle yenilenir: yenisini aldığınızda tekrar yükleyin.') }}</span>
@@ -190,7 +190,7 @@
                         @endif
                     </p>
                 </div>
-                <p class="text-2xs text-muted">{{ __('Alan adının DNS\'i bu sunucuyu göstermiyorsa Servik Let\'s Encrypt\'e başvurmadan bekler ve her saat yeniden dener.') }}</p>
+                <p class="text-2xs text-muted">{{ __('Alan adının DNS\'i bu sunucuyu göstermiyorsa Serfex Let\'s Encrypt\'e başvurmadan bekler ve her saat yeniden dener.') }}</p>
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('requesting', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
@@ -204,7 +204,7 @@
         <form wire:submit="upload">
             <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Sertifika yükle') }}</h2>
             <div class="space-y-4 p-5 text-[13.5px]">
-                <p class="text-muted"><x-t text="Sertifika sağlayıcınızdan aldığınız dosyaları PEM biçiminde yapıştırın. Servik, anahtarın sertifikaya ait olduğunu ve :domain adını kapsadığını denetler."><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t></p>
+                <p class="text-muted"><x-t text="Sertifika sağlayıcınızdan aldığınız dosyaları PEM biçiminde yapıştırın. Serfex, anahtarın sertifikaya ait olduğunu ve :domain adını kapsadığını denetler."><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t></p>
                 @foreach ([['certificatePem', __('Sertifika (CRT)'), '-----BEGIN CERTIFICATE-----', 6], ['privateKeyPem', __('Özel anahtar (KEY)'), '-----BEGIN PRIVATE KEY-----', 6], ['chainPem', __('Ara sertifikalar (CA paketi, isteğe bağlı)'), '-----BEGIN CERTIFICATE-----', 4]] as [$field, $label, $hint, $rows])
                     <div>
                         <label for="{{ $field }}" class="mb-1.5 block">{{ $label }}</label>

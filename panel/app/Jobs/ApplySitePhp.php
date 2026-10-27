@@ -54,7 +54,7 @@ class ApplySitePhp implements ShouldQueue
             : $query->whereKey($this->siteIds);
         foreach ($query->orderBy('id')->get() as $site) {
             try {
-                $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+                $agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
             } catch (AgentException $e) {
                 Log::warning("PHP settings of {$site->domain} could not be applied: {$e->getMessage()}");
             }

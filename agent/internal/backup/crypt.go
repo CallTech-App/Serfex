@@ -153,10 +153,10 @@ type decryptReader struct {
 func newDecryptReader(r io.Reader, passphrase string) (*decryptReader, error) {
 	header := make([]byte, encHeaderLen)
 	if _, err := io.ReadFull(r, header); err != nil {
-		return nil, errors.New("the file is not an encrypted Servik backup")
+		return nil, errors.New("the file is not an encrypted Serfex backup")
 	}
 	if !bytes.Equal(header[:len(encMagic)], []byte(encMagic)) {
-		return nil, errors.New("the file is not an encrypted Servik backup")
+		return nil, errors.New("the file is not an encrypted Serfex backup")
 	}
 	iter := int(binary.BigEndian.Uint32(header[len(encMagic)+16:]))
 	if iter < 100_000 || iter > 10_000_000 {

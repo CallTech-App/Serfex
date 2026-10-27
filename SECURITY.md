@@ -1,6 +1,6 @@
 # Security policy
 
-Servik runs as root on servers that host other people's sites and mail, so
+Serfex runs as root on servers that host other people's sites and mail, so
 we take vulnerabilities seriously and would rather hear about them early.
 
 ## Reporting a vulnerability
@@ -15,7 +15,7 @@ Only the maintainers can see the report.
 
 Please include:
 
-- the Servik version (`servik version`, or Settings → Updates);
+- the Serfex version (`serfex version`, or Settings → Updates);
 - what an attacker can do, and from where (a visitor, a customer, a Laravel
   team member, a support administrator, another user on the server);
 - the steps to reproduce it, or a proof of concept;
@@ -38,12 +38,12 @@ not access or change data that is not yours while you test.
 
 ## Supported versions
 
-Servik is young: only the **newest release** gets security fixes. Update
+Serfex is young: only the **newest release** gets security fixes. Update
 from the panel to stay supported.
 
 ## In scope
 
-Anything in this repository: the panel, `servik-agent`, the `servik` command
+Anything in this repository: the panel, `serfex-agent`, the `serfex` command
 line, `install.sh`, `install-cli.sh` and the release build. Problems that
 matter most to us:
 
@@ -56,5 +56,5 @@ matter most to us:
 - code execution, SQL injection, cross-site scripting or request forgery in
   the panel.
 
-Vulnerabilities in the software Servik installs (Nginx, PHP, Postfix and so
-on) belong to those projects, unless Servik configures them insecurely.
+Vulnerabilities in the software Serfex installs (Nginx, PHP, Postfix and so
+on) belong to those projects, unless Serfex configures them insecurely.

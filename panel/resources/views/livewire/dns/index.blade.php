@@ -25,10 +25,10 @@
         @php
             [$tone, $title, $text, $action] = match ($server['state']) {
                 'installing' => ['info', __('DNS sunucusu kuruluyor'), __('PowerDNS kuruluyor ve başlatılıyor. Bitince bekleyen bölgeler otomatik yayınlanır.'), null],
-                'missing' => ['warn', __('DNS sunucusu kurulu değil'), __('Bölgeleriniz panelde duruyor ama bu sunucu henüz DNS sorgularını yanıtlamıyor. Servik, PowerDNS\'i kurup yapılandırabilir.'), __('DNS sunucusunu kur')],
-                'stopped' => ['crit', __('DNS sunucusu yanıt vermiyor'), __('PowerDNS yapılandırılmış ama çalışmıyor. Servik yapılandırmayı denetleyip yeniden başlatabilir.'), __('Onar ve başlat')],
+                'missing' => ['warn', __('DNS sunucusu kurulu değil'), __('Bölgeleriniz panelde duruyor ama bu sunucu henüz DNS sorgularını yanıtlamıyor. Serfex, PowerDNS\'i kurup yapılandırabilir.'), __('DNS sunucusunu kur')],
+                'stopped' => ['crit', __('DNS sunucusu yanıt vermiyor'), __('PowerDNS yapılandırılmış ama çalışmıyor. Serfex yapılandırmayı denetleyip yeniden başlatabilir.'), __('Onar ve başlat')],
                 'failed' => ['crit', __('DNS sunucusu kurulamadı'), __('Önceki ayarlar geri yüklendi.'), __('Tekrar dene')],
-                default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status servik-agent" ile kontrol edin.'), null],
+                default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status serfex-agent" ile kontrol edin.'), null],
             };
         @endphp
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">

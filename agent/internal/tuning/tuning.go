@@ -5,9 +5,9 @@
 // packages that write those services' configuration (site, mail, dns,
 // component, service) agree on them.
 //
-//	/etc/servik/services.json                 the settings
-//	/etc/nginx/conf.d/servik-tuning.conf      Nginx http-level limits
-//	/etc/apache2/conf-available/servik.conf   Apache's server-wide settings
+//	/etc/serfex/services.json                 the settings
+//	/etc/nginx/conf.d/serfex-tuning.conf      Nginx http-level limits
+//	/etc/apache2/conf-available/serfex.conf   Apache's server-wide settings
 package tuning
 
 import (
@@ -25,13 +25,13 @@ import (
 
 const (
 	// File holds the settings.
-	File = "/etc/servik/services.json"
+	File = "/etc/serfex/services.json"
 	// NginxConf holds the http-level Nginx settings every site inherits.
-	NginxConf = "/etc/nginx/conf.d/servik-tuning.conf"
-	// ApacheConf holds Servik's server-wide Apache settings. Apache reads
+	NginxConf = "/etc/nginx/conf.d/serfex-tuning.conf"
+	// ApacheConf holds Serfex's server-wide Apache settings. Apache reads
 	// it (through conf-enabled) after the modules' own files, so its MPM
 	// limits win over mpm_event.conf.
-	ApacheConf = "/etc/apache2/conf-available/servik.conf"
+	ApacheConf = "/etc/apache2/conf-available/serfex.conf"
 )
 
 // Settings are the service settings the panel can change.
@@ -143,7 +143,7 @@ func Load(h host.Host) Settings {
 
 // Save writes the settings in a transaction.
 func Save(t *txn.Tx, s Settings) error {
-	if err := t.RootDir("/etc/servik", 0o755, 0, 0); err != nil {
+	if err := t.RootDir("/etc/serfex", 0o755, 0, 0); err != nil {
 		return err
 	}
 	data, _ := json.MarshalIndent(s, "", "  ")
@@ -178,7 +178,7 @@ func ApacheServerLimit(a Apache) int {
 	return max(16, 2*((a.MaxRequestWorkers+apacheThreads-1)/apacheThreads))
 }
 
-// ApacheContent is Servik's server-wide Apache configuration for a.
+// ApacheContent is Serfex's server-wide Apache configuration for a.
 func ApacheContent(a Apache) []byte {
 	return fmt.Appendf(nil, `# %s. Manual changes are overwritten.
 ServerName localhost
@@ -196,7 +196,7 @@ Timeout %d
 `, txn.Marker, a.Timeout, apacheThreads, ApacheServerLimit(a), a.MaxRequestWorkers)
 }
 
-// PowerDNSLines are the lines of Servik's PowerDNS configuration that p
+// PowerDNSLines are the lines of Serfex's PowerDNS configuration that p
 // decides, as [name, value] in file order.
 func PowerDNSLines(p PowerDNS) [][2]string {
 	disable, allow := "yes", ""

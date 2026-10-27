@@ -160,7 +160,7 @@ class WebAccess
             'domain' => $site->domain,
             'dirs' => ProtectedDirectory::where('site_id', $site->id)->orderBy('path')->get()
                 ->map(fn (ProtectedDirectory $d) => ['path' => $d->path, 'realm' => (string) $d->realm, 'users' => array_values($d->users)])->values()->all(),
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
     }
 
     // --- Blocked paths ------------------------------------------------
@@ -198,7 +198,7 @@ class WebAccess
         $before = $site->denied_paths;
         $site->update(['denied_paths' => $paths ?: null]);
         try {
-            $this->agent->call('web.deny.apply', ['domain' => $site->domain, 'paths' => $paths], config('servik.agent.job_timeout'));
+            $this->agent->call('web.deny.apply', ['domain' => $site->domain, 'paths' => $paths], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $site->update(['denied_paths' => $before]);
             throw $e;

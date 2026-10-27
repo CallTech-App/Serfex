@@ -16,13 +16,13 @@ use Illuminate\Console\Command;
  * steps until the run ends. The panel's queue worker takes the backup and
  * starts the run, so it must be running.
  */
-#[Signature('servik:update
+#[Signature('serfex:update
     {--check : Only look for newer releases}
     {--rollback : Return to the previous release}
     {--target= : Install this version instead of the newest}
     {--yes : Do not ask to confirm}')]
-#[Description('Update Servik to its newest release, or return to the previous one')]
-class UpdateServik extends Command
+#[Description('Update Serfex to its newest release, or return to the previous one')]
+class UpdateSerfex extends Command
 {
     /** Seconds to follow a run before giving up on it. */
     private const FOLLOW = 7200;
@@ -35,18 +35,18 @@ class UpdateServik extends Command
 
             return self::FAILURE;
         }
-        $this->line(($status['previous'] ?? '') !== '' ? __('Kurulu: Servik :version (önceki: :previous)', ['version' => $status['version'], 'previous' => $status['previous']]) : __('Kurulu: Servik :version', ['version' => $status['version']]));
+        $this->line(($status['previous'] ?? '') !== '' ? __('Kurulu: Serfex :version (önceki: :previous)', ['version' => $status['version'], 'previous' => $status['previous']]) : __('Kurulu: Serfex :version', ['version' => $status['version']]));
         $release = $updates->available($status);
         if ($this->option('check')) {
-            $this->info($release ? __('Servik :version hazır.', ['version' => $release['version']]) : __('Servik güncel.'));
+            $this->info($release ? __('Serfex :version hazır.', ['version' => $release['version']]) : __('Serfex güncel.'));
 
             return self::SUCCESS;
         }
 
         $rollback = (bool) $this->option('rollback');
         $question = $rollback
-            ? __('Servik :version sürümüne dönülsün mü?', ['version' => $status['previous'] ?? '?'])
-            : __('Servik :version kurulsun mu?', ['version' => $this->option('target') ?: ($release['version'] ?? '?')]);
+            ? __('Serfex :version sürümüne dönülsün mü?', ['version' => $status['previous'] ?? '?'])
+            : __('Serfex :version kurulsun mu?', ['version' => $this->option('target') ?: ($release['version'] ?? '?')]);
         if (! $this->option('yes') && ! $this->confirm($question, true)) {
             return self::FAILURE;
         }
@@ -98,8 +98,8 @@ class UpdateServik extends Command
         }
 
         return match ($update->status) {
-            'succeeded' => $this->done(__('Servik :to_version çalışıyor.', ['to_version' => $update->to_version])),
-            'rolled_back' => $this->failed(__('Servik :to_version kurulamadı, :from_version sürümüne dönüldü: :error', ['to_version' => $update->to_version, 'from_version' => $update->from_version, 'error' => $update->error]), 2),
+            'succeeded' => $this->done(__('Serfex :to_version çalışıyor.', ['to_version' => $update->to_version])),
+            'rolled_back' => $this->failed(__('Serfex :to_version kurulamadı, :from_version sürümüne dönüldü: :error', ['to_version' => $update->to_version, 'from_version' => $update->from_version, 'error' => $update->error]), 2),
             default => $this->failed($update->isRunning() ? __('Güncelleme bitmedi; Güncellemeler sayfasından izleyin.') : __('Başarısız: :error', ['error' => $update->error]), 1),
         };
     }

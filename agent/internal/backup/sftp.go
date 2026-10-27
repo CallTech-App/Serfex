@@ -107,7 +107,7 @@ func sftpReason(out string) string {
 		case l == "" || strings.HasPrefix(l, "sftp>"):
 			continue
 		case strings.Contains(l, "Permission denied"):
-			return "the server refused the key: add Servik's public key to the user's authorized_keys (" + l + ")"
+			return "the server refused the key: add Serfex's public key to the user's authorized_keys (" + l + ")"
 		case strings.Contains(l, "Host key verification failed") || strings.Contains(l, "REMOTE HOST IDENTIFICATION HAS CHANGED"):
 			return "the server's host key changed since the target was tested; test the target again if this is expected"
 		}
@@ -219,7 +219,7 @@ type sftpEntry struct {
 
 // parseSFTPList reads "ls -ln" output:
 //
-//	-rw-r--r--    1 1000     1000         1234 Oct 19 03:00 servik/a/b.tar
+//	-rw-r--r--    1 1000     1000         1234 Oct 19 03:00 serfex/a/b.tar
 func parseSFTPList(out string) []sftpEntry {
 	var entries []sftpEntry
 	for _, l := range strings.Split(out, "\n") {

@@ -189,11 +189,11 @@ func parse(args []string, sets []*Flags, passthrough bool) ([]string, error) {
 	return positional, nil
 }
 
-// synopsis is the usage line: servik sites create <domain> [options].
+// synopsis is the usage line: serfex sites create <domain> [options].
 func (cmd *Command) synopsis() string {
-	synopsis := "servik"
+	synopsis := "serfex"
 	if cmd.parent != nil {
-		synopsis = "servik " + strings.TrimPrefix(cmd.path(), "servik ")
+		synopsis = "serfex " + strings.TrimPrefix(cmd.path(), "serfex ")
 	}
 	if len(cmd.Subs) > 0 && cmd.Run == nil {
 		synopsis += " " + T("<komut>")
@@ -260,9 +260,9 @@ func (cmd *Command) help(c *Ctx) string {
 		}
 	}
 	if len(cmd.Subs) > 0 {
-		fmt.Fprintf(&b, "\n%s\n", T("Bir komutun ayrıntıları için: %s <komut> --help", strings.TrimSpace("servik "+strings.TrimPrefix(cmd.path(), "servik"))))
+		fmt.Fprintf(&b, "\n%s\n", T("Bir komutun ayrıntıları için: %s <komut> --help", strings.TrimSpace("serfex "+strings.TrimPrefix(cmd.path(), "serfex"))))
 	} else if cmd.parent != nil {
-		fmt.Fprintf(&b, "\n%s\n", T("Genel seçenekler (--json, --profile, --lang …) için: servik --help"))
+		fmt.Fprintf(&b, "\n%s\n", T("Genel seçenekler (--json, --profile, --lang …) için: serfex --help"))
 	}
 	return b.String()
 }

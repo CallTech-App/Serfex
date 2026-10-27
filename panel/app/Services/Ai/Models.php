@@ -3,7 +3,7 @@
 namespace App\Services\Ai;
 
 /**
- * The Claude models Servik AI offers and their list prices in US dollars
+ * The Claude models Serfex AI offers and their list prices in US dollars
  * per million tokens, used to estimate what the assistant costs.
  */
 final class Models

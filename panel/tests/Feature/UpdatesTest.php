@@ -54,7 +54,7 @@ class UpdatesTest extends TestCase
             'releases' => [[
                 'version' => '0.2.0',
                 'tag' => 'v0.2.0',
-                'name' => 'Servik 0.2.0',
+                'name' => 'Serfex 0.2.0',
                 'notes' => "## Yenilikler\n\n- Güncellemeler sayfası",
                 'published_at' => now()->subDay()->toIso8601String(),
                 'prerelease' => false,
@@ -67,7 +67,7 @@ class UpdatesTest extends TestCase
             'update.check' => fn ($p) => ['channel' => $p['channel']] + $this->status,
             'update.start' => fn ($p) => ['run' => $p['run']],
             'update.rollback' => fn ($p) => ['run' => $p['run']],
-            'update.run.read' => ['data' => "▸ Servik 0.2.0 indiriliyor\n", 'offset' => 31, 'size' => 31, 'done' => false],
+            'update.run.read' => ['data' => "▸ Serfex 0.2.0 indiriliyor\n", 'offset' => 31, 'size' => 31, 'done' => false],
             'backup.create' => fn ($p) => [
                 'key' => $p['key'],
                 'items' => array_map(fn ($i) => ['name' => $i['name'], 'size' => 1000, 'parts' => ['database' => 10, 'settings' => 5], 'warnings' => []], $p['items']),
@@ -96,7 +96,7 @@ class UpdatesTest extends TestCase
     {
         Livewire::test(UpdatesPage::class)
             ->call('check')
-            ->assertDispatched('toast', message: 'Servik 0.2.0 hazır.');
+            ->assertDispatched('toast', message: 'Serfex 0.2.0 hazır.');
         $this->assertSame([['channel' => 'stable']], $this->agent->called('update.check'));
     }
 
@@ -182,7 +182,7 @@ class UpdatesTest extends TestCase
         PanelUpdate::create(['kind' => 'upgrade', 'from_version' => '0.1.0', 'to_version' => '0.2.0', 'run' => 'upd-aaaaaaaaaaaaaaaaaaaa', 'status' => 'running', 'started_at' => now()]);
         $this->assertSame(Backups::UPDATING, app(Backups::class)->startServer(null));
         $this->assertSame(Backups::UPDATING, app(Backups::class)->startSite(Site::factory()->create(), null));
-        $this->assertStringContainsString('Servik güncelleniyor', (string) app(Components::class)->start('redis', 'install', null));
+        $this->assertStringContainsString('Serfex güncelleniyor', (string) app(Components::class)->start('redis', 'install', null));
         $this->assertStringContainsString('sürüyor', app(Updates::class)->start(null));
     }
 
@@ -212,14 +212,14 @@ class UpdatesTest extends TestCase
 
         $update->update(['status' => 'running', 'started_at' => now()]);
         $this->status['running'] = $update->run;
-        $this->getJson($url)->assertOk()->assertJson(['data' => "▸ Servik 0.2.0 indiriliyor\n", 'offset' => 31, 'done' => false, 'agent' => true]);
+        $this->getJson($url)->assertOk()->assertJson(['data' => "▸ Serfex 0.2.0 indiriliyor\n", 'offset' => 31, 'done' => false, 'agent' => true]);
 
         $this->agent->answers['update.run.read'] = new AgentUnavailableException('restarting');
         $this->getJson($url.'?offset=31')->assertOk()->assertJson(['agent' => false, 'done' => false, 'offset' => 31]);
 
         unset($this->status['running']);
         $this->status['last'] = ['run' => $update->run, 'status' => 'succeeded'];
-        $this->agent->answers['update.run.read'] = ['data' => "✓ Servik 0.2.0 çalışıyor.\n", 'offset' => 60, 'size' => 60, 'done' => true];
+        $this->agent->answers['update.run.read'] = ['data' => "✓ Serfex 0.2.0 çalışıyor.\n", 'offset' => 60, 'size' => 60, 'done' => true];
         $this->getJson($url.'?offset=31')->assertOk()->assertJson(['done' => true, 'status' => 'succeeded']);
         $this->assertSame('succeeded', $update->refresh()->status);
     }
@@ -250,16 +250,16 @@ class UpdatesTest extends TestCase
 
     public function test_the_menu_and_dashboard_point_at_a_ready_or_failed_update_without_asking_the_agent(): void
     {
-        $this->get(route('dashboard'))->assertOk()->assertSee('Servik sürümü')->assertDontSee('0.2.0 hazır');
+        $this->get(route('dashboard'))->assertOk()->assertSee('Serfex sürümü')->assertDontSee('0.2.0 hazır');
 
         app(Updates::class)->check();
         $this->agent->calls = [];
-        $this->get(route('dashboard'))->assertOk()->assertSee('Servik 0.2.0 hazır')->assertSee('güncelleme bildirimi');
+        $this->get(route('dashboard'))->assertOk()->assertSee('Serfex 0.2.0 hazır')->assertSee('güncelleme bildirimi');
         $this->assertSame([], $this->agent->methods());
 
         PanelUpdate::create(['kind' => 'upgrade', 'from_version' => '0.1.0', 'to_version' => '0.2.0', 'run' => 'upd-eeeeeeeeeeeeeeeeeeee', 'status' => 'failed', 'error' => 'x', 'finished_at' => now()]);
         $notices = app(Updates::class)->notices();
-        $this->assertSame([['level' => 'warn', 'text' => 'Servik 0.2.0 güncellemesi başarısız oldu']], $notices);
+        $this->assertSame([['level' => 'warn', 'text' => 'Serfex 0.2.0 güncellemesi başarısız oldu']], $notices);
         $this->assertSame([], $this->agent->methods());
     }
 
@@ -273,10 +273,10 @@ class UpdatesTest extends TestCase
 
     public function test_the_daily_check_and_the_command_line(): void
     {
-        $this->artisan('servik:update-check')->expectsOutput('Servik 0.2.0 hazır.')->assertSuccessful();
+        $this->artisan('serfex:update-check')->expectsOutput('Serfex 0.2.0 hazır.')->assertSuccessful();
         $this->assertNotNull(Cache::get(Updates::KNOWN_KEY));
 
-        $this->artisan('servik:update --check')->expectsOutput('Servik 0.2.0 hazır.')->assertSuccessful();
+        $this->artisan('serfex:update --check')->expectsOutput('Serfex 0.2.0 hazır.')->assertSuccessful();
         $this->assertSame(0, PanelUpdate::count());
     }
 }

@@ -77,7 +77,7 @@ func (m *Manager) Logs(spec LogsSpec) (Log, error) {
 			return Log{}, &OperationError{fmt.Errorf("reading %s failed", file)}
 		}
 		if fi.Mode()&fs.ModeSymlink != 0 {
-			return Log{}, invalid("%s is a symbolic link; Servik does not follow it", c)
+			return Log{}, invalid("%s is a symbolic link; Serfex does not follow it", c)
 		}
 	}
 	f, err := os.OpenFile(m.h.Path(file), os.O_RDONLY|syscall.O_NOFOLLOW, 0)

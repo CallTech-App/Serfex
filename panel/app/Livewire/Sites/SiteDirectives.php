@@ -107,6 +107,6 @@ class SiteDirectives extends Component
         $site = $this->site();
 
         return view('livewire.sites.directives', ['site' => $site])
-            ->title(__('Web sunucusu yönergeleri · :domain · Servik', ['domain' => $site->domain]));
+            ->title(__('Web sunucusu yönergeleri · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

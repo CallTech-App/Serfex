@@ -1,4 +1,4 @@
-# Servik documentation
+# Serfex documentation
 
 [Türkçe belgeler aşağıda](#türkçe).
 
@@ -16,7 +16,7 @@
 - [Databases](admin/databases.md)
 - [Laravel toolkit](laravel.md)
 - [Customers and plans](admin/customers.md)
-- [Live monitoring and Servik AI](admin/monitoring.md)
+- [Live monitoring and Serfex AI](admin/monitoring.md)
 - [Security](admin/security.md): firewall, WAF, scans, sign-in security
 - [Backups](admin/backups.md)
 - [Services, PHP and software](admin/services.md)
@@ -25,7 +25,7 @@
 
 ## Reference
 
-- [Command line](cli.md), generated from the `servik` command tree
+- [Command line](cli.md), generated from the `serfex` command tree
 - [API](api.md)
 - [Architecture](architecture.md)
 - [Development](development.md)

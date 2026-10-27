@@ -34,7 +34,7 @@ type Record struct {
 	Content string `json:"content"`
 }
 
-// SOA holds the start-of-authority fields Servik lets the user set. The
+// SOA holds the start-of-authority fields Serfex lets the user set. The
 // serial is managed by PowerDNS.
 type SOA struct {
 	Primary    string `json:"primary"`

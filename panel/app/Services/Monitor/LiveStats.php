@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Cache;
 class LiveStats
 {
     /** Cache key of the number of things that need a look, for the menu. */
-    public const ATTENTION_KEY = 'servik.monitor.attention';
+    public const ATTENTION_KEY = 'serfex.monitor.attention';
 
     public function __construct(private readonly AgentClient $agent) {}
 

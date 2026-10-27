@@ -105,7 +105,7 @@
                                 @if ($d->ref)<div class="font-mono text-2xs text-muted">{{ $d->ref }}</div>@endif
                             @endif
                         </td>
-                        <td class="px-3 py-3 whitespace-nowrap">{{ $d->triggered_by ?? 'Servik' }}</td>
+                        <td class="px-3 py-3 whitespace-nowrap">{{ $d->triggered_by ?? 'Serfex' }}</td>
                         <td class="num px-3 py-3 whitespace-nowrap text-muted">{{ $d->durationLabel() ?? '…' }}</td>
                         <td class="px-3 py-3">
                             <x-status-badge :status="$d->status" />
@@ -137,7 +137,7 @@
                     </label>
                 @endforeach
             </div>
-            <p class="text-2xs text-muted"><x-t text="Servik her dağıtımda sırayla şunları yapar: kodu çeker, :part ve :part2 bağlar, :part3, ön yüz derlemesi, :part4, :part5, :part6 geçişi, PHP-FPM yenileme ve işçileri yeniden başlatma. Buraya yalnızca kendi adımlarınızı yazarsınız; betikler sitenin kullanıcısıyla, sürüm dizininde :part7 ile çalışır. SSH gerekmez."><x-slot:part><span class="font-mono">storage</span></x-slot:part><x-slot:part2><span class="font-mono">.env</span></x-slot:part2><x-slot:part3><span class="font-mono">composer install --no-dev</span></x-slot:part3><x-slot:part4><span class="font-mono">migrate --force</span></x-slot:part4><x-slot:part5><span class="font-mono">optimize</span></x-slot:part5><x-slot:part6><span class="font-mono">current</span></x-slot:part6><x-slot:part7><span class="font-mono">bash</span></x-slot:part7></x-t></p>
+            <p class="text-2xs text-muted"><x-t text="Serfex her dağıtımda sırayla şunları yapar: kodu çeker, :part ve :part2 bağlar, :part3, ön yüz derlemesi, :part4, :part5, :part6 geçişi, PHP-FPM yenileme ve işçileri yeniden başlatma. Buraya yalnızca kendi adımlarınızı yazarsınız; betikler sitenin kullanıcısıyla, sürüm dizininde :part7 ile çalışır. SSH gerekmez."><x-slot:part><span class="font-mono">storage</span></x-slot:part><x-slot:part2><span class="font-mono">.env</span></x-slot:part2><x-slot:part3><span class="font-mono">composer install --no-dev</span></x-slot:part3><x-slot:part4><span class="font-mono">migrate --force</span></x-slot:part4><x-slot:part5><span class="font-mono">optimize</span></x-slot:part5><x-slot:part6><span class="font-mono">current</span></x-slot:part6><x-slot:part7><span class="font-mono">bash</span></x-slot:part7></x-t></p>
             <button type="submit" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">{{ __('Adımları kaydet') }}</button>
         </form>
     </details>

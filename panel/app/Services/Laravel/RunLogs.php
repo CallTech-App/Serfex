@@ -12,7 +12,7 @@ use App\Services\Agent\AgentException;
 /**
  * The output of an application's deploys, commands and backups as it is
  * written, read from the agent piece by piece (<x-run-log> in the panel,
- * `servik deploy --wait` on the command line).
+ * `serfex deploy --wait` on the command line).
  */
 class RunLogs
 {

@@ -59,7 +59,7 @@
         @if ($tab === 'ayarlar')
             <form wire:submit="save">
                 @if (! $managed && ! $agentError)
-                    <p class="mx-5 mt-4 rounded-lg bg-info-soft px-3 py-2 text-[13px]">{{ __('Bu sürüm Servik\'ten önce kurulmuş; değerler sunucunun php.ini dosyasından okundu. Kaydedince Servik\'in ayar dosyasına yazılır, php.ini\'ye dokunulmaz.') }}</p>
+                    <p class="mx-5 mt-4 rounded-lg bg-info-soft px-3 py-2 text-[13px]">{{ __('Bu sürüm Serfex\'ten önce kurulmuş; değerler sunucunun php.ini dosyasından okundu. Kaydedince Serfex\'in ayar dosyasına yazılır, php.ini\'ye dokunulmaz.') }}</p>
                 @endif
                 @if ($bodyLimit)
                     <p class="mx-5 mt-4 rounded-lg bg-warn-soft px-3 py-2 text-[13px]"><x-t text="Nginx en fazla :body_limit MB'lık isteğe izin veriyor; daha büyük yüklemeler PHP'ye ulaşmadan reddedilir. Sınırı :link yükseltin." :with="['body_limit' => $bodyLimit]"><x-slot:link><a href="{{ route('services.show', ['unit' => 'nginx', 'sekme' => 'ayarlar']) }}" wire:navigate class="text-accent hover:underline">{{ __('Nginx ayarlarından') }}</a></x-slot:link></x-t></p>
@@ -91,7 +91,7 @@
                     <button type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($agentError) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                         <x-icon name="loader-circle" class="animate-spin" wire:loading wire:target="save" />{{ __('Kaydet ve uygula') }}
                     </button>
-                    <button type="button" wire:click="resetToDefaults" @disabled($defaults === []) class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2 disabled:opacity-40">{{ __('Servik varsayılanlarını doldur') }}</button>
+                    <button type="button" wire:click="resetToDefaults" @disabled($defaults === []) class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2 disabled:opacity-40">{{ __('Serfex varsayılanlarını doldur') }}</button>
                     <span class="text-[13px] text-muted">{{ __('PHP-FPM kesintisiz yeniden yüklenir; ayarı kabul etmezse önceki değerler kalır.') }}</span>
                 </div>
             </form>

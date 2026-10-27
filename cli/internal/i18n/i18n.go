@@ -2,7 +2,7 @@
 //
 // Turkish is the source language, as in the panel and the agent: messages
 // are written in Turkish in the code and catalog.go holds their English.
-// The language comes from --lang, SERVIK_LANG or the locale (LC_ALL,
+// The language comes from --lang, SERFEX_LANG or the locale (LC_ALL,
 // LC_MESSAGES, LANG): Turkish for tr_*, English otherwise.
 package i18n
 
@@ -17,7 +17,7 @@ var locale = "en"
 // Detect picks the language from an explicit choice (--lang) and the
 // environment.
 func Detect(choice string, getenv func(string) string) string {
-	for _, v := range []string{choice, getenv("SERVIK_LANG"), getenv("LC_ALL"), getenv("LC_MESSAGES"), getenv("LANG")} {
+	for _, v := range []string{choice, getenv("SERFEX_LANG"), getenv("LC_ALL"), getenv("LC_MESSAGES"), getenv("LANG")} {
 		v = strings.ToLower(strings.TrimSpace(v))
 		if v == "" || v == "c" || v == "posix" || strings.HasPrefix(v, "c.") {
 			continue

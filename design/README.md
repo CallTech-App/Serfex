@@ -1,6 +1,6 @@
 # Design
 
-`mockup/` contains the approved HTML + Tailwind mockups of the Servik panel
+`mockup/` contains the approved HTML + Tailwind mockups of the Serfex panel
 (about 20 screens, light and dark). Open `mockup/index.html` in a browser.
 
 - `mockup/*.html` are the built pages.

@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * DNS record rules shared with servik-agent (agent/internal/dns/records.go).
+ * DNS record rules shared with serfex-agent (agent/internal/dns/records.go).
  * The agent has the final say; these give forms an early, friendly error
  * and store records in the form the agent expects.
  */

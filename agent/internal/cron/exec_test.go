@@ -49,7 +49,7 @@ func lastRun(t *testing.T, m *Manager, id int) Record {
 
 func TestExecRunsAndRecords(t *testing.T) {
 	m, uid := execServer(t, []Task{
-		{ID: 1, Schedule: "* * * * *", Command: `pwd; echo "$SERVIK_SITE $USER $LOGNAME $SHELL $LANG"; echo "$PATH"; echo "home=$HOME"; env | grep -cv '^PWD='; echo oops >&2`, Enabled: true},
+		{ID: 1, Schedule: "* * * * *", Command: `pwd; echo "$SERFEX_SITE $USER $LOGNAME $SHELL $LANG"; echo "$PATH"; echo "home=$HOME"; env | grep -cv '^PWD='; echo oops >&2`, Enabled: true},
 		{ID: 2, Schedule: "* * * * *", Command: "echo failing; exit 3", Enabled: true},
 		{ID: 3, Schedule: "* * * * *", Command: "echo never", Enabled: false},
 		{ID: 4, Schedule: "* * * * *", Command: `i=0; while [ $i -lt 1100 ]; do printf '%0100d\n' $i; i=$((i+1)); done; echo END`, Enabled: true},

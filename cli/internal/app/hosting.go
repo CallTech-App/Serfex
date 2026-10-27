@@ -87,7 +87,7 @@ func siteCommands() *Command {
 					f.String("account", "", T("ad"), T("Sistem kullanıcısının adı (varsayılan: alan adından)"))
 					f.Bool("wait", "", T("Site hazır olana kadar bekler"))
 				},
-				Examples: []string{"servik sites create kahveatolyesi.com.tr --php 8.4 --wait"},
+				Examples: []string{"serfex sites create kahveatolyesi.com.tr --php 8.4 --wait"},
 				Run:      sitesCreate,
 			},
 			{
@@ -127,7 +127,7 @@ func sitesList(c *Ctx) error {
 	}
 	return show(c, resp, func(sites []site) error {
 		if len(sites) == 0 {
-			c.empty(T("Henüz site yok. Oluşturmak için: servik sites create <alan-adı>"))
+			c.empty(T("Henüz site yok. Oluşturmak için: serfex sites create <alan-adı>"))
 			return nil
 		}
 		var rows [][]string
@@ -192,7 +192,7 @@ func sitesCreate(c *Ctx) error {
 	if v := c.String("customer"); v != "" {
 		id, err := strconv.Atoi(v)
 		if err != nil {
-			return usageErr(T("--customer müşterinin numarasını bekliyor (servik customers list)."))
+			return usageErr(T("--customer müşterinin numarasını bekliyor (serfex customers list)."))
 		}
 		body["customer_id"] = id
 	}
@@ -206,7 +206,7 @@ func sitesCreate(c *Ctx) error {
 	var s site
 	_ = resp.Decode(&s)
 	if !c.Bool("wait") {
-		return c.done(resp, T("%s oluşturuluyor; durumu: servik sites show %s", s.Domain, s.Domain))
+		return c.done(resp, T("%s oluşturuluyor; durumu: serfex sites show %s", s.Domain, s.Domain))
 	}
 	if err := c.waitUntil(2*c.env.Interval, T("%s hazırlanıyor…", s.Domain), func() (bool, error) {
 		if resp, err = c.get("/sites/"+esc(s.Domain), nil); err != nil {
@@ -259,7 +259,7 @@ func domainCommands() *Command {
 					f.String("root", "", T("klasör"), T("Alt alan adının klasörü, sitenin klasörüne göre (varsayılan: subdomains/<ad>)"))
 					f.Bool("dns", "", T("Ek alan adı için DNS bölgesi oluşturur (varsayılan: evet)"))
 				},
-				Examples: []string{"servik domains add ornek.com.tr blog", "servik domains add ornek.com.tr ornek.net --no-dns"},
+				Examples: []string{"serfex domains add ornek.com.tr blog", "serfex domains add ornek.com.tr ornek.net --no-dns"},
 				Complete: completeSites,
 				Run:      domainsAdd,
 			},
@@ -272,7 +272,7 @@ func domainCommands() *Command {
 					f.Bool("www", "", T("Alan adı yönlendirmesine www. adını da ekler"))
 					f.Bool("dns", "", T("Yönlendirilen alan adı için DNS bölgesi oluşturur (varsayılan: evet)"))
 				},
-				Examples: []string{"servik domains redirect ornek.com.tr /eski https://ornek.com.tr/yeni", "servik domains redirect ornek.com.tr eskiad.com https://ornek.com.tr --keep-path"},
+				Examples: []string{"serfex domains redirect ornek.com.tr /eski https://ornek.com.tr/yeni", "serfex domains redirect ornek.com.tr eskiad.com https://ornek.com.tr --keep-path"},
 				Complete: completeSites,
 				Run:      domainsRedirect,
 			},
@@ -419,11 +419,11 @@ func dnsCommands() *Command {
 					f.String("ttl", "", T("saniye"), T("Kaydın TTL'i (varsayılan: bölgeninki)"))
 					f.String("priority", "", T("sayı"), T("MX ve SRV önceliği (varsayılan: 10)"))
 				},
-				Examples: []string{"servik dns add ornek.com.tr A www 203.0.113.10", "servik dns add ornek.com.tr MX @ mail.ornek.com.tr --priority 10", "servik dns add ornek.com.tr TXT @ \"v=spf1 mx -all\""},
+				Examples: []string{"serfex dns add ornek.com.tr A www 203.0.113.10", "serfex dns add ornek.com.tr MX @ mail.ornek.com.tr --priority 10", "serfex dns add ornek.com.tr TXT @ \"v=spf1 mx -all\""},
 				Complete: completeZones,
 				Run:      dnsAdd,
 			},
-			{Name: "delete", Aliases: []string{"rm"}, Args: T("<bölge> <kayıt-no>"), MinArgs: 2, MaxArgs: 2, Short: T("Kaydı siler (numarası: servik dns records)"), Complete: completeZones, Run: dnsDelete},
+			{Name: "delete", Aliases: []string{"rm"}, Args: T("<bölge> <kayıt-no>"), MinArgs: 2, MaxArgs: 2, Short: T("Kaydı siler (numarası: serfex dns records)"), Complete: completeZones, Run: dnsDelete},
 		},
 	}
 }
@@ -534,7 +534,7 @@ func dnsAdd(c *Ctx) error {
 
 func dnsDelete(c *Ctx) error {
 	if _, err := strconv.Atoi(c.Args[1]); err != nil {
-		return usageErr(T("Kaydın numarasını yazın; numaralar: servik dns records %s", c.Args[0]))
+		return usageErr(T("Kaydın numarasını yazın; numaralar: serfex dns records %s", c.Args[0]))
 	}
 	if err := c.confirm(T("%s bölgesinden %s numaralı kayıt silinsin mi?", c.Args[0], c.Args[1])); err != nil {
 		return err
@@ -683,7 +683,7 @@ func sslIssue(c *Ctx, renew string) error {
 		return err
 	}
 	if !c.Bool("wait") {
-		return c.done(resp, T("%s için sertifika isteniyor. İzlemek için: servik ssl show %s", c.Args[0], c.Args[0]))
+		return c.done(resp, T("%s için sertifika isteniyor. İzlemek için: serfex ssl show %s", c.Args[0], c.Args[0]))
 	}
 	var s sslState
 	if err := c.waitUntil(3*c.env.Interval, T("Sertifika alınıyor…"), func() (bool, error) {

@@ -138,7 +138,7 @@ func (m *Manager) writeShims(v string) error {
 }
 
 // InstallComposer downloads the newest stable Composer into
-// /opt/servik/composer, checked against its published SHA-256 sum.
+// /opt/serfex/composer, checked against its published SHA-256 sum.
 func (m *Manager) InstallComposer(ctx context.Context) error {
 	data := []byte("<?php // simulated composer.phar\n")
 	if !m.sim {
@@ -165,8 +165,8 @@ func (m *Manager) InstallComposer(ctx context.Context) error {
 }
 
 // InstallNode downloads the newest Node.js of a release line ("24") for
-// this machine into /opt/servik/node/<version>, replacing older versions
-// of the line. Builds use /opt/servik/node/current, which points at it
+// this machine into /opt/serfex/node/<version>, replacing older versions
+// of the line. Builds use /opt/serfex/node/current, which points at it
 // when it pointed nowhere (see pickNode).
 func (m *Manager) InstallNode(ctx context.Context, major string) (string, error) {
 	if !nodeMajorRe.MatchString(major) {
@@ -217,7 +217,7 @@ func (m *Manager) InstallNode(ctx context.Context, major string) (string, error)
 		return "", fmt.Errorf("%s: %w", name, err)
 	}
 	dir := m.h.Path(toolsDir + "/node/" + version)
-	tmp := dir + ".servik-new"
+	tmp := dir + ".serfex-new"
 	_ = os.RemoveAll(tmp)
 	if err := extractTarGz(data, tmp); err != nil {
 		os.RemoveAll(tmp)
@@ -309,7 +309,7 @@ func download(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "servik-agent")
+	req.Header.Set("User-Agent", "serfex-agent")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("downloading %s: %w", url, err)

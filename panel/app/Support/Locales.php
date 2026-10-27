@@ -27,7 +27,7 @@ final class Locales
      */
     public static function all(): array
     {
-        return (array) config('servik.locales');
+        return (array) config('serfex.locales');
     }
 
     public static function supports(?string $locale): bool
@@ -40,7 +40,7 @@ final class Locales
      */
     public static function serverDefault(): string
     {
-        $locale = (string) config('servik.locale');
+        $locale = (string) config('serfex.locale');
 
         return self::supports($locale) ? $locale : 'tr';
     }

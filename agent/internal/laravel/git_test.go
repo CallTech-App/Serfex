@@ -21,11 +21,11 @@ func TestGitDeployChecksOutIntoTheFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Commit) != 40 || res.Previous != "" || res.Message != "Update the home page" || res.Author != "Servik" || res.Changed != 2 {
+	if len(res.Commit) != 40 || res.Previous != "" || res.Message != "Update the home page" || res.Author != "Serfex" || res.Changed != 2 {
 		t.Fatalf("first deploy: %+v", res)
 	}
 	// The default page was saved aside, then replaced.
-	if res.Saved != 1 || !exists(sim, "/home/hizlikargo/.servik/git/api.hizlikargo.app/before.tar") {
+	if res.Saved != 1 || !exists(sim, "/home/hizlikargo/.serfex/git/api.hizlikargo.app/before.tar") {
 		t.Fatalf("saved %d", res.Saved)
 	}
 	if page := read(t, sim, webDir+"/index.html"); !strings.Contains(page, "Update the home page") {
@@ -33,10 +33,10 @@ func TestGitDeployChecksOutIntoTheFolder(t *testing.T) {
 	}
 	all := commands(sim)
 	for _, want := range []string{
-		"git init --bare --quiet /home/hizlikargo/.servik/git/api.hizlikargo.app/repo.git",
+		"git init --bare --quiet /home/hizlikargo/.serfex/git/api.hizlikargo.app/repo.git",
 		"fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main",
 		"--work-tree=" + webDir + " checkout -f -q " + res.Commit,
-		"update-ref refs/servik/live " + res.Commit,
+		"update-ref refs/serfex/live " + res.Commit,
 	} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no command with %q in:\n%s", want, all)
@@ -74,7 +74,7 @@ func TestGitDeployChecksOutIntoTheFolder(t *testing.T) {
 		t.Fatal("a second undo must fail")
 	}
 
-	if _, err := m.GitRemove(ctx, target); err != nil || exists(sim, "/home/hizlikargo/.servik/git/api.hizlikargo.app") || exists(sim, gitStateDir+"/"+target.Domain) {
+	if _, err := m.GitRemove(ctx, target); err != nil || exists(sim, "/home/hizlikargo/.serfex/git/api.hizlikargo.app") || exists(sim, gitStateDir+"/"+target.Domain) {
 		t.Fatalf("remove: %v", err)
 	}
 }
@@ -90,11 +90,11 @@ func TestGitDeployTokenNeverReachesACommandLine(t *testing.T) {
 	if strings.Contains(all, "s3cret") {
 		t.Fatalf("the token is on a command line:\n%s", all)
 	}
-	if !strings.Contains(all, "credential.helper=store --file=/home/hizlikargo/.servik/git/api.hizlikargo.app/.git-credentials") {
+	if !strings.Contains(all, "credential.helper=store --file=/home/hizlikargo/.serfex/git/api.hizlikargo.app/.git-credentials") {
 		t.Fatalf("no credential helper:\n%s", all)
 	}
 	// Written for the fetch only.
-	if exists(sim, "/home/hizlikargo/.servik/git/api.hizlikargo.app/.git-credentials") {
+	if exists(sim, "/home/hizlikargo/.serfex/git/api.hizlikargo.app/.git-credentials") {
 		t.Fatal("the credentials file was left behind")
 	}
 }
@@ -127,7 +127,7 @@ func TestCredentialLine(t *testing.T) {
 func TestGitSpecValidation(t *testing.T) {
 	for name, mutate := range map[string]func(*GitSpec){
 		"path outside the site":   func(s *GitSpec) { s.Path = "../other" },
-		"hidden path":             func(s *GitSpec) { s.Path = ".servik" },
+		"hidden path":             func(s *GitSpec) { s.Path = ".serfex" },
 		"bad branch":              func(s *GitSpec) { s.Branch = "-x" },
 		"local repository":        func(s *GitSpec) { s.Repository = "/srv/repo" },
 		"credentials in address":  func(s *GitSpec) { s.Repository = "https://u:p@github.com/o/r.git" },

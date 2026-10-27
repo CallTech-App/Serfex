@@ -50,7 +50,7 @@ class RestoreLaravelApp implements ShouldQueue
                 'id' => $backup->key,
                 'parts' => $this->parts,
                 'run' => $backup->restore_run,
-            ], config('servik.agent.backup_timeout'));
+            ], config('serfex.agent.backup_timeout'));
         } catch (AgentException $e) {
             $backup->update(['restore_status' => 'failed', 'restore_error' => $e->reason ?: $e->getMessage(), 'restored_at' => now()]);
 

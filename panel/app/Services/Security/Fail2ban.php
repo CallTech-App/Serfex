@@ -26,7 +26,7 @@ class Fail2ban
     /** Jails and what they protect. */
     public const JAILS = [
         'sshd' => 'SSH girişi',
-        'servik-panel' => 'Panel girişi',
+        'serfex-panel' => 'Panel girişi',
         'dovecot' => 'E-posta girişi (IMAP/POP3)',
         'postfix-sasl' => 'E-posta gönderme girişi',
         'recidive' => 'Tekrar eden saldırgan',
@@ -103,7 +103,7 @@ class Fail2ban
     }
 
     /**
-     * Rewrites Servik's jails when the server changed under them (the
+     * Rewrites Serfex's jails when the server changed under them (the
      * agent says they are not current), and notes it in İşlem günlüğü.
      *
      * @param  array<string, mixed>  $status

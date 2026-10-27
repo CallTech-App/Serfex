@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
- * Güncellemeler: Servik's own releases. The agent checks GitHub for
+ * Güncellemeler: Serfex's own releases. The agent checks GitHub for
  * releases newer than the one running (on the stable or beta channel),
  * installs one with the panel in maintenance for the switch and returns
  * to the previous release by itself when the new one fails its health
@@ -31,7 +31,7 @@ class Updates
 {
     public const CHANNELS = ['stable' => 'Kararlı', 'beta' => 'Beta'];
 
-    public const STATUS_KEY = 'servik.updates.status';
+    public const STATUS_KEY = 'serfex.updates.status';
 
     /** Seconds the agent's status is reused by the page. */
     public const STATUS_TTL = 300;
@@ -40,7 +40,7 @@ class Updates
      * The newest release the last check found, kept until the next one so
      * the menu and dashboard never call the agent.
      */
-    public const KNOWN_KEY = 'servik.updates.known';
+    public const KNOWN_KEY = 'serfex.updates.known';
 
     public function __construct(
         private readonly AgentClient $agent,
@@ -145,7 +145,7 @@ class Updates
             return $error ?: __('Sunucu ajanına ulaşılamıyor.');
         }
         if (! ($status['installed'] ?? false)) {
-            return __('Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu); Servik kendini yalnızca install.sh ile kurulan sunucularda günceller.');
+            return __('Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu); Serfex kendini yalnızca install.sh ile kurulan sunucularda günceller.');
         }
         if (PanelUpdate::running()->exists() || ($status['running'] ?? '') !== '') {
             return __('Bir güncelleme sürüyor. Bitince yeniden deneyin.');
@@ -289,12 +289,12 @@ class Updates
         $last = PanelUpdate::whereNotIn('status', PanelUpdate::RUNNING)->latest('id')->first();
         if ($last !== null && in_array($last->status, ['failed', 'rolled_back'], true) && $last->created_at->gt(now()->subDays(7))) {
             $out[] = ['level' => 'warn', 'text' => $last->status === 'rolled_back'
-                ? __('Servik :to_version kurulamadı, :from_version sürümüne dönüldü', ['to_version' => $last->to_version, 'from_version' => $last->from_version])
-                : ($last->kind === 'rollback' ? __('Önceki sürüme dönülemedi') : __('Servik :to_version güncellemesi başarısız oldu', ['to_version' => $last->to_version]))];
+                ? __('Serfex :to_version kurulamadı, :from_version sürümüne dönüldü', ['to_version' => $last->to_version, 'from_version' => $last->from_version])
+                : ($last->kind === 'rollback' ? __('Önceki sürüme dönülemedi') : __('Serfex :to_version güncellemesi başarısız oldu', ['to_version' => $last->to_version]))];
         }
         $release = Cache::get(self::KNOWN_KEY);
-        if (is_array($release) && ($release['version'] ?? null) !== config('servik.version') && ($out === [] || $release['version'] !== $last?->to_version)) {
-            $out[] = ['level' => 'info', 'text' => __('Servik :version hazır', ['version' => $release['version']])];
+        if (is_array($release) && ($release['version'] ?? null) !== config('serfex.version') && ($out === [] || $release['version'] !== $last?->to_version)) {
+            $out[] = ['level' => 'info', 'text' => __('Serfex :version hazır', ['version' => $release['version']])];
         }
 
         return $out;

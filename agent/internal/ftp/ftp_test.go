@@ -28,7 +28,7 @@ func newServer(t *testing.T) (*Manager, *host.Simulator) {
 }
 
 func TestUnitName(t *testing.T) {
-	if got := unitName("/var/lib/servik/sftp/kahve_ftp/kahve-shop.com"); got != `var-lib-servik-sftp-kahve_ftp-kahve\x2dshop.com.mount` {
+	if got := unitName("/var/lib/serfex/sftp/kahve_ftp/kahve-shop.com"); got != `var-lib-serfex-sftp-kahve_ftp-kahve\x2dshop.com.mount` {
 		t.Fatal(got)
 	}
 }

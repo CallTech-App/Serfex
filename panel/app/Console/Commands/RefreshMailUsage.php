@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 /**
  * Runs from the scheduler: records how much mail each mailbox stores.
  */
-#[Signature('servik:mail-usage')]
+#[Signature('serfex:mail-usage')]
 #[Description('Record the disk usage of every mailbox')]
 class RefreshMailUsage extends Command
 {

@@ -1,4 +1,4 @@
-// Package mail runs Servik's mail server: Postfix for SMTP, Dovecot for
+// Package mail runs Serfex's mail server: Postfix for SMTP, Dovecot for
 // IMAP, POP3, LMTP delivery and Sieve, Rspamd for spam filtering, DKIM
 // signing and sending limits, and Roundcube for webmail.
 //
@@ -7,17 +7,17 @@
 //
 // Layout on the server (Ubuntu 24.04):
 //
-//	/etc/servik/mail/server.json            server settings the agent applied, root 0600
-//	/etc/servik/mail/domains/<domain>.json  each mail domain as the panel sent it, root 0600
-//	/etc/servik/mail/dkim/<domain>.key      DKIM private keys, root:_rspamd 0640
-//	/etc/servik/mail/tls/                   self-signed certificate until a real one is set
-//	/etc/postfix/main.cf, master.cf         Postfix configuration (the stock files are kept as *.before-servik)
-//	/etc/postfix/servik/                    domain, mailbox, alias and sender maps
-//	/etc/dovecot/dovecot.conf               Dovecot configuration (the stock file is kept as dovecot.conf.before-servik)
-//	/etc/dovecot/servik/users               mailboxes with their password hashes, root:dovecot 0640
-//	/etc/dovecot/servik/sieve/              spam filing and autoreply scripts
+//	/etc/serfex/mail/server.json            server settings the agent applied, root 0600
+//	/etc/serfex/mail/domains/<domain>.json  each mail domain as the panel sent it, root 0600
+//	/etc/serfex/mail/dkim/<domain>.key      DKIM private keys, root:_rspamd 0640
+//	/etc/serfex/mail/tls/                   self-signed certificate until a real one is set
+//	/etc/postfix/main.cf, master.cf         Postfix configuration (the stock files are kept as *.before-serfex)
+//	/etc/postfix/serfex/                    domain, mailbox, alias and sender maps
+//	/etc/dovecot/dovecot.conf               Dovecot configuration (the stock file is kept as dovecot.conf.before-serfex)
+//	/etc/dovecot/serfex/users               mailboxes with their password hashes, root:dovecot 0640
+//	/etc/dovecot/serfex/sieve/              spam filing and autoreply scripts
 //	/etc/rspamd/local.d/                    Rspamd settings (Rspamd's own files stay untouched)
-//	/etc/redis/redis-servik-mail.conf       Redis instance for Rspamd only, on a Unix socket
+//	/etc/redis/redis-serfex-mail.conf       Redis instance for Rspamd only, on a Unix socket
 //	/var/vmail/<domain>/<mailbox>/Maildir/  mail, owned by vmail
 //
 // The panel keeps mail domains in its own database and sends a whole
@@ -42,7 +42,7 @@ const (
 	// VmailDir holds the mailboxes, one directory per domain.
 	VmailDir = "/var/vmail"
 
-	stateDir    = "/etc/servik/mail"
+	stateDir    = "/etc/serfex/mail"
 	serverState = stateDir + "/server.json"
 	domainsDir  = stateDir + "/domains"
 	dkimDir     = stateDir + "/dkim"
@@ -52,28 +52,28 @@ const (
 
 	postfixMain   = "/etc/postfix/main.cf"
 	postfixMaster = "/etc/postfix/master.cf"
-	postfixMaps   = "/etc/postfix/servik"
+	postfixMaps   = "/etc/postfix/serfex"
 
 	dovecotConf    = "/etc/dovecot/dovecot.conf"
-	dovecotDir     = "/etc/dovecot/servik"
+	dovecotDir     = "/etc/dovecot/serfex"
 	dovecotUsers   = dovecotDir + "/users"
 	dovecotMasters = dovecotDir + "/master-users"
 	sieveDir       = dovecotDir + "/sieve"
 	spamSieve      = sieveDir + "/spam.sieve"
 
 	rspamdLocal  = "/etc/rspamd/local.d"
-	rspamdDropIn = "/etc/systemd/system/rspamd.service.d/servik.conf"
-	redisConf    = "/etc/redis/redis-servik-mail.conf"
-	redisUnit    = "redis-server@servik-mail"
-	redisSocket  = "/run/redis-servik-mail/redis-server.sock"
+	rspamdDropIn = "/etc/systemd/system/rspamd.service.d/serfex.conf"
+	redisConf    = "/etc/redis/redis-serfex-mail.conf"
+	redisUnit    = "redis-server@serfex-mail"
+	redisSocket  = "/run/redis-serfex-mail/redis-server.sock"
 	milterAddr   = "127.0.0.1:11332"
 
-	// DKIMSelector names the DKIM key in DNS: servik._domainkey.<domain>.
-	DKIMSelector = "servik"
+	// DKIMSelector names the DKIM key in DNS: serfex._domainkey.<domain>.
+	DKIMSelector = "serfex"
 	// MasterUser is the Dovecot master account webmail signs in with
 	// after a one-click login from the panel; it only works from this
 	// host.
-	MasterUser = "servik-webmail"
+	MasterUser = "serfex-webmail"
 )
 
 // Units are the services of the mail server, in start order.

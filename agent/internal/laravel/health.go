@@ -72,7 +72,7 @@ func healthOnce(ctx context.Context, client *http.Client, url string) HealthResu
 	if err != nil {
 		return HealthResult{Error: err.Error()}
 	}
-	req.Header.Set("User-Agent", "Servik health check")
+	req.Header.Set("User-Agent", "Serfex health check")
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {

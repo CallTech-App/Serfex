@@ -40,10 +40,10 @@ class SetupTest extends TestCase
     {
         parent::setUp();
         Queue::fake();
-        config(['servik.disk_paths' => []]);
+        config(['serfex.disk_paths' => []]);
         $this->agent = new FakeAgent([
             'system.addresses' => ['ipv4' => ['203.0.113.10', '203.0.113.11'], 'ipv6' => ['2001:db8::10']],
-            'system.info' => ['hostname' => 'srv-ist-01.servik.test', 'timezone' => 'UTC'],
+            'system.info' => ['hostname' => 'srv-ist-01.serfex.test', 'timezone' => 'UTC'],
             'system.timezones' => ['Europe/Berlin', 'Europe/Istanbul', 'UTC'],
             'system.timezone.set' => fn ($p) => ['timezone' => $p['timezone']],
             'system.hostname.set' => fn ($p) => ['hostname' => $p['hostname']],
@@ -56,7 +56,7 @@ class SetupTest extends TestCase
 
     private function link(): string
     {
-        $this->artisan('servik:setup-url', ['--json' => true])->assertSuccessful();
+        $this->artisan('serfex:setup-url', ['--json' => true])->assertSuccessful();
 
         // The command's own output is not captured by artisan(); make a
         // fresh token the same way.
@@ -65,7 +65,7 @@ class SetupTest extends TestCase
 
     public function test_the_command_prints_a_link_on_the_servers_address(): void
     {
-        $this->artisan('servik:setup-url')
+        $this->artisan('serfex:setup-url')
             ->expectsOutputToContain('https://203.0.113.10:8443/install/')
             ->assertSuccessful();
         $saved = Setting::get('setup.token');
@@ -76,7 +76,7 @@ class SetupTest extends TestCase
     public function test_the_link_creates_the_first_administrator_and_opens_the_wizard(): void
     {
         $token = $this->link();
-        $this->get('/login')->assertOk()->assertSee('Bu panel henüz kurulmadı.')->assertSee('sudo servik setup-url');
+        $this->get('/login')->assertOk()->assertSee('Bu panel henüz kurulmadı.')->assertSee('sudo serfex setup-url');
         $this->get('/install/'.$token)->assertOk()->assertSee('Yönetici hesabını oluşturun');
 
         $this->post('/install/'.$token, [
@@ -97,14 +97,14 @@ class SetupTest extends TestCase
         $this->get('/install/'.$token)->assertStatus(410)->assertSee('Bu panel zaten kuruldu');
         $this->post('/install/'.$token, ['name' => 'X', 'email' => 'x@example.test', 'password' => 'another-long-password', 'password_confirmation' => 'another-long-password', 'locale' => 'tr'])->assertStatus(410);
         $this->assertSame(1, User::count());
-        $this->get('/login')->assertDontSee('sudo servik setup-url');
+        $this->get('/login')->assertDontSee('sudo serfex setup-url');
     }
 
     public function test_a_wrong_old_or_expired_link_says_how_to_get_a_new_one(): void
     {
         $old = $this->link();
         $new = app(FirstRun::class)->newToken()['token'];
-        $this->get('/install/'.$old)->assertStatus(410)->assertSee('sudo servik setup-url');
+        $this->get('/install/'.$old)->assertStatus(410)->assertSee('sudo serfex setup-url');
         $this->get('/install/'.str_repeat('a', 48))->assertStatus(410);
 
         $this->travel(25)->hours();
@@ -123,16 +123,16 @@ class SetupTest extends TestCase
     public function test_no_link_once_an_administrator_exists(): void
     {
         User::factory()->create(['role' => 'full']);
-        $this->artisan('servik:setup-url')->assertFailed();
+        $this->artisan('serfex:setup-url')->assertFailed();
         $this->assertNull(Setting::get('setup.token'));
-        $this->artisan('servik:setup-url', ['--json' => true])->expectsOutputToContain('"error"')->assertFailed();
+        $this->artisan('serfex:setup-url', ['--json' => true])->expectsOutputToContain('"error"')->assertFailed();
     }
 
     public function test_a_customer_login_does_not_count_as_an_administrator(): void
     {
         User::factory()->create(['is_admin' => false]);
         $this->assertTrue(app(FirstRun::class)->needsAdministrator());
-        $this->artisan('servik:setup-url')->assertSuccessful();
+        $this->artisan('serfex:setup-url')->assertSuccessful();
     }
 
     public function test_the_wizard_saves_each_step_through_the_settings_it_belongs_to(): void
@@ -143,7 +143,7 @@ class SetupTest extends TestCase
         $wizard = Livewire::test(SetupWizard::class)
             ->assertSet('step', 'sunucu')
             ->assertSet('ipv4', '203.0.113.10')
-            ->assertSet('ns1', 'ns1.servik.test')
+            ->assertSet('ns1', 'ns1.serfex.test')
             ->set('hostname', 'srv1')
             ->call('save')
             ->assertHasErrors('hostname')
@@ -270,9 +270,9 @@ class SetupTest extends TestCase
             ->call('save')->assertHasErrors('panelHostname')
             ->set('panelHostname', 'mail.ornek.com.tr')
             ->call('save')->assertHasErrors('panelHostname')
-            ->set('panelHostname', 'Servik.Ornek.com.tr')
+            ->set('panelHostname', 'Serfex.Ornek.com.tr')
             ->call('save')->assertHasNoErrors()->assertSet('step', 'bildirimler');
-        $this->assertSame('servik.ornek.com.tr', Setting::get('panel.hostname'));
+        $this->assertSame('serfex.ornek.com.tr', Setting::get('panel.hostname'));
         Queue::assertPushed(IssuePanelCertificate::class);
 
         // Only https://<IP>:<port>: no name and no certificate request.

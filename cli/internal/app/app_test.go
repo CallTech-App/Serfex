@@ -20,7 +20,7 @@ import (
 	"github.com/calltech-app/serfex/cli/internal/config"
 )
 
-// panel is a fake Servik panel: handlers by "METHOD /path" and every
+// panel is a fake Serfex panel: handlers by "METHOD /path" and every
 // request it got.
 type panel struct {
 	t        *testing.T
@@ -81,12 +81,12 @@ type result struct {
 	code     int
 }
 
-// run runs servik with vars as the environment.
+// run runs serfex with vars as the environment.
 func run(t *testing.T, vars map[string]string, stdin string, args ...string) result {
 	t.Helper()
 	var out, errOut bytes.Buffer
-	if _, ok := vars["SERVIK_CONFIG"]; !ok {
-		t.Fatal("SERVIK_CONFIG not set")
+	if _, ok := vars["SERFEX_CONFIG"]; !ok {
+		t.Fatal("SERFEX_CONFIG not set")
 	}
 	env := &Env{
 		Stdin:    strings.NewReader(stdin),
@@ -115,7 +115,7 @@ func run(t *testing.T, vars map[string]string, stdin string, args ...string) res
 }
 
 func vars(t *testing.T) map[string]string {
-	return map[string]string{"SERVIK_CONFIG": filepath.Join(t.TempDir(), "config.json"), "LANG": "tr_TR.UTF-8"}
+	return map[string]string{"SERFEX_CONFIG": filepath.Join(t.TempDir(), "config.json"), "LANG": "tr_TR.UTF-8"}
 }
 
 var adminMe = map[string]any{"data": map[string]any{
@@ -139,7 +139,7 @@ func signedIn(t *testing.T, p *panel) (map[string]string, *httptest.Server) {
 func TestLoginWithATokenKeepsAProfile(t *testing.T) {
 	p := newPanel(t)
 	v, srv := signedIn(t, p)
-	cfg, err := config.Load(v["SERVIK_CONFIG"])
+	cfg, err := config.Load(v["SERFEX_CONFIG"])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,16 +147,16 @@ func TestLoginWithATokenKeepsAProfile(t *testing.T) {
 	if name != "127.0.0.1" || prof.Token != "svk_panel_abc" || prof.Account != "admin" || prof.URL != srv.URL {
 		t.Fatalf("profile %s %+v", name, prof)
 	}
-	if st, _ := os.Stat(v["SERVIK_CONFIG"]); st.Mode().Perm() != 0o600 {
+	if st, _ := os.Stat(v["SERFEX_CONFIG"]); st.Mode().Perm() != 0o600 {
 		t.Fatalf("config mode %v", st.Mode().Perm())
 	}
 	me := p.last("GET", "/api/v1/me")
-	if me.Auth != "Bearer svk_panel_abc" || me.Lang != "tr" || !strings.HasPrefix(me.Agent, "servik/") {
+	if me.Auth != "Bearer svk_panel_abc" || me.Lang != "tr" || !strings.HasPrefix(me.Agent, "serfex/") {
 		t.Fatalf("headers %+v", me)
 	}
 
 	r := run(t, v, "", "whoami")
-	if r.code != 0 || !strings.Contains(r.out, "Sercan <sercan@ornek.com.tr>") || !strings.Contains(r.out, "Servik 1.4.0") {
+	if r.code != 0 || !strings.Contains(r.out, "Sercan <sercan@ornek.com.tr>") || !strings.Contains(r.out, "Serfex 1.4.0") {
 		t.Fatalf("whoami: %+v", r)
 	}
 	r = run(t, v, "", "whoami", "--lang", "en")
@@ -195,7 +195,7 @@ func TestLoginThroughTheBrowser(t *testing.T) {
 	if p.last("POST", "/api/v1/cli/login/token").Body["device"] != "secret" || asked != 3 {
 		t.Fatalf("collected after %d", asked)
 	}
-	cfg, _ := config.Load(v["SERVIK_CONFIG"])
+	cfg, _ := config.Load(v["SERFEX_CONFIG"])
 	if cfg.Current != "web1" || cfg.Profiles["web1"].Token != "svk_panel_new" {
 		t.Fatalf("%+v", cfg)
 	}
@@ -215,7 +215,7 @@ func TestARefusedSignInSaysWhy(t *testing.T) {
 	if r.code != 1 || !strings.Contains(r.err, "Giriş tarayıcıda reddedildi.") {
 		t.Fatalf("%+v", r)
 	}
-	if _, err := os.Stat(v["SERVIK_CONFIG"]); err == nil {
+	if _, err := os.Stat(v["SERFEX_CONFIG"]); err == nil {
 		t.Fatal("a refused sign-in saved a profile")
 	}
 }
@@ -244,7 +244,7 @@ func TestASelfSignedPanelIsPinnedByItsFingerprint(t *testing.T) {
 	if r.code != 0 {
 		t.Fatalf("%+v", r)
 	}
-	cfg, _ := config.Load(v["SERVIK_CONFIG"])
+	cfg, _ := config.Load(v["SERFEX_CONFIG"])
 	if _, prof := cfg.Get(""); prof.Fingerprint != fp {
 		t.Fatalf("pinned %q, want %q", prof.Fingerprint, fp)
 	}
@@ -268,7 +268,7 @@ func TestCIUsesTheEnvironmentWithoutAProfile(t *testing.T) {
 	p.on("GET /api/v1/me", reply(200, map[string]any{"data": map[string]any{"kind": "token", "name": "GitHub Actions", "account": "token", "role": "deploy", "role_name": "Dağıtım", "app": "api.ornek.com.tr"}}))
 	p.on("POST /api/v1/apps/api.ornek.com.tr/deploy", reply(202, map[string]any{"message": "Dağıtım sıraya alındı.", "deployment": 7, "status": "queued", "run": "deploy-7"}))
 	v := vars(t)
-	v["SERVIK_URL"], v["SERVIK_TOKEN"], v["LANG"] = srv.URL, "svk_tok", "C.UTF-8"
+	v["SERFEX_URL"], v["SERFEX_TOKEN"], v["LANG"] = srv.URL, "svk_tok", "C.UTF-8"
 	r := run(t, v, "", "deploy", "--ref", "v1.2.0", "--no-migrate")
 	if r.code != 0 || !strings.Contains(r.out, "Deployment 7") {
 		t.Fatalf("%+v", r)
@@ -403,12 +403,12 @@ func TestPanelRefusalsAreShownAsTheySaid(t *testing.T) {
 	v, _ := signedIn(t, p)
 	p.on("POST /api/v1/sites", reply(422, map[string]any{"message": "Bu alan adı zaten bir siteye ait.", "errors": map[string][]string{"domain": {"Bu alan adı zaten bir siteye ait."}}}))
 	r := run(t, v, "", "sites", "create", "ornek.com.tr")
-	if r.code != 1 || r.err != "servik: Bu alan adı zaten bir siteye ait.\n" {
+	if r.code != 1 || r.err != "serfex: Bu alan adı zaten bir siteye ait.\n" {
 		t.Fatalf("%+v", r)
 	}
 	p.on("GET /api/v1/sites", reply(401, map[string]any{"message": "Bu API anahtarı iptal edildi."}))
 	r = run(t, v, "", "sites", "list")
-	if r.code != 1 || !strings.Contains(r.err, "Yeniden giriş yapın: servik login http://127.0.0.1") {
+	if r.code != 1 || !strings.Contains(r.err, "Yeniden giriş yapın: serfex login http://127.0.0.1") {
 		t.Fatalf("%+v", r)
 	}
 	if r := run(t, v, "", "sites", "list", "--bilinmeyen"); r.code != 2 || !strings.Contains(r.err, "Bilinmeyen seçenek: --bilinmeyen") {
@@ -493,11 +493,11 @@ func TestLogoutClosesTheKey(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.out, "anahtar panelde kapatıldı") {
 		t.Fatalf("%+v", r)
 	}
-	cfg, _ := config.Load(v["SERVIK_CONFIG"])
+	cfg, _ := config.Load(v["SERFEX_CONFIG"])
 	if len(cfg.Profiles) != 0 {
 		t.Fatalf("%+v", cfg)
 	}
-	if r := run(t, v, "", "sites", "list"); r.code != 1 || !strings.Contains(r.err, "servik login") {
+	if r := run(t, v, "", "sites", "list"); r.code != 1 || !strings.Contains(r.err, "serfex login") {
 		t.Fatalf("%+v", r)
 	}
 }
@@ -509,13 +509,13 @@ func TestHelpIsInTheChosenLanguage(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 	r = run(t, v, "", "deploy", "--help", "--lang", "en")
-	if r.code != 0 || !strings.Contains(r.out, "Usage: servik deploy") || !strings.Contains(r.out, "--no-migrate") {
+	if r.code != 0 || !strings.Contains(r.out, "Usage: serfex deploy") || !strings.Contains(r.out, "--no-migrate") {
 		t.Fatalf("%+v", r)
 	}
 	if r := run(t, v, "", "sites"); r.code != 0 || !strings.Contains(r.out, "create") {
 		t.Fatalf("%+v", r)
 	}
-	if r := run(t, v, "", "help", "env", "set"); r.code != 0 || !strings.Contains(r.out, "servik env set") {
+	if r := run(t, v, "", "help", "env", "set"); r.code != 0 || !strings.Contains(r.out, "serfex env set") {
 		t.Fatalf("%+v", r)
 	}
 }
@@ -557,7 +557,7 @@ func TestSetupURLAsksThePanelForANewLink(t *testing.T) {
 	env := &Env{
 		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
 		Getenv: func(k string) string {
-			return map[string]string{"SERVIK_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
+			return map[string]string{"SERFEX_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
 		},
 		Geteuid:  func() int { return 0 },
 		Hostname: func() (string, error) { return "srv1", nil },
@@ -575,7 +575,7 @@ func TestSetupURLAsksThePanelForANewLink(t *testing.T) {
 	if code := Main([]string{"setup-url"}, env); code != 0 {
 		t.Fatalf("setup-url: %d %s", code, errOut.String())
 	}
-	if got := strings.Join(ran, " "); got != "runuser -u servik -- env -C /opt/servik/current/panel php8.5 artisan servik:setup-url --json" {
+	if got := strings.Join(ran, " "); got != "runuser -u serfex -- env -C /opt/serfex/current/panel php8.5 artisan serfex:setup-url --json" {
 		t.Errorf("ran %q", got)
 	}
 	if !strings.Contains(out.String(), "https://203.0.113.10:8443/install/abc\nhttps://srv1.ornek.com.tr:8443/install/abc\n") {

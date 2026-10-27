@@ -260,7 +260,7 @@ class LaravelAdvancedTest extends TestCase
         $this->assertTrue($backups->due($app, Carbon::parse('2026-10-19 03:00')));
 
         Carbon::setTestNow('2026-10-19 03:02');
-        $this->artisan('servik:laravel-backups')->assertSuccessful();
+        $this->artisan('serfex:laravel-backups')->assertSuccessful();
         Queue::assertPushed(BackupLaravelApp::class, fn ($job) => $job->backup->kind === 'scheduled');
         Carbon::setTestNow();
 

@@ -58,7 +58,7 @@ class StatisticsTest extends TestCase
     {
         parent::setUp();
         Queue::fake();
-        config(['servik.timezone' => 'Europe/Istanbul', 'servik.disk_paths' => []]);
+        config(['serfex.timezone' => 'Europe/Istanbul', 'serfex.disk_paths' => []]);
         $this->agent = new FakeAgent;
         $this->app->instance(AgentClient::class, $this->agent);
         $this->actingAs(User::factory()->create());
@@ -91,7 +91,7 @@ class StatisticsTest extends TestCase
         ], [['domain' => 'KahveAtolyesi.com.tr', 'hours' => [['hour' => '2026-10-20T08:00:00Z', 'sent' => 3, 'received' => 7, 'rejected' => 2, 'bounced' => 1]]]]);
         $this->agent->answers['stats.collect'] = $batch;
 
-        $this->artisan('servik:stats-collect')->assertSuccessful();
+        $this->artisan('serfex:stats-collect')->assertSuccessful();
         $this->assertSame([['ack' => '']], $this->agent->called('stats.collect'));
         $this->assertSame('e1-1', Setting::get(StatsCollector::ACK_KEY));
         $this->assertSame(2, SiteStatHour::where('site_id', $this->site->id)->count());
@@ -105,13 +105,13 @@ class StatisticsTest extends TestCase
 
         // Handed out again (not acknowledged yet): the next call names it
         // and nothing is counted twice.
-        $this->artisan('servik:stats-collect')->assertSuccessful();
+        $this->artisan('serfex:stats-collect')->assertSuccessful();
         $this->assertSame(['ack' => 'e1-1'], $this->agent->called('stats.collect')[1]);
         $this->assertSame(1600, (int) SiteTraffic::where('site_id', $this->site->id)->value('bytes'));
 
         // A new batch adds to the same hour and day.
         $this->agent->answers['stats.collect'] = $this->batch('e1-2', [$this->hour('2026-10-19T21:00:00Z', 4, 400, 1, ['page' => ['/' => ['r' => 1, 'b' => 100, 'v' => 0]]])]);
-        $this->artisan('servik:stats-collect')->assertSuccessful();
+        $this->artisan('serfex:stats-collect')->assertSuccessful();
         $this->assertSame(10, (int) SiteStatHour::where('site_id', $this->site->id)->where('hour', '2026-10-19 21:00:00')->value('requests'));
         $this->assertSame(3, (int) SiteStatItem::where('site_id', $this->site->id)->where('value', '/')->where('day', '2026-10-20')->value('requests'));
         $this->assertSame(2000, (int) SiteTraffic::where('site_id', $this->site->id)->value('bytes'));
@@ -119,7 +119,7 @@ class StatisticsTest extends TestCase
 
         // Nothing new.
         $this->agent->answers['stats.collect'] = ['id' => '', 'sites' => [], 'mail' => [], 'countries' => false];
-        $this->artisan('servik:stats-collect')->assertSuccessful();
+        $this->artisan('serfex:stats-collect')->assertSuccessful();
         $this->assertSame('e1-2', Setting::get(StatsCollector::ACK_KEY));
         $this->assertFalse(SiteStats::countriesReady());
     }
@@ -249,11 +249,11 @@ class StatisticsTest extends TestCase
 
     public function test_the_monitor_records_the_servers_network_memory_and_disk(): void
     {
-        config(['servik.disk_paths' => ['/']]);
+        config(['serfex.disk_paths' => ['/']]);
         $this->agent->answers['monitor.live'] = ['at' => now()->toIso8601String(), 'window' => 60, 'interval' => 2, 'started' => now()->toIso8601String(),
             'server' => ['cpus' => 4, 'memory_total' => 16 << 30, 'load' => [1.25, 1, 1], 'uptime' => 9000, 'cpu' => 30, 'memory' => 4 << 30, 'net_rx' => 1234.5, 'net_tx' => 99],
             'sites' => [], 'accounts' => [], 'services' => [], 'suspects' => [], 'databases' => []];
-        $this->artisan('servik:monitor-record')->assertSuccessful();
+        $this->artisan('serfex:monitor-record')->assertSuccessful();
         $row = MonitorSample::whereNull('site_id')->sole();
         $this->assertEquals(1234.5, $row->net_rx);
         $this->assertEquals(1.25, $row->load);
@@ -275,7 +275,7 @@ class StatisticsTest extends TestCase
 
         SiteStatHour::create(['site_id' => $this->site->id, 'hour' => now()->subDays(40)]);
         SiteStatDay::create(['site_id' => $this->site->id, 'day' => now()->subMonths(26)->toDateString()]);
-        $this->artisan('servik:stats-prune')->assertSuccessful();
+        $this->artisan('serfex:stats-prune')->assertSuccessful();
         $this->assertSame(0, SiteStatHour::count());
         $this->assertSame(0, SiteStatDay::count());
     }
@@ -314,7 +314,7 @@ class StatisticsTest extends TestCase
     public function test_customers_are_mailed_once_per_level_and_admins_told_when_traffic_runs_out(): void
     {
         Mail::fake();
-        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.servik.test', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Servik']);
+        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.serfex.test', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Serfex']);
         $package = Package::factory()->create(['max_traffic_gb' => 10, 'max_disk_mb' => null]);
         $customer = Customer::factory()->withLogin()->create(['package_id' => $package->id, 'username' => 'klinik', 'email' => 'ali@klinikmavi.com']);
         $site = Site::factory()->for(app(Customers::class)->account($customer))->create(['domain' => 'klinikmavi.com']);

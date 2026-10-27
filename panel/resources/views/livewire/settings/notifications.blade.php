@@ -37,12 +37,12 @@
                 <div class="{{ $row }}">
                     <label for="webhook" class="sm:pt-2">{{ __('Webhook adresi') }}</label>
                     <div>
-                        <input id="webhook" wire:model="webhookUrl" spellcheck="false" autocomplete="off" placeholder="{{ __('https://hooks.ornek.com/servik') }}"
+                        <input id="webhook" wire:model="webhookUrl" spellcheck="false" autocomplete="off" placeholder="{{ __('https://hooks.ornek.com/serfex') }}"
                                class="{{ $field }} font-mono sm:w-96 {{ $errors->has('webhookUrl') ? 'border-crit' : 'border-line' }}">
                         @error('webhookUrl')
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
-                            <p class="mt-1.5 text-2xs text-muted"><x-t text="Sorunlar bu adrese JSON olarak POST edilir; Slack, Discord, Teams ya da kendi sisteminiz. Gövdenin HMAC-SHA256 imzası :part başlığındadır."><x-slot:part><span class="font-mono">X-Servik-Signature</span></x-slot:part></x-t></p>
+                            <p class="mt-1.5 text-2xs text-muted"><x-t text="Sorunlar bu adrese JSON olarak POST edilir; Slack, Discord, Teams ya da kendi sisteminiz. Gövdenin HMAC-SHA256 imzası :part başlığındadır."><x-slot:part><span class="font-mono">X-Serfex-Signature</span></x-slot:part></x-t></p>
                         @enderror
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
                             <label for="webhook-locale" class="text-muted">{{ __('Başlıkların dili') }}</label>
@@ -189,7 +189,7 @@
                         <tr>
                             <td colspan="4" class="px-5 py-10 text-center">
                                 <p class="font-medium">{{ __('Henüz bildirim yok') }}</p>
-                                <p class="mt-1 text-[13px] text-muted">{{ __('Servik her 5 dakikada bir denetler; bir sorun çıkınca burada ve seçtiğiniz kanallarda görürsünüz.') }}</p>
+                                <p class="mt-1 text-[13px] text-muted">{{ __('Serfex her 5 dakikada bir denetler; bir sorun çıkınca burada ve seçtiğiniz kanallarda görürsünüz.') }}</p>
                             </td>
                         </tr>
                     @endforelse

@@ -97,20 +97,20 @@ func TestRealHost(t *testing.T) {
 	}
 	t.Logf("PowerDNS %s, installed now: %v", res.Version, res.Installed)
 
-	const zone = "servik-test.example"
+	const zone = "serfex-test.example"
 	t.Cleanup(func() { _, _ = m.DeleteZone(ctx, zone) })
 	long := "v=DKIM1; k=rsa; p=" + strings.Repeat("A", 300)
 	spec := ZoneSpec{
 		Zone: zone,
-		SOA:  SOA{Primary: "ns1.servik-test.example", Hostmaster: "hostmaster@servik-test.example", Refresh: 10800, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600},
+		SOA:  SOA{Primary: "ns1.serfex-test.example", Hostmaster: "hostmaster@serfex-test.example", Refresh: 10800, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600},
 		Records: []Record{
-			{Name: "@", Type: "NS", TTL: 3600, Content: "ns1.servik-test.example"},
-			{Name: "@", Type: "NS", TTL: 3600, Content: "ns2.servik-test.example"},
+			{Name: "@", Type: "NS", TTL: 3600, Content: "ns1.serfex-test.example"},
+			{Name: "@", Type: "NS", TTL: 3600, Content: "ns2.serfex-test.example"},
 			{Name: "ns1", Type: "A", TTL: 3600, Content: "192.0.2.53"},
 			{Name: "@", Type: "A", TTL: 300, Content: "192.0.2.10"},
 			{Name: "@", Type: "AAAA", TTL: 300, Content: "2001:db8:0:0::10"},
 			{Name: "www", Type: "CNAME", TTL: 300, Content: zone},
-			{Name: "@", Type: "MX", TTL: 3600, Content: "10 mail.servik-test.example"},
+			{Name: "@", Type: "MX", TTL: 3600, Content: "10 mail.serfex-test.example"},
 			{Name: "default._domainkey", Type: "TXT", TTL: 3600, Content: long},
 			{Name: "@", Type: "CAA", TTL: 3600, Content: `0 issue "letsencrypt.org"`},
 		},

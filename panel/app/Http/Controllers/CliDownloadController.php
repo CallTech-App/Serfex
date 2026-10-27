@@ -6,7 +6,7 @@ use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * The servik command line for developers' computers, from this server's
+ * The serfex command line for developers' computers, from this server's
  * own release (so it works while the repository is private, and its
  * version matches the panel):
  *
@@ -19,7 +19,7 @@ class CliDownloadController extends Controller
      */
     public function script(): Response
     {
-        $path = config('servik.cli_downloads').'/install-cli.sh';
+        $path = config('serfex.cli_downloads').'/install-cli.sh';
         if (! is_file($path)) {
             // A checkout from git: the script is in the repository.
             $path = dirname(base_path()).'/scripts/install-cli.sh';
@@ -33,7 +33,7 @@ class CliDownloadController extends Controller
 
     public function download(string $file): BinaryFileResponse
     {
-        $path = config('servik.cli_downloads').'/'.$file;
+        $path = config('serfex.cli_downloads').'/'.$file;
         abort_unless(is_file($path), 404, __('Bu sunucunun sürümünde komut satırı dosyaları yok.'));
 
         return response()->download($path, $file, ['Content-Type' => $file === 'SHA256SUMS' ? 'text/plain; charset=utf-8' : 'application/octet-stream']);

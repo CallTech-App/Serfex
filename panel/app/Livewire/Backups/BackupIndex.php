@@ -35,7 +35,7 @@ use Livewire\WithPagination;
  * sites' backups within their package.
  */
 #[Layout('components.layouts.app')]
-#[Title('Yedekler · Servik')]
+#[Title('Yedekler · Serfex')]
 #[ForCustomers(feature: 'backups', except: [
     'saveSchedule', 'restoreSchedule', 'togglePassphrase',
     'openTarget', 'saveTarget', 'testTarget', 'deleteTarget', 'restoreTarget',
@@ -142,7 +142,7 @@ class BackupIndex extends Component
 
     public bool $tPathStyle = false;
 
-    public string $tFolder = 'servik';
+    public string $tFolder = 'serfex';
 
     public string $tHost = '';
 
@@ -469,7 +469,7 @@ class BackupIndex extends Component
         // A saved secret is not sent back to the browser.
         $this->tSecretKey = '';
         $this->tPathStyle = (bool) ($c['path_style'] ?? false);
-        $this->tFolder = $t ? ($c['folder'] ?? '') : 'servik';
+        $this->tFolder = $t ? ($c['folder'] ?? '') : 'serfex';
         $this->tHost = $c['host'] ?? '';
         $this->tPort = (int) ($c['port'] ?? 22);
         $this->tUser = $c['user'] ?? '';

@@ -51,7 +51,7 @@ class FileManager
     {
         $site->loadMissing('systemUser');
 
-        return (array) $this->agent->call('files.'.$op, ['user' => $site->systemUser->name, 'domain' => $site->domain] + $params, $timeout ?? config('servik.agent.job_timeout'));
+        return (array) $this->agent->call('files.'.$op, ['user' => $site->systemUser->name, 'domain' => $site->domain] + $params, $timeout ?? config('serfex.agent.job_timeout'));
     }
 
     /**

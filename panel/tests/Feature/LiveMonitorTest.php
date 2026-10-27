@@ -84,7 +84,7 @@ class LiveMonitorTest extends TestCase
             ],
             'accounts' => [['user' => 'ajans', 'cpu' => 1.5, 'memory' => 50 << 20, 'io' => 0, 'processes' => 1, 'mail_per_hour' => 0, 'db' => ['connections' => 1, 'active' => 0, 'longest' => 0], 'sites' => ['a.com', 'b.com']]],
             'services' => [
-                ['unit' => 'servik-web.service', 'name' => 'Servik paneli (web)', 'group' => 'servik', 'cpu' => 2, 'memory' => 140 << 20, 'io' => 0, 'processes' => 3],
+                ['unit' => 'serfex-web.service', 'name' => 'Serfex paneli (web)', 'group' => 'serfex', 'cpu' => 2, 'memory' => 140 << 20, 'io' => 0, 'processes' => 3],
                 ['unit' => 'nginx.service', 'name' => 'Nginx', 'group' => 'shared', 'cpu' => 5, 'memory' => 64 << 20, 'io' => 0, 'processes' => 5],
             ],
             'suspects' => [
@@ -280,10 +280,10 @@ class LiveMonitorTest extends TestCase
         Livewire::test(LiveMonitor::class)->call('setTab', 'posta')->assertSee('Posta sunucusu kurulu değil');
     }
 
-    public function test_system_tab_separates_servik_from_shared_services(): void
+    public function test_system_tab_separates_serfex_from_shared_services(): void
     {
         $this->get('/monitor?sekme=sistem')
-            ->assertSeeInOrder(['kendi hizmetleri', 'servik-web.service', 'Paylaşılan hizmetler', 'nginx.service'])
+            ->assertSeeInOrder(['kendi hizmetleri', 'serfex-web.service', 'Paylaşılan hizmetler', 'nginx.service'])
             ->assertSee('4 çekirdek')
             ->assertSee('1 gün 1 sa');
     }
@@ -305,7 +305,7 @@ class LiveMonitorTest extends TestCase
     {
         MonitorSample::insert(['recorded_at' => now()->subDays(2), 'site_id' => $this->shop->id, 'cpu' => 1, 'memory' => 0, 'io' => 0, 'requests' => 0, 'server_errors' => 0, 'php_busy' => null, 'php_max' => null, 'db_active' => 0, 'mail_per_hour' => 0]);
 
-        $this->artisan('servik:monitor-record')->assertSuccessful();
+        $this->artisan('serfex:monitor-record')->assertSuccessful();
 
         $this->assertSame([['window' => 60]], $this->agent->called('monitor.live'));
         $this->assertSame(3, MonitorSample::count(), 'two sites and the server; the old row is gone');

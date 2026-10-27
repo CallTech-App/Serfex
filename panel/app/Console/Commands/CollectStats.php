@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * Runs every minute: stores what the agent counted from the access and
  * mail logs since the last run.
  */
-#[Signature('servik:stats-collect')]
+#[Signature('serfex:stats-collect')]
 #[Description('Store the traffic and mail statistics the agent counted')]
 class CollectStats extends Command
 {

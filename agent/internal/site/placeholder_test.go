@@ -36,7 +36,7 @@ func TestDefaultPageWithoutPanelAddress(t *testing.T) {
 	if strings.Contains(page, `class="btn btn-primary"`) || strings.Contains(page, `<p class="panel-url">`) {
 		t.Errorf("sign-in button shown without a panel address")
 	}
-	if !strings.Contains(page, `href="#servik"`) {
+	if !strings.Contains(page, `href="#serfex"`) {
 		t.Error("the page lost its other button")
 	}
 }

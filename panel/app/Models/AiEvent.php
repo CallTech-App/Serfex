@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One line of Servik AI's audit log: something it read, proposed or did,
+ * One line of Serfex AI's audit log: something it read, proposed or did,
  * or what a person decided about a proposal.
  */
 #[Fillable(['ai_conversation_id', 'user_id', 'type', 'tool', 'summary', 'data', 'created_at'])]

@@ -503,6 +503,6 @@ class SiteDomainList extends Component
             'redirectZone' => $redirectZone,
             'canDns' => auth()->user()->allows('dns'),
             'certificateBehind' => $site->certificate?->isLetsEncrypt() && ! $site->certificate->isWildcard() && $domains->missing($site, $site->certificate) !== [],
-        ])->title(__(self::TABS[$this->tab]).' · '.$site->domain.' · Servik');
+        ])->title(__(self::TABS[$this->tab]).' · '.$site->domain.' · Serfex');
     }
 }

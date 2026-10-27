@@ -64,7 +64,7 @@ class Waf
      */
     public function configureServer(string $mode, int $paranoia): void
     {
-        $this->agent->call('component.configure', ['id' => 'modsecurity', 'settings' => ['modsecurity_mode' => $mode, 'modsecurity_paranoia' => $paranoia]], config('servik.agent.job_timeout'));
+        $this->agent->call('component.configure', ['id' => 'modsecurity', 'settings' => ['modsecurity_mode' => $mode, 'modsecurity_paranoia' => $paranoia]], config('serfex.agent.job_timeout'));
     }
 
     /**
@@ -102,7 +102,7 @@ class Waf
             'mode' => $site->waf_mode ?? '',
             'exclusions' => WafExclusion::where('site_id', $site->id)->orderBy('id')->get()
                 ->map(fn (WafExclusion $e) => ['rule_id' => $e->rule_id, 'path' => $e->path])->values()->all(),
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
     }
 
     /**

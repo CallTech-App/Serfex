@@ -1,16 +1,16 @@
 @php
     $tones = ['read' => 'muted', 'auto' => 'info', 'proposed' => 'info', 'applied' => 'ok', 'rejected' => 'muted', 'undone' => 'warn', 'failed' => 'crit'];
-    $at = fn ($d) => $d->timezone(config('servik.timezone'));
+    $at = fn ($d) => $d->timezone(config('serfex.timezone'));
 @endphp
 <div class="space-y-6">
     <div>
         <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('ai.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />Servik AI</a>
+            <a href="{{ route('ai.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />Serfex AI</a>
             <x-icon name="chevron-right" class="size-3.5" />
             <span class="text-fg">{{ __('Kayıt') }}</span>
         </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Servik AI kaydı') }}</h1>
-        <p class="mt-1 text-[13px] text-muted">{{ __('Servik AI\'ın okuduğu, önerdiği ve yaptığı her şey ile önerilerin akıbeti.') }}</p>
+        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Serfex AI kaydı') }}</h1>
+        <p class="mt-1 text-[13px] text-muted">{{ __('Serfex AI\'ın okuduğu, önerdiği ve yaptığı her şey ile önerilerin akıbeti.') }}</p>
     </div>
 
     <section class="rounded-xl border border-line bg-surface">
@@ -47,7 +47,7 @@
                             <td class="num px-5 py-2.5 whitespace-nowrap text-muted">{{ $at($e->created_at)->isToday() ? \App\Support\When::time($e->created_at, true) : \App\Support\When::dateTime($e->created_at) }}</td>
                             <td class="px-5 py-2.5"><x-status-badge :status="new \App\Support\Badge(\App\Models\AiEvent::TYPES[$e->type] ?? $e->type, $tones[$e->type] ?? 'muted')" /></td>
                             <td class="px-5 py-2.5">{{ $e->summary }}</td>
-                            <td class="px-5 py-2.5 whitespace-nowrap text-muted">{{ in_array($e->type, ['applied', 'rejected', 'undone'], true) ? ($e->user->name ?? '—') : 'Servik AI' }}</td>
+                            <td class="px-5 py-2.5 whitespace-nowrap text-muted">{{ in_array($e->type, ['applied', 'rejected', 'undone'], true) ? ($e->user->name ?? '—') : 'Serfex AI' }}</td>
                             <td class="px-5 py-2.5 text-right whitespace-nowrap">
                                 @if ($e->conversation && ! $e->conversation->trashed() && $e->conversation->user_id === auth()->id())
                                     <a href="{{ route('ai.index', ['sohbet' => $e->ai_conversation_id]) }}" wire:navigate class="text-accent hover:underline">{{ __('Sohbet') }}</a>
@@ -55,7 +55,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-5 py-10 text-center text-muted">{{ $search !== '' || $type !== '' ? __('Bu aramaya uyan kayıt yok.') : __('Servik AI henüz bir şey okumadı ya da yapmadı.') }}</td></tr>
+                        <tr><td colspan="5" class="px-5 py-10 text-center text-muted">{{ $search !== '' || $type !== '' ? __('Bu aramaya uyan kayıt yok.') : __('Serfex AI henüz bir şey okumadı ya da yapmadı.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

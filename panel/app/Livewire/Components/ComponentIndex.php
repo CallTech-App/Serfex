@@ -27,7 +27,7 @@ use Livewire\Component;
  * removed and the page says what uses it.
  */
 #[Layout('components.layouts.app')]
-#[Title('Yazılım Yönetimi · Servik')]
+#[Title('Yazılım Yönetimi · Serfex')]
 class ComponentIndex extends Component
 {
     use ShowsComponentOperations;
@@ -178,7 +178,7 @@ class ComponentIndex extends Component
     {
         $error = null;
         $groups = $components->rows($this->tab, $error);
-        $this->agentError = $groups === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null;
+        $this->agentError = $groups === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')) : null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $blocker = $components->blocker();
         $manager = null;
@@ -203,7 +203,7 @@ class ComponentIndex extends Component
     private function configureModsec(AgentClient $agent, string $mode, int $paranoia): bool
     {
         try {
-            $agent->call('component.configure', ['id' => 'modsecurity', 'settings' => ['modsecurity_mode' => $mode, 'modsecurity_paranoia' => $paranoia]], config('servik.agent.job_timeout'));
+            $agent->call('component.configure', ['id' => 'modsecurity', 'settings' => ['modsecurity_mode' => $mode, 'modsecurity_paranoia' => $paranoia]], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $this->addError('modsecMode', $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Ayarlar uygulanamadı, önceki ayarlar korundu: :reason', ['reason' => $e->reason]));
 
@@ -243,10 +243,10 @@ class ComponentIndex extends Component
                 'title' => __(':name kurulsun mu?', ['name' => $name]),
                 'text' => match (true) {
                     $id === 'roundcube' => __('Posta sunucusu yeniden ayarlanır ve webmail adresi açılır.'),
-                    $id === 'clamav' => __('Servik Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.'),
-                    str_starts_with($id, 'node') => __('Servik Agent Node.js\'i nodejs.org\'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.'),
-                    $id === 'composer' => __('Servik Agent Composer\'ı getcomposer.org\'dan indirir ve imzasını denetler.'),
-                    default => __('Servik Agent paketleri kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.'),
+                    $id === 'clamav' => __('Serfex Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.'),
+                    str_starts_with($id, 'node') => __('Serfex Agent Node.js\'i nodejs.org\'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.'),
+                    $id === 'composer' => __('Serfex Agent Composer\'ı getcomposer.org\'dan indirir ve imzasını denetler.'),
+                    default => __('Serfex Agent paketleri kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.'),
                 },
                 'button' => __('Kur'),
                 'danger' => false,
@@ -268,7 +268,7 @@ class ComponentIndex extends Component
                     in_array($id, ['mysql', 'mariadb'], true) => __('Paketler kaldırılır; veri klasörü silinmez, yedek klasörüne taşınır.'),
                     $id === 'postgresql' => __('Müşteri kümesi durdurulup silinir. Panelin kendi PostgreSQL\'i etkilenmez.'),
                     default => __('Bu bileşeni kullanan bir şey yok.'),
-                }.' '.__('Kaldırmadan önce yapılandırması /var/lib/servik/backups/components altına yedeklenir.'),
+                }.' '.__('Kaldırmadan önce yapılandırması /var/lib/serfex/backups/components altına yedeklenir.'),
                 'button' => __('Kaldır'),
                 'danger' => true,
             ],

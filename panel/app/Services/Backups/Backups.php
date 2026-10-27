@@ -46,7 +46,7 @@ class Backups
 
     public const BUSY = 'Başka bir yedekleme ya da geri yükleme sürüyor. Bitince yeniden deneyin.';
 
-    public const UPDATING = 'Servik güncelleniyor. Bitince yeniden deneyin.';
+    public const UPDATING = 'Serfex güncelleniyor. Bitince yeniden deneyin.';
 
     /** Days the panel backups taken before updates are kept. */
     public const UPDATE_DAYS = 30;
@@ -92,7 +92,7 @@ class Backups
         if ($s['enabled'] && $slot !== null && $slot->lt(now()->subHours(3))) {
             $taken = Backup::where('scope', 'server')->where('trigger', 'scheduled')->where('created_at', '>=', $slot->copy()->subMinutes(5))->exists();
             if (! $taken && Site::where('created_at', '<', $slot)->exists()) {
-                $out[] = ['text' => __(':format zamanlanmış yedeği başlamadı; panelin zamanlayıcısı ve "backups" kuyruğu çalışıyor mu?', ['format' => $slot->copy()->timezone(config('servik.timezone'))->format('d.m H:i')]), 'level' => 'warn'];
+                $out[] = ['text' => __(':format zamanlanmış yedeği başlamadı; panelin zamanlayıcısı ve "backups" kuyruğu çalışıyor mu?', ['format' => $slot->copy()->timezone(config('serfex.timezone'))->format('d.m H:i')]), 'level' => 'warn'];
             }
         }
         if (($queued = Backup::where('status', 'queued')->oldest('id')->first()) !== null && $queued->created_at->lt(now()->subMinutes(10))) {
@@ -257,7 +257,7 @@ class Backups
             }
         }
         try {
-            $result = $this->agent->call('backup.create', $call, $backup->scope === 'server' ? config('servik.agent.server_backup_timeout') : config('servik.agent.backup_timeout'));
+            $result = $this->agent->call('backup.create', $call, $backup->scope === 'server' ? config('serfex.agent.server_backup_timeout') : config('serfex.agent.backup_timeout'));
         } catch (AgentException $e) {
             $this->fail($backup, $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamadı.') : ($e->reason ?: $e->getMessage()));
 
@@ -301,7 +301,7 @@ class Backups
 
     /**
      * Takes a backup of the panel alone (its database, settings and the
-     * agent's state) now, on this server, before Servik updates itself;
+     * agent's state) now, on this server, before Serfex updates itself;
      * returns it.
      */
     public function takePanel(?User $user): Backup
@@ -495,7 +495,7 @@ class Backups
             $spec['target'] = $backup->target->agentSpec($backup->remote_prefix);
         }
         try {
-            $this->agent->call('backup.delete', $spec, config('servik.agent.job_timeout'));
+            $this->agent->call('backup.delete', $spec, config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             // Kept and listed as failed rather than leaving files nobody sees.
             $backup->update(['status' => 'failed', 'error' => 'Silinemedi: '.($e->reason ?: $e->getMessage())]);
@@ -583,7 +583,7 @@ class Backups
                 'names' => $names,
                 'target' => $backup->target->agentSpec($backup->remote_prefix),
                 'passphrase' => $backup->encrypted ? (string) $backup->passphrase : '',
-            ], config('servik.agent.backup_timeout'));
+            ], config('serfex.agent.backup_timeout'));
         } catch (AgentException $e) {
             return $e->getCode() === -32006 ? __(self::BUSY) : __('Hedeften alınamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
         }
@@ -608,7 +608,7 @@ class Backups
     private function dropLocal(Backup $backup): void
     {
         try {
-            $this->agent->call('backup.delete', ['key' => $backup->key, 'local' => true], config('servik.agent.job_timeout'));
+            $this->agent->call('backup.delete', ['key' => $backup->key, 'local' => true], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             report($e);
 

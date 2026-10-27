@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * uses, changes a key's placeholders, or a view has Turkish written into
  * its HTML. Runs in CI next to Pint.
  */
-#[Signature('servik:lang-check {--agent= : The agent\'s source folder, for labels the agent sends (default ../agent)} {--wanted : Only print the keys lang/en.json should have, as JSON}')]
+#[Signature('serfex:lang-check {--agent= : The agent\'s source folder, for labels the agent sends (default ../agent)} {--wanted : Only print the keys lang/en.json should have, as JSON}')]
 #[Description('Check the panel\'s translations')]
 class LangCheck extends Command
 {

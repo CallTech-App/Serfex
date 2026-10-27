@@ -1,4 +1,4 @@
-// Package host is the boundary between Servik's provisioning logic and the
+// Package host is the boundary between Serfex's provisioning logic and the
 // machine it changes.
 //
 // Everything that touches the system (files, commands, user accounts) goes

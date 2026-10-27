@@ -61,8 +61,8 @@ func (c *Ctx) me() (*me, error) {
 }
 
 const (
-	panelConfig = "/etc/servik/panel.json"
-	panelDir    = "/opt/servik/current/panel"
+	panelConfig = "/etc/serfex/panel.json"
+	panelDir    = "/opt/serfex/current/panel"
 	defaultPort = "8443"
 )
 
@@ -71,12 +71,12 @@ func accountCommands() []*Command {
 		{
 			Name: "login", Group: T("Hesap"), Args: T("[panel-adresi]"), MaxArgs: 1,
 			Short: T("Bir panele giriş yapar"),
-			Long: T("Bir Servik paneline giriş yapar. Tarayıcıda bir onay sayfası açılır; onayladığınızda bu bilgisayar için bir anahtar oluşur ve Hesap güvenliği altında listelenir.\n\n" +
+			Long: T("Bir Serfex paneline giriş yapar. Tarayıcıda bir onay sayfası açılır; onayladığınızda bu bilgisayar için bir anahtar oluşur ve Hesap güvenliği altında listelenir.\n\n" +
 				"CI ya da betikler için --token ile bir API anahtarı ya da bir uygulamanın Erişim ve API bölümündeki belirteci verin. Sunucunun kendisinde root olarak --local tarayıcısız giriş yapar."),
 			Examples: []string{
-				"servik login panel.ornek.com.tr:8443",
-				"servik login https://panel.ornek.com.tr:8443 --token svk_…",
-				"sudo servik login --local",
+				"serfex login panel.ornek.com.tr:8443",
+				"serfex login https://panel.ornek.com.tr:8443 --token svk_…",
+				"sudo serfex login --local",
 			},
 			Flags: func(f *Flags) {
 				f.Bool("local", "", T("Sunucuda root olarak, tarayıcısız giriş"))
@@ -92,7 +92,7 @@ func accountCommands() []*Command {
 			Short: T("Yeni panelin kurulum bağlantısını yazar"),
 			Long: T("Henüz yöneticisi olmayan bir panel için tek kullanımlık kurulum bağlantısı oluşturur. Bağlantıyı açan kişi ilk yönetici hesabını oluşturur ve kurulum sihirbazına geçer. Bağlantı 24 saat geçerlidir; yenisi oluşunca eskisi çalışmaz.\n\n" +
 				"install.sh ilk bağlantıyı kurulumun sonunda yazar. Sunucunun kendisinde root olarak çalışır."),
-			Examples: []string{"sudo servik setup-url"},
+			Examples: []string{"sudo serfex setup-url"},
 			Run:      setupURL,
 		},
 		{
@@ -127,7 +127,7 @@ func accountCommands() []*Command {
 func (c *Ctx) clientName() string {
 	host, _ := c.env.Hostname()
 	if host == "" {
-		host = "servik"
+		host = "serfex"
 	}
 	osName := map[string]string{"darwin": "macOS", "linux": "Linux"}[runtime.GOOS]
 	if osName == "" {
@@ -140,12 +140,12 @@ func login(c *Ctx) error {
 	if c.Bool("local") {
 		return loginLocal(c)
 	}
-	raw := c.first("url", "SERVIK_URL")
+	raw := c.first("url", "SERFEX_URL")
 	if len(c.Args) > 0 {
 		raw = c.Args[0]
 	}
 	if raw == "" {
-		return usageErr(T("Panelin adresini yazın: servik login panel.ornek.com.tr:8443"))
+		return usageErr(T("Panelin adresini yazın: serfex login panel.ornek.com.tr:8443"))
 	}
 	u, err := api.NormalizeURL(raw)
 	if err != nil {
@@ -155,7 +155,7 @@ func login(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	token := c.first("token", "SERVIK_TOKEN")
+	token := c.first("token", "SERFEX_TOKEN")
 	if token == "" {
 		if token, err = c.approveInBrowser(u, fp); err != nil {
 			return err
@@ -198,7 +198,7 @@ func (c *Ctx) trust(u *url.URL, connect, want string) (*url.URL, string, error) 
 	c.note("  %s %s", c.dim(T("Ad:")), cert.Subject.CommonName)
 	c.note("  %s %s", c.dim(T("Geçerlilik:")), cert.NotAfter.Local().Format("2006-01-02"))
 	c.note("  %s %s", c.dim("SHA-256:"), api.Format(fp))
-	c.note("%s", T("Sunucuda servik fingerprint ile aynı değeri görmelisiniz."))
+	c.note("%s", T("Sunucuda serfex fingerprint ile aynı değeri görmelisiniz."))
 	if !c.env.Interactive {
 		return nil, "", usageErr(T("Doğruladıktan sonra parmak izini verin: --fingerprint %s", fp))
 	}
@@ -298,7 +298,7 @@ func (c *Ctx) signIn(p *config.Profile) error {
 		c.println(c.green("✓") + " " + T("%s paneline %s olarak giriş yapıldı (%s).", host, who.Name, who.RoleName))
 	}
 	if len(cfg.Profiles) > 1 {
-		c.println(c.dim(T("Profil: %s · diğerleri için servik profile list", name)))
+		c.println(c.dim(T("Profil: %s · diğerleri için serfex profile list", name)))
 	}
 	return nil
 }
@@ -309,13 +309,13 @@ func mustJSON(v any) json.RawMessage {
 }
 
 // loginLocal signs root in on the server: the panel makes the key itself
-// (servik:cli-key), and the panel is reached on the loopback address.
+// (serfex:cli-key), and the panel is reached on the loopback address.
 func loginLocal(c *Ctx) error {
 	if c.env.Geteuid() != 0 {
-		return fmt.Errorf("%s", T("servik login --local sunucunun kendisinde root olarak çalışır: sudo servik login --local"))
+		return fmt.Errorf("%s", T("serfex login --local sunucunun kendisinde root olarak çalışır: sudo serfex login --local"))
 	}
 	host, _ := c.env.Hostname()
-	args := []string{"servik:cli-key", "--client", host + " (root)"}
+	args := []string{"serfex:cli-key", "--client", host + " (root)"}
 	if e := c.String("email"); e != "" {
 		args = append(args, "--email", e)
 	}
@@ -356,7 +356,7 @@ func loginLocal(c *Ctx) error {
 func localArtisan(c *Ctx, args ...string) ([]byte, error) {
 	raw, err := c.env.ReadFile(panelConfig)
 	if err != nil {
-		return nil, fmt.Errorf("%s", T("%s okunamadı; bu sunucuda Servik kurulu değil gibi görünüyor.", panelConfig))
+		return nil, fmt.Errorf("%s", T("%s okunamadı; bu sunucuda Serfex kurulu değil gibi görünüyor.", panelConfig))
 	}
 	var panel struct {
 		PHP string `json:"php"`
@@ -364,16 +364,16 @@ func localArtisan(c *Ctx, args ...string) ([]byte, error) {
 	if err := json.Unmarshal(raw, &panel); err != nil || panel.PHP == "" {
 		return nil, fmt.Errorf("%s", T("%s anlaşılamadı.", panelConfig))
 	}
-	return c.env.Command(c, "runuser", append([]string{"-u", "servik", "--", "env", "-C", panelDir, "php" + panel.PHP, "artisan"}, args...)...)
+	return c.env.Command(c, "runuser", append([]string{"-u", "serfex", "--", "env", "-C", panelDir, "php" + panel.PHP, "artisan"}, args...)...)
 }
 
 // setupURL prints a new one-time setup link: the way into a panel that
 // has no administrator yet (install.sh prints the first one).
 func setupURL(c *Ctx) error {
 	if c.env.Geteuid() != 0 {
-		return fmt.Errorf("%s", T("servik setup-url sunucunun kendisinde root olarak çalışır: sudo servik setup-url"))
+		return fmt.Errorf("%s", T("serfex setup-url sunucunun kendisinde root olarak çalışır: sudo serfex setup-url"))
 	}
-	out, err := localArtisan(c, "servik:setup-url", "--json")
+	out, err := localArtisan(c, "serfex:setup-url", "--json")
 	var link struct {
 		URL       string   `json:"url"`
 		URLs      []string `json:"urls"`
@@ -413,7 +413,7 @@ func logout(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	name, p := cfg.Get(c.first("profile", "SERVIK_PROFILE"))
+	name, p := cfg.Get(c.first("profile", "SERFEX_PROFILE"))
 	if p == nil {
 		return fmt.Errorf("%s", T("Çıkış yapılacak bir profil yok."))
 	}
@@ -451,7 +451,7 @@ func profileList(c *Ctx) error {
 		return c.printJSON(mustJSON(out))
 	}
 	if len(cfg.Profiles) == 0 {
-		c.empty(T("Henüz giriş yapılmadı. Önce: servik login <panel-adresi>"))
+		c.empty(T("Henüz giriş yapılmadı. Önce: serfex login <panel-adresi>"))
 		return nil
 	}
 	var rows [][]string
@@ -480,7 +480,7 @@ func profileUse(c *Ctx) error {
 		return err
 	}
 	if cfg.Profiles[c.Args[0]] == nil {
-		return fmt.Errorf("%s", T("%s adında bir profil yok; profiller: servik profile list", c.Args[0]))
+		return fmt.Errorf("%s", T("%s adında bir profil yok; profiller: serfex profile list", c.Args[0]))
 	}
 	cfg.Current = c.Args[0]
 	if err := cfg.Save(); err != nil {
@@ -525,7 +525,7 @@ func whoami(c *Ctx) error {
 	}
 	server := c.client.URL().Host
 	if who.Server.Version != "" {
-		server += " · Servik " + who.Server.Version
+		server += " · Serfex " + who.Server.Version
 	}
 	rows = append(rows, [2]string{T("Panel"), server}, [2]string{T("Profil"), c.profileName})
 	c.pairs(rows)
@@ -561,7 +561,7 @@ func status(c *Ctx) error {
 		c.pairs([][2]string{
 			{T("Sunucu"), s.Hostname},
 			{T("Panel"), panelAddress(s.Panel, s.Port)},
-			{T("Sürüm"), "Servik " + s.Version},
+			{T("Sürüm"), "Serfex " + s.Version},
 			{T("Saat dilimi"), s.Timezone},
 			{T("Siteler"), fmt.Sprint(s.Sites)},
 			{T("Müşteriler"), fmt.Sprint(s.Clients)},
@@ -627,7 +627,7 @@ func versionCommand() *Command {
 			if c.json {
 				return c.printJSON(mustJSON(map[string]string{"version": version.Version, "os": runtime.GOOS, "arch": runtime.GOARCH}))
 			}
-			c.printf("servik %s (%s/%s)\n", version.Version, runtime.GOOS, runtime.GOARCH)
+			c.printf("serfex %s (%s/%s)\n", version.Version, runtime.GOOS, runtime.GOARCH)
 			return nil
 		},
 	}

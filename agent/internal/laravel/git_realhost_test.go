@@ -22,7 +22,7 @@ func TestGitRealHost(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("needs root")
 	}
-	const user, domain = "servikg", "servik-git.example"
+	const user, domain = "serfexg", "serfex-git.example"
 	sh := func(dir string, args ...string) string {
 		t.Helper()
 		cmd := exec.Command(args[0], args[1:]...)
@@ -39,7 +39,7 @@ func TestGitRealHost(t *testing.T) {
 	t.Cleanup(func() { _ = exec.Command("userdel", "-r", user).Run() })
 
 	// The repository: two commits on main.
-	src, err := os.MkdirTemp("", "servik-git-src")
+	src, err := os.MkdirTemp("", "serfex-git-src")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestGitRealHost(t *testing.T) {
 		}
 	}
 	git := func(args ...string) string {
-		return sh(src, append([]string{"git", "-c", "user.name=Servik", "-c", "user.email=test@servik.example", "-c", "init.defaultBranch=main"}, args...)...)
+		return sh(src, append([]string{"git", "-c", "user.name=Serfex", "-c", "user.email=test@serfex.example", "-c", "init.defaultBranch=main"}, args...)...)
 	}
 	git("init", "-q")
 	write(src, "index.php", "<?php echo 'v1';")
@@ -73,7 +73,7 @@ func TestGitRealHost(t *testing.T) {
 	// Git refuses a repository another account owns.
 	sh("/", "chown", "-R", user, src)
 
-	// The site: Servik's default page, an about page the repository
+	// The site: Serfex's default page, an about page the repository
 	// overwrites and an upload it does not track.
 	web := "/home/" + user + "/web/" + domain + "/public_html"
 	sh("/", "runuser", "-u", user, "--", "mkdir", "-p", web)
@@ -102,7 +102,7 @@ func TestGitRealHost(t *testing.T) {
 		log, _ := m.ReadGitRun(domain, "d1", 0)
 		t.Fatalf("%v\n%s", err, log.Data)
 	}
-	if res.Commit != c2 || res.Previous != "" || res.Saved != 2 || res.Message != "Second version" || res.Author != "Servik" {
+	if res.Commit != c2 || res.Previous != "" || res.Saved != 2 || res.Message != "Second version" || res.Author != "Serfex" {
 		t.Fatalf("first deploy: %+v", res)
 	}
 	if read("about.html") != "about v1" || present("index.html") || read("upload.jpg") != "jpg" || present("css") {

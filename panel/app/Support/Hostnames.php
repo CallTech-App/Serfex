@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Host name and account name rules shared with servik-agent
+ * Host name and account name rules shared with serfex-agent
  * (agent/internal/site/validate.go). The agent has the final say; these
  * give the form an early, friendly error.
  */
@@ -15,8 +15,8 @@ class Hostnames
     public const RESERVED_USERS = [
         'root', 'daemon', 'bin', 'sys', 'sync', 'games', 'man', 'lp', 'mail', 'news', 'uucp', 'proxy',
         'www-data', 'backup', 'list', 'irc', 'gnats', 'nobody', 'syslog', 'ubuntu', 'admin',
-        'administrator', 'nginx', 'apache', 'httpd', 'postgres', 'mysql', 'redis', 'servik',
-        'servik-agent', 'ftp', 'sshd', 'dovecot', 'postfix', 'pdns', 'named', 'bind', 'clamav',
+        'administrator', 'nginx', 'apache', 'httpd', 'postgres', 'mysql', 'redis', 'serfex',
+        'serfex-agent', 'ftp', 'sshd', 'dovecot', 'postfix', 'pdns', 'named', 'bind', 'clamav',
     ];
 
     /**

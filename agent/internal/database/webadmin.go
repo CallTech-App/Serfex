@@ -23,43 +23,43 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// The web database manager runs on servik-web and servik-php, Servik's own
+// The web database manager runs on serfex-web and serfex-php, Serfex's own
 // Nginx and PHP-FPM processes with their own configuration, accounts and
 // systemd units, on a port of their own. Customers' sites, PHP versions
 // and pools never serve it. phpMyAdmin serves MySQL and MariaDB, Adminer
 // PostgreSQL.
 const (
-	// WebUnit is Servik's own web server (also the panel's, see cert.PanelUnit).
+	// WebUnit is Serfex's own web server (also the panel's, see cert.PanelUnit).
 	WebUnit = cert.PanelUnit
-	// PHPUnit is Servik's own PHP-FPM.
-	PHPUnit = "servik-php"
-	// WebUser runs servik-web's workers.
-	WebUser = "servik-web"
+	// PHPUnit is Serfex's own PHP-FPM.
+	PHPUnit = "serfex-php"
+	// WebUser runs serfex-web's workers.
+	WebUser = "serfex-web"
 	// AdminUser runs the manager's PHP.
-	AdminUser = "servik-dbadmin"
+	AdminUser = "serfex-dbadmin"
 
-	// DefaultPort is where servik-web listens (HTTPS).
+	// DefaultPort is where serfex-web listens (HTTPS).
 	DefaultPort = 8443
 	// SessionTTL is how long a one-click sign-in lasts.
 	SessionTTL = 4 * time.Hour
 	// tokenTTL is how long a sign-in link can be opened.
 	tokenTTL = time.Minute
 
-	webDir      = "/etc/servik/web"
+	webDir      = "/etc/serfex/web"
 	webConf     = webDir + "/nginx.conf"
 	phpConf     = webDir + "/php-fpm.conf"
 	webTLSDir   = webDir + "/tls"
 	webCert     = webTLSDir + "/fullchain.pem"
 	webKey      = webTLSDir + "/privkey.pem"
-	webLogs     = "/var/log/servik/web"
-	webTemp     = "/var/lib/servik/web"
-	adminDir    = "/var/lib/servik/dbadmin"
+	webLogs     = "/var/log/serfex/web"
+	webTemp     = "/var/lib/serfex/web"
+	adminDir    = "/var/lib/serfex/dbadmin"
 	adminWWW    = adminDir + "/www"
 	adminTokens = adminDir + "/tokens"
 	adminSess   = adminDir + "/sessions"
 	adminTmp    = adminDir + "/tmp"
-	phpSocket   = "/run/servik-php/dbadmin.sock"
-	pmaConf     = "/etc/phpmyadmin/conf.d/servik.php"
+	phpSocket   = "/run/serfex-php/dbadmin.sock"
+	pmaConf     = "/etc/phpmyadmin/conf.d/serfex.php"
 	webUnitFile = "/etc/systemd/system/" + WebUnit + ".service"
 	phpUnitFile = "/etc/systemd/system/" + PHPUnit + ".service"
 
@@ -69,7 +69,7 @@ const (
 
 // sessionPrefix starts the names of temporary sign-in users. The hyphen
 // keeps them apart from customer names.
-const sessionPrefix = "servik-s-"
+const sessionPrefix = "serfex-s-"
 
 // ManagerSpec configures the web manager.
 type ManagerSpec struct {
@@ -100,7 +100,7 @@ func (m *Manager) managerStatus(context.Context) ManagerStatus {
 	}
 }
 
-// adminPHP is the PHP version servik-php runs (from its unit), if any.
+// adminPHP is the PHP version serfex-php runs (from its unit), if any.
 func (m *Manager) adminPHP() string {
 	data, err := os.ReadFile(m.h.Path(phpUnitFile))
 	if err != nil {
@@ -114,8 +114,8 @@ func (m *Manager) adminPHP() string {
 }
 
 // SetupManager installs phpMyAdmin (when MySQL or MariaDB is installed)
-// and Adminer (when PostgreSQL is), and runs them on servik-web and
-// servik-php. Running it again after a server is installed adds that
+// and Adminer (when PostgreSQL is), and runs them on serfex-web and
+// serfex-php. Running it again after a server is installed adds that
 // server's tool. Configuration changes are rolled back if a service
 // rejects them.
 func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res ManagerStatus, err error) {
@@ -133,7 +133,7 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if err != nil {
 		return ManagerStatus{}, opError(err)
 	}
-	// A port given replaces servik-web's ports; without one they stay.
+	// A port given replaces serfex-web's ports; without one they stay.
 	ports := m.webPorts(st)
 	if spec.Port != 0 {
 		ports = []int{spec.Port}
@@ -152,16 +152,16 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	return ManagerStatus{Configured: true, Port: ports[0], PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}, nil
 }
 
-// WebStatus describes servik-web as the panel uses it.
+// WebStatus describes serfex-web as the panel uses it.
 type WebStatus struct {
-	// Port is the primary port; Ports are all servik-web listens on.
+	// Port is the primary port; Ports are all serfex-web listens on.
 	Port       int    `json:"port"`
 	Ports      []int  `json:"ports"`
 	PHPVersion string `json:"php_version"`
 	Panel      bool   `json:"panel"`
 }
 
-// SetupPanelWeb serves the installed panel on servik-web and servik-php,
+// SetupPanelWeb serves the installed panel on serfex-web and serfex-php,
 // next to the database manager when one is set up (install.sh and each
 // update run it). It changes nothing that is already right.
 func (m *Manager) SetupPanelWeb(ctx context.Context) (WebStatus, error) {
@@ -188,7 +188,7 @@ func (m *Manager) SetupPanelWeb(ctx context.Context) (WebStatus, error) {
 	return WebStatus{Port: ports[0], Ports: ports, PHPVersion: php, Panel: true}, nil
 }
 
-// WebPort is the primary port servik-web listens on (the panel's port).
+// WebPort is the primary port serfex-web listens on (the panel's port).
 func (m *Manager) WebPort() int {
 	st, _ := m.loadState()
 	return m.webPort(st)
@@ -198,7 +198,7 @@ func (m *Manager) webPort(st *state) int {
 	return m.webPorts(st)[0]
 }
 
-// webPorts are the ports servik-web listens on, the primary first: the
+// webPorts are the ports serfex-web listens on, the primary first: the
 // ones panel.web.ports set, else the database manager's (older setups),
 // else DefaultPort.
 func (m *Manager) webPorts(st *state) []int {
@@ -211,9 +211,9 @@ func (m *Manager) webPorts(st *state) []int {
 	return []int{DefaultPort}
 }
 
-// applyWeb writes servik-web's and servik-php's configuration for the
+// applyWeb writes serfex-web's and serfex-php's configuration for the
 // tools asked for and, when installed, the panel, then (re)starts what
-// changed. servik-web listens on every port of ports. Called with m.mu
+// changed. serfex-web listens on every port of ports. Called with m.mu
 // held.
 func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (php string, err error) {
 	cfg, withPanel := panel.Load(m.h)
@@ -238,7 +238,7 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 
 	var packages, markers []string
 	if withPanel {
-		// The tools' PHP is the panel's, so servik-php runs one version.
+		// The tools' PHP is the panel's, so serfex-php runs one version.
 		v := cfg.PHP
 		packages = []string{"nginx", "php" + v + "-fpm", "php" + v + "-mbstring", "php" + v + "-xml"}
 		if mysql {
@@ -286,11 +286,11 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		return "", err
 	}
 
-	web, err := ensureAccount(ctx, m.h, WebUser, "/nonexistent", "Servik web server")
+	web, err := ensureAccount(ctx, m.h, WebUser, "/nonexistent", "Serfex web server")
 	if err != nil {
 		return "", err
 	}
-	admin, err := ensureAccount(ctx, m.h, AdminUser, adminDir, "Servik database manager")
+	admin, err := ensureAccount(ctx, m.h, AdminUser, adminDir, "Serfex database manager")
 	if err != nil {
 		return "", err
 	}
@@ -299,12 +299,12 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		mode     os.FileMode
 		uid, gid int
 	}{
-		{"/etc/servik", 0o755, 0, 0},
+		{"/etc/serfex", 0o755, 0, 0},
 		{webDir, 0o755, 0, 0},
 		{webTLSDir, 0o750, 0, 0},
-		{"/var/log/servik", 0o755, 0, 0},
+		{"/var/log/serfex", 0o755, 0, 0},
 		{webLogs, 0o750, 0, 0},
-		{"/var/lib/servik", 0o755, 0, 0},
+		{"/var/lib/serfex", 0o755, 0, 0},
 		{webTemp, 0o750, web.UID, web.GID},
 		{adminDir, 0o755, 0, 0},
 		{adminWWW, 0o755, 0, 0},
@@ -322,7 +322,7 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		return "", err
 	}
 	data.PHP = php
-	if err := t.RootDir("/etc/servik/nginx", 0o755, 0, 0); err != nil {
+	if err := t.RootDir("/etc/serfex/nginx", 0o755, 0, 0); err != nil {
 		return "", err
 	}
 	if err := t.WriteFile(cert.TLSConf, site.TLSConfig()); err != nil {
@@ -454,7 +454,7 @@ func phpLess(a, b string) bool {
 	return len(an) < len(bn) || (len(an) == len(bn) && an < bn)
 }
 
-// webConfData is what servik-web's configuration is made from.
+// webConfData is what serfex-web's configuration is made from.
 func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool) (webData, error) {
 	certFile, keyFile, err := m.webTLS(t)
 	if err != nil {
@@ -471,7 +471,7 @@ func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool)
 	return data, nil
 }
 
-// webTLS returns servik-web's own self-signed certificate, made on first
+// webTLS returns serfex-web's own self-signed certificate, made on first
 // use. It answers on the IP address and every name but the panel's, so a
 // page opened before the panel had a certificate keeps working after.
 func (m *Manager) webTLS(t *txn.Tx) (string, string, error) {
@@ -540,8 +540,8 @@ func validServerName(n string) bool {
 }
 
 // PanelCertificateChanged serves the panel's new certificate on the
-// panel's name, while the IP address keeps servik-web's own; the
-// certificate store reloads servik-web afterwards.
+// panel's name, while the IP address keeps serfex-web's own; the
+// certificate store reloads serfex-web afterwards.
 func (m *Manager) PanelCertificateChanged(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -621,7 +621,7 @@ type LoginSpec struct {
 	Database string `json:"database"`
 }
 
-// Login is a sign-in link: Path on servik-web's Port, usable once before
+// Login is a sign-in link: Path on serfex-web's Port, usable once before
 // Expires.
 type Login struct {
 	Path    string    `json:"path"`
@@ -651,15 +651,15 @@ func (m *Manager) Login(ctx context.Context, spec LoginSpec) (Login, error) {
 	if st.Manager == nil {
 		return Login{}, invalid("the database manager is not set up")
 	}
-	tool, page, ready := "phpmyadmin", "/phpmyadmin/servik-sso.php?token=", m.exists(pmaIndex)
+	tool, page, ready := "phpmyadmin", "/phpmyadmin/serfex-sso.php?token=", m.exists(pmaIndex)
 	if spec.Server == PostgreSQL {
-		tool, page, ready = "adminer", "/adminer/?servik_token=", m.exists(adminerIndex)
+		tool, page, ready = "adminer", "/adminer/?serfex_token=", m.exists(adminerIndex)
 	}
 	if !ready {
 		return Login{}, invalid("%s is not installed; set the database manager up again", tool)
 	}
 	if _, ok := st.Databases[key(spec.Server, spec.Database)]; !ok {
-		return Login{}, invalid("database %s is not managed by Servik", spec.Database)
+		return Login{}, invalid("database %s is not managed by Serfex", spec.Database)
 	}
 	m.sweepLocked(ctx, st)
 

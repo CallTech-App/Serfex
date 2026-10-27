@@ -7,10 +7,10 @@
         [$tone, $title, $text, $action] = match ($server['state']) {
             'installing' => ['info', __('Posta sunucusu kuruluyor'), __('Postfix, Dovecot, Rspamd ve web posta kuruluyor. Bitince bekleyen alan adları otomatik uygulanır.'), null],
             'nohostname' => ['warn', __('Posta sunucusu kurulu değil'), __('Önce posta sunucusunun adını girin, örneğin mail.ornek.com.tr. Posta istemcileri ve web posta bu adı kullanır.'), __('Ayarlara git')],
-            'missing' => ['warn', __('Posta sunucusu kurulu değil'), __('Posta kutularınız panelde duruyor ama bu sunucu henüz posta almıyor. Servik; Postfix, Dovecot, Rspamd ve web postayı kurup yapılandırabilir.'), __('Posta sunucusunu kur')],
-            'stopped' => ['crit', __('Posta sunucusu çalışmıyor'), __('Yapılandırma yerinde ama bazı hizmetler durmuş. Servik yapılandırmayı denetleyip yeniden başlatabilir.'), __('Onar ve başlat')],
+            'missing' => ['warn', __('Posta sunucusu kurulu değil'), __('Posta kutularınız panelde duruyor ama bu sunucu henüz posta almıyor. Serfex; Postfix, Dovecot, Rspamd ve web postayı kurup yapılandırabilir.'), __('Posta sunucusunu kur')],
+            'stopped' => ['crit', __('Posta sunucusu çalışmıyor'), __('Yapılandırma yerinde ama bazı hizmetler durmuş. Serfex yapılandırmayı denetleyip yeniden başlatabilir.'), __('Onar ve başlat')],
             'failed' => ['crit', __('Posta sunucusu kurulamadı'), __('Önceki ayarlar geri yüklendi.'), __('Tekrar dene')],
-            default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status servik-agent" ile kontrol edin.'), null],
+            default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status serfex-agent" ile kontrol edin.'), null],
         };
         $stopped = collect($server['services'] ?? [])->reject(fn ($up) => $up)->keys();
     @endphp

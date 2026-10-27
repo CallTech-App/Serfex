@@ -159,7 +159,7 @@ func (a *ACME) client(ctx context.Context, email string) (*acme.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &acme.Client{Key: key, DirectoryURL: a.DirectoryURL, HTTPClient: a.HTTPClient, UserAgent: "servik-agent/" + version.Version}
+	c := &acme.Client{Key: key, DirectoryURL: a.DirectoryURL, HTTPClient: a.HTTPClient, UserAgent: "serfex-agent/" + version.Version}
 	if err := a.reach(ctx, c); err != nil {
 		return nil, err
 	}
@@ -412,7 +412,7 @@ type Simulated struct {
 }
 
 // Issuer name used by Simulated.
-const SimulatedIssuer = "Servik Dry Run CA"
+const SimulatedIssuer = "Serfex Dry Run CA"
 
 // Obtain implements Issuer.
 func (sim *Simulated) Obtain(ctx context.Context, req Request, s Solver) ([]*x509.Certificate, crypto.Signer, error) {

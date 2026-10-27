@@ -8,7 +8,7 @@ use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 
 /**
- * Maintenance mode of an application: Servik's page or custom HTML shown
+ * Maintenance mode of an application: Serfex's page or custom HTML shown
  * by Nginx (the application keeps running; listed addresses and holders
  * of the bypass link get through), or the application's own
  * php artisan down. Each method returns why it failed, or null.
@@ -54,7 +54,7 @@ class Maintenance
     public function status(LaravelApp $app): array
     {
         try {
-            return (array) $this->agent->call('laravel.status', $app->agentApp(), config('servik.agent.job_timeout'));
+            return (array) $this->agent->call('laravel.status', $app->agentApp(), config('serfex.agent.job_timeout'));
         } catch (AgentException) {
             return [];
         }
@@ -84,7 +84,7 @@ class Maintenance
     public function artisan(LaravelApp $app, bool $down, string $secret, int $retry): ?string
     {
         try {
-            $result = $this->agent->call('laravel.maintenance', $app->agentApp() + ['down' => $down, 'secret' => $secret, 'retry' => $retry], config('servik.agent.job_timeout'));
+            $result = $this->agent->call('laravel.maintenance', $app->agentApp() + ['down' => $down, 'secret' => $secret, 'retry' => $retry], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             return self::message($e);
         }
@@ -98,7 +98,7 @@ class Maintenance
     private static function message(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')
             : $e->reason;
     }
 }

@@ -34,7 +34,7 @@
                             <input type="checkbox" wire:model="auto" class="size-4 accent-accent">
                             {{ __('Yeni sitelere otomatik Let\'s Encrypt sertifikası al') }}
                         </label>
-                        <p class="mt-1 ml-[26px] text-2xs text-muted">{{ __('Alan adı ve ek adlar bu sunucuyu gösteriyorsa sertifika site oluşturulunca alınır, göstermiyorsa her saat yeniden denenir. Sertifikalar bitişten :config gün önce yenilenir.', ['config' => config('servik.ssl.renew_days')]) }}</p>
+                        <p class="mt-1 ml-[26px] text-2xs text-muted">{{ __('Alan adı ve ek adlar bu sunucuyu gösteriyorsa sertifika site oluşturulunca alınır, göstermiyorsa her saat yeniden denenir. Sertifikalar bitişten :config gün önce yenilenir.', ['config' => config('serfex.ssl.renew_days')]) }}</p>
                     </div>
                 </div>
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">

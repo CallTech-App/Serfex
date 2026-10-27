@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * Runs every five minutes from the scheduler: starts the daily or weekly
  * backup of each Laravel application that is due.
  */
-#[Signature('servik:laravel-backups')]
+#[Signature('serfex:laravel-backups')]
 #[Description('Take scheduled backups of Laravel applications')]
 class ScheduledLaravelBackups extends Command
 {

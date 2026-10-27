@@ -81,6 +81,6 @@ class CronJob extends Model
             return null;
         }
 
-        return Carbon::instance((new CronExpression($this->schedule))->getNextRunDate(now(config('servik.timezone'))));
+        return Carbon::instance((new CronExpression($this->schedule))->getNextRunDate(now(config('serfex.timezone'))));
     }
 }

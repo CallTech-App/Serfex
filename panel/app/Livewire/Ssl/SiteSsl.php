@@ -105,7 +105,7 @@ class SiteSsl extends Component
             $certificates->upload($site, $agent, $this->certificatePem, $this->privateKeyPem, $this->chainPem);
         } catch (AgentException $e) {
             $this->addError('certificatePem', $e instanceof AgentUnavailableException
-                ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+                ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')
                 : self::uploadError($e->reason));
 
             return;
@@ -203,7 +203,7 @@ class SiteSsl extends Component
             'pending' => $pending,
             'zone' => $certificates->zoneFor($site->domain),
             'busy' => $site->status->isBusy() || $certificate?->status === CertificateStatus::Issuing || $pending?->status === CertificateStatus::Issuing,
-        ])->title('SSL · '.$site->domain.' · Servik');
+        ])->title('SSL · '.$site->domain.' · Serfex');
     }
 
     private function site(): ?Site

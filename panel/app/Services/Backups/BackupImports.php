@@ -13,9 +13,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * Backups brought in from elsewhere, to move sites from another Servik
+ * Backups brought in from elsewhere, to move sites from another Serfex
  * server or to rebuild this one: an archive uploaded from the browser, an
- * archive copied to /var/lib/servik/backups/import, or the backups found on
+ * archive copied to /var/lib/serfex/backups/import, or the backups found on
  * a remote target (the other server's folder in the same bucket).
  * Administrators only. cPanel and Plesk archives are not read.
  */
@@ -57,13 +57,13 @@ class BackupImports
                 'upload' => $upload,
                 'key' => $key,
                 'passphrase' => $passphrase,
-            ]), config('servik.agent.backup_timeout'));
+            ]), config('serfex.agent.backup_timeout'));
         } catch (AgentException $e) {
             return $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : $this->reason($e);
         }
         $m = (array) ($in['manifest'] ?? []);
         if (($m['incremental'] ?? []) !== []) {
-            $this->agent->call('backup.delete', ['key' => $key, 'local' => true], config('servik.agent.job_timeout'));
+            $this->agent->call('backup.delete', ['key' => $key, 'local' => true], config('serfex.agent.job_timeout'));
 
             return __('Bu arşiv artımlı bir yedek; tek başına geri yüklenemez. Zincirin tam yedeğini içe aktarın ya da yedeğin bulunduğu hedefi tarayın.');
         }
@@ -222,7 +222,7 @@ class BackupImports
         return match (true) {
             str_contains($why, 'passphrase is wrong') || str_contains($why, 'wrong passphrase') => __('Şifreleme parolası yanlış.'),
             str_contains($why, 'enter its passphrase') => __('Arşiv şifreli; şifreleme parolasını girin.'),
-            str_contains($why, 'not a Servik backup') => __('Bu dosya bir Servik yedeği değil. cPanel ve Plesk yedekleri içe aktarılamaz.'),
+            str_contains($why, 'not a Serfex backup') => __('Bu dosya bir Serfex yedeği değil. cPanel ve Plesk yedekleri içe aktarılamaz.'),
             $e->getCode() === -32006 => __(Backups::BUSY),
             default => $why,
         };

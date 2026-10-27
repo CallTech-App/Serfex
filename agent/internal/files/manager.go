@@ -2,7 +2,7 @@
 // downloads, the editor, permissions, archives, search and a trash.
 //
 // Every operation runs in a helper process with the site's own user
-// (runuser ... servik-agent files-helper), never as root or as the
+// (runuser ... serfex-agent files-helper), never as root or as the
 // panel's user, so the kernel's permission checks apply exactly as they
 // do to the site's PHP. The helper also keeps every path inside the site
 // folder: ".." is refused and symlinks are only followed to places inside
@@ -11,7 +11,7 @@
 // Layout (for user kahve and site kahve.com):
 //
 //	/home/kahve/web/kahve.com/            what the file manager shows
-//	/home/kahve/.servik/trash/kahve.com/  deleted and overwritten entries, TrashDays
+//	/home/kahve/.serfex/trash/kahve.com/  deleted and overwritten entries, TrashDays
 package files
 
 import (
@@ -50,7 +50,7 @@ func NewManager(h host.Host, exe string) *Manager {
 func SiteDir(user, domain string) string { return "/home/" + user + "/web/" + domain }
 
 // TrashDir is where a site's deleted entries wait.
-func TrashDir(user, domain string) string { return "/home/" + user + "/.servik/trash/" + domain }
+func TrashDir(user, domain string) string { return "/home/" + user + "/.serfex/trash/" + domain }
 
 // Do runs one operation (Spec.Op is one of Ops).
 func (m *Manager) Do(ctx context.Context, spec Spec) (any, error) {

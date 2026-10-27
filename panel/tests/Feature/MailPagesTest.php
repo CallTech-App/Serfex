@@ -41,8 +41,8 @@ class MailPagesTest extends TestCase
         $this->actingAs(User::factory()->create());
         Queue::fake();
         Setting::put('dns.ipv4', '203.0.113.10');
-        Setting::put('mail.hostname', 'mail.servik.net.tr');
-        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.servik.net.tr/', 'certificate' => '']);
+        Setting::put('mail.hostname', 'mail.serfex.net.tr');
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.serfex.net.tr/', 'certificate' => '']);
         $this->agent = Mockery::mock(AgentClient::class);
         $this->agent->shouldReceive('call')->with('mail.status')->andReturn(['installed' => true, 'configured' => true, 'running' => true, 'services' => ['postfix' => true]])->byDefault();
         $this->agent->shouldReceive('call')->with('mail.usage', Mockery::any())->andReturn(['mailboxes' => []])->byDefault();
@@ -116,7 +116,7 @@ class MailPagesTest extends TestCase
         Queue::assertPushed(SyncMailDomain::class);
 
         Livewire::test(MailIndex::class)->set('domain', 'kahve.com.tr')->call('enable')->assertHasErrors('domain');
-        Livewire::test(MailIndex::class)->set('domain', 'mail.servik.net.tr')->call('enable')->assertHasErrors('domain');
+        Livewire::test(MailIndex::class)->set('domain', 'mail.serfex.net.tr')->call('enable')->assertHasErrors('domain');
         Livewire::test(MailIndex::class)->set('domain', 'olmaz')->call('enable')->assertHasErrors('domain');
     }
 
@@ -282,7 +282,7 @@ class MailPagesTest extends TestCase
             ->assertSee('v=spf1 a mx ip4:203.0.113.10 ~all')
             ->assertSee('Eksik')
             ->assertSee('Önerilen kayıtları yaz')
-            ->assertSee('mail.servik.net.tr · 993 · SSL/TLS');
+            ->assertSee('mail.serfex.net.tr · 993 · SSL/TLS');
 
         $this->show($domain)->set('tab', 'ayarlar')->call('fixDns')->assertDispatched('toast');
         $this->assertTrue($zone->records()->where('type', 'MX')->exists());
@@ -314,9 +314,9 @@ class MailPagesTest extends TestCase
     {
         $mailbox = Mailbox::factory()->for($this->domain(), 'domain')->create(['name' => 'ali']);
         $this->agent->shouldReceive('call')->once()->with('mail.webmail.login', ['address' => 'ali@kahve.com.tr'], 120.0)
-            ->andReturn(['url' => 'https://mail.servik.net.tr/?_task=login&_action=servik-sso&_token=abc', 'expires' => now()->addMinute()->toIso8601String()]);
+            ->andReturn(['url' => 'https://mail.serfex.net.tr/?_task=login&_action=serfex-sso&_token=abc', 'expires' => now()->addMinute()->toIso8601String()]);
 
-        $this->get(route('mail.webmail', $mailbox))->assertRedirect('https://mail.servik.net.tr/?_task=login&_action=servik-sso&_token=abc');
+        $this->get(route('mail.webmail', $mailbox))->assertRedirect('https://mail.serfex.net.tr/?_task=login&_action=serfex-sso&_token=abc');
     }
 
     public function test_webmail_failure_returns_to_the_domain(): void
@@ -335,10 +335,10 @@ class MailPagesTest extends TestCase
 
     public function test_settings_page_saves_and_reconfigures_the_server(): void
     {
-        $this->get('/mail/settings')->assertOk()->assertSee('mail.servik.net.tr')->assertSee('kendinden imzalı');
+        $this->get('/mail/settings')->assertOk()->assertSee('mail.serfex.net.tr')->assertSee('kendinden imzalı');
 
         Livewire::test(MailSettingsPage::class)
-            ->set('hostname', 'posta.servik.net.tr')
+            ->set('hostname', 'posta.serfex.net.tr')
             ->set('hourlyLimit', 100)
             ->set('defaultQuota', 5120)
             ->set('auto', false)
@@ -347,7 +347,7 @@ class MailPagesTest extends TestCase
             ->assertDispatched('toast');
 
         $settings = app(MailSettings::class);
-        $this->assertSame('posta.servik.net.tr', $settings->hostname());
+        $this->assertSame('posta.serfex.net.tr', $settings->hostname());
         $this->assertSame(100, $settings->hourlyLimit());
         $this->assertSame(5120, $settings->defaultQuotaMb());
         $this->assertFalse($settings->autoEnable());
@@ -356,12 +356,12 @@ class MailPagesTest extends TestCase
 
     public function test_settings_page_rejects_names_in_use(): void
     {
-        Setting::put('panel.hostname', 'panel.servik.net.tr');
+        Setting::put('panel.hostname', 'panel.serfex.net.tr');
         Site::factory()->create(['domain' => 'kahve.com.tr']);
 
-        Livewire::test(MailSettingsPage::class)->set('hostname', 'panel.servik.net.tr')->call('save')->assertHasErrors('hostname');
+        Livewire::test(MailSettingsPage::class)->set('hostname', 'panel.serfex.net.tr')->call('save')->assertHasErrors('hostname');
         Livewire::test(MailSettingsPage::class)->set('hostname', 'kahve.com.tr')->call('save')->assertHasErrors('hostname');
-        Livewire::test(MailSettingsPage::class)->set('hostname', 'servik')->call('save')->assertHasErrors('hostname');
+        Livewire::test(MailSettingsPage::class)->set('hostname', 'serfex')->call('save')->assertHasErrors('hostname');
         Livewire::test(MailSettingsPage::class)->set('hourlyLimit', -1)->call('save')->assertHasErrors('hourlyLimit');
         Queue::assertNotPushed(SetupMailServer::class);
     }
@@ -373,7 +373,7 @@ class MailPagesTest extends TestCase
 
         $domain = $this->domain();
         Mailbox::factory()->for($domain, 'domain')->create();
-        $this->get('/sites/'.$site->id)->assertOk()->assertSee('1 kutu')->assertSee(route('mail.show', $domain))->assertSee('https://mail.servik.net.tr/');
+        $this->get('/sites/'.$site->id)->assertOk()->assertSee('1 kutu')->assertSee(route('mail.show', $domain))->assertSee('https://mail.serfex.net.tr/');
     }
 
     public function test_new_sites_get_mail_once_the_server_is_set_up(): void

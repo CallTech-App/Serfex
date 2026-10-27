@@ -25,7 +25,7 @@ type TargetSpec struct {
 	// Type is "s3" (any S3-compatible storage) or "sftp".
 	Type string `json:"type"`
 	// Prefix is the folder backups go under, for example
-	// "servik/srv-ist-01".
+	// "serfex/srv-ist-01".
 	Prefix string `json:"prefix"`
 
 	// S3: Endpoint is a host name (or URL) such as s3.eu-central-1.amazonaws.com;

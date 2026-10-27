@@ -27,8 +27,8 @@ use Illuminate\Support\Str;
  * on a PHP version, databases, Laravel applications on Redis) and refuses
  * to remove a component that is in use.
  *
- * Servik's own Nginx, PHP and PostgreSQL are separate (servik-web,
- * servik-postgresql) and never listed here.
+ * Serfex's own Nginx, PHP and PostgreSQL are separate (serfex-web,
+ * serfex-postgresql) and never listed here.
  */
 class Components
 {
@@ -296,7 +296,7 @@ class Components
     /**
      * Why no install, update or removal can start now: the one operation
      * that runs at a time (with its id, for its progress), a database
-     * server setup or a Servik update. Null when nothing runs.
+     * server setup or a Serfex update. Null when nothing runs.
      *
      * @return array{text: string, operation: ?int}|null
      */
@@ -318,7 +318,7 @@ class Components
             return ['text' => __('Veritabanı sunucusu kuruluyor.').' '.$wait, 'operation' => null];
         }
         if (PanelUpdate::running()->exists()) {
-            return ['text' => __('Servik güncelleniyor.').' '.$wait, 'operation' => null];
+            return ['text' => __('Serfex güncelleniyor.').' '.$wait, 'operation' => null];
         }
 
         return null;
@@ -374,7 +374,7 @@ class Components
     {
         $status ??= $this->statuses()[$id] ?? [];
         if ($status['required'] ?? null) {
-            return __('Gerekli. Servik tüm sitelerde Nginx kullanır.');
+            return __('Gerekli. Serfex tüm sitelerde Nginx kullanır.');
         }
         $used = array_values(array_unique([...$this->users($id), ...($status['used_by'] ?? [])]));
         if ($used === []) {
@@ -410,7 +410,7 @@ class Components
             return __('Başka bir kurulum sürüyor. Bitince yeniden deneyin.');
         }
         if (PanelUpdate::running()->exists()) {
-            return __('Servik güncelleniyor. Bitince yeniden deneyin.');
+            return __('Serfex güncelleniyor. Bitince yeniden deneyin.');
         }
         if ($statuses === null) {
             return $error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor.');
@@ -499,7 +499,7 @@ class Components
 
     /**
      * The major versions a database server can be installed in, as the
-     * agent reports them (Servik decides which; the default first).
+     * agent reports them (Serfex decides which; the default first).
      *
      * @param  list<array<string, mixed>>  $choices
      * @return list<array{major: string, name: string, version: ?string, source: ?string, default: bool}>

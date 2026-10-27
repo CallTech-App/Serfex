@@ -28,7 +28,7 @@ return new class extends Migration
         Schema::create('audit_entries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            // Who it was when it happened: a name, "Servik AI" or "API: <key>".
+            // Who it was when it happened: a name, "Serfex AI" or "API: <key>".
             $table->string('actor', 120);
             // panel, api, ai or system.
             $table->string('via', 16)->default('panel');

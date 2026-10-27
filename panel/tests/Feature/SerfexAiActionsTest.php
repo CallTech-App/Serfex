@@ -19,10 +19,10 @@ use Tests\Support\FakeAgent;
 use Tests\TestCase;
 
 /**
- * What Servik AI may propose, and that applying and undoing a proposal goes
+ * What Serfex AI may propose, and that applying and undoing a proposal goes
  * through the panel's own services.
  */
-class ServikAiActionsTest extends TestCase
+class SerfexAiActionsTest extends TestCase
 {
     use RefreshDatabase;
 

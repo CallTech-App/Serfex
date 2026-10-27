@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * Runs from the scheduler: records how much disk each account's home
  * directory and each database takes, for customers' disk quotas.
  */
-#[Signature('servik:disk-usage')]
+#[Signature('serfex:disk-usage')]
 #[Description('Record the disk usage of every account and database')]
 class MeasureDiskUsage extends Command
 {

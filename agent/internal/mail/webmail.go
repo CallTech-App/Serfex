@@ -39,7 +39,7 @@ var webmailPHPParts = []struct{ pkg, file string }{
 	{"xml", "/etc/php/%s/mods-available/xml.ini"},
 }
 
-// roundcubeJobs are the package's systemd housekeeping jobs; Servik's
+// roundcubeJobs are the package's systemd housekeeping jobs; Serfex's
 // drop-ins run them on webmail's database, account and PHP version.
 var roundcubeJobs = map[string]string{"roundcube-gc": "gc.sh", "roundcube-cleandb": "cleandb.sh"}
 
@@ -48,29 +48,29 @@ var webmailFiles = []string{"/usr/share/roundcube/index.php", "/usr/share/roundc
 const (
 	// WebmailUser runs Roundcube's PHP; it is neither a customer nor the
 	// panel.
-	WebmailUser = "servik-webmail"
+	WebmailUser = "serfex-webmail"
 
-	webmailDir     = "/var/lib/servik/webmail"
+	webmailDir     = "/var/lib/serfex/webmail"
 	webmailData    = webmailDir + "/data"
-	webmailPlugin  = webmailDir + "/plugins/servik_sso"
-	webmailConfig  = "/etc/servik/webmail"
-	webmailLogs    = "/var/log/servik/webmail"
-	webmailSocket  = "/run/php/servik-webmail.sock"
+	webmailPlugin  = webmailDir + "/plugins/serfex_sso"
+	webmailConfig  = "/etc/serfex/webmail"
+	webmailLogs    = "/var/log/serfex/webmail"
+	webmailSocket  = "/run/php/serfex-webmail.sock"
 	webmailSSO     = webmailData + "/sso"
 	roundcubeRoot  = "/var/lib/roundcube"
 	roundcubeSQL   = "/usr/share/roundcube/SQL"
-	autoconfigDir  = "/var/lib/servik/mail/autoconfig"
-	mailVhost      = "/etc/nginx/sites-available/servik-mail.conf"
-	mailVhostLink  = "/etc/nginx/sites-enabled/servik-mail.conf"
+	autoconfigDir  = "/var/lib/serfex/mail/autoconfig"
+	mailVhost      = "/etc/nginx/sites-available/serfex-mail.conf"
+	mailVhostLink  = "/etc/nginx/sites-enabled/serfex-mail.conf"
 	ssoTokenExpiry = time.Minute
 )
 
 func webmailPool(version string) string {
-	return "/etc/php/" + version + "/fpm/pool.d/servik-webmail.conf"
+	return "/etc/php/" + version + "/fpm/pool.d/serfex-webmail.conf"
 }
 
 func roundcubeJobDropIn(unit string) string {
-	return "/etc/systemd/system/" + unit + ".service.d/servik.conf"
+	return "/etc/systemd/system/" + unit + ".service.d/serfex.conf"
 }
 
 // writeWebmail writes the mail vhost (always, for certificate validation
@@ -88,7 +88,7 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		data.PHPSocket = webmailSocket
 		data.MasterPass, data.DESKey = s.MasterPassword, s.DESKey
 
-		for _, d := range []string{"/var/lib/servik", "/var/lib/servik/mail", autoconfigDir, cert.Webroot} {
+		for _, d := range []string{"/var/lib/serfex", "/var/lib/serfex/mail", autoconfigDir, cert.Webroot} {
 			if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 				return err
 			}
@@ -116,7 +116,7 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 			}
 		}
 		if !s.Webmail {
-			if err := t.Unlink(roundcubeRoot + "/plugins/servik_sso"); err != nil {
+			if err := t.Unlink(roundcubeRoot + "/plugins/serfex_sso"); err != nil {
 				return err
 			}
 			for unit := range roundcubeJobs {
@@ -127,7 +127,7 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		}
 
 		if s.Webmail {
-			if err := t.RootDir("/etc/servik/nginx", 0o755, 0, 0); err != nil {
+			if err := t.RootDir("/etc/serfex/nginx", 0o755, 0, 0); err != nil {
 				return err
 			}
 			if err := t.WriteFile(cert.TLSConf, site.TLSConfig()); err != nil {
@@ -141,10 +141,10 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 	})
 }
 
-// writeRoundcube sets up Roundcube to read Servik's configuration, with
+// writeRoundcube sets up Roundcube to read Serfex's configuration, with
 // its own SQLite database and PHP-FPM pool.
 func (m *Manager) writeRoundcube(ctx context.Context, t *txn.Tx, s *server, data tmplData) error {
-	acct, err := m.ensureAccount(ctx, WebmailUser, webmailDir, "Servik webmail")
+	acct, err := m.ensureAccount(ctx, WebmailUser, webmailDir, "Serfex webmail")
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (m *Manager) writeRoundcube(ctx context.Context, t *txn.Tx, s *server, data
 		{webmailData + "/temp", 0o700, acct.UID, acct.GID},
 		{webmailSSO, 0o700, acct.UID, acct.GID},
 		{webmailConfig, 0o750, 0, acct.GID},
-		{"/var/log/servik", 0o755, 0, 0},
+		{"/var/log/serfex", 0o755, 0, 0},
 		{webmailLogs, 0o750, acct.UID, acct.GID},
 	} {
 		if err := t.RootDir(d.path, d.mode, d.uid, d.gid); err != nil {
@@ -176,10 +176,10 @@ func (m *Manager) writeRoundcube(ctx context.Context, t *txn.Tx, s *server, data
 			return err
 		}
 	}
-	if err := t.WriteFile(webmailPlugin+"/servik_sso.php", ssoPlugin); err != nil {
+	if err := t.WriteFile(webmailPlugin+"/serfex_sso.php", ssoPlugin); err != nil {
 		return err
 	}
-	if err := t.Symlink(webmailPlugin, roundcubeRoot+"/plugins/servik_sso"); err != nil {
+	if err := t.Symlink(webmailPlugin, roundcubeRoot+"/plugins/serfex_sso"); err != nil {
 		return err
 	}
 	data.PHPSocket = webmailSocket
@@ -376,7 +376,7 @@ func (m *Manager) WebmailLogin(address string) (Login, error) {
 		_ = os.Remove(p)
 		return Login{}, opError(err)
 	}
-	return Login{URL: "https://" + s.Hostname + "/?_task=login&_action=servik-sso&_token=" + token, Expires: expires.UTC()}, nil
+	return Login{URL: "https://" + s.Hostname + "/?_task=login&_action=serfex-sso&_token=" + token, Expires: expires.UTC()}, nil
 }
 
 // expireTokens removes tokens nobody used.

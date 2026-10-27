@@ -4,58 +4,58 @@ return [
 
     // The release's VERSION file (written by scripts/build-release.sh);
     // a checkout from git is "dev".
-    'version' => is_file(base_path('VERSION')) ? trim((string) file_get_contents(base_path('VERSION'))) : env('SERVIK_VERSION', 'dev'),
+    'version' => is_file(base_path('VERSION')) ? trim((string) file_get_contents(base_path('VERSION'))) : env('SERFEX_VERSION', 'dev'),
 
     // The time zone the panel shows times in and runs its schedules by.
     // Araçlar ve Ayarlar → Genel sets it together with the server's own;
     // dates are stored in UTC either way.
-    'timezone' => env('SERVIK_TIMEZONE', 'Europe/Istanbul'),
+    'timezone' => env('SERFEX_TIMEZONE', 'Europe/Istanbul'),
 
     // The panel's languages, each in its own name. Turkish is the source:
     // views and code are written in it, lang/en.json translates. The
-    // server's default (Araçlar ve Ayarlar → Genel) starts as SERVIK_LOCALE,
+    // server's default (Araçlar ve Ayarlar → Genel) starts as SERFEX_LOCALE,
     // which install.sh sets from the language it was run in.
     'locales' => ['tr' => 'Türkçe', 'en' => 'English'],
-    'locale' => env('SERVIK_LOCALE', 'tr'),
+    'locale' => env('SERFEX_LOCALE', 'tr'),
 
-    // The servik command line's binaries for developers' computers
+    // The serfex command line's binaries for developers' computers
     // (linux and darwin, amd64 and arm64), with SHA256SUMS and
     // install-cli.sh: the release's downloads/ folder. The panel serves
     // them at /cli/install.sh and /cli/indir/<file>.
-    'cli_downloads' => env('SERVIK_CLI_DOWNLOADS', dirname(base_path()).'/downloads'),
+    'cli_downloads' => env('SERFEX_CLI_DOWNLOADS', dirname(base_path()).'/downloads'),
 
     // File systems watched for free space (Bildirimler).
     'disk_paths' => ['/', '/home', '/var'],
 
     /*
     |--------------------------------------------------------------------------
-    | Servik Agent
+    | Serfex Agent
     |--------------------------------------------------------------------------
     |
     | The panel never runs as root. Privileged server operations are sent to
-    | servik-agent over a local Unix socket using JSON-RPC 2.0.
+    | serfex-agent over a local Unix socket using JSON-RPC 2.0.
     |
     */
 
     'agent' => [
-        'socket' => env('SERVIK_AGENT_SOCKET', '/run/servik-agent/agent.sock'),
-        'timeout' => (float) env('SERVIK_AGENT_TIMEOUT', 5),
+        'socket' => env('SERFEX_AGENT_SOCKET', '/run/serfex-agent/agent.sock'),
+        'timeout' => (float) env('SERFEX_AGENT_TIMEOUT', 5),
         // Seconds to wait for changes that validate and reload services.
-        'job_timeout' => (float) env('SERVIK_AGENT_JOB_TIMEOUT', 120),
+        'job_timeout' => (float) env('SERFEX_AGENT_JOB_TIMEOUT', 120),
         // Seconds to wait for a certificate, validation included.
-        'ssl_timeout' => (float) env('SERVIK_AGENT_SSL_TIMEOUT', 300),
+        'ssl_timeout' => (float) env('SERFEX_AGENT_SSL_TIMEOUT', 300),
         // Seconds to wait for a Laravel deploy or a command run from the
         // panel; the agent stops a command after 30 minutes.
-        'deploy_timeout' => (float) env('SERVIK_AGENT_DEPLOY_TIMEOUT', 1900),
+        'deploy_timeout' => (float) env('SERFEX_AGENT_DEPLOY_TIMEOUT', 1900),
         // Seconds to wait for an application backup or restore; the agent
         // stops one after two hours.
-        'backup_timeout' => (float) env('SERVIK_AGENT_BACKUP_TIMEOUT', 7300),
+        'backup_timeout' => (float) env('SERFEX_AGENT_BACKUP_TIMEOUT', 7300),
         // Seconds to wait for a whole-server backup or a site restore from
         // Yedekler; the agent stops one after twelve hours.
-        'server_backup_timeout' => (float) env('SERVIK_AGENT_SERVER_BACKUP_TIMEOUT', 43300),
+        'server_backup_timeout' => (float) env('SERFEX_AGENT_SERVER_BACKUP_TIMEOUT', 43300),
         // Seconds to wait for software installed from Yazılım Yönetimi;
         // ClamAV's first signature download alone can take minutes.
-        'component_timeout' => (float) env('SERVIK_AGENT_COMPONENT_TIMEOUT', 1750),
+        'component_timeout' => (float) env('SERFEX_AGENT_COMPONENT_TIMEOUT', 1750),
     ],
 
     /*
@@ -71,7 +71,7 @@ return [
     */
 
     'ssl' => [
-        'check_dns' => (bool) env('SERVIK_SSL_CHECK_DNS', true),
+        'check_dns' => (bool) env('SERFEX_SSL_CHECK_DNS', true),
         // Let's Encrypt certificates are renewed this many days before expiry.
         'renew_days' => 30,
     ],
@@ -88,27 +88,27 @@ return [
     */
 
     'mail' => [
-        'check_dns' => (bool) env('SERVIK_MAIL_CHECK_DNS', true),
+        'check_dns' => (bool) env('SERFEX_MAIL_CHECK_DNS', true),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Servik AI
+    | Serfex AI
     |--------------------------------------------------------------------------
     |
     | The assistant talks to the Claude API with the key saved on the
-    | Servik AI settings page. base_url points it at another endpoint, for
+    | Serfex AI settings page. base_url points it at another endpoint, for
     | example a proxy; leave it empty for api.anthropic.com.
     |
     */
 
     'ai' => [
-        'base_url' => env('SERVIK_AI_BASE_URL') ?: null,
+        'base_url' => env('SERFEX_AI_BASE_URL') ?: null,
         // Requests to Claude in one answer, tool calls included.
         'max_steps' => 16,
         'max_tokens' => 16000,
         // Seconds to wait for one response from Claude.
-        'timeout' => (float) env('SERVIK_AI_TIMEOUT', 300),
+        'timeout' => (float) env('SERFEX_AI_TIMEOUT', 300),
     ],
 
 ];

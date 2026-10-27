@@ -13,7 +13,7 @@ use Livewire\Component;
 /**
  * İstatistikler: a site's visitors, page views, requests and bandwidth
  * over a period, a chart of them, and its top pages, referrers,
- * countries and bots. Counted by Servik from the site's access log; no
+ * countries and bots. Counted by Serfex from the site's access log; no
  * outside service sees the visitors.
  */
 #[Layout('components.layouts.app')]
@@ -63,6 +63,6 @@ class SiteStatistics extends Component
             'series' => $stats->series([$site->id], $this->period),
             'items' => $stats->items([$site->id], $this->period, $this->tab),
             'countriesReady' => SiteStats::countriesReady(),
-        ])->title(__('İstatistikler · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('İstatistikler · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

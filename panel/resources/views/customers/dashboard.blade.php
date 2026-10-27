@@ -13,7 +13,7 @@
             ? __('Son yedek :when', ['when' => \App\Support\When::dateTime($last->backup->created_at)]) : __('Henüz yedek yok')] : null,
     ]);
 @endphp
-<x-layouts.app :title="__('Genel Bakış · Servik')">
+<x-layouts.app :title="__('Genel Bakış · Serfex')">
     <div>
         <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Genel Bakış') }}</h1>
         <p class="mt-1 text-[13px] text-muted">{{ __(':customer · barındırma paketiniz ve kullanımınız.', ['customer' => $customer->displayName()]) }}</p>

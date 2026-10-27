@@ -1,9 +1,9 @@
-// Package laravel runs Laravel applications on Servik sites: zero-downtime
+// Package laravel runs Laravel applications on Serfex sites: zero-downtime
 // deploys from Git or a fresh Laravel project, the .env file, Artisan,
 // Composer and Node.js commands, queue workers, the scheduler, logs and
 // maintenance mode.
 //
-// Layout of an application Servik deploys (inside the site directory
+// Layout of an application Serfex deploys (inside the site directory
 // /home/<user>/web/<domain>):
 //
 //	laravel/releases/<release>/   one directory per deploy
@@ -17,15 +17,15 @@
 //
 // Outside the customer's home, owned by root:
 //
-//	/var/lib/servik/laravel/<domain>/runs/<run>.log   deploy and command output
-//	/var/log/servik/laravel/<domain>/                 queue and scheduler output
-//	/etc/systemd/system/servik-queue-<domain>_<name>@.service
-//	/etc/systemd/system/servik-schedule-<domain>.{service,timer}
-//	/opt/servik/composer, /opt/servik/node, /opt/servik/php/<version>/bin
+//	/var/lib/serfex/laravel/<domain>/runs/<run>.log   deploy and command output
+//	/var/log/serfex/laravel/<domain>/                 queue and scheduler output
+//	/etc/systemd/system/serfex-queue-<domain>_<name>@.service
+//	/etc/systemd/system/serfex-schedule-<domain>.{service,timer}
+//	/opt/serfex/composer, /opt/serfex/node, /opt/serfex/php/<version>/bin
 //
 // Everything inside the customer's home is read, written and run as the
 // site's own account (runuser), never as root. Applications found on a
-// site that Servik did not deploy are managed where they are (App.Path).
+// site that Serfex did not deploy are managed where they are (App.Path).
 package laravel
 
 import (
@@ -48,9 +48,9 @@ const (
 	// CurrentPath is where the live release of a deployed application is.
 	CurrentPath = Base + "/current"
 
-	stateDir = "/var/lib/servik/laravel"
-	logDir   = "/var/log/servik/laravel"
-	toolsDir = "/opt/servik"
+	stateDir = "/var/lib/serfex/laravel"
+	logDir   = "/var/log/serfex/laravel"
+	toolsDir = "/opt/serfex"
 	unitDir  = "/etc/systemd/system"
 )
 
@@ -77,7 +77,7 @@ type Target struct {
 }
 
 // App is an application on a site. Path is its directory relative to the
-// site directory: CurrentPath for applications Servik deploys, or wherever
+// site directory: CurrentPath for applications Serfex deploys, or wherever
 // an existing application was found (for example "public_html").
 type App struct {
 	Target
@@ -284,9 +284,9 @@ func (m *Manager) requireApp(a App) error {
 
 // unitPrefix is the start of every queue worker unit of a site. Domains
 // cannot contain "_", so one site's prefix never matches another's.
-func unitPrefix(domain string) string { return "servik-queue-" + domain + "_" }
+func unitPrefix(domain string) string { return "serfex-queue-" + domain + "_" }
 
-func scheduleUnit(domain string) string { return "servik-schedule-" + domain }
+func scheduleUnit(domain string) string { return "serfex-schedule-" + domain }
 
 func firstLine(s string) string {
 	s = strings.TrimSpace(s)

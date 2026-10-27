@@ -8,21 +8,21 @@
 //
 // Names follow cPanel: every database and user starts with the account
 // that owns it ("acme_shop", "acme_app"), which is also how live
-// monitoring attributes connections. Names Servik makes for itself
+// monitoring attributes connections. Names Serfex makes for itself
 // contain a hyphen, which customer names never do: PostgreSQL databases
 // are owned by a role "<database>-owner", and one-click manager sign-ins
-// use short-lived users "servik-s-<random>".
+// use short-lived users "serfex-s-<random>".
 //
 // Layout on the server (Ubuntu 24.04):
 //
-//	/etc/servik/databases/state.json          users' hosts and grants, databases' sites, manager sessions, root 0600
-//	/etc/servik/databases/pg_hba.conf         PostgreSQL client authentication (hba_file points here)
-//	/etc/mysql/mysql.conf.d/zz-servik.cnf     MySQL settings (bind address)
-//	/etc/mysql/mariadb.conf.d/90-servik.cnf   MariaDB settings (bind address)
-//	/etc/postgresql/<v>/main/conf.d/servik.conf  PostgreSQL settings (listen addresses, hba_file)
-//	/var/lib/servik/backups/databases/        dumps taken before a database is deleted, root 0700
-//	/etc/servik/web/                          servik-web (Nginx) and servik-php (PHP-FPM): Servik's own web stack
-//	/var/lib/servik/dbadmin/                  the manager's sign-in pages, sessions and temporary files
+//	/etc/serfex/databases/state.json          users' hosts and grants, databases' sites, manager sessions, root 0600
+//	/etc/serfex/databases/pg_hba.conf         PostgreSQL client authentication (hba_file points here)
+//	/etc/mysql/mysql.conf.d/zz-serfex.cnf     MySQL settings (bind address)
+//	/etc/mysql/mariadb.conf.d/90-serfex.cnf   MariaDB settings (bind address)
+//	/etc/postgresql/<v>/main/conf.d/serfex.conf  PostgreSQL settings (listen addresses, hba_file)
+//	/var/lib/serfex/backups/databases/        dumps taken before a database is deleted, root 0700
+//	/etc/serfex/web/                          serfex-web (Nginx) and serfex-php (PHP-FPM): Serfex's own web stack
+//	/var/lib/serfex/dbadmin/                  the manager's sign-in pages, sessions and temporary files
 //
 // The panel keeps databases, users and grants in its own database and
 // sends them here. Users are applied whole (password, hosts, grants), so
@@ -46,10 +46,10 @@ import (
 )
 
 const (
-	stateDir  = "/etc/servik/databases"
+	stateDir  = "/etc/serfex/databases"
 	stateFile = stateDir + "/state.json"
 	// BackupDir keeps the dump taken before a database is deleted.
-	BackupDir = "/var/lib/servik/backups/databases"
+	BackupDir = "/var/lib/serfex/backups/databases"
 	// BackupRetention is how long those dumps are kept.
 	BackupRetention = 30 * 24 * time.Hour
 
@@ -174,7 +174,7 @@ type session struct {
 }
 
 type state struct {
-	// Flavor is "mysql" or "mariadb" once Servik set the MySQL server up.
+	// Flavor is "mysql" or "mariadb" once Serfex set the MySQL server up.
 	Flavor string `json:"flavor,omitempty"`
 	// Databases maps "<server>/<name>" to the site that uses it.
 	Databases map[string]string    `json:"databases"`
@@ -182,7 +182,7 @@ type state struct {
 	Sessions  []session            `json:"sessions"`
 	// Manager is the web manager's setup, once done.
 	Manager *ManagerSpec `json:"manager,omitempty"`
-	// WebPorts are the ports servik-web listens on, the primary first
+	// WebPorts are the ports serfex-web listens on, the primary first
 	// (panel.web.ports); empty means Manager's port, else DefaultPort.
 	WebPorts []int `json:"web_ports,omitempty"`
 }

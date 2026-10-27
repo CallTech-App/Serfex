@@ -51,7 +51,7 @@ setting. Findings can be ignored and reopen if they are seen again.
   for their own account under Account security. An administrator can reset
   it for someone who lost their phone and recovery codes.
 - **Panel sign-in**: 5 tries per account per minute, 30 failures per address
-  per 10 minutes. Fail2ban's `servik-panel` jail closes the panel port for an
+  per 10 minutes. Fail2ban's `serfex-panel` jail closes the panel port for an
   hour to an address with 10 failures in 15 minutes.
 - **Fail2ban** also watches SSH and, with the mail server, Dovecot and Postfix
   sign-ins (5 failures in 10 minutes ban for an hour, repeat offenders for a
@@ -67,6 +67,6 @@ blocked paths, password-protected folders, and the site's WAF mode and
 exceptions. Customers see these when their plan includes *Security*; the
 firewall, SSH and IP blocking stay with administrators.
 
-## Reporting a vulnerability in Servik
+## Reporting a vulnerability in Serfex
 
 See [SECURITY.md](../../SECURITY.md).

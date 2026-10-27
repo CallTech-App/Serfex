@@ -10,7 +10,7 @@ import (
 )
 
 // placeholderHTML is the page a new document root starts with: the
-// site's name, how to replace it and what Servik is. It is one file with
+// site's name, how to replace it and what Serfex is. It is one file with
 // no outside assets; Turkish by default, English at #en.
 //
 //go:embed placeholder.html

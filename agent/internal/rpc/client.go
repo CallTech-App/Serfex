@@ -10,7 +10,7 @@ import (
 
 // Call sends one request to the agent listening on socket and decodes the
 // result into out (when not nil). An error response comes back as *Error.
-// The command line (servik-agent call) and the updater, which outlives
+// The command line (serfex-agent call) and the updater, which outlives
 // the agent it restarts, use it; the panel has its own client.
 func Call(ctx context.Context, socket, method string, params, out any) error {
 	var d net.Dialer

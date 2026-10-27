@@ -12,7 +12,7 @@ moves all of its sites to them, and they count toward the customer's plan.
 
 ## Plans
 
-Four plans come with Servik; edit them or add your own. An empty limit is
+Four plans come with Serfex; edit them or add your own. An empty limit is
 unlimited. A change to a plan applies at once to every customer on it, and
 never deletes anything that is already over a new limit.
 
@@ -37,8 +37,8 @@ Plans also choose which PHP versions new sites may use and the
 ## Customers
 
 **Add customer**: company, contact person, email, phone, system user and
-plan. Servik shows a **sign-in link** (valid 7 days) to send to the customer;
-they set their own password. Servik does not email it.
+plan. Serfex shows a **sign-in link** (valid 7 days) to send to the customer;
+they set their own password. Serfex does not email it.
 
 A customer's page shows their sites, usage, details and plan, with:
 
@@ -63,7 +63,7 @@ A customer's page shows their sites, usage, details and plan, with:
 
 Only their own sites, DNS, email, databases, certificates, backups, Laravel
 applications and usage, within their plan's features. They do not see Live
-Monitor, Servik AI, Security (except the per-site tools their plan includes),
+Monitor, Serfex AI, Security (except the per-site tools their plan includes),
 Services, Software or Settings. See the [customer guide](../customer-guide.md).
 
 ## From other systems

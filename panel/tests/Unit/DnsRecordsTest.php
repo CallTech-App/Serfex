@@ -31,7 +31,7 @@ class DnsRecordsTest extends TestCase
             ['CNAME', 'Kahve.com.tr', 'kahve.com.tr.'],
             ['CNAME', 'shop', 'shop.kahve.com.tr.'],
             ['MX', 'mail.kahve.com.tr.', 'mail.kahve.com.tr.'],
-            ['NS', 'ns1.servik.net.tr', 'ns1.servik.net.tr.'],
+            ['NS', 'ns1.serfex.net.tr', 'ns1.serfex.net.tr.'],
             ['SRV', '5 5060 sip', '5 5060 sip.kahve.com.tr.'],
             ['TXT', 'v=spf1 a mx ~all', 'v=spf1 a mx ~all'],
             ['CAA', '0 issue letsencrypt.org', '0 issue "letsencrypt.org"'],

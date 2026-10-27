@@ -21,7 +21,7 @@ use Livewire\Component;
  * mailboxes, the sending limit, webmail, and the server's certificate.
  */
 #[Layout('components.layouts.app')]
-#[Title('E-posta ayarları · Servik')]
+#[Title('E-posta ayarları · Serfex')]
 class MailSettingsPage extends Component
 {
     use ChecksMailServer;

@@ -1,6 +1,6 @@
 # Müşteri kılavuzu
 
-Bu kılavuz, hostingi bir Servik sunucusunda çalışanlar içindir: hosting
+Bu kılavuz, hostingi bir Serfex sunucusunda çalışanlar içindir: hosting
 firmanız size bir giriş bağlantısı gönderir; aşağıdaki her şey kendi
 panelinizdedir. Neleri kullanabileceğiniz paketinize bağlıdır; paketinizde
 olmayanlar "Paketinizde yok" diye görünür.
@@ -33,7 +33,7 @@ yeni site, posta kutusu, yükleme ve yedeği durdurur.
 saniyede `/home/<kullanıcınız>/web/<alan adı>/public_html` klasöründe açılır;
 alan adı sunucuyu gösterdiğinde ücretsiz SSL sertifikası alınır (o zamana kadar
 "DNS henüz bu sunucuya işaret etmiyor" yazar). Kendi `index.html` ya da
-`index.php` dosyanızı yükleyene kadar ziyaretçiler Servik'in varsayılan
+`index.php` dosyanızı yükleyene kadar ziyaretçiler Serfex'in varsayılan
 sayfasını görür.
 
 Bir sitenin sayfasında:
@@ -49,7 +49,7 @@ Bir sitenin sayfasında:
   dakikada bir çalıştırın.
 - **Git dağıtımı:** sitenin klasörü (varsayılan public_html) bir Git
   deposundan gelir. Herkese açık bir `https://` adresi, erişim anahtarıyla
-  açılan bir depo ya da Servik'in oluşturduğu dağıtım anahtarıyla bir SSH
+  açılan bir depo ya da Serfex'in oluşturduğu dağıtım anahtarıyla bir SSH
   adresi bağlayın; sonra **Dağıt**'a basın ya da webhook adresini depoya
   ekleyip her push'ta dağıtın. Depoda olmayan dosyalarınız silinmez; önceki
   her dağıtıma dönülebilir, ilk dağıtım geri alınabilir.
@@ -104,12 +104,12 @@ getirir; önce mevcut durumu yedekler, böylece geri alabilirsiniz.
 
 ## Komut satırı
 
-`servik` komut satırı sizin hesabınızla da çalışır:
+`serfex` komut satırı sizin hesabınızla da çalışır:
 
 ```sh
 curl -fsSL https://<panel adresi>:8443/cli/install.sh | sh
-servik login <panel adresi>:8443
-servik sites list
+serfex login <panel adresi>:8443
+serfex sites list
 ```
 
 Bkz. [Komut satırı başvurusu](cli.md).

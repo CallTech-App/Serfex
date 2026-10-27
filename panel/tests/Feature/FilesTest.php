@@ -248,7 +248,7 @@ class FilesTest extends TestCase
         $this->agent->answers['files.trash.purge'] = ['deleted' => 3];
         Site::factory()->create(['domain' => 'ikinci.com.tr']);
 
-        $this->artisan('servik:files-trash')->expectsOutput('Çöp kutularından 6 öğe silindi.')->assertSuccessful();
+        $this->artisan('serfex:files-trash')->expectsOutput('Çöp kutularından 6 öğe silindi.')->assertSuccessful();
         $this->assertSame([7, 7], array_column($this->agent->called('files.trash.purge'), 'days'));
     }
 

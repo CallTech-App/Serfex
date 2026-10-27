@@ -152,7 +152,7 @@ class CronJobs
     }
 
     /**
-     * servik:cron-history: reads each task's last run so lists and the
+     * serfex:cron-history: reads each task's last run so lists and the
      * site page show it without asking the agent.
      */
     public function refreshHistory(): int

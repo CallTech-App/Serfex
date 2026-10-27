@@ -30,7 +30,7 @@ class BackupDownloadController extends Controller
             $offset = 0;
             do {
                 try {
-                    $chunk = $agent->call('backup.read', ['key' => $key, 'name' => $name, 'offset' => $offset], config('servik.agent.job_timeout'));
+                    $chunk = $agent->call('backup.read', ['key' => $key, 'name' => $name, 'offset' => $offset], config('serfex.agent.job_timeout'));
                 } catch (AgentException) {
                     return;
                 }

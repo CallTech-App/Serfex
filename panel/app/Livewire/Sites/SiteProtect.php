@@ -143,6 +143,6 @@ class SiteProtect extends Component
         return view('livewire.sites.protect', [
             'site' => $site,
             'dirs' => ProtectedDirectory::where('site_id', $site->id)->orderBy('path')->get(),
-        ])->title(__('Parola korumalı klasörler · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Parola korumalı klasörler · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

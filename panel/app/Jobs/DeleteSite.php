@@ -66,18 +66,18 @@ class DeleteSite implements ShouldQueue
                     'user' => $user->name,
                     'php_version' => $site->php_version,
                     'remove_files' => false,
-                ], config('servik.agent.job_timeout'));
+                ], config('serfex.agent.job_timeout'));
             }
             // Its Redis instance runs as the site's account too.
             if ($app?->redis_port !== null) {
-                $agent->call('redis.remove', ['domain' => $site->domain], config('servik.agent.job_timeout'));
+                $agent->call('redis.remove', ['domain' => $site->domain], config('serfex.agent.job_timeout'));
             }
             $result = $agent->call('site.delete', [
                 'domain' => $site->domain,
                 'user' => $user->name,
                 'remove_files' => true,
                 'remove_user' => $this->removeUser && $lastSite,
-            ], config('servik.agent.job_timeout'));
+            ], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $site->update(['status' => SiteStatus::Failed, 'last_error' => $e->getMessage()]);
 
@@ -97,7 +97,7 @@ class DeleteSite implements ShouldQueue
         // agent refuses to delete stays on disk, readable only by root.
         foreach ($site->certificates()->pluck('name') as $name) {
             try {
-                $agent->call('ssl.delete', ['name' => $name], config('servik.agent.job_timeout'));
+                $agent->call('ssl.delete', ['name' => $name], config('serfex.agent.job_timeout'));
             } catch (AgentException) {
             }
         }

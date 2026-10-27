@@ -1,6 +1,6 @@
 # Code of conduct
 
-Servik follows the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
+Serfex follows the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 In short:
 
 - Be welcoming and patient, whatever someone's experience, language or

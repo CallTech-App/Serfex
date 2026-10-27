@@ -22,7 +22,7 @@ class MeController extends Controller
         $plain = (string) $request->bearerToken();
         $server = [
             'hostname' => Setting::get('panel.hostname') ?: (Setting::get('server.hostname') ?: gethostname()),
-            'version' => config('servik.version'),
+            'version' => config('serfex.version'),
         ];
 
         if (str_starts_with($plain, ApiKeys::PREFIX)) {
@@ -77,7 +77,7 @@ class MeController extends Controller
     }
 
     /**
-     * DELETE /api/v1/me: servik logout. A command line key is closed (as
+     * DELETE /api/v1/me: serfex logout. A command line key is closed (as
      * from Hesap güvenliği); other keys and tokens stay as they are,
      * since they are managed in the panel.
      */

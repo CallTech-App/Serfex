@@ -123,7 +123,7 @@
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Süreçler sitenin hesabıyla (:name) systemd hizmeti olarak çalışır, çökerse yeniden başlar ve her dağıtımdan sonra yeni sürümle yeniden başlatılır. Nginx vekil ve WebSocket ayarları otomatik yazılır. Günlükler :domain altında."><x-slot:name><span class="font-mono">{{ $app->site->systemUser->name }}</span></x-slot:name><x-slot:domain><span class="font-mono">/var/log/servik/laravel/{{ $domain }}/</span></x-slot:domain></x-t></p>
+    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Süreçler sitenin hesabıyla (:name) systemd hizmeti olarak çalışır, çökerse yeniden başlar ve her dağıtımdan sonra yeni sürümle yeniden başlatılır. Nginx vekil ve WebSocket ayarları otomatik yazılır. Günlükler :domain altında."><x-slot:name><span class="font-mono">{{ $app->site->systemUser->name }}</span></x-slot:name><x-slot:domain><span class="font-mono">/var/log/serfex/laravel/{{ $domain }}/</span></x-slot:domain></x-t></p>
 
     {{-- Ayarlar --}}
     <x-modal :title="__('Süreç ayarları')" show="editing">

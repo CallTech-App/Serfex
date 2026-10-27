@@ -17,19 +17,19 @@ import (
 )
 
 func appFlag(f *Flags) {
-	f.String("app", "a", T("alan-adı"), T("Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez)"))
+	f.String("app", "a", T("alan-adı"), T("Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez)"))
 }
 
-// app is the application a Laravel command works on: -a, SERVIK_APP, the
+// app is the application a Laravel command works on: -a, SERFEX_APP, the
 // token's own application, or the only one the person can reach.
 func (c *Ctx) app() (string, error) {
-	if a := c.first("app", "SERVIK_APP"); a != "" {
+	if a := c.first("app", "SERFEX_APP"); a != "" {
 		return strings.ToLower(a), nil
 	}
 	if _, err := c.Client(); err != nil {
 		return "", err
 	}
-	if c.profile != nil && c.profile.App != "" && c.first("token", "SERVIK_TOKEN") == "" {
+	if c.profile != nil && c.profile.App != "" && c.first("token", "SERFEX_TOKEN") == "" {
 		return c.profile.App, nil
 	}
 	who, err := c.me()
@@ -94,7 +94,7 @@ func laravelCommands() []*Command {
 		return &Command{
 			Name: name, Group: group, Args: T("<komut>…"), MaxArgs: -1, Passthrough: true,
 			Short: short,
-			Long:  T("%s komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. servik seçenekleri (-a) komuttan önce gelir.", name),
+			Long:  T("%s komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. serfex seçenekleri (-a) komuttan önce gelir.", name),
 			Flags: appFlag,
 			Run:   func(c *Ctx) error { return runTool(c, name) },
 		}
@@ -113,8 +113,8 @@ func laravelCommands() []*Command {
 				waitFlags(f)
 			},
 			Examples: []string{
-				"servik deploy -a api.ornek.com.tr --wait",
-				"SERVIK_URL=https://panel.ornek.com.tr:8443 SERVIK_TOKEN=svk_… servik deploy --ref \"$GITHUB_SHA\" --wait",
+				"serfex deploy -a api.ornek.com.tr --wait",
+				"SERFEX_URL=https://panel.ornek.com.tr:8443 SERFEX_TOKEN=svk_… serfex deploy --ref \"$GITHUB_SHA\" --wait",
 			},
 			Run: deploy,
 		},
@@ -153,7 +153,7 @@ func laravelCommands() []*Command {
 			Subs: []*Command{
 				{Name: "list", Aliases: []string{"ls"}, Short: T("Anahtarları ve değerlerini listeler (gizliler maskeli)"), Flags: func(f *Flags) { appFlag(f); f.Bool("reveal", "", T("Parola ve anahtarları gizlemeden gösterir")) }, Run: envList},
 				{Name: "get", Args: T("<ANAHTAR>"), MinArgs: 1, MaxArgs: 1, Short: T("Bir değeri olduğu gibi yazar"), Flags: appFlag, Run: envGet},
-				{Name: "set", Args: T("<ANAHTAR=değer>…"), MinArgs: 1, MaxArgs: -1, Short: T("Değerleri değiştirir ya da ekler"), Flags: appFlag, Examples: []string{"servik env set APP_DEBUG=false MAIL_FROM_NAME=\"Kargo\""}, Run: envSet},
+				{Name: "set", Args: T("<ANAHTAR=değer>…"), MinArgs: 1, MaxArgs: -1, Short: T("Değerleri değiştirir ya da ekler"), Flags: appFlag, Examples: []string{"serfex env set APP_DEBUG=false MAIL_FROM_NAME=\"Kargo\""}, Run: envSet},
 				{Name: "unset", Args: T("<ANAHTAR>…"), MinArgs: 1, MaxArgs: -1, Short: T("Anahtarları siler"), Flags: appFlag, Run: envUnset},
 				{
 					Name: "pull", Short: T(".env dosyasını indirir"),
@@ -190,7 +190,7 @@ func laravelCommands() []*Command {
 					Name: "on", Short: T("Bakım modunu açar"),
 					Flags: func(f *Flags) {
 						appFlag(f)
-						f.String("mode", "", "servik|custom|app", T("Servik sayfası (varsayılan), kendi HTML'iniz ya da php artisan down"))
+						f.String("mode", "", "serfex|custom|app", T("Serfex sayfası (varsayılan), kendi HTML'iniz ya da php artisan down"))
 						f.Strings("allow", "", "ip", T("Bakımdayken siteyi görebilecek IP ya da ağ (birden çok kez)"))
 						f.String("secret", "", T("yol"), T("Bakımı atlatan gizli yol (varsayılan: rastgele)"))
 						f.String("retry", "", T("saniye"), T("Retry-After başlığı"))
@@ -212,7 +212,7 @@ func laravelCommands() []*Command {
 				f.Bool("follow", "f", T("Yeni kayıtları geldikçe yazar"))
 				f.Bool("detail", "", T("Hata ayrıntılarını (stack trace) da yazar"))
 			},
-			Examples: []string{"servik logs -a api.ornek.com.tr --level error -n 20", "servik logs -f"},
+			Examples: []string{"serfex logs -a api.ornek.com.tr --level error -n 20", "serfex logs -f"},
 			Run:      logs,
 		},
 	}
@@ -304,7 +304,7 @@ func (c *Ctx) followDeployment(resp *api.Response, path string) error {
 		if c.json {
 			return c.printJSON(resp.Body)
 		}
-		return c.done(nil, T("Dağıtım %d sıraya alındı. İzlemek için: servik deployments", d.Number))
+		return c.done(nil, T("Dağıtım %d sıraya alındı. İzlemek için: serfex deployments", d.Number))
 	}
 	if !c.json {
 		c.note("%s", c.dim(T("Dağıtım %d başladı (iptal edilmez, yalnızca izlemeyi bırakmak için Ctrl+C).", d.Number)))
@@ -681,7 +681,7 @@ func runTool(c *Ctx, tool string) error {
 	args := c.Args
 	if len(args) == 0 {
 		if tool != "artisan" {
-			return usageErr(T("Çalıştırılacak komutu yazın, örneğin: servik %s install", tool))
+			return usageErr(T("Çalıştırılacak komutu yazın, örneğin: serfex %s install", tool))
 		}
 		args = []string{"list"}
 	}
@@ -772,7 +772,7 @@ func queuesStatus(c *Ctx) error {
 		if q.Failed != nil {
 			failed := strconv.Itoa(*q.Failed)
 			if *q.Failed > 0 {
-				failed = c.red(failed) + c.dim("  servik queues failed")
+				failed = c.red(failed) + c.dim("  serfex queues failed")
 			}
 			c.printf("%s %s\n", c.dim(T("Başarısız:")), failed)
 		}

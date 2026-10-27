@@ -19,7 +19,7 @@ use Illuminate\Support\Collection;
 class MailDns
 {
     /** DKIM selector the agent signs with. */
-    public const DKIM_SELECTOR = 'servik';
+    public const DKIM_SELECTOR = 'serfex';
 
     public function __construct(
         private readonly Zones $zones,
@@ -45,7 +45,7 @@ class MailDns
      * The policy says which records already in the zone stand in for the
      * wanted one: "type" any record of the same name and type, "prefix" TXT
      * records starting the same way (one SPF or DMARC record per name),
-     * "own" any TXT at the name (Servik's DKIM key, always replaced), "name"
+     * "own" any TXT at the name (Serfex's DKIM key, always replaced), "name"
      * any record at the name (a CNAME stands alone).
      *
      * @return list<array{key: string, label: string, name: string, type: string, content: string, priority: ?int, policy: string, prefix?: string}>
@@ -84,7 +84,7 @@ class MailDns
     }
 
     /**
-     * Write the records that are missing (and Servik's DKIM key) into the
+     * Write the records that are missing (and Serfex's DKIM key) into the
      * zone. With $fix, records that differ are replaced too. Returns the
      * zone's undo token, or null when nothing changed or there is no zone.
      */
@@ -126,7 +126,7 @@ class MailDns
     }
 
     /**
-     * Remove the records Servik wrote for the domain, leaving any the user
+     * Remove the records Serfex wrote for the domain, leaving any the user
      * changed. Returns the zone's undo token, or null.
      */
     public function remove(MailDomain $domain): ?string

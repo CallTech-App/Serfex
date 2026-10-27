@@ -3,9 +3,9 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ __('Giriş · Servik') }}</title>
+        <title>{{ __('Giriş · Serfex') }}</title>
         <script>
-            try { const t = localStorage.getItem('servik-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+            try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -13,7 +13,7 @@
         <main class="w-full max-w-sm">
             <div class="mb-6 flex items-center justify-center gap-2.5">
                 <x-logo />
-                <span class="text-[19px] font-semibold tracking-tight">servik</span>
+                <span class="text-[19px] font-semibold tracking-tight">serfex</span>
             </div>
 
             <form method="POST" action="{{ route('login') }}" class="rounded-xl border border-line bg-surface">
@@ -48,7 +48,7 @@
             @if ($needsSetup)
                 <div class="mt-4 rounded-xl border border-line bg-info-soft px-4 py-3 text-[13px]" role="status">
                     <p class="font-medium">{{ __('Bu panel henüz kurulmadı.') }}</p>
-                    <p class="mt-1 text-muted"><x-t text="install.sh betiğinin sonunda yazılan kurulum bağlantısını açın. Bağlantıyı kaybettiyseniz ya da süresi dolduysa sunucuda :code komutuyla yenisini alın."><x-slot:code><code class="font-mono text-fg">sudo servik setup-url</code></x-slot:code></x-t></p>
+                    <p class="mt-1 text-muted"><x-t text="install.sh betiğinin sonunda yazılan kurulum bağlantısını açın. Bağlantıyı kaybettiyseniz ya da süresi dolduysa sunucuda :code komutuyla yenisini alın."><x-slot:code><code class="font-mono text-fg">sudo serfex setup-url</code></x-slot:code></x-t></p>
                 </div>
             @else
                 <p class="mt-4 text-center text-2xs text-muted">{{ __('Yöneticiler Araçlar ve Ayarlar → Yöneticiler\'den davet edilir; müşteriler size iletilen giriş bağlantısıyla şifrelerini belirler.') }}</p>

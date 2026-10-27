@@ -1,13 +1,13 @@
 //go:build realhost
 
 // This test installs real database servers, creates databases and users,
-// connects with them, opens phpMyAdmin and Adminer through servik-web and
+// connects with them, opens phpMyAdmin and Adminer through serfex-web and
 // deletes a database with a backup. It needs root and changes the
 // machine, so it only builds with -tags realhost:
 //
-//	sudo SERVIK_DB_PRODUCT=mysql go test -tags realhost -run TestRealHost ./internal/database
+//	sudo SERFEX_DB_PRODUCT=mysql go test -tags realhost -run TestRealHost ./internal/database
 //
-// SERVIK_DB_PRODUCT is mysql (default), mariadb or postgresql. CI runs it
+// SERFEX_DB_PRODUCT is mysql (default), mariadb or postgresql. CI runs it
 // on throwaway runners after removing their preinstalled servers.
 package database
 
@@ -84,7 +84,7 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 		}
 		return h.sh(ctx, "service "+unit+" "+verb)
 	case WebUnit:
-		running := "test -f /run/servik-web.pid && kill -0 $(cat /run/servik-web.pid)"
+		running := "test -f /run/serfex-web.pid && kill -0 $(cat /run/serfex-web.pid)"
 		switch verb {
 		case "is-active":
 			return h.sh(ctx, running)
@@ -101,7 +101,7 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 		}
 		return h.sh(ctx, "nginx -c "+webConf)
 	case PHPUnit:
-		pid := "/run/servik-php/php-fpm.pid"
+		pid := "/run/serfex-php/php-fpm.pid"
 		running := "test -f " + pid + " && kill -0 $(cat " + pid + ")"
 		switch verb {
 		case "is-active":
@@ -125,7 +125,7 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 			return "", err
 		}
 		start := regexp.MustCompile(`(?m)^ExecStart=(.*)$`).FindSubmatch(unitFile)
-		return h.sh(ctx, "install -d -m 0755 /run/servik-php && ("+string(start[1])+" </dev/null >/dev/null 2>&1 &) && sleep 1")
+		return h.sh(ctx, "install -d -m 0755 /run/serfex-php && ("+string(start[1])+" </dev/null >/dev/null 2>&1 &) && sleep 1")
 	}
 	return "", nil
 }
@@ -167,7 +167,7 @@ func TestRealHost(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("needs root")
 	}
-	product := os.Getenv("SERVIK_DB_PRODUCT")
+	product := os.Getenv("SERFEX_DB_PRODUCT")
 	if product == "" {
 		product = MySQL
 	}
@@ -206,7 +206,7 @@ func TestRealHost(t *testing.T) {
 		reader  = "acme_reader"
 		outside = "acme_remote"
 	)
-	if os.Getenv("SERVIK_KEEP") == "" {
+	if os.Getenv("SERFEX_KEEP") == "" {
 		t.Cleanup(func() {
 			ctx := context.Background()
 			for _, u := range []string{app, reader, outside} {
@@ -397,18 +397,18 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !dial(9443) || !dial(DefaultPort) {
-		t.Fatal("servik-web does not listen on both ports during a port change")
+		t.Fatal("serfex-web does not listen on both ports during a port change")
 	}
 	if _, err := m.SetWebPorts(ctx, WebPortsSpec{Ports: []int{9443}}); err != nil {
 		t.Fatal(err)
 	}
 	if !dial(9443) {
-		t.Fatal("servik-web does not listen on the new port")
+		t.Fatal("serfex-web does not listen on the new port")
 	}
 	time.Sleep(time.Second)
 	if c, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(DefaultPort), time.Second); err == nil {
 		c.Close()
-		t.Fatal("servik-web still listens on the old port")
+		t.Fatal("serfex-web still listens on the old port")
 	}
 	login2, err := m.Login(ctx, LoginSpec{Server: server, Database: shop})
 	if err != nil || login2.Port != 9443 {

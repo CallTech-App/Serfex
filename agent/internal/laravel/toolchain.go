@@ -19,7 +19,7 @@ import (
 
 // Node.js release lines and Composer as installable components
 // (Yazılım Yönetimi): several Node.js lines can sit side by side under
-// /opt/servik/node/<version>; builds use the one /opt/servik/node/current
+// /opt/serfex/node/<version>; builds use the one /opt/serfex/node/current
 // points at.
 
 var nodeMajorRe = regexp.MustCompile(`^[1-9][0-9]?$`)
@@ -233,7 +233,7 @@ func (m *Manager) LatestComposer(ctx context.Context) (string, error) {
 	return v.Stable[0].Version, nil
 }
 
-// RemoveComposer deletes Servik's Composer.
+// RemoveComposer deletes Serfex's Composer.
 func (m *Manager) RemoveComposer() error {
 	return os.RemoveAll(m.h.Path(toolsDir + "/composer"))
 }

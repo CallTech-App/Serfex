@@ -9,7 +9,7 @@ name: CI
 # translations on PHP 8.4. About 8 minutes.
 #
 # Full: the quick set, PHP 8.5, and the real-server jobs that install
-# Nginx, PowerDNS, Postfix, the database servers and Servik itself. About
+# Nginx, PowerDNS, Postfix, the database servers and Serfex itself. About
 # 60 to 120 minutes; only for changes to the agent, the installer or the
 # update path.
 on:
@@ -111,7 +111,7 @@ jobs:
       - name: Build for every system it ships for
         run: |
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-            CGO_ENABLED=0 GOOS=${target%/*} GOARCH=${target#*/} go build -trimpath -o /dev/null ./cmd/servik
+            CGO_ENABLED=0 GOOS=${target%/*} GOARCH=${target#*/} go build -trimpath -o /dev/null ./cmd/serfex
           done
 
       - name: The installer script
@@ -127,13 +127,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: servik
-          POSTGRES_PASSWORD: servik
-          POSTGRES_DB: servik
+          POSTGRES_USER: serfex
+          POSTGRES_PASSWORD: serfex
+          POSTGRES_DB: serfex
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U servik"
+          --health-cmd "pg_isready -U serfex"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -168,10 +168,10 @@ jobs:
       - name: Build and start the agent
         working-directory: agent
         run: |
-          CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
-          sudo mkdir -p /run/servik-agent
-          sudo sh -c "nohup bin/servik-agent -socket /run/servik-agent/agent.sock -socket-group $(id -gn) > /tmp/servik-agent.log 2>&1 &"
-          for i in $(seq 50); do [ -S /run/servik-agent/agent.sock ] && break; sleep 0.1; done
+          CGO_ENABLED=0 go build -o bin/serfex-agent ./cmd/serfex-agent
+          sudo mkdir -p /run/serfex-agent
+          sudo sh -c "nohup bin/serfex-agent -socket /run/serfex-agent/agent.sock -socket-group $(id -gn) > /tmp/serfex-agent.log 2>&1 &"
+          for i in $(seq 50); do [ -S /run/serfex-agent/agent.sock ] && break; sleep 0.1; done
 
       - name: Install the panel
         working-directory: panel
@@ -179,17 +179,17 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           npm ci && npm run build
 
-      # Signs in with a key from servik:cli-key, creates a site and waits
+      # Signs in with a key from serfex:cli-key, creates a site and waits
       # for it, checks Nginx serves it and a subdomain, lists services and
       # databases, reads JSON in Turkish and English, deletes the site and
-      # signs out, all through the servik binary (see the script).
+      # signs out, all through the serfex binary (see the script).
       - name: Sites, domains and services through the command line
         run: scripts/ci/cli-e2e.sh
 
       - name: Logs
         if: failure()
         run: |
-          cat /tmp/servik-agent.log || true
+          cat /tmp/serfex-agent.log || true
           sudo journalctl --no-pager -u nginx -u php8.3-fpm -n 50 || true
 
   agent-realhost:
@@ -238,7 +238,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq dnsutils
 
       # dns.setup installs PowerDNS itself, frees port 53 from
-      # systemd-resolved and starts pdns@servik; the test then checks the
+      # systemd-resolved and starts pdns@serfex; the test then checks the
       # answers with dig.
       - name: Set up PowerDNS and serve a zone for real
         run: sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)" go test -tags realhost -run TestRealHost -v ./internal/dns
@@ -272,8 +272,8 @@ jobs:
           git clone -q --depth 1 --branch v2.9.0 https://github.com/letsencrypt/pebble
           cd pebble
           go build -o pebble ./cmd/pebble
-          jq '.pebble.httpPort = 80' test/config/pebble-config.json > servik.json
-          PEBBLE_VA_NOSLEEP=1 PEBBLE_WFE_NONCEREJECT=0 nohup ./pebble -config servik.json -dnsserver 127.0.0.1:53 > pebble.log 2>&1 &
+          jq '.pebble.httpPort = 80' test/config/pebble-config.json > serfex.json
+          PEBBLE_VA_NOSLEEP=1 PEBBLE_WFE_NONCEREJECT=0 nohup ./pebble -config serfex.json -dnsserver 127.0.0.1:53 > pebble.log 2>&1 &
           for i in $(seq 30); do curl -sk https://localhost:14000/dir > /dev/null && exit 0; sleep 1; done
           cat pebble.log; exit 1
 
@@ -283,8 +283,8 @@ jobs:
       - name: Obtain and serve certificates for real
         run: >-
           sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
-          SERVIK_ACME_DIRECTORY=https://localhost:14000/dir
-          "SERVIK_ACME_CA=$RUNNER_TEMP/pebble/test/certs/pebble.minica.pem"
+          SERFEX_ACME_DIRECTORY=https://localhost:14000/dir
+          "SERFEX_ACME_CA=$RUNNER_TEMP/pebble/test/certs/pebble.minica.pem"
           go test -tags realhost -run TestRealHost -v ./internal/cert
 
       - name: Pebble log
@@ -327,7 +327,7 @@ jobs:
 
       - name: Mail log
         if: failure()
-        run: sudo journalctl --no-pager -u postfix@- -u dovecot -u rspamd -u redis-server@servik-mail -n 300
+        run: sudo journalctl --no-pager -u postfix@- -u dovecot -u rspamd -u redis-server@serfex-mail -n 300
 
   agent-laravel:
     name: Agent installs and deploys Laravel
@@ -367,9 +367,9 @@ jobs:
       - name: Laravel logs
         if: failure()
         run: |
-          sudo journalctl --no-pager -u 'servik-queue-*' -u 'servik-schedule-*' -u 'servik-proc-*' -n 200 || true
-          sudo sh -c 'tail -n 100 /var/lib/servik/laravel/*/runs/*.log' || true
-          sudo sh -c 'tail -n 50 /var/log/servik/laravel/*/proc-*.log' || true
+          sudo journalctl --no-pager -u 'serfex-queue-*' -u 'serfex-schedule-*' -u 'serfex-proc-*' -n 200 || true
+          sudo sh -c 'tail -n 100 /var/lib/serfex/laravel/*/runs/*.log' || true
+          sudo sh -c 'tail -n 50 /var/log/serfex/laravel/*/proc-*.log' || true
           sudo sh -c 'cat /etc/nginx/sites-enabled/*' || true
 
   agent-monitor:
@@ -407,9 +407,9 @@ jobs:
       - name: Logs
         if: failure()
         run: |
-          sudo journalctl --no-pager -u php8.3-fpm -u 'servik-limit-*' -n 100 || true
+          sudo journalctl --no-pager -u php8.3-fpm -u 'serfex-limit-*' -n 100 || true
           sudo nft list ruleset || true
-          sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
+          sudo sh -c 'tail -n 30 /var/log/serfex/sites/*/*.log' || true
 
   agent-stats:
     name: Agent collects traffic statistics from a real site
@@ -447,7 +447,7 @@ jobs:
         if: failure()
         run: |
           sudo journalctl --no-pager -u php8.3-fpm -u nginx -n 100 || true
-          sudo sh -c 'tail -n 30 /var/log/servik/sites/*/*.log' || true
+          sudo sh -c 'tail -n 30 /var/log/serfex/sites/*/*.log' || true
 
   agent-databases:
     name: Agent runs a real ${{ matrix.product }} server
@@ -481,19 +481,19 @@ jobs:
 
       # Installs the server, creates databases and users with each access
       # level, connects with them, turns remote access on and off, signs in
-      # to phpMyAdmin or Adminer through servik-web and deletes a database
+      # to phpMyAdmin or Adminer through serfex-web and deletes a database
       # with a backup.
       - name: Databases, users and the web manager for real
         run: >-
           sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
-          SERVIK_DB_PRODUCT=${{ matrix.product }}
+          SERFEX_DB_PRODUCT=${{ matrix.product }}
           go test -tags realhost -run TestRealHost -v -timeout 15m ./internal/database
 
       - name: Logs
         if: failure()
         run: |
-          sudo journalctl --no-pager -u mysql -u mariadb -u 'postgresql*' -u servik-web -u servik-php -n 100 || true
-          sudo sh -c 'tail -n 30 /var/log/servik/web/*.log' || true
+          sudo journalctl --no-pager -u mysql -u mariadb -u 'postgresql*' -u serfex-web -u serfex-php -n 100 || true
+          sudo sh -c 'tail -n 30 /var/log/serfex/web/*.log' || true
 
   agent-components:
     name: Agent installs software for real
@@ -536,8 +536,8 @@ jobs:
       - name: Logs
         if: failure()
         run: |
-          sudo sh -c 'tail -n 80 /var/lib/servik/components/runs/*.log' || true
-          sudo journalctl --no-pager -u apache2 -u nginx -u 'servik-redis-*' -u memcached -n 100 || true
+          sudo sh -c 'tail -n 80 /var/lib/serfex/components/runs/*.log' || true
+          sudo journalctl --no-pager -u apache2 -u nginx -u 'serfex-redis-*' -u memcached -n 100 || true
 
   agent-files:
     name: Agent manages files and SFTP accounts for real
@@ -576,9 +576,9 @@ jobs:
       - name: Logs
         if: failure()
         run: |
-          sudo journalctl --no-pager -u ssh -u 'var-lib-servik-sftp-*' -n 100 || true
-          sudo cat /etc/ssh/sshd_config.d/50-servik-sftp.conf || true
-          findmnt -R /var/lib/servik/sftp || true
+          sudo journalctl --no-pager -u ssh -u 'var-lib-serfex-sftp-*' -n 100 || true
+          sudo cat /etc/ssh/sshd_config.d/50-serfex-sftp.conf || true
+          findmnt -R /var/lib/serfex/sftp || true
 
   agent-security:
     name: Agent secures a real site
@@ -621,9 +621,9 @@ jobs:
       - name: Logs
         if: failure()
         run: |
-          sudo ls -la /var/log/servik/modsecurity/ || true
-          sudo tail -n 20 /var/log/servik/modsecurity/audit.log || true
-          sudo ls -la /etc/servik/nginx/sites/*/ || true
+          sudo ls -la /var/log/serfex/modsecurity/ || true
+          sudo tail -n 20 /var/log/serfex/modsecurity/audit.log || true
+          sudo ls -la /etc/serfex/nginx/sites/*/ || true
           sudo nft list ruleset || true
           sudo journalctl --no-pager -u nginx -u fail2ban -n 100 || true
           sudo tail -n 50 /var/log/fail2ban.log || true
@@ -666,8 +666,8 @@ jobs:
       - name: Logs
         if: failure()
         run: |
-          sudo cat /etc/nginx/conf.d/servik-tuning.conf || true
-          sudo cat /etc/php/8.3/fpm/conf.d/90-servik.ini || true
+          sudo cat /etc/nginx/conf.d/serfex-tuning.conf || true
+          sudo cat /etc/php/8.3/fpm/conf.d/90-serfex.ini || true
           sudo ls /etc/php/8.3/fpm/pool.d/ || true
           sudo journalctl --no-pager -u nginx -u php8.3-fpm -n 100 || true
 
@@ -714,13 +714,13 @@ jobs:
       - name: Back up, destroy and restore a site for real
         run: >-
           sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
-          SERVIK_S3_ENDPOINT=http://127.0.0.1:9000 SERVIK_S3_ACCESS_KEY=servik SERVIK_S3_SECRET_KEY=servik-s3-secret
+          SERFEX_S3_ENDPOINT=http://127.0.0.1:9000 SERFEX_S3_ACCESS_KEY=serfex SERFEX_S3_SECRET_KEY=serfex-s3-secret
           go test -tags realhost -run TestRealHost -v -timeout 20m ./internal/backup
 
       - name: Logs
         if: failure()
         run: |
-          sudo sh -c 'tail -n 80 /var/lib/servik/backups/runs/*.log' || true
+          sudo sh -c 'tail -n 80 /var/lib/serfex/backups/runs/*.log' || true
           sudo journalctl --no-pager -u mysql -u ssh -n 80 || true
           cat /tmp/s3.log || true
 
@@ -769,7 +769,7 @@ jobs:
         if: failure()
         run: |
           sudo journalctl --no-pager -u cron -n 100 || true
-          sudo sh -c 'cat /etc/cron.d/servik-*' || true
+          sudo sh -c 'cat /etc/cron.d/serfex-*' || true
 
   agent-domains:
     name: Agent serves subdomains, aliases and redirects for real
@@ -808,7 +808,7 @@ jobs:
         if: failure()
         run: |
           sudo journalctl --no-pager -u nginx -n 100 || true
-          sudo sh -c 'cat /etc/nginx/sites-enabled/servik-alan.example.conf' || true
+          sudo sh -c 'cat /etc/nginx/sites-enabled/serfex-alan.example.conf' || true
 
   update-realhost:
     name: Panel updates itself on a real server
@@ -850,8 +850,8 @@ jobs:
           sudo rm -rf /var/lib/mysql /etc/mysql /var/lib/postgresql /etc/postgresql /etc/postgresql-common
 
       # Installs 0.1.0-ci.1 with install.sh (checks its setup link and
-      # servik setup-url), updates to ci.2 after a panel backup, tries ci.3
-      # (fails its health check: Servik returns to ci.2 by itself, database
+      # serfex setup-url), updates to ci.2 after a panel backup, tries ci.3
+      # (fails its health check: Serfex returns to ci.2 by itself, database
       # included), then returns to ci.1 by hand.
       - name: Install, update, fail and roll back for real
         run: sudo scripts/ci/update-e2e.sh run "$RUNNER_TEMP/releases"
@@ -859,10 +859,10 @@ jobs:
       - name: Logs
         if: failure()
         run: |
-          sudo tail -n 60 /var/log/servik/install.log || true
-          sudo sh -c 'tail -n 120 /var/lib/servik/updates/runs/*.log' || true
-          sudo sh -c 'tail -n 80 /var/lib/servik/panel/storage/logs/*.log' || true
-          sudo journalctl --no-pager -u servik-agent -u 'servik-update-*' -u servik-php -u servik-web -u 'servik-panel-*' -n 150 || true
+          sudo tail -n 60 /var/log/serfex/install.log || true
+          sudo sh -c 'tail -n 120 /var/lib/serfex/updates/runs/*.log' || true
+          sudo sh -c 'tail -n 80 /var/lib/serfex/panel/storage/logs/*.log' || true
+          sudo journalctl --no-pager -u serfex-agent -u 'serfex-update-*' -u serfex-php -u serfex-web -u 'serfex-panel-*' -n 150 || true
           cat /tmp/release-source.log || true
 
   panel-realhost:
@@ -875,13 +875,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: servik
-          POSTGRES_PASSWORD: servik
-          POSTGRES_DB: servik_test
+          POSTGRES_USER: serfex
+          POSTGRES_PASSWORD: serfex
+          POSTGRES_DB: serfex_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U servik"
+          --health-cmd "pg_isready -U serfex"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -911,10 +911,10 @@ jobs:
       - name: Build and start the agent
         working-directory: agent
         run: |
-          CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
-          sudo mkdir -p /run/servik-agent
-          sudo sh -c 'nohup bin/servik-agent -socket /run/servik-agent/agent.sock > /tmp/servik-agent.log 2>&1 &'
-          for i in $(seq 50); do [ -S /run/servik-agent/agent.sock ] && break; sleep 0.1; done
+          CGO_ENABLED=0 go build -o bin/serfex-agent ./cmd/serfex-agent
+          sudo mkdir -p /run/serfex-agent
+          sudo sh -c 'nohup bin/serfex-agent -socket /run/serfex-agent/agent.sock > /tmp/serfex-agent.log 2>&1 &'
+          for i in $(seq 50); do [ -S /run/serfex-agent/agent.sock ] && break; sleep 0.1; done
 
       - run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -929,14 +929,14 @@ jobs:
       # brings them back. Root only to write into the site's home directory.
       - name: Customer, quota and suspension for real
         run: >-
-          sudo env "PATH=$PATH" SERVIK_REALHOST=1 SERVIK_AGENT_SOCKET=/run/servik-agent/agent.sock
-          DB_HOST=127.0.0.1 DB_PORT=5432 DB_USERNAME=servik DB_PASSWORD=servik
+          sudo env "PATH=$PATH" SERFEX_REALHOST=1 SERFEX_AGENT_SOCKET=/run/serfex-agent/agent.sock
+          DB_HOST=127.0.0.1 DB_PORT=5432 DB_USERNAME=serfex DB_PASSWORD=serfex
           php artisan test --testsuite=RealHost
 
       - name: Logs
         if: failure()
         run: |
-          cat /tmp/servik-agent.log || true
+          cat /tmp/serfex-agent.log || true
           sudo journalctl --no-pager -u nginx -u php8.3-fpm -n 50 || true
 
   panel:
@@ -953,13 +953,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: servik
-          POSTGRES_PASSWORD: servik
-          POSTGRES_DB: servik_test
+          POSTGRES_USER: serfex
+          POSTGRES_PASSWORD: serfex
+          POSTGRES_DB: serfex_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U servik"
+          --health-cmd "pg_isready -U serfex"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -969,9 +969,9 @@ jobs:
     env:
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
-      DB_USERNAME: servik
-      DB_PASSWORD: servik
-      SERVIK_AGENT_BIN: ${{ github.workspace }}/agent/bin/servik-agent
+      DB_USERNAME: serfex
+      DB_PASSWORD: serfex
+      SERFEX_AGENT_BIN: ${{ github.workspace }}/agent/bin/serfex-agent
     steps:
       - uses: actions/checkout@v5
 
@@ -994,7 +994,7 @@ jobs:
 
       - name: Build agent for integration tests
         working-directory: agent
-        run: CGO_ENABLED=0 go build -o bin/servik-agent ./cmd/servik-agent
+        run: CGO_ENABLED=0 go build -o bin/serfex-agent ./cmd/serfex-agent
 
       - run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -1008,6 +1008,6 @@ jobs:
       - run: vendor/bin/pint --test
 
       - name: Translations are complete
-        run: php artisan servik:lang-check --agent=../agent
+        run: php artisan serfex:lang-check --agent=../agent
 
       - run: php artisan test

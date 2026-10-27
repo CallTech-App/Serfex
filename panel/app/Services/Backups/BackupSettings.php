@@ -102,7 +102,7 @@ class BackupSettings
         }
         [$h, $m] = $this->time($s['time']);
         // The time is the panel's (Araçlar ve Ayarlar → Genel).
-        $local = $now->copy()->timezone(config('servik.timezone'));
+        $local = $now->copy()->timezone(config('serfex.timezone'));
         for ($i = 0; $i < 62; $i++) {
             $at = $local->copy()->addDays($i)->setTime($h, $m);
             if ($at->gt($now) && $this->runsOn($at, $s)) {
@@ -121,7 +121,7 @@ class BackupSettings
     {
         $s = $this->schedule();
         [$h, $m] = $this->time($s['time']);
-        $local = $now->copy()->timezone(config('servik.timezone'));
+        $local = $now->copy()->timezone(config('serfex.timezone'));
         for ($i = 0; $i < 62; $i++) {
             $at = $local->copy()->subDays($i)->setTime($h, $m);
             if ($at->lte($now) && $this->runsOn($at, $s)) {
@@ -138,7 +138,7 @@ class BackupSettings
     public function fullOn(Carbon $at): bool
     {
         $s = $this->schedule();
-        $at = $at->copy()->timezone(config('servik.timezone'));
+        $at = $at->copy()->timezone(config('serfex.timezone'));
 
         return match (true) {
             ! $s['incremental'], $s['frequency'] === 'monthly' => true,

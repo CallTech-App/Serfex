@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 /**
  * Opens a database in phpMyAdmin or Adminer without a password: the agent
  * makes a temporary user and a one-time sign-in link valid for a minute,
- * served by Servik's own web server on its own port.
+ * served by Serfex's own web server on its own port.
  */
 class DatabaseManagerController extends Controller
 {

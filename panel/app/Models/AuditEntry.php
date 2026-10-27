@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One action taken through the panel, the API or by Servik AI: who, what
+ * One action taken through the panel, the API or by Serfex AI: who, what
  * (the message the panel showed), where, and how to undo it while that
  * is still possible.
  */
@@ -57,7 +57,7 @@ class AuditEntry extends Model
     {
         return match ($this->via) {
             'api' => 'API',
-            'ai' => 'Servik AI',
+            'ai' => 'Serfex AI',
             'system' => __('Sistem'),
             default => 'Panel',
         };

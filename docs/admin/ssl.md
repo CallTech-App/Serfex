@@ -1,21 +1,21 @@
 # SSL certificates
 
-Servik gets free certificates from Let's Encrypt with its own ACME client
+Serfex gets free certificates from Let's Encrypt with its own ACME client
 inside the agent (no certbot), and renews them on its own.
 
 ## How a site gets its certificate
 
-When a site is added, Servik asks Let's Encrypt for a certificate covering the
+When a site is added, Serfex asks Let's Encrypt for a certificate covering the
 domain, `www` and its aliases and subdomains, as soon as they resolve to the
 server. Before that the site shows **DNS does not point to this server yet**,
-opens over plain http, and Servik tries again every hour.
+opens over plain http, and Serfex tries again every hour.
 
 - **Challenge**: through the web server (HTTP-01) by default. When the
-  domain's DNS zone is on this server, Servik can use a DNS record instead,
+  domain's DNS zone is on this server, Serfex can use a DNS record instead,
   which also allows a **wildcard** certificate (`*.example.com`).
 - **Keys**: ECDSA P-256.
 - **Renewal**: 30 days before expiry, checked hourly
-  (`servik:ssl-renew`). A failed renewal keeps the old certificate in place
+  (`serfex:ssl-renew`). A failed renewal keeps the old certificate in place
   until it expires, and shows on the SSL list and the overview; you are
   warned 14 days before expiry.
 - **HTTPS redirect**: on by default (301 from http to https). HSTS is not
@@ -48,5 +48,5 @@ opens over plain http, and Servik tries again every hour.
 ## Developing without public DNS
 
 On a development machine with the dry-run agent, set
-`SERVIK_SSL_CHECK_DNS=false` in `panel/.env` so the panel does not wait for
+`SERFEX_SSL_CHECK_DNS=false` in `panel/.env` so the panel does not wait for
 public DNS. Certificates then come from a simulated CA.

@@ -24,7 +24,7 @@ use Livewire\WithPagination;
  * package, and the packages themselves.
  */
 #[Layout('components.layouts.app')]
-#[Title('Müşteriler ve Paketler · Servik')]
+#[Title('Müşteriler ve Paketler · Serfex')]
 class CustomerIndex extends Component
 {
     use WithPagination;

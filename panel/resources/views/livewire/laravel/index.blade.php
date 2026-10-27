@@ -136,7 +136,7 @@
             @if ($step === 'key')
                 @php $host = LaravelIndex::PROVIDERS[$provider][0] ?? 'Git'; @endphp
                 <div class="space-y-3 p-5 text-[13.5px]">
-                    <p><x-t :text="$provider === 'other' ? 'Depo özel olduğu için Servik bu site için bir dağıtım anahtarı oluşturdu. Aşağıdaki açık anahtarı deponun :part bölümüne :part2 olarak ekleyin, sonra kurulumu başlatın.' : 'Depo özel olduğu için Servik bu site için bir dağıtım anahtarı oluşturdu. Aşağıdaki açık anahtarı :host deposunun :part bölümüne :part2 olarak ekleyin, sonra kurulumu başlatın.'" :with="['host' => $host]"><x-slot:part><span class="font-medium">{{ __('Deploy keys') }}</span></x-slot:part><x-slot:part2><span class="font-medium">{{ __('salt okunur') }}</span></x-slot:part2></x-t></p>
+                    <p><x-t :text="$provider === 'other' ? 'Depo özel olduğu için Serfex bu site için bir dağıtım anahtarı oluşturdu. Aşağıdaki açık anahtarı deponun :part bölümüne :part2 olarak ekleyin, sonra kurulumu başlatın.' : 'Depo özel olduğu için Serfex bu site için bir dağıtım anahtarı oluşturdu. Aşağıdaki açık anahtarı :host deposunun :part bölümüne :part2 olarak ekleyin, sonra kurulumu başlatın.'" :with="['host' => $host]"><x-slot:part><span class="font-medium">{{ __('Deploy keys') }}</span></x-slot:part><x-slot:part2><span class="font-medium">{{ __('salt okunur') }}</span></x-slot:part2></x-t></p>
                     <div x-data="{ copied: false }" class="space-y-2">
                         <pre class="rounded-md border border-line bg-surface-2 p-3 font-mono text-[12px] break-all whitespace-pre-wrap">{{ $deployKey }}</pre>
                         <button type="button" @click="navigator.clipboard.writeText(@js($deployKey)); copied = true; setTimeout(() => copied = false, 2000)" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">
@@ -295,7 +295,7 @@
             @elseif ($found === null)
                 <p class="flex items-center gap-2 px-5 py-4 text-muted"><x-icon name="loader-circle" class="animate-spin" />{{ __('Siteler taranıyor…') }}</p>
             @else
-                <p class="px-5 pt-4 text-[13px] text-muted">{{ __(':scanned_sites site tarandı, Servik\'e bağlı olmayan :found Laravel uygulaması bulundu.', ['scanned_sites' => $scannedSites, 'found' => count($found)]) }}</p>
+                <p class="px-5 pt-4 text-[13px] text-muted">{{ __(':scanned_sites site tarandı, Serfex\'e bağlı olmayan :found Laravel uygulaması bulundu.', ['scanned_sites' => $scannedSites, 'found' => count($found)]) }}</p>
                 <ul class="divide-y divide-line px-5 py-3">
                     @forelse ($found as $i => $f)
                         <li wire:key="found-{{ $f['site_id'] }}-{{ $f['path'] }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
@@ -312,7 +312,7 @@
                             <button type="button" wire:click="adopt({{ $i }})" class="ml-auto h-8 rounded-md bg-accent px-3 text-[13px] font-medium text-accent-fg hover:brightness-110">{{ __('Bağla') }}</button>
                         </li>
                     @empty
-                        <li class="py-3 text-muted"><x-t text="Yeni uygulama bulunamadı. Servik :part, onun alt dizinlerini ve site dizinindeki diğer klasörleri tarar."><x-slot:part><span class="font-mono">public_html</span></x-slot:part></x-t></li>
+                        <li class="py-3 text-muted"><x-t text="Yeni uygulama bulunamadı. Serfex :part, onun alt dizinlerini ve site dizinindeki diğer klasörleri tarar."><x-slot:part><span class="font-mono">public_html</span></x-slot:part></x-t></li>
                     @endforelse
                 </ul>
             @endif

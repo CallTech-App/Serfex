@@ -26,7 +26,7 @@ use Livewire\WithPagination;
  * filter and whether its DNS records are in place.
  */
 #[Layout('components.layouts.app')]
-#[Title('E-posta · Servik')]
+#[Title('E-posta · Serfex')]
 #[ForCustomers(feature: 'mail', except: ['setupServer'])]
 class MailIndex extends Component
 {

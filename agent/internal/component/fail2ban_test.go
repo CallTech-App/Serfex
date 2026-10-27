@@ -11,8 +11,8 @@ import (
 )
 
 func TestParseFail2ban(t *testing.T) {
-	names := parseJailList("Status\n|- Number of jail:\t3\n`- Jail list:\tsshd, servik-panel, recidive\n")
-	if strings.Join(names, ",") != "recidive,servik-panel,sshd" {
+	names := parseJailList("Status\n|- Number of jail:\t3\n`- Jail list:\tsshd, serfex-panel, recidive\n")
+	if strings.Join(names, ",") != "recidive,serfex-panel,sshd" {
 		t.Fatalf("jails = %v", names)
 	}
 	bans := parseBans("203.0.113.5 \t2026-10-19 13:00:00 + 3600 = 2026-10-19 14:00:00\n2001:db8::1 \t2026-10-19 13:00:00 + -1 = 9999-12-31 23:59:59\nnot an ip\n", time.UTC)
@@ -31,7 +31,7 @@ func TestFail2banJailsAndBans(t *testing.T) {
 		t.Fatal(err)
 	}
 	jails := read(t, sim, jailConf)
-	if !strings.Contains(jails, "[servik-panel]") || !strings.Contains(jails, "port = 8443") || !strings.Contains(read(t, sim, panelFilter), "SYSLOG_IDENTIFIER=servik-panel") {
+	if !strings.Contains(jails, "[serfex-panel]") || !strings.Contains(jails, "port = 8443") || !strings.Contains(read(t, sim, panelFilter), "SYSLOG_IDENTIFIER=serfex-panel") {
 		t.Fatalf("jails:\n%s", jails)
 	}
 	st, err := m.Fail2ban(ctx)

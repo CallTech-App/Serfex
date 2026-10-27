@@ -14,13 +14,13 @@ Sites → **Add site**:
 |-------|---|
 | Domain | `example.com`. `www.example.com` opens the site too unless you untick it. |
 | Customer | Leave empty for a site of your own, or pick a customer: the site then counts toward their plan and shows in their panel. |
-| System user | The Linux account that owns the files. A new name creates the account; an existing Servik account adds the site to it (one account can own several sites, like a cPanel account or a Plesk subscription). |
+| System user | The Linux account that owns the files. A new name creates the account; an existing Serfex account adds the site to it (one account can own several sites, like a cPanel account or a Plesk subscription). |
 | PHP version | Any installed version the customer's plan allows. Default: the version set for new sites under Services → PHP versions. |
 
-Servik then, in one transaction that is rolled back if any step fails:
+Serfex then, in one transaction that is rolled back if any step fails:
 
 - creates the account (`/usr/sbin/nologin` shell) and
-  `/home/<user>/web/<domain>/public_html` with Servik's default page
+  `/home/<user>/web/<domain>/public_html` with Serfex's default page
   (`index.html`: the domain, how to upload files, a "Sign in to the panel"
   button when a panel address is set under Settings → General, Turkish
   with an English link). New subdomain folders get the same page. The
@@ -33,9 +33,9 @@ Servik then, in one transaction that is rolled back if any step fails:
   server. Until then the site shows "DNS does not point to this server yet"
   and opens over http.
 
-Servik never adopts system accounts or configuration files it did not create:
-its accounts carry the comment `Servik site user` and its files start with
-`Managed by Servik`.
+Serfex never adopts system accounts or configuration files it did not create:
+its accounts carry the comment `Serfex site user` and its files start with
+`Managed by Serfex`.
 
 ## Site tools
 

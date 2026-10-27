@@ -19,7 +19,7 @@ type Fail2banStatus struct {
 	Installed bool   `json:"installed"`
 	Running   bool   `json:"running"`
 	Jails     []Jail `json:"jails"`
-	// Current is false when the jails Servik writes are out of date (the
+	// Current is false when the jails Serfex writes are out of date (the
 	// mail server was set up or the panel's port changed since);
 	// Fail2banRefresh fixes it.
 	Current bool `json:"current"`
@@ -90,7 +90,7 @@ func (m *Manager) readManaged(abs string) (string, error) {
 	return string(b), err
 }
 
-// Fail2banRefresh rewrites Servik's jails to match the server (the mail
+// Fail2banRefresh rewrites Serfex's jails to match the server (the mail
 // jails come and go with the mail server, the panel's jail follows the
 // panel's port) and reloads Fail2ban when they changed. It is ErrBusy
 // while a software operation runs; the panel asks again a minute later.
@@ -216,7 +216,7 @@ func parseBans(out string, loc *time.Location) []Ban {
 var demoBans = map[string][]string{
 	"sshd":         {"92.118.39.73", "218.92.0.112"},
 	"postfix-sasl": {"141.98.11.62"},
-	"servik-panel": {},
+	"serfex-panel": {},
 	"recidive":     {"80.82.77.139"},
 }
 

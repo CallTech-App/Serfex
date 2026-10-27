@@ -99,13 +99,13 @@ class BackupTarget extends Model
      */
     public static function serverName(): string
     {
-        $name = strtolower(preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) (gethostname() ?: 'servik')));
+        $name = strtolower(preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) (gethostname() ?: 'serfex')));
 
-        return trim($name, '.-') ?: 'servik';
+        return trim($name, '.-') ?: 'serfex';
     }
 
     /**
-     * "servik-yedek · s3.eu-central-1.wasabisys.com" or "yedek@host:/folder".
+     * "serfex-yedek · s3.eu-central-1.wasabisys.com" or "yedek@host:/folder".
      */
     public function address(): string
     {

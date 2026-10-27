@@ -26,7 +26,7 @@
         <span class="text-[13px] text-muted">@if ($lastRun)<x-t text="Son :part: :last_run" :with="['last_run' => When::withTime($lastRun)]"><x-slot:part><span class="font-mono">schedule:run</span></x-slot:part></x-t>@endif</span>
     </div>
     @if ($late && ! $syncing)
-        <p class="border-b border-line bg-warn-soft/40 px-5 py-2.5 text-[13px]"><x-t text="Zamanlayıcı açık ama son :late_minutes dakikada çalışmadı; görevler kaçırılıyor olabilir. Hatayı görmek için :domain dosyasına bakın." :with="['late_minutes' => \App\Livewire\Laravel\Sections\Scheduler::LATE_MINUTES]"><x-slot:domain><span class="font-mono">/var/log/servik/laravel/{{ $app->site->domain }}/schedule.log</span></x-slot:domain></x-t></p>
+        <p class="border-b border-line bg-warn-soft/40 px-5 py-2.5 text-[13px]"><x-t text="Zamanlayıcı açık ama son :late_minutes dakikada çalışmadı; görevler kaçırılıyor olabilir. Hatayı görmek için :domain dosyasına bakın." :with="['late_minutes' => \App\Livewire\Laravel\Sections\Scheduler::LATE_MINUTES]"><x-slot:domain><span class="font-mono">/var/log/serfex/laravel/{{ $app->site->domain }}/schedule.log</span></x-slot:domain></x-t></p>
     @endif
 
     <div class="relative overflow-x-auto">
@@ -47,7 +47,7 @@
                         <td class="py-3 pr-3 pl-5"><span class="font-mono text-[13px]">{{ $t['command'] }}</span>@if ($t['description'])<div class="text-2xs text-muted">{{ $t['description'] }}</div>@endif</td>
                         <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap">{{ $t['expression'] }}</td>
                         <td class="px-3 py-3 whitespace-nowrap text-muted">{{ When::withTime(Carbon::parse($t['next'])) }}</td>
-                        <td class="px-3 py-3 whitespace-nowrap text-muted">@if ($t['run']){{ When::withTime(Carbon::parse($t['run']['at'], config('servik.timezone'))) }}@if ($t['run']['duration']) · {{ $t['run']['duration'] }}@endif @else—@endif</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-muted">@if ($t['run']){{ When::withTime(Carbon::parse($t['run']['at'], config('serfex.timezone'))) }}@if ($t['run']['duration']) · {{ $t['run']['duration'] }}@endif @else—@endif</td>
                         <td class="px-3 py-3">
                             @if ($t['run'])
                                 <x-status-badge :status="$t['run']['ok'] ? new Badge(__('Başarılı'), 'ok') : new Badge(__('Başarısız'), 'crit')" />
@@ -67,5 +67,5 @@
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Görevler uygulamanın kendisinden okunur. Servik :part komutunu her dakika bir systemd zamanlayıcısıyla, sitenin kullanıcısıyla çalıştırır; çıktısı :part2 dosyasına yazılır. Görev başına aç/kapat sonraki sürümde."><x-slot:part><span class="font-mono">schedule:run</span></x-slot:part><x-slot:part2><span class="font-mono">schedule.log</span></x-slot:part2></x-t></p>
+    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Görevler uygulamanın kendisinden okunur. Serfex :part komutunu her dakika bir systemd zamanlayıcısıyla, sitenin kullanıcısıyla çalıştırır; çıktısı :part2 dosyasına yazılır. Görev başına aç/kapat sonraki sürümde."><x-slot:part><span class="font-mono">schedule:run</span></x-slot:part><x-slot:part2><span class="font-mono">schedule.log</span></x-slot:part2></x-t></p>
 </div>

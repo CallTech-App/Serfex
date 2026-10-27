@@ -22,7 +22,7 @@ func TestSitePHPSettings(t *testing.T) {
 	for _, want := range []string{
 		"pm = dynamic\npm.max_children = 16\npm.start_servers = 4\npm.min_spare_servers = 4\npm.max_spare_servers = 8\n",
 		"pm.max_requests = 1000",
-		"; servik-max-children = 16",
+		"; serfex-max-children = 16",
 		"request_terminate_timeout = 120s",
 		"php_admin_value[disable_functions] = exec,shell_exec",
 		"php_admin_value[memory_limit] = 512M",
@@ -36,7 +36,7 @@ func TestSitePHPSettings(t *testing.T) {
 	if !strings.Contains(vhost, "client_max_body_size 128m; # PHP post_max_size") {
 		t.Errorf("vhost has no body size of its own:\n%s", vhost)
 	}
-	if conf := read(t, sim, "/etc/nginx/conf.d/servik-tuning.conf"); !strings.Contains(conf, "client_max_body_size 64m;") {
+	if conf := read(t, sim, "/etc/nginx/conf.d/serfex-tuning.conf"); !strings.Contains(conf, "client_max_body_size 64m;") {
 		t.Errorf("server-wide upload limit missing:\n%s", conf)
 	}
 

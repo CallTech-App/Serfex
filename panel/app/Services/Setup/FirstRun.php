@@ -20,10 +20,10 @@ use Illuminate\Support\Str;
  * The first run of a new server: the one-time setup link that opens the
  * panel before anybody has an account, and the setup wizard's progress.
  *
- * install.sh prints the link (servik:setup-url); whoever opens it creates
+ * install.sh prints the link (serfex:setup-url); whoever opens it creates
  * the first administrator. The link is the only way in before that, works
  * once and for SETUP_HOURS, and only root on the server can make a new
- * one (sudo servik setup-url). Root's password never goes through the
+ * one (sudo serfex setup-url). Root's password never goes through the
  * browser.
  *
  * The wizard walks through what a fresh hosting server needs. Each step

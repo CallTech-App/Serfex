@@ -1,12 +1,12 @@
-# Live monitoring and Servik AI
+# Live monitoring and Serfex AI
 
 ## Overview
 
 **Overview**, the first page, is one row per area, problems first: live
 monitoring (attacks, busy sites), services, sites (with this month's
 traffic), server resources, customers (quotas), SSL certificates, the security
-scan, your account (two-step verification), backups and the Servik version.
-Each row links to the page where it is fixed; for some, **Ask AI** asks Servik
+scan, your account (two-step verification), backups and the Serfex version.
+Each row links to the page where it is fixed; for some, **Ask AI** asks Serfex
 AI to explain.
 
 ## Live Monitor
@@ -36,8 +36,8 @@ address, 20 tries a minute on a sign-in page, 60 missing pages a minute, or
 after they go quiet. **Nothing is blocked automatically by these rules**; you
 block with one click, for a time you choose.
 
-**Blocked addresses** lists the blocks in force, from you, Servik AI and
-Fail2ban. A Servik block drops every connection from the address (web, mail,
+**Blocked addresses** lists the blocks in force, from you, Serfex AI and
+Fail2ban. A Serfex block drops every connection from the address (web, mail,
 SSH); a Fail2ban block closes only the attacked service's port.
 
 ### Mail queue
@@ -51,7 +51,7 @@ CPU, load, memory, disk, network, uptime, and the services in their groups.
 **Resource history** shows the server's CPU, memory, disk and network for
 24 hours, 7 days, 30 days or 12 months; hourly values are kept 400 days.
 
-## Servik AI
+## Serfex AI
 
 An assistant inside the panel, running on Claude with your own API key. It
 reads the server's state through the panel (sites, logs, live monitoring,
@@ -59,7 +59,7 @@ certificates, deployments, mail queue, services, backups) and answers in your
 language. It has no shell, no root and no direct access to the agent: every
 change goes through the same panel services you use.
 
-- Ask on the **Servik AI** page or from the drawer at the top of every page.
+- Ask on the **Serfex AI** page or from the drawer at the top of every page.
   Each answer shows where it looked.
 - Changes are offered as cards you **Approve and apply** or cancel, and most
   can be undone.
@@ -67,11 +67,11 @@ change goes through the same panel services you use.
   address for up to 24 hours and limit a site for up to 2 hours on its own.
   Both lift by themselves and can be undone with one click. Turn this off and
   they become suggestions too. Nothing else is ever done without approval.
-- **Servik AI → Settings** (full administrators): the Claude API key (stored
+- **Serfex AI → Settings** (full administrators): the Claude API key (stored
   encrypted with the panel's `APP_KEY`), the model, the actions without
   approval, and a monthly spending limit. Usage and estimated cost per month
   are shown below.
-- **Servik AI log** records everything it read and did.
+- **Serfex AI log** records everything it read and did.
 
-Read-only administrators do not see Servik AI. Customers do not have it in
+Read-only administrators do not see Serfex AI. Customers do not have it in
 0.1.

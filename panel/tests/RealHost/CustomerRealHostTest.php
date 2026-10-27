@@ -22,8 +22,8 @@ use Tests\TestCase;
 /**
  * The panel and a real agent (running as root) on a machine with Nginx
  * and PHP-FPM: a customer gets an existing site, fills their disk quota and
- * is suspended and brought back. Runs only with SERVIK_REALHOST=1 and the
- * agent's socket in SERVIK_AGENT_SOCKET (see the CI job).
+ * is suspended and brought back. Runs only with SERFEX_REALHOST=1 and the
+ * agent's socket in SERFEX_AGENT_SOCKET (see the CI job).
  */
 class CustomerRealHostTest extends TestCase
 {
@@ -36,8 +36,8 @@ class CustomerRealHostTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (getenv('SERVIK_REALHOST') !== '1') {
-            $this->markTestSkipped('SERVIK_REALHOST is not set.');
+        if (getenv('SERFEX_REALHOST') !== '1') {
+            $this->markTestSkipped('SERFEX_REALHOST is not set.');
         }
         $this->withoutVite();
         Setting::put('ssl.auto', false);
@@ -87,13 +87,13 @@ class CustomerRealHostTest extends TestCase
         $this->assertTrue($customer->owns($this->site->fresh()));
 
         // The agent measures the home directory; 3 MB more fills the quota.
-        $this->artisan('servik:disk-usage')->assertSuccessful();
+        $this->artisan('serfex:disk-usage')->assertSuccessful();
         $this->assertLessThan(2 * 1024 ** 2, $account->fresh()->disk_bytes);
         $this->assertNull(app(Quotas::class)->refusal($customer, 'sites'));
         $docroot = $this->site->fresh()->document_root ?: '/home/svkm9/web/'.self::DOMAIN.'/public_html';
         exec('dd if=/dev/urandom of='.escapeshellarg($docroot.'/blob.bin').' bs=1M count=3 status=none', $out, $code);
         $this->assertSame(0, $code);
-        $this->artisan('servik:disk-usage')->assertSuccessful();
+        $this->artisan('serfex:disk-usage')->assertSuccessful();
         $this->assertGreaterThanOrEqual(3 * 1024 ** 2, $account->fresh()->disk_bytes);
         $this->assertStringContainsString('Disk kotası doldu', app(Quotas::class)->refusal($customer->fresh(), 'sites'));
 

@@ -87,7 +87,7 @@
       <div id="scanModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
         <div class="w-full max-w-2xl rounded-xl border border-line bg-surface shadow-xl min-w-0" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
           <h2 id="scanTitle" class="px-5 h-12 flex items-center border-b border-line text-[14.5px] font-semibold">Mevcut Laravel uygulamaları</h2>
-          <p class="px-5 pt-4 text-[13px] text-muted">24 site tarandı, Servik'e bağlı olmayan 2 Laravel uygulaması bulundu.</p>
+          <p class="px-5 pt-4 text-[13px] text-muted">24 site tarandı, Serfex'e bağlı olmayan 2 Laravel uygulaması bulundu.</p>
           <ul class="px-5 py-3 divide-y divide-line text-[13.5px]" id="found"></ul>
           <div class="px-5 py-3 border-t border-line flex justify-end gap-2">
             <button type="button" data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Kapat</button>
@@ -117,7 +117,7 @@
   const sm = document.getElementById('scanModal');
   document.getElementById('found').innerHTML = found.map(([n, v, note, k]) => `<li class="py-3 flex flex-wrap items-center gap-x-4 gap-y-1">
     <div class="min-w-0"><p class="font-mono text-[13px] font-medium">${n}</p><p class="text-2xs text-muted">${v}</p><p class="text-2xs ${k === 'crit' ? 'text-crit' : 'text-warn'}">${note}</p></div>
-    <button type="button" data-toast="${n} Servik'e bağlandı." class="ml-auto h-8 px-3 rounded-md bg-accent text-accent-fg text-[13px] font-medium">Bağla</button></li>`).join('');
+    <button type="button" data-toast="${n} Serfex'e bağlandı." class="ml-auto h-8 px-3 rounded-md bg-accent text-accent-fg text-[13px] font-medium">Bağla</button></li>`).join('');
   document.getElementById('scanBtn').onclick = () => { sm.hidden = false; };
   sm.querySelector('[data-close]').onclick = () => sm.hidden = true;
 </script>

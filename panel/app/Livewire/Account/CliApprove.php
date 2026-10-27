@@ -15,13 +15,13 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * /cli/onay: the person approves a `servik login` from the browser they
+ * /cli/onay: the person approves a `serfex login` from the browser they
  * are signed in with. The page shows the code the command line printed,
  * the computer's name and where it asked from; approving makes a key that
  * acts as this person (read-only if they choose so).
  */
 #[Layout('components.layouts.app')]
-#[Title('Komut satırı girişi · Servik')]
+#[Title('Komut satırı girişi · Serfex')]
 #[ForEveryAccount]
 class CliApprove extends Component
 {
@@ -48,7 +48,7 @@ class CliApprove extends Component
     {
         $login = $logins->find($this->typed);
         if ($login === null || ! $login->isPending()) {
-            $this->addError('typed', __('Bu kodla bekleyen bir giriş yok. Kodu komut satırında göründüğü gibi yazın; süresi dolduysa servik login ile yeniden başlayın.'));
+            $this->addError('typed', __('Bu kodla bekleyen bir giriş yok. Kodu komut satırında göründüğü gibi yazın; süresi dolduysa serfex login ile yeniden başlayın.'));
 
             return;
         }

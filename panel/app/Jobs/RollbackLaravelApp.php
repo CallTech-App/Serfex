@@ -30,7 +30,7 @@ class RollbackLaravelApp implements ShouldQueue
         $app = $deployment->app;
         $deployment->update(['status' => DeploymentStatus::Running, 'started_at' => now()]);
         try {
-            $result = $agent->call('laravel.rollback', $app->target() + ['release' => (string) $deployment->release], config('servik.agent.job_timeout'));
+            $result = $agent->call('laravel.rollback', $app->target() + ['release' => (string) $deployment->release], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $deployment->update(['status' => DeploymentStatus::Failed, 'error' => $e->reason ?: $e->getMessage(), 'finished_at' => now()]);
 

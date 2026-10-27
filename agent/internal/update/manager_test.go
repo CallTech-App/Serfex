@@ -88,7 +88,7 @@ func (f *fakeSource) publish(t *testing.T, version string, prerelease bool, extr
 	t.Helper()
 	files := map[string]string{
 		"VERSION":                          version + "\n",
-		"bin/servik-agent":                 "#!/bin/sh\necho " + version + "\n",
+		"bin/serfex-agent":                 "#!/bin/sh\necho " + version + "\n",
 		"panel/artisan":                    "#!/usr/bin/env php\n<?php\n",
 		"panel/public/index.php":           "<?php\n",
 		"panel/vendor/autoload.php":        "<?php\n",
@@ -103,7 +103,7 @@ func (f *fakeSource) publish(t *testing.T, version string, prerelease bool, extr
 	f.files["/dl/"+version+"/"+name] = archive
 	f.files["/dl/"+version+"/SHA256SUMS"] = []byte(hex.EncodeToString(sum[:]) + "  " + name + "\n")
 	f.releases = append(f.releases, map[string]any{
-		"tag_name": "v" + version, "name": "Servik " + version, "body": "- Notes of " + version,
+		"tag_name": "v" + version, "name": "Serfex " + version, "body": "- Notes of " + version,
 		"draft": false, "prerelease": prerelease, "published_at": "2026-10-19T08:00:00Z",
 		"html_url": f.srv.URL + "/releases/v" + version,
 		"assets": []map[string]any{
@@ -158,7 +158,7 @@ func installed(t *testing.T, src *fakeSource) (*host.Simulator, *Manager) {
 	}
 	rel := panel.ReleasesDir + "/0.1.0"
 	write(rel+"/VERSION", "0.1.0\n")
-	write(rel+"/bin/servik-agent", "")
+	write(rel+"/bin/serfex-agent", "")
 	write(rel+"/panel/artisan", "")
 	write(rel+"/panel/public/index.php", "<?php\n")
 	if err := os.Symlink("releases/0.1.0", sim.Path(panel.CurrentLink)); err != nil {
@@ -166,7 +166,7 @@ func installed(t *testing.T, src *fakeSource) (*host.Simulator, *Manager) {
 	}
 	cfg, _ := json.Marshal(panel.Config{PHP: "8.5", Source: src.srv.URL})
 	write(panel.ConfigFile, string(cfg))
-	write(panel.EnvFile, "APP_NAME=Servik\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5433\nDB_DATABASE=servik\nDB_USERNAME=servik\nDB_PASSWORD=\"s3cret\"\n")
+	write(panel.EnvFile, "APP_NAME=Serfex\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5433\nDB_DATABASE=serfex\nDB_USERNAME=serfex\nDB_PASSWORD=\"s3cret\"\n")
 	if err := os.MkdirAll(sim.Path(panel.StorageDir), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func installed(t *testing.T, src *fakeSource) (*host.Simulator, *Manager) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Fprintln(f, "servik:x:998:998:Servik panel:/var/lib/servik/panel:/usr/sbin/nologin")
+	fmt.Fprintln(f, "serfex:x:998:998:Serfex panel:/var/lib/serfex/panel:/usr/sbin/nologin")
 	f.Close()
 
 	m := NewManager(sim, "0.1.0", "amd64")
@@ -256,7 +256,7 @@ func TestCheckFollowsTheChannel(t *testing.T) {
 
 func TestUpgradeSwitchesAndKeepsThePreviousRelease(t *testing.T) {
 	src := newSource(t)
-	src.publish(t, "0.2.0", false, map[string]string{"bin/servik": "#!/bin/sh\n"})
+	src.publish(t, "0.2.0", false, map[string]string{"bin/serfex": "#!/bin/sh\n"})
 	sim, m := installed(t, src)
 	ctx := context.Background()
 	var applied int
@@ -272,7 +272,7 @@ func TestUpgradeSwitchesAndKeepsThePreviousRelease(t *testing.T) {
 		t.Fatalf("started %+v", started)
 	}
 	log := finish(t, m, "u1")
-	for _, want := range []string{"▸ İndiriliyor", "▸ Doğrulanıyor", "▸ Panel bakım moduna alınıyor", "▸ Veritabanı güncelleniyor", "▸ Servik 0.2.0 etkinleştiriliyor", "▸ Denetleniyor", "✓ Servik 0.2.0 kuruldu."} {
+	for _, want := range []string{"▸ İndiriliyor", "▸ Doğrulanıyor", "▸ Panel bakım moduna alınıyor", "▸ Veritabanı güncelleniyor", "▸ Serfex 0.2.0 etkinleştiriliyor", "▸ Denetleniyor", "✓ Serfex 0.2.0 kuruldu."} {
 		if !strings.Contains(log, want) {
 			t.Errorf("log lacks %q:\n%s", want, log)
 		}
@@ -291,24 +291,24 @@ func TestUpgradeSwitchesAndKeepsThePreviousRelease(t *testing.T) {
 		t.Errorf("panel setup applied %d times", applied)
 	}
 	// Shared settings and storage are linked into the new release.
-	if target, err := os.Readlink(sim.Path(panel.ReleasesDir + "/0.2.0/panel/.env")); err != nil || !strings.HasSuffix(target, "etc/servik/panel.env") {
+	if target, err := os.Readlink(sim.Path(panel.ReleasesDir + "/0.2.0/panel/.env")); err != nil || !strings.HasSuffix(target, "etc/serfex/panel.env") {
 		t.Errorf(".env link %q, %v", target, err)
 	}
 	if _, err := os.Stat(sim.Path(panel.ReleasesDir + "/0.2.0/panel/storage")); err != nil {
 		t.Errorf("storage link: %v", err)
 	}
 	// The command line is on the PATH and follows current.
-	if target, err := os.Readlink(sim.Path(panel.CLILink)); err != nil || target != "/opt/servik/current/bin/servik" {
-		t.Errorf("servik link %q, %v", target, err)
+	if target, err := os.Readlink(sim.Path(panel.CLILink)); err != nil || target != "/opt/serfex/current/bin/serfex" {
+		t.Errorf("serfex link %q, %v", target, err)
 	}
 	// Maintenance, migrations with the new code, workers restarted.
 	for _, want := range []string{
-		"runuser -u servik -- env -C /opt/servik/releases/0.1.0/panel php8.5 artisan down",
-		"systemctl stop servik-panel-queue servik-panel-backups servik-panel-scheduler",
-		"pg_dump --host=127.0.0.1 --port=5433 --username=servik",
-		"runuser -u servik -- env -C /opt/servik/releases/0.2.0/panel php8.5 artisan migrate --force",
-		"systemctl start servik-panel-queue servik-panel-backups servik-panel-scheduler",
-		"runuser -u servik -- env -C /opt/servik/releases/0.2.0/panel php8.5 artisan up",
+		"runuser -u serfex -- env -C /opt/serfex/releases/0.1.0/panel php8.5 artisan down",
+		"systemctl stop serfex-panel-queue serfex-panel-backups serfex-panel-scheduler",
+		"pg_dump --host=127.0.0.1 --port=5433 --username=serfex",
+		"runuser -u serfex -- env -C /opt/serfex/releases/0.2.0/panel php8.5 artisan migrate --force",
+		"systemctl start serfex-panel-queue serfex-panel-backups serfex-panel-scheduler",
+		"runuser -u serfex -- env -C /opt/serfex/releases/0.2.0/panel php8.5 artisan up",
 	} {
 		if !sim.Ran(want) {
 			t.Errorf("did not run %q", want)
@@ -345,7 +345,7 @@ func TestTokenReadsAPrivateRepository(t *testing.T) {
 	if _, err := m.Start(ctx, StartSpec{Version: "0.2.0", Run: "p1"}); err != nil {
 		t.Fatal(err)
 	}
-	if log := finish(t, m, "p1"); !strings.Contains(log, "✓ Servik 0.2.0 kuruldu.") {
+	if log := finish(t, m, "p1"); !strings.Contains(log, "✓ Serfex 0.2.0 kuruldu.") {
 		t.Fatalf("update with the token:\n%s", log)
 	}
 	if v := current(t, sim); v != "0.2.0" {
@@ -381,12 +381,12 @@ func TestFailedHealthCheckRollsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	log := finish(t, m, "bad")
-	for _, want := range []string{"↺ Servik 0.1.0 sürümüne geri dönülüyor", "↺ Panel veritabanı güncelleme öncesine döndürülüyor", "↺ Servik 0.1.0 yeniden çalışıyor", "✗ health check failed"} {
+	for _, want := range []string{"↺ Serfex 0.1.0 sürümüne geri dönülüyor", "↺ Panel veritabanı güncelleme öncesine döndürülüyor", "↺ Serfex 0.1.0 yeniden çalışıyor", "✗ health check failed"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("log lacks %q:\n%s", want, log)
 		}
 	}
-	if !strings.Contains(log, "Servik 0.1.0 ile çalışmaya devam ediyor.") {
+	if !strings.Contains(log, "Serfex 0.1.0 ile çalışmaya devam ediyor.") {
 		t.Errorf("the result does not say what runs:\n%s", log)
 	}
 	if v := current(t, sim); v != "0.1.0" {
@@ -395,7 +395,7 @@ func TestFailedHealthCheckRollsBack(t *testing.T) {
 	if _, err := os.Stat(sim.Path(panel.ReleasesDir + "/0.2.0")); !os.IsNotExist(err) {
 		t.Errorf("the failed release was kept: %v", err)
 	}
-	if !sim.Ran("pg_restore --host=127.0.0.1 --port=5433 --username=servik --no-password --clean") || !sim.Ran("psql --host=127.0.0.1 --port=5433 --username=servik --no-password -X -q -v ON_ERROR_STOP=1 --single-transaction") {
+	if !sim.Ran("pg_restore --host=127.0.0.1 --port=5433 --username=serfex --no-password --clean") || !sim.Ran("psql --host=127.0.0.1 --port=5433 --username=serfex --no-password -X -q -v ON_ERROR_STOP=1 --single-transaction") {
 		t.Error("the database snapshot was not restored")
 	}
 	st, _ := m.Status()
@@ -484,10 +484,10 @@ func TestRollbackUndoesTheReleasesMigrations(t *testing.T) {
 		t.Fatal(err)
 	}
 	log := finish(t, m, "r1")
-	if !strings.Contains(log, "✓ Servik 0.1.0 sürümüne dönüldü.") {
+	if !strings.Contains(log, "✓ Serfex 0.1.0 sürümüne dönüldü.") {
 		t.Errorf("log:\n%s", log)
 	}
-	if !sim.Ran("runuser -u servik -- env -C /opt/servik/releases/0.2.0/panel php8.5 artisan migrate:rollback --batch=7 --force") {
+	if !sim.Ran("runuser -u serfex -- env -C /opt/serfex/releases/0.2.0/panel php8.5 artisan migrate:rollback --batch=7 --force") {
 		t.Error("the release's migrations were not rolled back with its own code")
 	}
 	if v := current(t, sim); v != "0.1.0" {
@@ -576,17 +576,17 @@ func TestSetupWritesThePanelUnits(t *testing.T) {
 	if len(res.Changed) != 3 || webs != 1 {
 		t.Fatalf("setup %+v, web %d", res, webs)
 	}
-	unit, err := os.ReadFile(sim.Path("/etc/systemd/system/servik-panel-backups.service"))
+	unit, err := os.ReadFile(sim.Path("/etc/systemd/system/serfex-panel-backups.service"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(unit), "ExecStart=/usr/bin/php8.5 /opt/servik/current/panel/artisan queue:work backups --queue=backups") || !strings.Contains(string(unit), "User=servik") {
+	if !strings.Contains(string(unit), "ExecStart=/usr/bin/php8.5 /opt/serfex/current/panel/artisan queue:work backups --queue=backups") || !strings.Contains(string(unit), "User=serfex") {
 		t.Errorf("unit:\n%s", unit)
 	}
 	// needrestart leaves the workers alone: a restart would kill a job
 	// waiting on the agent.
-	conf, err := os.ReadFile(sim.Path("/etc/needrestart/conf.d/servik.conf"))
-	if err != nil || !strings.Contains(string(conf), "$nrconf{override_rc}->{qr(^servik-panel-)} = 0;") {
+	conf, err := os.ReadFile(sim.Path("/etc/needrestart/conf.d/serfex.conf"))
+	if err != nil || !strings.Contains(string(conf), "$nrconf{override_rc}->{qr(^serfex-panel-)} = 0;") {
 		t.Errorf("needrestart: %v\n%s", err, conf)
 	}
 	res, err = m.Setup(ctx)

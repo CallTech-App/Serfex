@@ -54,8 +54,8 @@ class DatabasesTest extends TestCase
             'db.status' => self::dbStatus(),
             'db.database.create' => ['created' => true],
             'db.user.apply' => ['applied' => true],
-            'db.database.delete' => fn ($p) => ['deleted' => true, 'backup' => $p['backup'] ? '/var/lib/servik/backups/databases/'.$p['name'].'.sql.gz' : null],
-            'db.manager.login' => ['path' => '/phpmyadmin/servik-sso.php?token=abc', 'port' => 8443, 'tool' => 'phpmyadmin'],
+            'db.database.delete' => fn ($p) => ['deleted' => true, 'backup' => $p['backup'] ? '/var/lib/serfex/backups/databases/'.$p['name'].'.sql.gz' : null],
+            'db.manager.login' => ['path' => '/phpmyadmin/serfex-sso.php?token=abc', 'port' => 8443, 'tool' => 'phpmyadmin'],
             'php.versions' => ['8.4'],
             'laravel.env.get' => ['env' => "APP_NAME=x\nDB_CONNECTION=sqlite\n", 'example' => null],
             'laravel.env.set' => ['cached' => true],
@@ -322,8 +322,8 @@ class DatabasesTest extends TestCase
     {
         $shop = $this->database('shop');
 
-        $this->get('http://panel.servik.test/databases/'.$shop->id.'/yonetici')
-            ->assertRedirect('https://panel.servik.test:8443/phpmyadmin/servik-sso.php?token=abc');
+        $this->get('http://panel.serfex.test/databases/'.$shop->id.'/yonetici')
+            ->assertRedirect('https://panel.serfex.test:8443/phpmyadmin/serfex-sso.php?token=abc');
         $this->assertSame([['server' => 'mysql', 'database' => 'kahve_shop']], $this->agent->called('db.manager.login'));
 
         $this->agent->answers['db.manager.login'] = AgentException::rpcError('db.manager.login', -32602, 'the database manager is not set up');
@@ -371,7 +371,7 @@ class DatabasesTest extends TestCase
         Setting::put('databases.products', ['mysql' => 'mysql']);
         $this->agent->answers['db.list'] = ['databases' => [['name' => $db->name, 'size' => 5000, 'tables' => 12]], 'users' => []];
 
-        $this->artisan('servik:disk-usage')->assertSuccessful();
+        $this->artisan('serfex:disk-usage')->assertSuccessful();
 
         $this->assertSame(5000, $db->fresh()->size_bytes);
         $this->assertSame(12, $db->fresh()->tables);

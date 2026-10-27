@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Cache;
  * with what, start, stop, restart and reload through the agent, recent log
  * lines and the few settings worth changing. Stopped or failed services
  * are kept in the cache for the dashboard and the menu, refreshed every
- * minute by servik:services-check and whenever the page reads them.
+ * minute by serfex:services-check and whenever the page reads them.
  */
 class SystemServices
 {
@@ -28,7 +28,7 @@ class SystemServices
     public const GROUPS = [
         'hosting' => 'Barındırma hizmetleri',
         'system' => 'Sistem',
-        'servik' => 'Servik\'in kendi hizmetleri',
+        'serfex' => 'Serfex\'in kendi hizmetleri',
     ];
 
     /**
@@ -105,7 +105,7 @@ class SystemServices
     {
         return match ($unit) {
             'ssh' => __('Sunucuya bağlanmanın yolu; durdurulursa sunucuya SSH ile giremezsiniz.'),
-            'servik-agent' => __('Panel sunucuyu onunla yönetir; durdurulamaz.'),
+            'serfex-agent' => __('Panel sunucuyu onunla yönetir; durdurulamaz.'),
             default => __('Panel onsuz çalışmaz; durdurulamaz.'),
         };
     }
@@ -233,9 +233,9 @@ class SystemServices
             (bool) preg_match('/^php(\d\.\d)-fpm$/', $unit, $m) => ($n = Site::where('php_version', $m[1])->count()) ? __('PHP :m kullanan :n PHP sayfası açamaz.', ['m' => $m[1], 'n' => $sites($n)]) : null,
             in_array($unit, ['mysql', 'mariadb'], true) => ($n = Database::where('server', DatabaseServers::MYSQL)->count()) ? __(':n veritabanına bağlanılamaz.', ['n' => $n]) : null,
             str_starts_with($unit, 'postgresql@') && str_ends_with($unit, '-main') => ($n = Database::where('server', DatabaseServers::POSTGRESQL)->count()) ? __(':n PostgreSQL veritabanına bağlanılamaz.', ['n' => $n]) : null,
-            $unit === 'pdns@servik' => ($n = DnsZone::count()) ? __(':n alan adının DNS kayıtları yanıtlanmaz.', ['n' => $n]) : null,
+            $unit === 'pdns@serfex' => ($n = DnsZone::count()) ? __(':n alan adının DNS kayıtları yanıtlanmaz.', ['n' => $n]) : null,
             in_array($unit, ['postfix', 'dovecot'], true) => ($n = Mailbox::count()) ? ($unit === 'postfix' ? __(':n posta kutusu posta gönderip alamaz.', ['n' => $n]) : __(':n posta kutusu postalarına ulaşamaz.', ['n' => $n])) : null,
-            $unit === 'rspamd', $unit === 'redis-server@servik-mail' => Mailbox::count() ? __('Gelen postalar spam denetiminden geçemez ve bekler.') : null,
+            $unit === 'rspamd', $unit === 'redis-server@serfex-mail' => Mailbox::count() ? __('Gelen postalar spam denetiminden geçemez ve bekler.') : null,
             $unit === 'clamav-daemon' => Mailbox::count() ? __('Postalar virüs taramasından geçemez.') : null,
             $unit === 'memcached' => __('Memcached kullanan uygulamalar önbelleğe ulaşamaz.'),
             $unit === 'supervisor' => __('Supervisor\'daki programlar durur.'),
@@ -330,7 +330,7 @@ class SystemServices
     public static function message(AgentException $e): string
     {
         if ($e instanceof AgentUnavailableException) {
-            return __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.');
+            return __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.');
         }
         // The agent's common refusals, in the panel's words.
         $patterns = [
@@ -338,7 +338,7 @@ class SystemServices
             '/^the service refused the settings, nothing was changed: (.*)$/s' => __('Hizmet yeni ayarları kabul etmedi; hiçbir şey değişmedi. Hata: $1'),
             '/^(.+) is not running; start it first$/' => __('$1 çalışmıyor; önce başlatın.'),
             '/^(.+) cannot be stopped: .*$/s' => __('$1 durdurulamaz.'),
-            '/^.+ is not a service Servik manages.*$/s' => __('Bu hizmet sunucuda yok.'),
+            '/^.+ is not a service Serfex manages.*$/s' => __('Bu hizmet sunucuda yok.'),
         ];
         foreach ($patterns as $pattern => $text) {
             if (preg_match($pattern, $e->reason)) {

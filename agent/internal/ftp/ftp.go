@@ -4,16 +4,16 @@
 // shell, no forwarding, each account locked (chroot) in one folder of its
 // site. An account is a system user with the site user's UID and group
 // (so what it uploads belongs to the site, as if PHP had written it),
-// member of the group servik-sftp, with no home and /usr/sbin/nologin as
+// member of the group serfex-sftp, with no home and /usr/sbin/nologin as
 // its shell. OpenSSH matches that group:
 //
-//	/etc/ssh/sshd_config.d/50-servik-sftp.conf   Match Group servik-sftp: ChrootDirectory, ForceCommand internal-sftp
-//	/var/lib/servik/sftp/<account>/              the chroot, root 0755 (OpenSSH requires root-owned)
-//	/var/lib/servik/sftp/<account>/<folder>/     a bind mount of the account's folder in the site
+//	/etc/ssh/sshd_config.d/50-serfex-sftp.conf   Match Group serfex-sftp: ChrootDirectory, ForceCommand internal-sftp
+//	/var/lib/serfex/sftp/<account>/              the chroot, root 0755 (OpenSSH requires root-owned)
+//	/var/lib/serfex/sftp/<account>/<folder>/     a bind mount of the account's folder in the site
 //	/etc/systemd/system/<escaped>.mount          that bind mount, so it comes back after a reboot
-//	/etc/servik/ftp/accounts.json                accounts and their folders, root 0600
+//	/etc/serfex/ftp/accounts.json                accounts and their folders, root 0600
 //
-// Never remove /var/lib/servik/sftp recursively: below each chroot is a
+// Never remove /var/lib/serfex/sftp recursively: below each chroot is a
 // site's folder, mounted. Accounts are removed one by one with Delete,
 // which unmounts first and only removes empty folders.
 //
@@ -43,16 +43,16 @@ import (
 
 const (
 	// Group is the group OpenSSH locks into SFTP.
-	Group = "servik-sftp"
+	Group = "serfex-sftp"
 	// JailRoot holds a chroot per account.
-	JailRoot = "/var/lib/servik/sftp"
+	JailRoot = "/var/lib/serfex/sftp"
 	// ConfigFile is the OpenSSH drop-in.
-	ConfigFile = "/etc/ssh/sshd_config.d/50-servik-sftp.conf"
-	stateDir   = "/etc/servik/ftp"
+	ConfigFile = "/etc/ssh/sshd_config.d/50-serfex-sftp.conf"
+	stateDir   = "/etc/serfex/ftp"
 	stateFile  = stateDir + "/accounts.json"
 	unitDir    = "/etc/systemd/system"
-	// comment marks the accounts Servik made.
-	comment = "Servik SFTP"
+	// comment marks the accounts Serfex made.
+	comment = "Serfex SFTP"
 )
 
 // ValidationError reports a request that can never succeed as given.
@@ -118,7 +118,7 @@ type Result struct {
 type Status struct {
 	// Installed is true when the OpenSSH server is.
 	Installed bool `json:"installed"`
-	// Ready is true once Servik's configuration is in place.
+	// Ready is true once Serfex's configuration is in place.
 	Ready    bool `json:"ready"`
 	Port     int  `json:"port"`
 	Accounts int  `json:"accounts"`
@@ -211,7 +211,7 @@ Match Group ` + Group + `
     X11Forwarding no
 `
 
-// setup installs OpenSSH when missing and puts Servik's configuration in
+// setup installs OpenSSH when missing and puts Serfex's configuration in
 // place. It is idempotent.
 func (m *Manager) setup(ctx context.Context, t *txn.Tx) error {
 	if !m.exists("/usr/sbin/sshd") {
@@ -281,7 +281,7 @@ func unitName(p string) string {
 func mountUnit(name, what, where string) string {
 	return fmt.Sprintf(`# %s
 [Unit]
-Description=Servik SFTP folder of %s
+Description=Serfex SFTP folder of %s
 RequiresMountsFor=%s
 After=local-fs.target
 
@@ -564,7 +564,7 @@ func (m *Manager) delete(ctx context.Context, name string) error {
 	case err != nil:
 		return err
 	case !strings.HasPrefix(u.Comment, comment):
-		return invalid("%s is not a Servik SFTP account", name)
+		return invalid("%s is not a Serfex SFTP account", name)
 	default:
 		_, _ = m.h.Run(ctx, host.Command{Name: "usermod", Args: []string{"--lock", "--expiredate", "1", name}})
 		m.endSessions(ctx, name)

@@ -37,7 +37,7 @@ class User extends Authenticatable implements HasLocalePreference
     public const ROLES = [
         'full' => ['Tam yönetici', 'Her şey; Araçlar ve Ayarlar, yöneticiler ve API anahtarları dahil.'],
         'support' => ['Destek', 'Siteler, müşteriler ve sunucudaki her iş; Araçlar ve Ayarlar hariç.'],
-        'readonly' => ['Salt okunur', 'Her sayfayı görür, hiçbir şeyi değiştiremez; Servik AI\'yı kullanamaz.'],
+        'readonly' => ['Salt okunur', 'Her sayfayı görür, hiçbir şeyi değiştiremez; Serfex AI\'yı kullanamaz.'],
     ];
 
     protected $attributes = [

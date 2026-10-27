@@ -15,7 +15,7 @@ use Livewire\Component;
  * certificate are in Araçlar ve Ayarlar → Genel.
  */
 #[Layout('components.layouts.app')]
-#[Title('SSL ayarları · Servik')]
+#[Title('SSL ayarları · Serfex')]
 class SslSettingsPage extends Component
 {
     public string $email = '';

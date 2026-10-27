@@ -45,7 +45,7 @@ class IssueMailCertificate implements ShouldBeUnique, ShouldQueue
         $check = $dns->check($hostname);
         if (! $check['ok']) {
             $where = $check['found'] === [] ? __('hiçbir adrese') : __(':found adresine', ['found' => implode(', ', $check['found'])]);
-            $this->markFailed($certificate, CertificateStatus::WaitingDns, __('DNS henüz bu sunucuya işaret etmiyor: :hostname şu an :where çözülüyor. A kaydını bu sunucuya yönlendirin; Servik her saat yeniden dener.', ['hostname' => $hostname, 'where' => $where]));
+            $this->markFailed($certificate, CertificateStatus::WaitingDns, __('DNS henüz bu sunucuya işaret etmiyor: :hostname şu an :where çözülüyor. A kaydını bu sunucuya yönlendirin; Serfex her saat yeniden dener.', ['hostname' => $hostname, 'where' => $where]));
 
             return;
         }
@@ -56,7 +56,7 @@ class IssueMailCertificate implements ShouldBeUnique, ShouldQueue
                 'names' => [$hostname],
                 'challenge' => 'http-01',
                 'email' => Certificates::email(),
-            ]), config('servik.agent.ssl_timeout'));
+            ]), config('serfex.agent.ssl_timeout'));
         } catch (AgentException $e) {
             [$reason, $retryAt] = Certificates::failure($e);
             $this->markFailed($certificate, CertificateStatus::Failed, $reason, $retryAt);

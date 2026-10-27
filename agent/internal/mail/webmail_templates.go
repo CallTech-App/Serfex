@@ -120,9 +120,9 @@ var autoconfigTmpl = template.Must(template.New("autoconfig").Parse(`<!-- {{.Mar
 
 var webmailPoolTmpl = template.Must(template.New("pool").Parse(`; {{.Marker}}. Manual changes are overwritten.
 ; Roundcube runs as its own account, apart from every customer site.
-[servik-webmail]
-user = servik-webmail
-group = servik-webmail
+[serfex-webmail]
+user = serfex-webmail
+group = serfex-webmail
 
 listen = {{.PHPSocket}}
 listen.owner = {{.WebUser}}
@@ -136,7 +136,7 @@ pm.max_requests = 500
 
 chdir = /
 env[ROUNDCUBE_CONFIG_DIR] = {{.ConfigDir}}
-php_admin_value[open_basedir] = /var/lib/roundcube/:/usr/share/roundcube/:/etc/roundcube/:{{.ConfigDir}}/:/var/lib/servik/webmail/:{{.LogDir}}/:/usr/share/php/:/usr/share/javascript/:/usr/share/fonts/
+php_admin_value[open_basedir] = /var/lib/roundcube/:/usr/share/roundcube/:/etc/roundcube/:{{.ConfigDir}}/:/var/lib/serfex/webmail/:{{.LogDir}}/:/usr/share/php/:/usr/share/javascript/:/usr/share/fonts/
 php_admin_value[upload_tmp_dir] = {{.DataDir}}/temp
 php_admin_value[sys_temp_dir] = {{.DataDir}}/temp
 php_admin_value[session.save_path] = {{.DataDir}}/temp
@@ -153,7 +153,7 @@ php_admin_flag[display_errors] = off
 // package's own configuration and the newest PHP.
 func roundcubeJobUnit(php, script string) []byte {
 	return []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
-# Runs Roundcube's job for Servik's webmail.
+# Runs Roundcube's job for Serfex's webmail.
 [Service]
 User=` + WebmailUser + `
 Group=` + WebmailUser + `
@@ -164,7 +164,7 @@ ExecStart=` + php + ` /usr/share/roundcube/bin/` + script + `
 }
 
 var roundcubeConfigTmpl = template.Must(template.New("config").Parse(`<?php // {{.Marker}}. Manual changes are overwritten.
-// Roundcube for Servik. Read through ROUNDCUBE_CONFIG_DIR instead of
+// Roundcube for Serfex. Read through ROUNDCUBE_CONFIG_DIR instead of
 // /etc/roundcube, whose files belong to the package.
 $config = [];
 $config['db_dsnw'] = 'sqlite:///{{.DataDir}}/roundcube.db?mode=0600';
@@ -185,24 +185,24 @@ $config['log_dir'] = '{{.LogDir}}/';
 $config['skin'] = 'elastic';
 $config['language'] = 'tr_TR';
 $config['enable_installer'] = false;
-$config['plugins'] = ['servik_sso', 'managesieve', 'archive', 'zipdownload', 'markasjunk'];
-$config['servik_sso_dir'] = '{{.DataDir}}/sso';
-$config['servik_sso_master'] = '{{.MasterUser}}';
-$config['servik_sso_password'] = '{{.MasterPass}}';
+$config['plugins'] = ['serfex_sso', 'managesieve', 'archive', 'zipdownload', 'markasjunk'];
+$config['serfex_sso_dir'] = '{{.DataDir}}/sso';
+$config['serfex_sso_master'] = '{{.MasterUser}}';
+$config['serfex_sso_password'] = '{{.MasterPass}}';
 `))
 
-var ssoPlugin = []byte(`<?php // Managed by Servik. Manual changes are overwritten.
+var ssoPlugin = []byte(`<?php // Managed by Serfex. Manual changes are overwritten.
 
 /**
- * One-click login from the Servik panel.
+ * One-click login from the Serfex panel.
  *
- * The panel asks servik-agent for a token; the agent writes it to
- * servik_sso_dir as <token>.json with the address and an expiry. Opening
- * /?_task=login&_action=servik-sso&_token=<token> uses the token once and
+ * The panel asks serfex-agent for a token; the agent writes it to
+ * serfex_sso_dir as <token>.json with the address and an expiry. Opening
+ * /?_task=login&_action=serfex-sso&_token=<token> uses the token once and
  * signs in as that address through Dovecot's master user, which only
  * accepts connections from this host.
  */
-class servik_sso extends rcube_plugin
+class serfex_sso extends rcube_plugin
 {
     public $task = 'login|mail|settings|addressbook|utils|logout';
 
@@ -217,7 +217,7 @@ class servik_sso extends rcube_plugin
 
     public function startup($args)
     {
-        if ($args['task'] === 'login' && $args['action'] === 'servik-sso') {
+        if ($args['task'] === 'login' && $args['action'] === 'serfex-sso') {
             $args['action'] = 'login';
         }
 
@@ -227,11 +227,11 @@ class servik_sso extends rcube_plugin
     public function authenticate($args)
     {
         $token = (string) rcube_utils::get_input_string('_token', rcube_utils::INPUT_GET);
-        if (rcube_utils::get_input_string('_action', rcube_utils::INPUT_GET) !== 'servik-sso' || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+        if (rcube_utils::get_input_string('_action', rcube_utils::INPUT_GET) !== 'serfex-sso' || !preg_match('/^[a-f0-9]{64}$/', $token)) {
             return $args;
         }
         $rcmail = rcmail::get_instance();
-        $file = rtrim((string) $rcmail->config->get('servik_sso_dir'), '/') . '/' . $token . '.json';
+        $file = rtrim((string) $rcmail->config->get('serfex_sso_dir'), '/') . '/' . $token . '.json';
         $claimed = $file . '.used';
         // Renaming first makes the token single-use, even for two requests at once.
         if (!@rename($file, $claimed)) {
@@ -242,9 +242,9 @@ class servik_sso extends rcube_plugin
         if (!is_array($data) || !is_int($data['expires'] ?? null) || $data['expires'] < time() || !is_string($data['user'] ?? null)) {
             return $args;
         }
-        $_SESSION['servik_sso'] = true;
+        $_SESSION['serfex_sso'] = true;
         $args['user'] = $data['user'];
-        $args['pass'] = (string) $rcmail->config->get('servik_sso_password');
+        $args['pass'] = (string) $rcmail->config->get('serfex_sso_password');
         $args['cookiecheck'] = false;
         $args['valid'] = true;
 
@@ -253,10 +253,10 @@ class servik_sso extends rcube_plugin
 
     public function connect($args)
     {
-        if (!empty($_SESSION['servik_sso']) && strpos((string) $args['user'], '*') === false) {
+        if (!empty($_SESSION['serfex_sso']) && strpos((string) $args['user'], '*') === false) {
             $rcmail = rcmail::get_instance();
-            $args['user'] = $args['user'] . '*' . $rcmail->config->get('servik_sso_master');
-            $args['pass'] = (string) $rcmail->config->get('servik_sso_password');
+            $args['user'] = $args['user'] . '*' . $rcmail->config->get('serfex_sso_master');
+            $args['pass'] = (string) $rcmail->config->get('serfex_sso_password');
         }
 
         return $args;
@@ -264,10 +264,10 @@ class servik_sso extends rcube_plugin
 
     public function smtp_connect($args)
     {
-        if (!empty($_SESSION['servik_sso'])) {
+        if (!empty($_SESSION['serfex_sso'])) {
             $rcmail = rcmail::get_instance();
-            $args['smtp_user'] = $rcmail->get_user_name() . '*' . $rcmail->config->get('servik_sso_master');
-            $args['smtp_pass'] = (string) $rcmail->config->get('servik_sso_password');
+            $args['smtp_user'] = $rcmail->get_user_name() . '*' . $rcmail->config->get('serfex_sso_master');
+            $args['smtp_pass'] = (string) $rcmail->config->get('serfex_sso_password');
         }
 
         return $args;

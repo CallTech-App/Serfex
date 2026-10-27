@@ -55,7 +55,7 @@ func TestListShowsInstalledServicesInGroups(t *testing.T) {
 	for _, s := range list {
 		units[s.Unit] = s
 	}
-	for _, want := range []string{"nginx", "php8.4-fpm", "ssh", "servik-agent", "servik-web", "postgresql@16-servik"} {
+	for _, want := range []string{"nginx", "php8.4-fpm", "ssh", "serfex-agent", "serfex-web", "postgresql@16-serfex"} {
 		if _, ok := units[want]; !ok {
 			t.Errorf("%s missing from %v", want, list)
 		}
@@ -68,8 +68,8 @@ func TestListShowsInstalledServicesInGroups(t *testing.T) {
 	if n := units["nginx"]; n.State != "active" || n.Group != GroupHosting || n.CPU != 3.5 || n.Settings != "nginx" || n.Since == nil {
 		t.Errorf("nginx = %+v", n)
 	}
-	if units["servik-web"].Group != GroupServik || units["servik-web"].Protected == "" || units["ssh"].Protected == "" {
-		t.Errorf("panel services and SSH must be protected: %+v %+v", units["servik-web"], units["ssh"])
+	if units["serfex-web"].Group != GroupSerfex || units["serfex-web"].Protected == "" || units["ssh"].Protected == "" {
+		t.Errorf("panel services and SSH must be protected: %+v %+v", units["serfex-web"], units["ssh"])
 	}
 }
 
@@ -106,9 +106,9 @@ func TestActions(t *testing.T) {
 	sim.Fail = nil
 
 	for _, c := range []ActionSpec{
-		{Unit: "servik-web", Action: "stop"},
+		{Unit: "serfex-web", Action: "stop"},
 		{Unit: "ssh", Action: "disable"},
-		{Unit: "servik-agent", Action: "stop"},
+		{Unit: "serfex-agent", Action: "stop"},
 		{Unit: "nginx", Action: "kill"},
 		{Unit: "apache2", Action: "start"},
 		{Unit: "../etc/passwd", Action: "start"},
@@ -119,12 +119,12 @@ func TestActions(t *testing.T) {
 		}
 	}
 	// Restarting is fine for protected services.
-	if _, err := m.Do(ctx, ActionSpec{Unit: "servik-web", Action: "restart"}); err != nil {
+	if _, err := m.Do(ctx, ActionSpec{Unit: "serfex-web", Action: "restart"}); err != nil {
 		t.Fatal(err)
 	}
 	restarted := false
 	m.SelfRestart = func(context.Context) error { restarted = true; return nil }
-	if _, err := m.Do(ctx, ActionSpec{Unit: "servik-agent", Action: "restart"}); err != nil || !restarted {
+	if _, err := m.Do(ctx, ActionSpec{Unit: "serfex-agent", Action: "restart"}); err != nil || !restarted {
 		t.Fatalf("agent restart: %v", err)
 	}
 }
@@ -136,7 +136,7 @@ func TestNginxSettings(t *testing.T) {
 	if err := os.WriteFile(sim.Path(nginxConf), []byte(conf), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	vhost := "# Managed by Servik. Manual changes are overwritten.\nserver {\n    error_log x;\n\n    client_max_body_size 64m;\n\n    include y;\n}\n"
+	vhost := "# Managed by Serfex. Manual changes are overwritten.\nserver {\n    error_log x;\n\n    client_max_body_size 64m;\n\n    include y;\n}\n"
 	if err := os.WriteFile(sim.Path("/etc/nginx/sites-available/a.example.conf"), []byte(vhost), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func TestNginxSettings(t *testing.T) {
 }
 
 func TestDatabaseAndPostfixSettings(t *testing.T) {
-	m, sim := newTest(t, "/etc/mysql/mysql.conf.d/zz-servik.cnf", "/usr/sbin/postfix")
+	m, sim := newTest(t, "/etc/mysql/mysql.conf.d/zz-serfex.cnf", "/usr/sbin/postfix")
 	ctx := context.Background()
 	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "mysql", Database: &tuning.Database{MaxConnections: 300, BufferPoolMB: 1024, MaxAllowedPacketMB: 128}}); err != nil {
 		t.Fatal(err)
@@ -205,7 +205,7 @@ func TestDatabaseAndPostfixSettings(t *testing.T) {
 		t.Errorf("mysql settings:\n%s", b)
 	}
 	_ = os.MkdirAll(filepath.Dir(sim.Path(postfixMain)), 0o755)
-	if err := os.WriteFile(sim.Path(postfixMain), []byte("# Managed by Servik.\nmyhostname = mail.example.net\nmessage_size_limit = 52428800\nmailbox_size_limit = 0\n"), 0o644); err != nil {
+	if err := os.WriteFile(sim.Path(postfixMain), []byte("# Managed by Serfex.\nmyhostname = mail.example.net\nmessage_size_limit = 52428800\nmailbox_size_limit = 0\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	got, err := m.ApplySettings(ctx, SettingsSpec{Unit: "postfix", Postfix: &tuning.Postfix{MessageSizeMB: 25}})
@@ -256,17 +256,17 @@ func TestSetDirectiveAddsMissingLines(t *testing.T) {
 func TestApacheSettings(t *testing.T) {
 	m, sim := newTest(t, "/usr/sbin/apache2")
 	ctx := context.Background()
-	// An Apache Servik did not set up has nothing to change here.
+	// An Apache Serfex did not set up has nothing to change here.
 	if s := find(t, m, "apache2"); s.Settings != "" {
-		t.Fatalf("apache2 without Servik's configuration offers %q", s.Settings)
+		t.Fatalf("apache2 without Serfex's configuration offers %q", s.Settings)
 	}
-	// Installed from Yazılım Yönetimi: servik.conf written and enabled.
+	// Installed from Yazılım Yönetimi: serfex.conf written and enabled.
 	_ = os.MkdirAll(filepath.Dir(sim.Path(apacheEnabled)), 0o755)
 	_ = os.MkdirAll(filepath.Dir(sim.Path(tuning.ApacheConf)), 0o755)
 	if err := os.WriteFile(sim.Path(tuning.ApacheConf), tuning.ApacheContent(tuning.Defaults().Apache), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink("../conf-available/servik.conf", sim.Path(apacheEnabled)); err != nil {
+	if err := os.Symlink("../conf-available/serfex.conf", sim.Path(apacheEnabled)); err != nil {
 		t.Fatal(err)
 	}
 	if s := find(t, m, "apache2"); s.Settings != "apache" {
@@ -283,7 +283,7 @@ func TestApacheSettings(t *testing.T) {
 	b, _ := os.ReadFile(sim.Path(tuning.ApacheConf))
 	for _, want := range []string{"ServerTokens Prod", "Timeout 120\n<IfModule mpm_event_module>\n", "ThreadsPerChild 25\n    ServerLimit 16\n    MaxRequestWorkers 200\n"} {
 		if !strings.Contains(string(b), want) {
-			t.Errorf("servik.conf lacks %q:\n%s", want, b)
+			t.Errorf("serfex.conf lacks %q:\n%s", want, b)
 		}
 	}
 	if !sim.Ran("apache2ctl configtest") || !sim.Ran("systemctl reload apache2.service") || sim.Ran("systemctl restart apache2.service") {
@@ -295,7 +295,7 @@ func TestApacheSettings(t *testing.T) {
 	}
 	b, _ = os.ReadFile(sim.Path(tuning.ApacheConf))
 	if !strings.Contains(string(b), "ServerLimit 80\n    MaxRequestWorkers 1000\n") || !sim.Ran("systemctl restart apache2.service") {
-		t.Errorf("servik.conf:\n%s", b)
+		t.Errorf("serfex.conf:\n%s", b)
 	}
 
 	// Apache refusing the configuration puts the old one back.
@@ -311,7 +311,7 @@ func TestApacheSettings(t *testing.T) {
 	}
 	sim.Fail = nil
 	if b, _ := os.ReadFile(sim.Path(tuning.ApacheConf)); !strings.Contains(string(b), "MaxRequestWorkers 1000") {
-		t.Errorf("servik.conf not restored:\n%s", b)
+		t.Errorf("serfex.conf not restored:\n%s", b)
 	}
 	if s := tuning.Load(sim); s.Apache.MaxRequestWorkers != 1000 {
 		t.Errorf("settings file not restored: %+v", s.Apache)
@@ -331,19 +331,19 @@ func TestApacheSettings(t *testing.T) {
 func TestPowerDNSSettings(t *testing.T) {
 	m, sim := newTest(t)
 	ctx := context.Background()
-	conf := "# Managed by Servik. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# No secondary servers in this version: refuse zone transfers.\ndisable-axfr=yes\nversion-string=anonymous\n"
+	conf := "# Managed by Serfex. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# No secondary servers in this version: refuse zone transfers.\ndisable-axfr=yes\nversion-string=anonymous\n"
 	_ = os.MkdirAll(filepath.Dir(sim.Path(pdnsConf)), 0o755)
 	if err := os.WriteFile(sim.Path(pdnsConf), []byte(conf), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	if s := find(t, m, "pdns@servik"); s.Settings != "powerdns" {
+	if s := find(t, m, "pdns@serfex"); s.Settings != "powerdns" {
 		t.Fatalf("settings = %q", s.Settings)
 	}
-	got, err := m.Settings(ctx, "pdns@servik")
+	got, err := m.Settings(ctx, "pdns@serfex")
 	if err != nil || got.PowerDNS == nil || got.PowerDNS.CacheTTL != 20 || got.PowerDNS.NegativeTTL != 60 || got.PowerDNS.LogQueries || got.PowerDNS.AXFRAllow == nil {
 		t.Fatalf("defaults: %+v %v", got.PowerDNS, err)
 	}
-	got, err = m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &tuning.PowerDNS{
+	got, err = m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &tuning.PowerDNS{
 		CacheTTL: 60, NegativeTTL: 30, LogQueries: true,
 		AXFRAllow: []string{" 192.0.2.10 ", "2001:db8::1/48", "192.0.2.10", ""},
 	}})
@@ -354,40 +354,40 @@ func TestPowerDNSSettings(t *testing.T) {
 		t.Errorf("after apply: %+v", p)
 	}
 	b, _ := os.ReadFile(sim.Path(pdnsConf))
-	want := "# Managed by Servik. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# Zone transfers (to secondary name servers), caching and query logging\n# are changed on the panel's Hizmetler page.\ndisable-axfr=no\nversion-string=anonymous\n" +
+	want := "# Managed by Serfex. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# Zone transfers (to secondary name servers), caching and query logging\n# are changed on the panel's Hizmetler page.\ndisable-axfr=no\nversion-string=anonymous\n" +
 		"allow-axfr-ips=192.0.2.10,2001:db8::/48\ncache-ttl=60\nnegquery-cache-ttl=30\nlog-dns-queries=yes\nloglevel=5\n"
 	if string(b) != want {
-		t.Errorf("pdns-servik.conf:\n%s", b)
+		t.Errorf("pdns-serfex.conf:\n%s", b)
 	}
 	if fi, _ := os.Stat(sim.Path(pdnsConf)); fi.Mode().Perm() != 0o640 {
 		t.Errorf("mode %v, want 0640 (it holds the API key)", fi.Mode().Perm())
 	}
-	if !sim.Ran("pdns_server --config-name=servik --config=check") || !sim.Ran("systemctl restart pdns@servik.service") {
+	if !sim.Ran("pdns_server --config-name=serfex --config=check") || !sim.Ran("systemctl restart pdns@serfex.service") {
 		t.Errorf("commands: %v", sim.Commands())
 	}
 
 	// Back to no transfers; lines already there are replaced in place.
-	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &tuning.PowerDNS{CacheTTL: 20, NegativeTTL: 60}}); err != nil {
+	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &tuning.PowerDNS{CacheTTL: 20, NegativeTTL: 60}}); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(sim.Path(pdnsConf))
 	if !strings.Contains(string(b), "\ndisable-axfr=yes\nversion-string=anonymous\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\n") {
-		t.Errorf("pdns-servik.conf:\n%s", b)
+		t.Errorf("pdns-serfex.conf:\n%s", b)
 	}
 
 	// PowerDNS refusing to start puts the old file back.
 	sim.Fail = func(c host.Command) error {
-		if c.String() == "systemctl restart pdns@servik.service" {
+		if c.String() == "systemctl restart pdns@serfex.service" {
 			return errors.New("job failed")
 		}
 		return nil
 	}
-	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &tuning.PowerDNS{CacheTTL: 5, NegativeTTL: 60}}); err == nil {
+	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &tuning.PowerDNS{CacheTTL: 5, NegativeTTL: 60}}); err == nil {
 		t.Fatal("failed restart reported as success")
 	}
 	sim.Fail = nil
 	if b, _ := os.ReadFile(sim.Path(pdnsConf)); !strings.Contains(string(b), "cache-ttl=20\n") {
-		t.Errorf("pdns-servik.conf not restored:\n%s", b)
+		t.Errorf("pdns-serfex.conf not restored:\n%s", b)
 	}
 	var v *ValidationError
 	for _, bad := range []tuning.PowerDNS{
@@ -396,7 +396,7 @@ func TestPowerDNSSettings(t *testing.T) {
 		{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"ns2.example.net"}},
 		{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"192.0.2.0/33"}},
 	} {
-		if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &bad}); !errors.As(err, &v) {
+		if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &bad}); !errors.As(err, &v) {
 			t.Errorf("%+v: %v", bad, err)
 		}
 	}

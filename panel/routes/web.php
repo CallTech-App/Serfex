@@ -82,10 +82,10 @@ Route::post('/hooks/deploy/{token}', DeployWebhookController::class)
 Route::get('/davet/{token}', [InvitationController::class, 'show'])->where('token', '[A-Za-z0-9]{40,80}')->middleware('throttle:30,1')->name('invitation');
 Route::post('/davet/{token}', [InvitationController::class, 'store'])->where('token', '[A-Za-z0-9]{40,80}')->middleware('throttle:10,1');
 
-// The servik command line, for developers' own computers: the install
+// The serfex command line, for developers' own computers: the install
 // script and the binaries of this server's release.
 Route::get('/cli/install.sh', [CliDownloadController::class, 'script'])->middleware('throttle:30,1')->name('cli.install');
-Route::get('/cli/indir/{file}', [CliDownloadController::class, 'download'])->where('file', 'SHA256SUMS|servik-cli-(linux|darwin)-(amd64|arm64)')->middleware('throttle:30,1')->name('cli.download');
+Route::get('/cli/indir/{file}', [CliDownloadController::class, 'download'])->where('file', 'SHA256SUMS|serfex-cli-(linux|darwin)-(amd64|arm64)')->middleware('throttle:30,1')->name('cli.download');
 
 // The one-time setup link install.sh prints: it creates the first
 // administrator. Wrong tokens are throttled like failed logins.
@@ -169,7 +169,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/musteriler/{customer}/kullanim', UsageReport::class)->whereNumber('customer')->name('customers.usage');
         Route::post('/musteriler/{customer}/giris', [ImpersonationController::class, 'store'])->whereNumber('customer')->name('customers.impersonate');
 
-        // Araçlar ve Ayarlar and Servik AI's settings: full administrators.
+        // Araçlar ve Ayarlar and Serfex AI's settings: full administrators.
         Route::middleware(EnsureFullAdmin::class)->group(function () {
             Route::livewire('/install', SetupWizard::class)->name('setup');
             Route::livewire('/ayarlar', GeneralSettings::class)->name('settings.general');

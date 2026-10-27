@@ -8,7 +8,7 @@
           </div>
           <a href="dns.html" class="h-9 px-3.5 rounded-md border border-line bg-surface hover:bg-surface-2 text-[13.5px] font-medium flex items-center gap-2"><i data-lucide="arrow-left" class="w-4 h-4"></i>Alan adı listesi</a>
         </div>
-        <p class="mt-1 text-[13px] text-muted">Bu alan adının DNS kayıtlarını ve bölge ayarlarını yönetin. Ad sunucuları: <span class="font-mono">ns1.servik-ornek.net</span>, <span class="font-mono">ns2.servik-ornek.net</span></p>
+        <p class="mt-1 text-[13px] text-muted">Bu alan adının DNS kayıtlarını ve bölge ayarlarını yönetin. Ad sunucuları: <span class="font-mono">ns1.serfex-ornek.net</span>, <span class="font-mono">ns2.serfex-ornek.net</span></p>
       </div>
 
       <section class="rounded-xl border border-line bg-surface min-w-0">
@@ -66,7 +66,7 @@
             </div>
             <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
               <span class="text-[13.5px] sm:pt-0.5">Ad sunucuları</span>
-              <p class="font-mono text-[13px] leading-6">ns1.servik-ornek.net<br>ns2.servik-ornek.net</p>
+              <p class="font-mono text-[13px] leading-6">ns1.serfex-ornek.net<br>ns2.serfex-ornek.net</p>
             </div>
             <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-center">
               <label for="dttl" class="text-[13.5px]">Varsayılan TTL</label>
@@ -76,7 +76,7 @@
           <details class="mt-2 text-[13.5px]">
             <summary class="cursor-pointer text-accent text-[13px] py-2">Gelişmiş (SOA)</summary>
             <div class="divide-y divide-line">
-              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><span>Birincil ad sunucusu</span><span class="font-mono text-[13px]">ns1.servik-ornek.net.</span></div>
+              <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><span>Birincil ad sunucusu</span><span class="font-mono text-[13px]">ns1.serfex-ornek.net.</span></div>
               <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><label for="soa1">Yönetici e-postası</label><input id="soa1" value="hostmaster@kahveatolyesi.com.tr" class="w-full sm:w-80 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]"></div>
               <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><span>Seri numarası</span><span class="font-mono text-[13px] num">2026101808</span></div>
               <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3 items-center"><label for="soa2">Yenileme / Yeniden deneme</label><div class="flex items-center gap-2"><input id="soa2" value="10800" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-muted">/</span><input aria-label="Yeniden deneme" value="3600" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none text-[13.5px] num"><span class="text-[13px] text-muted">sn</span></div></div>
@@ -133,7 +133,7 @@
       <div id="resetModal" hidden class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
         <div class="w-full max-w-md rounded-xl border border-line bg-surface shadow-xl p-5 text-[13.5px]" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
           <p id="rsTitle" class="font-semibold">DNS bölgesi varsayılana dönsün mü?</p>
-          <p class="mt-1 text-[13px] text-muted">Elle eklenen ve değiştirilen tüm kayıtlar silinir; Servik şablonundaki kayıtlar yeniden yazılır. Bu işlem geri alınamaz.</p>
+          <p class="mt-1 text-[13px] text-muted">Elle eklenen ve değiştirilen tüm kayıtlar silinir; Serfex şablonundaki kayıtlar yeniden yazılır. Bu işlem geri alınamaz.</p>
           <div class="mt-4 flex justify-end gap-2">
             <button data-close class="h-9 px-3.5 rounded-md border border-line hover:bg-surface-2 text-[13.5px]">Vazgeç</button>
             <button id="resetOk" class="h-9 px-3.5 rounded-md bg-crit text-on-crit text-[13.5px] font-medium">Varsayılana dön</button>
@@ -145,8 +145,8 @@
   const $ = id => document.getElementById(id);
   const D = 'kahveatolyesi.com.tr';
   let recs = [
-    ['@', 'NS', 'ns1.servik-ornek.net.', 86400],
-    ['@', 'NS', 'ns2.servik-ornek.net.', 86400],
+    ['@', 'NS', 'ns1.serfex-ornek.net.', 86400],
+    ['@', 'NS', 'ns2.serfex-ornek.net.', 86400],
     ['@', 'A', '185.98.142.21', 3600],
     ['@', 'AAAA', '2a0e:1c80:4:2a::21', 3600],
     ['www', 'CNAME', D + '.', 3600],
@@ -189,7 +189,7 @@
   };
 
   // Ekle / düzenle
-  const F = { A: ['IPv4 adresi', '185.98.142.21'], AAAA: ['IPv6 adresi', '2a0e:1c80:4:2a::21'], CNAME: ['Hedef alan adı', D + '.'], MX: ['Posta sunucusu', 'mail.' + D + '.'], TXT: ['Değer', 'v=spf1 a mx ~all'], CAA: ['Değer', '0 issue "letsencrypt.org"'], NS: ['Ad sunucusu', 'ns1.servik-ornek.net.'] };
+  const F = { A: ['IPv4 adresi', '185.98.142.21'], AAAA: ['IPv6 adresi', '2a0e:1c80:4:2a::21'], CNAME: ['Hedef alan adı', D + '.'], MX: ['Posta sunucusu', 'mail.' + D + '.'], TXT: ['Değer', 'v=spf1 a mx ~all'], CAA: ['Değer', '0 issue "letsencrypt.org"'], NS: ['Ad sunucusu', 'ns1.serfex-ornek.net.'] };
   const m = $('recModal'); let editing = -1;
   const setType = () => { const t = $('fT').value; $('fVl').textContent = F[t][0]; $('fV').placeholder = F[t][1]; $('fPw').hidden = t !== 'MX'; };
   $('fT').onchange = setType;

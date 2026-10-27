@@ -59,7 +59,7 @@ abstract class Section extends Component
     protected function agent(string $method, array $params, mixed $default = null, ?float $timeout = null): mixed
     {
         try {
-            return app(AgentClient::class)->call($method, $params, $timeout ?? config('servik.agent.job_timeout'));
+            return app(AgentClient::class)->call($method, $params, $timeout ?? config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $this->agentError = self::agentMessage($e);
 
@@ -70,7 +70,7 @@ abstract class Section extends Component
     public static function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')
             : $e->reason;
     }
 

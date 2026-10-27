@@ -43,7 +43,7 @@ const (
 	PMStatic   = "static"
 )
 
-// reservedINI are settings Servik sets for every pool to keep sites apart;
+// reservedINI are settings Serfex sets for every pool to keep sites apart;
 // a site cannot change them.
 var reservedINI = map[string]bool{
 	"open_basedir": true, "upload_tmp_dir": true, "sys_temp_dir": true, "session.save_path": true,
@@ -72,7 +72,7 @@ func (p *PHPSpec) validate() error {
 				return invalid("PHP setting %q is not a valid php.ini name", k)
 			}
 			if reservedINI[k] {
-				return invalid("PHP setting %s is set by Servik and cannot be changed", k)
+				return invalid("PHP setting %s is set by Serfex and cannot be changed", k)
 			}
 			if len(v) > 200 || !iniValueRe.MatchString(v) {
 				return invalid("value of %s may contain letters, digits, spaces and . , : / + * @ ~ = %% _ - only", k)
@@ -172,7 +172,7 @@ func spares(n int) (start, lo, hi int) {
 }
 
 var (
-	baseRe     = regexp.MustCompile(`(?m)^; servik-max-children = (\d+)$`)
+	baseRe     = regexp.MustCompile(`(?m)^; serfex-max-children = (\d+)$`)
 	pmRe       = regexp.MustCompile(`(?m)^pm = (\w+)$`)
 	startRe    = regexp.MustCompile(`(?m)^pm\.start_servers = \d+$`)
 	minSpareRe = regexp.MustCompile(`(?m)^pm\.min_spare_servers = \d+$`)

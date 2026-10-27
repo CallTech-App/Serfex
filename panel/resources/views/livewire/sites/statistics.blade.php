@@ -21,7 +21,7 @@
                 <span class="text-fg">{{ __('İstatistikler') }}</span>
             </nav>
             <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('İstatistikler') }}</h1>
-            <p class="mt-1 text-[13px] text-muted">{{ __('Ziyaretçiler, sayfalar ve bant genişliği. Servik bunları sitenin erişim günlüğünden sayar; ziyaretçi bilgisi sunucudan çıkmaz.') }}</p>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Ziyaretçiler, sayfalar ve bant genişliği. Serfex bunları sitenin erişim günlüğünden sayar; ziyaretçi bilgisi sunucudan çıkmaz.') }}</p>
         </div>
         <label class="flex items-center gap-2 text-[13px] text-muted">
             {{ __('Dönem') }}

@@ -22,7 +22,7 @@ use Livewire\Component;
  * language and session length, and the panel's own certificate.
  */
 #[Layout('components.layouts.app')]
-#[Title('Genel ayarlar · Servik')]
+#[Title('Genel ayarlar · Serfex')]
 class GeneralSettings extends Component
 {
     public string $hostname = '';

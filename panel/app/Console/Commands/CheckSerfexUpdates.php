@@ -8,13 +8,13 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 /**
- * Runs from the scheduler: looks for newer Servik releases on the chosen
+ * Runs from the scheduler: looks for newer Serfex releases on the chosen
  * channel and records how finished updates ended. Nothing is installed;
  * the administrator starts an update from Güncellemeler.
  */
-#[Signature('servik:update-check')]
-#[Description('Check for newer Servik releases')]
-class CheckServikUpdates extends Command
+#[Signature('serfex:update-check')]
+#[Description('Check for newer Serfex releases')]
+class CheckSerfexUpdates extends Command
 {
     public function handle(Updates $updates): int
     {
@@ -26,7 +26,7 @@ class CheckServikUpdates extends Command
             return self::FAILURE;
         }
         $release = $updates->available($status);
-        $this->info($release ? __('Servik :version hazır.', ['version' => $release['version']]) : __('Servik güncel.'));
+        $this->info($release ? __('Serfex :version hazır.', ['version' => $release['version']]) : __('Serfex güncel.'));
 
         return self::SUCCESS;
     }

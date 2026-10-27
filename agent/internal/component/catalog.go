@@ -21,11 +21,11 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// PHPVersions are the PHP versions Servik offers. Ubuntu 24.04 ships 8.3;
+// PHPVersions are the PHP versions Serfex offers. Ubuntu 24.04 ships 8.3;
 // the others come from the Ondřej Surý archive.
 var PHPVersions = []string{"8.1", "8.2", "8.3", "8.4", "8.5"}
 
-// NodeLines are the Node.js release lines Servik offers.
+// NodeLines are the Node.js release lines Serfex offers.
 var NodeLines = []string{"22", "24", "26"}
 
 // phpExtensions are installed with every PHP version: what WordPress,
@@ -66,8 +66,8 @@ func (m *Manager) phpExt(ext string) []string {
 }
 
 const (
-	mailState   = "/etc/servik/mail/server.json"
-	redisDir    = "/etc/servik/redis"
+	mailState   = "/etc/serfex/mail/server.json"
+	redisDir    = "/etc/serfex/redis"
 	redisReadme = redisDir + "/README"
 )
 
@@ -76,7 +76,7 @@ func catalog() []*component {
 		{
 			id: "nginx", packages: []string{"nginx"}, marker: "/usr/sbin/nginx", versionPkg: "nginx",
 			units:    []string{"nginx"},
-			required: "Servik serves every site with Nginx",
+			required: "Serfex serves every site with Nginx",
 			check:    func(o *op) error { _, err := o.run(host.Command{Name: "nginx", Args: []string{"-t"}}); return err },
 		},
 		apache(),
@@ -184,7 +184,7 @@ func phpComponent(v string) *component {
 		},
 		units:  []string{"php" + v + "-fpm"},
 		backup: []string{"/etc/php/" + v},
-		// Servik's php.ini defaults (Hizmetler → PHP sürümleri); a
+		// Serfex's php.ini defaults (Hizmetler → PHP sürümleri); a
 		// version that has its own keeps them.
 		configure: func(o *op) error {
 			if o.m.PHP == nil {
@@ -204,14 +204,14 @@ func phpComponent(v string) *component {
 				name := strings.TrimSuffix(filepath.Base(p), ".conf")
 				switch name {
 				case "www":
-				case "servik-webmail":
+				case "serfex-webmail":
 					used = append(used, "webmail (Roundcube)")
 				default:
 					used = append(used, name)
 				}
 			}
 			if cfg, ok := panel.Load(m.h); ok && cfg.PHP == v {
-				used = append(used, "Servik paneli")
+				used = append(used, "Serfex paneli")
 			} else if m.db.AdminPHP() == v {
 				used = append(used, "phpMyAdmin / Adminer")
 			}
@@ -445,7 +445,7 @@ func apache() *component {
 			}
 			for _, cmd := range [][]string{
 				append([]string{"a2enmod", "-q"}, apacheModules...),
-				{"a2enconf", "-q", "servik"},
+				{"a2enconf", "-q", "serfex"},
 				{"a2disconf", "-q", "other-vhosts-access-log"},
 				{"a2dissite", "-q", "000-default"},
 			} {
@@ -482,14 +482,14 @@ func apache() *component {
 var redisReadmeText = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 #
 # Customers' Redis: every application that uses Redis gets its own
-# instance (servik-redis-<domain>.service), running as the site's user,
+# instance (serfex-redis-<domain>.service), running as the site's user,
 # listening on 127.0.0.1 with a password, with its data in
-# /var/lib/servik/redis/<domain>. The distribution's redis-server.service
+# /var/lib/serfex/redis/<domain>. The distribution's redis-server.service
 # stays off, so applications never share keys.
 `)
 
 func configureRedis(o *op) error {
-	if err := o.t.RootDir("/etc/servik", 0o755, 0, 0); err != nil {
+	if err := o.t.RootDir("/etc/serfex", 0o755, 0, 0); err != nil {
 		return err
 	}
 	if err := o.t.RootDir(redisDir, 0o755, 0, 0); err != nil {
@@ -535,23 +535,23 @@ func fail2ban() *component {
 }
 
 const (
-	jailConf    = "/etc/fail2ban/jail.d/servik.conf"
-	panelFilter = "/etc/fail2ban/filter.d/servik-panel.conf"
+	jailConf    = "/etc/fail2ban/jail.d/serfex.conf"
+	panelFilter = "/etc/fail2ban/filter.d/serfex-panel.conf"
 )
 
-// The panel logs failed logins to the journal as servik-panel.
+// The panel logs failed logins to the journal as serfex-panel.
 var panelFilterConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
-# Failed logins to the Servik panel, logged by the panel to the journal.
+# Failed logins to the Serfex panel, logged by the panel to the journal.
 [INCLUDES]
 before = common.conf
 
 [DEFAULT]
-_daemon = servik-panel
+_daemon = serfex-panel
 
 [Definition]
 failregex = ^%(__prefix_line)sFailed panel login from <HOST>(?: |$)
 ignoreregex =
-journalmatch = SYSLOG_IDENTIFIER=servik-panel
+journalmatch = SYSLOG_IDENTIFIER=serfex-panel
 `)
 
 func writeJails(t *txn.Tx, m *Manager) error {
@@ -566,7 +566,7 @@ func writeJails(t *txn.Tx, m *Manager) error {
 	return t.WriteFile(jailConf, renderJails(m))
 }
 
-// renderJails writes Servik's jails: SSH always, mail logins when the
+// renderJails writes Serfex's jails: SSH always, mail logins when the
 // mail server is installed, and repeat offenders for a week.
 func renderJails(m *Manager) []byte {
 	ignore := []string{"127.0.0.1/8", "::1"}
@@ -580,7 +580,7 @@ func renderJails(m *Manager) []byte {
 	mail := m.exists("/usr/sbin/postfix") && m.exists("/usr/sbin/dovecot")
 	var b strings.Builder
 	fmt.Fprintf(&b, `# %s. Manual changes are overwritten.
-# Servik's jails. Bans use nftables (table inet f2b-table) and end on
+# Serfex's jails. Bans use nftables (table inet f2b-table) and end on
 # their own. Addresses of this server are never banned.
 
 [DEFAULT]
@@ -595,11 +595,11 @@ ignoreip = %s
 [sshd]
 enabled = true
 
-# Logins to the Servik panel: ten failures in 15 minutes close the
+# Logins to the Serfex panel: ten failures in 15 minutes close the
 # panel's port to that address for an hour.
-[servik-panel]
+[serfex-panel]
 enabled = true
-filter = servik-panel
+filter = serfex-panel
 port = %d
 maxretry = 10
 findtime = 15m
@@ -630,17 +630,17 @@ maxretry = 5
 // ---- ModSecurity ----
 
 const (
-	modsecDir     = "/etc/servik/modsecurity"
+	modsecDir     = "/etc/serfex/modsecurity"
 	modsecMain    = modsecDir + "/main.conf"
 	modsecCRS     = modsecDir + "/crs-setup.conf"
-	modsecNginx   = "/etc/nginx/conf.d/servik-modsecurity.conf"
-	modsecLogDir  = "/var/log/servik/modsecurity"
+	modsecNginx   = "/etc/nginx/conf.d/serfex-modsecurity.conf"
+	modsecLogDir  = "/var/log/serfex/modsecurity"
 	modsecModule  = "/usr/lib/nginx/modules/ngx_http_modsecurity_module.so"
 	modsecCRSRule = "/usr/share/modsecurity-crs/rules"
 	// ModSecurityLog is the audit log: one JSON object per line for each
 	// request a rule matched (package security reads it).
 	ModSecurityLog  = modsecLogDir + "/audit.log"
-	modsecLogrotate = "/etc/logrotate.d/servik-modsecurity"
+	modsecLogrotate = "/etc/logrotate.d/serfex-modsecurity"
 )
 
 // The audit log is written by libmodsecurity itself, which never reopens
@@ -729,7 +729,7 @@ func writeModsec(o *op, s Settings) error {
 	if err != nil {
 		return err
 	}
-	for _, d := range []string{"/etc/servik", modsecDir, "/var/log/servik"} {
+	for _, d := range []string{"/etc/serfex", modsecDir, "/var/log/serfex"} {
 		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 			return err
 		}

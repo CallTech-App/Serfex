@@ -231,7 +231,7 @@ class Restores
                     'databases' => collect($meta['databases'] ?? [])->map(fn ($d) => ['server' => $d['server'], 'name' => $d['name']])->values()->all(),
                     'database_users' => $users,
                     'laravel' => $app !== null ? [$app->agentApp()] : [],
-                ], config('servik.agent.server_backup_timeout'));
+                ], config('serfex.agent.server_backup_timeout'));
                 $this->cacheFetched($chain);
             }
             if (in_array('mail', $parts, true)) {
@@ -375,7 +375,7 @@ class Restores
         $spec = $site->agentSpec();
         unset($spec['tls']);
         try {
-            $result = $this->agent->call('site.apply', $spec, config('servik.agent.job_timeout'));
+            $result = $this->agent->call('site.apply', $spec, config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $site->update(['status' => SiteStatus::Failed, 'last_error' => $e->getMessage()]);
             throw $e;

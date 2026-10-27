@@ -45,7 +45,7 @@ use Livewire\Component;
  * until the wizard is finished.
  */
 #[Layout('components.layouts.setup')]
-#[Title('Kurulum sihirbazı · Servik')]
+#[Title('Kurulum sihirbazı · Serfex')]
 class SetupWizard extends Component
 {
     #[Url(as: 'adim', except: 'sunucu')]

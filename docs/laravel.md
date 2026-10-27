@@ -1,6 +1,6 @@
 # Laravel toolkit
 
-Servik treats a Laravel application as more than files on a site: it builds
+Serfex treats a Laravel application as more than files on a site: it builds
 releases, keeps them for rollback, runs the queues, the scheduler and
 long-running processes as managed services, and gives developers their own
 access without a server account.
@@ -21,7 +21,7 @@ Laravel → **Install Laravel application**:
 |-------|---|
 | Site | The site it runs on; its document root becomes the application's `public/`. |
 | Source | **New project** (plain Laravel, or the React, Vue or Livewire starter kit), or **From a Git repository** (`user/repository` on GitHub, GitLab or Bitbucket, or any https or SSH address). |
-| Private repository | Servik makes a read-only **deploy key** (ed25519) for the site and shows it; add it to the repository, then continue. |
+| Private repository | Serfex makes a read-only **deploy key** (ed25519) for the site and shows it; add it to the repository, then continue. |
 | Branch | Empty: the repository's default branch. |
 | PHP version | Set as the site's PHP version; Composer and Artisan use it too. |
 | Database | A new MySQL, MariaDB or PostgreSQL database and user created for it (`<prefix>laravel`), an existing database, an SQLite file shared between releases, or none. `DB_*` is written to `.env`. |
@@ -135,7 +135,7 @@ Long-running processes, each a systemd service:
 - **Reverb**: WebSockets, proxied by Nginx.
 - **Custom**: any command, such as `php artisan mqtt:listen`.
 
-Octane and Reverb listen on 127.0.0.1, on ports Servik picks from 20000 to
+Octane and Reverb listen on 127.0.0.1, on ports Serfex picks from 20000 to
 29999.
 
 ## Logs
@@ -144,7 +144,7 @@ The application's own log files with level filters, a search and live follow.
 
 ## Maintenance mode
 
-- **Servik maintenance page** or **Custom HTML**: Nginx shows the page with
+- **Serfex maintenance page** or **Custom HTML**: Nginx shows the page with
   503 while the application keeps running. **Allowed IP addresses** and a
   **bypass link** (a cookie for your team) see the site normally.
 - **The application's own page**: runs `php artisan down` with your
@@ -185,10 +185,10 @@ deployments and open and remove previews; *Developer* keys can also use
 - name: Deploy
   run: |
     curl -fsSL https://panel.example.com:8443/cli/install.sh | sh
-    servik deploy --ref "$GITHUB_SHA" --wait
+    serfex deploy --ref "$GITHUB_SHA" --wait
   env:
-    SERVIK_URL: https://panel.example.com:8443
-    SERVIK_TOKEN: ${{ secrets.SERVIK_TOKEN }}
+    SERFEX_URL: https://panel.example.com:8443
+    SERFEX_TOKEN: ${{ secrets.SERFEX_TOKEN }}
 ```
 
 `--wait` follows the deployment and fails the job if it fails. See the

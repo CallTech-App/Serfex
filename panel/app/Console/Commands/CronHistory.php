@@ -7,7 +7,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('servik:cron-history')]
+#[Signature('serfex:cron-history')]
 #[Description("Read each scheduled task's last run from the server")]
 class CronHistory extends Command
 {

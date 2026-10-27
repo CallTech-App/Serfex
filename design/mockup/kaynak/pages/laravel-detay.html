@@ -59,7 +59,7 @@
         <div id="s-dep" class="sec" hidden>
           <dl class="px-5 py-2 divide-y divide-line text-[13.5px]">
             <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Kaynak</dt><dd class="flex flex-wrap items-center gap-2"><i data-lucide="github" class="w-4 h-4"></i><span class="font-mono">hizlikargo/api</span><span class="text-muted">· GitHub bağlantısıyla</span><button id="keyOpen" class="text-[13px] text-accent hover:underline">Dağıtım anahtarı</button></dd></div>
-            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Otomatik dağıtım</dt><dd class="space-y-1"><label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Otomatik dağıtım ayarı değişti." class="w-4 h-4 accent-[rgb(var(--accent))]"><span><span class="font-mono">main</span> dalına push gelince</span></label><p class="text-2xs text-muted">Webhook: <span class="font-mono">https://srv-ist-01.servik.net:8443/hooks/deploy/7Hk2qP</span> <button data-toast="Webhook adresi kopyalandı." class="text-accent hover:underline">Kopyala</button></p></dd></div>
+            <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Otomatik dağıtım</dt><dd class="space-y-1"><label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Otomatik dağıtım ayarı değişti." class="w-4 h-4 accent-[rgb(var(--accent))]"><span><span class="font-mono">main</span> dalına push gelince</span></label><p class="text-2xs text-muted">Webhook: <span class="font-mono">https://srv-ist-01.serfex.net:8443/hooks/deploy/7Hk2qP</span> <button data-toast="Webhook adresi kopyalandı." class="text-accent hover:underline">Kopyala</button></p></dd></div>
             <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Sıfır kesintili dağıtım</dt><dd>Açık <span class="text-muted">· her sürüm <span class="font-mono">releases/</span> altına kurulur, <span class="font-mono">current</span> bağlantısı tek adımda değişir · son 5 sürüm saklanır</span></dd></div>
             <div class="grid sm:grid-cols-[230px_1fr] gap-1 sm:gap-6 py-3"><dt class="text-muted">Güvenlik ağı</dt><dd class="space-y-1.5">
               <label class="flex items-center gap-2.5"><input type="checkbox" checked data-toast="Ayar değişti." class="w-4 h-4 accent-[rgb(var(--accent))]">Sağlık kontrolü başarısızsa önceki sürüme otomatik dön <span class="text-muted font-mono">/up</span></label>
@@ -74,7 +74,7 @@
           <details class="px-5 py-4 border-t border-line text-[13px]">
             <summary class="cursor-pointer text-accent">Dağıtım adımları ve kancalar</summary>
             <div class="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-4" id="hooks"></div>
-            <p class="mt-2 text-2xs text-muted">Kodu çekme, <span class="font-mono">storage</span> ve <span class="font-mono">.env</span> bağlama, <span class="font-mono">current</span> geçişi ve PHP-FPM yenileme Servik tarafından yapılır; burada yalnızca kendi adımlarınızı yazarsınız. SSH izni gerekmez.</p>
+            <p class="mt-2 text-2xs text-muted">Kodu çekme, <span class="font-mono">storage</span> ve <span class="font-mono">.env</span> bağlama, <span class="font-mono">current</span> geçişi ve PHP-FPM yenileme Serfex tarafından yapılır; burada yalnızca kendi adımlarınızı yazarsınız. SSH izni gerekmez.</p>
             <button data-toast="Dağıtım adımları kaydedildi." class="mt-2 h-8 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Adımları kaydet</button>
           </details>
         </div>
@@ -166,7 +166,7 @@
               <tbody id="cronRows" class="divide-y divide-line"></tbody>
             </table>
           </div>
-          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Görevler <span class="font-mono">routes/console.php</span> içinden okunur. Servik <span class="font-mono">schedule:run</span> komutunu her dakika bir systemd zamanlayıcısıyla çalıştırır ve kaçırılan çalışmaları bildirir.</p>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Görevler <span class="font-mono">routes/console.php</span> içinden okunur. Serfex <span class="font-mono">schedule:run</span> komutunu her dakika bir systemd zamanlayıcısıyla çalıştırır ve kaçırılan çalışmaları bildirir.</p>
         </div>
 
         <!-- Süreçler -->
@@ -216,7 +216,7 @@
             <div class="max-w-xl"><textarea id="mIps" rows="3" class="w-full px-3 py-2 rounded-md border border-line bg-surface focus:border-accent outline-none font-mono text-[13px]">78.186.41.12
 10.0.0.0/24</textarea><p class="mt-1 text-2xs text-muted">Her satıra bir adres veya ağ.</p></div>
             <label for="mTpl" class="font-medium md:pt-2">Ziyaretçinin göreceği sayfa</label>
-            <div class="max-w-xl"><select id="mTpl" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Uygulamanın kendi sayfası (resources/views/errors/503.blade.php)</option><option>Servik bakım sayfası, marka renkleriyle</option><option>Özel HTML</option></select></div>
+            <div class="max-w-xl"><select id="mTpl" class="w-full h-9 px-2.5 rounded-md border border-line bg-surface"><option>Uygulamanın kendi sayfası (resources/views/errors/503.blade.php)</option><option>Serfex bakım sayfası, marka renkleriyle</option><option>Özel HTML</option></select></div>
             <label for="mRetry" class="font-medium md:pt-2">Tekrar deneme süresi</label>
             <div class="max-w-xl flex items-center gap-2"><input id="mRetry" value="60" class="w-24 h-9 px-3 rounded-md border border-line bg-surface focus:border-accent outline-none num"><span class="text-muted text-[13px]">saniye (Retry-After)</span></div>
             <div class="md:col-start-2"><button id="mBtn" class="h-9 px-3.5 rounded-md bg-warn text-white text-[13.5px] font-medium">Bakım moduna al</button></div>
@@ -253,11 +253,11 @@
             <p class="font-medium md:pt-2">Dağıtım anahtarı (API)</p>
             <div class="max-w-xl"><div class="flex gap-2"><input readonly type="password" value="svk_dep_9f2Lq7xVt3Kp8Zr1" class="flex-1 min-w-0 h-9 px-3 rounded-md border border-line bg-surface-2 font-mono text-[13px]"><button data-toast="Anahtar kopyalandı." class="h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Kopyala</button><button data-toast="Anahtar yenilendi; eskisi artık çalışmaz." class="h-9 px-3 rounded-md border border-line hover:bg-surface-2 text-[13px]">Yenile</button></div><p class="mt-1 text-2xs text-muted">Yalnızca bu uygulamayı dağıtabilir. Son kullanım: bugün 23:38, GitHub Actions.</p></div>
             <p class="font-medium md:pt-2">Komut satırından</p>
-            <pre class="max-w-xl p-3 rounded-md bg-surface-2 border border-line font-mono text-[12.5px] overflow-x-auto scroll-thin">servik deploy api.hizlikargo.app --branch=main</pre>
+            <pre class="max-w-xl p-3 rounded-md bg-surface-2 border border-line font-mono text-[12.5px] overflow-x-auto scroll-thin">serfex deploy api.hizlikargo.app --branch=main</pre>
             <p class="font-medium md:pt-2">CI'dan (GitHub Actions)</p>
-            <pre class="max-w-xl p-3 rounded-md bg-surface-2 border border-line font-mono text-[12.5px] overflow-x-auto scroll-thin">- name: Servik ile dağıt
-  run: curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.SERVIK_TOKEN }}" \
-    https://srv-ist-01.servik.net:8443/api/v1/apps/api.hizlikargo.app/deploy</pre>
+            <pre class="max-w-xl p-3 rounded-md bg-surface-2 border border-line font-mono text-[12.5px] overflow-x-auto scroll-thin">- name: Serfex ile dağıt
+  run: curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.SERFEX_TOKEN }}" \
+    https://srv-ist-01.serfex.net:8443/api/v1/apps/api.hizlikargo.app/deploy</pre>
           </div>
         </div>
 
@@ -375,7 +375,7 @@
     $('lmTitle').textContent = 'Dağıtım #149 · canlı'; $('logModal').hidden = false;
     stream($('lmOut'), DEPLOG('#149', ref), () => { deps[0] = ['#149', 'c7d1e90', `${ref} dalının son hâli`, 'Sercan Yılmaz', 'Şimdi', '1 dk 09 sn', 'ok']; drawDeps(); toast('#149 yayında.'); });
   });
-  $('keyOpen').onclick = () => info('Dağıtım anahtarı', '<p class="text-muted mb-2">Depo GitHub bağlantısıyla eklendi, anahtar otomatik yüklendi. Elle eklemek isterseniz bu açık anahtarı deponun Deploy keys bölümüne salt okunur olarak ekleyin.</p><pre class="p-3 rounded-md bg-surface-2 border border-line font-mono text-[12px] whitespace-pre-wrap break-all">ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK7q2mXv9pQ1sLr4Tz8NcYw0eJb3hGd5fU6aRkP2xVt servik@api.hizlikargo.app</pre>', `${closeBtn}<button data-toast="Açık anahtar kopyalandı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Kopyala</button>`);
+  $('keyOpen').onclick = () => info('Dağıtım anahtarı', '<p class="text-muted mb-2">Depo GitHub bağlantısıyla eklendi, anahtar otomatik yüklendi. Elle eklemek isterseniz bu açık anahtarı deponun Deploy keys bölümüne salt okunur olarak ekleyin.</p><pre class="p-3 rounded-md bg-surface-2 border border-line font-mono text-[12px] whitespace-pre-wrap break-all">ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK7q2mXv9pQ1sLr4Tz8NcYw0eJb3hGd5fU6aRkP2xVt serfex@api.hizlikargo.app</pre>', `${closeBtn}<button data-toast="Açık anahtar kopyalandı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Kopyala</button>`);
   const hooks = [
     ['Derlemeden önce', 'Kod çekildikten sonra', ''],
     ['Derleme', 'Bağımlılıklar ve ön yüz', 'composer install --no-dev --optimize-autoloader\npnpm install --frozen-lockfile\npnpm build'],

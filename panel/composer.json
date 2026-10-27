@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "servik/panel",
+    "name": "serfex/panel",
     "type": "project",
-    "description": "Servik web hosting control panel (Laravel application).",
+    "description": "Serfex web hosting control panel (Laravel application).",
     "keywords": [
         "hosting",
         "control-panel",

@@ -58,7 +58,7 @@ return new class extends Migration
         });
 
         Schema::table('laravel_apps', function (Blueprint $table) {
-            // The database Servik created for the application, if any.
+            // The database Serfex created for the application, if any.
             $table->foreignId('database_id')->nullable()->constrained()->nullOnDelete();
         });
     }

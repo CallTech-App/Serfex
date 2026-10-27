@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A command line sign-in waiting for its person: `servik login` shows a
+ * A command line sign-in waiting for its person: `serfex login` shows a
  * code and a link, the person approves it in the browser, and the command
  * line collects its new key once.
  */

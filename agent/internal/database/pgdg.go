@@ -18,9 +18,9 @@ import (
 // PostgreSQL comes from the PostgreSQL project's own archive
 // (apt.postgresql.org, "PGDG"): Ubuntu ships one major version per
 // release (16 on 24.04) for its whole life, the archive every supported
-// one. The customers' server is installed in a major version Servik offers
+// one. The customers' server is installed in a major version Serfex offers
 // (Releases); it then stays on that major and gets its minor updates from
-// Yazılım Yönetimi. Servik's own cluster (port 5433) keeps the version
+// Yazılım Yönetimi. Serfex's own cluster (port 5433) keeps the version
 // install.sh gave it.
 
 // pgdgSources is where the archive is listed; the file name is the one
@@ -35,7 +35,7 @@ var pgdgKeyrings = []string{
 	"/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc",
 }
 
-// pgCustomerPort is the customers' cluster's port; Servik's own cluster
+// pgCustomerPort is the customers' cluster's port; Serfex's own cluster
 // listens on 5433.
 const pgCustomerPort = "5432"
 

@@ -11,7 +11,7 @@
         @error('repository')
             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
         @else
-            <p class="mt-1.5 text-2xs text-muted"><x-t text="Herkese açık veya erişim anahtarıyla açılan bir :part adresi, ya da özel depo için :part2 biçiminde SSH adresi (Servik bir dağıtım anahtarı oluşturur)."><x-slot:part><span class="font-mono">https://</span></x-slot:part><x-slot:part2><span class="font-mono">git@github.com:kullanici/site.git</span></x-slot:part2></x-t></p>
+            <p class="mt-1.5 text-2xs text-muted"><x-t text="Herkese açık veya erişim anahtarıyla açılan bir :part adresi, ya da özel depo için :part2 biçiminde SSH adresi (Serfex bir dağıtım anahtarı oluşturur)."><x-slot:part><span class="font-mono">https://</span></x-slot:part><x-slot:part2><span class="font-mono">git@github.com:kullanici/site.git</span></x-slot:part2></x-t></p>
         @enderror
     </div>
 

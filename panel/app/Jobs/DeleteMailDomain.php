@@ -34,7 +34,7 @@ class DeleteMailDomain implements ShouldQueue
         }
 
         try {
-            $agent->call('mail.domain.delete', ['domain' => $domain->name, 'remove_files' => $this->purge], config('servik.agent.job_timeout'));
+            $agent->call('mail.domain.delete', ['domain' => $domain->name, 'remove_files' => $this->purge], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             // Without a mail server there is nothing to stop or delete.
             if ($e->getCode() !== SyncMailDomain::NOT_SET_UP) {

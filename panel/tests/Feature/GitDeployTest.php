@@ -43,7 +43,7 @@ class GitDeployTest extends TestCase
         parent::setUp();
         Queue::fake();
         $this->agent = new FakeAgent([
-            'site.git.key' => ['public_key' => 'ssh-ed25519 AAAAC3Nza servik@kahve.com.tr'],
+            'site.git.key' => ['public_key' => 'ssh-ed25519 AAAAC3Nza serfex@kahve.com.tr'],
             'site.git.remove' => ['removed' => true],
             'site.git.read' => ['data' => "▸ Dağıtım başladı · main\n", 'offset' => 26, 'size' => 26],
         ]);
@@ -117,7 +117,7 @@ class GitDeployTest extends TestCase
             ->set('repository', 'git@github.com:kahve/site.git')
             ->call('connect')
             ->assertSet('showingKey', true)
-            ->assertSet('publicKey', 'ssh-ed25519 AAAAC3Nza servik@kahve.com.tr')
+            ->assertSet('publicKey', 'ssh-ed25519 AAAAC3Nza serfex@kahve.com.tr')
             ->assertSee('https://github.com/kahve/site/settings/keys');
         $this->assertSame([['domain' => 'kahve.com.tr', 'user' => 'kahve', 'php_version' => '8.4']], $this->agent->called('site.git.key'));
         GitRepository::sole()->delete();
@@ -145,7 +145,7 @@ class GitDeployTest extends TestCase
         foreach (['https://u:p@github.com/k/s.git', 'ftp://example.com/s', 'kahve/site'] as $address) {
             Livewire::test(SiteGit::class, ['site' => $this->site->id])->set('repository', $address)->call('connect')->assertHasErrors('repository');
         }
-        foreach (['../evil', '.servik', 'laravel/current', 'public_html/../..'] as $path) {
+        foreach (['../evil', '.serfex', 'laravel/current', 'public_html/../..'] as $path) {
             Livewire::test(SiteGit::class, ['site' => $this->site->id])->set('repository', 'https://github.com/k/s.git')->set('path', $path)->call('connect')->assertHasErrors('path');
         }
         $this->assertSame(0, GitRepository::count());

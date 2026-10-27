@@ -27,11 +27,11 @@ const MaxNames = 100
 
 // PanelUnit is the systemd unit of the panel's own web server. It is
 // reloaded after the panel certificate changes, when it exists.
-const PanelUnit = "servik-web"
+const PanelUnit = "serfex-web"
 
 const (
-	panelVhost        = "/etc/nginx/sites-available/servik-panel.conf"
-	panelVhostEnabled = "/etc/nginx/sites-enabled/servik-panel.conf"
+	panelVhost        = "/etc/nginx/sites-available/serfex-panel.conf"
+	panelVhostEnabled = "/etc/nginx/sites-enabled/serfex-panel.conf"
 )
 
 // ChallengeDNS publishes DNS-01 answers in a zone this server serves
@@ -56,7 +56,7 @@ type Manager struct {
 	issuer    Issuer
 	consumers []Consumer
 	// PanelChanged, when set, runs after the panel's certificate files
-	// changed and before the panel's web server reloads (servik-web
+	// changed and before the panel's web server reloads (serfex-web
 	// switches from its self-signed certificate to the panel's).
 	PanelChanged func(context.Context) error
 	// localWeb is where this server's Nginx answers on port 80. Before
@@ -577,7 +577,7 @@ func (m *Manager) usedBy(name string) ([]string, error) {
 
 // ensureWebroot creates the directory HTTP-01 answers are written to.
 func (m *Manager) ensureWebroot() error {
-	for _, d := range []string{"/var/lib/servik", Webroot, Webroot + "/.well-known", ChallengeDir} {
+	for _, d := range []string{"/var/lib/serfex", Webroot, Webroot + "/.well-known", ChallengeDir} {
 		if err := os.MkdirAll(m.h.Path(d), 0o755); err != nil {
 			return err
 		}

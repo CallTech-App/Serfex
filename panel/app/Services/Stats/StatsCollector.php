@@ -25,7 +25,7 @@ class StatsCollector
     public const ACK_KEY = 'stats.ack';
 
     /** Whether the agent has its country table, for the pages. */
-    public const COUNTRIES_KEY = 'servik.stats.countries';
+    public const COUNTRIES_KEY = 'serfex.stats.countries';
 
     private const COUNTS = ['requests', 'bytes', 'visitors', 'pages', 'bot_requests', 'bot_bytes', 's2xx', 's3xx', 's4xx', 's5xx'];
 
@@ -64,7 +64,7 @@ class StatsCollector
      */
     public function store(array $batch): int
     {
-        $tz = config('servik.timezone');
+        $tz = config('serfex.timezone');
         $ids = Site::pluck('id', 'domain');
         $hourly = $daily = $items = $traffic = [];
         foreach ($batch['sites'] ?? [] as $site) {

@@ -25,7 +25,7 @@ class DnsCheck
      */
     public function check(string $name): array
     {
-        if (! config('servik.ssl.check_dns')) {
+        if (! config('serfex.ssl.check_dns')) {
             return ['ok' => true, 'found' => []];
         }
         $found = $this->lookup($name);

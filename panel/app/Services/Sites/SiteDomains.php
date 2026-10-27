@@ -135,7 +135,7 @@ class SiteDomains
     {
         $site->unsetRelation('subdomains')->unsetRelation('redirects');
         $site->load('systemUser.customer', 'certificate', 'subdomains', 'redirects');
-        $result = $this->agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+        $result = $this->agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
         $site->update([
             'status' => SiteStatus::Active,
             'last_error' => null,
@@ -305,7 +305,7 @@ class SiteDomains
      * Asks Let's Encrypt again when the site's certificate (or its pending
      * request) does not cover every name. Names whose DNS does not point
      * here yet are left out by IssueCertificate and picked up by the
-     * hourly servik:ssl-renew. Uploaded certificates are left alone.
+     * hourly serfex:ssl-renew. Uploaded certificates are left alone.
      */
     public function extendCertificate(Site $site): bool
     {
@@ -398,7 +398,7 @@ class SiteDomains
      */
     private function pointing(string $name): array
     {
-        return Cache::remember('servik.dns-points:'.$name, 300, fn () => $this->dns->check($name));
+        return Cache::remember('serfex.dns-points:'.$name, 300, fn () => $this->dns->check($name));
     }
 
     /**

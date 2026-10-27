@@ -6,19 +6,19 @@
 <div class="space-y-6">
     <div>
         <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('ai.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />Servik AI</a>
+            <a href="{{ route('ai.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />Serfex AI</a>
             <x-icon name="chevron-right" class="size-3.5" />
             <span class="text-fg">{{ __('Ayarlar') }}</span>
         </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Servik AI ayarları') }}</h1>
-        <p class="mt-1 text-[13px] text-muted">{{ __('Claude bağlantısı, model, Servik AI\'ın kendi başına yapabilecekleri ve harcama.') }}</p>
+        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Serfex AI ayarları') }}</h1>
+        <p class="mt-1 text-[13px] text-muted">{{ __('Claude bağlantısı, model, Serfex AI\'ın kendi başına yapabilecekleri ve harcama.') }}</p>
     </div>
 
     <section class="rounded-xl border border-line bg-surface">
         <form wire:submit="save" class="max-w-3xl px-5 py-5 text-[13.5px]">
             <div class="divide-y divide-line">
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
-                    <span>Servik AI</span>
+                    <span>Serfex AI</span>
                     <label class="flex items-center gap-2.5">
                         <input type="checkbox" wire:model="enabled" class="size-4 accent-accent">
                         {{ __('Asistanı kullan') }}
@@ -82,7 +82,7 @@
                         @error('budget')
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
-                            <p class="mt-1.5 text-2xs text-muted">{{ __('Bu ayın tahmini harcaması sınıra ulaşınca Servik AI ay sonuna kadar yeni soru almaz. Boş bırakılırsa sınır yoktur.') }}</p>
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Bu ayın tahmini harcaması sınıra ulaşınca Serfex AI ay sonuna kadar yeni soru almaz. Boş bırakılırsa sınır yoktur.') }}</p>
                         @enderror
                     </div>
                 </div>
@@ -91,7 +91,7 @@
                 <button type="submit" class="h-9 rounded-md bg-accent px-3.5 font-medium text-accent-fg hover:brightness-110">{{ __('Kaydet') }}</button>
             </div>
         </form>
-        <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Sorularınız ve Servik AI\'ın okuduğu panel bilgileri (site adları, durumlar, kayıtlar, günlük satırları) yanıt için Anthropic\'e gönderilir. Parolalar, .env değerleri, özel anahtarlar ve API anahtarları gönderilmez.') }}</p>
+        <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Sorularınız ve Serfex AI\'ın okuduğu panel bilgileri (site adları, durumlar, kayıtlar, günlük satırları) yanıt için Anthropic\'e gönderilir. Parolalar, .env değerleri, özel anahtarlar ve API anahtarları gönderilmez.') }}</p>
     </section>
 
     <section class="rounded-xl border border-line bg-surface">

@@ -87,7 +87,7 @@ class Certificates
         }
 
         return [
-            __("Let's Encrypt'e ulaşılamadı: bu sunucunun ağ bağlantısı ya da DNS çözümlemesi o an çalışmıyordu. Servik bir saat içinde yeniden dener. Ayrıntı: :reason", ['reason' => $e->reason]),
+            __("Let's Encrypt'e ulaşılamadı: bu sunucunun ağ bağlantısı ya da DNS çözümlemesi o an çalışmıyordu. Serfex bir saat içinde yeniden dener. Ayrıntı: :reason", ['reason' => $e->reason]),
             now()->addMinutes(5),
         ];
     }
@@ -118,7 +118,7 @@ class Certificates
             'private_key' => $key,
             'chain' => $chain,
             'domain' => $site->domain,
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
 
         $uploaded = Certificate::create([
             'site_id' => $site->id,

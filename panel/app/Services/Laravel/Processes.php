@@ -25,7 +25,7 @@ class Processes
     public function apply(LaravelApp $app): void
     {
         $app->loadMissing('site.systemUser', 'workers', 'processes');
-        $timeout = config('servik.agent.job_timeout');
+        $timeout = config('serfex.agent.job_timeout');
         // A suspended customer's application runs nothing; its settings
         // stay and come back when the suspension is lifted.
         $off = $app->site->isSuspended();
@@ -49,7 +49,7 @@ class Processes
         $app->loadMissing('site.systemUser', 'site.certificate');
         $site = $app->site;
         $site->setRelation('laravelApp', $app->load('processes'));
-        $this->agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+        $this->agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
     }
 
     /**

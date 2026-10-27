@@ -6,8 +6,8 @@
 <meta name="robots" content="noindex">
 <title>{{.Domain}}</title>
 <style>
-/* Servik varsayılan site sayfası. Dış kaynak yok; görsel satır içi SVG.
-   Yerleşim: koyu gece zemini; üstte metin + çizim, altında üç kart, sonra "Servik nedir" ve özellikler. */
+/* Serfex varsayılan site sayfası. Dış kaynak yok; görsel satır içi SVG.
+   Yerleşim: koyu gece zemini; üstte metin + çizim, altında üç kart, sonra "Serfex nedir" ve özellikler. */
 :root {
   --bg: #091113; --bg-2: #0d181b; --fg: #e6eeef; --muted: #93a4a8; --dim: #62757a;
   --accent: #34b8bc; --accent-hi: #6fd8da; --accent-deep: #0d7479;
@@ -105,7 +105,7 @@ h1 .domain { display: block; font-family: var(--mono); font-weight: 600; letter-
 .card p { margin: 0; font-size: 14.5px; color: var(--muted); }
 .card code { font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(255, 255, 255, .07); border-radius: 5px; padding: 1px 5px; }
 
-/* Servik nedir */
+/* Serfex nedir */
 .about { border-top: 1px solid var(--glass-line); background: linear-gradient(180deg, rgba(13, 24, 27, .0), rgba(13, 24, 27, .7)); }
 .about .wrap { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; padding-block: 56px 64px; align-items: start; }
 .about h2 { margin: 0 0 14px; font-size: 28px; letter-spacing: -.02em; font-weight: 700; }
@@ -148,7 +148,7 @@ footer a { color: var(--muted); }
         <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="#051618" opacity=".7"/>
         <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="#051618"/>
       </svg>
-      servik
+      serfex
     </span>
     <a class="lang" href="#en" lang="tr">English</a>
     <a class="lang" href="#top" lang="en">Türkçe</a>
@@ -163,8 +163,8 @@ footer a { color: var(--muted); }
         <span class="domain">{{.Domain}}</span>
         <span lang="tr">için varsayılan sayfa</span><span lang="en">default page</span>
       </h1>
-      <p class="sub" lang="tr">Bu alan adı <b>Servik</b> ile barındırılıyor. Site sahibi kendi dosyalarını yüklediğinde bu sayfanın yerini gerçek site alır.</p>
-      <p class="sub" lang="en">This domain is hosted with <b>Servik</b>. Once the site owner uploads their own files, the real site replaces this page.</p>
+      <p class="sub" lang="tr">Bu alan adı <b>Serfex</b> ile barındırılıyor. Site sahibi kendi dosyalarını yüklediğinde bu sayfanın yerini gerçek site alır.</p>
+      <p class="sub" lang="en">This domain is hosted with <b>Serfex</b>. Once the site owner uploads their own files, the real site replaces this page.</p>
       <div class="actions">
         {{- if .PanelURL}}
         <a class="btn btn-primary" href="{{.PanelURL}}">
@@ -172,7 +172,7 @@ footer a { color: var(--muted); }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
         {{- end}}
-        <a class="btn btn-ghost" href="#servik"><span lang="tr">Servik nedir?</span><span lang="en">What is Servik?</span></a>
+        <a class="btn btn-ghost" href="#serfex"><span lang="tr">Serfex nedir?</span><span lang="en">What is Serfex?</span></a>
       </div>
       {{- if .PanelURL}}
       <p class="panel-url">{{.PanelHost}}</p>
@@ -231,7 +231,7 @@ footer a { color: var(--muted); }
             <circle class="blink d3" cx="290" cy="237" r="3.2" fill="#34b8bc"/>
             <circle class="blink" cx="304" cy="230" r="3.2" fill="#6fd8da"/>
             <circle class="blink d2" cx="318" cy="223" r="3.2" fill="#6fd8da"/>
-            <!-- üst yüzde Servik işareti -->
+            <!-- üst yüzde Serfex işareti -->
             <ellipse cx="260" cy="170" rx="80" ry="40" fill="url(#glow)" opacity=".6"/>
             <g transform="matrix(2.4 1.2 -2.4 1.2 260 138.8)">
               <rect width="26" height="26" rx="6" fill="#34b8bc"/>
@@ -285,12 +285,12 @@ footer a { color: var(--muted); }
   </div>
 </section>
 
-<section class="about" id="servik">
+<section class="about" id="serfex">
   <div class="wrap">
     <div>
-      <h2><span lang="tr">Servik nedir?</span><span lang="en">What is Servik?</span></h2>
-      <p lang="tr"><b>Servik</b>, açık kaynak bir web barındırma panelidir. Siteleri, alan adlarını, DNS'i, e-postayı, veritabanlarını ve yedekleri tek yerden yönetir. Laravel uygulamaları için hazır araçlar ve sunucuyu izleyip sorunları açıklayan yerleşik bir yapay zekâ asistanı sunar.</p>
-      <p lang="en"><b>Servik</b> is an open-source web hosting panel. It manages sites, domains, DNS, email, databases and backups in one place. It comes with ready-made tools for Laravel apps and a built-in AI assistant that watches the server and explains problems.</p>
+      <h2><span lang="tr">Serfex nedir?</span><span lang="en">What is Serfex?</span></h2>
+      <p lang="tr"><b>Serfex</b>, açık kaynak bir web barındırma panelidir. Siteleri, alan adlarını, DNS'i, e-postayı, veritabanlarını ve yedekleri tek yerden yönetir. Laravel uygulamaları için hazır araçlar ve sunucuyu izleyip sorunları açıklayan yerleşik bir yapay zekâ asistanı sunar.</p>
+      <p lang="en"><b>Serfex</b> is an open-source web hosting panel. It manages sites, domains, DNS, email, databases and backups in one place. It comes with ready-made tools for Laravel apps and a built-in AI assistant that watches the server and explains problems.</p>
       <div class="links">
         <a href="https://github.com/CallTech-App/Serfex/tree/main/docs"><span lang="tr">Belgeler</span><span lang="en">Documentation</span></a>
         <a href="https://github.com/CallTech-App/Serfex/blob/main/docs/laravel.md"><span lang="tr">Laravel rehberi</span><span lang="en">Laravel guide</span></a>
@@ -326,7 +326,7 @@ footer a { color: var(--muted); }
       </li>
       <li>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg>
-        <strong>Servik AI</strong>
+        <strong>Serfex AI</strong>
         <span class="d"><span lang="tr">Sorunu bulur, açıklar</span><span lang="en">Finds and explains issues</span></span>
       </li>
     </ul>
@@ -335,8 +335,8 @@ footer a { color: var(--muted); }
 
 <footer>
   <div class="wrap">
-    <span lang="tr">Bu sayfa <b>Servik</b> tarafından oluşturuldu. Servik, açık kaynak (AGPL-3.0) bir web barındırma panelidir.</span>
-    <span lang="en">This page was created by <b>Servik</b>, an open-source (AGPL-3.0) web hosting panel.</span>
+    <span lang="tr">Bu sayfa <b>Serfex</b> tarafından oluşturuldu. Serfex, açık kaynak (AGPL-3.0) bir web barındırma panelidir.</span>
+    <span lang="en">This page was created by <b>Serfex</b>, an open-source (AGPL-3.0) web hosting panel.</span>
   </div>
 </footer>
 </div>

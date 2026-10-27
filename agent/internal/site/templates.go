@@ -20,7 +20,7 @@ var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual
         proxy_read_timeout 300s;
 {{- end}}
 {{- define "acme"}}
-    # Let's Encrypt validation, answered by Servik whatever the site does.
+    # Let's Encrypt validation, answered by Serfex whatever the site does.
     location ^~ /.well-known/acme-challenge/ {
         root {{.ACMERoot}};
         default_type "text/plain";
@@ -30,24 +30,24 @@ var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual
 {{- if .Maint}}
 # Maintenance: everyone gets the maintenance page except these addresses,
 # browsers holding the bypass cookie, and Let's Encrypt validation.
-geo $servik_maint_ip_{{.MaintVar}} {
+geo $serfex_maint_ip_{{.MaintVar}} {
     default 1;
 {{- range .MaintAllow}}
     {{.}} 0;
 {{- end}}
 }
-map $cookie_servik_maintenance $servik_maint_c_{{.MaintVar}} {
+map $cookie_serfex_maintenance $serfex_maint_c_{{.MaintVar}} {
 {{- if .MaintSecret}}
     "{{.MaintSecret}}" 0;
 {{- end}}
-    default $servik_maint_ip_{{.MaintVar}};
+    default $serfex_maint_ip_{{.MaintVar}};
 }
-map $uri $servik_maint_{{.MaintVar}} {
+map $uri $serfex_maint_{{.MaintVar}} {
 {{- if .MaintSecret}}
     "/{{.MaintSecret}}" 0;
 {{- end}}
     "~^/\.well-known/acme-challenge/" 0;
-    default $servik_maint_c_{{.MaintVar}};
+    default $serfex_maint_c_{{.MaintVar}};
 }
 {{- end}}
 {{- define "listen"}}
@@ -86,7 +86,7 @@ map $uri $servik_maint_{{.MaintVar}} {
     client_max_body_size {{.Pool.BodyMB}}m; # PHP post_max_size
 {{- end}}
 
-    # Servik's additions for this site (Güvenlik): WAF mode, password
+    # Serfex's additions for this site (Güvenlik): WAF mode, password
     # protected folders, blocked paths. Missing files are fine.
     include {{.ExtraConf}};
 {{- if .Directives}}
@@ -99,8 +99,8 @@ map $uri $servik_maint_{{.MaintVar}} {
 
     # The hosting account is suspended: every request gets the suspension
     # page. The files stay where they are.
-    error_page 503 @servik_suspended;
-    location @servik_suspended {
+    error_page 503 @serfex_suspended;
+    location @serfex_suspended {
         root {{.SuspendedRoot}};
         try_files /{{.Domain}}.html =503;
         add_header Cache-Control "no-store" always;
@@ -133,8 +133,8 @@ map $uri $servik_maint_{{.MaintVar}} {
 {{- end}}
 {{- if .Maint}}
 
-    error_page 503 @servik_maintenance;
-    location @servik_maintenance {
+    error_page 503 @serfex_maintenance;
+    location @serfex_maintenance {
         root {{.MaintRoot}};
         try_files /{{.Domain}}.html =503;
         add_header Cache-Control "no-store" always;
@@ -146,12 +146,12 @@ map $uri $servik_maint_{{.MaintVar}} {
 
     # The bypass link: sets the cookie, then back to the home page.
     location = /{{.MaintSecret}} {
-        add_header Set-Cookie "servik_maintenance={{.MaintSecret}}; Path=/; Max-Age=43200; HttpOnly; SameSite=Lax{{if .TLS}}; Secure{{end}}";
+        add_header Set-Cookie "serfex_maintenance={{.MaintSecret}}; Path=/; Max-Age=43200; HttpOnly; SameSite=Lax{{if .TLS}}; Secure{{end}}";
         return 302 /;
     }
 {{- end}}
 
-    if ($servik_maint_{{.MaintVar}}) {
+    if ($serfex_maint_{{.MaintVar}}) {
         return 503;
     }
 {{- end}}
@@ -163,7 +163,7 @@ map $uri $servik_maint_{{.MaintVar}} {
         proxy_http_version 1.1;
         proxy_set_header Host $http_host;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $servik_connection_upgrade;
+        proxy_set_header Connection $serfex_connection_upgrade;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -179,7 +179,7 @@ map $uri $servik_maint_{{.MaintVar}} {
     }
 
     location ~ \.php$ {
-        try_files /servik-no-such-file @app;
+        try_files /serfex-no-such-file @app;
     }
 
     location @app {
@@ -193,7 +193,7 @@ map $uri $servik_maint_{{.MaintVar}} {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $servik_connection_upgrade;
+        proxy_set_header Connection $serfex_connection_upgrade;
         proxy_read_timeout 120s;
     }
 {{- else if .Apache}}
@@ -313,7 +313,7 @@ var tlsConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 ssl_protocols TLSv1.2 TLSv1.3;
 ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
 ssl_prefer_server_ciphers off;
-ssl_session_cache shared:ServikTLS:10m;
+ssl_session_cache shared:SerfexTLS:10m;
 ssl_session_timeout 1d;
 ssl_session_tickets off;
 `)
@@ -338,13 +338,13 @@ pm.max_spare_servers = {{.Pool.MaxSpare}}
 pm.process_idle_timeout = 30s
 pm.max_requests = {{.Pool.MaxRequests}}
 ; Workers without a temporary limit (Canlı İzleme).
-; servik-max-children = {{.Pool.Base}}
+; serfex-max-children = {{.Pool.Base}}
 {{- if .Pool.RequestTimeout}}
 request_terminate_timeout = {{.Pool.RequestTimeout}}s
 {{- end}}
 ; Live monitoring reads the pool's status here; Nginx never passes this
 ; path, and the status socket only answers root and the web server.
-pm.status_path = /servik-fpm-status
+pm.status_path = /serfex-fpm-status
 pm.status_listen = {{.StatusSocket}}
 
 chdir = /
@@ -444,5 +444,5 @@ func render(t *template.Template, d tmplData) []byte {
 }
 
 // TLSConfig returns the shared TLS settings file every HTTPS vhost
-// includes (cert.TLSConf), for other vhosts Servik writes.
+// includes (cert.TLSConf), for other vhosts Serfex writes.
 func TLSConfig() []byte { return tlsConf }

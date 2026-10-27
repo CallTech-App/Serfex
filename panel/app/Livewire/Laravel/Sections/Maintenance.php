@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Lazy;
 
 /**
- * Maintenance mode. By default Nginx shows Servik's page (or the
+ * Maintenance mode. By default Nginx shows Serfex's page (or the
  * customer's own HTML) to everyone but the listed addresses and holders
  * of the bypass link, and the application keeps running; or the
  * application's own php artisan down.
@@ -20,7 +20,7 @@ class Maintenance extends Section
 {
     public const MAX_ALLOW = 64;
 
-    public string $mode = 'servik';
+    public string $mode = 'serfex';
 
     public string $secret = '';
 

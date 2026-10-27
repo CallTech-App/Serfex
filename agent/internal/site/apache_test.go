@@ -12,7 +12,7 @@ import (
 )
 
 // installApache makes the simulator look like Apache was set up by
-// Servik.
+// Serfex.
 func installApache(t *testing.T, sim *host.Simulator) {
 	t.Helper()
 	for file, data := range map[string]string{
@@ -55,7 +55,7 @@ func TestApplyBehindApache(t *testing.T) {
 		"ServerAlias www.kahveatolyesi.com.tr",
 		"DocumentRoot /home/kahveatolyesi/web/kahveatolyesi.com.tr/public_html",
 		"AllowOverride All",
-		`SetHandler "proxy:unix:/run/php/servik-kahveatolyesi.com.tr.sock|fcgi://servik-kahveatolyesi.com.tr/"`,
+		`SetHandler "proxy:unix:/run/php/serfex-kahveatolyesi.com.tr.sock|fcgi://serfex-kahveatolyesi.com.tr/"`,
 		"RemoteIPHeader X-Real-IP",
 	} {
 		if !strings.Contains(vhost, want) {
@@ -86,7 +86,7 @@ func TestApplyBehindApache(t *testing.T) {
 	if exists(sim, "/etc/apache2/sites-available/kahveatolyesi.com.tr.conf") || exists(sim, "/etc/apache2/sites-enabled/kahveatolyesi.com.tr.conf") {
 		t.Error("apache vhost left behind")
 	}
-	if !strings.Contains(read(t, sim, res.NginxConfig), "fastcgi_pass unix:/run/php/servik-kahveatolyesi.com.tr.sock;") {
+	if !strings.Contains(read(t, sim, res.NginxConfig), "fastcgi_pass unix:/run/php/serfex-kahveatolyesi.com.tr.sock;") {
 		t.Error("nginx does not pass PHP to PHP-FPM again")
 	}
 }

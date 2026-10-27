@@ -13,14 +13,14 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
-// MaxWebPorts bounds servik-web's ports: the panel's port and, while a
+// MaxWebPorts bounds serfex-web's ports: the panel's port and, while a
 // change waits for confirmation, the new one (and one more to spare).
 const MaxWebPorts = 3
 
-// webPID is servik-web's master process (see webUnitTmpl).
-const webPID = "/run/servik-web.pid"
+// webPID is serfex-web's master process (see webUnitTmpl).
+const webPID = "/run/serfex-web.pid"
 
-// reservedPorts can never be servik-web's.
+// reservedPorts can never be serfex-web's.
 var reservedPorts = map[int]string{
 	80:              "the sites' HTTP port",
 	443:             "the sites' HTTPS port",
@@ -28,19 +28,19 @@ var reservedPorts = map[int]string{
 	8081:            "the DNS server's API port",
 }
 
-// WebPortsSpec sets the ports servik-web listens on.
+// WebPortsSpec sets the ports serfex-web listens on.
 type WebPortsSpec struct {
 	Ports []int `json:"ports"`
 }
 
-// WebPorts are the ports servik-web listens on.
+// WebPorts are the ports serfex-web listens on.
 type WebPorts struct {
 	Ports []int `json:"ports"`
 	// Port is the primary port, the first of Ports.
 	Port int `json:"port"`
 }
 
-// WebPortsStatus returns servik-web's ports.
+// WebPortsStatus returns serfex-web's ports.
 func (m *Manager) WebPortsStatus() (WebPorts, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -52,7 +52,7 @@ func (m *Manager) WebPortsStatus() (WebPorts, error) {
 	return WebPorts{Ports: ports, Port: ports[0]}, nil
 }
 
-// SetWebPorts makes servik-web listen on ports, the first being the
+// SetWebPorts makes serfex-web listen on ports, the first being the
 // primary one. The panel moves to a new port in two steps: first the old
 // and the new port together, then, once the new one is confirmed to
 // work, the new one alone (or the old one alone to go back).
@@ -78,9 +78,9 @@ func (m *Manager) SetWebPorts(ctx context.Context, spec WebPortsSpec) (WebPorts,
 	}
 	ports := append([]int(nil), spec.Ports...)
 
-	// servik-web is (re)configured the way SetupPanelWeb does it: the
+	// serfex-web is (re)configured the way SetupPanelWeb does it: the
 	// database tools only once the manager is set up. A development
-	// setup without servik-web only keeps the ports for later.
+	// setup without serfex-web only keeps the ports for later.
 	if panel.Installed(m.h) || m.exists(webConf) {
 		_, mysql := m.installedProduct(MySQL)
 		_, pg := m.installedProduct(PostgreSQL)
@@ -102,7 +102,7 @@ func (m *Manager) SetWebPorts(ctx context.Context, spec WebPortsSpec) (WebPorts,
 }
 
 // validWebPorts checks 1 to MaxWebPorts distinct ports: unprivileged
-// ones (1024-65535) or ones servik-web already listens on, never one of
+// ones (1024-65535) or ones serfex-web already listens on, never one of
 // reservedPorts.
 func validWebPorts(ports, current []int) error {
 	if len(ports) == 0 || len(ports) > MaxWebPorts {
@@ -124,7 +124,7 @@ func validWebPorts(ports, current []int) error {
 	return nil
 }
 
-// listening returns the TCP ports programs other than servik-web listen
+// listening returns the TCP ports programs other than serfex-web listen
 // on, on any address.
 func (m *Manager) listening(ctx context.Context) (map[int]bool, error) {
 	if m.Listening != nil {

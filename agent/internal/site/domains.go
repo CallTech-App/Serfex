@@ -46,7 +46,7 @@ var errorCodes = map[string]string{"403": "403", "404": "404", "50x": "500 502 5
 
 const (
 	// ErrorPagesRoot holds every site's own error pages, readable by Nginx.
-	ErrorPagesRoot = "/var/lib/servik/errors"
+	ErrorPagesRoot = "/var/lib/serfex/errors"
 	maxSubdomains  = 100
 	maxRedirects   = 200
 	maxDirectives  = 64 << 10
@@ -71,7 +71,7 @@ var (
 )
 
 func errorPageFile(domain, key string) string {
-	return ErrorPagesRoot + "/" + domain + "/servik-error-" + key + ".html"
+	return ErrorPagesRoot + "/" + domain + "/serfex-error-" + key + ".html"
 }
 
 func (s Spec) validateDomains() error {
@@ -318,7 +318,7 @@ func domainData(d *tmplData, s Spec, siteDir string, certNames []string) {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		d.ErrorPages = append(d.ErrorPages, errorPage{Codes: errorCodes[k], URI: "/servik-error-" + k + ".html"})
+		d.ErrorPages = append(d.ErrorPages, errorPage{Codes: errorCodes[k], URI: "/serfex-error-" + k + ".html"})
 	}
 	d.ErrorRoot = ErrorPagesRoot + "/" + s.Domain
 
@@ -374,7 +374,7 @@ func indent(text string) string {
 	return strings.Join(lines, "\n")
 }
 
-// errorPageContent puts Servik's marker on top of an error page.
+// errorPageContent puts Serfex's marker on top of an error page.
 func errorPageContent(html string) []byte {
 	return []byte("<!-- " + txn.Marker + ". Manual changes are overwritten. -->\n" + html)
 }

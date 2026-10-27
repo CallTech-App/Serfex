@@ -47,7 +47,7 @@ class SiteStats
      */
     public static function range(string $period): array
     {
-        $today = CarbonImmutable::now(config('servik.timezone'))->startOfDay();
+        $today = CarbonImmutable::now(config('serfex.timezone'))->startOfDay();
 
         return match ($period) {
             'bugun' => ['from' => $today, 'to' => $today, 'step' => 'hour'],
@@ -85,7 +85,7 @@ class SiteStats
     public function series(array $sites, string $period): array
     {
         ['from' => $from, 'to' => $to, 'step' => $step] = self::range($period);
-        $tz = config('servik.timezone');
+        $tz = config('serfex.timezone');
         $cols = 'sum(visitors) as visitors, sum(requests) as requests, sum(bytes) as bytes, sum(pages) as pages, sum(bot_requests) as bot_requests';
         $points = [];
         if ($step === 'hour') {

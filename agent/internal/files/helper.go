@@ -110,7 +110,7 @@ const (
 	// stay in the trash.
 	QuarantineDays = 30
 	// uploadPrefix names unfinished uploads; listings hide them.
-	uploadPrefix = ".servik-upload-"
+	uploadPrefix = ".serfex-upload-"
 	// searchTime bounds a search.
 	searchTime = 15 * time.Second
 )

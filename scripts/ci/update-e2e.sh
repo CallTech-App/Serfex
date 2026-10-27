@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI: Servik installs, updates itself and comes back on a real Ubuntu.
+# CI: Serfex installs, updates itself and comes back on a real Ubuntu.
 #
 #   scripts/ci/update-e2e.sh build DIR        (as the CI user)
 #   sudo scripts/ci/update-e2e.sh run DIR     (as root)
@@ -12,9 +12,9 @@
 # and a releases listing in GitHub's shape (DIR/api/releases).
 #
 # run serves DIR/api on 127.0.0.1:8999 as the release source, installs
-# 0.1.0-ci.1 with install.sh, updates to 0.1.0-ci.2 (servik:update), tries
-# 0.1.0-ci.3 and checks Servik returned to 0.1.0-ci.2 by itself (its
-# database too), then returns to 0.1.0-ci.1 by hand (servik:update
+# 0.1.0-ci.1 with install.sh, updates to 0.1.0-ci.2 (serfex:update), tries
+# 0.1.0-ci.3 and checks Serfex returned to 0.1.0-ci.2 by itself (its
+# database too), then returns to 0.1.0-ci.1 by hand (serfex:update
 # --rollback) and checks ci.2's migration was rolled back.
 set -euo pipefail
 
@@ -32,7 +32,7 @@ build() {
 	(cd "$root/panel" && git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf -) | tar -xf - -C "$base"
 	(cd "$base" && composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress && npm ci --no-audit --no-fund && npm run build)
 
-	SERVIK_ARCHES=amd64 SERVIK_PANEL_BUILD=$base "$root/scripts/build-release.sh" "$V1" "$dir/dl/$V1"
+	SERFEX_ARCHES=amd64 SERFEX_PANEL_BUILD=$base "$root/scripts/build-release.sh" "$V1" "$dir/dl/$V1"
 
 	cp -a "$base" "$dir/work/panel-2"
 	cat > "$dir/work/panel-2/database/migrations/2099_01_01_000001_ci_update_probe.php" <<-'PHP'
@@ -55,21 +55,21 @@ build() {
 	    }
 	};
 	PHP
-	SERVIK_ARCHES=amd64 SERVIK_PANEL_BUILD=$dir/work/panel-2 "$root/scripts/build-release.sh" "$V2" "$dir/dl/$V2"
+	SERFEX_ARCHES=amd64 SERFEX_PANEL_BUILD=$dir/work/panel-2 "$root/scripts/build-release.sh" "$V2" "$dir/dl/$V2"
 
 	cp -a "$dir/work/panel-2" "$dir/work/panel-3"
 	sed -e 's/ci_update_probe/ci_broken_probe/g' "$dir/work/panel-2/database/migrations/2099_01_01_000001_ci_update_probe.php" \
 		> "$dir/work/panel-3/database/migrations/2099_01_01_000002_ci_broken_probe.php"
 	printf '<?php\nhttp_response_code(500);\necho "broken release";\n' > "$dir/work/panel-3/public/index.php"
-	SERVIK_ARCHES=amd64 SERVIK_PANEL_BUILD=$dir/work/panel-3 "$root/scripts/build-release.sh" "$V3" "$dir/dl/$V3"
+	SERFEX_ARCHES=amd64 SERFEX_PANEL_BUILD=$dir/work/panel-3 "$root/scripts/build-release.sh" "$V3" "$dir/dl/$V3"
 	rm -rf "$dir/work"
 
 	mkdir -p "$dir/api"
 	local releases=()
 	for v in "$V3" "$V2" "$V1"; do
-		local a=servik-$v-linux-amd64.tar.gz
+		local a=serfex-$v-linux-amd64.tar.gz
 		releases+=("$(jq -n --arg v "$v" --arg a "$a" --arg url "http://127.0.0.1:$PORT/dl/$v" --argjson size "$(stat -c %s "$dir/dl/$v/$a")" '{
-			tag_name: ("v" + $v), name: ("Servik " + $v), body: ("## Servik " + $v + "\n\n- CI test release"),
+			tag_name: ("v" + $v), name: ("Serfex " + $v), body: ("## Serfex " + $v + "\n\n- CI test release"),
 			draft: false, prerelease: false, published_at: "2026-10-19T10:00:00Z", html_url: ("https://example.invalid/" + $v),
 			assets: [
 				{name: $a, browser_download_url: ($url + "/" + $a), size: $size},
@@ -86,10 +86,10 @@ build() {
 
 fail() { printf '\n✗ %s\n' "$*" >&2; exit 1; }
 ok() { printf '✓ %s\n' "$*"; }
-current() { basename "$(readlink /opt/servik/current)"; }
-artisan() { runuser -u servik -- env -C /opt/servik/current/panel php8.5 artisan "$@"; }
-agent() { /opt/servik/current/bin/servik-agent call "$@"; }
-sql() { runuser -u postgres -- psql -X -At -p 5433 -d servik -c "$1"; }
+current() { basename "$(readlink /opt/serfex/current)"; }
+artisan() { runuser -u serfex -- env -C /opt/serfex/current/panel php8.5 artisan "$@"; }
+agent() { /opt/serfex/current/bin/serfex-agent call "$@"; }
+sql() { runuser -u postgres -- psql -X -At -p 5433 -d serfex -c "$1"; }
 has_table() { [ "$(sql "SELECT to_regclass('public.$1') IS NOT NULL")" = t ]; }
 code() { curl -sk -o /dev/null -w '%{http_code}' "https://127.0.0.1:8443$1"; }
 last_update() { sql "SELECT kind || ' ' || to_version || ' ' || status FROM panel_updates ORDER BY id DESC LIMIT 1"; }
@@ -97,17 +97,17 @@ last_update() { sql "SELECT kind || ' ' || to_version || ' ' || status FROM pane
 expect_running() {
 	local v=$1
 	[ "$(current)" = "$v" ] || fail "current is $(current), not $v"
-	[ "$(cat /opt/servik/current/VERSION)" = "$v" ] || fail "the release in current is not $v"
+	[ "$(cat /opt/serfex/current/VERSION)" = "$v" ] || fail "the release in current is not $v"
 	local st
 	st=$(agent update.status)
 	[ "$(jq -r .version <<< "$st")" = "$v" ] || fail "the agent reports $(jq -r .version <<< "$st"), not $v"
 	[ "$(jq -r .agent <<< "$st")" = "$v" ] || fail "the agent running is $(jq -r .agent <<< "$st"), not $v"
 	[ "$(code /up)" = 200 ] || fail "/up answers $(code /up) on $v"
 	[ "$(code /login)" = 200 ] || fail "/login answers $(code /login) on $v (maintenance left on?)"
-	for u in servik-panel-queue servik-panel-backups servik-panel-scheduler servik-agent; do
+	for u in serfex-panel-queue serfex-panel-backups serfex-panel-scheduler serfex-agent; do
 		systemctl is-active --quiet "$u" || fail "$u is not running on $v"
 	done
-	ok "Servik $v runs (panel, agent, workers)"
+	ok "Serfex $v runs (panel, agent, workers)"
 }
 
 run() {
@@ -127,21 +127,21 @@ run() {
 	setup_path=${link#https://*/}
 	[ "$(code "/$setup_path")" = 200 ] || fail "the setup link answers $(code "/$setup_path")"
 	[ "$(sql "SELECT count(*) FROM users")" = 0 ] || fail "an account exists before the setup link was used"
-	servik setup-url > /tmp/setup-url.out || fail "servik setup-url failed"
-	grep -q '/install/' /tmp/setup-url.out || fail "servik setup-url printed no link"
+	serfex setup-url > /tmp/setup-url.out || fail "serfex setup-url failed"
+	grep -q '/install/' /tmp/setup-url.out || fail "serfex setup-url printed no link"
 	[ "$(code "/$setup_path")" = 410 ] || fail "the first link still works after a new one was made"
-	ok "install.sh printed a setup link; servik setup-url replaced it"
+	ok "install.sh printed a setup link; serfex setup-url replaced it"
 
-	artisan servik:admin --email=ci@servik.test --name=CI --password=ci-password-123
-	[ "$(sql "SELECT count(*) FROM users WHERE email = 'ci@servik.test' AND is_admin")" = 1 ] || fail "no administrator"
-	! servik setup-url > /dev/null 2>&1 || fail "servik setup-url made a link although an administrator exists"
+	artisan serfex:admin --email=ci@serfex.test --name=CI --password=ci-password-123
+	[ "$(sql "SELECT count(*) FROM users WHERE email = 'ci@serfex.test' AND is_admin")" = 1 ] || fail "no administrator"
+	! serfex setup-url > /dev/null 2>&1 || fail "serfex setup-url made a link although an administrator exists"
 
-	echo "▸ servik:update --check"
-	artisan servik:update --check | tee /tmp/check.out
-	grep -q "Servik $V3 hazır" /tmp/check.out || fail "the check did not find $V3"
+	echo "▸ serfex:update --check"
+	artisan serfex:update --check | tee /tmp/check.out
+	grep -q "Serfex $V3 hazır" /tmp/check.out || fail "the check did not find $V3"
 
-	echo "▸ servik:update --target=$V2"
-	artisan servik:update --target="$V2" --yes || fail "the update to $V2 failed (exit $?)"
+	echo "▸ serfex:update --target=$V2"
+	artisan serfex:update --target="$V2" --yes || fail "the update to $V2 failed (exit $?)"
 	expect_running "$V2"
 	has_table ci_update_probe || fail "$V2's migration did not run"
 	[ "$(agent update.status | jq -r .previous)" = "$V1" ] || fail "$V1 is not kept as the previous release"
@@ -150,25 +150,25 @@ run() {
 		fail "no panel backup before the update"
 	ok "updated to $V2 after a panel backup"
 
-	echo "▸ servik:update --target=$V3 (a release that fails its health check)"
+	echo "▸ serfex:update --target=$V3 (a release that fails its health check)"
 	set +e
-	artisan servik:update --target="$V3" --yes
+	artisan serfex:update --target="$V3" --yes
 	rc=$?
 	set -e
-	[ "$rc" = 2 ] || fail "servik:update exited $rc, not 2 (returned to the previous release)"
+	[ "$rc" = 2 ] || fail "serfex:update exited $rc, not 2 (returned to the previous release)"
 	expect_running "$V2"
 	has_table ci_update_probe || fail "$V2's table is gone after returning from $V3"
 	! has_table ci_broken_probe || fail "$V3's migration was not undone"
-	[ ! -e "/opt/servik/releases/$V3" ] || fail "the failed release $V3 was kept"
+	[ ! -e "/opt/serfex/releases/$V3" ] || fail "the failed release $V3 was kept"
 	[ "$(agent update.status | jq -r .previous)" = "$V1" ] || fail "$V1 is no longer the previous release"
 	[ "$(last_update)" = "upgrade $V3 rolled_back" ] || fail "recorded: $(last_update)"
-	ok "$V3 failed its health check; Servik returned to $V2 by itself, database included"
+	ok "$V3 failed its health check; Serfex returned to $V2 by itself, database included"
 
-	echo "▸ servik:update --rollback"
-	artisan servik:update --rollback --yes || fail "the rollback to $V1 failed"
+	echo "▸ serfex:update --rollback"
+	artisan serfex:update --rollback --yes || fail "the rollback to $V1 failed"
 	expect_running "$V1"
 	! has_table ci_update_probe || fail "$V2's migration was not rolled back"
-	[ -e "/opt/servik/releases/$V2/VERSION" ] || fail "$V2 was removed while servik:update still ran its code"
+	[ -e "/opt/serfex/releases/$V2/VERSION" ] || fail "$V2 was removed while serfex:update still ran its code"
 	[ "$(agent update.status | jq -r '.previous // ""')" = "" ] || fail "a previous release is still offered"
 	[ "$(last_update)" = "rollback $V1 succeeded" ] || fail "recorded: $(last_update)"
 	ok "returned to $V1 by hand, its migrations rolled back"

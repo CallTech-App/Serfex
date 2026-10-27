@@ -32,7 +32,7 @@ func mailCommands() *Command {
 					passwordFlag(f)
 					f.String("quota", "", "MB", T("Kota, MB (varsayılan: sunucunun varsayılanı; 0 sınırsız)"))
 				},
-				Examples: []string{"servik mail create siparis@ornek.com.tr", "printf '%s' \"$PAROLA\" | servik mail create info@ornek.com.tr --password-stdin"},
+				Examples: []string{"serfex mail create siparis@ornek.com.tr", "printf '%s' \"$PAROLA\" | serfex mail create info@ornek.com.tr --password-stdin"},
 				Run:      mailCreate,
 			},
 			{
@@ -46,7 +46,7 @@ func mailCommands() *Command {
 			{
 				Name: "forward", Args: T("<adres> <hedef>…"), MinArgs: 2, MaxArgs: -1,
 				Short:    T("Bir adresi başka adreslere yönlendirir (*@alan-adı: tümünü yakala)"),
-				Examples: []string{"servik mail forward satis@ornek.com.tr ali@ornek.com.tr ayse@gmail.com", "servik mail forward '*@ornek.com.tr' info@ornek.com.tr"},
+				Examples: []string{"serfex mail forward satis@ornek.com.tr ali@ornek.com.tr ayse@gmail.com", "serfex mail forward '*@ornek.com.tr' info@ornek.com.tr"},
 				Run:      mailForward,
 			},
 			{Name: "unforward", Args: T("<adres>"), MinArgs: 1, MaxArgs: 1, Short: T("Yönlendiriciyi siler"), Run: mailUnforward},
@@ -95,7 +95,7 @@ func mailDomains(c *Ctx) error {
 		LastError  string `json:"last_error"`
 	}) error {
 		if len(list) == 0 {
-			c.empty(T("Hiçbir alan adında e-posta açık değil. Açmak için: servik mail enable <alan-adı>"))
+			c.empty(T("Hiçbir alan adında e-posta açık değil. Açmak için: serfex mail enable <alan-adı>"))
 			return nil
 		}
 		var rows [][]string
@@ -307,7 +307,7 @@ func dbCommands() *Command {
 					f.String("access", "", "all|read", T("Kullanıcının yetkisi (varsayılan: all)"))
 					f.String("server", "", "mysql|postgresql", T("Veritabanı sunucusu (varsayılan: kurulu olan ilki)"))
 				},
-				Examples: []string{"servik db create kahveatolyesi.com.tr dukkan"},
+				Examples: []string{"serfex db create kahveatolyesi.com.tr dukkan"},
 				Complete: completeSites,
 				Run:      dbCreate,
 			},
@@ -341,7 +341,7 @@ func dbList(c *Ctx) error {
 		} `json:"users"`
 	}) error {
 		if len(list) == 0 {
-			c.empty(T("Veritabanı yok. Oluşturmak için: servik db create <site> <ad>"))
+			c.empty(T("Veritabanı yok. Oluşturmak için: serfex db create <site> <ad>"))
 			return nil
 		}
 		var rows [][]string
@@ -474,7 +474,7 @@ func backupCommands() *Command {
 					f.Bool("no-safety", "", T("Önce güvenlik yedeği almaz"))
 					f.Bool("wait", "", T("Geri yükleme bitene kadar bekler"))
 				},
-				Examples: []string{"servik backups restore 42 kahveatolyesi.com.tr --only files,databases --wait"},
+				Examples: []string{"serfex backups restore 42 kahveatolyesi.com.tr --only files,databases --wait"},
 				Run:      backupsRestore,
 			},
 		},
@@ -497,7 +497,7 @@ func backupsList(c *Ctx) error {
 	}
 	return show(c, resp, func(list []backup) error {
 		if len(list) == 0 {
-			c.empty(T("Yedek yok. Almak için: servik backups create <site>"))
+			c.empty(T("Yedek yok. Almak için: serfex backups create <site>"))
 			return nil
 		}
 		var rows [][]string
@@ -539,7 +539,7 @@ func (c *Ctx) printBackup(b backup) {
 
 func backupsShow(c *Ctx) error {
 	if _, err := strconv.Atoi(c.Args[0]); err != nil {
-		return usageErr(T("Yedeğin numarasını yazın; numaralar: servik backups list"))
+		return usageErr(T("Yedeğin numarasını yazın; numaralar: serfex backups list"))
 	}
 	resp, err := c.get("/backups/"+c.Args[0], nil)
 	if err != nil {
@@ -563,7 +563,7 @@ func backupsCreate(c *Ctx) error {
 	var b backup
 	_ = resp.Decode(&b)
 	if !c.Bool("wait") {
-		return c.done(resp, T("Yedek %d alınıyor; durumu: servik backups show %d", b.ID, b.ID))
+		return c.done(resp, T("Yedek %d alınıyor; durumu: serfex backups show %d", b.ID, b.ID))
 	}
 	if err := c.waitUntil(3*c.env.Interval, T("Yedek %d alınıyor…", b.ID), func() (bool, error) {
 		if resp, err = c.get("/backups/"+strconv.Itoa(b.ID), nil); err != nil {
@@ -583,7 +583,7 @@ func backupsCreate(c *Ctx) error {
 
 func backupsRestore(c *Ctx) error {
 	if _, err := strconv.Atoi(c.Args[0]); err != nil {
-		return usageErr(T("Yedeğin numarasını yazın; numaralar: servik backups list"))
+		return usageErr(T("Yedeğin numarasını yazın; numaralar: serfex backups list"))
 	}
 	body := map[string]any{"site": c.Args[1]}
 	if only := c.Strings("only"); len(only) > 0 {

@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * Runs from the scheduler: refreshes the package lists so Yazılım
  * Yönetimi shows which components have updates. Nothing is installed.
  */
-#[Signature('servik:components-check')]
+#[Signature('serfex:components-check')]
 #[Description('Check installed software for available updates')]
 class CheckComponentUpdates extends Command
 {

@@ -1,13 +1,13 @@
-# servik-agent
+# serfex-agent
 
-The privileged half of Servik. It runs as root under systemd and serves
-JSON-RPC 2.0 on a Unix socket (default `/run/servik-agent/agent.sock`, mode
+The privileged half of Serfex. It runs as root under systemd and serves
+JSON-RPC 2.0 on a Unix socket (default `/run/serfex-agent/agent.sock`, mode
 `0660`). Each request and response is one line of JSON.
 
 ```sh
 go test ./...
 CGO_ENABLED=0 go build -ldflags "-X github.com/calltech-app/serfex/agent/internal/version.Version=dev" \
-  -o bin/servik-agent ./cmd/servik-agent
+  -o bin/serfex-agent ./cmd/serfex-agent
 ```
 
 The core methods are below; [docs/architecture.md](../docs/architecture.md)
@@ -75,7 +75,7 @@ lists every method by area.
 | `mail.queue.hold` / `mail.queue.release` | `domain` | holds a sender domain's queued messages (those being delivered right now finish their attempt) or releases them (`""` for bounces); returns `messages` |
 | `db.status` | | per server (`mysql`, `postgresql`): `installed`, `product`, `running`, `version`, `remote`; and the web manager's `manager` (`configured`, `port`, `phpmyadmin`, `adminer`) |
 | `db.server.install` | `product` (`mysql`, `mariadb` or `postgresql`) | installs the server if missing, configures and starts it; a failed fresh install is removed again. MySQL and MariaDB exclude each other. Returns `server`, `product`, `installed`, `version` |
-| `db.manager.setup` | `port` | installs phpMyAdmin and/or Adminer for the installed servers and serves them from `servik-web` on `port` (default 8443) |
+| `db.manager.setup` | `port` | installs phpMyAdmin and/or Adminer for the installed servers and serves them from `serfex-web` on `port` (default 8443) |
 | `db.manager.login` | `server`, `database` | a one-time `path` on the manager's `port` (valid one minute) that opens the database with a temporary user (removed after four hours) |
 | `db.database.create` | `server`, `name`, `site` | creates an empty UTF-8 database; `site` maps it to a site in live monitoring |
 | `db.database.delete` | `server`, `name`, `backup` | with `backup` dumps it to a gzip file first (nothing is deleted if that fails); returns `deleted`, `backup`, `backup_size` |
@@ -91,7 +91,7 @@ lists every method by area.
 | `component.run.read` | `run`, `offset` | the next part of an operation's log: `data`, `offset`, `size`, `done` |
 | `redis.apply` | `domain`, `user`, `port`, `password`, `max_memory_mb` | starts or updates a site's own Redis instance |
 | `redis.remove` | `domain` | stops a site's Redis instance and deletes its data |
-| `cron.apply` | `domain`, `user`, `php`, `tasks` (`id`, `schedule`, `command`, `enabled`, `timeout`) | replaces a site's scheduled tasks: the state in `/etc/servik/cron/<domain>.json` and the enabled tasks in `/etc/cron.d/servik-<domain>`; returns `tasks`, `enabled` |
+| `cron.apply` | `domain`, `user`, `php`, `tasks` (`id`, `schedule`, `command`, `enabled`, `timeout`) | replaces a site's scheduled tasks: the state in `/etc/serfex/cron/<domain>.json` and the enabled tasks in `/etc/cron.d/serfex-<domain>`; returns `tasks`, `enabled` |
 | `cron.remove` | `domain` | removes a site's tasks, crontab and run history; returns `removed` |
 | `cron.run` | `domain`, `id` | starts a task now, in the background, as the site's user; returns `started`, or `started: false, running: true` while it still runs |
 | `cron.runs` | `domain`, `id`, `limit` | the newest run records (`started_at`, `finished_at`, `duration_ms`, `exit_code`, `output`, `truncated`, `timed_out`, `skipped`, `trigger`), `running`, `running_since` |
@@ -99,9 +99,9 @@ lists every method by area.
 | `system.hostname.set` | `hostname` | sets the host name (hostnamectl) and its `127.0.1.1` line in `/etc/hosts` |
 | `system.timezone.set` | `timezone` | sets the time zone (timedatectl) |
 | `system.timezones` | | the time zones the server knows, sorted |
-| `panel.web.status` | | servik-web's `ports` and primary `port` |
-| `panel.web.ports` | `ports` | makes servik-web listen on 1-3 ports (the first is the primary one), for moving the panel to a new port with the old one still open until the new one is confirmed |
-| `ssl.panel.install` | `certificate`, `private_key` | stores an uploaded certificate as the panel's own and reloads servik-web |
+| `panel.web.status` | | serfex-web's `ports` and primary `port` |
+| `panel.web.ports` | `ports` | makes serfex-web listen on 1-3 ports (the first is the primary one), for moving the panel to a new port with the old one still open until the new one is confirmed |
+| `ssl.panel.install` | `certificate`, `private_key` | stores an uploaded certificate as the panel's own and reloads serfex-web |
 
 `site.apply` also takes `tls: {"certificate": "<name>", "redirect": true}`
 to serve the site over HTTPS with a stored certificate, and `web_root`
@@ -128,19 +128,19 @@ component operation is running.
 /home/<user>/tmp/                       PHP temp files and sessions
 /home/<user>/web/<domain>/public_html/  document root
 /home/<user>/web/<domain>/logs/         PHP error log
-/var/log/servik/sites/<domain>/         Nginx access and error logs
+/var/log/serfex/sites/<domain>/         Nginx access and error logs
 /etc/nginx/sites-available/<domain>.conf  (+ symlink in sites-enabled/)
 /etc/php/<version>/fpm/pool.d/<domain>.conf
-/run/php/servik-<domain>.sock           PHP-FPM socket
+/run/php/serfex-<domain>.sock           PHP-FPM socket
 ```
 
 - Each site gets its own PHP-FPM pool running as the site's account, with
   `open_basedir` limited to the account's home. One account can own several
   sites, like a cPanel account or a Plesk subscription.
 - Accounts are created with `useradd` (shell `/usr/sbin/nologin`) and marked
-  with the comment `Servik site user`. Existing accounts without that mark are
+  with the comment `Serfex site user`. Existing accounts without that mark are
   never adopted or deleted.
-- Files Servik writes start with `Managed by Servik`. A config file without
+- Files Serfex writes start with `Managed by Serfex`. A config file without
   that line is never overwritten or removed.
 - Everything inside a customer's home is created or deleted as that customer
   (`runuser -u <user> --`), so a symlink planted there cannot redirect a root
@@ -151,13 +151,13 @@ component operation is running.
 
 ## DNS
 
-Servik answers DNS itself with PowerDNS Authoritative, run as its own
+Serfex answers DNS itself with PowerDNS Authoritative, run as its own
 instance so the distribution's `pdns.conf` and `pdns.d/` stay untouched:
 
 ```
-/etc/powerdns/pdns-servik.conf   instance config, root:pdns 0640 (holds the API key)
-/var/lib/powerdns/servik.lmdb    zone data (LMDB backend)
-pdns@servik.service              the instance; the stock pdns.service is disabled
+/etc/powerdns/pdns-serfex.conf   instance config, root:pdns 0640 (holds the API key)
+/var/lib/powerdns/serfex.lmdb    zone data (LMDB backend)
+pdns@serfex.service              the instance; the stock pdns.service is disabled
 127.0.0.1:8081                   PowerDNS HTTP API, loopback only
 ```
 
@@ -174,7 +174,7 @@ pdns@servik.service              the instance; the stock pdns.service is disable
   other records or sit at the apex; all records of one name and type share a
   TTL. Long TXT values (DKIM keys) are split into 255-byte strings.
 - `dns.setup` frees port 53 from systemd-resolved's stub listener
-  (`/etc/systemd/resolved.conf.d/servik-dns.conf`, `/etc/resolv.conf` then
+  (`/etc/systemd/resolved.conf.d/serfex-dns.conf`, `/etc/resolv.conf` then
   points at `/run/systemd/resolve/resolv.conf`), checks the config with
   `pdns_server --config=check` and waits for the API. If PowerDNS does not
   come up, the configuration changes are rolled back; installed packages stay.
@@ -187,16 +187,16 @@ Certificates come from Let's Encrypt through the ACME client in
 on the server, and the agent stays one static binary.
 
 ```
-/etc/servik/ssl/certs/<name>/fullchain.pem    certificate + chain, 0644
-/etc/servik/ssl/certs/<name>/privkey.pem      private key (ECDSA P-256), root 0600
-/etc/servik/ssl/accounts/<acme server>/       ACME account key, root 0700
-/etc/servik/panel/ssl/                        the panel's own certificate
-/var/lib/servik/acme/.well-known/acme-challenge/   HTTP-01 answers
-/etc/servik/nginx/tls.conf                    TLS defaults every HTTPS site includes
+/etc/serfex/ssl/certs/<name>/fullchain.pem    certificate + chain, 0644
+/etc/serfex/ssl/certs/<name>/privkey.pem      private key (ECDSA P-256), root 0600
+/etc/serfex/ssl/accounts/<acme server>/       ACME account key, root 0700
+/etc/serfex/panel/ssl/                        the panel's own certificate
+/var/lib/serfex/acme/.well-known/acme-challenge/   HTTP-01 answers
+/etc/serfex/nginx/tls.conf                    TLS defaults every HTTPS site includes
 ```
 
-- **HTTP-01** (default): every Servik vhost serves
-  `/.well-known/acme-challenge/` from `/var/lib/servik/acme`, also when it
+- **HTTP-01** (default): every Serfex vhost serves
+  `/.well-known/acme-challenge/` from `/var/lib/serfex/acme`, also when it
   redirects HTTP to HTTPS, so validation works whatever the site's own
   files or framework do. Before asking Let's Encrypt to look, the agent
   waits until the local Nginx answers the token.
@@ -213,13 +213,13 @@ on the server, and the agent stays one static binary.
   no longer do).
 - The agent never renews on its own: the panel decides when (30 days
   before expiry) and shows failures. The panel's own certificate is served
-  by the panel's web server (`servik-web`, reloaded when present); Nginx
+  by the panel's web server (`serfex-web`, reloaded when present); Nginx
   only answers its validation on port 80.
 - `-acme-directory` and `-acme-ca` point the agent at another ACME server,
   such as Let's Encrypt staging or Pebble in tests:
 
 ```sh
-sudo SERVIK_ACME_DIRECTORY=https://localhost:14000/dir SERVIK_ACME_CA=pebble.minica.pem \
+sudo SERFEX_ACME_DIRECTORY=https://localhost:14000/dir SERFEX_ACME_CA=pebble.minica.pem \
     go test -tags realhost -run TestRealHost ./internal/cert
 ```
 
@@ -230,18 +230,18 @@ Rspamd (spam filter, DKIM signing, sending limits) with its own Redis, and
 Roundcube for webmail, from Ubuntu's packages.
 
 ```
-/etc/servik/mail/server.json             hostname, limits, webmail secrets (root 0600)
-/etc/servik/mail/domains/<domain>.json   the domain as last applied
-/etc/servik/mail/dkim/<domain>.key       DKIM private key (RSA 2048), root:_rspamd 0640
-/etc/servik/mail/tls/                    self-signed certificate until a real one is set
-/etc/postfix/servik/                     domain, mailbox, forwarder and sender maps
-/etc/dovecot/servik/users                mailboxes: password hash, quota, Sieve script
-/etc/dovecot/servik/sieve/<domain>/      per-mailbox autoreplies
+/etc/serfex/mail/server.json             hostname, limits, webmail secrets (root 0600)
+/etc/serfex/mail/domains/<domain>.json   the domain as last applied
+/etc/serfex/mail/dkim/<domain>.key       DKIM private key (RSA 2048), root:_rspamd 0640
+/etc/serfex/mail/tls/                    self-signed certificate until a real one is set
+/etc/postfix/serfex/                     domain, mailbox, forwarder and sender maps
+/etc/dovecot/serfex/users                mailboxes: password hash, quota, Sieve script
+/etc/dovecot/serfex/sieve/<domain>/      per-mailbox autoreplies
 /etc/rspamd/local.d/                     DKIM signing, limits, actions, Redis
 /var/vmail/<domain>/<name>/Maildir/      the mail, owned by the vmail user
-/etc/servik/webmail/                     Roundcube's configuration (only this one is read)
-/var/lib/servik/webmail/data/            Roundcube's SQLite database
-/etc/nginx/sites-available/servik-mail.conf   webmail, autoconfig and autodiscover
+/etc/serfex/webmail/                     Roundcube's configuration (only this one is read)
+/var/lib/serfex/webmail/data/            Roundcube's SQLite database
+/etc/nginx/sites-available/serfex-mail.conf   webmail, autoconfig and autodiscover
 ```
 
 - Mailboxes are virtual: one `vmail` system user owns all mail, so a
@@ -253,8 +253,8 @@ Roundcube for webmail, from Ubuntu's packages.
   ratelimit; 0 is no limit). Messages scoring 15 or more are rejected, 6 or
   more get an `X-Spam` header, and domains with `spam_filter` file them
   into Junk.
-- Every domain signs with selector `servik`; `mail.domain.apply` returns
-  the TXT record to publish at `servik._domainkey`. The key survives
+- Every domain signs with selector `serfex`; `mail.domain.apply` returns
+  the TXT record to publish at `serfex._domainkey`. The key survives
   `mail.domain.delete` unless `remove_files` is set, so turning mail off and
   on again keeps the record valid.
 - IMAP 993/143, POP3 995/110 and SMTP use the `certificate` from the
@@ -264,7 +264,7 @@ Roundcube for webmail, from Ubuntu's packages.
 - Clients find their settings through `autoconfig.<domain>` (Thunderbird)
   and `autodiscover.<domain>` (Outlook), which Nginx answers on port 80.
 - Webmail is served at `https://<hostname>/` by the customers' Nginx, with
-  its own PHP-FPM pool user `servik-webmail`. `mail.webmail.login` signs the
+  its own PHP-FPM pool user `serfex-webmail`. `mail.webmail.login` signs the
   panel user in without a password, through a one-time token and a Dovecot
   master user that only accepts connections from the server itself.
 - Removing a mailbox stops it at once; its mail stays until
@@ -272,7 +272,7 @@ Roundcube for webmail, from Ubuntu's packages.
 - Every change is checked (`postfix check`, `doveconf`, `rspamadm
   configtest`, `nginx -t`) before services reload; a failure restores the
   previous files. The stock `main.cf`, `master.cf` and `dovecot.conf` are
-  kept as `*.before-servik`.
+  kept as `*.before-serfex`.
 
 ```sh
 sudo go test -tags realhost -run TestRealHost ./internal/mail
@@ -285,7 +285,7 @@ webmail sign-in. It needs Nginx, PHP-FPM, `python3-dkim` and `doveadm`
 
 ## Laravel
 
-A Laravel application managed by Servik lives inside its site:
+A Laravel application managed by Serfex lives inside its site:
 
 ```
 /home/<user>/web/<domain>/laravel/
@@ -306,23 +306,23 @@ Migrations are not reverted on rollback.
 
 - Every command runs as the site's user with a clean environment, through
   `runuser`, using the site's PHP version. Composer and Node.js 24 are
-  downloaded once into `/opt/servik` and their checksums verified.
+  downloaded once into `/opt/serfex` and their checksums verified.
 - Long runs (deploys, commands started from the panel) write their output
-  to `/var/lib/servik/laravel/<domain>/runs/<run>.log`; the panel follows
+  to `/var/lib/serfex/laravel/<domain>/runs/<run>.log`; the panel follows
   it with `laravel.run.read`. Logs older than 90 days are removed.
 - Git deploys of plain sites keep a bare clone in
-  `/home/<user>/.servik/git/<domain>/repo.git` whose work tree is the
+  `/home/<user>/.serfex/git/<domain>/repo.git` whose work tree is the
   site's folder: changed files are written, files the repository deleted
-  are removed, untracked files stay. `refs/servik/live` is the deployed
+  are removed, untracked files stay. `refs/serfex/live` is the deployed
   commit; the first deploy packs the files it overwrites into
   `before.tar` for its undo. An access token is written to a file for
   the fetch only, never put on a command line. Logs:
-  `/var/lib/servik/git/<domain>/runs/`.
+  `/var/lib/serfex/git/<domain>/runs/`.
 - Queue workers are systemd template units
-  `servik-queue-<domain>_<worker>@<n>.service`; the scheduler is
-  `servik-schedule-<domain>.timer`, running `schedule:run` every minute.
-  Their output goes to `/var/log/servik/laravel/<domain>/`, rotated by
-  `/etc/logrotate.d/servik-laravel`.
+  `serfex-queue-<domain>_<worker>@<n>.service`; the scheduler is
+  `serfex-schedule-<domain>.timer`, running `schedule:run` every minute.
+  Their output goes to `/var/log/serfex/laravel/<domain>/`, rotated by
+  `/etc/logrotate.d/serfex-laravel`.
 - Private repositories are cloned over SSH with the site's own deploy key,
   owned by the site's account in `laravel/.ssh/id_ed25519`.
 
@@ -347,11 +347,11 @@ panel asks for.
   process belongs to a site when it is one of the site's PHP-FPM workers
   (`php-fpm: pool <domain>`), runs in one of its Laravel units, or belongs
   to an account with a single site. Other processes are grouped by systemd
-  unit: Servik's own services (`servik-*`, the panel's PostgreSQL), the
+  unit: Serfex's own services (`serfex-*`, the panel's PostgreSQL), the
   services every site shares (Nginx, PHP-FPM masters, PowerDNS, Postfix,
   Dovecot, Rspamd, MySQL) and the rest of the system.
 - **PHP-FPM.** Each pool answers status requests on its own socket
-  (`pm.status_listen = /run/php/servik-<domain>.status.sock`), which Nginx
+  (`pm.status_listen = /run/php/serfex-<domain>.status.sock`), which Nginx
   never passes; it reports busy and idle workers, the backlog and whether
   the pool hit `pm.max_children`.
 - **Traffic.** New lines of each site's access log give requests per
@@ -371,14 +371,14 @@ panel asks for.
 
 ### Blocking addresses
 
-`firewall.block` adds the address to Servik's own nftables table, so the
+`firewall.block` adds the address to Serfex's own nftables table, so the
 distribution's firewall stays untouched:
 
 ```
-table inet servik
+table inet serfex
   set blocked4, blocked6     addresses and prefixes, each with its own timeout
   chain input                priority filter - 10: drops them before other rules
-/etc/servik/firewall/blocks.json   blocks as last applied (restored at start)
+/etc/serfex/firewall/blocks.json   blocks as last applied (restored at start)
 ```
 
 The kernel ends a timed block by itself, so it ends on time even while the
@@ -393,13 +393,13 @@ A block covers the whole server: sites share their addresses.
 - **PHP workers** through `pm.max_children` in the site's pool (reloaded
   after `php-fpm -t`); `site.apply` keeps the value while the limit lasts.
 - **CPU and memory** through a systemd scope,
-  `servik-limit-<domain>.scope` with `CPUQuota` and `MemoryMax`, created
+  `serfex-limit-<domain>.scope` with `CPUQuota` and `MemoryMax`, created
   with the site's PHP-FPM workers (`Delegate=yes`). PHP-FPM forks new
   workers from its master, so every sample moves the site's new workers
   into the scope. The site's Laravel units get the same caps
   (`systemctl set-property --runtime`).
 
-Limits live in `/etc/servik/limits/<domain>.json`; the agent ends them on
+Limits live in `/etc/serfex/limits/<domain>.json`; the agent ends them on
 time, also after a restart. Ending one sets the caps back to unlimited and
 the pool to its usual 10 workers; workers already in the scope finish
 their requests there.
@@ -437,14 +437,14 @@ and daily rollups in its own database.
   are kept; the rest add up under "".
 - **Countries** come from the five regional registries' public delegated
   files (where each address block was registered), downloaded once a month
-  into `/var/lib/servik/stats/countries.bin` and looked up locally.
+  into `/var/lib/serfex/stats/countries.bin` and looked up locally.
 - **Mail** per domain: messages delivered to its mailboxes (`received`),
   sent to and bounced by other servers (by the queue ID's sender), and
   refused on the way in (`reject:`, `milter-reject:`).
 - **Collection is acknowledged.** A batch stays pending until the next call
   names it, so a batch the panel lost is sent again and one it stored is
   never counted twice. Uncollected counts and today's visitors are written
-  to `/var/lib/servik/stats/state.gob` when the agent stops and read back
+  to `/var/lib/serfex/stats/state.gob` when the agent stops and read back
   when it starts. Counts the panel has not collected for a week are dropped.
 ## Databases
 
@@ -454,9 +454,9 @@ The panel's own database is separate and never touched by `db.*`.
 
 - Names are the panel's (`<account>_<name>`, lowercase letters, digits and
   `_`, databases at most 54 characters, users 32). Names with a hyphen are
-  Servik's own: a PostgreSQL database is owned by the `NOLOGIN` role
+  Serfex's own: a PostgreSQL database is owned by the `NOLOGIN` role
   `<db>-owner`, and users with full access act as it (so every table they
-  create belongs to the database, not to one user); `servik-s-*` are the
+  create belongs to the database, not to one user); `serfex-s-*` are the
   temporary users of web manager sign-ins.
 - `readwrite` is data only (no schema changes), `readonly` is `SELECT`
   only. MySQL users always exist for `localhost` and `127.0.0.1`;
@@ -464,25 +464,25 @@ The panel's own database is separate and never touched by `db.*`.
   `postgres`.
 - The servers listen on `127.0.0.1` until some user has a remote host,
   then on every address (MySQL `bind-address`, PostgreSQL
-  `listen_addresses` plus a Servik-managed `pg_hba.conf` in
-  `/etc/servik/databases/`); they go back when the last remote host goes.
-- Backups taken before a delete go to `/var/lib/servik/backups/databases/`
+  `listen_addresses` plus a Serfex-managed `pg_hba.conf` in
+  `/etc/serfex/databases/`); they go back when the last remote host goes.
+- Backups taken before a delete go to `/var/lib/serfex/backups/databases/`
   and are removed after 30 days.
-- The web manager runs on `servik-web` (Servik's own Nginx, config
-  `/etc/servik/web/nginx.conf`) and `servik-php` (its own PHP-FPM, pool user
-  `servik-dbadmin`), never on the customers' Nginx or PHP. phpMyAdmin
+- The web manager runs on `serfex-web` (Serfex's own Nginx, config
+  `/etc/serfex/web/nginx.conf`) and `serfex-php` (its own PHP-FPM, pool user
+  `serfex-dbadmin`), never on the customers' Nginx or PHP. phpMyAdmin
   (`/phpmyadmin/`, `signon` auth) serves MySQL/MariaDB, Adminer
   (`/adminer/`, PostgreSQL on this server only) PostgreSQL. It uses a
   self-signed certificate until the panel's own certificate exists, then
   that one.
 
 ```sh
-sudo SERVIK_DB_PRODUCT=mariadb go test -tags realhost -run TestRealHost ./internal/database
+sudo SERFEX_DB_PRODUCT=mariadb go test -tags realhost -run TestRealHost ./internal/database
 ```
 
 installs the server, creates databases and users with each access level,
 connects with them, turns remote access on and off, signs in to
-phpMyAdmin or Adminer through `servik-web` and deletes a database with a
+phpMyAdmin or Adminer through `serfex-web` and deletes a database with a
 backup.
 
 ## Software
@@ -492,30 +492,30 @@ Yazılım Yönetimi installs, updates and removes optional software with
 `ppa:ondrej/php`), Node.js from nodejs.org and Composer from
 getcomposer.org, both checked against their published SHA-256 sums.
 
-| Component | What Servik sets up |
+| Component | What Serfex sets up |
 |-----------|---------------------|
 | `nginx` | Required, never removed. |
 | `apache` | Apache 2.4 on `127.0.0.1:7080` behind Nginx, for sites with `web_server: apache`. Nginx serves existing static files and passes everything else to Apache, which reads `.htaccess` (`AllowOverride All`) and hands PHP to the site's own PHP-FPM pool (`proxy_fcgi`). `remoteip` restores the visitor's address and `HTTPS` is set behind TLS. Vhosts: `/etc/apache2/sites-available/<domain>.conf`. |
 | `php8.1` … `php8.5` | PHP-FPM with the common extensions (and `redis`/`memcached` when those are installed). In use while a site, the webmail or the web database manager uses the version. |
 | `mysql`, `mariadb`, `postgresql` | The database servers of Veritabanları (`db.server.install`), and the web manager. |
-| `redis` | `redis-server` without the stock service: every application gets its own instance, `servik-redis-<domain>.service`, running as the site's user on `127.0.0.1:<port>` with a password, 128 MB and `noeviction` (`/etc/servik/redis/<domain>.conf`, data in `/var/lib/servik/redis/<domain>`). |
+| `redis` | `redis-server` without the stock service: every application gets its own instance, `serfex-redis-<domain>.service`, running as the site's user on `127.0.0.1:<port>` with a password, 128 MB and `noeviction` (`/etc/serfex/redis/<domain>.conf`, data in `/var/lib/serfex/redis/<domain>`). |
 | `memcached` | `memcached` on `127.0.0.1:11211`. |
 | `supervisor` | `supervisord`; in use while `/etc/supervisor/conf.d` has programs. Laravel workers use systemd, not Supervisor. |
-| `node22`, `node24`, `node26` | Node.js under `/opt/servik/node/<version>`; Laravel builds use the line `/opt/servik/node/current` points to: the first one installed, or after it is removed the newest LTS line left. |
-| `composer` | `/opt/servik/composer/composer.phar`. |
+| `node22`, `node24`, `node26` | Node.js under `/opt/serfex/node/<version>`; Laravel builds use the line `/opt/serfex/node/current` points to: the first one installed, or after it is removed the newest LTS line left. |
+| `composer` | `/opt/serfex/composer/composer.phar`. |
 | `python` | `python3-pip`, `python3-venv`, `python3-dev`. |
-| `fail2ban` | Jails in `/etc/fail2ban/jail.d/servik.conf`: `sshd`, and `dovecot` and `postfix-sasl` when the mail server exists at install (install Fail2ban again to add them later); 5 failures in 10 minutes ban for an hour with nftables, `recidive` bans repeat offenders for a week. The server's own addresses are never banned. |
-| `modsecurity` | The Nginx ModSecurity module with the OWASP Core Rule Set, server-wide, in detection-only mode at paranoia level 1 until changed (`/etc/servik/modsecurity/main.conf`, audit log in `/var/log/servik/modsecurity/`). |
+| `fail2ban` | Jails in `/etc/fail2ban/jail.d/serfex.conf`: `sshd`, and `dovecot` and `postfix-sasl` when the mail server exists at install (install Fail2ban again to add them later); 5 failures in 10 minutes ban for an hour with nftables, `recidive` bans repeat offenders for a week. The server's own addresses are never banned. |
+| `modsecurity` | The Nginx ModSecurity module with the OWASP Core Rule Set, server-wide, in detection-only mode at paranoia level 1 until changed (`/etc/serfex/modsecurity/main.conf`, audit log in `/var/log/serfex/modsecurity/`). |
 | `clamav` | `clamd` and `freshclam`; the first signatures are downloaded during the install, and Rspamd rejects infected mail when the mail server is there. |
 
 - One operation runs at a time. Each writes its steps to
-  `/var/lib/servik/components/runs/<run>.log` (lines `▸` step, `$`
+  `/var/lib/serfex/components/runs/<run>.log` (lines `▸` step, `$`
   command, `↺` rollback, `✓` done, `✗` failed).
 - An install that fails removes the packages it added and puts back the
   files it changed. An update that leaves the service broken gets the
   previous configuration back.
 - Removing archives the component's configuration to
-  `/var/lib/servik/backups/components/<id>-<time>.tar.gz` first. MySQL and
+  `/var/lib/serfex/backups/components/<id>-<time>.tar.gz` first. MySQL and
   MariaDB data is moved there, not deleted; PostgreSQL's packages stay
   (the panel's own database may use them) and only the customers' `main`
   cluster is dropped. A database server is not removed while it has
@@ -535,21 +535,21 @@ site's own Redis instance.
 `-dry-run` swaps the real system for a simulator: files go under `-root`
 (default: a new temporary directory), `useradd`/`userdel` edit
 `<root>/etc/passwd`, service commands are only logged, DNS zones are kept
-in memory, certificates come from a local "Servik Dry Run CA" and mail
+in memory, certificates come from a local "Serfex Dry Run CA" and mail
 packages are only pretended to be installed, and `git clone` or
 `composer create-project` write a small stand-in Laravel application.
 Live monitoring makes up a plausible load for the sites under `-root`
 (one of them under attack, one busy), and a mail queue once the mail
 server is "installed". Database servers keep their databases and users in
-JSON files under `<root>/var/lib/servik-sim/` with made-up sizes.
+JSON files under `<root>/var/lib/serfex-sim/` with made-up sizes.
 The panel's integration tests and local development use this mode.
 
 ```sh
-./bin/servik-agent -dry-run -root /tmp/servik-root -socket /tmp/servik-agent.sock
+./bin/serfex-agent -dry-run -root /tmp/serfex-root -socket /tmp/serfex-agent.sock
 ```
 
 Example:
 
 ```sh
-echo '{"jsonrpc":"2.0","id":1,"method":"agent.info"}' | sudo socat - UNIX-CONNECT:/run/servik-agent/agent.sock
+echo '{"jsonrpc":"2.0","id":1,"method":"agent.info"}' | sudo socat - UNIX-CONNECT:/run/serfex-agent/agent.sock
 ```
