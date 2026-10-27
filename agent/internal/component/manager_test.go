@@ -574,3 +574,33 @@ func TestPHPDefaultsAndExtensionPackages(t *testing.T) {
 		t.Errorf("removing the Redis extension: %v", err)
 	}
 }
+
+func TestPostgreSQLNewestVersionAndMinorUpdates(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if _, err := m.Install(ctx, OpSpec{ID: "postgresql", Run: "pg1", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	log := read(t, sim, runDir+"/pg1.log")
+	for _, want := range []string{"▸ PostgreSQL paket deposu ekleniyor (apt.postgresql.org)", "▸ Paketler kuruluyor: postgresql-18 postgresql-client-18", "▸ Müşteri kümesi oluşturuluyor (PostgreSQL 18 main, port 5432)", "✓ Kuruldu"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("log lacks %q:\n%s", want, log)
+		}
+	}
+	if s := status(t, m, "postgresql"); !s.Installed || s.Version != "18.1" || s.Units[0] != "postgresql@18-main" || s.Latest != "" {
+		t.Errorf("postgresql = %+v", s)
+	}
+	// The archive has a newer minor release; Güncelle installs it.
+	if _, err := m.Check(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "postgresql"); s.Latest != "18.2" {
+		t.Errorf("latest = %+v", s)
+	}
+	if _, err := m.Update(ctx, OpSpec{ID: "postgresql", Run: "pg2"}); err != nil {
+		t.Fatal(err)
+	}
+	if !ran(sim, "apt-get install --only-upgrade -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold postgresql-18 postgresql-client-18") {
+		t.Errorf("update: %v", sim.Commands())
+	}
+}

@@ -6,7 +6,6 @@ use App\Models\ComponentOperation;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
-use App\Services\Databases\DatabaseServers;
 use App\Services\Security\Waf;
 use App\Services\Settings\PanelSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,7 +26,7 @@ class RunComponentOperation implements ShouldQueue
 
     public function __construct(public ComponentOperation $operation) {}
 
-    public function handle(AgentClient $agent, Components $components, DatabaseServers $databases): void
+    public function handle(AgentClient $agent, Components $components): void
     {
         $op = $this->operation->fresh();
         if ($op === null || $op->status !== 'queued') {
@@ -49,12 +48,14 @@ class RunComponentOperation implements ShouldQueue
             $agent->call($method, $params, config('servik.agent.component_timeout'));
         } catch (AgentException $e) {
             $op->update(['status' => 'failed', 'error' => $e->reason, 'finished_at' => now()]);
-            $this->refresh($components, $databases, $database);
+            $components->statuses();
+            $components->recorded($op);
 
             return;
         }
         $op->update(['status' => 'succeeded', 'error' => null, 'finished_at' => now()]);
-        $this->refresh($components, $databases, $database);
+        $components->statuses();
+        $components->recorded($op);
         // Removing ModSecurity took the sites' own WAF settings off the
         // server; a new install brings them back.
         if ($op->component === 'modsecurity' && $op->action === 'install') {
@@ -62,24 +63,19 @@ class RunComponentOperation implements ShouldQueue
         }
     }
 
+    /**
+     * The job died or ran out of time (a killed worker's job ends here on
+     * its retry). The agent may still have finished: its run log decides.
+     */
     public function failed(?\Throwable $e): void
     {
-        $this->operation->fresh()?->update(['status' => 'failed', 'error' => $e?->getMessage() ?: __('İşlem yarıda kaldı.'), 'finished_at' => now()]);
-    }
-
-    /**
-     * Records what is installed now, for the pages that offer it.
-     */
-    private function refresh(Components $components, DatabaseServers $databases, bool $database): void
-    {
-        $components->statuses();
-        if ($database) {
-            $databases->status();
-            // The database pages read the setup's state; an install from
-            // here counts as a setup.
-            if ($databases->products() !== [] && ($databases->setup()['state'] ?? null) !== 'installing') {
-                $databases->saveSetup(['state' => 'ready', 'step' => null, 'error' => null, 'setup_at' => $databases->setup()['setup_at'] ?? now()->toIso8601String()]);
-            }
+        $op = $this->operation->fresh();
+        if ($op === null || ! $op->isRunning()) {
+            return;
+        }
+        $reason = $e?->getMessage() ?: __('İşlem yarıda kaldı.');
+        if (! app(Components::class)->settle($op, $reason)) {
+            $op->update(['status' => 'failed', 'error' => $reason, 'finished_at' => now()]);
         }
     }
 }

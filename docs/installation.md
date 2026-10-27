@@ -29,7 +29,9 @@ The installer shows what it will do and asks before it starts. It:
 1. checks the operating system and architecture;
 2. downloads the newest release and checks it against `SHA256SUMS`;
 3. installs the panel's own PHP 8.5 (from the Ondřej Surý archive), its own
-   PostgreSQL cluster `servik` on port 5433 and its own web server
+   PostgreSQL cluster `servik` on port 5433 (the newest stable PostgreSQL
+   from apt.postgresql.org, Ubuntu's own if that archive cannot be reached)
+   and its own web server
    `servik-web`, apart from anything customer sites will use;
 4. installs `servik-agent` as a systemd service and the `servik` command line;
 5. starts the panel on `https://<host name>:8443` with a self-signed certificate;
@@ -189,8 +191,8 @@ See the [command line reference](cli.md).
 | `/var/log/servik/` | Install and update logs, sites' web server logs |
 | `/home/<user>/web/<domain>/` | A site's files |
 
-Services: `servik-agent`, `servik-web`, `servik-php`, `postgresql@16-servik`
-(the panel's database), `servik-panel-queue`, `servik-panel-backups` and
+Services: `servik-agent`, `servik-web`, `servik-php`, `postgresql@18-servik`
+(the panel's database; the number is its PostgreSQL version), `servik-panel-queue`, `servik-panel-backups` and
 `servik-panel-scheduler`. The Services page lists them apart from the
 customers' services and does not let you stop them by mistake.
 

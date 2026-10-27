@@ -166,7 +166,26 @@ step "$(t "Panelin PostgreSQL'i (servik kümesi, port $DB_PORT)" "The panel's Po
 # cluster; the panel keeps its own.
 mkdir -p /etc/postgresql-common/createcluster.d
 echo "create_main_cluster = false" > /etc/postgresql-common/createcluster.d/servik.conf
-"${APT[@]}" install --no-install-recommends postgresql postgresql-client
+# The newest stable PostgreSQL comes from the PostgreSQL project's own
+# archive (Ubuntu keeps one version per release); postgresql-common
+# carries its key and the script that lists it. Without the archive,
+# Ubuntu's version serves.
+"${APT[@]}" install --no-install-recommends postgresql-common
+PG=
+# apt-get update only warns about a list it could not fetch; --error-on=any
+# makes that a failure.
+if /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y > /dev/null 2>&1 && apt-get -q update --error-on=any > /dev/null 2>&1; then
+	PG=$(apt-cache pkgnames postgresql- | grep -E '^postgresql-[0-9]+$' | sed 's/^postgresql-//' | sort -n | tail -n 1 || true)
+else
+	echo "$(t "PostgreSQL paket deposuna (apt.postgresql.org) ulaşılamadı; Ubuntu'nun sürümü kuruluyor." "The PostgreSQL archive (apt.postgresql.org) could not be read; installing Ubuntu's version.")"
+	rm -f /etc/apt/sources.list.d/pgdg.sources
+	"${APT[@]}" update
+fi
+if [ -n "$PG" ]; then
+	"${APT[@]}" install --no-install-recommends "postgresql-$PG" "postgresql-client-$PG"
+else
+	"${APT[@]}" install --no-install-recommends postgresql postgresql-client
+fi
 PG=$(ls /usr/lib/postgresql | sort -V | tail -n 1)
 if ! pg_lsclusters -h | awk '{print $2}' | grep -qx servik; then
 	pg_createcluster "$PG" servik --port "$DB_PORT" --start-conf auto -- --auth-local=peer --auth-host=scram-sha-256

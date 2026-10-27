@@ -74,6 +74,13 @@ step with a live log; a failed step rolls back what was done. A component
 that is in use cannot be removed (the page says by what), and its
 configuration is archived before removal. Updates are checked daily at 04:30.
 
+An operation outlives the page and the panel's worker: if the worker is
+restarted while it waits (a package upgrade restarting services, for one),
+the page reads the outcome from the operation's log instead of waiting on
+it forever. Servik also tells Ubuntu's `needrestart` to leave its own
+services (`servik-agent`, `servik-panel-*`) alone after package upgrades;
+the workers pick up new PHP binaries on their hourly restart.
+
 | Tab | Components |
 |-----|------------|
 | Web server | Nginx (always in front), Apache (behind Nginx on 127.0.0.1:7080 for sites that choose it), and the default stack for new sites |
