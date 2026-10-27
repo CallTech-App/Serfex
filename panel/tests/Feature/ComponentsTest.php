@@ -193,6 +193,7 @@ class ComponentsTest extends TestCase
 
         // The Veritabanları setup card says it too.
         $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => false], 'postgresql' => ['installed' => false]], 'manager' => ['configured' => false]];
+        $this->app->forgetScopedInstances();
         $this->actingAs(User::factory()->create(['is_admin' => true]));
         $this->get(route('databases.index'))->assertOk()
             ->assertSee('Veritabanı sunucusunu kurun')
