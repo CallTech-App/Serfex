@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\Zones;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -77,7 +78,7 @@ class Certificates
      * server's network or DNS was down for a moment) is retried within the
      * hour instead of the next day.
      *
-     * @return array{0: string, 1: \Illuminate\Support\Carbon|null}
+     * @return array{0: string, 1: Carbon|null}
      */
     public static function failure(AgentException $e): array
     {
