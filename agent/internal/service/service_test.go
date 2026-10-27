@@ -252,3 +252,152 @@ func TestSetDirectiveAddsMissingLines(t *testing.T) {
 		t.Fatal("a configuration without an http block was accepted")
 	}
 }
+
+func TestApacheSettings(t *testing.T) {
+	m, sim := newTest(t, "/usr/sbin/apache2")
+	ctx := context.Background()
+	// An Apache Servik did not set up has nothing to change here.
+	if s := find(t, m, "apache2"); s.Settings != "" {
+		t.Fatalf("apache2 without Servik's configuration offers %q", s.Settings)
+	}
+	// Installed from Yazılım Yönetimi: servik.conf written and enabled.
+	_ = os.MkdirAll(filepath.Dir(sim.Path(apacheEnabled)), 0o755)
+	_ = os.MkdirAll(filepath.Dir(sim.Path(tuning.ApacheConf)), 0o755)
+	if err := os.WriteFile(sim.Path(tuning.ApacheConf), tuning.ApacheContent(tuning.Defaults().Apache), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../conf-available/servik.conf", sim.Path(apacheEnabled)); err != nil {
+		t.Fatal(err)
+	}
+	if s := find(t, m, "apache2"); s.Settings != "apache" {
+		t.Fatalf("settings = %q", s.Settings)
+	}
+	got, err := m.Settings(ctx, "apache2")
+	if err != nil || got.Apache == nil || *got.Apache != (tuning.Apache{MaxRequestWorkers: 150, Timeout: 300}) {
+		t.Fatalf("defaults: %+v %v", got.Apache, err)
+	}
+	got, err = m.ApplySettings(ctx, SettingsSpec{Unit: "apache2", Apache: &tuning.Apache{MaxRequestWorkers: 200, Timeout: 120}})
+	if err != nil || got.Apache.MaxRequestWorkers != 200 || got.Apache.Timeout != 120 {
+		t.Fatalf("apply: %+v %v", got.Apache, err)
+	}
+	b, _ := os.ReadFile(sim.Path(tuning.ApacheConf))
+	for _, want := range []string{"ServerTokens Prod", "Timeout 120\n<IfModule mpm_event_module>\n", "ThreadsPerChild 25\n    ServerLimit 16\n    MaxRequestWorkers 200\n"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("servik.conf lacks %q:\n%s", want, b)
+		}
+	}
+	if !sim.Ran("apache2ctl configtest") || !sim.Ran("systemctl reload apache2.service") || sim.Ran("systemctl restart apache2.service") {
+		t.Errorf("commands: %v", sim.Commands())
+	}
+	// More process slots need a restart; a graceful reload keeps the old.
+	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "apache2", Apache: &tuning.Apache{MaxRequestWorkers: 1000, Timeout: 120}}); err != nil {
+		t.Fatal(err)
+	}
+	b, _ = os.ReadFile(sim.Path(tuning.ApacheConf))
+	if !strings.Contains(string(b), "ServerLimit 80\n    MaxRequestWorkers 1000\n") || !sim.Ran("systemctl restart apache2.service") {
+		t.Errorf("servik.conf:\n%s", b)
+	}
+
+	// Apache refusing the configuration puts the old one back.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "apache2ctl configtest" {
+			return errors.New("AH00526: Syntax error")
+		}
+		return nil
+	}
+	var v *ValidationError
+	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "apache2", Apache: &tuning.Apache{MaxRequestWorkers: 300, Timeout: 60}}); !errors.As(err, &v) {
+		t.Fatalf("refused: %v", err)
+	}
+	sim.Fail = nil
+	if b, _ := os.ReadFile(sim.Path(tuning.ApacheConf)); !strings.Contains(string(b), "MaxRequestWorkers 1000") {
+		t.Errorf("servik.conf not restored:\n%s", b)
+	}
+	if s := tuning.Load(sim); s.Apache.MaxRequestWorkers != 1000 {
+		t.Errorf("settings file not restored: %+v", s.Apache)
+	}
+	for _, bad := range []tuning.Apache{
+		{MaxRequestWorkers: 10, Timeout: 60},
+		{MaxRequestWorkers: 2001, Timeout: 60},
+		{MaxRequestWorkers: 150, Timeout: 0},
+		{MaxRequestWorkers: 150, Timeout: 600},
+	} {
+		if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "apache2", Apache: &bad}); !errors.As(err, &v) {
+			t.Errorf("%+v: %v", bad, err)
+		}
+	}
+}
+
+func TestPowerDNSSettings(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	conf := "# Managed by Servik. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# No secondary servers in this version: refuse zone transfers.\ndisable-axfr=yes\nversion-string=anonymous\n"
+	_ = os.MkdirAll(filepath.Dir(sim.Path(pdnsConf)), 0o755)
+	if err := os.WriteFile(sim.Path(pdnsConf), []byte(conf), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if s := find(t, m, "pdns@servik"); s.Settings != "powerdns" {
+		t.Fatalf("settings = %q", s.Settings)
+	}
+	got, err := m.Settings(ctx, "pdns@servik")
+	if err != nil || got.PowerDNS == nil || got.PowerDNS.CacheTTL != 20 || got.PowerDNS.NegativeTTL != 60 || got.PowerDNS.LogQueries || got.PowerDNS.AXFRAllow == nil {
+		t.Fatalf("defaults: %+v %v", got.PowerDNS, err)
+	}
+	got, err = m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &tuning.PowerDNS{
+		CacheTTL: 60, NegativeTTL: 30, LogQueries: true,
+		AXFRAllow: []string{" 192.0.2.10 ", "2001:db8::1/48", "192.0.2.10", ""},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := got.PowerDNS; p.CacheTTL != 60 || !p.LogQueries || strings.Join(p.AXFRAllow, ",") != "192.0.2.10,2001:db8::/48" {
+		t.Errorf("after apply: %+v", p)
+	}
+	b, _ := os.ReadFile(sim.Path(pdnsConf))
+	want := "# Managed by Servik. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# Zone transfers (to secondary name servers), caching and query logging\n# are changed on the panel's Hizmetler page.\ndisable-axfr=no\nversion-string=anonymous\n" +
+		"allow-axfr-ips=192.0.2.10,2001:db8::/48\ncache-ttl=60\nnegquery-cache-ttl=30\nlog-dns-queries=yes\nloglevel=5\n"
+	if string(b) != want {
+		t.Errorf("pdns-servik.conf:\n%s", b)
+	}
+	if fi, _ := os.Stat(sim.Path(pdnsConf)); fi.Mode().Perm() != 0o640 {
+		t.Errorf("mode %v, want 0640 (it holds the API key)", fi.Mode().Perm())
+	}
+	if !sim.Ran("pdns_server --config-name=servik --config=check") || !sim.Ran("systemctl restart pdns@servik.service") {
+		t.Errorf("commands: %v", sim.Commands())
+	}
+
+	// Back to no transfers; lines already there are replaced in place.
+	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &tuning.PowerDNS{CacheTTL: 20, NegativeTTL: 60}}); err != nil {
+		t.Fatal(err)
+	}
+	b, _ = os.ReadFile(sim.Path(pdnsConf))
+	if !strings.Contains(string(b), "\ndisable-axfr=yes\nversion-string=anonymous\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\n") {
+		t.Errorf("pdns-servik.conf:\n%s", b)
+	}
+
+	// PowerDNS refusing to start puts the old file back.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "systemctl restart pdns@servik.service" {
+			return errors.New("job failed")
+		}
+		return nil
+	}
+	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &tuning.PowerDNS{CacheTTL: 5, NegativeTTL: 60}}); err == nil {
+		t.Fatal("failed restart reported as success")
+	}
+	sim.Fail = nil
+	if b, _ := os.ReadFile(sim.Path(pdnsConf)); !strings.Contains(string(b), "cache-ttl=20\n") {
+		t.Errorf("pdns-servik.conf not restored:\n%s", b)
+	}
+	var v *ValidationError
+	for _, bad := range []tuning.PowerDNS{
+		{CacheTTL: -1, NegativeTTL: 60},
+		{CacheTTL: 20, NegativeTTL: 100000},
+		{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"ns2.example.net"}},
+		{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"192.0.2.0/33"}},
+	} {
+		if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@servik", PowerDNS: &bad}); !errors.As(err, &v) {
+			t.Errorf("%+v: %v", bad, err)
+		}
+	}
+}
