@@ -476,6 +476,35 @@ class SecurityTest extends TestCase
         $this->assertFalse($block->fresh()->isActive());
     }
 
+    public function test_fail2ban_jails_follow_the_server_without_a_reinstall(): void
+    {
+        $this->agent->answers['fail2ban.status'] = ['installed' => true, 'running' => true, 'current' => true, 'jails' => []];
+        app(Fail2ban::class)->sync();
+        $this->assertSame([], $this->agent->called('fail2ban.refresh'));
+
+        // The mail server came after Fail2ban: the minute sync rewrites the jails.
+        $this->agent->answers['fail2ban.status']['current'] = false;
+        $this->agent->answers['fail2ban.refresh'] = ['changed' => true];
+        app(Fail2ban::class)->sync();
+        $this->assertCount(1, $this->agent->called('fail2ban.refresh'));
+        $this->assertDatabaseHas('audit_entries', ['via' => 'system', 'message' => 'Fail2ban kuralları sunucudaki değişikliğe göre güncellendi.']);
+
+        // Busy with another software operation: tried again the next minute.
+        $this->agent->answers['fail2ban.refresh'] = AgentException::rpcError('fail2ban.refresh', -32005, 'another software operation is running');
+        app(Fail2ban::class)->sync();
+        app(Fail2ban::class)->sync();
+        $this->assertCount(3, $this->agent->called('fail2ban.refresh'));
+
+        // Fail2ban refused the jails: not retried for an hour.
+        $this->agent->answers['fail2ban.refresh'] = AgentException::rpcError('fail2ban.refresh', -32000, 'fail2ban-client --test failed');
+        app(Fail2ban::class)->sync();
+        app(Fail2ban::class)->sync();
+        $this->assertCount(4, $this->agent->called('fail2ban.refresh'));
+        $this->travel(61)->minutes();
+        app(Fail2ban::class)->sync();
+        $this->assertCount(5, $this->agent->called('fail2ban.refresh'));
+    }
+
     // --- Customers ---
 
     public function test_customers_get_their_own_sites_security_within_the_package(): void

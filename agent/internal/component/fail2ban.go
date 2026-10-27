@@ -20,7 +20,8 @@ type Fail2banStatus struct {
 	Running   bool   `json:"running"`
 	Jails     []Jail `json:"jails"`
 	// Current is false when the jails Servik writes are out of date (the
-	// panel's jail or the mail jails are missing); Fail2banRefresh fixes it.
+	// mail server was set up or the panel's port changed since);
+	// Fail2banRefresh fixes it.
 	Current bool `json:"current"`
 }
 
@@ -89,13 +90,17 @@ func (m *Manager) readManaged(abs string) (string, error) {
 	return string(b), err
 }
 
-// Fail2banRefresh rewrites Servik's jails (after the mail server or a new
-// panel version) and reloads Fail2ban when they changed.
+// Fail2banRefresh rewrites Servik's jails to match the server (the mail
+// jails come and go with the mail server, the panel's jail follows the
+// panel's port) and reloads Fail2ban when they changed. It is ErrBusy
+// while a software operation runs; the panel asks again a minute later.
 func (m *Manager) Fail2banRefresh(ctx context.Context) (bool, error) {
 	if !m.fail2banInstalled() {
 		return false, invalid("Fail2ban is not installed")
 	}
-	m.op.Lock()
+	if !m.op.TryLock() {
+		return false, ErrBusy
+	}
 	defer m.op.Unlock()
 	t := txn.New(m.h)
 	if err := writeJails(t, m); err != nil {
@@ -109,10 +114,21 @@ func (m *Manager) Fail2banRefresh(ctx context.Context) (bool, error) {
 		_ = t.Rollback(context.WithoutCancel(ctx))
 		return false, &OperationError{err}
 	}
-	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload-or-restart", "fail2ban"}}); err != nil {
+	// A Fail2ban someone stopped on purpose stays stopped; it reads the
+	// new jails when it starts.
+	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"try-reload-or-restart", "fail2ban"}}); err != nil {
 		return false, &OperationError{err}
 	}
 	return true, nil
+}
+
+// Fail2banSync is Fail2banRefresh for callers that changed what the jails
+// depend on (the mail server was set up): nothing to do without Fail2ban.
+func (m *Manager) Fail2banSync(ctx context.Context) (bool, error) {
+	if !m.fail2banInstalled() {
+		return false, nil
+	}
+	return m.Fail2banRefresh(ctx)
 }
 
 // Fail2banUnban lifts a ban early.

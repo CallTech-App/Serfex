@@ -281,6 +281,12 @@ func registerMail(srv *rpc.Server, svc services) {
 		if err != nil {
 			return nil, mapError(err)
 		}
+		// Fail2ban starts watching the mail logins. When it cannot now
+		// (another software operation runs), the panel's minute check
+		// catches up.
+		if svc.components != nil {
+			_, _ = svc.components.Fail2banSync(context.WithoutCancel(ctx))
+		}
 		return res, nil
 	})
 	srv.Handle("mail.domain.apply", func(ctx context.Context, p json.RawMessage) (any, error) {

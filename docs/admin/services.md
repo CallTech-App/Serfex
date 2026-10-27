@@ -89,5 +89,7 @@ Notes:
   it under its settings or Security → WAF.
 - **ClamAV** scans incoming mail through Rspamd (infected mail is rejected)
   and is used by the security scan.
-- **Fail2ban** installed before the mail server needs a reinstall to add the
-  mail jails.
+- **Fail2ban** keeps its jails in step with the server by itself: the mail
+  jails are added as soon as the mail server is set up (also when Fail2ban
+  was installed first), and the panel's jail follows a new panel port within
+  a minute. A stopped Fail2ban is not started by this.
