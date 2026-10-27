@@ -209,6 +209,55 @@ class ServicesTest extends TestCase
         $this->get('/hizmetler/yok')->assertNotFound();
     }
 
+    public function test_apache_and_powerdns_settings(): void
+    {
+        $this->services['apache2'] = [...$this->services['nginx'], 'unit' => 'apache2', 'name' => 'Apache', 'settings' => 'apache'];
+        $this->services['pdns@servik'] = [...$this->services['nginx'], 'unit' => 'pdns@servik', 'name' => 'PowerDNS (DNS sunucusu)', 'can_reload' => false, 'settings' => 'powerdns'];
+        $settings = [
+            'apache2' => ['max_request_workers' => 150, 'timeout' => 300],
+            'pdns@servik' => ['cache_ttl' => 20, 'negquery_cache_ttl' => 60, 'log_queries' => false, 'axfr_allow' => []],
+        ];
+        $this->agent->answers['service.settings'] = fn ($p) => ['unit' => $p['unit'], $p['unit'] === 'apache2' ? 'apache' : 'powerdns' => $settings[$p['unit']]];
+        $this->agent->answers['service.settings.apply'] = fn ($p) => ['unit' => $p['unit'], ...array_diff_key($p, ['unit' => 1])];
+
+        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
+            ->assertSee('Eşzamanlı istek sınırı')
+            ->assertSet('settings.max_request_workers', '150')
+            ->set('settings.timeout', '600')
+            ->call('saveSettings')
+            ->assertHasErrors('settings.timeout')
+            ->set('settings.timeout', '120')
+            ->set('settings.max_request_workers', '400')
+            ->call('saveSettings')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast', fn ($name, $p) => $p['undo']['args'][0] === ['max_request_workers' => 150, 'timeout' => 300]);
+        $this->assertSame(['max_request_workers' => 400, 'timeout' => 120], $this->agent->called('service.settings.apply')[0]['apache']);
+
+        Livewire::test(ServiceShow::class, ['unit' => 'pdns@servik', 'tab' => 'ayarlar'])
+            ->assertSee('Bölge aktarımı izni')
+            ->assertSet('settings.log_queries', false)
+            ->assertSet('settings.axfr_allow', '')
+            ->set('settings.axfr_allow', "192.0.2.10\nns2.example.net")
+            ->call('saveSettings')
+            ->assertHasErrors('settings.axfr_allow')
+            ->set('settings.axfr_allow', "192.0.2.10\n 2001:db8::/48 ,198.51.100.0/24\n")
+            ->set('settings.log_queries', true)
+            ->set('settings.cache_ttl', '0')
+            ->call('saveSettings')
+            ->assertHasNoErrors()
+            ->assertSet('settings.axfr_allow', "192.0.2.10\n2001:db8::/48\n198.51.100.0/24")
+            ->call('undoSettings', $settings['pdns@servik']);
+        $applied = $this->agent->called('service.settings.apply');
+        $this->assertSame(['cache_ttl' => 0, 'negquery_cache_ttl' => 60, 'log_queries' => true, 'axfr_allow' => ['192.0.2.10', '2001:db8::/48', '198.51.100.0/24']], $applied[1]['powerdns']);
+        $this->assertSame($settings['pdns@servik'], $applied[2]['powerdns']);
+
+        // Without Servik's Apache configuration there is no settings tab.
+        $this->services['apache2']['settings'] = null;
+        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
+            ->assertSet('tab', 'gunluk')
+            ->assertDontSee('Eşzamanlı istek sınırı');
+    }
+
     public function test_protected_services_cannot_be_stopped_from_the_page(): void
     {
         $this->get('/hizmetler/servik-agent')->assertOk()
@@ -250,10 +299,52 @@ class ServicesTest extends TestCase
         Queue::assertPushed(RunComponentOperation::class);
     }
 
+    public function test_php_updates_are_checked_and_wait_for_the_running_operation(): void
+    {
+        $list = $this->agent->answers['component.list'];
+        $this->agent->answers['component.check'] = function () use ($list) {
+            $list['components'][2]['latest'] = '8.4.15';
+            $this->agent->answers['component.list'] = $list;
+
+            return $list;
+        };
+
+        Livewire::test(ServiceIndex::class)
+            ->set('tab', 'php')
+            ->assertSee('Son denetim')
+            ->assertDontSee('→ 8.4.15')
+            ->call('check')
+            ->assertDispatched('toast')
+            ->assertSee('→ 8.4.15')
+            ->assertSee('Güncelleme var')
+            ->assertSeeHtml("askPhp('php8.4', 'update')");
+
+        // Another component's install holds every button and says why.
+        $op = ComponentOperation::create(['component' => 'postgresql', 'action' => 'install', 'run' => 'cpgsql', 'status' => 'running']);
+        Livewire::test(ServiceIndex::class)
+            ->set('tab', 'php')
+            ->assertSee('PostgreSQL kuruluyor.')
+            ->assertSee('Bitene kadar başka kurulum, güncelleme veya kaldırma başlatılamaz.')
+            ->assertSeeHtml('wire:click="show('.$op->id.')"')
+            ->call('show', $op->id)
+            ->assertSet('operationId', $op->id);
+
+        $op->update(['status' => 'failed', 'finished_at' => now()]);
+        Livewire::test(ServiceIndex::class)
+            ->set('tab', 'php')
+            ->assertDontSee('PostgreSQL kuruluyor.')
+            ->call('askPhp', 'php8.4', 'update')
+            ->assertSee('PHP 8.4 güncellensin mi?')
+            ->call('confirm');
+        $this->assertSame(['php8.4', 'update'], [ComponentOperation::latest('id')->first()->component, ComponentOperation::latest('id')->first()->action]);
+    }
+
     public function test_php_version_defaults_are_validated_applied_and_undone(): void
     {
         Livewire::test(PhpVersionShow::class, ['version' => '8.4'])
             ->assertSee('php.ini varsayılanları')
+            ->assertSee('Komut satırı PHP')
+            ->assertSeeHtml('yalnızca web</span>')
             ->assertSet('values.memory_limit', '256M')
             ->set('values.upload_max_filesize', '128M')
             ->call('save')
@@ -274,6 +365,24 @@ class ServicesTest extends TestCase
         $this->assertSame('512M', Setting::get('php.memory.8.4'));
 
         $this->get('/hizmetler/php/7.4')->assertNotFound();
+    }
+
+    public function test_php_version_settings_with_a_dot_in_their_name_are_editable(): void
+    {
+        // Livewire reads dots in wire:model as nested arrays.
+        Livewire::test(PhpVersionShow::class, ['version' => '8.4'])
+            ->assertSeeHtml('wire:model="values.date_timezone"')
+            ->set('values.date_timezone', 'Europe/Istanbul')
+            ->set('values.opcache_memory_consumption', 'çok')
+            ->call('save')
+            ->assertHasErrors('values.opcache_memory_consumption')
+            ->set('values.opcache_memory_consumption', '256')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $applied = $this->agent->called('php.settings.apply')[0]['values'];
+        $this->assertSame(['Europe/Istanbul', '256'], [$applied['date.timezone'], $applied['opcache.memory_consumption']]);
+        $this->assertArrayNotHasKey('date_timezone', $applied);
     }
 
     public function test_php_extensions_are_switched_and_installed(): void

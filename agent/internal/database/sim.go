@@ -60,6 +60,10 @@ func (e *simEngine) save(d *simData) error {
 
 func (e *simEngine) version(context.Context) (string, error) {
 	if e.server == PostgreSQL {
+		m := &Manager{h: e.h}
+		if v := m.pgMainVersion(); v != "16" && v != "" {
+			return v + ".1", nil
+		}
 		return "16.10", nil
 	}
 	return "8.0.46", nil

@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/panel"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/tuning"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -268,7 +270,7 @@ func databaseComponent(product string) *component {
 		unitList: units,
 		install: func(o *op) error {
 			o.step("%s kuruluyor ve ayarlanıyor", dbLabel[product])
-			if _, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product}); err != nil {
+			if _, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Log: o.w}); err != nil {
 				return err
 			}
 			o.step("Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor")
@@ -285,16 +287,43 @@ func databaseComponent(product string) *component {
 	case "mariadb":
 		c.versionPkg, c.packages = "mariadb-server", []string{"mariadb-server", "mariadb-client"}
 	case "postgresql":
-		// PostgreSQL's packages may also serve other clusters; Servik
-		// leaves their updates to the system.
-		c.version = func(_ context.Context, m *Manager) string {
-			if p, ok := m.db.Installed()[server]; ok {
-				return strings.TrimSuffix(strings.TrimPrefix(p[1], "postgresql@"), "-main")
+		// The customers' cluster stays on the major version it was
+		// created with; updates bring that version's minor releases.
+		pkg := func(m *Manager) string {
+			if v := m.db.PGVersion(); v != "" {
+				return "postgresql-" + v
 			}
 			return ""
 		}
+		c.version = func(ctx context.Context, m *Manager) string {
+			p := pkg(m)
+			if p == "" {
+				return ""
+			}
+			if v := upstream(m.versions(ctx, []string{p})[p]); v != "" {
+				return v
+			}
+			return strings.TrimPrefix(p, "postgresql-")
+		}
+		c.latest = func(ctx context.Context, m *Manager) (string, error) {
+			p := pkg(m)
+			if p == "" {
+				return "", nil
+			}
+			return upstream(m.candidates(ctx, []string{p})[p]), nil
+		}
 		c.update = func(o *op) error {
-			return invalid("PostgreSQL is updated with the operating system's updates")
+			v := o.m.db.PGVersion()
+			o.t = txn.New(o.m.h)
+			pkgs := []string{"postgresql-" + v, "postgresql-client-" + v}
+			o.step("Yeni sürüm kuruluyor: %s", strings.Join(pkgs, " "))
+			args := append(append([]string{"install", "--only-upgrade"}, aptOpts...), pkgs...)
+			if _, err := o.run(host.Command{Name: "apt-get", Args: args, Env: aptEnv}); err != nil {
+				return err
+			}
+			o.step("Sunucu denetleniyor")
+			_, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Log: o.w})
+			return err
 		}
 	}
 	if product != "postgresql" {
@@ -306,7 +335,7 @@ func databaseComponent(product string) *component {
 				return err
 			}
 			o.step("Sunucu denetleniyor")
-			_, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product})
+			_, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Log: o.w})
 			return err
 		}
 	}
@@ -314,6 +343,16 @@ func databaseComponent(product string) *component {
 }
 
 var dbLabel = map[string]string{"mysql": "MySQL", "mariadb": "MariaDB", "postgresql": "PostgreSQL"}
+
+// upstream is a package version without its epoch and Debian revision:
+// "18.1-1.pgdg24.04+2" is "18.1".
+func upstream(v string) string {
+	if i := strings.IndexByte(v, ':'); i >= 0 {
+		v = v[i+1:]
+	}
+	v, _, _ = strings.Cut(v, "-")
+	return v
+}
 
 // dial connects to a local service, sends a line and expects an answer
 // starting with want.
@@ -370,13 +409,6 @@ var apachePorts = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 Listen 127.0.0.1:` + fmt.Sprint(site.ApachePort) + `
 `)
 
-var apacheConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
-ServerName localhost
-ServerTokens Prod
-ServerSignature Off
-TraceEnable Off
-`)
-
 var apacheModules = []string{"proxy_fcgi", "setenvif", "rewrite", "remoteip", "headers", "expires", "deflate"}
 
 func apache() *component {
@@ -403,7 +435,7 @@ func apache() *component {
 			if err := o.t.WriteFile(site.ApachePorts, apachePorts); err != nil {
 				return err
 			}
-			if err := o.t.WriteFile("/etc/apache2/conf-available/servik.conf", apacheConf); err != nil {
+			if err := o.t.WriteFile(tuning.ApacheConf, tuning.ApacheContent(tuning.Load(o.m.h).Apache)); err != nil {
 				return err
 			}
 			// prefork (mod_php) is never used: PHP runs in PHP-FPM.
@@ -543,7 +575,11 @@ func writeJails(t *txn.Tx, m *Manager) error {
 func renderJails(m *Manager) []byte {
 	ignore := []string{"127.0.0.1/8", "::1"}
 	if m.Addresses != nil {
-		ignore = append(ignore, m.Addresses()...)
+		// Sorted, so the order interfaces are listed in never counts as a
+		// change (the panel rewrites jails that are not current).
+		own := slices.Clone(m.Addresses())
+		slices.Sort(own)
+		ignore = append(ignore, slices.Compact(own)...)
 	}
 	mail := m.exists("/usr/sbin/postfix") && m.exists("/usr/sbin/dovecot")
 	var b strings.Builder
@@ -851,10 +887,12 @@ var simVersions = map[string]string{
 	"php8.3-fpm": "8.3.6-0ubuntu0.24.04.5", "php8.4-fpm": "8.4.13-1+ubuntu24.04.1+deb.sury.org+1",
 	"php8.5-fpm":   "8.5.0-1+ubuntu24.04.1+deb.sury.org+1",
 	"mysql-server": "8.0.43-0ubuntu0.24.04.2", "mariadb-server": "1:10.11.13-0ubuntu0.24.04.1",
+	"postgresql-16": "16.10-0ubuntu0.24.04.1", "postgresql-18": "18.1-1.pgdg24.04+2",
 }
 
 // simCandidates make a dry run show available updates.
 var simCandidates = map[string]string{
-	"nginx":      "1.24.0-2ubuntu7.6",
-	"php8.3-fpm": "8.3.6-0ubuntu0.24.04.6",
+	"nginx":         "1.24.0-2ubuntu7.6",
+	"php8.3-fpm":    "8.3.6-0ubuntu0.24.04.6",
+	"postgresql-18": "18.2-1.pgdg24.04+1",
 }

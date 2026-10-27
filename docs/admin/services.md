@@ -56,8 +56,13 @@ sites** (`exec`, `passthru`, `shell_exec`, `system`, `proc_open`, `popen`,
 `pcntl_exec`, `show_source` by default) applies to every customer site;
 an administrator can allow them for one site on its PHP page.
 
-These values apply to PHP-FPM, that is to the web. Command-line PHP
-(Artisan, queue workers, cron) uses Ubuntu's own `php.ini` in 0.1.
+These values apply to PHP-FPM and to command-line PHP (Artisan, queue
+workers, the scheduler, cron tasks, Composer), which reads a copy in
+`/etc/php/<version>/cli/conf.d/90-servik.ini`. The settings marked *web
+only* (`memory_limit`, `max_execution_time`, `max_input_time`,
+`display_errors`) stay at the command line's own values: no memory or time
+limit, errors printed to the terminal. A site's own PHP settings apply to
+its web requests only.
 
 Each site's PHP-FPM pool runs `ondemand`, with at most 10 workers (customers
 can raise it to 20), renewed after 500 requests.
@@ -68,6 +73,13 @@ can raise it to 20), renewed after 500 requests.
 step with a live log; a failed step rolls back what was done. A component
 that is in use cannot be removed (the page says by what), and its
 configuration is archived before removal. Updates are checked daily at 04:30.
+
+An operation outlives the page and the panel's worker: if the worker is
+restarted while it waits (a package upgrade restarting services, for one),
+the page reads the outcome from the operation's log instead of waiting on
+it forever. Servik also tells Ubuntu's `needrestart` to leave its own
+services (`servik-agent`, `servik-panel-*`) alone after package upgrades;
+the workers pick up new PHP binaries on their hourly restart.
 
 | Tab | Components |
 |-----|------------|
@@ -84,5 +96,7 @@ Notes:
   it under its settings or Security → WAF.
 - **ClamAV** scans incoming mail through Rspamd (infected mail is rejected)
   and is used by the security scan.
-- **Fail2ban** installed before the mail server needs a reinstall to add the
-  mail jails.
+- **Fail2ban** keeps its jails in step with the server by itself: the mail
+  jails are added as soon as the mail server is set up (also when Fail2ban
+  was installed first), and the panel's jail follows a new panel port within
+  a minute. A stopped Fail2ban is not started by this.

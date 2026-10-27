@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -21,8 +23,8 @@ type product struct {
 	name     string
 	server   string
 	packages []string
-	// marker is a file the package installs; for PostgreSQL a glob over
-	// its versions.
+	// marker is a file the package installs; PostgreSQL's depend on the
+	// version (pgProduct).
 	marker  string
 	unit    string
 	conf    string
@@ -39,8 +41,7 @@ var products = map[string]product{
 		unit: "mariadb", conf: "/etc/mysql/mariadb.conf.d/90-servik.cnf", dataDir: "/var/lib/mysql",
 	},
 	PostgreSQL: {
-		name: PostgreSQL, server: PostgreSQL, packages: []string{"postgresql"}, marker: "/usr/lib/postgresql/*/bin/postgres",
-		dataDir: "/var/lib/postgresql",
+		name: PostgreSQL, server: PostgreSQL, dataDir: "/var/lib/postgresql",
 	},
 }
 
@@ -50,42 +51,30 @@ const pgHBA = stateDir + "/pg_hba.conf"
 // installedProduct returns the product serving server, if installed.
 // MariaDB is checked before MySQL: it also ships a mysqld.
 func (m *Manager) installedProduct(server string) (product, bool) {
-	order := []string{MariaDB, MySQL}
 	if server == PostgreSQL {
-		order = []string{PostgreSQL}
+		// The binaries may serve other clusters (Servik's own); the
+		// customers' server is the "main" cluster.
+		if v := m.pgMainVersion(); v != "" {
+			return pgProduct(v), true
+		}
+		return product{}, false
 	}
-	for _, name := range order {
-		p := products[name]
-		if p.server != server {
-			continue
-		}
-		if name == PostgreSQL {
-			// The binaries may serve other clusters; the customers'
-			// server is the "main" cluster.
-			p, ok := m.pgProduct()
-			if !ok || !m.exists(pgClusterConf(p)) {
-				continue
-			}
-			return p, true
-		}
-		if m.exists(p.marker) {
+	for _, name := range []string{MariaDB, MySQL} {
+		if p := products[name]; p.server == server && m.exists(p.marker) {
 			return p, true
 		}
 	}
 	return product{}, false
 }
 
-// pgProduct is PostgreSQL's product for the newest version whose
-// binaries are installed, cluster or not.
-func (m *Manager) pgProduct() (product, bool) {
-	v := m.pgVersion()
-	if v == "" {
-		return product{}, false
-	}
+// pgProduct is PostgreSQL's product for the cluster of major version v.
+func pgProduct(v string) product {
 	p := products[PostgreSQL]
+	p.packages = []string{"postgresql-" + v, "postgresql-client-" + v}
+	p.marker = "/usr/lib/postgresql/" + v + "/bin/postgres"
 	p.unit = "postgresql@" + v + "-main"
 	p.conf = "/etc/postgresql/" + v + "/main/conf.d/servik.conf"
-	return p, true
+	return p
 }
 
 // pgClusterConf is the main cluster's postgresql.conf.
@@ -93,21 +82,9 @@ func pgClusterConf(p product) string {
 	return filepath.Dir(filepath.Dir(p.conf)) + "/postgresql.conf"
 }
 
-// pgVersion is the newest PostgreSQL version installed.
-func (m *Manager) pgVersion() string {
-	matches, _ := filepath.Glob(m.h.Path(products[PostgreSQL].marker))
-	var versions []string
-	for _, f := range matches {
-		versions = append(versions, filepath.Base(filepath.Dir(filepath.Dir(f))))
-	}
-	sort.Slice(versions, func(i, j int) bool {
-		return len(versions[i]) < len(versions[j]) || (len(versions[i]) == len(versions[j]) && versions[i] < versions[j])
-	})
-	if len(versions) == 0 {
-		return ""
-	}
-	return versions[len(versions)-1]
-}
+// PGVersion is the major version of the customers' PostgreSQL, "" when
+// it is not installed.
+func (m *Manager) PGVersion() string { return m.pgMainVersion() }
 
 // ServerStatus describes one database server.
 type ServerStatus struct {
@@ -167,6 +144,8 @@ func lastLine(s string) string {
 type InstallSpec struct {
 	// Product is mysql, mariadb or postgresql.
 	Product string `json:"product"`
+	// Log gets the progress (Yazılım Yönetimi's run log); nil drops it.
+	Log io.Writer `json:"-"`
 }
 
 // InstallResult describes what Install did.
@@ -194,6 +173,10 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 	}
 	res = InstallResult{Server: p.server, Product: p.name}
 	dataExisted := m.exists(p.dataDir)
+	log := spec.Log
+	if log == nil {
+		log = io.Discard
+	}
 	t := txn.New(m.h)
 	defer func() {
 		if err == nil {
@@ -216,20 +199,26 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 		err = opError(err)
 	}()
 
-	if !m.packagesPresent(p) {
-		if err := installPackages(ctx, m.h, p.packages, ""); err != nil {
-			return res, err
-		}
-		res.Installed = true
-	}
 	if p.server == PostgreSQL {
-		if p, ok = m.pgProduct(); !ok {
-			return res, errors.New("PostgreSQL's binaries are missing after the install")
+		v := m.pgMainVersion()
+		if v == "" {
+			// A new cluster gets the newest major version.
+			if v, err = m.pgTarget(ctx, t, log); err != nil {
+				return res, err
+			}
+		}
+		p = pgProduct(v)
+		if !m.exists(p.marker) {
+			if err := installPackages(ctx, m.h, p.packages, "", log); err != nil {
+				return res, err
+			}
+			res.Installed = true
 		}
 		if !m.exists(pgClusterConf(p)) {
-			// The cluster was dropped (or never created).
-			v := strings.TrimSuffix(strings.TrimPrefix(p.unit, "postgresql@"), "-main")
-			if _, err := m.h.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{v, "main"}}); err != nil {
+			// Never installed, or dropped by a removal. Servik's own
+			// cluster has 5433.
+			fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Müşteri kümesi oluşturuluyor (PostgreSQL %s main, port %s)", v, pgCustomerPort))
+			if _, err := m.h.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{"--port", pgCustomerPort, v, "main"}, Stream: log}); err != nil {
 				return res, err
 			}
 			t.OnUndo(func(ctx context.Context) error {
@@ -238,6 +227,12 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 			})
 		}
 	} else {
+		if !m.exists(p.marker) {
+			if err := installPackages(ctx, m.h, p.packages, "", log); err != nil {
+				return res, err
+			}
+			res.Installed = true
+		}
 		p, _ = m.installedProduct(p.server)
 	}
 
@@ -270,14 +265,6 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 	return res, nil
 }
 
-// packagesPresent reports whether the product's packages are installed.
-func (m *Manager) packagesPresent(p product) bool {
-	if p.name == PostgreSQL {
-		return m.pgVersion() != ""
-	}
-	return m.exists(p.marker)
-}
-
 // waitFor waits until server answers queries.
 func (m *Manager) waitFor(ctx context.Context, server string) (string, error) {
 	var err error
@@ -298,18 +285,22 @@ func (m *Manager) waitFor(ctx context.Context, server string) (string, error) {
 var aptEnv = []string{"DEBIAN_FRONTEND=noninteractive"}
 
 // installPackages installs packages, refreshing the package lists once if
-// the first attempt fails. preseed holds debconf answers.
-func installPackages(ctx context.Context, h host.Host, packages []string, preseed string) error {
+// the first attempt fails. preseed holds debconf answers; log, when set,
+// gets apt's output.
+func installPackages(ctx context.Context, h host.Host, packages []string, preseed string, log io.Writer) error {
 	if preseed != "" {
 		if _, err := h.Run(ctx, host.Command{Name: "debconf-set-selections", Stdin: []byte(preseed)}); err != nil {
 			return err
 		}
 	}
-	inst := host.Command{Name: "apt-get", Args: append([]string{"install", "-y", "-q", "--no-install-recommends"}, packages...), Env: aptEnv}
+	if log != nil {
+		fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Paketler kuruluyor: %s", strings.Join(packages, " ")))
+	}
+	inst := host.Command{Name: "apt-get", Args: append([]string{"install", "-y", "-q", "--no-install-recommends"}, packages...), Env: aptEnv, Stream: log}
 	if _, err := h.Run(ctx, inst); err == nil {
 		return nil
 	}
-	if _, err := h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv}); err != nil {
+	if _, err := h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv, Stream: log}); err != nil {
 		return fmt.Errorf("installing %s: %w", strings.Join(packages, ", "), err)
 	}
 	if _, err := h.Run(ctx, inst); err != nil {

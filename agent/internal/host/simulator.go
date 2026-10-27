@@ -48,6 +48,8 @@ func NewSimulator(root string, phpVersions ...string) (*Simulator, error) {
 	for file, seed := range map[string]string{
 		"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\npdns:x:103:105:PowerDNS:/var/spool/powerdns:/usr/sbin/nologin\n",
 		"/etc/group":  "root:x:0:\nwww-data:x:33:\npdns:x:105:\n",
+		// The release; PostgreSQL's archive is listed by its codename.
+		"/etc/os-release": "PRETTY_NAME=\"Ubuntu 24.04.3 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION_CODENAME=noble\nID=ubuntu\n",
 	} {
 		if _, err := os.Stat(s.Path(file)); errors.Is(err, os.ErrNotExist) {
 			if err := os.WriteFile(s.Path(file), []byte(seed), 0o644); err != nil {
@@ -387,6 +389,7 @@ var simPackages = map[string][]string{
 	"mysql-server":                  {"/usr/sbin/mysqld", "/etc/mysql/mysql.conf.d/mysqld.cnf"},
 	"mariadb-server":                {"/usr/sbin/mariadbd", "/usr/sbin/mysqld", "/etc/mysql/mariadb.conf.d/50-server.cnf"},
 	"postgresql":                    {"/usr/lib/postgresql/16/bin/postgres", "/etc/postgresql/16/main/postgresql.conf", "/etc/postgresql/16/main/conf.d/.keep"},
+	"postgresql-common":             {"/usr/bin/pg_createcluster", "/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc"},
 	"nginx":                         {"/usr/sbin/nginx"},
 	"php-fpm":                       {"/usr/sbin/php-fpm8.3"},
 	"php-mbstring":                  {"/etc/php/8.3/mods-available/mbstring.ini"},
@@ -427,6 +430,10 @@ func (s *Simulator) aptGet(args []string) error {
 			if strings.HasPrefix(a, "-") {
 				continue
 			}
+			if m := simPGServer.FindStringSubmatch(a); m != nil {
+				_ = os.Remove(s.Path("/usr/lib/postgresql/" + m[1] + "/bin/postgres"))
+				continue
+			}
 			if v, ok := strings.CutSuffix(a, "-*"); ok && phpBinary.MatchString(v) {
 				ver := strings.TrimPrefix(v, "php")
 				_ = os.Remove(s.Path("/usr/sbin/php-fpm" + ver))
@@ -453,6 +460,13 @@ func (s *Simulator) aptGet(args []string) error {
 			return err
 		}
 		files := simPackages[a]
+		if m := simPGServer.FindStringSubmatch(a); m != nil {
+			// postgresql-N: the binaries; clusters are made apart.
+			files = []string{"/usr/lib/postgresql/" + m[1] + "/bin/postgres", "/usr/bin/pg_createcluster"}
+			if err := s.addAccounts(simAccounts["postgresql"]); err != nil {
+				return err
+			}
+		}
 		if v, ok := strings.CutSuffix(a, "-cli"); ok && phpBinary.MatchString(v) {
 			files = []string{"/usr/bin/" + v}
 		}

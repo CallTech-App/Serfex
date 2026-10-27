@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/tuning"
@@ -21,6 +23,9 @@ const (
 	mysqlTuning = "/etc/mysql/mysql.conf.d/zz-servik-tuning.cnf"
 	mariaTuning = "/etc/mysql/mariadb.conf.d/91-servik-tuning.cnf"
 	postfixMain = "/etc/postfix/main.cf"
+	pdnsConf    = "/etc/powerdns/pdns-servik.conf"
+	// apacheEnabled is Servik's Apache configuration switched on.
+	apacheEnabled = "/etc/apache2/conf-enabled/servik.conf"
 )
 
 // SettingsSpec names a service whose settings are read or changed; for a
@@ -30,6 +35,8 @@ type SettingsSpec struct {
 	Nginx    *tuning.Nginx    `json:"nginx,omitempty"`
 	Database *tuning.Database `json:"database,omitempty"`
 	Postfix  *tuning.Postfix  `json:"postfix,omitempty"`
+	Apache   *tuning.Apache   `json:"apache,omitempty"`
+	PowerDNS *tuning.PowerDNS `json:"powerdns,omitempty"`
 }
 
 // Settings returns a service's changeable settings as they are now.
@@ -62,6 +69,12 @@ func (m *Manager) Settings(ctx context.Context, unit string) (SettingsSpec, erro
 	case "postfix":
 		p := s.Postfix
 		out.Postfix = &p
+	case "apache":
+		a := s.Apache
+		out.Apache = &a
+	case "powerdns":
+		p := s.PowerDNS
+		out.PowerDNS = &p
 	default:
 		return SettingsSpec{}, invalid("%s has no settings to change here", d.name)
 	}
@@ -160,6 +173,36 @@ func (m *Manager) ApplySettings(ctx context.Context, spec SettingsSpec) (Setting
 		}
 		s.Postfix = *p
 		apply = func() error { return m.applyPostfix(ctx, t, *p) }
+	case "apache":
+		a := spec.Apache
+		switch {
+		case a == nil:
+			return SettingsSpec{}, invalid("apache settings are missing")
+		case a.MaxRequestWorkers < 25 || a.MaxRequestWorkers > 2000:
+			return SettingsSpec{}, invalid("MaxRequestWorkers must be between 25 and 2000")
+		case a.Timeout < 10 || a.Timeout > 300:
+			return SettingsSpec{}, invalid("Timeout must be between 10 and 300 seconds")
+		}
+		restart := tuning.ApacheServerLimit(*a) != tuning.ApacheServerLimit(s.Apache)
+		s.Apache = *a
+		apply = func() error { return m.applyApache(ctx, t, *a, restart) }
+	case "powerdns":
+		p := spec.PowerDNS
+		switch {
+		case p == nil:
+			return SettingsSpec{}, invalid("powerdns settings are missing")
+		case p.CacheTTL < 0 || p.CacheTTL > 86400:
+			return SettingsSpec{}, invalid("cache-ttl must be between 0 and 86400 seconds")
+		case p.NegativeTTL < 0 || p.NegativeTTL > 86400:
+			return SettingsSpec{}, invalid("negquery-cache-ttl must be between 0 and 86400 seconds")
+		}
+		allow, err := axfrAllow(p.AXFRAllow)
+		if err != nil {
+			return SettingsSpec{}, err
+		}
+		p.AXFRAllow = allow
+		s.PowerDNS = *p
+		apply = func() error { return m.applyPowerDNS(ctx, t, *p) }
 	default:
 		return SettingsSpec{}, invalid("%s has no settings to change here", d.name)
 	}
@@ -187,7 +230,7 @@ func (m *Manager) recover(ctx context.Context, d def) {
 		return
 	}
 	verb := "reload-or-restart"
-	if d.settings == "database" {
+	if d.settings == "database" || d.settings == "powerdns" {
 		verb = "restart"
 	}
 	_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{verb, d.unit + ".service"}})
@@ -293,4 +336,85 @@ func (m *Manager) applyPostfix(ctx context.Context, t *txn.Tx, p tuning.Postfix)
 	}
 	_, err = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "postfix.service"}})
 	return err
+}
+
+// maxAXFR is how many addresses may transfer zones.
+const maxAXFR = 32
+
+// axfrAllow checks the addresses allowed to transfer zones and writes
+// them the same way every time: an address or a network in CIDR form,
+// each once.
+func axfrAllow(list []string) ([]string, error) {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, v := range list {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		var norm string
+		if strings.Contains(v, "/") {
+			p, err := netip.ParsePrefix(v)
+			if err != nil {
+				return nil, invalid("%q is not an IP address or network", v)
+			}
+			norm = p.Masked().String()
+		} else {
+			a, err := netip.ParseAddr(v)
+			if err != nil || a.Zone() != "" {
+				return nil, invalid("%q is not an IP address or network", v)
+			}
+			norm = a.Unmap().String()
+		}
+		if !seen[norm] {
+			seen[norm] = true
+			out = append(out, norm)
+		}
+	}
+	if len(out) > maxAXFR {
+		return nil, invalid("at most %d addresses may transfer zones", maxAXFR)
+	}
+	return out, nil
+}
+
+func (m *Manager) applyApache(ctx context.Context, t *txn.Tx, a tuning.Apache, restart bool) error {
+	if err := t.WriteFile(tuning.ApacheConf, tuning.ApacheContent(a)); err != nil {
+		return err
+	}
+	if err := m.test(ctx, "apache2ctl", "configtest"); err != nil {
+		return err
+	}
+	// A graceful reload keeps the old number of process slots.
+	verb := "reload"
+	if restart {
+		verb = "restart"
+	}
+	_, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{verb, "apache2.service"}})
+	return err
+}
+
+func (m *Manager) applyPowerDNS(ctx context.Context, t *txn.Tx, p tuning.PowerDNS) error {
+	path := m.h.Path(pdnsConf)
+	conf, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	// The file holds the API key: it keeps its mode and group.
+	gid := 0
+	if fi, err := os.Stat(path); err == nil {
+		if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+			gid = int(st.Gid)
+		}
+	}
+	if err := t.WriteFileMode(pdnsConf, tuning.SetPowerDNS(conf, p), 0o640, 0, gid); err != nil {
+		return err
+	}
+	if err := m.test(ctx, "pdns_server", "--config-name=servik", "--config=check"); err != nil {
+		return err
+	}
+	// PowerDNS cannot reload its settings; a restart takes a moment.
+	if out, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"restart", "pdns@servik.service"}}); err != nil {
+		return fmt.Errorf("PowerDNS did not start with the new settings: %s", tail(out, err))
+	}
+	return nil
 }

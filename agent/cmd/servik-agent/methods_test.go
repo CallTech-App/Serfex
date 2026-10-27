@@ -6,15 +6,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/winchester37/servik/agent/internal/component"
 	"github.com/winchester37/servik/agent/internal/cron"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/dns"
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/laravel"
+	"github.com/winchester37/servik/agent/internal/mail"
 	"github.com/winchester37/servik/agent/internal/rpc"
 	"github.com/winchester37/servik/agent/internal/site"
 	"github.com/winchester37/servik/agent/internal/system"
@@ -247,4 +251,59 @@ func TestSettingsAndCronMethods(t *testing.T) {
 	call("panel.web.ports", `{"ports":[80]}`, rpc.CodeInvalidParams)
 	want("panel.web.ports", call("panel.web.ports", `{"ports":[9443]}`, 0), map[string]any{"ports": []any{9443}, "port": 9443})
 	call("ssl.panel.install", `{"certificate":"x","private_key":"y"}`, rpc.CodeInvalidParams)
+}
+
+// Setting the mail server up adds the mail jails to an installed Fail2ban.
+func TestMailSetupRefreshesFail2ban(t *testing.T) {
+	sim, err := host.NewSimulator(t.TempDir(), "8.4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	sites := site.NewManager(sim, "www-data")
+	dbs := database.NewSimulated(sim)
+	comps := component.NewManager(sim, sites, dbs, laravel.NewManager(sim))
+	if _, err := comps.Install(ctx, component.OpSpec{ID: "fail2ban", Run: "f2b"}); err != nil {
+		t.Fatal(err)
+	}
+	srv := rpc.NewServer(nil)
+	dnsm := dns.NewSimulatedManager(sim, dns.NewMemory())
+	registerMethods(srv, services{
+		sites: sites, dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
+		mail: mail.NewManager(sim, "www-data"), databases: dbs, components: comps, dryRun: true,
+	})
+	sock := filepath.Join(t.TempDir(), "agent.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); _ = srv.Serve(sctx, ln) }()
+	t.Cleanup(func() { cancel(); <-done })
+
+	conn, err := net.Dial("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	fmt.Fprintln(conn, `{"jsonrpc":"2.0","id":1,"method":"mail.setup","params":{"hostname":"mail.example.net","hourly_limit":500}}`)
+	line, err := bufio.NewReader(conn).ReadBytes('\n')
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resp rpc.Response
+	if err := json.Unmarshal(line, &resp); err != nil || resp.Error != nil {
+		t.Fatalf("mail.setup: %s %v", line, err)
+	}
+	jails, err := os.ReadFile(sim.Path("/etc/fail2ban/jail.d/servik.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(jails), "[dovecot]") || !strings.Contains(string(jails), "[postfix-sasl]") {
+		t.Fatalf("jails after mail setup:\n%s", jails)
+	}
+	if !sim.Ran("systemctl try-reload-or-restart fail2ban") {
+		t.Fatal("Fail2ban not reloaded")
+	}
 }

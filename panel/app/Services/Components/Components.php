@@ -104,8 +104,75 @@ class Components
         if ($installed !== $this->installed()) {
             Setting::put('components.installed', $installed);
         }
+        $this->settleAll();
 
         return $this->list;
+    }
+
+    /**
+     * Closes the operations whose job is gone: a worker restarted or
+     * killed while it waited on the agent (a package upgrade of the very
+     * install restarting it, for one) never records the outcome. The
+     * agent no longer works on them, so their run log has the last word.
+     */
+    private function settleAll(): void
+    {
+        foreach (ComponentOperation::running()->get() as $op) {
+            if (($this->list[$op->component]['busy'] ?? null) !== null) {
+                continue;
+            }
+            // A job sets "running" just before it calls the agent, and a
+            // queued one may wait behind a long job.
+            $since = $op->status === 'running' ? now()->subMinutes(2) : now()->subHour();
+            if ($op->updated_at !== null && $op->updated_at->gt($since)) {
+                continue;
+            }
+            $this->settle($op, __('İşlem yarıda kaldı.'));
+        }
+    }
+
+    /**
+     * Records an operation's outcome from the last line of its run log:
+     * "✓" succeeded, "✗" failed with that reason; without either it failed
+     * with $reason. Returns false when the agent cannot be reached.
+     */
+    public function settle(ComponentOperation $op, string $reason): bool
+    {
+        try {
+            $chunk = (array) $this->agent->call('component.run.read', ['run' => $op->run, 'offset' => 0]);
+            $size = (int) ($chunk['size'] ?? 0);
+            if ((int) ($chunk['offset'] ?? 0) < $size) {
+                $chunk = (array) $this->agent->call('component.run.read', ['run' => $op->run, 'offset' => max(0, $size - 4096)]);
+            }
+        } catch (AgentException) {
+            return false;
+        }
+        $lines = preg_split('/\R/', trim((string) ($chunk['data'] ?? '')));
+        $last = (string) end($lines);
+        if (str_starts_with($last, '✓')) {
+            $op->update(['status' => 'succeeded', 'error' => null, 'finished_at' => now()]);
+        } else {
+            $error = str_starts_with($last, '✗') ? trim(Str::after($last, '✗')) : $reason;
+            $op->update(['status' => 'failed', 'error' => $error, 'finished_at' => now()]);
+        }
+        $this->recorded($op);
+
+        return true;
+    }
+
+    /**
+     * Brings what the other pages read up to date after an operation:
+     * an install of a database server here counts as the database setup.
+     */
+    public function recorded(ComponentOperation $op): void
+    {
+        if (! in_array($op->component, ['mysql', 'mariadb', 'postgresql'], true)) {
+            return;
+        }
+        $this->databases->status();
+        if ($this->databases->products() !== [] && ($this->databases->setup()['state'] ?? null) !== 'installing') {
+            $this->databases->saveSetup(['state' => 'ready', 'step' => null, 'error' => null, 'setup_at' => $this->databases->setup()['setup_at'] ?? now()->toIso8601String()]);
+        }
     }
 
     /**
@@ -222,6 +289,37 @@ class Components
     }
 
     /**
+     * Why no install, update or removal can start now: the one operation
+     * that runs at a time (with its id, for its progress), a database
+     * server setup or a Servik update. Null when nothing runs.
+     *
+     * @return array{text: string, operation: ?int}|null
+     */
+    public function blocker(): ?array
+    {
+        $wait = __('Bitene kadar başka kurulum, güncelleme veya kaldırma başlatılamaz.');
+        $running = ComponentOperation::running()->latest('id')->first();
+        if ($running !== null) {
+            $name = $this->operationName($running);
+            $doing = match ($running->action) {
+                'update' => __(':name güncelleniyor.', ['name' => $name]),
+                'remove', 'ext-remove' => __(':name kaldırılıyor.', ['name' => $name]),
+                default => __(':name kuruluyor.', ['name' => $name]),
+            };
+
+            return ['text' => $doing.' '.__(':since başladı.', ['since' => $running->created_at->diffForHumans()]).' '.$wait, 'operation' => $running->id];
+        }
+        if ($this->databaseSetupRunning()) {
+            return ['text' => __('Veritabanı sunucusu kuruluyor.').' '.$wait, 'operation' => null];
+        }
+        if (PanelUpdate::running()->exists()) {
+            return ['text' => __('Servik güncelleniyor.').' '.$wait, 'operation' => null];
+        }
+
+        return null;
+    }
+
+    /**
      * Components the agent installs and removes itself (the others are
      * part of another setup, such as the webmail of the mail server).
      */
@@ -301,13 +399,14 @@ class Components
         if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove'], true)) {
             return __('Bu bileşen buradan yönetilemiyor.');
         }
+        // Read first: it also closes operations whose job is gone.
+        $statuses = $this->statuses($error);
         if (ComponentOperation::running()->exists() || $this->databaseSetupRunning()) {
             return __('Başka bir kurulum sürüyor. Bitince yeniden deneyin.');
         }
         if (PanelUpdate::running()->exists()) {
             return __('Servik güncelleniyor. Bitince yeniden deneyin.');
         }
-        $statuses = $this->statuses($error);
         if ($statuses === null) {
             return $error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor.');
         }
