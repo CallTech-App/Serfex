@@ -343,6 +343,8 @@ class ServicesTest extends TestCase
     {
         Livewire::test(PhpVersionShow::class, ['version' => '8.4'])
             ->assertSee('php.ini varsayılanları')
+            ->assertSee('Komut satırı PHP')
+            ->assertSeeHtml('yalnızca web</span>')
             ->assertSet('values.memory_limit', '256M')
             ->set('values.upload_max_filesize', '128M')
             ->call('save')
@@ -363,6 +365,24 @@ class ServicesTest extends TestCase
         $this->assertSame('512M', Setting::get('php.memory.8.4'));
 
         $this->get('/hizmetler/php/7.4')->assertNotFound();
+    }
+
+    public function test_php_version_settings_with_a_dot_in_their_name_are_editable(): void
+    {
+        // Livewire reads dots in wire:model as nested arrays.
+        Livewire::test(PhpVersionShow::class, ['version' => '8.4'])
+            ->assertSeeHtml('wire:model="values.date_timezone"')
+            ->set('values.date_timezone', 'Europe/Istanbul')
+            ->set('values.opcache_memory_consumption', 'çok')
+            ->call('save')
+            ->assertHasErrors('values.opcache_memory_consumption')
+            ->set('values.opcache_memory_consumption', '256')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $applied = $this->agent->called('php.settings.apply')[0]['values'];
+        $this->assertSame(['Europe/Istanbul', '256'], [$applied['date.timezone'], $applied['opcache.memory_consumption']]);
+        $this->assertArrayNotHasKey('date_timezone', $applied);
     }
 
     public function test_php_extensions_are_switched_and_installed(): void

@@ -4165,5 +4165,8 @@
     "Bu alan adının sistem kullanıcısı bir müşteriye ait; siteyi Siteler'den ekleyin.": "The system user for this domain belongs to a customer; add the site from Sites.",
     "Sunucuda PHP kurulu değil; site oluşturmayı kapatın ya da önce Hizmetler → PHP sürümleri'nden bir sürüm kurun.": "PHP is not installed on the server; turn off creating the site, or first install a version from Services → PHP versions.",
     "Panele ulaşılamadı; son işlem gönderilmemiş olabilir. Sayfayı yenileyip yeniden deneyin.": "The panel could not be reached; your last action may not have been sent. Reload the page and try again.",
-    "Sayfayı yenile": "Reload the page"
+    "Sayfayı yenile": "Reload the page",
+    "Komut satırı PHP'si de (artisan, kuyruk işçileri, zamanlanmış görevler, Composer) bu değerleri kullanır; \"yalnızca web\" işaretli olanlar orada geçerli değildir.": "Command-line PHP (artisan, queue workers, scheduled tasks, Composer) uses these values too; the ones marked \"web only\" do not apply there.",
+    "Komut satırında PHP'nin kendi değeri geçerlidir: bellek ve süre sınırı yoktur, hatalar terminale yazılır.": "On the command line PHP's own value applies: no memory or time limit, and errors go to the terminal.",
+    "yalnızca web": "web only"
 }
