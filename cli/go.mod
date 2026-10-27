@@ -1,3 +1,3 @@
-module github.com/winchester37/servik/cli
+module github.com/calltech-app/serfex/cli
 
 go 1.24.0

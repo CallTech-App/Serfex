@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // localHosts are the hosts every MySQL user gets: the socket and TCP on

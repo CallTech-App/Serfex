@@ -6,7 +6,7 @@ package main
 import (
 	"os"
 
-	"github.com/winchester37/servik/cli/internal/app"
+	"github.com/calltech-app/serfex/cli/internal/app"
 )
 
 func main() {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 const hash = "{SHA512-CRYPT}$6$abcdefgh$0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuv"

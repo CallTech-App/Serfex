@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // sftpTarget stores files on an SFTP server with OpenSSH's sftp client in

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // engine runs one kind of database server.

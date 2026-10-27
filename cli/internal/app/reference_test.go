@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/winchester37/servik/cli/internal/i18n"
+	"github.com/calltech-app/serfex/cli/internal/i18n"
 )
 
 var update = goflag.Bool("update", false, "rewrite docs/cli.md and docs/tr/cli.md")

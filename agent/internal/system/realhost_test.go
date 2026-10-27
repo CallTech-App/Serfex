@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 func TestRealHost(t *testing.T) {

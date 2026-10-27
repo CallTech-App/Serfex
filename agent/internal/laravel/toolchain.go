@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // Node.js release lines and Composer as installable components

@@ -50,7 +50,7 @@ cleanup() {
 trap cleanup EXIT
 
 step "Building the command line"
-(cd "$root/cli" && CGO_ENABLED=0 go build -trimpath -ldflags "-X github.com/winchester37/servik/cli/internal/version.Version=0.0.0-ci" -o "$cli" ./cmd/servik)
+(cd "$root/cli" && CGO_ENABLED=0 go build -trimpath -ldflags "-X github.com/calltech-app/serfex/cli/internal/version.Version=0.0.0-ci" -o "$cli" ./cmd/servik)
 "$cli" version
 
 step "Starting the panel"

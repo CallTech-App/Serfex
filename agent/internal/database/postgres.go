@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // pgEngine runs PostgreSQL through psql as the postgres account.

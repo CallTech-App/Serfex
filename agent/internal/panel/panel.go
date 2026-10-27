@@ -23,7 +23,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 const (
@@ -48,7 +48,11 @@ const (
 
 	// DefaultSource is where releases are published: GitHub's API for the
 	// repository. A mirror serving the same /releases JSON works too.
-	DefaultSource = "https://api.github.com/repos/Winchester37/Servik"
+	DefaultSource = "https://api.github.com/repos/CallTech-App/Serfex"
+	// LegacySource is where releases were published before the repository
+	// moved to CallTech-App/Serfex. Installs that still name it in
+	// ConfigFile read releases from DefaultSource instead.
+	LegacySource = "https://api.github.com/repos/Winchester37/Servik"
 )
 
 // Units are the panel's own services besides servik-web and servik-php.
@@ -77,7 +81,7 @@ func Load(h host.Host) (Config, bool) {
 	if err := json.Unmarshal(data, &c); err != nil || c.PHP == "" {
 		return Config{}, false
 	}
-	if c.Source == "" {
+	if c.Source == "" || strings.EqualFold(strings.TrimRight(c.Source, "/"), LegacySource) {
 		c.Source = DefaultSource
 	}
 	if b, err := os.ReadFile(h.Path(TokenFile)); err == nil {

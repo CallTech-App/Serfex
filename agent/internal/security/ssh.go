@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // SSHConfig is Servik's SSH hardening file. sshd keeps the first value it

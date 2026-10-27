@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/cert"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/panel"
+	"github.com/calltech-app/serfex/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/panel"
 )
 
 func newSim(t *testing.T) (*Manager, *host.Simulator) {

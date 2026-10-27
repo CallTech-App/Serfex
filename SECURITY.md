@@ -10,7 +10,7 @@ security problem.**
 
 Report it privately through GitHub: on the repository, open the
 **Security** tab and choose **Report a vulnerability**
-([direct link](https://github.com/Winchester37/Servik/security/advisories/new)).
+([direct link](https://github.com/CallTech-App/Serfex/security/advisories/new)).
 Only the maintainers can see the report.
 
 Please include:

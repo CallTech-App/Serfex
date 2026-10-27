@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 const (

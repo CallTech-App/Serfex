@@ -11,17 +11,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/cert"
-	"github.com/winchester37/servik/agent/internal/component"
-	"github.com/winchester37/servik/agent/internal/cron"
-	"github.com/winchester37/servik/agent/internal/database"
-	"github.com/winchester37/servik/agent/internal/dns"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/laravel"
-	"github.com/winchester37/servik/agent/internal/mail"
-	"github.com/winchester37/servik/agent/internal/rpc"
-	"github.com/winchester37/servik/agent/internal/site"
-	"github.com/winchester37/servik/agent/internal/system"
+	"github.com/calltech-app/serfex/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/component"
+	"github.com/calltech-app/serfex/agent/internal/cron"
+	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/dns"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/mail"
+	"github.com/calltech-app/serfex/agent/internal/rpc"
+	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/system"
 )
 
 func TestSiteMethods(t *testing.T) {

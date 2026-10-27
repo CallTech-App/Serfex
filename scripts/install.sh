@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Servik installer for a fresh Ubuntu Server 24.04 (or newer).
 #
-#   curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh | sudo bash
+#   curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install.sh | sudo bash
 #
 # At the end it prints a one-time setup link (24 hours): whoever opens it
 # creates the first administrator and goes through the setup wizard. A
@@ -34,7 +34,7 @@
 # Everything it prints also goes to /var/log/servik/install.log.
 set -euo pipefail
 
-SOURCE=https://api.github.com/repos/Winchester37/Servik
+SOURCE=https://api.github.com/repos/CallTech-App/Serfex
 PANEL_PHP=8.5
 DB_PORT=5433
 WEB_PORT=8443

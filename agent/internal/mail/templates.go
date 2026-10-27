@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"text/template"
 
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // tmplData fills the configuration templates.

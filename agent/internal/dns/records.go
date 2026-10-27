@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	hostnames "github.com/winchester37/servik/agent/internal/hostname"
+	hostnames "github.com/calltech-app/serfex/agent/internal/hostname"
 )
 
 // Limits on what a zone may hold.

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/cli/internal/api"
-	. "github.com/winchester37/servik/cli/internal/i18n"
+	"github.com/calltech-app/serfex/cli/internal/api"
+	. "github.com/calltech-app/serfex/cli/internal/i18n"
 )
 
 func appFlag(f *Flags) {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/winchester37/servik/cli/internal/i18n"
+	. "github.com/calltech-app/serfex/cli/internal/i18n"
 )
 
 // tree is every command, built after the language is known.

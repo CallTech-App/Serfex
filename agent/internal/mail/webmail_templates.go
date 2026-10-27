@@ -3,7 +3,7 @@ package mail
 import (
 	"text/template"
 
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 var mailVhostTmpl = template.Must(template.New("vhost").Parse(`# {{.Marker}}. Manual changes are overwritten.

@@ -9,11 +9,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/database"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/laravel"
-	"github.com/winchester37/servik/agent/internal/php"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/php"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 func newTest(t *testing.T) (*Manager, *host.Simulator, *site.Manager) {

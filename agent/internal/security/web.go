@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 // MaxProtected is how many protected folders a site may have; MaxDenied

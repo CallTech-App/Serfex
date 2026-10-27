@@ -24,8 +24,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // ValidationError reports a request that can never succeed as given.

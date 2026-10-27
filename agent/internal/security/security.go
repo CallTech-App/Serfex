@@ -25,10 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/files"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/files"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // ValidationError reports a request that can never succeed as given.

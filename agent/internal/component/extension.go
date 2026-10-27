@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/i18n"
-	"github.com/winchester37/servik/agent/internal/php"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/php"
 )
 
 // ExtensionSpec installs or removes an optional PHP extension of one

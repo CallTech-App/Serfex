@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/winchester37/servik/agent/internal/hostname"
+	"github.com/calltech-app/serfex/agent/internal/hostname"
 )
 
 // MaxMailboxes bounds the mailboxes and aliases of one domain.

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // The port filter is a second table, so blocks keep working whether it

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/cli/internal/api"
-	"github.com/winchester37/servik/cli/internal/config"
+	"github.com/calltech-app/serfex/cli/internal/api"
+	"github.com/calltech-app/serfex/cli/internal/config"
 )
 
 // panel is a fake Servik panel: handlers by "METHOD /path" and every

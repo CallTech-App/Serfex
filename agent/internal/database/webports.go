@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/panel"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/panel"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 // MaxWebPorts bounds servik-web's ports: the panel's port and, while a

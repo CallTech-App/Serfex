@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/winchester37/servik/cli/internal/i18n"
+	. "github.com/calltech-app/serfex/cli/internal/i18n"
 )
 
 // Command is one word of the command tree: a group (Subs) or something

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // installApache makes the simulator look like Apache was set up by

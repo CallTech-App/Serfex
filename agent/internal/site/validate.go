@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/hostname"
+	"github.com/calltech-app/serfex/agent/internal/hostname"
 )
 
 // ValidationError reports a request that can never succeed as given.

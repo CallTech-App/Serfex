@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // ValidationError reports a request that can never succeed as given.

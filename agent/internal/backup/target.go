@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/hostname"
+	"github.com/calltech-app/serfex/agent/internal/hostname"
 )
 
 // Remote storage a backup copy is sent to. The panel keeps the targets

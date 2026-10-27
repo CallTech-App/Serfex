@@ -1,4 +1,4 @@
-module github.com/winchester37/servik/agent
+module github.com/calltech-app/serfex/agent
 
 go 1.24.0
 

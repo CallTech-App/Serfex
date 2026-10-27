@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/component"
-	"github.com/winchester37/servik/agent/internal/files"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/component"
+	"github.com/calltech-app/serfex/agent/internal/files"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 const domain = "kahve.com"

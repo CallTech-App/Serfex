@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 var target = Target{Domain: "api.hizlikargo.app", User: "hizlikargo", PHPVersion: "8.4"}

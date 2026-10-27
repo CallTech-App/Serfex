@@ -20,7 +20,7 @@ plan 4 GB or more for Laravel applications with queues and front-end builds.
 ## Install
 
 ```sh
-curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
+curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install.sh -o install.sh
 sudo bash install.sh
 ```
 
@@ -65,7 +65,7 @@ repository's contents is enough:
 ```sh
 export SERVIK_GITHUB_TOKEN=github_pat_...
 curl -fsSL -H "Authorization: Bearer $SERVIK_GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
-  https://api.github.com/repos/Winchester37/Servik/contents/scripts/install.sh | sudo -E bash
+  https://api.github.com/repos/CallTech-App/Serfex/contents/scripts/install.sh | sudo -E bash
 ```
 
 Once the repository is public, delete the token on GitHub and on the server

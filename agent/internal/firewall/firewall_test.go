@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 func newTest(t *testing.T) (*Manager, *host.Simulator, *time.Time) {

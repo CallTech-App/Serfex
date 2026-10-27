@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // siteInfo is a site as its PHP-FPM pool and vhost describe it.

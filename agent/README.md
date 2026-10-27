@@ -6,7 +6,7 @@ JSON-RPC 2.0 on a Unix socket (default `/run/servik-agent/agent.sock`, mode
 
 ```sh
 go test ./...
-CGO_ENABLED=0 go build -ldflags "-X github.com/winchester37/servik/agent/internal/version.Version=dev" \
+CGO_ENABLED=0 go build -ldflags "-X github.com/calltech-app/serfex/agent/internal/version.Version=dev" \
   -o bin/servik-agent ./cmd/servik-agent
 ```
 

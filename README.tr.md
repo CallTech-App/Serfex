@@ -86,7 +86,7 @@ servik deploy -a api.ornek.com --wait
 Boş bir Ubuntu Server 24.04 ya da daha yenisinde (amd64 veya arm64), root olarak:
 
 ```sh
-curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
+curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install.sh -o install.sh
 sudo bash install.sh --lang tr
 ```
 
@@ -101,7 +101,7 @@ Seçenekler, portlar ve ilk adımlar için [Kurulum](docs/tr/kurulum.md).
 Yalnızca komut satırı, Linux ya da macOS'ta:
 
 ```sh
-curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install-cli.sh | sh
+curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install-cli.sh | sh
 ```
 
 ## Gereksinimler
@@ -144,7 +144,7 @@ sonraki sürümler için planlı:
 - imzalı sürümler (sürümler bugün SHA-256 ile denetleniyor);
 - bir panelden birden fazla sunucu ve Ubuntu dışındaki dağıtımlar.
 
-Hata bildirimleri ve öneriler [Issues](https://github.com/Winchester37/Servik/issues) sayfasına.
+Hata bildirimleri ve öneriler [Issues](https://github.com/CallTech-App/Serfex/issues) sayfasına.
 
 ## Belgeler
 
