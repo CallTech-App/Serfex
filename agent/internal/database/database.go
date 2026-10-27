@@ -201,6 +201,9 @@ type Manager struct {
 	// Listening, when set, replaces reading the TCP ports other programs
 	// listen on (ss), for tests.
 	Listening func(context.Context) (map[int]bool, error)
+	// Fetch, when set, replaces downloading apt archives' signing keys
+	// (nil for a missing one), for tests.
+	Fetch func(ctx context.Context, url string) ([]byte, error)
 }
 
 // NewManager returns a Manager for the real servers.

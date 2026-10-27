@@ -259,7 +259,7 @@ class ServiceIndex extends Component
     /**
      * Title, text and button of the confirmation.
      *
-     * @return array{title: string, text: string, button: string, danger: bool}
+     * @return array{title: string, text: string, button: string, danger: bool, candidate?: array{version: ?string, source: ?string}|null}
      */
     private function confirmText(SystemServices $services, Components $components): array
     {
@@ -270,7 +270,7 @@ class ServiceIndex extends Component
             $sites = Site::where('php_version', $version)->count();
 
             return match ($ask['action']) {
-                'install' => ['title' => __(':name kurulsun mu?', ['name' => $name]), 'text' => __('PHP-FPM, komut satırı ve yaygın eklentiler kurulur; Ubuntu\'da olmayan sürümler ondrej/php deposundan gelir. Servik\'in php.ini varsayılanları yazılır. Bir adım başarısız olursa yapılanlar geri alınır.'), 'button' => __('Kur'), 'danger' => false],
+                'install' => ['title' => __(':name kurulsun mu?', ['name' => $name]), 'text' => __('PHP-FPM, komut satırı ve yaygın eklentiler kurulur; Ubuntu\'da olmayan sürümler ondrej/php deposundan gelir. Servik\'in php.ini varsayılanları yazılır. Bir adım başarısız olursa yapılanlar geri alınır.'), 'button' => __('Kur'), 'danger' => false, 'candidate' => $components->candidate($ask['id'])],
                 'update' => ['title' => __(':name güncellensin mi?', ['name' => $name]), 'text' => $sites ? __('Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır; bu sürümü kullanan :sites site birkaç saniye yanıt vermeyebilir.', ['sites' => $sites]) : __('Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır.'), 'button' => __('Güncelle'), 'danger' => false],
                 default => ['title' => __(':name kaldırılsın mı?', ['name' => $name]), 'text' => __('Paketler kaldırılır; yapılandırma önce /var/lib/servik/backups/components altına yedeklenir.'), 'button' => __('Kaldır'), 'danger' => true],
             };

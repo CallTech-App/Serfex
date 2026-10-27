@@ -285,6 +285,11 @@ class Components
     {
         $name = $this->name($operation->component);
 
+        if ($operation->detail && ! str_starts_with($operation->action, 'ext-')) {
+            // A database server's chosen version.
+            return self::releaseName($operation->component, $operation->detail);
+        }
+
         return $operation->detail ? __(':name · :detail eklentisi', ['name' => $name, 'detail' => $operation->detail]) : $name;
     }
 
@@ -394,7 +399,7 @@ class Components
      * Starts installing, updating or removing a component in the
      * background. Returns the operation, or the reason it cannot start.
      */
-    public function start(string $id, string $action, ?User $user): ComponentOperation|string
+    public function start(string $id, string $action, ?User $user, ?string $version = null): ComponentOperation|string
     {
         if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove'], true)) {
             return __('Bu bileşen buradan yönetilemiyor.');
@@ -423,10 +428,14 @@ class Components
         if ($action !== 'install' && ! ($status['installed'] ?? false)) {
             return __(':name kurulu değil.', ['name' => $this->name($id)]);
         }
+        if ($version !== null && ($action !== 'install' || ! in_array($version, array_column($status['choices'] ?? [], 'major'), true))) {
+            return __(':name için bu sürüm sunulmuyor.', ['name' => $this->name($id)]);
+        }
 
         $operation = ComponentOperation::create([
             'component' => $id,
             'action' => $action,
+            'detail' => $version,
             'run' => 'c'.Str::lower(Str::random(23)),
             'user_id' => $user?->id,
         ]);
@@ -446,6 +455,87 @@ class Components
         }
 
         return preg_replace(['/^\d+:/', '/\+.*$/', '/^v(?=\d)/'], '', $version);
+    }
+
+    /**
+     * Where an install of a component comes from, for people: the agent
+     * names the apt archive as host and path. Node.js, Composer and
+     * PostgreSQL are known before the agent has looked.
+     */
+    public static function source(string $id, ?string $from): ?string
+    {
+        if ($from === null || $from === '') {
+            return match (true) {
+                str_starts_with($id, 'node') => 'nodejs.org',
+                $id === 'composer' => 'getcomposer.org',
+                $id === 'postgresql' => 'apt.postgresql.org',
+                $id === 'mysql' => __('MySQL deposu (repo.mysql.com)'),
+                $id === 'mariadb' => __('MariaDB deposu (dlm.mariadb.com)'),
+                default => null,
+            };
+        }
+
+        return match (true) {
+            str_ends_with(Str::before($from, '/'), 'ubuntu.com') => __('Ubuntu deposu'),
+            str_contains($from, '/ondrej/php') => 'ppa:ondrej/php',
+            str_starts_with($from, 'repo.mysql.com') => __('MySQL deposu (repo.mysql.com)'),
+            str_starts_with($from, 'dlm.mariadb.com') => __('MariaDB deposu (dlm.mariadb.com)'),
+            default => Str::before($from, '/'),
+        };
+    }
+
+    /**
+     * "MySQL 8.4 LTS", "PostgreSQL 18": a database server's major version.
+     */
+    public static function releaseName(string $id, string $major): string
+    {
+        return match ($id) {
+            'mysql' => "MySQL {$major} LTS",
+            'mariadb' => "MariaDB {$major} LTS",
+            'postgresql' => "PostgreSQL {$major}",
+            default => $major,
+        };
+    }
+
+    /**
+     * The major versions a database server can be installed in, as the
+     * agent reports them (Servik decides which; the default first).
+     *
+     * @param  list<array<string, mixed>>  $choices
+     * @return list<array{major: string, name: string, version: ?string, source: ?string, default: bool}>
+     */
+    public static function choices(string $id, array $choices): array
+    {
+        return array_values(array_map(fn (array $c) => [
+            'major' => (string) $c['major'],
+            'name' => self::releaseName($id, (string) $c['major']),
+            'version' => self::shortVersion($c['version'] ?? null),
+            'source' => self::source($id, $c['from'] ?? null),
+            'default' => (bool) ($c['default'] ?? false),
+        ], array_filter($choices, fn ($c) => isset($c['major']))));
+    }
+
+    /**
+     * Version and source an install of a component would bring, for the
+     * confirmations; null when it is installed or the agent cannot be
+     * reached. The version is null until the agent knows it (Node.js,
+     * Composer and a PostgreSQL archive apt does not list yet are looked
+     * up by "Güncellemeleri denetle" and every night).
+     *
+     * @return array{version: ?string, source: ?string, choices: list<array{major: string, name: string, version: ?string, source: ?string, default: bool}>}|null
+     */
+    public function candidate(string $id): ?array
+    {
+        $status = $this->statuses()[$id] ?? null;
+        if ($status === null || ($status['installed'] ?? false)) {
+            return null;
+        }
+
+        return [
+            'version' => self::shortVersion($status['candidate'] ?? null),
+            'source' => self::source($id, $status['candidate_from'] ?? null),
+            'choices' => self::choices($id, $status['choices'] ?? []),
+        ];
     }
 
     /**
@@ -498,6 +588,9 @@ class Components
             'installed' => $installed,
             'version' => self::shortVersion($status['version'] ?? null),
             'latest' => self::shortVersion($status['latest'] ?? null),
+            'candidate' => $installed ? null : self::shortVersion($status['candidate'] ?? null),
+            'source' => $installed ? null : self::source($id, $status['candidate_from'] ?? null),
+            'choices' => $installed ? [] : self::choices($id, $status['choices'] ?? []),
             'running' => (bool) ($status['running'] ?? false),
             'units' => $status['units'] ?? [],
             'busy' => $busy,
@@ -556,7 +649,7 @@ class Components
      */
     private function webmailRow(string $id, string $name, string $description): array
     {
-        $base = ['id' => $id, 'name' => $name, 'description' => $description, 'known' => true, 'version' => null, 'latest' => null,
+        $base = ['id' => $id, 'name' => $name, 'description' => $description, 'known' => true, 'version' => null, 'latest' => null, 'candidate' => null, 'source' => null, 'choices' => [],
             'running' => true, 'units' => [], 'operation' => null, 'default' => false, 'settings' => null];
         if ($id === 'snappymail') {
             return $base + ['installed' => false, 'busy' => null, 'usage' => '—', 'refusal' => __('Sonraki sürümde.'), 'later' => true];

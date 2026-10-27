@@ -8,14 +8,33 @@ PostgreSQL. You install them from the panel when you need them.
 **Databases → Database servers** installs and repairs:
 
 - **MySQL** (default) or **MariaDB**: the two exclude each other.
-- **PostgreSQL**, alongside either of them. It comes from the PostgreSQL
-  project's own archive (apt.postgresql.org), which Servik adds to apt, in the
-  newest stable major version at install time (Ubuntu itself ships only one
-  version per release). The server then stays on that major version;
-  Software → Database servers → **Update** installs its minor releases. If
-  the archive cannot be reached, Ubuntu's own version is installed instead.
+- **PostgreSQL**, alongside either of them.
 - The **web database manager**: phpMyAdmin for MySQL and MariaDB, Adminer for
   PostgreSQL, served by the panel's own web server on the panel port (8443).
+
+### Supported versions
+
+Servik installs only the major versions it supports, each from its vendor's
+own apt archive, which Servik adds to apt when the server is installed:
+
+| Server | Versions (default first) | Archive |
+|--------|--------------------------|---------|
+| MySQL | 9.7 LTS, 8.4 LTS | repo.mysql.com |
+| MariaDB | 12.3 LTS, 11.8 LTS | dlm.mariadb.com |
+| PostgreSQL | 18 | apt.postgresql.org |
+
+The install confirmation (Software) and the setup card (Databases) let you
+choose among them and show the package version each would bring. A new major
+version (PostgreSQL 19, say) is never installed because the vendor published
+it: it is added to this list by a Servik release once it has been tested.
+
+A server then stays on its major version; Software → Database servers →
+**Update** installs its minor releases. If the archive cannot be reached, the
+installation fails and is rolled back; Servik does not fall back to Ubuntu's
+older versions. A server installed earlier in a version no longer listed
+(Ubuntu's MySQL 8.0, MariaDB 10.11, PostgreSQL 16) keeps running in it and
+gets its minor updates. Removing MySQL or MariaDB also takes its archive out
+of apt.
 
 A failed installation is rolled back. A database server listens only on the
 server itself until some database user is allowed to connect from outside;

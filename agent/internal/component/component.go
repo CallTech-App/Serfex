@@ -37,6 +37,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/winchester37/servik/agent/internal/aptcache"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/i18n"
@@ -161,6 +162,15 @@ type Status struct {
 	Version   string `json:"version,omitempty"`
 	// Latest is set when a newer version than Version is available.
 	Latest string `json:"latest,omitempty"`
+	// Candidate is the version an install would bring, while it is not
+	// installed, and CandidateFrom where it comes from: an apt archive as
+	// host and path, nodejs.org or getcomposer.org. Both are empty when
+	// that is not known yet (component.check finds out).
+	Candidate     string `json:"candidate,omitempty"`
+	CandidateFrom string `json:"candidate_from,omitempty"`
+	// Choices are the major versions a database server can be installed
+	// in, the default first (database.Releases).
+	Choices []database.Release `json:"choices,omitempty"`
 	// Running is true when every service of the component is active.
 	Running bool     `json:"running"`
 	Units   []string `json:"units,omitempty"`
@@ -193,11 +203,14 @@ func (m *Manager) List(ctx context.Context) List {
 	sort.Strings(ids)
 
 	latest := m.loadLatest()
-	var pkgs, units []string
+	var pkgs, all, units []string
 	installed := map[string]bool{}
 	for _, id := range ids {
 		c := m.comps[id]
 		installed[id] = c.isInstalled(m)
+		if c.versionPkg != "" {
+			all = append(all, c.pkg(m))
+		}
 		if installed[id] {
 			if c.versionPkg != "" {
 				pkgs = append(pkgs, c.pkg(m))
@@ -206,7 +219,7 @@ func (m *Manager) List(ctx context.Context) List {
 		}
 	}
 	versions := m.versions(ctx, pkgs)
-	candidates := m.candidates(ctx, pkgs)
+	candidates := m.candidates(ctx, all)
 	active := m.active(ctx, units)
 
 	m.mu.Lock()
@@ -223,7 +236,7 @@ func (m *Manager) List(ctx context.Context) List {
 		if s.Installed {
 			if c.versionPkg != "" {
 				s.Version = versions[c.pkg(m)]
-				if cand := candidates[c.pkg(m)]; cand != "" && cand != s.Version {
+				if cand := candidates[c.pkg(m)].Version; cand != "" && cand != s.Version {
 					s.Latest = cand
 				}
 			}
@@ -244,6 +257,29 @@ func (m *Manager) List(ctx context.Context) List {
 			if c.isDefault != nil {
 				s.Default = c.isDefault(m)
 			}
+		} else {
+			var cand aptcache.Candidate
+			switch {
+			case c.choices != nil:
+				// Archives apt does not list were read by the last check.
+				s.Choices = c.choices(ctx, m, false)
+				for i, r := range s.Choices {
+					if r.Version == "" {
+						for _, l := range latest.Choices[id] {
+							if l.Major == r.Major {
+								s.Choices[i].Version, s.Choices[i].From = l.Version, l.From
+							}
+						}
+					}
+				}
+				cand = aptcache.Candidate{Version: s.Choices[0].Version, From: s.Choices[0].From}
+			case c.versionPkg != "":
+				cand = candidates[c.pkg(m)]
+			}
+			if cand.Version == "" {
+				cand = latest.Candidates[id]
+			}
+			s.Candidate, s.CandidateFrom = cand.Version, cand.From
 		}
 		if c.settings != nil {
 			s.Settings = c.settings(m)
@@ -254,7 +290,8 @@ func (m *Manager) List(ctx context.Context) List {
 }
 
 // Check refreshes the package lists and asks Node.js and Composer for
-// their newest versions, so List can tell which updates are available.
+// their newest versions, so List can tell which updates are available and
+// what an install would bring.
 func (m *Manager) Check(ctx context.Context) (List, error) {
 	if !m.op.TryLock() {
 		return List{}, ErrBusy
@@ -263,13 +300,22 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 		m.op.Unlock()
 		return List{}, opError(fmt.Errorf("apt-get update failed: %w", err))
 	}
-	l := latestState{Versions: map[string]string{}, CheckedAt: m.now().UTC().Format(time.RFC3339)}
+	l := latestState{Versions: map[string]string{}, Candidates: map[string]aptcache.Candidate{}, Choices: map[string][]database.Release{}, CheckedAt: m.now().UTC().Format(time.RFC3339)}
 	for id, c := range m.comps {
-		if c.latest == nil || !c.isInstalled(m) {
-			continue
-		}
-		if v, err := c.latest(ctx, m); err == nil {
-			l.Versions[id] = v
+		switch {
+		case c.isInstalled(m):
+			if c.latest == nil {
+				continue
+			}
+			if v, err := c.latest(ctx, m); err == nil {
+				l.Versions[id] = v
+			}
+		case c.choices != nil:
+			l.Choices[id] = c.choices(ctx, m, true)
+		case c.latest != nil && c.from != "":
+			if v, err := c.latest(ctx, m); err == nil && v != "" {
+				l.Candidates[id] = aptcache.Candidate{Version: v, From: c.from}
+			}
 		}
 	}
 	err := m.saveLatest(l)
@@ -281,8 +327,13 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 }
 
 type latestState struct {
-	Versions  map[string]string `json:"versions"`
-	CheckedAt string            `json:"checked_at"`
+	// Versions are the newest versions of installed components that do
+	// not come from apt; Candidates what installing the others would
+	// bring when apt's own lists cannot tell.
+	Versions   map[string]string             `json:"versions"`
+	Candidates map[string]aptcache.Candidate `json:"candidates,omitempty"`
+	Choices    map[string][]database.Release `json:"choices,omitempty"`
+	CheckedAt  string                        `json:"checked_at"`
 }
 
 func (m *Manager) loadLatest() latestState {
@@ -293,6 +344,12 @@ func (m *Manager) loadLatest() latestState {
 	}
 	if l.Versions == nil {
 		l.Versions = map[string]string{}
+	}
+	if l.Candidates == nil {
+		l.Candidates = map[string]aptcache.Candidate{}
+	}
+	if l.Choices == nil {
+		l.Choices = map[string][]database.Release{}
 	}
 	return l
 }
@@ -312,6 +369,9 @@ type OpSpec struct {
 	Run string `json:"run"`
 	// Port is the web database manager's port, for database servers.
 	Port int `json:"port,omitempty"`
+	// Version is the major version a database server is installed in
+	// (one of its Choices; "" for the default).
+	Version string `json:"version,omitempty"`
 }
 
 // Result is the component's status after an operation.
@@ -362,7 +422,7 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		m.mu.Unlock()
 	}()
 
-	o := &op{ctx: ctx, m: m, c: c, w: w, port: spec.Port}
+	o := &op{ctx: ctx, m: m, c: c, w: w, port: spec.Port, version: spec.Version}
 	switch action {
 	case "install":
 		err = o.install()

@@ -37,6 +37,9 @@ class RunComponentOperation implements ShouldQueue
         $database = in_array($op->component, ['mysql', 'mariadb', 'postgresql'], true);
         if ($database) {
             $params += app(PanelSettings::class)->managerSetupParams();
+            if ($op->action === 'install' && $op->detail) {
+                $params['version'] = $op->detail;
+            }
         }
         if (str_starts_with($op->action, 'ext-')) {
             $method = 'component.extension';

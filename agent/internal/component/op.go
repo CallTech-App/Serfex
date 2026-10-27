@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/winchester37/servik/agent/internal/aptcache"
+	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
@@ -41,10 +43,16 @@ type component struct {
 	// ppa adds the Ondřej Surý PHP archive when Ubuntu lacks the packages.
 	ppa bool
 
-	installed     func(m *Manager) bool
-	unitList      func(m *Manager) []string
-	version       func(ctx context.Context, m *Manager) string
-	latest        func(ctx context.Context, m *Manager) (string, error)
+	installed func(m *Manager) bool
+	unitList  func(m *Manager) []string
+	version   func(ctx context.Context, m *Manager) string
+	latest    func(ctx context.Context, m *Manager) (string, error)
+	// choices are the versions a database server can be installed in;
+	// probe allows reading archives apt does not list yet. Components
+	// without them or versionPkg tell what an install brings by latest,
+	// from the address in from (Node.js, Composer).
+	choices       func(ctx context.Context, m *Manager, probe bool) []database.Release
+	from          string
 	inUse         func(m *Manager) []string
 	isDefault     func(m *Manager) bool
 	settings      func(m *Manager) map[string]any
@@ -95,6 +103,8 @@ type op struct {
 	w    io.Writer
 	t    *txn.Tx
 	port int
+	// version is the major version a database server is installed in.
+	version string
 	// added are the packages this operation installed.
 	added []string
 	// ppaAdded is the archive file this operation added.
@@ -180,7 +190,7 @@ const ppaFile = "/etc/apt/sources.list.d/ondrej-ubuntu-php-noble.sources"
 // ensureArchive adds the Ondřej Surý PHP archive when Ubuntu has no
 // candidate for pkg (PHP versions other than the release's own).
 func (o *op) ensureArchive(pkg string) error {
-	if o.m.sim || o.m.candidates(o.ctx, []string{pkg})[pkg] != "" {
+	if o.m.sim || o.m.candidates(o.ctx, []string{pkg})[pkg].Version != "" {
 		return nil
 	}
 	entries, _ := filepath.Glob(o.m.h.Path("/etc/apt/sources.list.d/ondrej-ubuntu-php-*"))
@@ -518,19 +528,21 @@ func (m *Manager) versions(ctx context.Context, pkgs []string) map[string]string
 	return out
 }
 
-// candidates returns the version apt would install for each package ("" for
-// none).
-func (m *Manager) candidates(ctx context.Context, pkgs []string) map[string]string {
-	out := map[string]string{}
+// candidates returns the version apt would install for each package and
+// its archive; packages without one are left out.
+func (m *Manager) candidates(ctx context.Context, pkgs []string) map[string]aptcache.Candidate {
+	out := map[string]aptcache.Candidate{}
 	if len(pkgs) == 0 {
 		return out
 	}
 	if m.sim {
 		for _, p := range pkgs {
-			if v := simCandidates[p]; v != "" {
-				out[p] = v
-			} else {
-				out[p] = simVersions[p]
+			v := simCandidates[p]
+			if v == "" {
+				v = simVersions[p]
+			}
+			if v != "" {
+				out[p] = aptcache.Candidate{Version: v, From: simArchive(v)}
 			}
 		}
 		return out
@@ -538,22 +550,7 @@ func (m *Manager) candidates(ctx context.Context, pkgs []string) map[string]stri
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	res, _ := m.h.Run(ctx, host.Command{Name: "apt-cache", Args: append([]string{"policy"}, pkgs...), Env: []string{"LC_ALL=C"}})
-	var cur string
-	s := bufio.NewScanner(strings.NewReader(res))
-	for s.Scan() {
-		line := s.Text()
-		if !strings.HasPrefix(line, " ") && strings.HasSuffix(line, ":") {
-			cur = strings.TrimSuffix(line, ":")
-			continue
-		}
-		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "Candidate:"); ok && cur != "" {
-			v = strings.TrimSpace(v)
-			if v != "(none)" {
-				out[cur] = v
-			}
-		}
-	}
-	return out
+	return aptcache.Policy(res)
 }
 
 // active reports which units are active, with one systemctl call.

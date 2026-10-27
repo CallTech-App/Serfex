@@ -2735,7 +2735,7 @@
     "Servik Agent Composer'ı getcomposer.org'dan indirir ve imzasını denetler.": "Servik Agent downloads Composer from getcomposer.org and checks its signature.",
     "Servik Agent Node.js'i nodejs.org'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.": "Servik Agent downloads Node.js from nodejs.org and checks its signature. Sites keep running meanwhile.",
     "Servik Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.": "Servik Agent installs the packages from the Ubuntu repositories (it uses about 1 GB of memory), downloads the virus signatures and connects them to mail scanning. Sites keep running meanwhile.",
-    "Servik Agent paketleri Ubuntu depolarından kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.": "Servik Agent installs the packages from the Ubuntu repositories, writes their settings, then starts and tests the service. If a step fails, what was done is undone. Sites keep running meanwhile.",
+    "Servik Agent paketleri kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.": "Servik Agent installs the packages, writes their settings, then starts and tests the service. If a step fails, what was done is undone. Sites keep running meanwhile.",
     "Servik bakım sayfası": "Servik maintenance page",
     "Servik bakım sayfasını": "the Servik maintenance page",
     "Servik bu sunucuya kendi SSH anahtarıyla bağlanır. Aşağıdaki satırı hedef sunucudaki kullanıcının :part dosyasına ekleyin:": "Servik connects to this server with its own SSH key. Add the line below to the :part file of the user on the destination server:",
@@ -4226,5 +4226,18 @@
     "Özel depo bu anahtarla çekilir. Açık anahtarı deponun :part bölümüne :part2 olarak ekleyin, sonra \"Dağıt\"a basın.": "The private repository is fetched with this key. Add the public key under :part in the repository as :part2, then press \"Deploy\".",
     "Komut satırı PHP'si de (artisan, kuyruk işçileri, zamanlanmış görevler, Composer) bu değerleri kullanır; \"yalnızca web\" işaretli olanlar orada geçerli değildir.": "Command-line PHP (artisan, queue workers, scheduled tasks, Composer) uses these values too; the ones marked \"web only\" do not apply there.",
     "Komut satırında PHP'nin kendi değeri geçerlidir: bellek ve süre sınırı yoktur, hatalar terminale yazılır.": "On the command line PHP's own value applies: no memory or time limit, and errors go to the terminal.",
-    "yalnızca web": "web only"
+    "yalnızca web": "web only",
+    "kurulacak": "to be installed",
+    "kurulacak · :source": "to be installed · :source",
+    "Kurulacak: :version": "Will install: :version",
+    "Kurulacak sürüm": "Version to install",
+    "Kurulacak sürüm:": "Version to install:",
+    "Henüz bilinmiyor; \"Güncellemeleri denetle\" ile öğrenilir.": "Not known yet; \"Check for updates\" finds out.",
+    "Ubuntu deposu": "Ubuntu archive",
+    ":name için bu sürüm sunulmuyor.": "This version of :name is not offered.",
+    "MySQL deposu (repo.mysql.com)": "MySQL archive (repo.mysql.com)",
+    "MariaDB deposu (dlm.mariadb.com)": "MariaDB archive (dlm.mariadb.com)",
+    "Paket sürümü henüz bilinmiyor; \"Güncellemeleri denetle\" ile öğrenilir.": "Package version not known yet; \"Check for updates\" finds out.",
+    "Kurarken :versions de seçilebilir": ":versions can be chosen when installing",
+    "kurulabilir sürümler": "versions offered"
 }

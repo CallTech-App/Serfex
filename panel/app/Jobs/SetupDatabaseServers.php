@@ -31,8 +31,9 @@ class SetupDatabaseServers implements ShouldBeUnique, ShouldQueue
 
     /**
      * @param  list<string>  $products  mysql, mariadb and/or postgresql
+     * @param  array<string, string>  $versions  product => the major version a new server gets (none: the agent's default)
      */
-    public function __construct(public array $products) {}
+    public function __construct(public array $products, public array $versions = []) {}
 
     public function handle(AgentClient $agent, DatabaseServers $servers): void
     {
@@ -40,7 +41,7 @@ class SetupDatabaseServers implements ShouldBeUnique, ShouldQueue
         try {
             foreach ($this->products as $product) {
                 $servers->saveSetup(['step' => $product]);
-                $agent->call('db.server.install', ['product' => $product], 840);
+                $agent->call('db.server.install', ['product' => $product, ...(isset($this->versions[$product]) ? ['version' => $this->versions[$product]] : [])], 840);
             }
             $servers->saveSetup(['step' => 'manager']);
             $agent->call('db.manager.setup', app(PanelSettings::class)->managerSetupParams(), 840);

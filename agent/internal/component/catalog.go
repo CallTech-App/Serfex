@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/winchester37/servik/agent/internal/aptcache"
 	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/i18n"
@@ -130,6 +131,7 @@ func catalog() []*component {
 			installed: func(m *Manager) bool { return m.laravel.ComposerVersion(context.Background()) != "" },
 			version:   func(ctx context.Context, m *Manager) string { return m.laravel.ComposerVersion(ctx) },
 			latest:    func(ctx context.Context, m *Manager) (string, error) { return m.laravel.LatestComposer(ctx) },
+			from:      "getcomposer.org",
 			install: func(o *op) error {
 				o.step("Composer indiriliyor (getcomposer.org, SHA-256 denetimiyle)")
 				return o.m.laravel.InstallComposer(o.ctx)
@@ -227,6 +229,7 @@ func nodeComponent(line string) *component {
 		},
 		version:   func(_ context.Context, m *Manager) string { return m.laravel.NodeVersions()[line] },
 		latest:    func(ctx context.Context, m *Manager) (string, error) { return m.laravel.LatestNode(ctx, line) },
+		from:      "nodejs.org",
 		isDefault: func(m *Manager) bool { return m.laravel.DefaultNode() == line },
 		install: func(o *op) error {
 			o.step("Node.js %s indiriliyor (nodejs.org, SHA-256 denetimiyle)", line)
@@ -268,9 +271,12 @@ func databaseComponent(product string) *component {
 			return ok && p[0] == product
 		},
 		unitList: units,
+		choices: func(ctx context.Context, m *Manager, probe bool) []database.Release {
+			return m.db.Choices(ctx, product, probe)
+		},
 		install: func(o *op) error {
 			o.step("%s kuruluyor ve ayarlanıyor", dbLabel[product])
-			if _, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Log: o.w}); err != nil {
+			if _, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Version: o.version, Log: o.w}); err != nil {
 				return err
 			}
 			o.step("Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor")
@@ -300,7 +306,7 @@ func databaseComponent(product string) *component {
 			if p == "" {
 				return ""
 			}
-			if v := upstream(m.versions(ctx, []string{p})[p]); v != "" {
+			if v := aptcache.Upstream(m.versions(ctx, []string{p})[p]); v != "" {
 				return v
 			}
 			return strings.TrimPrefix(p, "postgresql-")
@@ -310,7 +316,7 @@ func databaseComponent(product string) *component {
 			if p == "" {
 				return "", nil
 			}
-			return upstream(m.candidates(ctx, []string{p})[p]), nil
+			return aptcache.Upstream(m.candidates(ctx, []string{p})[p].Version), nil
 		}
 		c.update = func(o *op) error {
 			v := o.m.db.PGVersion()
@@ -343,16 +349,6 @@ func databaseComponent(product string) *component {
 }
 
 var dbLabel = map[string]string{"mysql": "MySQL", "mariadb": "MariaDB", "postgresql": "PostgreSQL"}
-
-// upstream is a package version without its epoch and Debian revision:
-// "18.1-1.pgdg24.04+2" is "18.1".
-func upstream(v string) string {
-	if i := strings.IndexByte(v, ':'); i >= 0 {
-		v = v[i+1:]
-	}
-	v, _, _ = strings.Cut(v, "-")
-	return v
-}
 
 // dial connects to a local service, sends a line and expects an answer
 // starting with want.
@@ -888,6 +884,17 @@ var simVersions = map[string]string{
 	"php8.5-fpm":   "8.5.0-1+ubuntu24.04.1+deb.sury.org+1",
 	"mysql-server": "8.0.43-0ubuntu0.24.04.2", "mariadb-server": "1:10.11.13-0ubuntu0.24.04.1",
 	"postgresql-16": "16.10-0ubuntu0.24.04.1", "postgresql-18": "18.1-1.pgdg24.04+2",
+}
+
+// simArchive is where a dry run says a package version comes from.
+func simArchive(v string) string {
+	switch {
+	case strings.Contains(v, "deb.sury.org"):
+		return "ppa.launchpadcontent.net/ondrej/php/ubuntu"
+	case strings.Contains(v, "pgdg"):
+		return "apt.postgresql.org/pub/repos/apt"
+	}
+	return "archive.ubuntu.com/ubuntu"
 }
 
 // simCandidates make a dry run show available updates.

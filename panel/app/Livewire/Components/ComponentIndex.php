@@ -38,6 +38,9 @@ class ComponentIndex extends Component
     /** @var array{id: string, action: string}|null asked to confirm */
     public ?array $confirming = null;
 
+    /** The major version a database server is installed in (the confirmation's choice). */
+    public ?string $installVersion = null;
+
     public string $defaultStack = Site::NGINX;
 
     public bool $configuring = false;
@@ -70,6 +73,8 @@ class ComponentIndex extends Component
             return;
         }
         $this->confirming = ['id' => $id, 'action' => $action];
+        $choices = $action === 'install' ? ($components->candidate($id)['choices'] ?? []) : [];
+        $this->installVersion = collect($choices)->firstWhere('default', true)['major'] ?? ($choices[0]['major'] ?? null);
     }
 
     public function confirm(Components $components, MailSettings $mail): void
@@ -85,7 +90,7 @@ class ComponentIndex extends Component
 
             return;
         }
-        $result = $components->start($ask['id'], $ask['action'], auth()->user());
+        $result = $components->start($ask['id'], $ask['action'], auth()->user(), $ask['action'] === 'install' ? $this->installVersion : null);
         if (is_string($result)) {
             $this->refused = $result;
 
@@ -225,7 +230,7 @@ class ComponentIndex extends Component
     /**
      * Title, text and button of the confirmation.
      *
-     * @return array{title: string, text: string, button: string, danger: bool}
+     * @return array{title: string, text: string, button: string, danger: bool, candidate?: array{version: ?string, source: ?string}|null}
      */
     private function confirmText(Components $components, string $id, string $action): array
     {
@@ -241,10 +246,11 @@ class ComponentIndex extends Component
                     $id === 'clamav' => __('Servik Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.'),
                     str_starts_with($id, 'node') => __('Servik Agent Node.js\'i nodejs.org\'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.'),
                     $id === 'composer' => __('Servik Agent Composer\'ı getcomposer.org\'dan indirir ve imzasını denetler.'),
-                    default => __('Servik Agent paketleri Ubuntu depolarından kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.'),
+                    default => __('Servik Agent paketleri kurar, ayarlarını yazar ve hizmeti başlatıp test eder. Bir adım başarısız olursa yapılanlar geri alınır. Siteler bu sırada çalışmaya devam eder.'),
                 },
                 'button' => __('Kur'),
                 'danger' => false,
+                'candidate' => $components->candidate($id),
             ],
             'update' => [
                 'title' => __(':name güncellensin mi?', ['name' => $name]),
