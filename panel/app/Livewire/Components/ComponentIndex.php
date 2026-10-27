@@ -175,7 +175,7 @@ class ComponentIndex extends Component
         $groups = $components->rows($this->tab, $error);
         $this->agentError = $groups === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
-        $busy = ComponentOperation::running()->exists();
+        $blocker = $components->blocker();
         $manager = null;
         if ($this->tab === 'veritabani' && $groups !== null) {
             $manager = $databases->status()['manager'] ?? null;
@@ -185,7 +185,8 @@ class ComponentIndex extends Component
             'groups' => $groups ?? [],
             'operation' => $operation,
             'operationName' => $operation ? $components->operationName($operation) : null,
-            'busy' => $busy || collect($groups ?? [])->flatten(1)->contains(fn ($r) => $r['busy'] !== null),
+            'blocker' => $blocker,
+            'busy' => $blocker !== null || collect($groups ?? [])->flatten(1)->contains(fn ($r) => $r['busy'] !== null),
             'checkedAt' => $components->checkedAt(),
             'apacheInstalled' => $components->isInstalled('apache'),
             'manager' => $manager,

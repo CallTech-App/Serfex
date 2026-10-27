@@ -7,6 +7,9 @@ use App\Livewire\Components\ShowsComponentOperations;
 use App\Models\ComponentOperation;
 use App\Models\Setting;
 use App\Models\Site;
+use App\Services\Agent\AgentClient;
+use App\Services\Agent\AgentException;
+use App\Services\Agent\AgentUnavailableException;
 use App\Services\Components\Components;
 use App\Services\Php\PhpVersions;
 use App\Services\System\SystemServices;
@@ -117,6 +120,23 @@ class ServiceIndex extends Component
         $this->confirming = ['id' => $id, 'action' => $action];
     }
 
+    /**
+     * Refreshes the package lists, so the table shows which PHP versions
+     * have a newer patch release.
+     */
+    public function check(AgentClient $agent): void
+    {
+        $this->refused = null;
+        try {
+            $agent->call('component.check', [], 300);
+        } catch (AgentException $e) {
+            $this->refused = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Güncellemeler denetlenemedi: :reason', ['reason' => $e->reason]);
+
+            return;
+        }
+        $this->dispatch('toast', message: __('Paket listeleri yenilendi.'));
+    }
+
     public function saveDefaults(PhpVersions $php): void
     {
         $this->resetErrorBag();
@@ -183,12 +203,15 @@ class ServiceIndex extends Component
         }
         $failed = ($this->tab === 'hizmetler' ? $groups : $phpRows) === null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
+        $blocker = $components->blocker();
 
         return view('livewire.services.index', [
             'groups' => $groups ?? [],
             'phpRows' => $phpRows ?? [],
             'agentError' => $failed ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null,
-            'busy' => ComponentOperation::running()->exists(),
+            'busy' => $blocker !== null,
+            'blocker' => $blocker,
+            'checkedAt' => $php->checkedAt(),
             'operation' => $operation,
             'operationName' => $operation ? $components->operationName($operation) : null,
             'confirm' => $this->confirming ? $this->confirmText($services, $components) : null,
