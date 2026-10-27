@@ -2,8 +2,9 @@
 // panel's Hizmetler page): status, uptime and boot setting from systemd,
 // start, stop, restart and reload with the service's own configuration
 // test first, recent journal lines, and the few settings worth changing
-// from the panel (Nginx limits, the database server's connections and
-// buffers, Postfix's message size), applied with a rollback.
+// from the panel (Nginx and Apache limits, the database server's
+// connections and buffers, Postfix's message size, PowerDNS's caches,
+// query log and zone transfers), applied with a rollback.
 //
 // Only services Servik knows are listed and controlled. The panel's own
 // services (servik-web, servik-php, its PostgreSQL cluster and workers),
@@ -82,9 +83,15 @@ const (
 // catalog lists every service Servik knows, the PostgreSQL clusters and
 // PHP versions found on the server included.
 func (m *Manager) catalog() []def {
+	// Apache's settings live in Servik's own Apache configuration, which
+	// only an Apache installed from Yazılım Yönetimi has.
+	apacheSettings := ""
+	if _, err := os.Stat(m.h.Path(apacheEnabled)); err == nil {
+		apacheSettings = "apache"
+	}
 	defs := []def{
 		{unit: "nginx", name: "Nginx", group: GroupHosting, marker: "/usr/sbin/nginx", test: []string{"nginx", "-t"}, reload: true, settings: "nginx"},
-		{unit: "apache2", name: "Apache", group: GroupHosting, marker: "/usr/sbin/apache2", test: []string{"apache2ctl", "configtest"}, reload: true},
+		{unit: "apache2", name: "Apache", group: GroupHosting, marker: "/usr/sbin/apache2", test: []string{"apache2ctl", "configtest"}, reload: true, settings: apacheSettings},
 	}
 	for _, v := range PHPVersions {
 		defs = append(defs, def{unit: "php" + v + "-fpm", name: "PHP " + v + " (PHP-FPM)", group: GroupHosting, marker: "/usr/sbin/php-fpm" + v, test: []string{"php-fpm" + v, "-t"}, reload: true})
@@ -99,7 +106,7 @@ func (m *Manager) catalog() []def {
 		}
 	}
 	defs = append(defs,
-		def{unit: "pdns@servik", name: "PowerDNS (DNS sunucusu)", group: GroupHosting, marker: "/etc/powerdns/pdns-servik.conf"},
+		def{unit: "pdns@servik", name: "PowerDNS (DNS sunucusu)", group: GroupHosting, marker: pdnsConf, test: []string{"pdns_server", "--config-name=servik", "--config=check"}, settings: "powerdns"},
 		def{unit: "postfix", name: "Postfix (posta gönderme ve alma)", group: GroupHosting, marker: "/usr/sbin/postfix", test: []string{"postfix", "check"}, reload: true, settings: "postfix", logs: []string{"postfix", "postfix@-"}},
 		def{unit: "dovecot", name: "Dovecot (IMAP ve POP3)", group: GroupHosting, marker: "/usr/sbin/dovecot", test: []string{"doveconf", "-n"}, reload: true},
 		def{unit: "rspamd", name: "Rspamd (spam filtresi)", group: GroupHosting, marker: "/usr/bin/rspamd", test: []string{"rspamadm", "configtest"}, reload: true},

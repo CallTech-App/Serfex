@@ -46,6 +46,12 @@ class PhpVersions
         'opcache.revalidate_freq' => ['Denetleme aralığı', 'seconds', 'Saniye.'],
     ];
 
+    /**
+     * INI settings the command line (artisan, queue workers, the scheduler,
+     * Composer) keeps its own values of; the agent's php.WebOnly.
+     */
+    public const WEB_ONLY = ['memory_limit', 'max_execution_time', 'max_input_time', 'display_errors'];
+
     /** Settings a site may override: key => [label, type]. */
     public const SITE_INI = [
         'memory_limit' => ['Bellek sınırı', 'size'],
@@ -193,6 +199,14 @@ class PhpVersions
         RunComponentOperation::dispatch($operation);
 
         return $operation;
+    }
+
+    /**
+     * When the package lists were last checked for updates (after rows()).
+     */
+    public function checkedAt(): ?string
+    {
+        return $this->components->checkedAt();
     }
 
     /**

@@ -3,10 +3,10 @@
 // This test manages real services and PHP: lists them, stops and starts
 // PHP-FPM under a site, refuses a restart with a broken Nginx
 // configuration, reads the journal, changes Nginx's body limit, a PHP
-// version's php.ini defaults and a site's own PHP settings and pool,
-// switches an extension off and on, and installs and removes an optional
-// one. It needs root, systemd and apt, so it only builds with -tags
-// realhost:
+// version's php.ini defaults (also on the command line) and a site's own
+// PHP settings and pool, switches an extension off and on, and installs
+// and removes an optional one. It needs root, systemd and apt, so it only
+// builds with -tags realhost:
 //
 //	sudo go test -tags realhost -run TestRealHost ./internal/service
 //
@@ -166,6 +166,10 @@ echo 'mem=', ini_get('memory_limit'), ' up=', ini_get('upload_max_filesize'),
 		t.Fatalf("php settings: %+v %v", info.Values, err)
 	}
 	expect(t, "GET", 0, 200, "mem=300M up=64M exec=on")
+	// The command line gets the defaults but keeps its own memory limit.
+	if out, err := h.Run(ctx, host.Command{Name: "php" + v, Args: []string{"-r", `echo ini_get('memory_limit'), ' ', ini_get('upload_max_filesize'), ' ', ini_get('date.timezone');`}}); err != nil || strings.TrimSpace(out) != "-1 64M UTC" {
+		t.Fatalf("command line PHP: %q %v", out, err)
+	}
 	values["open_basedir"] = "/"
 	if _, err := pm.Apply(ctx, php.SettingsSpec{Version: v, Values: values}); err == nil {
 		t.Fatal("open_basedir was accepted as a server default")

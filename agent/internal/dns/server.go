@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/tuning"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -55,8 +56,11 @@ webserver-address={{.APIAddress}}
 webserver-port={{.APIPort}}
 webserver-allow-from=127.0.0.1,::1
 
-# No secondary servers in this version: refuse zone transfers.
-disable-axfr=yes
+# Zone transfers (to secondary name servers), caching and query logging
+# are changed on the panel's Hizmetler page.
+{{- range .Tuning}}
+{{index . 0}}={{index . 1}}
+{{- end}}
 version-string=anonymous
 security-poll-suffix=
 `))
@@ -175,8 +179,9 @@ func (m *Manager) Setup(ctx context.Context) (res SetupResult, err error) {
 		listen += ", ::"
 	}
 	var conf bytes.Buffer
-	if err := configTmpl.Execute(&conf, map[string]string{
+	if err := configTmpl.Execute(&conf, map[string]any{
 		"Marker": txn.Marker, "Listen": listen, "APIKey": key, "APIAddress": apiAddress, "APIPort": apiPort,
+		"Tuning": tuning.PowerDNSLines(tuning.Load(m.h).PowerDNS),
 	}); err != nil {
 		return SetupResult{}, err
 	}

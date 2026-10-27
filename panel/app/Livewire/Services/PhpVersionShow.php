@@ -32,7 +32,7 @@ class PhpVersionShow extends Component
     #[Url(as: 'sekme', except: 'ayarlar')]
     public string $tab = 'ayarlar';
 
-    /** @var array<string, string> the form */
+    /** @var array<string, string> the form, by field() */
     public array $values = [];
 
     /** @var array<string, string> as the server has them */
@@ -73,7 +73,7 @@ class PhpVersionShow extends Component
         $this->resetErrorBag();
         $values = [];
         foreach (PhpVersions::INI as $key => [$label, $type]) {
-            $value = trim((string) ($this->values[$key] ?? ''));
+            $value = trim((string) ($this->values[self::field($key)] ?? ''));
             $error = match (true) {
                 $value === '' => __('Boş bırakılamaz.'),
                 $type === 'size' && ! preg_match(PhpVersions::SIZE_PATTERN, $value) => __('128M, 1G ya da -1 gibi bir değer girin.'),
@@ -84,7 +84,7 @@ class PhpVersionShow extends Component
                 default => null,
             };
             if ($error !== null) {
-                $this->addError('values.'.$key, $error);
+                $this->addError('values.'.self::field($key), $error);
             }
             $values[$key] = $type === 'size' ? strtoupper($value) : $value;
         }
@@ -119,7 +119,7 @@ class PhpVersionShow extends Component
     {
         foreach (PhpVersions::INI as $key => $_) {
             if (isset($this->defaults[$key])) {
-                $this->values[$key] = $this->defaults[$key];
+                $this->values[self::field($key)] = $this->defaults[$key];
             }
         }
         $this->resetValidation();
@@ -231,6 +231,15 @@ class PhpVersionShow extends Component
     }
 
     /**
+     * The form field of an INI setting: Livewire would read the dot in
+     * date.timezone as a nested array.
+     */
+    public static function field(string $key): string
+    {
+        return str_replace('.', '_', $key);
+    }
+
+    /**
      * @param  array<string, mixed>  $info
      */
     private function useInfo(array $info): void
@@ -240,7 +249,10 @@ class PhpVersionShow extends Component
         foreach (PhpVersions::INI as $key => $_) {
             $this->current[$key] = (string) ($values[$key] ?? ($info['defaults'][$key] ?? ''));
         }
-        $this->values = $this->current;
+        $this->values = [];
+        foreach ($this->current as $key => $value) {
+            $this->values[self::field($key)] = $value;
+        }
         $this->defaults = array_map('strval', (array) ($info['defaults'] ?? []));
         $this->managed = (bool) ($info['managed'] ?? false);
         $this->extensions = array_values((array) ($info['extensions'] ?? []));

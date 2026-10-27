@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/winchester37/servik/agent/internal/txn"
 )
 
 func newTest(t *testing.T) (*Manager, *host.Simulator) {
@@ -62,6 +63,19 @@ func TestInfoAndSettings(t *testing.T) {
 		t.Errorf("ini file:\n%s", b)
 	}
 
+	// The command line gets them without the web-only limits.
+	cli, _ := os.ReadFile(sim.Path(CLIIniFile("8.4")))
+	for _, want := range []string{"; Managed by Servik", "date.timezone = Europe/Istanbul\n", "upload_max_filesize = 64M\n"} {
+		if !strings.Contains(string(cli), want) {
+			t.Errorf("cli ini lacks %q:\n%s", want, cli)
+		}
+	}
+	for _, unwanted := range []string{"memory_limit", "max_execution_time", "max_input_time", "display_errors"} {
+		if strings.Contains(string(cli), "\n"+unwanted+" =") {
+			t.Errorf("cli ini sets %s:\n%s", unwanted, cli)
+		}
+	}
+
 	// PHP-FPM refusing the settings keeps the previous file.
 	sim.Fail = func(c host.Command) error {
 		if c.String() == "php-fpm8.4 -t" {
@@ -77,6 +91,9 @@ func TestInfoAndSettings(t *testing.T) {
 	if b, _ := os.ReadFile(sim.Path(IniFile("8.4"))); !strings.Contains(string(b), "memory_limit = 512M\n") {
 		t.Errorf("not rolled back:\n%s", b)
 	}
+	if b, _ := os.ReadFile(sim.Path(CLIIniFile("8.4"))); string(b) != string(cli) {
+		t.Errorf("cli ini not rolled back:\n%s", b)
+	}
 
 	var v *ValidationError
 	for _, bad := range []map[string]string{
@@ -90,6 +107,56 @@ func TestInfoAndSettings(t *testing.T) {
 	}
 	if _, err := m.Info("7.4"); !errors.As(err, &v) {
 		t.Errorf("unknown version: %v", err)
+	}
+}
+
+func TestSyncCLI(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	// An older agent wrote the PHP-FPM file only.
+	values := Defaults("UTC")
+	values["upload_max_filesize"] = "128M"
+	if _, err := m.Apply(ctx, SettingsSpec{Version: "8.4", Values: values}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(sim.Path(CLIIniFile("8.4"))); err != nil {
+		t.Fatal(err)
+	}
+	// Someone else's file is left alone.
+	if err := os.MkdirAll(sim.Path("/etc/php/8.3/fpm/conf.d"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sim.Path(IniFile("8.3")), []byte("memory_limit = 1G\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.SyncCLI(ctx); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(sim.Path(CLIIniFile("8.4")))
+	if err != nil || !strings.Contains(string(b), "upload_max_filesize = 128M\n") || strings.Contains(string(b), "memory_limit") {
+		t.Errorf("cli ini: %v\n%s", err, b)
+	}
+	if _, err := os.Stat(sim.Path(CLIIniFile("8.3"))); err == nil {
+		t.Error("a file Servik does not manage was copied")
+	}
+	// A second run changes nothing.
+	before, _ := os.Stat(sim.Path(CLIIniFile("8.4")))
+	if err := m.SyncCLI(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := os.Stat(sim.Path(CLIIniFile("8.4"))); !after.ModTime().Equal(before.ModTime()) {
+		t.Error("an unchanged file was written again")
+	}
+
+	// Reinstalling a version that kept its defaults restores the copy.
+	if err := os.Remove(sim.Path(CLIIniFile("8.4"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.WriteDefaults(txn.New(sim), "8.4"); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(sim.Path(CLIIniFile("8.4"))); !strings.Contains(string(b), "upload_max_filesize = 128M\n") {
+		t.Errorf("after reinstall:\n%s", b)
 	}
 }
 

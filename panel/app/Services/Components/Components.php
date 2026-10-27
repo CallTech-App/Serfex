@@ -289,6 +289,37 @@ class Components
     }
 
     /**
+     * Why no install, update or removal can start now: the one operation
+     * that runs at a time (with its id, for its progress), a database
+     * server setup or a Servik update. Null when nothing runs.
+     *
+     * @return array{text: string, operation: ?int}|null
+     */
+    public function blocker(): ?array
+    {
+        $wait = __('Bitene kadar başka kurulum, güncelleme veya kaldırma başlatılamaz.');
+        $running = ComponentOperation::running()->latest('id')->first();
+        if ($running !== null) {
+            $name = $this->operationName($running);
+            $doing = match ($running->action) {
+                'update' => __(':name güncelleniyor.', ['name' => $name]),
+                'remove', 'ext-remove' => __(':name kaldırılıyor.', ['name' => $name]),
+                default => __(':name kuruluyor.', ['name' => $name]),
+            };
+
+            return ['text' => $doing.' '.__(':since başladı.', ['since' => $running->created_at->diffForHumans()]).' '.$wait, 'operation' => $running->id];
+        }
+        if ($this->databaseSetupRunning()) {
+            return ['text' => __('Veritabanı sunucusu kuruluyor.').' '.$wait, 'operation' => null];
+        }
+        if (PanelUpdate::running()->exists()) {
+            return ['text' => __('Servik güncelleniyor.').' '.$wait, 'operation' => null];
+        }
+
+        return null;
+    }
+
+    /**
      * Components the agent installs and removes itself (the others are
      * part of another setup, such as the webmail of the mail server).
      */

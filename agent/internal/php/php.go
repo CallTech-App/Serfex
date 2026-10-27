@@ -7,6 +7,7 @@
 // Layout:
 //
 //	/etc/php/<v>/fpm/conf.d/90-servik.ini   Servik's defaults for PHP-FPM, read after php.ini
+//	/etc/php/<v>/cli/conf.d/90-servik.ini   the same for the command line, without WebOnly
 //	/etc/php/<v>/mods-available/<ext>.ini   extensions, switched on with phpenmod
 package php
 
@@ -103,6 +104,17 @@ func NewManager(h host.Host) *Manager {
 
 // IniFile is where Servik's defaults for a version live.
 func IniFile(v string) string { return "/etc/php/" + v + "/fpm/conf.d/90-servik.ini" }
+
+// CLIIniFile is the command line's copy of them: artisan, queue workers,
+// the scheduler, cron tasks and Composer read it.
+func CLIIniFile(v string) string { return "/etc/php/" + v + "/cli/conf.d/90-servik.ini" }
+
+// WebOnly are defaults the command line goes without: long-running and
+// heavy commands keep PHP's own command-line values (no memory or time
+// limit on Ubuntu) and print their errors to the terminal.
+var WebOnly = map[string]bool{
+	"memory_limit": true, "max_execution_time": true, "max_input_time": true, "display_errors": true,
+}
 
 func (m *Manager) checkVersion(v string) error {
 	if !versionRe.MatchString(v) {
@@ -277,30 +289,76 @@ func (m *Manager) Apply(ctx context.Context, spec SettingsSpec) (Info, error) {
 }
 
 // WriteDefaults gives a newly installed version Servik's defaults, unless
-// it has its own already.
+// it has its own already; those reach the command line too.
 func (m *Manager) WriteDefaults(t *txn.Tx, v string) error {
-	if _, err := os.Stat(m.h.Path(IniFile(v))); err == nil {
-		return nil
+	if own := parseINI(m.h.Path(IniFile(v))); own != nil {
+		return m.writeCLI(t, v, own)
 	}
 	return m.write(t, v, Defaults(m.timezone()))
 }
 
-func (m *Manager) write(t *txn.Tx, v string, values map[string]string) error {
-	keys := make([]string, 0, len(values))
-	for k := range values {
-		keys = append(keys, k)
+// SyncCLI copies every version's defaults to its command line, for
+// versions set up before the command line had them. The agent calls it
+// when it starts.
+func (m *Manager) SyncCLI(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	files, _ := filepath.Glob(m.h.Path("/etc/php/*/fpm/conf.d/90-servik.ini"))
+	var errs []error
+	for _, f := range files {
+		v := filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(f))))
+		if !versionRe.MatchString(v) {
+			continue
+		}
+		// A file without the marker is someone else's.
+		if data, err := os.ReadFile(f); err != nil || !txn.HasMarker(data) {
+			continue
+		}
+		t := txn.New(m.h)
+		if err := m.writeCLI(t, v, parseINI(f)); err != nil {
+			errs = append(errs, fmt.Errorf("PHP %s: %w", v, errors.Join(err, t.Rollback(context.WithoutCancel(ctx)))))
+		}
 	}
-	sort.Strings(keys)
+	return errors.Join(errs...)
+}
+
+func (m *Manager) write(t *txn.Tx, v string, values map[string]string) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "; %s. Change these on the panel's Hizmetler → PHP sürümleri page.\n", txn.Marker)
 	b.WriteString("; Server-wide defaults of PHP-FPM " + v + "; sites may override some of them.\n")
-	for _, k := range keys {
-		fmt.Fprintf(&b, "%s = %s\n", k, values[k])
-	}
+	writeValues(&b, values, nil)
 	if err := t.RootDir("/etc/php/"+v+"/fpm/conf.d", 0o755, 0, 0); err != nil {
 		return err
 	}
-	return t.WriteFile(IniFile(v), []byte(b.String()))
+	if err := t.WriteFile(IniFile(v), []byte(b.String())); err != nil {
+		return err
+	}
+	return m.writeCLI(t, v, values)
+}
+
+func (m *Manager) writeCLI(t *txn.Tx, v string, values map[string]string) error {
+	var b strings.Builder
+	fmt.Fprintf(&b, "; %s. Change these on the panel's Hizmetler → PHP sürümleri page.\n", txn.Marker)
+	b.WriteString("; Server-wide defaults of PHP " + v + " on the command line (artisan, queues, cron, Composer).\n")
+	b.WriteString("; Memory and time limits and showing errors stay the command line's own.\n")
+	writeValues(&b, values, WebOnly)
+	if err := t.RootDir("/etc/php/"+v+"/cli/conf.d", 0o755, 0, 0); err != nil {
+		return err
+	}
+	return t.WriteFile(CLIIniFile(v), []byte(b.String()))
+}
+
+func writeValues(b *strings.Builder, values map[string]string, skip map[string]bool) {
+	keys := make([]string, 0, len(values))
+	for k := range values {
+		if !skip[k] {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(b, "%s = %s\n", k, values[k])
+	}
 }
 
 // reload checks the configuration and reloads PHP-FPM.

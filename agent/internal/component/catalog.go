@@ -16,6 +16,7 @@ import (
 	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/panel"
 	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/winchester37/servik/agent/internal/tuning"
 	"github.com/winchester37/servik/agent/internal/txn"
 )
 
@@ -408,13 +409,6 @@ var apachePorts = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 Listen 127.0.0.1:` + fmt.Sprint(site.ApachePort) + `
 `)
 
-var apacheConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
-ServerName localhost
-ServerTokens Prod
-ServerSignature Off
-TraceEnable Off
-`)
-
 var apacheModules = []string{"proxy_fcgi", "setenvif", "rewrite", "remoteip", "headers", "expires", "deflate"}
 
 func apache() *component {
@@ -441,7 +435,7 @@ func apache() *component {
 			if err := o.t.WriteFile(site.ApachePorts, apachePorts); err != nil {
 				return err
 			}
-			if err := o.t.WriteFile("/etc/apache2/conf-available/servik.conf", apacheConf); err != nil {
+			if err := o.t.WriteFile(tuning.ApacheConf, tuning.ApacheContent(tuning.Load(o.m.h).Apache)); err != nil {
 				return err
 			}
 			// prefork (mod_php) is never used: PHP runs in PHP-FPM.

@@ -27,6 +27,7 @@
                 @endif
             @endif
             {{ __('Buradaki değerler sitelerin başlangıç ayarlarıdır; her site kendi PHP ve Web Sunucusu sayfasından bazılarını değiştirebilir.') }}
+            {{ __('Komut satırı PHP\'si de (artisan, kuyruk işçileri, zamanlanmış görevler, Composer) bu değerleri kullanır; "yalnızca web" işaretli olanlar orada geçerli değildir.') }}
         </p>
     </div>
 
@@ -65,20 +66,24 @@
                 @endif
                 <div class="grid grid-cols-1 gap-x-6 gap-y-5 p-5 text-[13.5px] md:grid-cols-[220px_1fr]">
                     @foreach (PhpVersions::INI as $key => [$label, $type, $help])
-                        <label for="ini-{{ $key }}" class="font-medium md:pt-2">{{ $label }}</label>
+                        @php($field = PhpVersionShow::field($key))
+                        <label for="ini-{{ $key }}" class="font-medium md:pt-2">{{ __($label) }}</label>
                         <div class="max-w-xl">
                             <div class="flex flex-wrap items-center gap-2">
                                 @if ($type === 'onoff')
-                                    <select id="ini-{{ $key }}" wire:model="values.{{ $key }}" class="{{ $input }} w-40"><option value="On">{{ __('Açık') }}</option><option value="Off">{{ __('Kapalı') }}</option></select>
+                                    <select id="ini-{{ $key }}" wire:model="values.{{ $field }}" class="{{ $input }} w-40"><option value="On">{{ __('Açık') }}</option><option value="Off">{{ __('Kapalı') }}</option></select>
                                 @elseif ($type === 'flag')
-                                    <select id="ini-{{ $key }}" wire:model="values.{{ $key }}" class="{{ $input }} w-40"><option value="1">{{ __('Açık') }}</option><option value="0">{{ __('Kapalı') }}</option></select>
+                                    <select id="ini-{{ $key }}" wire:model="values.{{ $field }}" class="{{ $input }} w-40"><option value="1">{{ __('Açık') }}</option><option value="0">{{ __('Kapalı') }}</option></select>
                                 @else
-                                    <input id="ini-{{ $key }}" type="text" wire:model="values.{{ $key }}" class="{{ $input }} {{ $type === 'text' ? 'w-60' : 'w-40' }}">
+                                    <input id="ini-{{ $key }}" type="text" wire:model="values.{{ $field }}" class="{{ $input }} {{ $type === 'text' ? 'w-60' : 'w-40' }}">
                                 @endif
                                 <span class="font-mono text-2xs text-muted">{{ $key }}</span>
+                                @if (in_array($key, PhpVersions::WEB_ONLY, true))
+                                    <span class="rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-muted" title="{{ __('Komut satırında PHP\'nin kendi değeri geçerlidir: bellek ve süre sınırı yoktur, hatalar terminale yazılır.') }}">{{ __('yalnızca web') }}</span>
+                                @endif
                             </div>
-                            @error('values.'.$key) <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
-                            @if ($help)<p class="mt-1.5 text-[13px] text-muted">{{ $help }}</p>@endif
+                            @error('values.'.$field) <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
+                            @if ($help)<p class="mt-1.5 text-[13px] text-muted">{{ __($help) }}</p>@endif
                         </div>
                     @endforeach
                 </div>
