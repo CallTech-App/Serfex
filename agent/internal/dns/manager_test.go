@@ -76,7 +76,7 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Managed by Servik", "launch=lmdb", "api=yes", "webserver-address=127.0.0.1", "disable-axfr=yes"} {
+	for _, want := range []string{"Managed by Servik", "launch=lmdb", "api=yes", "webserver-address=127.0.0.1", "disable-axfr=yes\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\nversion-string=anonymous"} {
 		if !strings.Contains(string(conf), want) {
 			t.Errorf("config lacks %q:\n%s", want, conf)
 		}

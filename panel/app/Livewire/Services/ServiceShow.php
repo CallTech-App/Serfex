@@ -11,8 +11,8 @@ use Livewire\Component;
 /**
  * One system service (administrators only): its state, the actions of the
  * list plus reload and the boot setting, its newest journal lines and,
- * for Nginx, the database server and Postfix, the settings worth changing.
- * Every change can be undone from its toast.
+ * for Nginx, Apache, the database server, Postfix and PowerDNS, the
+ * settings worth changing. Every change can be undone from its toast.
  */
 #[Layout('components.layouts.app')]
 class ServiceShow extends Component
@@ -26,7 +26,7 @@ class ServiceShow extends Component
 
     public int $lines = 100;
 
-    /** @var array<string, string> the settings form */
+    /** @var array<string, string|bool> the settings form */
     public array $settings = [];
 
     /** @var array<string, mixed> the settings as the server has them */
@@ -103,15 +103,36 @@ class ServiceShow extends Component
         $values = [];
         $rules = [];
         $names = [];
-        foreach (SystemServices::SETTINGS[$section] as $key => [$label, $unit, $min, $max]) {
-            $rules["settings.{$key}"] = $key === 'worker_processes'
-                ? ['required', 'regex:/^(auto|[1-9]\d{0,2})$/']
-                : ['required', 'integer', "between:{$min},{$max}"];
+        foreach (SystemServices::SETTINGS[$section] as $key => $field) {
+            [$label, , $min, $max] = $field;
+            $rules["settings.{$key}"] = match (true) {
+                $key === 'worker_processes' => ['required', 'regex:/^(auto|[1-9]\d{0,2})$/'],
+                ($field[5] ?? null) === 'switch' => ['boolean'],
+                ($field[5] ?? null) === 'list' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
+                    $list = self::lines((string) $value);
+                    if (count($list) > SystemServices::MAX_AXFR) {
+                        $fail(__('En fazla :max adres girilebilir.', ['max' => SystemServices::MAX_AXFR]));
+                    }
+                    foreach ($list as $address) {
+                        if (! self::isAddress($address)) {
+                            $fail(__(':address bir IP adresi ya da ağı değil.', ['address' => $address]));
+
+                            return;
+                        }
+                    }
+                }],
+                default => ['required', 'integer', "between:{$min},{$max}"],
+            };
             $names["settings.{$key}"] = mb_strtolower($label);
         }
         $this->validate($rules, ['settings.worker_processes.regex' => __('"auto" ya da 1-999 arasında bir sayı girin.')], $names);
-        foreach (SystemServices::SETTINGS[$section] as $key => $_) {
-            $values[$key] = $key === 'worker_processes' ? trim($this->settings[$key]) : (int) $this->settings[$key];
+        foreach (SystemServices::SETTINGS[$section] as $key => $field) {
+            $values[$key] = match (true) {
+                $key === 'worker_processes' => trim($this->settings[$key]),
+                ($field[5] ?? null) === 'switch' => (bool) $this->settings[$key],
+                ($field[5] ?? null) === 'list' => self::lines((string) $this->settings[$key]),
+                default => (int) $this->settings[$key],
+            };
         }
         $before = $this->current;
         if ($values == $before) {
@@ -189,7 +210,37 @@ class ServiceShow extends Component
     private function useSettings(array $values): void
     {
         $this->current = $values;
-        $this->settings = array_map(fn ($v) => (string) $v, $values);
+        $this->settings = array_map(fn ($v) => match (true) {
+            is_bool($v) => $v,
+            is_array($v) => implode("\n", $v),
+            default => (string) $v,
+        }, $values);
+    }
+
+    /**
+     * The addresses of a list field: one per line (commas and spaces work
+     * too), blank ones left out.
+     *
+     * @return list<string>
+     */
+    private static function lines(string $text): array
+    {
+        return array_values(array_filter(preg_split('/[\s,]+/', trim($text)) ?: [], fn ($v) => $v !== ''));
+    }
+
+    /** An IPv4 or IPv6 address, or a network in CIDR form. */
+    private static function isAddress(string $value): bool
+    {
+        [$ip, $bits] = array_pad(explode('/', $value, 2), 2, null);
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            return false;
+        }
+        if ($bits === null) {
+            return true;
+        }
+        $max = str_contains($ip, ':') ? 128 : 32;
+
+        return ctype_digit($bits) && (int) $bits <= $max;
     }
 
     private function run(string $action, SystemServices $services, bool $offerUndo = true): void

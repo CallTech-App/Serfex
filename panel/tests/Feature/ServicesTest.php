@@ -209,6 +209,55 @@ class ServicesTest extends TestCase
         $this->get('/hizmetler/yok')->assertNotFound();
     }
 
+    public function test_apache_and_powerdns_settings(): void
+    {
+        $this->services['apache2'] = [...$this->services['nginx'], 'unit' => 'apache2', 'name' => 'Apache', 'settings' => 'apache'];
+        $this->services['pdns@servik'] = [...$this->services['nginx'], 'unit' => 'pdns@servik', 'name' => 'PowerDNS (DNS sunucusu)', 'can_reload' => false, 'settings' => 'powerdns'];
+        $settings = [
+            'apache2' => ['max_request_workers' => 150, 'timeout' => 300],
+            'pdns@servik' => ['cache_ttl' => 20, 'negquery_cache_ttl' => 60, 'log_queries' => false, 'axfr_allow' => []],
+        ];
+        $this->agent->answers['service.settings'] = fn ($p) => ['unit' => $p['unit'], $p['unit'] === 'apache2' ? 'apache' : 'powerdns' => $settings[$p['unit']]];
+        $this->agent->answers['service.settings.apply'] = fn ($p) => ['unit' => $p['unit'], ...array_diff_key($p, ['unit' => 1])];
+
+        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
+            ->assertSee('Eşzamanlı istek sınırı')
+            ->assertSet('settings.max_request_workers', '150')
+            ->set('settings.timeout', '600')
+            ->call('saveSettings')
+            ->assertHasErrors('settings.timeout')
+            ->set('settings.timeout', '120')
+            ->set('settings.max_request_workers', '400')
+            ->call('saveSettings')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast', fn ($name, $p) => $p['undo']['args'][0] === ['max_request_workers' => 150, 'timeout' => 300]);
+        $this->assertSame(['max_request_workers' => 400, 'timeout' => 120], $this->agent->called('service.settings.apply')[0]['apache']);
+
+        Livewire::test(ServiceShow::class, ['unit' => 'pdns@servik', 'tab' => 'ayarlar'])
+            ->assertSee('Bölge aktarımı izni')
+            ->assertSet('settings.log_queries', false)
+            ->assertSet('settings.axfr_allow', '')
+            ->set('settings.axfr_allow', "192.0.2.10\nns2.example.net")
+            ->call('saveSettings')
+            ->assertHasErrors('settings.axfr_allow')
+            ->set('settings.axfr_allow', "192.0.2.10\n 2001:db8::/48 ,198.51.100.0/24\n")
+            ->set('settings.log_queries', true)
+            ->set('settings.cache_ttl', '0')
+            ->call('saveSettings')
+            ->assertHasNoErrors()
+            ->assertSet('settings.axfr_allow', "192.0.2.10\n2001:db8::/48\n198.51.100.0/24")
+            ->call('undoSettings', $settings['pdns@servik']);
+        $applied = $this->agent->called('service.settings.apply');
+        $this->assertSame(['cache_ttl' => 0, 'negquery_cache_ttl' => 60, 'log_queries' => true, 'axfr_allow' => ['192.0.2.10', '2001:db8::/48', '198.51.100.0/24']], $applied[1]['powerdns']);
+        $this->assertSame($settings['pdns@servik'], $applied[2]['powerdns']);
+
+        // Without Servik's Apache configuration there is no settings tab.
+        $this->services['apache2']['settings'] = null;
+        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
+            ->assertSet('tab', 'gunluk')
+            ->assertDontSee('Eşzamanlı istek sınırı');
+    }
+
     public function test_protected_services_cannot_be_stopped_from_the_page(): void
     {
         $this->get('/hizmetler/servik-agent')->assertOk()
