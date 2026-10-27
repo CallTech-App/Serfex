@@ -55,6 +55,6 @@ class SiteDisk extends Component
             'site' => $site,
             'disk' => $disk->site($site),
             'customer' => $site->customer(),
-        ])->title(__('Disk kullanımı · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Disk kullanımı · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

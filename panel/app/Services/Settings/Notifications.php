@@ -23,7 +23,7 @@ use Throwable;
  * needs the administrators: a certificate, a backup, an update, disk
  * space, a stopped service.
  *
- * servik:notify compares what is wrong now with what the administrators
+ * serfex:notify compares what is wrong now with what the administrators
  * were already told, and sends one message per run with the new problems
  * and the ones that went away. A problem is told once, not every run.
  *
@@ -176,7 +176,7 @@ class Notifications
     {
         $seen = [];
         $out = [];
-        foreach ((array) config('servik.disk_paths', ['/', '/home', '/var']) as $path) {
+        foreach ((array) config('serfex.disk_paths', ['/', '/home', '/var']) as $path) {
             $total = @disk_total_space($path);
             $free = @disk_free_space($path);
             if (! $total || $free === false || isset($seen[$total.':'.$free])) {
@@ -193,7 +193,7 @@ class Notifications
     }
 
     /**
-     * One run of servik:notify. Returns how many problems were opened and
+     * One run of serfex:notify. Returns how many problems were opened and
      * resolved.
      *
      * @return array{opened: int, resolved: int}
@@ -261,11 +261,11 @@ class Notifications
     {
         $out = [];
         foreach ($this->recipientsByLocale() as $locale => $emails) {
-            $out['email'] ??= Locales::using($locale, fn () => $this->mail->send($emails, __('Servik deneme bildirimi'),
-                __("Bu bir deneme bildirimidir. Servik'in bildirimleri bu adrese ulaşıyor.")."\n\n".$this->panelUrl()."\n"));
+            $out['email'] ??= Locales::using($locale, fn () => $this->mail->send($emails, __('Serfex deneme bildirimi'),
+                __("Bu bir deneme bildirimidir. Serfex'in bildirimleri bu adrese ulaşıyor.")."\n\n".$this->panelUrl()."\n"));
         }
         if ($this->settings()['webhook_url'] !== '') {
-            $out['webhook'] = $this->post(['event' => 'servik.test', 'problems' => [], 'resolved' => []]);
+            $out['webhook'] = $this->post(['event' => 'serfex.test', 'problems' => [], 'resolved' => []]);
         }
 
         return $out;
@@ -291,7 +291,7 @@ class Notifications
             $locale = $this->webhookLocale();
             $item = fn (NotificationEvent $e) => ['kind' => $e->kind, 'key' => $e->key, 'title' => $e->titleIn($locale), 'detail' => $e->detailIn($locale),
                 'url' => $e->url ? $this->panelUrl().$e->url : null, 'at' => ($e->resolved_at ?? $e->opened_at)->toIso8601String()];
-            $error = $this->post(['event' => 'servik.problems', 'problems' => array_map($item, $opened), 'resolved' => array_map($item, $resolved)]);
+            $error = $this->post(['event' => 'serfex.problems', 'problems' => array_map($item, $opened), 'resolved' => array_map($item, $resolved)]);
             $sent['webhook'] = $error === null;
             if ($error !== null) {
                 $errors[] = 'Webhook: '.$error;
@@ -304,7 +304,7 @@ class Notifications
 
     /**
      * Posts $payload to the webhook, signed with HMAC-SHA256 of the body
-     * in X-Servik-Signature. Returns null, or why it failed.
+     * in X-Serfex-Signature. Returns null, or why it failed.
      *
      * @param  array<string, mixed>  $payload
      */
@@ -314,8 +314,8 @@ class Notifications
         try {
             $response = Http::timeout(10)->connectTimeout(5)
                 ->withHeaders([
-                    'User-Agent' => 'Servik/'.config('servik.version'),
-                    'X-Servik-Signature' => 'sha256='.hash_hmac('sha256', $body, $this->secret()),
+                    'User-Agent' => 'Serfex/'.config('serfex.version'),
+                    'X-Serfex-Signature' => 'sha256='.hash_hmac('sha256', $body, $this->secret()),
                 ])
                 ->withBody($body, 'application/json')
                 ->post($this->settings()['webhook_url']);
@@ -334,10 +334,10 @@ class Notifications
     {
         $name = $this->serverName();
         if ($opened === []) {
-            return '[Servik] '.$name.': '.(count($resolved) === 1 ? __('düzeldi: :title', ['title' => $resolved[0]->titleIn()]) : trans_choice(':count sorun düzeldi', count($resolved)));
+            return '[Serfex] '.$name.': '.(count($resolved) === 1 ? __('düzeldi: :title', ['title' => $resolved[0]->titleIn()]) : trans_choice(':count sorun düzeldi', count($resolved)));
         }
 
-        return '[Servik] '.$name.': '.(count($opened) === 1 ? $opened[0]->titleIn() : trans_choice(':count sorun', count($opened)));
+        return '[Serfex] '.$name.': '.(count($opened) === 1 ? $opened[0]->titleIn() : trans_choice(':count sorun', count($opened)));
     }
 
     /**

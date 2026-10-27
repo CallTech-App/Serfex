@@ -10,8 +10,8 @@ import (
 // tree is every command, built after the language is known.
 func tree() *Command {
 	root := &Command{
-		Name: "servik",
-		Long: T("Servik komut satırı: siteler, alan adları, DNS, SSL, e-posta, veritabanları, yedekler, hizmetler ve Laravel uygulamaları.\nÖnce bir panele giriş yapın: servik login panel.ornek.com.tr:8443"),
+		Name: "serfex",
+		Long: T("Serfex komut satırı: siteler, alan adları, DNS, SSL, e-posta, veritabanları, yedekler, hizmetler ve Laravel uygulamaları.\nÖnce bir panele giriş yapın: serfex login panel.ornek.com.tr:8443"),
 	}
 	root.Subs = append(root.Subs, accountCommands()...)
 	root.Subs = append(root.Subs, siteCommands(), domainCommands(), dnsCommands(), sslCommands(), mailCommands(), dbCommands(), backupCommands())
@@ -27,9 +27,9 @@ func completionCommand() *Command {
 		Short: T("Kabuk tamamlama betiğini yazar"),
 		Long:  T("Kabuk tamamlama betiğini yazar. Komutlar, seçenekler ve siteler, uygulamalar gibi adlar Tab ile tamamlanır."),
 		Examples: []string{
-			"source <(servik completion bash)",
-			"servik completion zsh > \"${fpath[1]}/_servik\"",
-			"servik completion fish > ~/.config/fish/completions/servik.fish",
+			"source <(serfex completion bash)",
+			"serfex completion zsh > \"${fpath[1]}/_serfex\"",
+			"serfex completion fish > ~/.config/fish/completions/serfex.fish",
 		},
 		Complete: func(c *Ctx, n int) []string {
 			if n > 0 {
@@ -49,32 +49,32 @@ func completionCommand() *Command {
 }
 
 var completionScripts = map[string]string{
-	"bash": `# servik bash completion
-_servik() {
+	"bash": `# serfex bash completion
+_serfex() {
 	local IFS=$'\n'
-	COMPREPLY=($(compgen -W "$(servik __complete -- "${COMP_WORDS[@]:1:COMP_CWORD}" 2>/dev/null)" -- "${COMP_WORDS[COMP_CWORD]}"))
+	COMPREPLY=($(compgen -W "$(serfex __complete -- "${COMP_WORDS[@]:1:COMP_CWORD}" 2>/dev/null)" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
-complete -o default -F _servik servik
+complete -o default -F _serfex serfex
 `,
-	"zsh": `#compdef servik
-# servik zsh completion
-_servik() {
+	"zsh": `#compdef serfex
+# serfex zsh completion
+_serfex() {
 	local -a items
-	items=("${(@f)$(servik __complete -- "${(@)words[2,CURRENT]}" 2>/dev/null)}")
+	items=("${(@f)$(serfex __complete -- "${(@)words[2,CURRENT]}" 2>/dev/null)}")
 	compadd -a items
 }
-if [ "$funcstack[1]" = "_servik" ]; then
-	_servik "$@"
+if [ "$funcstack[1]" = "_serfex" ]; then
+	_serfex "$@"
 else
-	compdef _servik servik
+	compdef _serfex serfex
 fi
 `,
-	"fish": `# servik fish completion
-function __servik_complete
+	"fish": `# serfex fish completion
+function __serfex_complete
 	set -l tokens (commandline -opc) (commandline -ct)
-	servik __complete -- $tokens[2..-1] 2>/dev/null
+	serfex __complete -- $tokens[2..-1] 2>/dev/null
 end
-complete -c servik -f -a '(__servik_complete)'
+complete -c serfex -f -a '(__serfex_complete)'
 `,
 }
 

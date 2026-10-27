@@ -55,7 +55,7 @@ func TestApplyCreatesSite(t *testing.T) {
 		"/home/kahveatolyesi/tmp",
 		"/home/kahveatolyesi/web/kahveatolyesi.com.tr/public_html/index.html",
 		"/home/kahveatolyesi/web/kahveatolyesi.com.tr/logs",
-		"/var/log/servik/sites/kahveatolyesi.com.tr",
+		"/var/log/serfex/sites/kahveatolyesi.com.tr",
 		"/etc/nginx/sites-enabled/kahveatolyesi.com.tr.conf",
 	} {
 		if !exists(sim, d) {
@@ -67,7 +67,7 @@ func TestApplyCreatesSite(t *testing.T) {
 	for _, want := range []string{
 		"server_name kahveatolyesi.com.tr www.kahveatolyesi.com.tr;",
 		"root /home/kahveatolyesi/web/kahveatolyesi.com.tr/public_html;",
-		"fastcgi_pass unix:/run/php/servik-kahveatolyesi.com.tr.sock;",
+		"fastcgi_pass unix:/run/php/serfex-kahveatolyesi.com.tr.sock;",
 	} {
 		if !strings.Contains(vhost, want) {
 			t.Errorf("vhost lacks %q:\n%s", want, vhost)
@@ -150,7 +150,7 @@ func TestApplyRollsBackWhenNginxRejectsConfig(t *testing.T) {
 		"/etc/nginx/sites-enabled/kahveatolyesi.com.tr.conf",
 		"/etc/php/8.4/fpm/pool.d/kahveatolyesi.com.tr.conf",
 		"/home/kahveatolyesi",
-		"/var/log/servik/sites/kahveatolyesi.com.tr",
+		"/var/log/serfex/sites/kahveatolyesi.com.tr",
 	} {
 		if exists(sim, p) {
 			t.Errorf("%s survived the rollback", p)
@@ -196,7 +196,7 @@ func TestApplyRefusesForeignFilesAndUsers(t *testing.T) {
 		if err := os.WriteFile(sim.Path("/etc/nginx/sites-available/kahveatolyesi.com.tr.conf"), []byte("server {}\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Apply(context.Background(), spec); err == nil || !strings.Contains(err.Error(), "not managed by Servik") {
+		if _, err := m.Apply(context.Background(), spec); err == nil || !strings.Contains(err.Error(), "not managed by Serfex") {
 			t.Fatalf("err = %v", err)
 		}
 		if got := read(t, sim, "/etc/nginx/sites-available/kahveatolyesi.com.tr.conf"); got != "server {}\n" {
@@ -211,7 +211,7 @@ func TestApplyRefusesForeignFilesAndUsers(t *testing.T) {
 			t.Fatal("must not adopt www-data")
 		}
 	})
-	t.Run("account not created by Servik", func(t *testing.T) {
+	t.Run("account not created by Serfex", func(t *testing.T) {
 		m, sim := newTest(t)
 		f, _ := os.OpenFile(sim.Path("/etc/passwd"), os.O_APPEND|os.O_WRONLY, 0)
 		f.WriteString("kahveatolyesi:x:1000:1000:Kahve:/home/kahveatolyesi:/bin/bash\n")
@@ -275,7 +275,7 @@ func TestDelete(t *testing.T) {
 		"/etc/nginx/sites-available/kahveatolyesi.com.tr.conf",
 		"/etc/php/8.4/fpm/pool.d/kahveatolyesi.com.tr.conf",
 		"/home/kahveatolyesi/web/kahveatolyesi.com.tr",
-		"/var/log/servik/sites/kahveatolyesi.com.tr",
+		"/var/log/serfex/sites/kahveatolyesi.com.tr",
 	} {
 		if exists(sim, p) {
 			t.Errorf("%s was not removed", p)
@@ -367,7 +367,7 @@ func TestSetMaxChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 	pool := "/etc/php/8.4/fpm/pool.d/kahveatolyesi.com.tr.conf"
-	if p := read(t, sim, pool); !strings.Contains(p, "pm.max_children = 10\n") || !strings.Contains(p, "pm.status_listen = /run/php/servik-kahveatolyesi.com.tr.status.sock\n") {
+	if p := read(t, sim, pool); !strings.Contains(p, "pm.max_children = 10\n") || !strings.Contains(p, "pm.status_listen = /run/php/serfex-kahveatolyesi.com.tr.status.sock\n") {
 		t.Fatalf("pool:\n%s", p)
 	}
 	if err := m.SetMaxChildren(ctx, spec.Domain, 3); err != nil {

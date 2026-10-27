@@ -1,16 +1,16 @@
 // Package cert obtains, installs and renews TLS certificates: from Let's
 // Encrypt (or any ACME server) with HTTP-01 validation through Nginx or
-// DNS-01 validation through Servik's own DNS server, or uploaded by the
+// DNS-01 validation through Serfex's own DNS server, or uploaded by the
 // user.
 //
 // Layout on the server:
 //
-//	/etc/servik/ssl/certs/<name>/fullchain.pem   certificate and chain, 0644
-//	/etc/servik/ssl/certs/<name>/privkey.pem     private key, root 0600
-//	/etc/servik/ssl/accounts/<acme host>/        ACME account key and URL, root 0700
-//	/etc/servik/panel/ssl/                       the panel's own certificate
-//	/var/lib/servik/acme/.well-known/acme-challenge/  HTTP-01 answers, served by every site
-//	/etc/servik/nginx/tls.conf                   TLS defaults shared by HTTPS sites
+//	/etc/serfex/ssl/certs/<name>/fullchain.pem   certificate and chain, 0644
+//	/etc/serfex/ssl/certs/<name>/privkey.pem     private key, root 0600
+//	/etc/serfex/ssl/accounts/<acme host>/        ACME account key and URL, root 0700
+//	/etc/serfex/panel/ssl/                       the panel's own certificate
+//	/var/lib/serfex/acme/.well-known/acme-challenge/  HTTP-01 answers, served by every site
+//	/etc/serfex/nginx/tls.conf                   TLS defaults shared by HTTPS sites
 //
 // Sites refer to a certificate by name (site.apply's tls.certificate), so
 // a renewal only replaces the files and reloads Nginx.
@@ -35,20 +35,20 @@ import (
 
 const (
 	// Dir holds the certificates sites use, one directory per name.
-	Dir = "/etc/servik/ssl/certs"
+	Dir = "/etc/serfex/ssl/certs"
 	// PanelDir holds the certificate of the panel's own web server. It is
 	// kept apart from customer certificates like the panel's services.
-	PanelDir = "/etc/servik/panel/ssl"
+	PanelDir = "/etc/serfex/panel/ssl"
 	// AccountsDir holds one ACME account per ACME server.
-	AccountsDir = "/etc/servik/ssl/accounts"
-	// Webroot is where HTTP-01 answers are written; every Servik vhost
+	AccountsDir = "/etc/serfex/ssl/accounts"
+	// Webroot is where HTTP-01 answers are written; every Serfex vhost
 	// serves /.well-known/acme-challenge/ from here, so validation works
 	// whatever the site's own files or framework do.
-	Webroot = "/var/lib/servik/acme"
+	Webroot = "/var/lib/serfex/acme"
 	// ChallengeDir is the directory inside Webroot that holds the tokens.
 	ChallengeDir = Webroot + "/.well-known/acme-challenge"
 	// TLSConf holds the TLS settings every HTTPS vhost includes.
-	TLSConf = "/etc/servik/nginx/tls.conf"
+	TLSConf = "/etc/serfex/nginx/tls.conf"
 )
 
 // ValidationError reports a request that can never succeed as given.

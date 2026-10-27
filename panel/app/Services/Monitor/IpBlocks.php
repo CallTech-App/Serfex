@@ -11,13 +11,13 @@ use App\Services\Agent\AgentException;
 /**
  * Blocking addresses on the whole server (nftables, through the agent).
  *
- * This is one of the two actions Servik AI may take without asking, so
+ * This is one of the two actions Serfex AI may take without asking, so
  * every caller goes through here: a person from the Canlı İzleme page, the
  * API, or the AI with source "ai", whose blocks must end within a day.
  */
 class IpBlocks
 {
-    /** The longest block Servik AI may set on its own. */
+    /** The longest block Serfex AI may set on its own. */
     public const AI_MAX_MINUTES = 24 * 60;
 
     /** Durations offered in the panel, in minutes; null blocks until removed. */
@@ -43,7 +43,7 @@ class IpBlocks
             throw new MonitorException(__('Süre 1 dakika ile 1 yıl arasında olmalı.'));
         }
         if ($source === 'ai' && ($minutes === null || $minutes > self::AI_MAX_MINUTES)) {
-            throw new MonitorException(__('Servik AI bir adresi en fazla 24 saat engelleyebilir.'));
+            throw new MonitorException(__('Serfex AI bir adresi en fazla 24 saat engelleyebilir.'));
         }
         foreach ($protect as $own) {
             if ($own !== '' && self::contains($address, $own)) {
@@ -56,7 +56,7 @@ class IpBlocks
                 'address' => $address,
                 'seconds' => ($minutes ?? 0) * 60,
                 'reason' => mb_substr($reason, 0, 200),
-            ], config('servik.agent.job_timeout'));
+            ], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             if ($e->getCode() === -32602) {
                 throw new MonitorException(self::agentMessage($e->getMessage()), previous: $e);
@@ -93,8 +93,8 @@ class IpBlocks
         if ($block->isActive()) {
             // Fail2ban's bans live in Fail2ban's own table.
             $block->source === 'fail2ban'
-                ? $this->agent->call('fail2ban.unban', ['jail' => (string) $block->kind, 'address' => $block->address], config('servik.agent.job_timeout'))
-                : $this->agent->call('firewall.unblock', ['address' => $block->address], config('servik.agent.job_timeout'));
+                ? $this->agent->call('fail2ban.unban', ['jail' => (string) $block->kind, 'address' => $block->address], config('serfex.agent.job_timeout'))
+                : $this->agent->call('firewall.unblock', ['address' => $block->address], config('serfex.agent.job_timeout'));
         }
         $block->update(['removed_at' => $block->removed_at ?? now()]);
     }
@@ -112,7 +112,7 @@ class IpBlocks
             return null;
         }
         if ($block->source === 'fail2ban') {
-            $this->agent->call('fail2ban.ban', ['jail' => (string) $block->kind, 'address' => $block->address], config('servik.agent.job_timeout'));
+            $this->agent->call('fail2ban.ban', ['jail' => (string) $block->kind, 'address' => $block->address], config('serfex.agent.job_timeout'));
             $block->update(['removed_at' => null]);
 
             return $block;

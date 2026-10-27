@@ -49,7 +49,7 @@ func TestHostsWithName(t *testing.T) {
 
 func TestValidateHostname(t *testing.T) {
 	for name, ok := range map[string]bool{
-		"srv1": true, "srv-ist-01.servik.test": true, "a.example.com": true,
+		"srv1": true, "srv-ist-01.serfex.test": true, "a.example.com": true,
 		"": false, "-srv": false, "srv_1": false, "Srv": false, "a..b.com": false, "a b": false,
 		strings.Repeat("a", 64): false, "srv.example.c0m": false,
 	} {

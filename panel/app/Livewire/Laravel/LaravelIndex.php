@@ -30,7 +30,7 @@ use Livewire\WithPagination;
  * search for applications already on sites.
  */
 #[Layout('components.layouts.app')]
-#[Title('Laravel · Servik')]
+#[Title('Laravel · Serfex')]
 class LaravelIndex extends Component
 {
     use WithPagination;
@@ -211,7 +211,7 @@ class LaravelIndex extends Component
             try {
                 $this->deployKey = $agent->call('laravel.key', [
                     'domain' => $site->domain, 'user' => $site->systemUser->name, 'php_version' => $site->php_version,
-                ], config('servik.agent.job_timeout'))['public_key'] ?? null;
+                ], config('serfex.agent.job_timeout'))['public_key'] ?? null;
             } catch (AgentException $e) {
                 $this->agentError = __('Dağıtım anahtarı oluşturulamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
 
@@ -269,7 +269,7 @@ class LaravelIndex extends Component
     }
 
     /**
-     * Looks for Laravel applications on sites that have none in Servik yet.
+     * Looks for Laravel applications on sites that have none in Serfex yet.
      */
     public function scan(AgentClient $agent): void
     {
@@ -286,7 +286,7 @@ class LaravelIndex extends Component
         try {
             $found = $agent->call('laravel.scan', [
                 'sites' => $sites->map(fn (Site $s) => ['domain' => $s->domain, 'user' => $s->systemUser->name])->values()->all(),
-            ], config('servik.agent.job_timeout')) ?? [];
+            ], config('serfex.agent.job_timeout')) ?? [];
         } catch (AgentException $e) {
             $this->agentError = __('Tarama yapılamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
 
@@ -330,7 +330,7 @@ class LaravelIndex extends Component
         unset($this->found[$index]);
         $this->found = array_values($this->found);
         $this->dispatch('toast',
-            message: __(':domain Servik\'e bağlandı.', ['domain' => $site->domain]),
+            message: __(':domain Serfex\'e bağlandı.', ['domain' => $site->domain]),
             source: $this->getId(),
             undo: ['method' => 'undoAdopt', 'args' => [$app->id, $before]],
         );

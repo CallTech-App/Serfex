@@ -38,7 +38,7 @@ class SiteIndexTest extends TestCase
             $agent->shouldReceive('call')->with('php.versions')->andReturn(['8.3', '8.4', '8.5']);
             $agent->shouldReceive('call')->with('system.addresses')->andReturn(['ipv4' => ['203.0.113.10'], 'ipv6' => []]);
         } else {
-            $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/servik-agent/agent.sock', 'No such file or directory'));
+            $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/serfex-agent/agent.sock', 'No such file or directory'));
         }
         $this->app->instance(AgentClient::class, $agent);
     }

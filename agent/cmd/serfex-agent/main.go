@@ -1,4 +1,4 @@
-// Command servik-agent is the privileged half of Servik.
+// Command serfex-agent is the privileged half of Serfex.
 //
 // It runs as root under systemd and performs server operations (web server,
 // PHP-FPM, DNS, mail, certificates, system users) on behalf of the panel.
@@ -52,7 +52,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/version"
 )
 
-const defaultSocket = "/run/servik-agent/agent.sock"
+const defaultSocket = "/run/serfex-agent/agent.sock"
 
 func main() {
 	socket := flag.String("socket", defaultSocket, "path of the Unix socket to listen on")
@@ -62,10 +62,10 @@ func main() {
 	webUser := flag.String("web-user", "www-data", "account the web server runs as")
 	acmeDir := flag.String("acme-directory", cert.LetsEncrypt, "ACME directory URL certificates are requested from")
 	acmeCA := flag.String("acme-ca", "", "PEM file with extra root certificates to trust for the ACME server (for test servers such as Pebble)")
-	socketGroup := flag.String("socket-group", "", "group that may connect to the socket (the panel's account, servik, on installed servers)")
+	socketGroup := flag.String("socket-group", "", "group that may connect to the socket (the panel's account, serfex, on installed servers)")
 	updateRun := flag.String("update-run", "", "perform a started update or rollback (the agent starts this itself)")
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage:\n  servik-agent [flags]                  run the agent\n  servik-agent [-socket S] call METHOD [JSON]   call a method of the running agent\n  servik-agent cron-exec [--manual] DOMAIN ID   run a site's scheduled task (cron starts it)\n\nFlags:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage:\n  serfex-agent [flags]                  run the agent\n  serfex-agent [-socket S] call METHOD [JSON]   call a method of the running agent\n  serfex-agent cron-exec [--manual] DOMAIN ID   run a site's scheduled task (cron starts it)\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -151,7 +151,7 @@ func main() {
 	if !*dryRun {
 		svc.services.SelfRestart = func(ctx context.Context) error {
 			// The answer goes out before systemd restarts the agent.
-			_, err := h.Run(ctx, host.Command{Name: "systemd-run", Args: []string{"--on-active=2", "--collect", "--unit=servik-agent-restart-" + strconv.FormatInt(time.Now().Unix(), 10), "systemctl", "restart", "servik-agent.service"}})
+			_, err := h.Run(ctx, host.Command{Name: "systemd-run", Args: []string{"--on-active=2", "--collect", "--unit=serfex-agent-restart-" + strconv.FormatInt(time.Now().Unix(), 10), "systemctl", "restart", "serfex-agent.service"}})
 			return err
 		}
 	}
@@ -230,7 +230,7 @@ func newHost(dryRun bool, root string, log *slog.Logger) (host.Host, error) {
 		return host.System{}, nil
 	}
 	if root == "" {
-		dir, err := os.MkdirTemp("", "servik-dry-run-")
+		dir, err := os.MkdirTemp("", "serfex-dry-run-")
 		if err != nil {
 			return nil, err
 		}
@@ -330,7 +330,7 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 
 // statsState holds the statistics not collected yet while the agent is
 // stopped.
-const statsState = "/var/lib/servik/stats/state.gob"
+const statsState = "/var/lib/serfex/stats/state.gob"
 
 // mailDomains lists the server's mail domains (package mail keeps one
 // state file each), read again at most every 30 seconds.
@@ -347,7 +347,7 @@ func mailDomains(h host.Host) func() map[string]bool {
 			return last
 		}
 		last, at = map[string]bool{}, time.Now()
-		files, _ := filepath.Glob(h.Path("/etc/servik/mail/domains/*.json"))
+		files, _ := filepath.Glob(h.Path("/etc/serfex/mail/domains/*.json"))
 		for _, f := range files {
 			last[strings.TrimSuffix(filepath.Base(f), ".json")] = true
 		}

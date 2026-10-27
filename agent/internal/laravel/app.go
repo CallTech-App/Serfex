@@ -197,7 +197,7 @@ type Found struct {
 }
 
 // Scan looks for Laravel applications in the usual places of each site:
-// public_html, a directory below it, a directory next to it, and Servik's
+// public_html, a directory below it, a directory next to it, and Serfex's
 // own laravel/current.
 func (m *Manager) Scan(ctx context.Context, sites []ScanSite) ([]Found, error) {
 	out := []Found{}
@@ -266,7 +266,7 @@ $dir = getcwd();
 require $dir.'/vendor/autoload.php';
 $app = require $dir.'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-$kind = getenv('SERVIK_PROBE');
+$kind = getenv('SERFEX_PROBE');
 $out = null;
 $line = fn ($s) => trim(strtok((string) $s, "\n"));
 if ($kind === 'about') {
@@ -274,7 +274,7 @@ if ($kind === 'about') {
         'queue' => config('queue.default'), 'cache' => config('cache.default'), 'database' => config('database.default'), 'session' => config('session.driver')];
 } elseif ($kind === 'queues') {
     $sizes = [];
-    foreach (json_decode((string) getenv('SERVIK_PROBE_ARGS'), true) ?: [] as [$conn, $queue]) {
+    foreach (json_decode((string) getenv('SERFEX_PROBE_ARGS'), true) ?: [] as [$conn, $queue]) {
         try {
             $sizes[] = ['connection' => $conn, 'queue' => $queue, 'size' => $app['queue']->connection($conn ?: null)->size($queue)];
         } catch (Throwable $e) {
@@ -301,7 +301,7 @@ if ($kind === 'about') {
             'next' => $event->nextRunDate()->format(DATE_ATOM), 'timezone' => (string) ($event->timezone ?: config('app.timezone'))];
     }
 }
-echo "\nSERVIK-PROBE:", json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR), "\n";
+echo "\nSERFEX-PROBE:", json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR), "\n";
 `
 
 // Probe asks the application for its queue sizes, failed jobs, schedule
@@ -327,10 +327,10 @@ func (m *Manager) Probe(ctx context.Context, spec ProbeSpec) (json.RawMessage, e
 	queues, _ := json.Marshal(spec.Queues)
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	c := m.cmdEnv(spec.Target, spec.dir(), nil, []string{"SERVIK_PROBE=" + spec.Kind, "SERVIK_PROBE_ARGS=" + string(queues)}, phpBin(spec.PHPVersion))
+	c := m.cmdEnv(spec.Target, spec.dir(), nil, []string{"SERFEX_PROBE=" + spec.Kind, "SERFEX_PROBE_ARGS=" + string(queues)}, phpBin(spec.PHPVersion))
 	c.Stdin = []byte(probeScript)
 	out, err := m.h.Run(ctx, c)
-	_, answer, found := strings.Cut(out, "SERVIK-PROBE:")
+	_, answer, found := strings.Cut(out, "SERFEX-PROBE:")
 	if !found {
 		msg := firstLine(out)
 		if err != nil && msg == "" {
@@ -370,7 +370,7 @@ func (m *Manager) deployKey(ctx context.Context, t Target, dir string) (string, 
 	if err != nil {
 		return "", err
 	}
-	block, err := ssh.MarshalPrivateKey(priv, "servik@"+t.Domain)
+	block, err := ssh.MarshalPrivateKey(priv, "serfex@"+t.Domain)
 	if err != nil {
 		return "", err
 	}
@@ -378,7 +378,7 @@ func (m *Manager) deployKey(ctx context.Context, t Target, dir string) (string, 
 	if err != nil {
 		return "", err
 	}
-	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))) + " servik@" + t.Domain
+	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))) + " serfex@" + t.Domain
 	if _, err := m.userRun(ctx, t, "/", "mkdir", "-p", dir); err != nil {
 		return "", failed("creating %s failed", dir)
 	}

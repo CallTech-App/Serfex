@@ -2,11 +2,11 @@
 
 # Komut satırı başvurusu
 
-Servik komut satırı: siteler, alan adları, DNS, SSL, e-posta, veritabanları, yedekler, hizmetler ve Laravel uygulamaları.
+Serfex komut satırı: siteler, alan adları, DNS, SSL, e-posta, veritabanları, yedekler, hizmetler ve Laravel uygulamaları.
 
-Önce bir panele giriş yapın: servik login panel.ornek.com.tr:8443
+Önce bir panele giriş yapın: serfex login panel.ornek.com.tr:8443
 
-Her komut `--help` ile kendi yardımını da gösterir: `servik sites create --help`.
+Her komut `--help` ile kendi yardımını da gösterir: `serfex sites create --help`.
 
 ## Genel seçenekler
 
@@ -14,24 +14,24 @@ Bu seçenekler her komutta geçerlidir.
 
 | Seçenek | |
 | --- | --- |
-| `--profile <ad>` | Kullanılacak profil (varsayılan: son giriş yapılan; SERVIK_PROFILE) |
+| `--profile <ad>` | Kullanılacak profil (varsayılan: son giriş yapılan; SERFEX_PROFILE) |
 | `--json` | Çıktıyı JSON olarak yazar |
-| `--lang <tr\|en>` | Dil (varsayılan: sistem dili; SERVIK_LANG) |
-| `--url <adres>` | Panel adresi (SERVIK_URL) |
-| `--token <anahtar>` | API anahtarı ya da uygulama belirteci (SERVIK_TOKEN) |
+| `--lang <tr\|en>` | Dil (varsayılan: sistem dili; SERFEX_LANG) |
+| `--url <adres>` | Panel adresi (SERFEX_URL) |
+| `--token <anahtar>` | API anahtarı ya da uygulama belirteci (SERFEX_TOKEN) |
 | `-y, --yes` | Onay sormadan yapar |
 | `--no-color` | Renksiz çıktı (NO_COLOR) |
 | `-h, --help` | Yardımı gösterir |
 
 ## Hesap
 
-### servik login
+### serfex login
 
 ```
-servik login [panel-adresi] [seçenekler]
+serfex login [panel-adresi] [seçenekler]
 ```
 
-Bir Servik paneline giriş yapar. Tarayıcıda bir onay sayfası açılır; onayladığınızda bu bilgisayar için bir anahtar oluşur ve Hesap güvenliği altında listelenir.
+Bir Serfex paneline giriş yapar. Tarayıcıda bir onay sayfası açılır; onayladığınızda bu bilgisayar için bir anahtar oluşur ve Hesap güvenliği altında listelenir.
 
 CI ya da betikler için --token ile bir API anahtarı ya da bir uygulamanın Erişim ve API bölümündeki belirteci verin. Sunucunun kendisinde root olarak --local tarayıcısız giriş yapar.
 
@@ -46,15 +46,15 @@ CI ya da betikler için --token ile bir API anahtarı ya da bir uygulamanın Eri
 Örnekler:
 
 ```sh
-servik login panel.ornek.com.tr:8443
-servik login https://panel.ornek.com.tr:8443 --token svk_…
-sudo servik login --local
+serfex login panel.ornek.com.tr:8443
+serfex login https://panel.ornek.com.tr:8443 --token sfx_…
+sudo serfex login --local
 ```
 
-### servik setup-url
+### serfex setup-url
 
 ```
-servik setup-url
+serfex setup-url
 ```
 
 Henüz yöneticisi olmayan bir panel için tek kullanımlık kurulum bağlantısı oluşturur. Bağlantıyı açan kişi ilk yönetici hesabını oluşturur ve kurulum sihirbazına geçer. Bağlantı 24 saat geçerlidir; yenisi oluşunca eskisi çalışmaz.
@@ -64,21 +64,21 @@ install.sh ilk bağlantıyı kurulumun sonunda yazar. Sunucunun kendisinde root 
 Örnekler:
 
 ```sh
-sudo servik setup-url
+sudo serfex setup-url
 ```
 
-### servik logout
+### serfex logout
 
 ```
-servik logout
+serfex logout
 ```
 
 Profilden çıkar ve anahtarını panelde kapatır
 
-### servik profile
+### serfex profile
 
 ```
-servik profile <komut>
+serfex profile <komut>
 ```
 
 Giriş yapılan panelleri listeler ve aralarında geçer
@@ -87,68 +87,68 @@ Diğer adları: `profiles`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-profile-list) | Profilleri listeler |
-| [`use`](#servik-profile-use) | Varsayılan profili değiştirir |
-| [`remove`](#servik-profile-remove) | Profili siler ve anahtarını panelde kapatır |
+| [`list`](#serfex-profile-list) | Profilleri listeler |
+| [`use`](#serfex-profile-use) | Varsayılan profili değiştirir |
+| [`remove`](#serfex-profile-remove) | Profili siler ve anahtarını panelde kapatır |
 
-### servik profile list
+### serfex profile list
 
 ```
-servik profile list
+serfex profile list
 ```
 
 Profilleri listeler
 
 Diğer adları: `ls`
 
-### servik profile use
+### serfex profile use
 
 ```
-servik profile use <ad>
+serfex profile use <ad>
 ```
 
 Varsayılan profili değiştirir
 
-### servik profile remove
+### serfex profile remove
 
 ```
-servik profile remove <ad>
+serfex profile remove <ad>
 ```
 
 Profili siler ve anahtarını panelde kapatır
 
 Diğer adları: `rm`
 
-### servik whoami
+### serfex whoami
 
 ```
-servik whoami
+serfex whoami
 ```
 
 Kim olarak, hangi panele bağlı olduğunuzu gösterir
 
-### servik status
+### serfex status
 
 ```
-servik status
+serfex status
 ```
 
 Sunucunun durumunu ve dikkat isteyen sorunları gösterir
 
-### servik fingerprint
+### serfex fingerprint
 
 ```
-servik fingerprint [panel-adresi]
+serfex fingerprint [panel-adresi]
 ```
 
 Panelin gösterdiği sertifikanın SHA-256 parmak izini yazar. Sunucuda adres vermeden çalıştırın ve çıkan değeri ilk girişte bilgisayarınızda görünenle karşılaştırın.
 
 ## Barındırma
 
-### servik sites
+### serfex sites
 
 ```
-servik sites <komut>
+serfex sites <komut>
 ```
 
 Siteleri listeler, oluşturur ve siler
@@ -157,33 +157,33 @@ Diğer adları: `site`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-sites-list) | Siteleri listeler |
-| [`show`](#servik-sites-show) | Bir sitenin ayrıntılarını gösterir |
-| [`create`](#servik-sites-create) | Yeni bir site oluşturur |
-| [`delete`](#servik-sites-delete) | Siteyi dosyaları, veritabanları ve e-postasıyla siler |
+| [`list`](#serfex-sites-list) | Siteleri listeler |
+| [`show`](#serfex-sites-show) | Bir sitenin ayrıntılarını gösterir |
+| [`create`](#serfex-sites-create) | Yeni bir site oluşturur |
+| [`delete`](#serfex-sites-delete) | Siteyi dosyaları, veritabanları ve e-postasıyla siler |
 
-### servik sites list
+### serfex sites list
 
 ```
-servik sites list
+serfex sites list
 ```
 
 Siteleri listeler
 
 Diğer adları: `ls`
 
-### servik sites show
+### serfex sites show
 
 ```
-servik sites show <site>
+serfex sites show <site>
 ```
 
 Bir sitenin ayrıntılarını gösterir
 
-### servik sites create
+### serfex sites create
 
 ```
-servik sites create <alan-adı> [seçenekler]
+serfex sites create <alan-adı> [seçenekler]
 ```
 
 Yeni bir site oluşturur: sistem kullanıcısı, web klasörü, web sunucusu ayarı ve DNS bölgesi, paneldeki gibi.
@@ -201,13 +201,13 @@ Diğer adları: `add`
 Örnekler:
 
 ```sh
-servik sites create kahveatolyesi.com.tr --php 8.4 --wait
+serfex sites create kahveatolyesi.com.tr --php 8.4 --wait
 ```
 
-### servik sites delete
+### serfex sites delete
 
 ```
-servik sites delete <site> [seçenekler]
+serfex sites delete <site> [seçenekler]
 ```
 
 Siteyi dosyaları, veritabanları ve e-postasıyla siler
@@ -218,10 +218,10 @@ Diğer adları: `rm`
 | --- | --- |
 | `--keep-dns` | DNS bölgesini bırakır |
 
-### servik domains
+### serfex domains
 
 ```
-servik domains <komut>
+serfex domains <komut>
 ```
 
 Alt alan adları, ek alan adları ve yönlendirmeler
@@ -230,25 +230,25 @@ Diğer adları: `domain`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-domains-list) | Bir sitenin diğer adlarını listeler |
-| [`add`](#servik-domains-add) | Alt alan adı (blog) ya da ek alan adı (ornek.net) ekler |
-| [`redirect`](#servik-domains-redirect) | Bir yolu (/eski) ya da alan adını başka bir adrese yönlendirir |
-| [`remove`](#servik-domains-remove) | Alt alan adını, ek alan adını ya da yönlendirmeyi kaldırır |
+| [`list`](#serfex-domains-list) | Bir sitenin diğer adlarını listeler |
+| [`add`](#serfex-domains-add) | Alt alan adı (blog) ya da ek alan adı (ornek.net) ekler |
+| [`redirect`](#serfex-domains-redirect) | Bir yolu (/eski) ya da alan adını başka bir adrese yönlendirir |
+| [`remove`](#serfex-domains-remove) | Alt alan adını, ek alan adını ya da yönlendirmeyi kaldırır |
 
-### servik domains list
+### serfex domains list
 
 ```
-servik domains list <site>
+serfex domains list <site>
 ```
 
 Bir sitenin diğer adlarını listeler
 
 Diğer adları: `ls`
 
-### servik domains add
+### serfex domains add
 
 ```
-servik domains add <site> <ad> [seçenekler]
+serfex domains add <site> <ad> [seçenekler]
 ```
 
 Bir siteye ad ekler. Noktasız ya da sitenin altındaki bir ad (blog, blog.ornek.com.tr) kendi klasörü olan bir alt alan adıdır; başka bir alan adı (ornek.net) aynı siteyi açan ek alan adıdır. DNS ve Let's Encrypt kendiliğinden ayarlanır.
@@ -261,14 +261,14 @@ Bir siteye ad ekler. Noktasız ya da sitenin altındaki bir ad (blog, blog.ornek
 Örnekler:
 
 ```sh
-servik domains add ornek.com.tr blog
-servik domains add ornek.com.tr ornek.net --no-dns
+serfex domains add ornek.com.tr blog
+serfex domains add ornek.com.tr ornek.net --no-dns
 ```
 
-### servik domains redirect
+### serfex domains redirect
 
 ```
-servik domains redirect <site> <kaynak> <hedef> [seçenekler]
+serfex domains redirect <site> <kaynak> <hedef> [seçenekler]
 ```
 
 Bir yolu (/eski) ya da alan adını başka bir adrese yönlendirir
@@ -283,59 +283,59 @@ Bir yolu (/eski) ya da alan adını başka bir adrese yönlendirir
 Örnekler:
 
 ```sh
-servik domains redirect ornek.com.tr /eski https://ornek.com.tr/yeni
-servik domains redirect ornek.com.tr eskiad.com https://ornek.com.tr --keep-path
+serfex domains redirect ornek.com.tr /eski https://ornek.com.tr/yeni
+serfex domains redirect ornek.com.tr eskiad.com https://ornek.com.tr --keep-path
 ```
 
-### servik domains remove
+### serfex domains remove
 
 ```
-servik domains remove <site> <ad>
+serfex domains remove <site> <ad>
 ```
 
 Alt alan adını, ek alan adını ya da yönlendirmeyi kaldırır
 
 Diğer adları: `rm`
 
-### servik dns
+### serfex dns
 
 ```
-servik dns <komut>
+serfex dns <komut>
 ```
 
 DNS bölgeleri ve kayıtları
 
 | Komut | |
 | --- | --- |
-| [`zones`](#servik-dns-zones) | DNS bölgelerini listeler |
-| [`records`](#servik-dns-records) | Bir bölgenin kayıtlarını listeler |
-| [`add`](#servik-dns-add) | Kayıt ekler (ad: @ bölgenin kendisi) |
-| [`delete`](#servik-dns-delete) | Kaydı siler (numarası: servik dns records) |
+| [`zones`](#serfex-dns-zones) | DNS bölgelerini listeler |
+| [`records`](#serfex-dns-records) | Bir bölgenin kayıtlarını listeler |
+| [`add`](#serfex-dns-add) | Kayıt ekler (ad: @ bölgenin kendisi) |
+| [`delete`](#serfex-dns-delete) | Kaydı siler (numarası: serfex dns records) |
 
-### servik dns zones
+### serfex dns zones
 
 ```
-servik dns zones
+serfex dns zones
 ```
 
 DNS bölgelerini listeler
 
 Diğer adları: `list`, `ls`
 
-### servik dns records
+### serfex dns records
 
 ```
-servik dns records <bölge>
+serfex dns records <bölge>
 ```
 
 Bir bölgenin kayıtlarını listeler
 
 Diğer adları: `show`
 
-### servik dns add
+### serfex dns add
 
 ```
-servik dns add <bölge> <tür> <ad> <değer> [seçenekler]
+serfex dns add <bölge> <tür> <ad> <değer> [seçenekler]
 ```
 
 Kayıt ekler (ad: @ bölgenin kendisi)
@@ -348,59 +348,59 @@ Kayıt ekler (ad: @ bölgenin kendisi)
 Örnekler:
 
 ```sh
-servik dns add ornek.com.tr A www 203.0.113.10
-servik dns add ornek.com.tr MX @ mail.ornek.com.tr --priority 10
-servik dns add ornek.com.tr TXT @ "v=spf1 mx -all"
+serfex dns add ornek.com.tr A www 203.0.113.10
+serfex dns add ornek.com.tr MX @ mail.ornek.com.tr --priority 10
+serfex dns add ornek.com.tr TXT @ "v=spf1 mx -all"
 ```
 
-### servik dns delete
+### serfex dns delete
 
 ```
-servik dns delete <bölge> <kayıt-no>
+serfex dns delete <bölge> <kayıt-no>
 ```
 
-Kaydı siler (numarası: servik dns records)
+Kaydı siler (numarası: serfex dns records)
 
 Diğer adları: `rm`
 
-### servik ssl
+### serfex ssl
 
 ```
-servik ssl <komut>
+serfex ssl <komut>
 ```
 
 Sitelerin sertifikaları ve HTTPS
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-ssl-list) | Sitelerin sertifikalarını listeler |
-| [`show`](#servik-ssl-show) | Bir sitenin sertifikasını gösterir |
-| [`issue`](#servik-ssl-issue) | Let's Encrypt sertifikası alır |
-| [`renew`](#servik-ssl-renew) | Sertifikayı şimdi yeniler |
-| [`https`](#servik-ssl-https) | HTTP isteklerini HTTPS'e yönlendirmeyi açar ya da kapatır |
+| [`list`](#serfex-ssl-list) | Sitelerin sertifikalarını listeler |
+| [`show`](#serfex-ssl-show) | Bir sitenin sertifikasını gösterir |
+| [`issue`](#serfex-ssl-issue) | Let's Encrypt sertifikası alır |
+| [`renew`](#serfex-ssl-renew) | Sertifikayı şimdi yeniler |
+| [`https`](#serfex-ssl-https) | HTTP isteklerini HTTPS'e yönlendirmeyi açar ya da kapatır |
 
-### servik ssl list
+### serfex ssl list
 
 ```
-servik ssl list
+serfex ssl list
 ```
 
 Sitelerin sertifikalarını listeler
 
 Diğer adları: `ls`
 
-### servik ssl show
+### serfex ssl show
 
 ```
-servik ssl show <site>
+serfex ssl show <site>
 ```
 
 Bir sitenin sertifikasını gösterir
 
-### servik ssl issue
+### serfex ssl issue
 
 ```
-servik ssl issue <site> [seçenekler]
+serfex ssl issue <site> [seçenekler]
 ```
 
 Let's Encrypt sertifikası alır
@@ -411,10 +411,10 @@ Let's Encrypt sertifikası alır
 | `--only-domain` | www. ve ek alan adları olmadan |
 | `--wait` | Sertifika alınana kadar bekler |
 
-### servik ssl renew
+### serfex ssl renew
 
 ```
-servik ssl renew <site> [seçenekler]
+serfex ssl renew <site> [seçenekler]
 ```
 
 Sertifikayı şimdi yeniler
@@ -423,64 +423,64 @@ Sertifikayı şimdi yeniler
 | --- | --- |
 | `--wait` | Sertifika yenilenene kadar bekler |
 
-### servik ssl https
+### serfex ssl https
 
 ```
-servik ssl https <site> on|off
+serfex ssl https <site> on|off
 ```
 
 HTTP isteklerini HTTPS'e yönlendirmeyi açar ya da kapatır
 
-### servik mail
+### serfex mail
 
 ```
-servik mail <komut>
+serfex mail <komut>
 ```
 
 E-posta alan adları, posta kutuları ve yönlendiriciler
 
 | Komut | |
 | --- | --- |
-| [`domains`](#servik-mail-domains) | E-postası açık alan adlarını listeler |
-| [`enable`](#servik-mail-enable) | Bir alan adında e-postayı açar (DNS kayıtları kendiliğinden yazılır) |
-| [`list`](#servik-mail-list) | Posta kutularını ve yönlendiricileri listeler |
-| [`create`](#servik-mail-create) | Posta kutusu oluşturur |
-| [`password`](#servik-mail-password) | Posta kutusunun parolasını değiştirir |
-| [`quota`](#servik-mail-quota) | Posta kutusunun kotasını değiştirir (0 sınırsız) |
-| [`delete`](#servik-mail-delete) | Posta kutusunu siler |
-| [`forward`](#servik-mail-forward) | Bir adresi başka adreslere yönlendirir (*@alan-adı: tümünü yakala) |
-| [`unforward`](#servik-mail-unforward) | Yönlendiriciyi siler |
+| [`domains`](#serfex-mail-domains) | E-postası açık alan adlarını listeler |
+| [`enable`](#serfex-mail-enable) | Bir alan adında e-postayı açar (DNS kayıtları kendiliğinden yazılır) |
+| [`list`](#serfex-mail-list) | Posta kutularını ve yönlendiricileri listeler |
+| [`create`](#serfex-mail-create) | Posta kutusu oluşturur |
+| [`password`](#serfex-mail-password) | Posta kutusunun parolasını değiştirir |
+| [`quota`](#serfex-mail-quota) | Posta kutusunun kotasını değiştirir (0 sınırsız) |
+| [`delete`](#serfex-mail-delete) | Posta kutusunu siler |
+| [`forward`](#serfex-mail-forward) | Bir adresi başka adreslere yönlendirir (*@alan-adı: tümünü yakala) |
+| [`unforward`](#serfex-mail-unforward) | Yönlendiriciyi siler |
 
-### servik mail domains
+### serfex mail domains
 
 ```
-servik mail domains
+serfex mail domains
 ```
 
 E-postası açık alan adlarını listeler
 
-### servik mail enable
+### serfex mail enable
 
 ```
-servik mail enable <alan-adı>
+serfex mail enable <alan-adı>
 ```
 
 Bir alan adında e-postayı açar (DNS kayıtları kendiliğinden yazılır)
 
-### servik mail list
+### serfex mail list
 
 ```
-servik mail list <alan-adı>
+serfex mail list <alan-adı>
 ```
 
 Posta kutularını ve yönlendiricileri listeler
 
 Diğer adları: `ls`
 
-### servik mail create
+### serfex mail create
 
 ```
-servik mail create <adres> [seçenekler]
+serfex mail create <adres> [seçenekler]
 ```
 
 Posta kutusu oluşturur
@@ -495,14 +495,14 @@ Diğer adları: `add`
 Örnekler:
 
 ```sh
-servik mail create siparis@ornek.com.tr
-printf '%s' "$PAROLA" | servik mail create info@ornek.com.tr --password-stdin
+serfex mail create siparis@ornek.com.tr
+printf '%s' "$PAROLA" | serfex mail create info@ornek.com.tr --password-stdin
 ```
 
-### servik mail password
+### serfex mail password
 
 ```
-servik mail password <adres> [seçenekler]
+serfex mail password <adres> [seçenekler]
 ```
 
 Posta kutusunun parolasını değiştirir
@@ -511,28 +511,28 @@ Posta kutusunun parolasını değiştirir
 | --- | --- |
 | `--password-stdin` | Parolayı standart girdiden okur (verilmezse panel güçlü bir parola oluşturur ve bir kez gösterir) |
 
-### servik mail quota
+### serfex mail quota
 
 ```
-servik mail quota <adres> <MB>
+serfex mail quota <adres> <MB>
 ```
 
 Posta kutusunun kotasını değiştirir (0 sınırsız)
 
-### servik mail delete
+### serfex mail delete
 
 ```
-servik mail delete <adres>
+serfex mail delete <adres>
 ```
 
 Posta kutusunu siler
 
 Diğer adları: `rm`
 
-### servik mail forward
+### serfex mail forward
 
 ```
-servik mail forward <adres> <hedef>…
+serfex mail forward <adres> <hedef>…
 ```
 
 Bir adresi başka adreslere yönlendirir (*@alan-adı: tümünü yakala)
@@ -540,22 +540,22 @@ Bir adresi başka adreslere yönlendirir (*@alan-adı: tümünü yakala)
 Örnekler:
 
 ```sh
-servik mail forward satis@ornek.com.tr ali@ornek.com.tr ayse@gmail.com
-servik mail forward '*@ornek.com.tr' info@ornek.com.tr
+serfex mail forward satis@ornek.com.tr ali@ornek.com.tr ayse@gmail.com
+serfex mail forward '*@ornek.com.tr' info@ornek.com.tr
 ```
 
-### servik mail unforward
+### serfex mail unforward
 
 ```
-servik mail unforward <adres>
+serfex mail unforward <adres>
 ```
 
 Yönlendiriciyi siler
 
-### servik db
+### serfex db
 
 ```
-servik db <komut>
+serfex db <komut>
 ```
 
 Sitelerin veritabanları
@@ -564,14 +564,14 @@ Diğer adları: `databases`, `database`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-db-list) | Veritabanlarını listeler |
-| [`create`](#servik-db-create) | Veritabanı ve kullanıcısını oluşturur |
-| [`delete`](#servik-db-delete) | Veritabanını siler (önce yedeğini alır) |
+| [`list`](#serfex-db-list) | Veritabanlarını listeler |
+| [`create`](#serfex-db-create) | Veritabanı ve kullanıcısını oluşturur |
+| [`delete`](#serfex-db-delete) | Veritabanını siler (önce yedeğini alır) |
 
-### servik db list
+### serfex db list
 
 ```
-servik db list [seçenekler]
+serfex db list [seçenekler]
 ```
 
 Veritabanlarını listeler
@@ -582,10 +582,10 @@ Diğer adları: `ls`
 | --- | --- |
 | `--site <site>` | Yalnızca bu sitenin veritabanları |
 
-### servik db create
+### serfex db create
 
 ```
-servik db create <site> <ad> [seçenekler]
+serfex db create <site> <ad> [seçenekler]
 ```
 
 Veritabanı ve aynı adlı bir kullanıcı oluşturur. Adlara sitenin ön eki (kahve_) kendiliğinden eklenir; parola verilmezse panel güçlü bir parola oluşturur ve bağlantı bilgileriyle bir kez gösterir.
@@ -603,13 +603,13 @@ Diğer adları: `add`
 Örnekler:
 
 ```sh
-servik db create kahveatolyesi.com.tr dukkan
+serfex db create kahveatolyesi.com.tr dukkan
 ```
 
-### servik db delete
+### serfex db delete
 
 ```
-servik db delete <ad> [seçenekler]
+serfex db delete <ad> [seçenekler]
 ```
 
 Veritabanını siler (önce yedeğini alır)
@@ -620,10 +620,10 @@ Diğer adları: `rm`
 | --- | --- |
 | `--no-backup` | Silmeden önce yedek almaz |
 
-### servik backups
+### serfex backups
 
 ```
-servik backups <komut>
+serfex backups <komut>
 ```
 
 Yedekler ve geri yükleme
@@ -632,15 +632,15 @@ Diğer adları: `backup`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-backups-list) | Yedekleri listeler, en yenisi önce |
-| [`show`](#servik-backups-show) | Bir yedeğin içindekileri gösterir |
-| [`create`](#servik-backups-create) | Şimdi yedek alır: bir siteyi ya da (yöneticiler) tüm sunucuyu |
-| [`restore`](#servik-backups-restore) | Bir siteyi yedekten geri yükler |
+| [`list`](#serfex-backups-list) | Yedekleri listeler, en yenisi önce |
+| [`show`](#serfex-backups-show) | Bir yedeğin içindekileri gösterir |
+| [`create`](#serfex-backups-create) | Şimdi yedek alır: bir siteyi ya da (yöneticiler) tüm sunucuyu |
+| [`restore`](#serfex-backups-restore) | Bir siteyi yedekten geri yükler |
 
-### servik backups list
+### serfex backups list
 
 ```
-servik backups list [seçenekler]
+serfex backups list [seçenekler]
 ```
 
 Yedekleri listeler, en yenisi önce
@@ -652,18 +652,18 @@ Diğer adları: `ls`
 | `--site <site>` | Yalnızca bu sitenin bulunduğu yedekler |
 | `-n, --limit <sayı>` | En fazla kaç yedek (varsayılan: 20) |
 
-### servik backups show
+### serfex backups show
 
 ```
-servik backups show <no>
+serfex backups show <no>
 ```
 
 Bir yedeğin içindekileri gösterir
 
-### servik backups create
+### serfex backups create
 
 ```
-servik backups create [site] [seçenekler]
+serfex backups create [site] [seçenekler]
 ```
 
 Şimdi yedek alır: bir siteyi ya da (yöneticiler) tüm sunucuyu
@@ -672,10 +672,10 @@ servik backups create [site] [seçenekler]
 | --- | --- |
 | `--wait` | Yedek bitene kadar bekler |
 
-### servik backups restore
+### serfex backups restore
 
 ```
-servik backups restore <no> <site> [seçenekler]
+serfex backups restore <no> <site> [seçenekler]
 ```
 
 Bir siteyi yedekten geri yükler. Önce sitenin şimdiki hâli yedeklenir, böylece geri yükleme de geri alınabilir.
@@ -689,15 +689,15 @@ Bir siteyi yedekten geri yükler. Önce sitenin şimdiki hâli yedeklenir, böyl
 Örnekler:
 
 ```sh
-servik backups restore 42 kahveatolyesi.com.tr --only files,databases --wait
+serfex backups restore 42 kahveatolyesi.com.tr --only files,databases --wait
 ```
 
 ## Sunucu
 
-### servik services
+### serfex services
 
 ```
-servik services <komut>
+serfex services <komut>
 ```
 
 Sunucunun hizmetleri (yöneticiler)
@@ -706,61 +706,61 @@ Diğer adları: `service`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-services-list) | Hizmetleri listeler |
-| [`status`](#servik-services-status) | Bir hizmetin durumunu gösterir |
-| [`start`](#servik-services-start) | Hizmeti başlatır |
-| [`stop`](#servik-services-stop) | Hizmeti durdurur |
-| [`restart`](#servik-services-restart) | Ayarını denetleyip hizmeti yeniden başlatır |
-| [`logs`](#servik-services-logs) | Hizmetin günlüğünün son satırları |
+| [`list`](#serfex-services-list) | Hizmetleri listeler |
+| [`status`](#serfex-services-status) | Bir hizmetin durumunu gösterir |
+| [`start`](#serfex-services-start) | Hizmeti başlatır |
+| [`stop`](#serfex-services-stop) | Hizmeti durdurur |
+| [`restart`](#serfex-services-restart) | Ayarını denetleyip hizmeti yeniden başlatır |
+| [`logs`](#serfex-services-logs) | Hizmetin günlüğünün son satırları |
 
-### servik services list
+### serfex services list
 
 ```
-servik services list
+serfex services list
 ```
 
 Hizmetleri listeler
 
 Diğer adları: `ls`
 
-### servik services status
+### serfex services status
 
 ```
-servik services status <hizmet>
+serfex services status <hizmet>
 ```
 
 Bir hizmetin durumunu gösterir
 
 Diğer adları: `show`
 
-### servik services start
+### serfex services start
 
 ```
-servik services start <hizmet>
+serfex services start <hizmet>
 ```
 
 Hizmeti başlatır
 
-### servik services stop
+### serfex services stop
 
 ```
-servik services stop <hizmet>
+serfex services stop <hizmet>
 ```
 
 Hizmeti durdurur
 
-### servik services restart
+### serfex services restart
 
 ```
-servik services restart <hizmet>
+serfex services restart <hizmet>
 ```
 
 Ayarını denetleyip hizmeti yeniden başlatır
 
-### servik services logs
+### serfex services logs
 
 ```
-servik services logs <hizmet> [seçenekler]
+serfex services logs <hizmet> [seçenekler]
 ```
 
 Hizmetin günlüğünün son satırları
@@ -769,10 +769,10 @@ Hizmetin günlüğünün son satırları
 | --- | --- |
 | `-n, --lines <sayı>` | Kaç satır (varsayılan: 50) |
 
-### servik customers
+### serfex customers
 
 ```
-servik customers <komut>
+serfex customers <komut>
 ```
 
 Müşteriler ve paketleri (yöneticiler)
@@ -781,34 +781,34 @@ Diğer adları: `customer`
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-customers-list) | Müşterileri listeler |
-| [`show`](#servik-customers-show) | Müşterinin siteleri ve paket kullanımı |
-| [`suspend`](#servik-customers-suspend) | Müşteriyi askıya alır (siteleri 503, postaları bekletilir) |
-| [`unsuspend`](#servik-customers-unsuspend) | Askıyı kaldırır |
-| [`packages`](#servik-customers-packages) | Paketleri listeler |
+| [`list`](#serfex-customers-list) | Müşterileri listeler |
+| [`show`](#serfex-customers-show) | Müşterinin siteleri ve paket kullanımı |
+| [`suspend`](#serfex-customers-suspend) | Müşteriyi askıya alır (siteleri 503, postaları bekletilir) |
+| [`unsuspend`](#serfex-customers-unsuspend) | Askıyı kaldırır |
+| [`packages`](#serfex-customers-packages) | Paketleri listeler |
 
-### servik customers list
+### serfex customers list
 
 ```
-servik customers list
+serfex customers list
 ```
 
 Müşterileri listeler
 
 Diğer adları: `ls`
 
-### servik customers show
+### serfex customers show
 
 ```
-servik customers show <no>
+serfex customers show <no>
 ```
 
 Müşterinin siteleri ve paket kullanımı
 
-### servik customers suspend
+### serfex customers suspend
 
 ```
-servik customers suspend <no> [seçenekler]
+serfex customers suspend <no> [seçenekler]
 ```
 
 Müşteriyi askıya alır (siteleri 503, postaları bekletilir)
@@ -817,43 +817,43 @@ Müşteriyi askıya alır (siteleri 503, postaları bekletilir)
 | --- | --- |
 | `--reason <metin>` | Müşterinin göreceği neden |
 
-### servik customers unsuspend
+### serfex customers unsuspend
 
 ```
-servik customers unsuspend <no>
+serfex customers unsuspend <no>
 ```
 
 Askıyı kaldırır
 
-### servik customers packages
+### serfex customers packages
 
 ```
-servik customers packages
+serfex customers packages
 ```
 
 Paketleri listeler
 
 ## Laravel
 
-### servik apps
+### serfex apps
 
 ```
-servik apps
+serfex apps
 ```
 
 Erişebildiğiniz Laravel uygulamalarını listeler
 
-### servik deploy
+### serfex deploy
 
 ```
-servik deploy [seçenekler]
+serfex deploy [seçenekler]
 ```
 
 Uygulamayı deposundan dağıtır: yeni sürüm releases/ altına kurulur, sağlık kontrolünden geçince yayına girer, geçemezse önceki sürüm yayında kalır.
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `--ref <dal\|etiket\|commit>` | Dağıtılacak dal, etiket ya da commit (varsayılan: uygulamanın dalı) |
 | `--no-migrate` | Bu dağıtımda migrate çalıştırmaz |
 | `--no-frontend` | Bu dağıtımda ön yüzü (npm run build) derlemez |
@@ -863,42 +863,42 @@ Uygulamayı deposundan dağıtır: yeni sürüm releases/ altına kurulur, sağl
 Örnekler:
 
 ```sh
-servik deploy -a api.ornek.com.tr --wait
-SERVIK_URL=https://panel.ornek.com.tr:8443 SERVIK_TOKEN=svk_… servik deploy --ref "$GITHUB_SHA" --wait
+serfex deploy -a api.ornek.com.tr --wait
+SERFEX_URL=https://panel.ornek.com.tr:8443 SERFEX_TOKEN=sfx_… serfex deploy --ref "$GITHUB_SHA" --wait
 ```
 
-### servik deployments
+### serfex deployments
 
 ```
-servik deployments [seçenekler]
+serfex deployments [seçenekler]
 ```
 
 Son dağıtımları listeler
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `-n, --limit <sayı>` | Kaç dağıtım (varsayılan: 10) |
 
-### servik rollback
+### serfex rollback
 
 ```
-servik rollback [seçenekler]
+serfex rollback [seçenekler]
 ```
 
 Önceki sürüme döner
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `--to <no>` | Dönülecek dağıtımın numarası (varsayılan: bir önceki) |
 | `--wait` | Bitene kadar çıktısını gösterir; başarısız olursa sıfırdan farklı kodla çıkar |
 | `--timeout <süre>` | --wait için en uzun bekleme (varsayılan: 60m) |
 
-### servik preview
+### serfex preview
 
 ```
-servik preview <komut>
+serfex preview <komut>
 ```
 
 Önizleme ortamları (<dal>.alan-adı)
@@ -907,25 +907,25 @@ Diğer adları: `previews`
 
 | Komut | |
 | --- | --- |
-| [`create`](#servik-preview-create) | Bir dal için önizleme ortamı açar |
-| [`delete`](#servik-preview-delete) | Önizleme ortamını kaldırır |
+| [`create`](#serfex-preview-create) | Bir dal için önizleme ortamı açar |
+| [`delete`](#serfex-preview-delete) | Önizleme ortamını kaldırır |
 
-### servik preview create
+### serfex preview create
 
 ```
-servik preview create <dal> [seçenekler]
+serfex preview create <dal> [seçenekler]
 ```
 
 Bir dal için önizleme ortamı açar
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik preview delete
+### serfex preview delete
 
 ```
-servik preview delete <ad> [seçenekler]
+serfex preview delete <ad> [seçenekler]
 ```
 
 Önizleme ortamını kaldırır
@@ -934,34 +934,34 @@ Diğer adları: `rm`
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik env
+### serfex env
 
 ```
-servik env [seçenekler]
+serfex env [seçenekler]
 ```
 
 Uygulamanın .env dosyasını gösterir ve değiştirir. Kaydedilince config:cache yenilenir, işçiler yeniden başlar; panel her sürümü saklar.
 
 | Komut | |
 | --- | --- |
-| [`list`](#servik-env-list) | Anahtarları ve değerlerini listeler (gizliler maskeli) |
-| [`get`](#servik-env-get) | Bir değeri olduğu gibi yazar |
-| [`set`](#servik-env-set) | Değerleri değiştirir ya da ekler |
-| [`unset`](#servik-env-unset) | Anahtarları siler |
-| [`pull`](#servik-env-pull) | .env dosyasını indirir |
-| [`push`](#servik-env-push) | .env dosyasının tamamını değiştirir |
+| [`list`](#serfex-env-list) | Anahtarları ve değerlerini listeler (gizliler maskeli) |
+| [`get`](#serfex-env-get) | Bir değeri olduğu gibi yazar |
+| [`set`](#serfex-env-set) | Değerleri değiştirir ya da ekler |
+| [`unset`](#serfex-env-unset) | Anahtarları siler |
+| [`pull`](#serfex-env-pull) | .env dosyasını indirir |
+| [`push`](#serfex-env-push) | .env dosyasının tamamını değiştirir |
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `--reveal` | Parola ve anahtarları gizlemeden gösterir |
 
-### servik env list
+### serfex env list
 
 ```
-servik env list [seçenekler]
+serfex env list [seçenekler]
 ```
 
 Anahtarları ve değerlerini listeler (gizliler maskeli)
@@ -970,116 +970,116 @@ Diğer adları: `ls`
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `--reveal` | Parola ve anahtarları gizlemeden gösterir |
 
-### servik env get
+### serfex env get
 
 ```
-servik env get <ANAHTAR> [seçenekler]
+serfex env get <ANAHTAR> [seçenekler]
 ```
 
 Bir değeri olduğu gibi yazar
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik env set
+### serfex env set
 
 ```
-servik env set <ANAHTAR=değer>… [seçenekler]
+serfex env set <ANAHTAR=değer>… [seçenekler]
 ```
 
 Değerleri değiştirir ya da ekler
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
 Örnekler:
 
 ```sh
-servik env set APP_DEBUG=false MAIL_FROM_NAME="Kargo"
+serfex env set APP_DEBUG=false MAIL_FROM_NAME="Kargo"
 ```
 
-### servik env unset
+### serfex env unset
 
 ```
-servik env unset <ANAHTAR>… [seçenekler]
+serfex env unset <ANAHTAR>… [seçenekler]
 ```
 
 Anahtarları siler
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik env pull
+### serfex env pull
 
 ```
-servik env pull [seçenekler]
+serfex env pull [seçenekler]
 ```
 
 .env dosyasını indirir
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `-o, --output <dosya>` | Yazılacak dosya (varsayılan: standart çıktı) |
 
-### servik env push
+### serfex env push
 
 ```
-servik env push <dosya> [seçenekler]
+serfex env push <dosya> [seçenekler]
 ```
 
 .env dosyasının tamamını değiştirir
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik artisan
+### serfex artisan
 
 ```
-servik artisan <komut>… [seçenekler]
+serfex artisan <komut>… [seçenekler]
 ```
 
-artisan komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. servik seçenekleri (-a) komuttan önce gelir.
+artisan komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. serfex seçenekleri (-a) komuttan önce gelir.
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik composer
+### serfex composer
 
 ```
-servik composer <komut>… [seçenekler]
+serfex composer <komut>… [seçenekler]
 ```
 
-composer komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. servik seçenekleri (-a) komuttan önce gelir.
+composer komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. serfex seçenekleri (-a) komuttan önce gelir.
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik npm
+### serfex npm
 
 ```
-servik npm <komut>… [seçenekler]
+serfex npm <komut>… [seçenekler]
 ```
 
-npm komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. servik seçenekleri (-a) komuttan önce gelir.
+npm komutunu uygulamanın klasöründe, sitenin kullanıcısıyla çalıştırır ve çıktısını gösterir; çıkış kodu komutunki olur. serfex seçenekleri (-a) komuttan önce gelir.
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik queues
+### serfex queues
 
 ```
-servik queues [seçenekler]
+serfex queues [seçenekler]
 ```
 
 Kuyruk işçileri ve bekleyen işler
@@ -1088,67 +1088,67 @@ Diğer adları: `queue`
 
 | Komut | |
 | --- | --- |
-| [`status`](#servik-queues-status) | İşçileri ve bekleyen işleri gösterir |
-| [`failed`](#servik-queues-failed) | Başarısız işleri listeler |
-| [`retry`](#servik-queues-retry) | Başarısız bir işi ya da hepsini yeniden kuyruğa alır |
-| [`restart`](#servik-queues-restart) | İşçileri yeniden başlatır |
+| [`status`](#serfex-queues-status) | İşçileri ve bekleyen işleri gösterir |
+| [`failed`](#serfex-queues-failed) | Başarısız işleri listeler |
+| [`retry`](#serfex-queues-retry) | Başarısız bir işi ya da hepsini yeniden kuyruğa alır |
+| [`restart`](#serfex-queues-restart) | İşçileri yeniden başlatır |
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik queues status
+### serfex queues status
 
 ```
-servik queues status [seçenekler]
+serfex queues status [seçenekler]
 ```
 
 İşçileri ve bekleyen işleri gösterir
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik queues failed
+### serfex queues failed
 
 ```
-servik queues failed [seçenekler]
+serfex queues failed [seçenekler]
 ```
 
 Başarısız işleri listeler
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik queues retry
+### serfex queues retry
 
 ```
-servik queues retry [iş-no] [seçenekler]
+serfex queues retry [iş-no] [seçenekler]
 ```
 
 Başarısız bir işi ya da hepsini yeniden kuyruğa alır
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik queues restart
+### serfex queues restart
 
 ```
-servik queues restart [seçenekler]
+serfex queues restart [seçenekler]
 ```
 
 İşçileri yeniden başlatır
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik maintenance
+### serfex maintenance
 
 ```
-servik maintenance [seçenekler]
+serfex maintenance [seçenekler]
 ```
 
 Bakım modu
@@ -1157,66 +1157,66 @@ Diğer adları: `down`
 
 | Komut | |
 | --- | --- |
-| [`status`](#servik-maintenance-status) | Bakım modunda olup olmadığını gösterir |
-| [`on`](#servik-maintenance-on) | Bakım modunu açar |
-| [`off`](#servik-maintenance-off) | Bakım modunu kapatır |
+| [`status`](#serfex-maintenance-status) | Bakım modunda olup olmadığını gösterir |
+| [`on`](#serfex-maintenance-on) | Bakım modunu açar |
+| [`off`](#serfex-maintenance-off) | Bakım modunu kapatır |
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik maintenance status
+### serfex maintenance status
 
 ```
-servik maintenance status [seçenekler]
+serfex maintenance status [seçenekler]
 ```
 
 Bakım modunda olup olmadığını gösterir
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik maintenance on
+### serfex maintenance on
 
 ```
-servik maintenance on [seçenekler]
+serfex maintenance on [seçenekler]
 ```
 
 Bakım modunu açar
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
-| `--mode <servik\|custom\|app>` | Servik sayfası (varsayılan), kendi HTML'iniz ya da php artisan down |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
+| `--mode <serfex\|custom\|app>` | Serfex sayfası (varsayılan), kendi HTML'iniz ya da php artisan down |
 | `--allow <ip>` | Bakımdayken siteyi görebilecek IP ya da ağ (birden çok kez) |
 | `--secret <yol>` | Bakımı atlatan gizli yol (varsayılan: rastgele) |
 | `--retry <saniye>` | Retry-After başlığı |
 | `--html-file <dosya>` | --mode custom için HTML dosyası |
 
-### servik maintenance off
+### serfex maintenance off
 
 ```
-servik maintenance off [seçenekler]
+serfex maintenance off [seçenekler]
 ```
 
 Bakım modunu kapatır
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 
-### servik logs
+### serfex logs
 
 ```
-servik logs [seçenekler]
+serfex logs [seçenekler]
 ```
 
 Uygulamanın günlükleri (storage/logs)
 
 | Seçenek | |
 | --- | --- |
-| `-a, --app <alan-adı>` | Laravel uygulaması (SERVIK_APP; bir belirteçle girişte gerekmez) |
+| `-a, --app <alan-adı>` | Laravel uygulaması (SERFEX_APP; bir belirteçle girişte gerekmez) |
 | `--level <düzey>` | Bu düzey ve üstü: debug, info, warning, error, critical |
 | `--file <dosya>` | Günlük dosyası (varsayılan: en yenisi) |
 | `--search <metin>` | İçinde bu metin geçenler |
@@ -1227,16 +1227,16 @@ Uygulamanın günlükleri (storage/logs)
 Örnekler:
 
 ```sh
-servik logs -a api.ornek.com.tr --level error -n 20
-servik logs -f
+serfex logs -a api.ornek.com.tr --level error -n 20
+serfex logs -f
 ```
 
 ## Diğer
 
-### servik completion
+### serfex completion
 
 ```
-servik completion bash|zsh|fish
+serfex completion bash|zsh|fish
 ```
 
 Kabuk tamamlama betiğini yazar. Komutlar, seçenekler ve siteler, uygulamalar gibi adlar Tab ile tamamlanır.
@@ -1244,15 +1244,15 @@ Kabuk tamamlama betiğini yazar. Komutlar, seçenekler ve siteler, uygulamalar g
 Örnekler:
 
 ```sh
-source <(servik completion bash)
-servik completion zsh > "${fpath[1]}/_servik"
-servik completion fish > ~/.config/fish/completions/servik.fish
+source <(serfex completion bash)
+serfex completion zsh > "${fpath[1]}/_serfex"
+serfex completion fish > ~/.config/fish/completions/serfex.fish
 ```
 
-### servik version
+### serfex version
 
 ```
-servik version
+serfex version
 ```
 
 Sürümü yazar

@@ -22,7 +22,7 @@ const (
 const (
 	// ApachePort is where Apache listens, on 127.0.0.1 only.
 	ApachePort = 7080
-	// ApachePorts is Apache's listen file, which Servik owns once Apache
+	// ApachePorts is Apache's listen file, which Serfex owns once Apache
 	// is installed through it.
 	ApachePorts = "/etc/apache2/ports.conf"
 )
@@ -33,8 +33,8 @@ func apacheEnabled(domain string) string { return "/etc/apache2/sites-enabled/" 
 // ApacheConfig is the Apache vhost of a site, for checks elsewhere.
 func ApacheConfig(domain string) string { return apacheAvail(domain) }
 
-// ApacheReady reports whether Apache is installed and set up by Servik
-// (its ports.conf is Servik's).
+// ApacheReady reports whether Apache is installed and set up by Serfex
+// (its ports.conf is Serfex's).
 func (m *Manager) ApacheReady() bool {
 	if _, err := os.Stat(m.h.Path("/usr/sbin/apache2")); err != nil {
 		return false
@@ -64,7 +64,7 @@ var apacheTmpl = template.Must(template.New("apache").Parse(`# {{.Marker}}. Manu
     # PHP runs in the site's own PHP-FPM pool, as the site's user.
     <FilesMatch "\.php$">
         <If "-f %{REQUEST_FILENAME}">
-            SetHandler "proxy:unix:{{.PHPSocket}}|fcgi://servik-{{.Domain}}/"
+            SetHandler "proxy:unix:{{.PHPSocket}}|fcgi://serfex-{{.Domain}}/"
         </If>
     </FilesMatch>
 {{- end}}

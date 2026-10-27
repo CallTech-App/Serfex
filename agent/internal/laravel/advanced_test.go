@@ -38,7 +38,7 @@ func TestProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	unit := func(name string) string {
-		return read(t, sim, "/etc/systemd/system/servik-proc-api.hizlikargo.app_"+name+".service")
+		return read(t, sim, "/etc/systemd/system/serfex-proc-api.hizlikargo.app_"+name+".service")
 	}
 	for name, want := range map[string]string{
 		"horizon": `ExecStart="/usr/bin/php8.4" "artisan" "horizon"`,
@@ -47,7 +47,7 @@ func TestProcesses(t *testing.T) {
 		"pulse":   `ExecStart="/usr/bin/php8.4" "artisan" "pulse:check" "--once=no"`,
 	} {
 		u := unit(name)
-		for _, w := range []string{want, "User=hizlikargo", "WorkingDirectory=" + appDir + "/current", "StandardOutput=append:/var/log/servik/laravel/api.hizlikargo.app/proc-" + name + ".log", "Restart=always"} {
+		for _, w := range []string{want, "User=hizlikargo", "WorkingDirectory=" + appDir + "/current", "StandardOutput=append:/var/log/serfex/laravel/api.hizlikargo.app/proc-" + name + ".log", "Restart=always"} {
 			if !strings.Contains(u, w) {
 				t.Errorf("%s unit lacks %q:\n%s", name, w, u)
 			}
@@ -68,7 +68,7 @@ func TestProcesses(t *testing.T) {
 	if _, err := m.Deploy(ctx, gitDeploy("2")); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(commands(sim), "systemctl try-restart servik-proc-api.hizlikargo.app_horizon.service servik-proc-api.hizlikargo.app_octane.service servik-proc-api.hizlikargo.app_pulse.service") {
+	if !strings.Contains(commands(sim), "systemctl try-restart serfex-proc-api.hizlikargo.app_horizon.service serfex-proc-api.hizlikargo.app_octane.service serfex-proc-api.hizlikargo.app_pulse.service") {
 		t.Errorf("processes not restarted after the deploy:\n%s", commands(sim))
 	}
 	if log, _ := m.ReadRun(target.Domain, "deploy-2", 0); !strings.Contains(log.Data, "süreçler yeniden başlatıldı") {
@@ -83,7 +83,7 @@ func TestProcesses(t *testing.T) {
 	}
 
 	// Logs are read from the end.
-	if err := os.WriteFile(sim.Path("/var/log/servik/laravel/api.hizlikargo.app/proc-octane.log"), []byte(strings.Repeat("x", 70<<10)+"\nINFO  Server running…\n"), 0o600); err != nil {
+	if err := os.WriteFile(sim.Path("/var/log/serfex/laravel/api.hizlikargo.app/proc-octane.log"), []byte(strings.Repeat("x", 70<<10)+"\nINFO  Server running…\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	chunk, err := m.ReadProcessLog(ProcessAction{Domain: target.Domain, Name: "octane"}, -1)
@@ -96,7 +96,7 @@ func TestProcesses(t *testing.T) {
 	if err != nil || len(states) != 1 {
 		t.Fatalf("%+v %v", states, err)
 	}
-	if exists(sim, "/etc/systemd/system/servik-proc-api.hizlikargo.app_octane.service") || !strings.Contains(commands(sim), "systemctl disable --now servik-proc-api.hizlikargo.app_octane.service servik-proc-api.hizlikargo.app_pulse.service") {
+	if exists(sim, "/etc/systemd/system/serfex-proc-api.hizlikargo.app_octane.service") || !strings.Contains(commands(sim), "systemctl disable --now serfex-proc-api.hizlikargo.app_octane.service serfex-proc-api.hizlikargo.app_pulse.service") {
 		t.Error("octane unit should be gone")
 	}
 
@@ -120,7 +120,7 @@ func TestProcesses(t *testing.T) {
 	if _, err := m.Remove(ctx, RemoveSpec{Target: target}); err != nil {
 		t.Fatal(err)
 	}
-	if exists(sim, "/etc/systemd/system/servik-proc-api.hizlikargo.app_horizon.service") {
+	if exists(sim, "/etc/systemd/system/serfex-proc-api.hizlikargo.app_horizon.service") {
 		t.Error("units left behind")
 	}
 }

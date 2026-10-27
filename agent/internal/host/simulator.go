@@ -16,7 +16,7 @@ import (
 // Simulator is a Host that keeps every file under Root and fakes commands.
 //
 // Account commands (useradd, userdel) edit Root/etc/passwd and
-// Root/etc/group. "apt-get install" creates the files Servik checks for
+// Root/etc/group. "apt-get install" creates the files Serfex checks for
 // in the packages it knows (simPackages) and the accounts they add
 // (simAccounts); "sqlite3 FILE" creates FILE. File commands run through runuser (install -d, rm -rf,
 // tee) are applied under Root. Everything else (nginx -t, systemctl reload)

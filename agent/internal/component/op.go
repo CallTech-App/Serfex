@@ -20,8 +20,8 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// component describes one piece of software and how Servik handles it.
-// Most are apt packages with optional Servik configuration; Node.js,
+// component describes one piece of software and how Serfex handles it.
+// Most are apt packages with optional Serfex configuration; Node.js,
 // Composer and the database servers bring their own install and remove.
 type component struct {
 	id string
@@ -147,7 +147,7 @@ func (o *op) systemctl(args ...string) error {
 
 var aptEnv = []string{"DEBIAN_FRONTEND=noninteractive", "NEEDRESTART_MODE=a"}
 
-// aptOpts keep configuration files Servik wrote before a package arrived
+// aptOpts keep configuration files Serfex wrote before a package arrived
 // (Apache's ports.conf) and never ask questions.
 var aptOpts = []string{"-y", "-q", "--no-install-recommends", "-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold"}
 
@@ -216,7 +216,7 @@ func (o *op) ensureArchive(pkg string) error {
 	return nil
 }
 
-// install runs the apt flow: packages, Servik's configuration, services
+// install runs the apt flow: packages, Serfex's configuration, services
 // and a check. Anything that fails undoes what this operation did.
 func (o *op) install() (err error) {
 	c, m := o.c, o.m
@@ -244,12 +244,12 @@ func (o *op) install() (err error) {
 	return o.finish(!wasInstalled || len(o.added) > 0)
 }
 
-// finish writes Servik's configuration, (re)starts the services and checks
+// finish writes Serfex's configuration, (re)starts the services and checks
 // the result.
 func (o *op) finish(restart bool) error {
 	c := o.c
 	if c.configure != nil {
-		o.step("Servik ayarları yazılıyor")
+		o.step("Serfex ayarları yazılıyor")
 		if err := c.configure(o); err != nil {
 			return err
 		}
@@ -282,7 +282,7 @@ func (o *op) finish(restart bool) error {
 	return o.failpoint("check")
 }
 
-// rollback undoes a failed install: Servik's files come back, services
+// rollback undoes a failed install: Serfex's files come back, services
 // it started stop, and the packages it added are purged.
 func (o *op) rollback(wasInstalled bool) {
 	bg := context.WithoutCancel(o.ctx)
@@ -316,7 +316,7 @@ func (o *op) rollback(wasInstalled bool) {
 	}
 }
 
-// remove archives the configuration, takes Servik's configuration away,
+// remove archives the configuration, takes Serfex's configuration away,
 // stops the services and purges the packages.
 func (o *op) remove() (err error) {
 	c, m := o.c, o.m
@@ -362,7 +362,7 @@ func (o *op) remove() (err error) {
 		return err
 	}
 	if c.unconfigure != nil {
-		o.step("Servik ayarları kaldırılıyor")
+		o.step("Serfex ayarları kaldırılıyor")
 		if err := c.unconfigure(o); err != nil {
 			return err
 		}

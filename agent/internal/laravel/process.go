@@ -16,7 +16,7 @@ import (
 
 // Long-running processes of an application: Horizon, Octane, Reverb and
 // the customer's own commands. Each is a systemd service
-// (servik-proc-<domain>_<name>.service) running as the site's account in
+// (serfex-proc-<domain>_<name>.service) running as the site's account in
 // the live release, restarted when it stops and after every deploy. The
 // web server part of Octane and Reverb (proxying to their port) is the
 // site's (site.Spec.Proxy and WebSockets).
@@ -194,7 +194,7 @@ ProtectSystem=full
 WantedBy=multi-user.target
 `))
 
-func procPrefix(domain string) string { return "servik-proc-" + domain + "_" }
+func procPrefix(domain string) string { return "serfex-proc-" + domain + "_" }
 
 func procUnit(domain, name string) string { return procPrefix(domain) + name + ".service" }
 

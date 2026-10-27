@@ -6,7 +6,7 @@
 --}}
 <div
     x-data="{ lost: false }"
-    @servik-connection.window="lost = ! $event.detail.ok"
+    @serfex-connection.window="lost = ! $event.detail.ok"
     x-show="lost"
     x-cloak
     role="alert"

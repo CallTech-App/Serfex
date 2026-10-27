@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
  * Runs every five minutes from the scheduler: tells the administrators
  * about new problems and the ones that went away (Bildirimler).
  */
-#[Signature('servik:notify')]
+#[Signature('serfex:notify')]
 #[Description('E-mail and post new and resolved problems to the administrators')]
 class SendNotifications extends Command
 {

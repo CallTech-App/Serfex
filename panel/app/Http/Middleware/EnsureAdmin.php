@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Server pages (Canlı İzleme, Servik AI, server settings, customers) are
+ * Server pages (Canlı İzleme, Serfex AI, server settings, customers) are
  * for administrators only.
  */
 class EnsureAdmin

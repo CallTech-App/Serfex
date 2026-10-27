@@ -14,7 +14,7 @@ use Livewire\Component;
  * addresses, operating system and hardware.
  */
 #[Layout('components.layouts.app')]
-#[Title('Sunucu · Servik')]
+#[Title('Sunucu · Serfex')]
 class ServerSettings extends Component
 {
     public string $hostname = '';

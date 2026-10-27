@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	rhDomain = "servik-svc.example"
-	rhUser   = "servikvc"
+	rhDomain = "serfex-svc.example"
+	rhUser   = "serfexvc"
 )
 
 var fresh = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: 10 * time.Second}
@@ -60,7 +60,7 @@ func TestRealHost(t *testing.T) {
 
 	spec := site.Spec{Domain: rhDomain, User: rhUser, PHPVersion: v}
 	t.Cleanup(func() {
-		_ = os.Remove("/etc/nginx/conf.d/zz-servik-broken.conf")
+		_ = os.Remove("/etc/nginx/conf.d/zz-serfex-broken.conf")
 		defaults := tuning.Defaults().Nginx
 		_, _ = m.ApplySettings(context.Background(), SettingsSpec{Unit: "nginx", Nginx: &defaults})
 		_, _ = sites.Delete(ctx, site.DeleteSpec{Domain: rhDomain, User: rhUser, RemoveFiles: true, RemoveUser: true})
@@ -124,13 +124,13 @@ echo 'mem=', ini_get('memory_limit'), ' up=', ini_get('upload_max_filesize'),
 	// A broken configuration: the restart is refused and Nginx keeps
 	// serving.
 	before := byUnit["nginx"].PID
-	if err := os.WriteFile("/etc/nginx/conf.d/zz-servik-broken.conf", []byte("this is not nginx;\n"), 0o644); err != nil {
+	if err := os.WriteFile("/etc/nginx/conf.d/zz-serfex-broken.conf", []byte("this is not nginx;\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := m.Do(ctx, ActionSpec{Unit: "nginx", Action: "restart"}); !errors.As(err, &verr) || !strings.Contains(err.Error(), "configuration test failed") {
 		t.Fatalf("restart with a broken configuration: %v", err)
 	}
-	_ = os.Remove("/etc/nginx/conf.d/zz-servik-broken.conf")
+	_ = os.Remove("/etc/nginx/conf.d/zz-serfex-broken.conf")
 	expect(t, "GET", 0, 200, "mem=")
 	s, err := m.Do(ctx, ActionSpec{Unit: "nginx", Action: "restart"})
 	if err != nil || s.State != "active" || s.PID == before {
@@ -205,7 +205,7 @@ echo 'mem=', ini_get('memory_limit'), ' up=', ini_get('upload_max_filesize'),
 	expect(t, "GET", 0, 200, "calendar=on")
 
 	if _, err := comps.Extension(ctx, component.ExtensionSpec{Version: v, Name: "apcu", Run: "rh-ext-apcu"}); err != nil {
-		b, _ := os.ReadFile("/var/lib/servik/components/runs/rh-ext-apcu.log")
+		b, _ := os.ReadFile("/var/lib/serfex/components/runs/rh-ext-apcu.log")
 		t.Fatalf("install apcu: %v\n%s", err, b)
 	}
 	expect(t, "GET", 0, 200, "apcu=on")

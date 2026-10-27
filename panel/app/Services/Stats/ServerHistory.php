@@ -35,7 +35,7 @@ class ServerHistory
     {
         $seen = [];
         $used = $total = 0;
-        foreach ((array) config('servik.disk_paths', ['/', '/home', '/var']) as $path) {
+        foreach ((array) config('serfex.disk_paths', ['/', '/home', '/var']) as $path) {
             $t = @disk_total_space($path);
             $f = @disk_free_space($path);
             if (! $t || $f === false || isset($seen[$t.':'.$f])) {
@@ -89,7 +89,7 @@ class ServerHistory
     public function series(string $range): array
     {
         [, $bucket] = self::RANGES[$range] ?? self::RANGES['24s'];
-        $tz = config('servik.timezone');
+        $tz = config('serfex.timezone');
         if ($range === '24s') {
             $since = now()->utc()->subDay();
             $rows = DB::table('monitor_samples')->whereNull('site_id')->where('recorded_at', '>=', $since)

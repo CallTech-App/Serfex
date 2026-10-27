@@ -74,7 +74,7 @@ class Quotas
         return [
             'sites' => $sites->count(),
             'disk' => $disk,
-            'traffic' => (int) SiteTraffic::whereIn('site_id', $siteIds)->where('month', now(config('servik.timezone'))->startOfMonth()->toDateString())->sum('bytes'),
+            'traffic' => (int) SiteTraffic::whereIn('site_id', $siteIds)->where('month', now(config('serfex.timezone'))->startOfMonth()->toDateString())->sum('bytes'),
             'mailboxes' => $mailboxes->count(),
             'databases' => Database::whereIn('system_user_id', $accounts)->count(),
             'laravel_apps' => $apps->whereNull('preview_of_id')->count(),
@@ -184,7 +184,7 @@ class Quotas
      */
     public function attentionCount(): int
     {
-        return Cache::remember('servik.customers.attention', 60, fn () => Customer::with('package')->get()
+        return Cache::remember('serfex.customers.attention', 60, fn () => Customer::with('package')->get()
             ->filter(fn (Customer $c) => self::worst($this->report($c)) !== 'ok')->count());
     }
 
@@ -193,6 +193,6 @@ class Quotas
      */
     public static function forget(): void
     {
-        Cache::forget('servik.customers.attention');
+        Cache::forget('serfex.customers.attention');
     }
 }

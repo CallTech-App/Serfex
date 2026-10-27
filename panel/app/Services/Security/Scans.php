@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * The security scan: the agent reads every file of a site (ClamAV when it
- * is installed, Servik's own web shell signatures, permissions, owners,
+ * is installed, Serfex's own web shell signatures, permissions, owners,
  * secrets and backups under the web root, outdated software) and the
  * panel keeps the findings. A finding keeps its row across scans until it
  * is fixed, ignored or no longer found. Fixes go through the agent and
@@ -255,7 +255,7 @@ class Scans
             $this->access->deny($site, [$path]);
             $data = ['paths' => [$path]];
         } else {
-            $data = (array) $this->agent->call('scan.fix', ['domain' => $site->domain, 'user' => $site->systemUser->name, 'path' => $finding->path, 'action' => $action], config('servik.agent.job_timeout'));
+            $data = (array) $this->agent->call('scan.fix', ['domain' => $site->domain, 'user' => $site->systemUser->name, 'path' => $finding->path, 'action' => $action], config('serfex.agent.job_timeout'));
         }
         $finding->update(['status' => 'fixed', 'fix_action' => $action, 'fix_data' => $data, 'resolved_by' => $by?->id, 'resolved_at' => now()]);
         self::forget();
@@ -278,7 +278,7 @@ class Scans
             'quarantine' => ($data['trash_id'] ?? '') !== '' ? app(FileManager::class)->call($site, 'trash.restore', ['ids' => [$data['trash_id']]]) : null,
             'deny' => $this->access->allow($site, $data['paths'] ?? []),
             default => ($data['undo'] ?? []) !== [] ? $this->agent->call('scan.fix', ['domain' => $site->domain, 'user' => $site->systemUser->name, 'path' => $finding->path,
-                'action' => $finding->fix_action, 'undo' => $data['undo']], config('servik.agent.job_timeout')) : null,
+                'action' => $finding->fix_action, 'undo' => $data['undo']], config('serfex.agent.job_timeout')) : null,
         };
         $finding->update(['status' => 'open', 'fix_action' => null, 'fix_data' => null, 'resolved_by' => null, 'resolved_at' => null]);
         self::forget();

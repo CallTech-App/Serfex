@@ -1,25 +1,25 @@
-# Servik
+# Serfex
 
 **Ubuntu sunucular için açık kaynak bir web hosting kontrol paneli; Laravel
 uygulamaları için birinci sınıf bir araç setiyle.**
 
-Servik siteleri, DNS'i, e-postayı, veritabanlarını, sertifikaları ve
+Serfex siteleri, DNS'i, e-postayı, veritabanlarını, sertifikaları ve
 yedekleri sizin ve müşterileriniz için tek panelden yönetir; Laravel
 uygulamalarını kesintisiz sürümler, önizleme ortamları, kuyruklar ve hazır bir
 komut satırıyla dağıtır.
 
 [English](README.md) · [Belgeler](docs/README.md) · [Kurulum](docs/tr/kurulum.md) · [Komut satırı](docs/tr/cli.md) · [API](docs/api.md)
 
-![Servik genel bakış: önce sorunlar, sonra siteler, kaynaklar ve yedekler](docs/images/overview-tr.png)
+![Serfex genel bakış: önce sorunlar, sonra siteler, kaynaklar ve yedekler](docs/images/overview-tr.png)
 
-> **Durum:** Servik 0.1 ilk herkese açık sürümdür. Aşağıdaki her özellik
+> **Durum:** Serfex 0.1 ilk herkese açık sürümdür. Aşağıdaki her özellik
 > çalışıyor ve CI'da gerçek sunucu testleri var, ama henüz uzun süre canlı
 > hosting yapmadı. Önce boş bir sunucuda deneyin; bkz. [Durum ve yol haritası](#durum-ve-yol-haritası).
 
 ## Öne çıkanlar
 
 **Laravel araç seti.** Bir Git deposundan uygulama ekleyin ya da yeni bir proje
-başlatın (yalın Laravel veya React, Vue, Livewire başlangıç kiti). Servik her
+başlatın (yalın Laravel veya React, Vue, Livewire başlangıç kiti). Serfex her
 sürümü kendi klasöründe kurar; Composer'ı, ön yüz derlemesini ve migration'ları
 çalıştırır, tek adımda yeni sürüme geçer ve `/up` adresini denetler. Sağlık
 denetimi başarısız olursa kendiliğinden geri döner. Her uygulamada:
@@ -34,17 +34,17 @@ denetimi başarısız olursa kendiliğinden geri döner. Her uygulamada:
 
 ![Bir Laravel uygulamasının dağıtımları](docs/images/laravel-tr.png)
 
-**Komut satırı.** `servik`, paneli sunucudan ya da dizüstü bilgisayardan
+**Komut satırı.** `serfex`, paneli sunucudan ya da dizüstü bilgisayardan
 yönetir: siteler, alan adları, DNS, sertifikalar, e-posta, veritabanları,
 yedekler, hizmetler, müşteriler ve Laravel dağıtımları. Tarayıcıdan onayla
 giriş yapar, betikler için `--json` verir, CI'da uygulamanın anahtarıyla çalışır.
 
 ```sh
-servik login panel.ornek.com:8443
-servik deploy -a api.ornek.com --wait
+serfex login panel.ornek.com:8443
+serfex deploy -a api.ornek.com --wait
 ```
 
-![Komut satırında servik](docs/images/cli-tr.png)
+![Komut satırında serfex](docs/images/cli-tr.png)
 
 **Eksiksiz bir hosting paneli.**
 
@@ -69,7 +69,7 @@ servik deploy -a api.ornek.com --wait
   yazılım taraması, Fail2ban, iki adımlı giriş, SSH ayarları.
 - **Yedekler:** tüm sunucu ya da tek site, tam ve artımlı; yerel disk,
   S3 uyumlu depolama ya da SFTP; seçerek geri yükleme.
-- **Servik AI:** sunucunun durumunu okuyan, sorunu açıklayan ve sizin
+- **Serfex AI:** sunucunun durumunu okuyan, sorunu açıklayan ve sizin
   onaylayacağınız düzeltmeler öneren bir asistan. Kendi başına yalnızca bir
   adresi engelleyebilir ya da bir siteyi bir süre sınırlayabilir (bunu
   kapatabilirsiniz). Kendi Claude API anahtarınızla çalışır.
@@ -107,7 +107,7 @@ curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/insta
 ## Gereksinimler
 
 - Ubuntu Server 24.04 LTS ya da daha yenisi kurulu, amd64 veya arm64, root
-  erişimli boş bir sunucu. Servik'i başka bir kontrol panelinin yanına kurmayın.
+  erişimli boş bir sunucu. Serfex'i başka bir kontrol panelinin yanına kurmayın.
 - Herkese açık bir IPv4 adresi (varsa IPv6 da kullanılır) ve bu adrese
   çözümlenen bir sunucu adı; sertifikalar ve e-posta için.
 - E-posta ve bir veritabanı sunucusu olan küçük bir sunucu için 2 GB bellek;
@@ -115,13 +115,13 @@ curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/insta
 
 ## Nasıl çalışır
 
-Servik bu depodaki üç programdan oluşur:
+Serfex bu depodaki üç programdan oluşur:
 
 | Klasör | Ne | Kimle çalışır |
 |--------|----|---------------|
-| [`panel/`](panel) | Web paneli: Laravel 13 ve Livewire 4, kendi PostgreSQL veritabanıyla. | `servik` kullanıcısı |
-| [`agent/`](agent) | `servik-agent`: root gerektiren işleri (web sunucusu, PHP-FPM, DNS, e-posta, sertifikalar, kullanıcılar, güvenlik duvarı, yedekler) yapan tek, statik bir Go programı. | systemd altında `root` |
-| [`cli/`](cli) | `servik`: komut satırı, panelin `/api/v1` istemcisi. | Herkes |
+| [`panel/`](panel) | Web paneli: Laravel 13 ve Livewire 4, kendi PostgreSQL veritabanıyla. | `serfex` kullanıcısı |
+| [`agent/`](agent) | `serfex-agent`: root gerektiren işleri (web sunucusu, PHP-FPM, DNS, e-posta, sertifikalar, kullanıcılar, güvenlik duvarı, yedekler) yapan tek, statik bir Go programı. | systemd altında `root` |
+| [`cli/`](cli) | `serfex`: komut satırı, panelin `/api/v1` istemcisi. | Herkes |
 
 Panel hiçbir zaman root çalışmaz. Her değişikliği yerel bir Unix soketi
 üzerinden JSON-RPC 2.0 ile ajandan ister; ajan yalnızca dar ve denetlenen
@@ -164,6 +164,6 @@ Güvenlik açıklarını [SECURITY.md](SECURITY.md) belgesindeki gibi gizli olar
 
 ## Lisans
 
-Servik, [GNU Affero Genel Kamu Lisansı v3.0](LICENSE) altında özgür yazılımdır.
-Değiştirdiğiniz bir Servik'i başkalarına hizmet olarak sunuyorsanız AGPL,
+Serfex, [GNU Affero Genel Kamu Lisansı v3.0](LICENSE) altında özgür yazılımdır.
+Değiştirdiğiniz bir Serfex'i başkalarına hizmet olarak sunuyorsanız AGPL,
 değişikliklerinizi onlara da sunmanızı ister.

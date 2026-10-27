@@ -23,29 +23,29 @@ import (
 //
 // Layout, in the site account's home (user kahve, site kahve.com):
 //
-//	/home/kahve/.servik/git/kahve.com/repo.git     bare clone; its work tree is the target folder
-//	/home/kahve/.servik/git/kahve.com/.ssh/        deploy key and pinned host keys
-//	/home/kahve/.servik/git/kahve.com/before.tar   the files the first deploy overwrote
+//	/home/kahve/.serfex/git/kahve.com/repo.git     bare clone; its work tree is the target folder
+//	/home/kahve/.serfex/git/kahve.com/.ssh/        deploy key and pinned host keys
+//	/home/kahve/.serfex/git/kahve.com/before.tar   the files the first deploy overwrote
 //
 // A deploy fetches the branch and checks its commit out into the folder:
 // changed files are written, files the repository deleted are removed,
 // and files the repository does not track (uploads, a local settings
-// file) stay. refs/servik/live is the commit the folder holds, so going
+// file) stay. refs/serfex/live is the commit the folder holds, so going
 // back to an earlier deploy is a checkout of that commit, and undoing the
 // first deploy removes its files and unpacks before.tar.
 //
-// Run logs: /var/lib/servik/git/<domain>/runs/<run>.log, root-owned.
+// Run logs: /var/lib/serfex/git/<domain>/runs/<run>.log, root-owned.
 
-const gitStateDir = "/var/lib/servik/git"
+const gitStateDir = "/var/lib/serfex/git"
 
 // placeholderMark is in the default page a new site starts with
 // (site/placeholder.html); the first deploy moves that page aside with
 // the files it overwrites.
-const placeholderMark = `<a class="btn btn-ghost" href="#servik">`
+const placeholderMark = `<a class="btn btn-ghost" href="#serfex">`
 
 var commitRe = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
-func gitDir(t Target) string         { return "/home/" + t.User + "/.servik/git/" + t.Domain }
+func gitDir(t Target) string         { return "/home/" + t.User + "/.serfex/git/" + t.Domain }
 func gitRunDir(domain string) string { return gitStateDir + "/" + domain + "/runs" }
 
 // GitSpec is one deploy of a site from Git, a return to an earlier
@@ -218,8 +218,8 @@ func (g *siteGit) run() (res GitResult, err error) {
 
 	// A folder other than the one deployed to before starts afresh.
 	previous := ""
-	if out, err := g.git("config", "--get", "servik.path"); err == nil && strings.TrimSpace(out) == s.Path {
-		if out, err := g.git("rev-parse", "--verify", "-q", "refs/servik/live"); err == nil {
+	if out, err := g.git("config", "--get", "serfex.path"); err == nil && strings.TrimSpace(out) == s.Path {
+		if out, err := g.git("rev-parse", "--verify", "-q", "refs/serfex/live"); err == nil {
 			previous = firstLine(out)
 		}
 	}
@@ -234,10 +234,10 @@ func (g *siteGit) run() (res GitResult, err error) {
 	if err := g.exec(g.base, "git checkout -f "+commit[:7], "git", "--git-dir="+g.repo, "--work-tree="+g.dir, "checkout", "-f", "-q", commit); err != nil {
 		return res, err
 	}
-	if _, err := g.git("update-ref", "refs/servik/live", commit); err != nil {
+	if _, err := g.git("update-ref", "refs/serfex/live", commit); err != nil {
 		return res, err
 	}
-	if _, err := g.git("config", "servik.path", s.Path); err != nil {
+	if _, err := g.git("config", "serfex.path", s.Path); err != nil {
 		return res, err
 	}
 
@@ -337,7 +337,7 @@ func (g *siteGit) treeFiles(commit string) ([]string, error) {
 }
 
 // saveExisting packs the files of the folder that the first checkout of
-// commit would overwrite into before.tar, and moves Servik's default page
+// commit would overwrite into before.tar, and moves Serfex's default page
 // aside with them. It returns how many files it saved.
 func (g *siteGit) saveExisting(commit string) (int, error) {
 	files, err := g.treeFiles(commit)
@@ -415,7 +415,7 @@ func (g *siteGit) commands() error {
 // undo removes the files of the live commit from the folder and unpacks
 // the files the first deploy overwrote.
 func (g *siteGit) undo() (res GitResult, err error) {
-	out, err := g.git("rev-parse", "--verify", "-q", "refs/servik/live")
+	out, err := g.git("rev-parse", "--verify", "-q", "refs/serfex/live")
 	live := firstLine(out)
 	if err != nil || live == "" {
 		return res, invalid("nothing is deployed to %s", g.spec.Path)
@@ -458,7 +458,7 @@ func (g *siteGit) undo() (res GitResult, err error) {
 		_ = g.user("rm", "-f", backup)
 		g.step("Dağıtımdan önceki dosyalar geri yüklendi")
 	}
-	if _, err := g.git("update-ref", "-d", "refs/servik/live"); err != nil {
+	if _, err := g.git("update-ref", "-d", "refs/serfex/live"); err != nil {
 		return res, err
 	}
 	_ = g.user("rm", "-f", g.repo+"/index")

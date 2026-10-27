@@ -1,24 +1,24 @@
-# Servik
+# Serfex
 
 **An open-source web hosting control panel for Ubuntu servers, with a
 first-class toolkit for Laravel applications.**
 
-Servik runs websites, DNS, mail, databases, certificates and backups for you
+Serfex runs websites, DNS, mail, databases, certificates and backups for you
 and your customers from one panel, and deploys Laravel applications with
 zero-downtime releases, previews, queues and a command line built in.
 
 [Türkçe](README.tr.md) · [Documentation](docs/README.md) · [Install](docs/installation.md) · [Command line](docs/cli.md) · [API](docs/api.md)
 
-![Servik overview: problems first, then sites, resources and backups](docs/images/overview-en.png)
+![Serfex overview: problems first, then sites, resources and backups](docs/images/overview-en.png)
 
-> **Status:** Servik 0.1 is the first public release. Every feature below works
+> **Status:** Serfex 0.1 is the first public release. Every feature below works
 > and has real-server tests in CI, but it has not yet run production
 > hosting for long. Try it on a fresh server first; see [Status](#status-and-roadmap).
 
 ## Highlights
 
 **Laravel toolkit.** Add an application from a Git repository or start a new
-one (plain Laravel or a React, Vue or Livewire starter kit), and Servik
+one (plain Laravel or a React, Vue or Livewire starter kit), and Serfex
 builds each release in its own directory, runs Composer, your front-end build
 and migrations, switches over atomically and checks `/up`. A failed health
 check rolls back on its own. Each application gets:
@@ -33,17 +33,17 @@ check rolls back on its own. Each application gets:
 
 ![A Laravel application's deployments](docs/images/laravel-en.png)
 
-**Command line.** `servik` drives the panel from a server or a laptop:
+**Command line.** `serfex` drives the panel from a server or a laptop:
 sites, domains, DNS, certificates, mail, databases, backups, services,
 customers and Laravel deployments. It signs in through the browser, prints
 `--json` for scripts, and works in CI with an application's token.
 
 ```sh
-servik login panel.example.com:8443
-servik deploy -a api.example.com --wait
+serfex login panel.example.com:8443
+serfex deploy -a api.example.com --wait
 ```
 
-![servik on the command line](docs/images/cli-en.png)
+![serfex on the command line](docs/images/cli-en.png)
 
 **A whole hosting panel.**
 
@@ -68,7 +68,7 @@ servik deploy -a api.example.com --wait
   scans, Fail2ban, two-factor sign-in, SSH settings.
 - **Backups**: whole server or one site, full and incremental, to local disk,
   S3-compatible storage or SFTP, with selective restore.
-- **Servik AI**: an assistant that reads the server's state, explains what is
+- **Serfex AI**: an assistant that reads the server's state, explains what is
   wrong and proposes fixes you approve. On its own it may only block an
   address or limit a site for a while (you can turn that off). It uses your
   own Claude API key.
@@ -106,7 +106,7 @@ curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/insta
 ## Requirements
 
 - A fresh server with Ubuntu Server 24.04 LTS or newer, amd64 or arm64, and
-  root access. Do not install Servik next to another control panel.
+  root access. Do not install Serfex next to another control panel.
 - A public IPv4 address (IPv6 is used when present) and a host name that
   resolves to it, for certificates and mail.
 - 2 GB of memory for a small server with mail and a database server; 4 GB or
@@ -114,13 +114,13 @@ curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/insta
 
 ## How it works
 
-Servik is three programs in this repository:
+Serfex is three programs in this repository:
 
 | Directory | What it is | Runs as |
 |-----------|------------|---------|
-| [`panel/`](panel) | The web panel: Laravel 13 and Livewire 4, with its own PostgreSQL database. | The `servik` user |
-| [`agent/`](agent) | `servik-agent`: one static Go binary that does the root-level work (web server, PHP-FPM, DNS, mail, certificates, users, firewall, backups). | `root`, under systemd |
-| [`cli/`](cli) | `servik`: the command line, a client of the panel's `/api/v1`. | Anyone |
+| [`panel/`](panel) | The web panel: Laravel 13 and Livewire 4, with its own PostgreSQL database. | The `serfex` user |
+| [`agent/`](agent) | `serfex-agent`: one static Go binary that does the root-level work (web server, PHP-FPM, DNS, mail, certificates, users, firewall, backups). | `root`, under systemd |
+| [`cli/`](cli) | `serfex`: the command line, a client of the panel's `/api/v1`. | Anyone |
 
 The panel never runs as root. It asks the agent for each change over a local
 Unix socket with JSON-RPC 2.0, and the agent only offers narrow,
@@ -161,6 +161,6 @@ Please report security problems privately, as described in [SECURITY.md](SECURIT
 
 ## License
 
-Servik is free software under the [GNU Affero General Public License v3.0](LICENSE).
-If you run a modified Servik for others, the AGPL asks you to offer them your
+Serfex is free software under the [GNU Affero General Public License v3.0](LICENSE).
+If you run a modified Serfex for others, the AGPL asks you to offer them your
 changes.

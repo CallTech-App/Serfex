@@ -113,8 +113,8 @@ class LaravelAccessTest extends TestCase
         $page->assertSee('Davet bekliyor');
 
         // Admins are owners everywhere and cannot be added.
-        $admin = User::factory()->create(['email' => 'sercan@servik.test']);
-        $page->call('openAdd')->set('email', 'sercan@servik.test')->call('add')->assertHasErrors('email');
+        $admin = User::factory()->create(['email' => 'sercan@serfex.test']);
+        $page->call('openAdd')->set('email', 'sercan@serfex.test')->call('add')->assertHasErrors('email');
 
         Auth::logout();
         $path = parse_url($link, PHP_URL_PATH);
@@ -183,9 +183,9 @@ class LaravelAccessTest extends TestCase
         $page = Livewire::withoutLazyLoading()->test(Access::class, ['appId' => $app->id])
             ->call('openToken')->set('tokenName', 'Deploy CLI')->call('createToken');
         $plain = $page->get('secret');
-        $this->assertStringStartsWith('svk_', $plain);
+        $this->assertStringStartsWith('sfx_', $plain);
         $this->assertSame($app->id, LaravelApiToken::findPlain($plain)->laravel_app_id);
-        $page->call('closeSecret')->assertSet('secret', null)->assertSee('svk_…'.substr($plain, -4));
+        $page->call('closeSecret')->assertSet('secret', null)->assertSee('sfx_…'.substr($plain, -4));
 
         $token = $app->apiTokens()->sole();
         $page->call('revoke', $token->id);

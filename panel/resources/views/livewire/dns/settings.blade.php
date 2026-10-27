@@ -30,7 +30,7 @@
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
                             <p class="mt-1.5 text-2xs text-muted">
-                                <x-t text="Boş bırakılırsa her alan adı kendi ad sunucularını kullanır, örneğin :n; Servik bu adlar için bu sunucuyu gösteren A kayıtlarını ekler. Alan adı kayıt firmanızda aynı adları ad sunucusu olarak girin."><x-slot:n><span class="font-mono">{{ collect($example)->map(fn ($n) => rtrim($n, '.'))->join(', ') }}</span></x-slot:n></x-t>
+                                <x-t text="Boş bırakılırsa her alan adı kendi ad sunucularını kullanır, örneğin :n; Serfex bu adlar için bu sunucuyu gösteren A kayıtlarını ekler. Alan adı kayıt firmanızda aynı adları ad sunucusu olarak girin."><x-slot:n><span class="font-mono">{{ collect($example)->map(fn ($n) => rtrim($n, '.'))->join(', ') }}</span></x-slot:n></x-t>
                             </p>
                         @enderror
                         <label class="mt-2 flex items-center gap-2 text-[13px]">

@@ -55,7 +55,7 @@ class AuthenticateAppAccess
             if ($feature !== null && ! $user->mayUseOnApp($app, $feature)) {
                 return AuthenticateApiKey::refuse(403, __('Paket bu özelliği içermiyor.'));
             }
-            if (($limited = AuthenticateApiKey::limit('servik-api:'.$key->id)) !== null) {
+            if (($limited = AuthenticateApiKey::limit('serfex-api:'.$key->id)) !== null) {
                 return $limited;
             }
             if ($key->last_used_at === null || $key->last_used_at->lt(now()->subMinute()) || $key->last_used_ip !== $request->ip()) {
@@ -79,7 +79,7 @@ class AuthenticateAppAccess
             if ($feature !== null && ! $this->appHas($app, $feature)) {
                 return AuthenticateApiKey::refuse(403, __('Paket bu özelliği içermiyor.'));
             }
-            if (($limited = AuthenticateApiKey::limit('servik-app-token:'.$token->id)) !== null) {
+            if (($limited = AuthenticateApiKey::limit('serfex-app-token:'.$token->id)) !== null) {
                 return $limited;
             }
             $token->forceFill([

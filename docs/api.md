@@ -1,6 +1,6 @@
 # API reference
 
-The panel's REST API lives under `https://<panel>:8443/api/v1`. The `servik`
+The panel's REST API lives under `https://<panel>:8443/api/v1`. The `serfex`
 command line uses it, and so can your billing system, scripts or monitoring.
 
 ## Authentication
@@ -8,16 +8,16 @@ command line uses it, and so can your billing system, scripts or monitoring.
 Send a key as a bearer token:
 
 ```sh
-curl -H "Authorization: Bearer svk_panel_..." https://panel.example.com:8443/api/v1/sites
+curl -H "Authorization: Bearer sfx_panel_..." https://panel.example.com:8443/api/v1/sites
 ```
 
 There are three kinds of keys:
 
 | Key | Made under | Acts as |
 |-----|------------|---------|
-| **Panel API key** (`svk_panel_…`) | Settings → API keys (full administrators) | The full administrator who made it. *Read* keys may only `GET`; *write* keys may change things. Optional address allowlist and expiry (one year by default). |
-| **Command line key** (`svk_panel_…`) | `servik login`, approved in the browser; listed under Account security | Its person, within their role: a customer reaches only their own hosting, a read-only administrator changes nothing. Valid 365 days. |
-| **Application token** (`svk_…`) | Laravel → the application → Access & API | One Laravel application only. *Deploy* tokens deploy and manage previews; *Developer* tokens also use `.env`, commands, queues, maintenance and logs. |
+| **Panel API key** (`sfx_panel_…`) | Settings → API keys (full administrators) | The full administrator who made it. *Read* keys may only `GET`; *write* keys may change things. Optional address allowlist and expiry (one year by default). |
+| **Command line key** (`sfx_panel_…`) | `serfex login`, approved in the browser; listed under Account security | Its person, within their role: a customer reaches only their own hosting, a read-only administrator changes nothing. Valid 365 days. |
+| **Application token** (`sfx_…`) | Laravel → the application → Access & API | One Laravel application only. *Deploy* tokens deploy and manage previews; *Developer* tokens also use `.env`, commands, queues, maintenance and logs. |
 
 Only a hash of each key is stored; a key is shown once when it is made.
 
@@ -58,7 +58,7 @@ GET /api/v1/sites/example.com
 | | |
 |-|-|
 | `GET /me` | The key's person, role, customer, application and the server's version |
-| `DELETE /me` | Revokes the command line key making the request (`servik logout`) |
+| `DELETE /me` | Revokes the command line key making the request (`serfex logout`) |
 
 ## Laravel applications
 
@@ -86,7 +86,7 @@ application. `{domain}` is the application's site.
 | `POST /apps/{domain}/queues/restart` | | operate |
 | `POST /apps/{domain}/queues/retry` | `id` (empty: all) | operate |
 | `GET /apps/{domain}/maintenance` | | view |
-| `POST /apps/{domain}/maintenance` | `down`, `mode` (`servik`, `custom`, `app`), `allow` [addresses], `secret`, `retry`, `html` | operate |
+| `POST /apps/{domain}/maintenance` | `down`, `mode` (`serfex`, `custom`, `app`), `allow` [addresses], `secret`, `retry`, `html` | operate |
 | `GET /apps/{domain}/logs` | `?level=&search=&file=&limit=` | view |
 
 *view* is any token or member of the application; *deploy* a deploy token or
@@ -95,7 +95,7 @@ a developer; *operate* a developer token or a developer.
 Deploying from CI:
 
 ```sh
-curl -X POST -H "Authorization: Bearer $SERVIK_TOKEN" -H "Content-Type: application/json" \
+curl -X POST -H "Authorization: Bearer $SERFEX_TOKEN" -H "Content-Type: application/json" \
   -d "{\"ref\": \"$GITHUB_SHA\"}" https://panel.example.com:8443/api/v1/apps/api.example.com/deploy
 ```
 
@@ -192,4 +192,4 @@ plan. DNS, mail and backups need the plan's feature.
 ## Command line sign-in
 
 `POST /cli/login` and `POST /cli/login/token` are the browser-approved
-sign-in that `servik login` uses; you do not call them yourself.
+sign-in that `serfex login` uses; you do not call them yourself.

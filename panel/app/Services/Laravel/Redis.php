@@ -36,7 +36,7 @@ class Redis
             'user' => $app->site->systemUser->name,
             'port' => $port,
             'password' => $password,
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
         $app->update(['redis_port' => $port, 'redis_password' => $password]);
 
         return self::env($port, $password);
@@ -50,7 +50,7 @@ class Redis
     public function disconnect(LaravelApp $app): void
     {
         $app->loadMissing('site');
-        $this->agent->call('redis.remove', ['domain' => $app->site->domain], config('servik.agent.job_timeout'));
+        $this->agent->call('redis.remove', ['domain' => $app->site->domain], config('serfex.agent.job_timeout'));
         $app->update(['redis_port' => null, 'redis_password' => null]);
     }
 

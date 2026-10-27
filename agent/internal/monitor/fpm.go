@@ -14,7 +14,7 @@ import (
 )
 
 // StatusPath is the pool's pm.status_path (see package site).
-const StatusPath = "/servik-fpm-status"
+const StatusPath = "/serfex-fpm-status"
 
 // FastCGI record types (FastCGI 1.0 specification).
 const (

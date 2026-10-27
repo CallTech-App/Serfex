@@ -14,7 +14,7 @@
             <span class="text-fg">{{ __('Veritabanı sunucuları') }}</span>
         </nav>
         <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Veritabanı sunucuları') }}</h1>
-        <p class="mt-1 text-[13px] text-muted">{{ __('Müşteri veritabanlarının çalıştığı sunucular ve tarayıcıdan yönetim. Servik\'in kendi veritabanı bunlardan ayrıdır.') }}</p>
+        <p class="mt-1 text-[13px] text-muted">{{ __('Müşteri veritabanlarının çalıştığı sunucular ve tarayıcıdan yönetim. Serfex\'in kendi veritabanı bunlardan ayrıdır.') }}</p>
     </div>
 
     @include('livewire.databases.server-state')
@@ -64,7 +64,7 @@
                         <p>
                             @if ($manager['configured'] ?? false)
                                 {{ collect(['phpMyAdmin' => $manager['phpmyadmin'] ?? false, 'Adminer' => $manager['adminer'] ?? false])->filter()->keys()->join(', ') ?: '—' }}
-                                <span class="text-muted">{{ __('· Servik\'in kendi web sunucusunda, müşteri sitelerinden ayrı') }}</span>
+                                <span class="text-muted">{{ __('· Serfex\'in kendi web sunucusunda, müşteri sitelerinden ayrı') }}</span>
                             @else
                                 <span class="text-muted">{{ __('Henüz kurulmadı.') }}</span>
                             @endif

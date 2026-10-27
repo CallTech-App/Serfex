@@ -29,7 +29,7 @@ class DeleteCertificate implements ShouldQueue
             return;
         }
         try {
-            $agent->call('ssl.delete', ['name' => $certificate->name], config('servik.agent.job_timeout'));
+            $agent->call('ssl.delete', ['name' => $certificate->name], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             if ($e->getCode() === AgentException::INVALID_PARAMS) {
                 // Still used by a vhost on the server; leave it.

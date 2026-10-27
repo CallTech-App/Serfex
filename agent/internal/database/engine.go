@@ -61,7 +61,7 @@ type UserInfo struct {
 }
 
 // isCustomerName tells customer databases and users from the servers'
-// own and Servik's temporary ones.
+// own and Serfex's temporary ones.
 func isCustomerName(n string) bool {
 	return nameRe.MatchString(n) && !slices.Contains(reserved, n) && !hasPrefixAny(n, "pg_", "mysql")
 }

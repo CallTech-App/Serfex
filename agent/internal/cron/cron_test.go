@@ -17,7 +17,7 @@ import (
 const (
 	domain = "kahve-shop.com"
 	user   = "kahve"
-	exe    = "/opt/servik/current/bin/servik-agent"
+	exe    = "/opt/serfex/current/bin/serfex-agent"
 )
 
 func newServer(t *testing.T) (*Manager, *host.Simulator) {
@@ -85,20 +85,20 @@ func TestApplyWritesStateCrontabAndPHP(t *testing.T) {
 	if res != (Applied{Tasks: 3, Enabled: 2}) {
 		t.Fatalf("result %+v", res)
 	}
-	if CronFile(domain) != "/etc/cron.d/servik-kahve-shop_com" {
+	if CronFile(domain) != "/etc/cron.d/serfex-kahve-shop_com" {
 		t.Fatal(CronFile(domain))
 	}
 	crontab, err := os.ReadFile(sim.Path(CronFile(domain)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `# Managed by Servik. Manual changes are overwritten.
-# Scheduled tasks of kahve-shop.com: each runs as kahve through servik-agent cron-exec.
+	want := `# Managed by Serfex. Manual changes are overwritten.
+# Scheduled tasks of kahve-shop.com: each runs as kahve through serfex-agent cron-exec.
 SHELL=/bin/sh
 MAILTO=""
 
-*/5 * * * * kahve /opt/servik/current/bin/servik-agent cron-exec kahve-shop.com 3
-30 3 * * mon-fri kahve /opt/servik/current/bin/servik-agent cron-exec kahve-shop.com 7
+*/5 * * * * kahve /opt/serfex/current/bin/serfex-agent cron-exec kahve-shop.com 3
+30 3 * * mon-fri kahve /opt/serfex/current/bin/serfex-agent cron-exec kahve-shop.com 7
 `
 	if string(crontab) != want {
 		t.Fatalf("crontab:\n%s\nwant:\n%s", crontab, want)
@@ -200,24 +200,24 @@ func TestRemoveAndReconcile(t *testing.T) {
 	}
 
 	// After an update the agent lives elsewhere: Reconcile rewrites the
-	// lines, and removes Servik's crontabs of sites without state.
-	m.Exe = "/opt/servik/releases/0.2.0/bin/servik-agent"
-	orphan := CronDir + "/servik-gone_com"
-	foreign := CronDir + "/servik-handmade"
-	_ = os.WriteFile(sim.Path(orphan), []byte("# Managed by Servik.\n* * * * * gone /x cron-exec gone.com 1\n"), 0o644)
+	// lines, and removes Serfex's crontabs of sites without state.
+	m.Exe = "/opt/serfex/releases/0.2.0/bin/serfex-agent"
+	orphan := CronDir + "/serfex-gone_com"
+	foreign := CronDir + "/serfex-handmade"
+	_ = os.WriteFile(sim.Path(orphan), []byte("# Managed by Serfex.\n* * * * * gone /x cron-exec gone.com 1\n"), 0o644)
 	_ = os.WriteFile(sim.Path(foreign), []byte("* * * * * root true\n"), 0o644)
 	if err := m.Reconcile(ctx); err != nil {
 		t.Fatal(err)
 	}
 	crontab, _ := os.ReadFile(sim.Path(CronFile(domain)))
-	if !strings.Contains(string(crontab), "kahve /opt/servik/releases/0.2.0/bin/servik-agent cron-exec kahve-shop.com 3\n") {
+	if !strings.Contains(string(crontab), "kahve /opt/serfex/releases/0.2.0/bin/serfex-agent cron-exec kahve-shop.com 3\n") {
 		t.Fatalf("crontab not rewritten:\n%s", crontab)
 	}
 	if _, err := os.Stat(sim.Path(orphan)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("orphan crontab kept")
 	}
 	if _, err := os.Stat(sim.Path(foreign)); err != nil {
-		t.Fatal("a crontab Servik did not write was removed")
+		t.Fatal("a crontab Serfex did not write was removed")
 	}
 
 	// Dropping a task drops its history.

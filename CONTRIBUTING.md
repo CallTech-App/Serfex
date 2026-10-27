@@ -1,6 +1,6 @@
-# Contributing to Servik
+# Contributing to Serfex
 
-Thanks for your interest in Servik. Bug reports, ideas, translations,
+Thanks for your interest in Serfex. Bug reports, ideas, translations,
 documentation and code are all welcome. Please read the
 [code of conduct](CODE_OF_CONDUCT.md) first, and report security problems
 privately as [SECURITY.md](SECURITY.md) describes.
@@ -20,7 +20,7 @@ privately as [SECURITY.md](SECURITY.md) describes.
   agent, exposed as a narrowly scoped JSON-RPC method that validates its
   input. Do not add generic "run this command" methods.
 - **The agent only touches what it owns.** Files it writes start with
-  `Managed by Servik`; it never overwrites or deletes anything without that
+  `Managed by Serfex`; it never overwrites or deletes anything without that
   mark. Work inside a customer's home runs as that customer.
 - **No SQLite for the panel.** The panel uses PostgreSQL, including in tests.
 - **Panel services stay separate from customer services.** Do not reuse the
@@ -34,7 +34,7 @@ privately as [SECURITY.md](SECURITY.md) describes.
 - **UI follows the mockups in [`design/`](design)** and the rules in
   `design/mockup/kaynak/src/GUIDE.md`: one job per page, a list first then a
   detail, colour only for status. Workflows may be inspired by other panels,
-  but names, layouts, icons and wording must be Servik's own.
+  but names, layouts, icons and wording must be Serfex's own.
 
 ## Workflow
 
@@ -51,7 +51,7 @@ Panel:
 ```sh
 cd panel
 vendor/bin/pint --test
-php artisan servik:lang-check --agent=../agent
+php artisan serfex:lang-check --agent=../agent
 php artisan test
 ```
 
@@ -90,7 +90,7 @@ installer or the update path. Run the tests locally before you push.
 ## Text and translations
 
 - Panel text is written in Turkish inside `__()`, and its English goes in
-  `panel/lang/en.json`. `servik:lang-check` fails on missing, unused or
+  `panel/lang/en.json`. `serfex:lang-check` fails on missing, unused or
   untranslated text, and on Turkish written straight into a view.
 - The agent and the command line write messages in Turkish inside `T()`,
   with English in `internal/i18n/catalog.go`; their tests enforce the same
@@ -118,4 +118,4 @@ line. Update the relevant page in the same pull request as the change.
 ## License
 
 By contributing, you agree that your contributions are licensed under the
-[AGPL-3.0](LICENSE), like the rest of Servik.
+[AGPL-3.0](LICENSE), like the rest of Serfex.

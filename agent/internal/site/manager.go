@@ -7,10 +7,10 @@
 //	/home/<user>/tmp/                      PHP temp files and sessions
 //	/home/<user>/web/<domain>/public_html/ document root
 //	/home/<user>/web/<domain>/logs/        PHP error log
-//	/var/log/servik/sites/<domain>/        Nginx logs, root:<user> 0750
+//	/var/log/serfex/sites/<domain>/        Nginx logs, root:<user> 0750
 //	/etc/nginx/sites-available/<domain>.conf (+ sites-enabled symlink)
 //	/etc/php/<version>/fpm/pool.d/<domain>.conf
-//	/run/php/servik-<domain>.sock          PHP-FPM socket
+//	/run/php/serfex-<domain>.sock          PHP-FPM socket
 //
 // Every operation is idempotent and transactional: running it twice gives
 // the same result, and a failure part way restores the previous state.
@@ -34,9 +34,9 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// userComment marks accounts that Servik created. Accounts without it are
+// userComment marks accounts that Serfex created. Accounts without it are
 // never adopted or deleted.
-const userComment = "Servik site user"
+const userComment = "Serfex site user"
 
 // OperationError reports a valid request that failed on the server.
 type OperationError struct{ Err error }
@@ -166,7 +166,7 @@ func layout(domain, user, php, webRoot string) paths {
 		home:         home,
 		siteDir:      site,
 		docroot:      site + "/" + webRoot,
-		logDir:       "/var/log/servik/sites/" + domain,
+		logDir:       "/var/log/serfex/sites/" + domain,
 		socket:       PHPSocket(domain),
 		status:       StatusSocket(domain),
 		nginxAvail:   "/etc/nginx/sites-available/" + domain + ".conf",
@@ -178,10 +178,10 @@ func layout(domain, user, php, webRoot string) paths {
 func fpmPool(php, domain string) string { return "/etc/php/" + php + "/fpm/pool.d/" + domain + ".conf" }
 
 // PHPSocket is where a site's PHP-FPM pool listens.
-func PHPSocket(domain string) string { return "/run/php/servik-" + domain + ".sock" }
+func PHPSocket(domain string) string { return "/run/php/serfex-" + domain + ".sock" }
 
 // StatusSocket is where a site's PHP-FPM pool answers status requests.
-func StatusSocket(domain string) string { return "/run/php/servik-" + domain + ".status.sock" }
+func StatusSocket(domain string) string { return "/run/php/serfex-" + domain + ".status.sock" }
 
 // ExtraDir holds a site's Nginx snippets written by other parts of the
 // agent (package security): WAF mode, protected folders, blocked paths.
@@ -189,10 +189,10 @@ func StatusSocket(domain string) string { return "/run/php/servik-" + domain + "
 func ExtraDir(domain string) string { return ExtraRoot + "/" + domain }
 
 // ExtraRoot holds every site's ExtraDir.
-const ExtraRoot = "/etc/servik/nginx/sites"
+const ExtraRoot = "/etc/serfex/nginx/sites"
 
 // AccessLog is the Nginx access log of a site.
-func AccessLog(domain string) string { return "/var/log/servik/sites/" + domain + "/access.log" }
+func AccessLog(domain string) string { return "/var/log/serfex/sites/" + domain + "/access.log" }
 
 // tempLimit is a site's temporary PHP worker limit, or 0.
 func (m *Manager) tempLimit(domain string) int {
@@ -340,23 +340,23 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	if err := m.writeErrorPages(t, spec); err != nil {
 		return Result{}, err
 	}
-	if err := t.RootDir("/var/log/servik/sites", 0o755, 0, 0); err != nil {
+	if err := t.RootDir("/var/log/serfex/sites", 0o755, 0, 0); err != nil {
 		return Result{}, err
 	}
 	if err := t.RootDir(p.logDir, 0o750, 0, u.GID); err != nil {
 		return Result{}, err
 	}
 	// Every vhost answers Let's Encrypt validation from the shared webroot.
-	for _, d := range []string{"/var/lib/servik", cert.Webroot, cert.Webroot + "/.well-known", cert.ChallengeDir} {
+	for _, d := range []string{"/var/lib/serfex", cert.Webroot, cert.Webroot + "/.well-known", cert.ChallengeDir} {
 		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 			return Result{}, err
 		}
 	}
 	if data.TLS {
-		if err := t.RootDir("/etc/servik", 0o755, 0, 0); err != nil {
+		if err := t.RootDir("/etc/serfex", 0o755, 0, 0); err != nil {
 			return Result{}, err
 		}
-		if err := t.RootDir("/etc/servik/nginx", 0o755, 0, 0); err != nil {
+		if err := t.RootDir("/etc/serfex/nginx", 0o755, 0, 0); err != nil {
 			return Result{}, err
 		}
 		if err := t.WriteFile(cert.TLSConf, tlsConf); err != nil {
@@ -575,7 +575,7 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 
 	if spec.RemoveUser && userExists {
 		if u.Comment != userComment {
-			return res, &OperationError{fmt.Errorf("user %q was not created by Servik; not removing it", u.Name)}
+			return res, &OperationError{fmt.Errorf("user %q was not created by Serfex; not removing it", u.Name)}
 		}
 		left, err := os.ReadDir(m.h.Path(p.home + "/web"))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -601,7 +601,7 @@ func (m *Manager) ensureUser(ctx context.Context, t *txn.Tx, name, home string) 
 	u, err := m.h.LookupUser(name)
 	if err == nil {
 		if u.Comment != userComment || u.UID < 1000 {
-			return host.User{}, false, invalid("user %q already exists and was not created by Servik", name)
+			return host.User{}, false, invalid("user %q already exists and was not created by Serfex", name)
 		}
 		if filepath.Clean(u.Home) != home {
 			return host.User{}, false, invalid("user %q has home %s, expected %s", name, u.Home, home)
@@ -705,7 +705,7 @@ func (m *Manager) tlsData(d *tmplData, spec *TLSSpec) ([]string, error) {
 }
 
 // resolvers returns the upstream name servers from resolv.conf, for OCSP
-// stapling. The local stub listener is skipped: Servik's DNS server may
+// stapling. The local stub listener is skipped: Serfex's DNS server may
 // have turned it off.
 func (m *Manager) resolvers() string {
 	var out []string

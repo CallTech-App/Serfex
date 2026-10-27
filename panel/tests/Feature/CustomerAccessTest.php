@@ -55,8 +55,8 @@ class CustomerAccessTest extends TestCase
             'dns.status' => ['installed' => true, 'running' => true],
             'laravel.status' => ['exists' => true, 'processes' => [], 'info' => ['packages' => []]],
         ]));
-        Setting::put('mail.hostname', 'mail.servik.net.tr');
-        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.servik.net.tr/', 'certificate' => '']);
+        Setting::put('mail.hostname', 'mail.serfex.net.tr');
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.serfex.net.tr/', 'certificate' => '']);
 
         $this->customer = Customer::factory()->withLogin()->create(['company' => 'Kahve Atölyesi', 'username' => 'kahve']);
         $this->mine = Site::factory()->for(app(Customers::class)->account($this->customer))->create(['domain' => 'kahveatolyesi.com.tr']);
@@ -91,7 +91,7 @@ class CustomerAccessTest extends TestCase
             ->assertSee('Profesyonel paketi')
             ->assertSee('Müşteri · Profesyonel')
             ->assertDontSee('Canlı İzleme')
-            ->assertDontSee('Servik AI')
+            ->assertDontSee('Serfex AI')
             ->assertDontSee('Müşteriler ve Paketler')
             ->assertDontSee('Yazılım Yönetimi');
         foreach (['/monitor', '/ai', '/ai/settings', '/musteriler', '/musteriler/'.$this->customer->id, '/dns/settings', '/mail/settings', '/ssl/settings', '/yazilim'] as $url) {

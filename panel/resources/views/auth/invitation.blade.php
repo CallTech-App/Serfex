@@ -3,9 +3,9 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ __('Daveti kabul et · Servik') }}</title>
+        <title>{{ __('Daveti kabul et · Serfex') }}</title>
         <script>
-            try { const t = localStorage.getItem('servik-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+            try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -13,7 +13,7 @@
         <main class="w-full max-w-sm">
             <div class="mb-6 flex items-center justify-center gap-2.5">
                 <x-logo />
-                <span class="text-[19px] font-semibold tracking-tight">servik</span>
+                <span class="text-[19px] font-semibold tracking-tight">serfex</span>
             </div>
 
             <form method="POST" action="{{ url('/davet/'.$token) }}" class="rounded-xl border border-line bg-surface">

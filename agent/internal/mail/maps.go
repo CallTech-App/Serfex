@@ -10,7 +10,7 @@ import (
 
 // maps are the files rebuilt from the stored domains on every change.
 type maps struct {
-	// Postfix lookup tables, by file name under /etc/postfix/servik.
+	// Postfix lookup tables, by file name under /etc/postfix/serfex.
 	postfix map[string][]byte
 	// users is Dovecot's passwd-file.
 	users []byte

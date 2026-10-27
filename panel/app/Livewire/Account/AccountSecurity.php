@@ -18,11 +18,11 @@ use Livewire\Component;
 
 /**
  * Hesap güvenliği: the signed-in account's own language, two-step login,
- * the browsers it is signed in on and the command lines (servik login). Every account has it, administrators,
+ * the browsers it is signed in on and the command lines (serfex login). Every account has it, administrators,
  * customers and Laravel team members alike.
  */
 #[Layout('components.layouts.app')]
-#[Title('Hesap güvenliği · Servik')]
+#[Title('Hesap güvenliği · Serfex')]
 #[ForEveryAccount]
 class AccountSecurity extends Component
 {

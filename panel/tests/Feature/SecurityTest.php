@@ -98,7 +98,7 @@ class SecurityTest extends TestCase
     {
         $this->get('/guvenlik')->assertOk()
             ->assertSee('Güvenlik duvarı')
-            ->assertSee('Servik paneli')
+            ->assertSee('Serfex paneli')
             ->assertSee('6379');
 
         Livewire::test(SecurityIndex::class)
@@ -537,9 +537,9 @@ class SecurityTest extends TestCase
         $this->get('/sites/'.$mine->id)->assertOk()->assertSee('Paketinizde yok');
     }
 
-    // --- Servik AI ---
+    // --- Serfex AI ---
 
-    public function test_servik_ai_reads_findings_and_waf_events(): void
+    public function test_serfex_ai_reads_findings_and_waf_events(): void
     {
         $this->finding();
         $conversation = AiConversation::create(['user_id' => $this->admin->id, 'title' => 'Güvenlik']);

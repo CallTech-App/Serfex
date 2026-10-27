@@ -792,7 +792,7 @@ func registerUpdates(srv *rpc.Server, svc services) {
 	}) (any, error) {
 		return u.ReadRun(q.Run, q.Offset)
 	})
-	// Installing packages for servik-php outlives a request that gives up.
+	// Installing packages for serfex-php outlives a request that gives up.
 	handle(srv, "panel.setup", func(ctx context.Context, _ struct{}) (any, error) {
 		return u.Setup(context.WithoutCancel(ctx))
 	})
@@ -913,7 +913,7 @@ func registerSettings(srv *rpc.Server, svc services) {
 	handle(srv, "system.timezones", func(context.Context, struct{}) (any, error) { return s.Timezones() })
 
 	handle(srv, "panel.web.status", func(context.Context, struct{}) (any, error) { return db.WebPortsStatus() })
-	// Reconfiguring servik-web (maybe installing packages) outlives a
+	// Reconfiguring serfex-web (maybe installing packages) outlives a
 	// panel request that gives up.
 	handle(srv, "panel.web.ports", func(ctx context.Context, p database.WebPortsSpec) (any, error) {
 		return db.SetWebPorts(context.WithoutCancel(ctx), p)

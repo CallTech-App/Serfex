@@ -5,7 +5,7 @@
     $field = 'h-9 rounded-md border border-line bg-surface px-3 text-[13px] outline-none focus:border-accent';
 @endphp
 <x-settings-page current="settings.audit" :title="__('İşlem günlüğü')">
-    <x-slot:description><x-t text="Panelden, API'den ve Servik AI'dan yapılan her işlem: kim, ne zaman, ne yaptı. Son :undo_minutes dakikadaki işlemler buradan da geri alınabilir. Servik AI'ın okuduğu ve önerdiği her şey :link." :with="['undo_minutes' => \App\Models\AuditEntry::UNDO_MINUTES]"><x-slot:link><a href="{{ route('ai.audit') }}" wire:navigate class="text-accent hover:underline">{{ __('AI kaydında') }}</a></x-slot:link></x-t></x-slot:description>
+    <x-slot:description><x-t text="Panelden, API'den ve Serfex AI'dan yapılan her işlem: kim, ne zaman, ne yaptı. Son :undo_minutes dakikadaki işlemler buradan da geri alınabilir. Serfex AI'ın okuduğu ve önerdiği her şey :link." :with="['undo_minutes' => \App\Models\AuditEntry::UNDO_MINUTES]"><x-slot:link><a href="{{ route('ai.audit') }}" wire:navigate class="text-accent hover:underline">{{ __('AI kaydında') }}</a></x-slot:link></x-t></x-slot:description>
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
@@ -20,7 +20,7 @@
                 @endforeach
                 <option value="customers">{{ __('Müşteriler') }}</option>
                 <option value="api">{{ __('API anahtarları') }}</option>
-                <option value="ai">Servik AI</option>
+                <option value="ai">Serfex AI</option>
             </select>
         </div>
         <div class="overflow-x-auto">

@@ -60,7 +60,7 @@ class DeployLaravelApp implements ShouldQueue
         }
 
         try {
-            $result = $agent->call('laravel.deploy', $this->spec($app, $deployment, $first), config('servik.agent.deploy_timeout'));
+            $result = $agent->call('laravel.deploy', $this->spec($app, $deployment, $first), config('serfex.agent.deploy_timeout'));
         } catch (AgentException $e) {
             $this->fail($app, $deployment, $e->reason ?: $e->getMessage());
 
@@ -121,7 +121,7 @@ class DeployLaravelApp implements ShouldQueue
         $problems = [];
         try {
             $site->update(['web_root' => $app->webRoot()]);
-            $result = $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+            $result = $agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
             $site->update(['document_root' => $result['document_root'] ?? $site->document_root]);
         } catch (AgentException $e) {
             $problems[] = __('Site yeni sürüme yönlendirilemedi: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
@@ -135,7 +135,7 @@ class DeployLaravelApp implements ShouldQueue
         }
         if ($problems === []) {
             try {
-                $health = $agent->call('laravel.health', ['domain' => $site->domain, 'path' => $app->health_path], config('servik.agent.job_timeout'));
+                $health = $agent->call('laravel.health', ['domain' => $site->domain, 'path' => $app->health_path], config('serfex.agent.job_timeout'));
                 if (! ($health['ok'] ?? false)) {
                     $problems[] = __('Sağlık kontrolü başarısız: :reason', ['reason' => ($health['status'] ?? 0) ? 'HTTP '.$health['status'] : ($health['error'] ?? __('yanıt yok'))]);
                 }

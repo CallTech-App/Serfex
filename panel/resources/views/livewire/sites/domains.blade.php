@@ -207,7 +207,7 @@
     @if ($certificateBehind)
         <div class="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface px-5 py-3 text-[13px]">
             <x-icon name="shield-check" class="text-muted" />
-            <span class="min-w-0 flex-1 basis-64 text-muted">{{ __('Sitenin sertifikası bazı adları henüz kapsamıyor. Servik, DNS\'leri bu sunucuya işaret edince her saat yeniden dener.') }}</span>
+            <span class="min-w-0 flex-1 basis-64 text-muted">{{ __('Sitenin sertifikası bazı adları henüz kapsamıyor. Serfex, DNS\'leri bu sunucuya işaret edince her saat yeniden dener.') }}</span>
             <button type="button" wire:click="updateCertificate" class="{{ $btn }}"><x-icon name="refresh-cw" class="size-3.5" />{{ __('Sertifikayı şimdi güncelle') }}</button>
         </div>
     @endif

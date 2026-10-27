@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\IpUtils;
  * once, revocable with undo.
  */
 #[Layout('components.layouts.app')]
-#[Title('API anahtarları · Servik')]
+#[Title('API anahtarları · Serfex')]
 class ApiKeyIndex extends Component
 {
     /** Expiry choices: days => label ("" for never). */

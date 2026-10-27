@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Araçlar ve Ayarlar (panel settings, administrators, API keys,
- * notifications, the log and updates) and Servik AI's settings are for
+ * notifications, the log and updates) and Serfex AI's settings are for
  * full administrators only.
  */
 class EnsureFullAdmin

@@ -10,7 +10,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Throwable;
 
 /**
- * Lets Servik AI answer the newest question of a conversation.
+ * Lets Serfex AI answer the newest question of a conversation.
  */
 class RunAssistantTurn implements ShouldQueue
 {

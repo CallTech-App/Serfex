@@ -26,8 +26,8 @@ func spawnUpdate(h host.Host, socket string) func(context.Context, string) error
 			return err
 		}
 		_, err = h.Run(ctx, host.Command{Name: "systemd-run", Args: []string{
-			"--unit", "servik-update-" + run, "--collect", "--quiet",
-			"--description", "Servik update " + run,
+			"--unit", "serfex-update-" + run, "--collect", "--quiet",
+			"--description", "Serfex update " + run,
 			"--property", "TimeoutStopSec=30min",
 			exe, "-socket", socket, "-update-run", run,
 		}})
@@ -81,11 +81,11 @@ func waitForAgent(ctx context.Context, socket, want string, limit time.Duration)
 	return fmt.Errorf("no answer from the agent as %s within %s: %w", want, limit, last)
 }
 
-// call is "servik-agent call METHOD [JSON]": one request to the running
+// call is "serfex-agent call METHOD [JSON]": one request to the running
 // agent, the result printed as JSON (install.sh and administrators).
 func call(socket string, args []string) int {
 	if len(args) == 0 || len(args) > 2 {
-		fmt.Fprintln(os.Stderr, "usage: servik-agent [-socket S] call METHOD [JSON]")
+		fmt.Fprintln(os.Stderr, "usage: serfex-agent [-socket S] call METHOD [JSON]")
 		return 2
 	}
 	var params any = struct{}{}

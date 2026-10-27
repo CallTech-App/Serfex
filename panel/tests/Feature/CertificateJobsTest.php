@@ -265,7 +265,7 @@ class CertificateJobsTest extends TestCase
 
         Queue::fake();
         $this->travel(10)->minutes();
-        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        $this->artisan('serfex:ssl-renew')->assertSuccessful();
         Queue::assertPushed(IssueCertificate::class, 1);
         Queue::assertPushed(IssueCertificate::class, fn ($job) => $job->certificate->is($certificate));
     }
@@ -286,7 +286,7 @@ class CertificateJobsTest extends TestCase
 
         Queue::fake();
         $this->travel(10)->minutes();
-        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        $this->artisan('serfex:ssl-renew')->assertSuccessful();
         Queue::assertPushed(IssuePanelCertificate::class, fn ($job) => $job->certificate->is($certificate));
     }
 
@@ -301,7 +301,7 @@ class CertificateJobsTest extends TestCase
         $justTried = Certificate::factory()->create(['status' => CertificateStatus::WaitingDns, 'not_after' => null, 'attempted_at' => now()->subMinutes(10)]);
         $panel = Certificate::factory()->expiring(10)->create(['kind' => 'panel', 'name' => 'panel', 'site_id' => null]);
 
-        $this->artisan('servik:ssl-renew')->assertSuccessful();
+        $this->artisan('serfex:ssl-renew')->assertSuccessful();
 
         Queue::assertPushed(IssueCertificate::class, 2);
         Queue::assertPushed(IssueCertificate::class, fn ($job) => $job->certificate->is($due) && $job->auto);

@@ -117,7 +117,7 @@
                                     <p class="text-muted">{{ __('Aramanızla eşleşen site yok.') }}</p>
                                 @else
                                     <p class="font-medium">{{ __('Henüz site yok') }}</p>
-                                    <p class="mt-1 text-[13px] text-muted">{{ __('Site eklediğinizde Servik, alan adı bu sunucuyu gösteriyorsa Let\'s Encrypt sertifikasını otomatik alır.') }}</p>
+                                    <p class="mt-1 text-[13px] text-muted">{{ __('Site eklediğinizde Serfex, alan adı bu sunucuyu gösteriyorsa Let\'s Encrypt sertifikasını otomatik alır.') }}</p>
                                 @endif
                             </td>
                         </tr>

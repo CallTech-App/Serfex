@@ -59,7 +59,7 @@ class LanguagesTest extends TestCase
     {
         parent::setUp();
         Queue::fake();
-        config(['servik.disk_paths' => []]);
+        config(['serfex.disk_paths' => []]);
         $this->agent = new FakeAgent([
             'php.versions' => ['8.3', '8.4'],
             'system.addresses' => ['ipv4' => ['203.0.113.10'], 'ipv6' => []],
@@ -133,7 +133,7 @@ class LanguagesTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
         $this->assertSame('en', Setting::get('panel.locale'));
-        $this->assertSame('en', config('servik.locale'));
+        $this->assertSame('en', config('serfex.locale'));
 
         $page->call('undoSave', ['hostname' => null, 'timezone' => 'UTC', 'locale' => 'tr', 'session' => 120]);
         $this->assertSame('tr', Setting::get('panel.locale'));
@@ -173,7 +173,7 @@ class LanguagesTest extends TestCase
 
     public function test_dates_numbers_and_sizes_follow_the_language(): void
     {
-        config(['servik.timezone' => 'Europe/Istanbul']);
+        config(['serfex.timezone' => 'Europe/Istanbul']);
         $at = Carbon::parse('2026-10-20 11:05:00', 'UTC');
 
         Locales::apply('tr');
@@ -215,8 +215,8 @@ class LanguagesTest extends TestCase
         User::factory()->create(['role' => 'full', 'email' => 'ayse@example.com', 'locale' => 'tr']);
         User::factory()->create(['role' => 'full', 'email' => 'sam@example.com', 'locale' => 'en']);
         $notifications = app(Notifications::class);
-        $notifications->save(['emails' => ['ayse@example.com', 'sam@example.com'], 'webhook_url' => 'https://hooks.example.com/servik', 'webhook_locale' => 'en']);
-        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.example.com', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Servik']);
+        $notifications->save(['emails' => ['ayse@example.com', 'sam@example.com'], 'webhook_url' => 'https://hooks.example.com/serfex', 'webhook_locale' => 'en']);
+        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.example.com', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Serfex']);
         Certificate::factory()->create(['site_id' => null, 'kind' => 'panel', 'name' => 'panel', 'not_after' => now()->addDays(3), 'renew_error' => 'DNS']);
 
         $this->assertSame(['opened' => 1, 'resolved' => 0], $notifications->check());
@@ -229,7 +229,7 @@ class LanguagesTest extends TestCase
 
     public function test_the_translations_are_complete(): void
     {
-        $this->artisan('servik:lang-check', ['--agent' => base_path('../agent')])->assertSuccessful();
+        $this->artisan('serfex:lang-check', ['--agent' => base_path('../agent')])->assertSuccessful();
     }
 
     public function test_english_admin_pages_have_no_turkish_left(): void

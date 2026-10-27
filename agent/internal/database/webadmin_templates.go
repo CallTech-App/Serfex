@@ -4,7 +4,7 @@ import "text/template"
 
 type webData struct {
 	Marker string
-	// Ports are servik-web's ports, the primary first.
+	// Ports are serfex-web's ports, the primary first.
 	Ports              []int
 	IPv6               bool
 	Cert, Key, TLSConf string
@@ -23,12 +23,12 @@ type webData struct {
 }
 
 var webConfTmpl = template.Must(template.New("web").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# servik-web: Servik's own web server. It is separate from the Nginx that
+# serfex-web: Serfex's own web server. It is separate from the Nginx that
 # serves the customers' sites, so their changes and restarts never reach
-# it, and it serves only Servik: the panel and its database tools.
+# it, and it serves only Serfex: the panel and its database tools.
 user {{.WebUser}};
 worker_processes 1;
-pid /run/servik-web.pid;
+pid /run/serfex-web.pid;
 error_log {{.Logs}}/error.log warn;
 
 events {
@@ -120,7 +120,7 @@ http {
 {{- if .PhpMyAdmin}}
 
         # phpMyAdmin for MySQL and MariaDB.
-        location = /phpmyadmin/servik-sso.php {
+        location = /phpmyadmin/serfex-sso.php {
             include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME {{.WWW}}/phpmyadmin-sso.php;
             fastcgi_pass unix:{{.Socket}};
@@ -158,9 +158,9 @@ http {
 `))
 
 var phpConfTmpl = template.Must(template.New("php").Parse(`; {{.Marker}}. Manual changes are overwritten.
-; servik-php: Servik's own PHP-FPM, separate from the customers' pools.
+; serfex-php: Serfex's own PHP-FPM, separate from the customers' pools.
 [global]
-pid = /run/servik-php/php-fpm.pid
+pid = /run/serfex-php/php-fpm.pid
 error_log = {{.Logs}}/php-fpm.log
 daemonize = no
 
@@ -218,17 +218,17 @@ php_admin_value[error_log] = {{.Logs}}/panel-php-errors.log
 
 var webUnitTmpl = template.Must(template.New("webunit").Parse(`# {{.Marker}}. Manual changes are overwritten.
 [Unit]
-Description=Servik web server (panel and database manager)
-After=network-online.target servik-php.service
+Description=Serfex web server (panel and database manager)
+After=network-online.target serfex-php.service
 Wants=network-online.target
 
 [Service]
 Type=forking
-PIDFile=/run/servik-web.pid
-ExecStartPre=/usr/sbin/nginx -t -q -c /etc/servik/web/nginx.conf
-ExecStart=/usr/sbin/nginx -c /etc/servik/web/nginx.conf
-ExecReload=/usr/sbin/nginx -c /etc/servik/web/nginx.conf -s reload
-ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/servik-web.pid
+PIDFile=/run/serfex-web.pid
+ExecStartPre=/usr/sbin/nginx -t -q -c /etc/serfex/web/nginx.conf
+ExecStart=/usr/sbin/nginx -c /etc/serfex/web/nginx.conf
+ExecReload=/usr/sbin/nginx -c /etc/serfex/web/nginx.conf -s reload
+ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/serfex-web.pid
 TimeoutStopSec=5
 KillMode=mixed
 Restart=on-failure
@@ -239,14 +239,14 @@ WantedBy=multi-user.target
 
 var phpUnitTmpl = template.Must(template.New("phpunit").Parse(`# {{.Marker}}. Manual changes are overwritten.
 [Unit]
-Description=Servik PHP-FPM (panel and database manager)
+Description=Serfex PHP-FPM (panel and database manager)
 After=network.target
 
 [Service]
 Type=notify
-ExecStart=/usr/sbin/php-fpm{{.PHP}} --nodaemonize --fpm-config /etc/servik/web/php-fpm.conf
+ExecStart=/usr/sbin/php-fpm{{.PHP}} --nodaemonize --fpm-config /etc/serfex/web/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
-RuntimeDirectory=servik-php
+RuntimeDirectory=serfex-php
 RuntimeDirectoryMode=0755
 Restart=on-failure
 
@@ -255,16 +255,16 @@ WantedBy=multi-user.target
 `))
 
 var pmaConfTmpl = template.Must(template.New("pma").Parse(`<?php // {{.Marker}}. Manual changes are overwritten.
-// phpMyAdmin as Servik serves it: signed in from the panel with a
+// phpMyAdmin as Serfex serves it: signed in from the panel with a
 // temporary user, never with a password form.
 $cfg['blowfish_secret'] = sodium_hex2bin('{{.Secret}}');
 $cfg['Servers'][1]['host'] = '127.0.0.1';
 $cfg['Servers'][1]['connect_type'] = 'tcp';
 $cfg['Servers'][1]['auth_type'] = 'signon';
-$cfg['Servers'][1]['SignonSession'] = 'ServikSignon';
+$cfg['Servers'][1]['SignonSession'] = 'SerfexSignon';
 $cfg['Servers'][1]['SignonCookieParams'] = ['lifetime' => 0, 'path' => '/phpmyadmin/', 'domain' => '', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax'];
-$cfg['Servers'][1]['SignonURL'] = '/phpmyadmin/servik-sso.php';
-$cfg['Servers'][1]['LogoutURL'] = '/phpmyadmin/servik-sso.php?logout=1';
+$cfg['Servers'][1]['SignonURL'] = '/phpmyadmin/serfex-sso.php';
+$cfg['Servers'][1]['LogoutURL'] = '/phpmyadmin/serfex-sso.php?logout=1';
 $cfg['Servers'][1]['AllowRoot'] = false;
 $cfg['Servers'][1]['AllowNoPassword'] = false;
 $cfg['Servers'][1]['controluser'] = '';
@@ -289,10 +289,10 @@ var adminPages = map[string]*template.Template{
 }
 
 var tokenPHP = template.Must(template.New("token").Parse(`<?php // {{.Marker}}. Manual changes are overwritten.
-// One-time sign-in links from the Servik panel. The agent writes a token
+// One-time sign-in links from the Serfex panel. The agent writes a token
 // file with a temporary user; the first visit reads and removes it.
 
-function servik_token($token, $server)
+function serfex_token($token, $server)
 {
     if (!is_string($token) || !preg_match('/^[a-f0-9]{64}$/', $token)) {
         return null;
@@ -307,12 +307,12 @@ function servik_token($token, $server)
     return $data;
 }
 
-function servik_page($title, $text, $status = 403)
+function serfex_page($title, $text, $status = 403)
 {
     http_response_code($status);
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
-    echo '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Servik</title>',
+    echo '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Serfex</title>',
         '<style>body{font-family:system-ui,sans-serif;background:#f6f7f8;color:#1b1f23;display:grid;place-items:center;min-height:100vh;margin:0}',
         'main{max-width:420px;padding:24px;border:1px solid #dde1e4;border-radius:12px;background:#fff}h1{font-size:17px;margin:0 0 8px}p{font-size:14px;color:#5b6570;margin:0}',
         '@media (prefers-color-scheme:dark){body{background:#111417;color:#e6e9ec}main{background:#181c20;border-color:#2a3036}p{color:#9aa4ad}}</style></head>',
@@ -326,19 +326,19 @@ var pmaSSOPHP = template.Must(template.New("pmasso").Parse(`<?php // {{.Marker}}
 // link from the panel.
 require __DIR__ . '/token.php';
 
-session_name('ServikSignon');
+session_name('SerfexSignon');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/phpmyadmin/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
 
 if (isset($_GET['logout'])) {
     session_start();
     $_SESSION = [];
     session_destroy();
-    servik_page('Oturum kapatıldı', 'phpMyAdmin oturumunuz kapandı. Yeniden açmak için Servik panelinde Veritabanları sayfasını kullanın.', 200);
+    serfex_page('Oturum kapatıldı', 'phpMyAdmin oturumunuz kapandı. Yeniden açmak için Serfex panelinde Veritabanları sayfasını kullanın.', 200);
 }
 
-$data = servik_token($_GET['token'] ?? null, 'mysql');
+$data = serfex_token($_GET['token'] ?? null, 'mysql');
 if ($data === null) {
-    servik_page('Oturum geçersiz', 'Bu bağlantı kullanılmış ya da süresi dolmuş. Servik panelinde Veritabanları sayfasından phpMyAdmin\'i yeniden açın.');
+    serfex_page('Oturum geçersiz', 'Bu bağlantı kullanılmış ya da süresi dolmuş. Serfex panelinde Veritabanları sayfasından phpMyAdmin\'i yeniden açın.');
 }
 
 session_start();
@@ -358,14 +358,14 @@ require __DIR__ . '/token.php';
 
 foreach (['server', 'sqlite', 'sqlite2', 'oracle', 'mssql', 'mongo', 'elastic', 'firebird', 'simpledb', 'clickhouse'] as $driver) {
     if (isset($_GET[$driver])) {
-        servik_page('Desteklenmiyor', 'Bu yönetici yalnızca bu sunucudaki PostgreSQL veritabanlarını açar.');
+        serfex_page('Desteklenmiyor', 'Bu yönetici yalnızca bu sunucudaki PostgreSQL veritabanlarını açar.');
     }
 }
 
-if (isset($_GET['servik_token'])) {
-    $data = servik_token($_GET['servik_token'], 'postgresql');
+if (isset($_GET['serfex_token'])) {
+    $data = serfex_token($_GET['serfex_token'], 'postgresql');
     if ($data === null) {
-        servik_page('Oturum geçersiz', 'Bu bağlantı kullanılmış ya da süresi dolmuş. Servik panelinde Veritabanları sayfasından Adminer\'ı yeniden açın.');
+        serfex_page('Oturum geçersiz', 'Bu bağlantı kullanılmış ya da süresi dolmuş. Serfex panelinde Veritabanları sayfasından Adminer\'ı yeniden açın.');
     }
     // Adminer redirects to the page it was asked for; the used token
     // must not come along.
@@ -381,16 +381,16 @@ if (isset($_GET['servik_token'])) {
         'permanent' => '',
     ]];
 } elseif (!isset($_GET['pgsql']) && !isset($_GET['file'])) {
-    servik_page('Oturum yok', 'Adminer\'ı Servik panelinde Veritabanları sayfasından açın.');
+    serfex_page('Oturum yok', 'Adminer\'ı Serfex panelinde Veritabanları sayfasından açın.');
 }
 
 function adminer_object()
 {
-    class ServikAdminer extends Adminer
+    class SerfexAdminer extends Adminer
     {
         public function name()
         {
-            return 'Servik';
+            return 'Serfex';
         }
 
         public function credentials()
@@ -405,11 +405,11 @@ function adminer_object()
 
         public function loginForm()
         {
-            echo '<p>Oturumun süresi doldu. Adminer\'ı Servik panelinde Veritabanları sayfasından yeniden açın.</p>';
+            echo '<p>Oturumun süresi doldu. Adminer\'ı Serfex panelinde Veritabanları sayfasından yeniden açın.</p>';
         }
     }
 
-    return new ServikAdminer();
+    return new SerfexAdminer();
 }
 
 include '/usr/share/adminer/adminer.php';

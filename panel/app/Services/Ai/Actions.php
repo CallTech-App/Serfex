@@ -30,7 +30,7 @@ use App\Support\DnsRecords;
 use Illuminate\Support\Str;
 
 /**
- * What Servik AI may change. IP blocks of at most a day and temporary
+ * What Serfex AI may change. IP blocks of at most a day and temporary
  * limits of at most two hours it applies by itself (when the settings
  * allow it); everything else becomes a proposal that a person applies with
  * one click. Every change goes through the panel's own services, and
@@ -183,7 +183,7 @@ class Actions
         $record->update(['status' => 'applied', 'decided_at' => now()]);
         AiEvent::record('auto', $title, $conversation, tool: $tool, data: $params);
         AuditLog::record(__(':title (onaysız, kendi sınırları içinde)', ['title' => $title]), $conversation->user, 'ai', [
-            'actor' => 'Servik AI', 'section' => 'Servik AI', 'url' => route('ai.audit', [], false),
+            'actor' => 'Serfex AI', 'section' => 'Serfex AI', 'url' => route('ai.audit', [], false),
         ]);
 
         return ["Done without approval: \"{$title}\". The administrator sees it with an Undo button.", false];
@@ -200,7 +200,7 @@ class Actions
             throw new MonitorException(__('Bu öneri zaten karara bağlandı.'));
         }
         if ($action->created_at->lt(now()->subHours(self::PROPOSAL_HOURS))) {
-            throw new MonitorException(__('Bu önerinin süresi doldu; durum değişmiş olabilir. Servik AI\'ya yeniden sorun.'));
+            throw new MonitorException(__('Bu önerinin süresi doldu; durum değişmiş olabilir. Serfex AI\'ya yeniden sorun.'));
         }
         $conversation = $action->conversation;
         try {
@@ -525,7 +525,7 @@ class Actions
     }
 
     /**
-     * True when Servik AI may apply the change by itself.
+     * True when Serfex AI may apply the change by itself.
      *
      * @param  array<string, mixed>  $p
      */
@@ -551,7 +551,7 @@ class Actions
     {
         $p = $action->params;
         $source = $user === null ? 'ai' : 'panel';
-        $reason = Str::limit('Servik AI: '.($action->reason ?? $action->title), 200, '…');
+        $reason = Str::limit('Serfex AI: '.($action->reason ?? $action->title), 200, '…');
         $undo = null;
 
         switch ($action->action) {
@@ -624,7 +624,7 @@ class Actions
             case 'laravel_deploy':
                 $app = $this->app($p['domain']);
                 $live = $app->deployments()->where('release', $app->current_release)->whereNotNull('release')->latest('number')->first();
-                $deployment = $this->apps->deploy($app, $p['ref'], $user, triggeredBy: $user?->name ? __(':name (Servik AI önerisi)', ['name' => $user->name]) : 'Servik AI');
+                $deployment = $this->apps->deploy($app, $p['ref'], $user, triggeredBy: $user?->name ? __(':name (Serfex AI önerisi)', ['name' => $user->name]) : 'Serfex AI');
                 $undo = ['app' => $app->id, 'deployment' => $deployment->id, 'previous' => $live?->id];
                 break;
 
@@ -638,7 +638,7 @@ class Actions
 
             case 'laravel_restart_workers':
                 $app = $this->app($p['domain']);
-                $this->agent->call('laravel.queue.restart', $app->target(), config('servik.agent.job_timeout'));
+                $this->agent->call('laravel.queue.restart', $app->target(), config('serfex.agent.job_timeout'));
                 break;
 
             case 'laravel_scale_worker':

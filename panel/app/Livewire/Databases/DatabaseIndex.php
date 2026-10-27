@@ -23,7 +23,7 @@ use Livewire\WithPagination;
  * their users, on two tabs. A site's page links here filtered to it.
  */
 #[Layout('components.layouts.app')]
-#[Title('Veritabanları · Servik')]
+#[Title('Veritabanları · Serfex')]
 #[ForCustomers(except: ['setupServer'])]
 class DatabaseIndex extends Component
 {

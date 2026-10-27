@@ -6,7 +6,7 @@
 // mail and SSH logs, and the process lists of the customers' database
 // servers. Processes are attributed to sites by their PHP-FPM pool, their
 // systemd unit (Laravel workers and processes) or their account; the rest
-// are system services, Servik's own kept apart from the shared ones.
+// are system services, Serfex's own kept apart from the shared ones.
 //
 // The last ten minutes stay in memory; the panel reads averages over a
 // window it chooses (monitor.live) and keeps its own per-minute history.
@@ -220,18 +220,18 @@ func attribute(p proc, byDomain map[string]*siteInfo, byUID map[int]string) owne
 // unitSite returns the site of a Laravel worker, scheduler or process unit,
 // or of a limit scope.
 func unitSite(unit string) string {
-	for _, prefix := range []string{"servik-queue-", "servik-proc-"} {
+	for _, prefix := range []string{"serfex-queue-", "serfex-proc-"} {
 		if rest, ok := strings.CutPrefix(unit, prefix); ok {
 			d, _, _ := strings.Cut(rest, "_")
 			return d
 		}
 	}
-	for _, prefix := range []string{"servik-schedule-", "servik-redis-"} {
+	for _, prefix := range []string{"serfex-schedule-", "serfex-redis-"} {
 		if rest, ok := strings.CutPrefix(unit, prefix); ok {
 			return strings.TrimSuffix(rest, ".service")
 		}
 	}
-	if rest, ok := strings.CutPrefix(unit, "servik-limit-"); ok {
+	if rest, ok := strings.CutPrefix(unit, "serfex-limit-"); ok {
 		return unescape(strings.TrimSuffix(rest, ".scope"))
 	}
 	return ""
@@ -731,23 +731,23 @@ func round(v float64, digits int) float64 {
 	return float64(int64(v*p+0.5)) / p
 }
 
-// describeUnit names a system service and puts it in a group: "servik"
+// describeUnit names a system service and puts it in a group: "serfex"
 // (the panel's own services), "shared" (services every site uses) or
 // "system" (the operating system).
 func describeUnit(unit string) (string, string) {
 	base := strings.TrimSuffix(strings.TrimSuffix(unit, ".service"), ".scope")
 	switch {
-	case base == "servik-agent":
-		return "Servik agent", "servik"
-	case strings.HasPrefix(base, "servik-web") && base != "servik-webmail":
-		return "Servik paneli (web)", "servik"
-	case strings.HasPrefix(base, "servik-"):
-		return base, "servik"
+	case base == "serfex-agent":
+		return "Serfex agent", "serfex"
+	case strings.HasPrefix(base, "serfex-web") && base != "serfex-webmail":
+		return "Serfex paneli (web)", "serfex"
+	case strings.HasPrefix(base, "serfex-"):
+		return base, "serfex"
 	case strings.HasPrefix(base, "postgresql@") && strings.HasSuffix(base, "-main"):
 		// The "main" cluster holds customers' databases (Veritabanları).
 		return "PostgreSQL", "shared"
 	case strings.HasPrefix(base, "postgresql"):
-		return "PostgreSQL (panel veritabanı)", "servik"
+		return "PostgreSQL (panel veritabanı)", "serfex"
 	case base == "nginx":
 		return "Nginx", "shared"
 	case strings.HasPrefix(base, "php") && strings.HasSuffix(base, "-fpm"):
@@ -760,7 +760,7 @@ func describeUnit(unit string) (string, string) {
 		return "Dovecot", "shared"
 	case base == "rspamd":
 		return "Rspamd", "shared"
-	case base == "redis-server@servik-mail":
+	case base == "redis-server@serfex-mail":
 		return "Redis (posta)", "shared"
 	case base == "mysql":
 		return "MySQL", "shared"

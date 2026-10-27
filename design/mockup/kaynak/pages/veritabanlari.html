@@ -204,7 +204,7 @@
   // Pencereler
   const open = id => { document.getElementById(id).hidden = false; };
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.fixed').hidden = true);
-  document.querySelectorAll('.gen').forEach(b => b.onclick = () => { document.getElementById(b.dataset.for).value = Math.random().toString(36).slice(2, 8) + '-Servik-' + Math.floor(Math.random() * 90 + 10); });
+  document.querySelectorAll('.gen').forEach(b => b.onclick = () => { document.getElementById(b.dataset.for).value = Math.random().toString(36).slice(2, 8) + '-Serfex-' + Math.floor(Math.random() * 90 + 10); });
   const d0 = document.getElementById('d0');
   d0.onchange = () => document.querySelectorAll('.pfx').forEach(p => p.textContent = d0.value + '_');
   document.getElementById('newDb').onclick = () => { open('dbModal'); document.getElementById('d1').focus(); };

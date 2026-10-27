@@ -38,7 +38,7 @@ class ZoneIndexTest extends TestCase
     {
         $agent = Mockery::mock(AgentClient::class);
         if ($status === null) {
-            $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/servik-agent/agent.sock', 'No such file or directory'));
+            $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/serfex-agent/agent.sock', 'No such file or directory'));
         } else {
             $agent->shouldReceive('call')->with('dns.status')->andReturn($status);
             $agent->shouldReceive('call')->with('system.addresses')->andReturn(['ipv4' => ['203.0.113.10'], 'ipv6' => []]);

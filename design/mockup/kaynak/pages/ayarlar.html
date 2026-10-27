@@ -11,7 +11,7 @@
         <nav id="sub" class="flex md:flex-col gap-0.5 p-2 border-b md:border-b-0 md:border-r border-line text-[13.5px] overflow-x-auto scroll-thin" aria-label="Ayar bölümleri">
           <button data-sec="s-gen" class="sub">Genel</button>
           <button data-sec="s-srv" class="sub">Sunucu</button>
-          <button data-sec="s-ai" class="sub">Servik AI</button>
+          <button data-sec="s-ai" class="sub">Serfex AI</button>
           <button data-sec="s-not" class="sub">Bildirimler</button>
           <button data-sec="s-adm" class="sub">Yöneticiler</button>
           <button data-sec="s-api" class="sub">API anahtarları</button>
@@ -22,8 +22,8 @@
           <form id="s-gen" class="sec px-5 py-5 max-w-3xl">
             <h2 class="text-[14.5px] font-semibold">Genel</h2>
             <div class="mt-2 divide-y divide-line">
-              <div class="row"><label for="g1">Panel adı</label><input id="g1" value="Servik · srv-ist-01" class="inp sm:w-80"></div>
-              <div class="row"><label for="g2">Panel adresi</label><input id="g2" value="panel.servik.net.tr:8443" class="inp sm:w-80 font-mono text-[13px]"></div>
+              <div class="row"><label for="g1">Panel adı</label><input id="g1" value="Serfex · srv-ist-01" class="inp sm:w-80"></div>
+              <div class="row"><label for="g2">Panel adresi</label><input id="g2" value="panel.serfex.net.tr:8443" class="inp sm:w-80 font-mono text-[13px]"></div>
               <div class="row"><label for="g3">Dil</label><select id="g3" class="inp sm:w-64"><option>Türkçe</option><option>English</option></select></div>
               <div class="row"><label for="g4">Saat dilimi</label><select id="g4" class="inp sm:w-64"><option>Europe/Istanbul (UTC+3)</option><option>UTC</option></select></div>
               <div class="row"><span>Oturum süresi</span><div class="flex items-center gap-2"><input value="60" inputmode="numeric" aria-label="Oturum süresi" class="inp w-24 num"><span class="text-[13px] text-muted">dakika işlem yoksa çıkış</span></div></div>
@@ -37,16 +37,16 @@
             <div class="mt-2 divide-y divide-line">
               <div class="row"><label for="v1">Sunucu adı</label><input id="v1" value="srv-ist-01" class="inp sm:w-64 font-mono text-[13px]"></div>
               <div class="row"><span>IP adresleri</span><div class="font-mono text-[13px]">185.98.142.21<span class="block text-muted">2a0e:1c80:4:2a::21</span></div></div>
-              <div class="row"><label for="v2">Ad sunucuları</label><input id="v2" value="ns1.servik.net.tr, ns2.servik.net.tr" class="inp sm:w-80 font-mono text-[13px]"></div>
+              <div class="row"><label for="v2">Ad sunucuları</label><input id="v2" value="ns1.serfex.net.tr, ns2.serfex.net.tr" class="inp sm:w-80 font-mono text-[13px]"></div>
               <div class="row"><label for="v3">Varsayılan PHP sürümü</label><select id="v3" class="inp sm:w-40"><option>8.3</option><option>8.4</option><option>8.5</option></select></div>
               <div class="row"><span>İşletim sistemi</span><span class="text-[13.5px]">Ubuntu 24.04.1 LTS · 8 çekirdek · 32 GB</span></div>
             </div>
             <div class="foot"></div>
           </form>
 
-          <!-- Servik AI -->
+          <!-- Serfex AI -->
           <form id="s-ai" class="sec px-5 py-5 max-w-3xl" hidden>
-            <h2 class="text-[14.5px] font-semibold">Servik AI</h2>
+            <h2 class="text-[14.5px] font-semibold">Serfex AI</h2>
             <div class="mt-2 divide-y divide-line">
               <div class="row"><span>Durum</span><label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Açık</label></div>
               <div class="row"><span>Sağlayıcı</span><input value="Claude (Anthropic)" readonly aria-label="Sağlayıcı" class="w-full sm:w-64 h-9 px-3 rounded-md border border-line bg-surface-2 text-muted outline-none text-[13.5px]"></div>
@@ -66,7 +66,7 @@
           <form id="s-not" class="sec px-5 py-5 max-w-3xl" hidden>
             <h2 class="text-[14.5px] font-semibold">Bildirimler</h2>
             <div class="mt-2 divide-y divide-line">
-              <div class="row"><label for="n1">Bildirim e-postası</label><input id="n1" value="sercan@servik.net.tr" class="inp sm:w-80 font-mono text-[13px]"></div>
+              <div class="row"><label for="n1">Bildirim e-postası</label><input id="n1" value="sercan@serfex.net.tr" class="inp sm:w-80 font-mono text-[13px]"></div>
               <div class="row items-start"><span>Ne zaman gönderilsin</span>
                 <div class="space-y-2 text-[13.5px]">
                   <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Site erişilemez olduğunda</label>
@@ -91,9 +91,9 @@
               <table class="w-full text-[13.5px] min-w-[560px]">
                 <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Ad</th><th class="font-medium px-3 py-2.5">Rol</th><th class="font-medium px-3 py-2.5">İki adımlı doğrulama</th><th class="font-medium px-3 py-2.5">Son giriş</th><th class="px-3"></th></tr></thead>
                 <tbody class="divide-y divide-line">
-                  <tr><td class="px-5 py-3">Sercan Yılmaz<span class="block text-2xs text-muted font-mono">sercan@servik.net.tr</span></td><td class="px-3 py-3">Tam yönetici</td><td class="px-3 py-3 text-ok">Açık</td><td class="px-3 py-3 num text-muted">Bugün 23:40</td><td class="px-3 py-3 text-right text-2xs text-muted">Siz</td></tr>
-                  <tr><td class="px-5 py-3">Emre Koç<span class="block text-2xs text-muted font-mono">emre@servik.net.tr</span></td><td class="px-3 py-3">Destek</td><td class="px-3 py-3 text-ok">Açık</td><td class="px-3 py-3 num text-muted">Dün 17:05</td><td class="px-3 py-3 text-right"><button data-toast="Emre Koç kaldırıldı." data-undo="1" class="text-[13px] text-muted hover:text-crit">Kaldır</button></td></tr>
-                  <tr><td class="px-5 py-3">Deniz Ateş<span class="block text-2xs text-muted font-mono">deniz@servik.net.tr</span></td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 text-warn">Kapalı</td><td class="px-3 py-3 num text-muted">12 Eki 10:22</td><td class="px-3 py-3 text-right"><button data-toast="Deniz Ateş kaldırıldı." data-undo="1" class="text-[13px] text-muted hover:text-crit">Kaldır</button></td></tr>
+                  <tr><td class="px-5 py-3">Sercan Yılmaz<span class="block text-2xs text-muted font-mono">sercan@serfex.net.tr</span></td><td class="px-3 py-3">Tam yönetici</td><td class="px-3 py-3 text-ok">Açık</td><td class="px-3 py-3 num text-muted">Bugün 23:40</td><td class="px-3 py-3 text-right text-2xs text-muted">Siz</td></tr>
+                  <tr><td class="px-5 py-3">Emre Koç<span class="block text-2xs text-muted font-mono">emre@serfex.net.tr</span></td><td class="px-3 py-3">Destek</td><td class="px-3 py-3 text-ok">Açık</td><td class="px-3 py-3 num text-muted">Dün 17:05</td><td class="px-3 py-3 text-right"><button data-toast="Emre Koç kaldırıldı." data-undo="1" class="text-[13px] text-muted hover:text-crit">Kaldır</button></td></tr>
+                  <tr><td class="px-5 py-3">Deniz Ateş<span class="block text-2xs text-muted font-mono">deniz@serfex.net.tr</span></td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 text-warn">Kapalı</td><td class="px-3 py-3 num text-muted">12 Eki 10:22</td><td class="px-3 py-3 text-right"><button data-toast="Deniz Ateş kaldırıldı." data-undo="1" class="text-[13px] text-muted hover:text-crit">Kaldır</button></td></tr>
                 </tbody>
               </table>
             </div>
@@ -109,9 +109,9 @@
               <table class="w-full text-[13.5px] min-w-[560px]">
                 <thead><tr class="text-left text-2xs uppercase tracking-[.06em] text-muted border-b border-line"><th class="font-medium px-5 py-2.5">Ad</th><th class="font-medium px-3 py-2.5">Anahtar</th><th class="font-medium px-3 py-2.5">Yetki</th><th class="font-medium px-3 py-2.5">Son kullanım</th><th class="px-3"></th></tr></thead>
                 <tbody id="keys" class="divide-y divide-line">
-                  <tr><td class="px-5 py-3">WHMCS entegrasyonu</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••a91c</td><td class="px-3 py-3">Müşteri ve paket</td><td class="px-3 py-3 num text-muted">Bugün 22:58</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
-                  <tr><td class="px-5 py-3">GitHub Actions dağıtımı</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••4e07</td><td class="px-3 py-3">Dağıtım</td><td class="px-3 py-3 num text-muted">Bugün 18:31</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
-                  <tr><td class="px-5 py-3">İzleme betiği</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••b3d2</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 num text-muted">3 Eki 04:00</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
+                  <tr><td class="px-5 py-3">WHMCS entegrasyonu</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••a91c</td><td class="px-3 py-3">Müşteri ve paket</td><td class="px-3 py-3 num text-muted">Bugün 22:58</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
+                  <tr><td class="px-5 py-3">GitHub Actions dağıtımı</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••4e07</td><td class="px-3 py-3">Dağıtım</td><td class="px-3 py-3 num text-muted">Bugün 18:31</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
+                  <tr><td class="px-5 py-3">İzleme betiği</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••b3d2</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 num text-muted">3 Eki 04:00</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td></tr>
                 </tbody>
               </table>
             </div>
@@ -150,7 +150,7 @@
   document.getElementById('newKey').onclick = () => {
     const k = Math.random().toString(16).slice(2, 6);
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="px-5 py-3">Yeni anahtar</td><td class="px-3 py-3 font-mono text-[13px]">svk_live_••••${k}</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 text-muted">Hiç</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td>`;
+    tr.innerHTML = `<td class="px-5 py-3">Yeni anahtar</td><td class="px-3 py-3 font-mono text-[13px]">sfx_live_••••${k}</td><td class="px-3 py-3">Salt okunur</td><td class="px-3 py-3 text-muted">Hiç</td><td class="px-3 py-3 text-right"><button data-toast="Anahtar iptal edildi." class="text-[13px] text-muted hover:text-crit">İptal et</button></td>`;
     document.getElementById('keys').prepend(tr);
     toast('Anahtar oluşturuldu. Tam değeri yalnızca bir kez gösterilir.');
   };

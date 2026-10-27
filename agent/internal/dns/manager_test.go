@@ -74,10 +74,10 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	for _, c := range []string{
 		"apt-get install -y -q --no-install-recommends pdns-server pdns-backend-lmdb",
 		"systemctl disable --now pdns.service",
-		"/usr/sbin/pdns_server --config-name=servik --config=check",
+		"/usr/sbin/pdns_server --config-name=serfex --config=check",
 		"systemctl restart systemd-resolved",
-		"systemctl enable pdns@servik",
-		"systemctl restart pdns@servik",
+		"systemctl enable pdns@serfex",
+		"systemctl restart pdns@serfex",
 	} {
 		if !sim.Ran(c) {
 			t.Errorf("did not run %q", c)
@@ -88,7 +88,7 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Managed by Servik", "launch=lmdb", "api=yes", "webserver-address=127.0.0.1", "disable-axfr=yes\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\nversion-string=anonymous"} {
+	for _, want := range []string{"Managed by Serfex", "launch=lmdb", "api=yes", "webserver-address=127.0.0.1", "disable-axfr=yes\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\nversion-string=anonymous"} {
 		if !strings.Contains(string(conf), want) {
 			t.Errorf("config lacks %q:\n%s", want, conf)
 		}
@@ -155,7 +155,7 @@ func TestSetupKeepsStubResolverWithoutUpstreamServers(t *testing.T) {
 	if _, err := os.Stat(sim.Path(resolvedDropIn)); !os.IsNotExist(err) {
 		t.Error("the stub listener was turned off")
 	}
-	if sim.Ran("systemctl restart pdns@servik") {
+	if sim.Ran("systemctl restart pdns@serfex") {
 		t.Error("PowerDNS was started")
 	}
 }
@@ -176,7 +176,7 @@ func TestSetupRollsBackWhenPowerDNSRejectsConfig(t *testing.T) {
 	if _, err := os.Stat(sim.Path(configPath)); !os.IsNotExist(err) {
 		t.Error("config was left behind")
 	}
-	if sim.Ran("systemctl restart pdns@servik") {
+	if sim.Ran("systemctl restart pdns@serfex") {
 		t.Error("PowerDNS was restarted with a rejected config")
 	}
 }
@@ -230,7 +230,7 @@ func TestApplyZoneCreatesUpdatesAndIsIdempotent(t *testing.T) {
 		got[r.Name+" "+r.Type] += r.Content + ";"
 	}
 	want := map[string]string{
-		"@ NS":  "ns1.servik.net.tr.;ns2.servik.net.tr.;",
+		"@ NS":  "ns1.serfex.net.tr.;ns2.serfex.net.tr.;",
 		"@ A":   "185.98.142.30;",
 		"@ TXT": "v=spf1 a mx ~all;",
 	}

@@ -53,7 +53,7 @@ class SyncMailDomain implements ShouldBeUniqueUntilProcessing, ShouldQueue
         $updatedAt = $domain->updated_at;
 
         try {
-            $result = $agent->call('mail.domain.apply', $domain->agentSpec(), config('servik.agent.job_timeout'));
+            $result = $agent->call('mail.domain.apply', $domain->agentSpec(), config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $domain->update([
                 'status' => MailDomainStatus::Failed,

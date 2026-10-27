@@ -15,7 +15,7 @@ use Livewire\Component;
  * database manager shares the panel's port (Araçlar ve Ayarlar → Genel).
  */
 #[Layout('components.layouts.app')]
-#[Title('Veritabanı sunucuları · Servik')]
+#[Title('Veritabanı sunucuları · Serfex')]
 class DatabaseSettingsPage extends Component
 {
     use ChecksDatabaseServers;

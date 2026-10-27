@@ -6,7 +6,7 @@ use App\Support\ReadOnlyGuard;
 use Illuminate\Foundation\Application;
 
 /**
- * JSON-RPC 2.0 client for servik-agent.
+ * JSON-RPC 2.0 client for serfex-agent.
  *
  * One request per connection, newline-delimited JSON on a Unix socket.
  */

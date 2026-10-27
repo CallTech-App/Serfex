@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
- * A Laravel application on a site. Servik deploys it into releases under
+ * A Laravel application on a site. Serfex deploys it into releases under
  * laravel/ (path laravel/current), or manages one found on the site where
  * it is.
  */
@@ -32,7 +32,7 @@ class LaravelApp extends Model
 
     use HasGitRepository;
 
-    /** Where the live release of an application Servik deploys is. */
+    /** Where the live release of an application Serfex deploys is. */
     public const MANAGED_PATH = 'laravel/current';
 
     protected $hidden = ['install_env', 'deploy_key', 'webhook_token', 'redis_password'];
@@ -50,15 +50,15 @@ class LaravelApp extends Model
         'preview_database' => 'sqlite',
         'preview_seed' => true,
         'preview_limit' => 5,
-        'maintenance_mode' => 'servik',
+        'maintenance_mode' => 'serfex',
         'backup_schedule' => 'off',
         'backup_time' => '03:00',
         'backup_keep' => 7,
     ];
 
-    /** How visitors see maintenance: in Nginx (servik, custom) or the application's own page. */
+    /** How visitors see maintenance: in Nginx (serfex, custom) or the application's own page. */
     public const MAINTENANCE_MODES = [
-        'servik' => 'Servik bakım sayfası',
+        'serfex' => 'Serfex bakım sayfası',
         'custom' => 'Özel HTML',
         'app' => 'Uygulamanın kendi sayfası',
     ];
@@ -100,7 +100,7 @@ class LaravelApp extends Model
     }
 
     /**
-     * The database Servik created for the application, if any.
+     * The database Serfex created for the application, if any.
      *
      * @return BelongsTo<Database, $this>
      */
@@ -205,7 +205,7 @@ class LaravelApp extends Model
     }
 
     /**
-     * True when Nginx shows the maintenance page (Servik's or custom HTML)
+     * True when Nginx shows the maintenance page (Serfex's or custom HTML)
      * rather than php artisan down.
      */
     public function nginxMaintenance(): bool
@@ -238,7 +238,7 @@ class LaravelApp extends Model
     }
 
     /**
-     * True when Servik deploys the application into releases.
+     * True when Serfex deploys the application into releases.
      */
     public function isManaged(): bool
     {

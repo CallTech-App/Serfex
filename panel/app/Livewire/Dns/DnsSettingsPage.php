@@ -21,13 +21,13 @@ use Livewire\Component;
  * new zones, and the records every new zone starts with.
  */
 #[Layout('components.layouts.app')]
-#[Title('Sunucu DNS ayarları · Servik')]
+#[Title('Sunucu DNS ayarları · Serfex')]
 class DnsSettingsPage extends Component
 {
     use EditsRecords;
 
     /** Values that stand in for the placeholders while a row is validated. */
-    private const SAMPLE = ['<domain>' => 'servik-template.invalid', '<ip4>' => '192.0.2.254', '<ip6>' => '2001:db8::fe'];
+    private const SAMPLE = ['<domain>' => 'serfex-template.invalid', '<ip4>' => '192.0.2.254', '<ip6>' => '2001:db8::fe'];
 
     public string $nameservers = '';
 

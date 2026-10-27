@@ -15,12 +15,12 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Servik AI settings: on or off, the Claude API key and model, whether it
+ * Serfex AI settings: on or off, the Claude API key and model, whether it
  * may block and limit by itself, a monthly spending cap, and what it has
  * cost so far.
  */
 #[Layout('components.layouts.app')]
-#[Title('Servik AI ayarları · Servik')]
+#[Title('Serfex AI ayarları · Serfex')]
 class AiSettingsPage extends Component
 {
     public bool $enabled = true;
@@ -66,7 +66,7 @@ class AiSettingsPage extends Component
             $this->key = '';
         }
         $this->check = null;
-        $this->dispatch('toast', message: __('Servik AI ayarları kaydedildi.'), source: $this->getId(),
+        $this->dispatch('toast', message: __('Serfex AI ayarları kaydedildi.'), source: $this->getId(),
             undo: ['method' => 'undoSave', 'args' => [encrypt($previous)]]);
     }
 

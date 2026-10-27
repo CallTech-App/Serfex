@@ -43,7 +43,7 @@ func (c *Ctx) note(format string, a ...any) {
 }
 
 func (c *Ctx) errorf(format string, a ...any) {
-	fmt.Fprintf(c.env.Stderr, "%s %s\n", c.red("servik:"), fmt.Sprintf(format, a...))
+	fmt.Fprintf(c.env.Stderr, "%s %s\n", c.red("serfex:"), fmt.Sprintf(format, a...))
 }
 
 // done says a change was made: "✓ message", or the answer as JSON.

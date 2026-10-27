@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	rhDomain = "servik-sec.example"
-	rhUser   = "serviksec"
+	rhDomain = "serfex-sec.example"
+	rhUser   = "serfexsec"
 	// attack is a classic SQL injection the Core Rule Set catches at
 	// paranoia level 1 (rule 942100).
 	attack = "/?id=" + "1%27%20OR%20%271%27=%271"
@@ -47,8 +47,8 @@ func TestRealHost(t *testing.T) {
 	}
 	ctx := context.Background()
 	h := host.System{}
-	bin := "/usr/local/lib/servik-test/servik-agent"
-	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/servik-agent").CombinedOutput(); err != nil {
+	bin := "/usr/local/lib/serfex-test/serfex-agent"
+	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/serfex-agent").CombinedOutput(); err != nil {
 		t.Fatalf("building the agent: %v\n%s", err, out)
 	}
 	_ = os.Chmod(filepath.Dir(bin), 0o755)
@@ -233,7 +233,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	st, err := comps.Fail2ban(ctx)
-	if err != nil || !st.Running || !st.Current || !banned(st, "sshd", "192.0.2.77") || !hasJail(st, "servik-panel") {
+	if err != nil || !st.Running || !st.Current || !banned(st, "sshd", "192.0.2.77") || !hasJail(st, "serfex-panel") {
 		t.Fatalf("fail2ban: %+v %v", st, err)
 	}
 	if err := comps.Fail2banUnban(ctx, component.BanSpec{Jail: "sshd", Address: "192.0.2.77"}); err != nil {
@@ -242,13 +242,13 @@ func TestRealHost(t *testing.T) {
 	// The panel logs failed logins to the journal; ten of them close the
 	// panel's port to that address.
 	for i := 0; i < 10; i++ {
-		if out, err := exec.Command("logger", "-t", "servik-panel", "Failed panel login from 192.0.2.88 for ali@example.com").CombinedOutput(); err != nil {
+		if out, err := exec.Command("logger", "-t", "serfex-panel", "Failed panel login from 192.0.2.88 for ali@example.com").CombinedOutput(); err != nil {
 			t.Fatalf("logger: %v %s", err, out)
 		}
 	}
 	waitFor(t, "the panel jail bans 192.0.2.88", func() bool {
 		st, _ := comps.Fail2ban(ctx)
-		return banned(st, "servik-panel", "192.0.2.88") && !banned(st, "sshd", "192.0.2.77")
+		return banned(st, "serfex-panel", "192.0.2.88") && !banned(st, "sshd", "192.0.2.77")
 	})
 }
 
@@ -256,21 +256,21 @@ func portFilter(t *testing.T, fw *firewall.Manager) {
 	t.Helper()
 	ctx := context.Background()
 	for _, c := range [][]string{
-		{"ip", "netns", "add", "svk"},
-		{"ip", "link", "add", "svk0", "type", "veth", "peer", "name", "svk1"},
-		{"ip", "link", "set", "svk1", "netns", "svk"},
-		{"ip", "addr", "add", "10.99.0.1/24", "dev", "svk0"},
-		{"ip", "link", "set", "svk0", "up"},
-		{"ip", "netns", "exec", "svk", "ip", "addr", "add", "10.99.0.2/24", "dev", "svk1"},
-		{"ip", "netns", "exec", "svk", "ip", "link", "set", "svk1", "up"},
+		{"ip", "netns", "add", "sfx"},
+		{"ip", "link", "add", "sfx0", "type", "veth", "peer", "name", "sfx1"},
+		{"ip", "link", "set", "sfx1", "netns", "sfx"},
+		{"ip", "addr", "add", "10.99.0.1/24", "dev", "sfx0"},
+		{"ip", "link", "set", "sfx0", "up"},
+		{"ip", "netns", "exec", "sfx", "ip", "addr", "add", "10.99.0.2/24", "dev", "sfx1"},
+		{"ip", "netns", "exec", "sfx", "ip", "link", "set", "sfx1", "up"},
 	} {
 		if out, err := exec.Command(c[0], c[1:]...).CombinedOutput(); err != nil {
 			t.Fatalf("%v: %v %s", c, err, out)
 		}
 	}
 	t.Cleanup(func() {
-		_ = exec.Command("ip", "link", "del", "svk0").Run()
-		_ = exec.Command("ip", "netns", "del", "svk").Run()
+		_ = exec.Command("ip", "link", "del", "sfx0").Run()
+		_ = exec.Command("ip", "netns", "del", "sfx").Run()
 	})
 	srv := exec.Command("python3", "-m", "http.server", "8099", "--bind", "0.0.0.0", "--directory", "/tmp")
 	if err := srv.Start(); err != nil {
@@ -278,7 +278,7 @@ func portFilter(t *testing.T, fw *firewall.Manager) {
 	}
 	t.Cleanup(func() { _ = srv.Process.Kill(); _ = srv.Wait() })
 	reach := func(port string) bool {
-		err := exec.Command("ip", "netns", "exec", "svk", "curl", "-s", "-o", "/dev/null", "-m", "3", "http://10.99.0.1:"+port+"/").Run()
+		err := exec.Command("ip", "netns", "exec", "sfx", "curl", "-s", "-o", "/dev/null", "-m", "3", "http://10.99.0.1:"+port+"/").Run()
 		return err == nil
 	}
 	waitFor(t, "port 8099 reachable before the filter", func() bool { return reach("8099") })

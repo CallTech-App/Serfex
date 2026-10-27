@@ -57,8 +57,8 @@ class Administrators
         ]));
         $link = route('invitation', $token);
         // The new person has not picked a language yet: the server's default.
-        $mailed = $this->mail->problem() === null && Locales::using(Locales::serverDefault(), fn () => $this->mail->send([$email], __('Servik paneline davet edildiniz'),
-            __(':by sizi Servik paneline :role olarak ekledi.', ['by' => $by->name, 'role' => __(User::ROLES[$role][0])])."\n\n".__('Parolanızı belirlemek için bu bağlantıyı açın (:days gün geçerli):', ['days' => InvitationController::DAYS])."\n{$link}\n")) === null;
+        $mailed = $this->mail->problem() === null && Locales::using(Locales::serverDefault(), fn () => $this->mail->send([$email], __('Serfex paneline davet edildiniz'),
+            __(':by sizi Serfex paneline :role olarak ekledi.', ['by' => $by->name, 'role' => __(User::ROLES[$role][0])])."\n\n".__('Parolanızı belirlemek için bu bağlantıyı açın (:days gün geçerli):', ['days' => InvitationController::DAYS])."\n{$link}\n")) === null;
 
         return [$user, $link, $mailed];
     }
@@ -102,7 +102,7 @@ class Administrators
     public function resetTwoFactor(User $admin): string
     {
         $token = Str::random(32);
-        Cache::put('servik.admin-2fa.'.$token, [
+        Cache::put('serfex.admin-2fa.'.$token, [
             'user' => $admin->id,
             'secret' => $admin->two_factor_secret,
             'codes' => $admin->two_factor_recovery_codes,
@@ -115,7 +115,7 @@ class Administrators
 
     public function undoResetTwoFactor(string $token): ?User
     {
-        $saved = Cache::pull('servik.admin-2fa.'.$token);
+        $saved = Cache::pull('serfex.admin-2fa.'.$token);
         $admin = $saved ? User::find($saved['user']) : null;
         if ($admin === null || $admin->hasTwoFactor()) {
             return null;

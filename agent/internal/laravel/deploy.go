@@ -31,7 +31,7 @@ type DeploySpec struct {
 	Env map[string]string `json:"env"`
 	// SeedFrom is an existing application directory (relative to the site
 	// directory) whose .env and storage seed shared/ on the first deploy,
-	// when an application found on the site moves to Servik deploys.
+	// when an application found on the site moves to Serfex deploys.
 	SeedFrom string `json:"seed_from"`
 	// Health is requested after the switch; nil skips the check.
 	Health *HealthSpec `json:"health"`
@@ -56,7 +56,7 @@ type Source struct {
 	Package    string `json:"package"`
 }
 
-// Build says which build steps Servik runs.
+// Build says which build steps Serfex runs.
 type Build struct {
 	Frontend bool `json:"frontend"`
 	// PackageManager is npm, pnpm, yarn or bun; empty picks it from the
@@ -734,7 +734,7 @@ type AppInfo struct {
 	Laravel        string `json:"laravel"`
 	PHPRequirement string `json:"php_requirement"`
 	PackageManager string `json:"package_manager"`
-	// Packages are the versions of the Laravel packages Servik can run
+	// Packages are the versions of the Laravel packages Serfex can run
 	// processes for (Horizon, Octane, Reverb), when installed.
 	Packages map[string]string `json:"packages"`
 }

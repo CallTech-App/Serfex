@@ -3,12 +3,12 @@
 // Nginx snippets in the site's site.ExtraDir), the security scan with its
 // fixes, and SSH hardening.
 //
-//	/etc/servik/nginx/sites/<domain>/waf.conf        modsecurity on|off, rules file
-//	/etc/servik/nginx/sites/<domain>/waf.rules       SecRuleEngine, rule exclusions
-//	/etc/servik/nginx/sites/<domain>/protect.conf    auth_basic for protected folders
-//	/etc/servik/nginx/sites/<domain>/protect-<n>.htpasswd
-//	/etc/servik/nginx/sites/<domain>/deny.conf       paths nobody may fetch
-//	/etc/ssh/sshd_config.d/00-servik.conf            SSH hardening
+//	/etc/serfex/nginx/sites/<domain>/waf.conf        modsecurity on|off, rules file
+//	/etc/serfex/nginx/sites/<domain>/waf.rules       SecRuleEngine, rule exclusions
+//	/etc/serfex/nginx/sites/<domain>/protect.conf    auth_basic for protected folders
+//	/etc/serfex/nginx/sites/<domain>/protect-<n>.htpasswd
+//	/etc/serfex/nginx/sites/<domain>/deny.conf       paths nobody may fetch
+//	/etc/ssh/sshd_config.d/00-serfex.conf            SSH hardening
 //
 // The panel is the source of truth: it sends a site's whole WAF, folder
 // or path list each time, and the agent writes it, checks Nginx and
@@ -82,9 +82,9 @@ func (m *Manager) exists(abs string) bool {
 	return err == nil
 }
 
-// wafInstalled: the module is loaded and Servik's server-wide file exists.
+// wafInstalled: the module is loaded and Serfex's server-wide file exists.
 func (m *Manager) wafInstalled() bool {
-	return m.exists("/usr/lib/nginx/modules/ngx_http_modsecurity_module.so") && m.exists("/etc/nginx/conf.d/servik-modsecurity.conf")
+	return m.exists("/usr/lib/nginx/modules/ngx_http_modsecurity_module.so") && m.exists("/etc/nginx/conf.d/serfex-modsecurity.conf")
 }
 
 func (m *Manager) checkSite(domain string) error {
@@ -121,7 +121,7 @@ func (m *Manager) writeSnippets(ctx context.Context, domain string, snippets []s
 			}
 		}
 	}()
-	for _, d := range []string{"/etc/servik", "/etc/servik/nginx", site.ExtraRoot, dir} {
+	for _, d := range []string{"/etc/serfex", "/etc/serfex/nginx", site.ExtraRoot, dir} {
 		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 			return false, err
 		}

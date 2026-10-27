@@ -8,7 +8,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 
 /**
- * Servik AI's server-wide settings. The Claude API key is stored
+ * Serfex AI's server-wide settings. The Claude API key is stored
  * encrypted with the panel's application key.
  */
 class AiSettings

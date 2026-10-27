@@ -4,7 +4,7 @@
     use Illuminate\Support\Carbon;
     $when = fn ($d) => $d ? \App\Support\When::dateTime(Carbon::parse($d)) : '—';
     $installed = (bool) ($status['installed'] ?? false);
-    $version = $status['version'] ?? config('servik.version');
+    $version = $status['version'] ?? config('serfex.version');
     $previous = ($status['previous'] ?? '') ?: null;
     $result = fn ($u) => match ($u->status) {
         'succeeded' => new Badge($u->kind === 'rollback' ? __('Dönüldü') : __('Kuruldu'), 'ok'),
@@ -16,7 +16,7 @@
     $link = 'text-[13px] text-accent hover:underline disabled:opacity-40 disabled:no-underline';
 @endphp
 <x-settings-page current="settings.updates" :title="__('Güncellemeler')">
-    <x-slot:description><x-t text="Servik panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar :link'nden güncellenir."><x-slot:link><a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></x-slot:description>
+    <x-slot:description><x-t text="Serfex panelini ve sunucu ajanını yeni sürümlere güncelleyin. Sunucudaki yazılımlar :link'nden güncellenir."><x-slot:link><a href="{{ route('components.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></x-slot:description>
 
     @if ($agentError)
         <div class="rounded-xl border border-line bg-crit-soft px-5 py-4 text-[13.5px]">
@@ -35,7 +35,7 @@
             <div class="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-ok-soft px-5 py-3 text-[13.5px]" role="status">
                 <x-icon name="circle-check" class="shrink-0 text-ok" />
                 <p class="flex-1">
-                    {{ $recent->kind === 'rollback' ? __('Servik :to_version sürümüne dönüldü', ['to_version' => $recent->to_version]) : __('Servik :to_version kuruldu', ['to_version' => $recent->to_version]) }}{{ $recent->duration() ? ' ('.$recent->duration().')' : '' }}.
+                    {{ $recent->kind === 'rollback' ? __('Serfex :to_version sürümüne dönüldü', ['to_version' => $recent->to_version]) : __('Serfex :to_version kuruldu', ['to_version' => $recent->to_version]) }}{{ $recent->duration() ? ' ('.$recent->duration().')' : '' }}.
                 </p>
                 @if ($recent->kind === 'upgrade' && $previous === $recent->from_version)
                     <button type="button" wire:click="ask('rollback')" class="font-medium text-accent hover:underline">{{ __('Geri al') }}</button>
@@ -46,9 +46,9 @@
                 <p class="flex items-center gap-3 font-medium">
                     <x-icon name="triangle-alert" class="shrink-0 text-warn" />
                     @if ($recent->status === 'rolled_back')
-                        {{ __('Servik :to_version denetimden geçmedi; :from_version sürümüne otomatik dönüldü.', ['to_version' => $recent->to_version, 'from_version' => $recent->from_version]) }}
+                        {{ __('Serfex :to_version denetimden geçmedi; :from_version sürümüne otomatik dönüldü.', ['to_version' => $recent->to_version, 'from_version' => $recent->from_version]) }}
                     @else
-                        {{ $recent->kind === 'rollback' ? __('Önceki sürüme dönülemedi.') : __('Servik :to_version kurulamadı.', ['to_version' => $recent->to_version]) }}
+                        {{ $recent->kind === 'rollback' ? __('Önceki sürüme dönülemedi.') : __('Serfex :to_version kurulamadı.', ['to_version' => $recent->to_version]) }}
                     @endif
                 </p>
                 @if ($recent->error)
@@ -58,12 +58,12 @@
         @endif
     @endif
 
-    {{-- Servik sürümü --}}
+    {{-- Serfex sürümü --}}
     <section class="rounded-xl border border-line bg-surface">
         <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0 text-[13.5px]">
                 <p class="text-[15px] font-semibold">
-                    <x-t text="Servik :version kurulu"><x-slot:version><span class="font-mono">{{ $version }}</span></x-slot:version></x-t>
+                    <x-t text="Serfex :version kurulu"><x-slot:version><span class="font-mono">{{ $version }}</span></x-slot:version></x-t>
                     @if ($release)
                         <x-t text="· :version hazır"><x-slot:version><span class="font-mono text-accent">{{ $release['version'] }}</span></x-slot:version></x-t>
                     @elseif ($installed)
@@ -71,7 +71,7 @@
                     @endif
                 </p>
                 @if (! $installed && $status !== null)
-                    <p class="mt-1 max-w-2xl text-[13px] text-muted"><x-t text="Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu), bu yüzden Servik kendini burada güncelleyemez. Sunuculara Servik :part ile kurulur; güncellemeler o kurulumda bu sayfadan yapılır."><x-slot:part><span class="font-mono">install.sh</span></x-slot:part></x-t></p>
+                    <p class="mt-1 max-w-2xl text-[13px] text-muted"><x-t text="Bu sunucu kurulum betiğiyle kurulmamış (geliştirme kurulumu), bu yüzden Serfex kendini burada güncelleyemez. Sunuculara Serfex :part ile kurulur; güncellemeler o kurulumda bu sayfadan yapılır."><x-slot:part><span class="font-mono">install.sh</span></x-slot:part></x-t></p>
                 @elseif ($release)
                     <p class="mt-1 text-[13px] text-muted">
                         {{ collect([$release['published_at'] ? __(':date yayımlandı', ['date' => \App\Support\When::date(Carbon::parse($release['published_at']))]) : null, ($release['prerelease'] ?? false) ? __('beta sürüm') : null, __('panel yaklaşık bir dakika bakımda kalır, siteler, e-posta ve DNS etkilenmez.')])->filter()->implode(' · ') }}
@@ -79,7 +79,7 @@
                     @foreach ($releases as $r)
                         <div class="mt-3 max-w-2xl">
                             @if (count($releases) > 1)
-                                <p class="text-2xs font-medium tracking-[.06em] text-muted uppercase">Servik {{ $r['version'] }}</p>
+                                <p class="text-2xs font-medium tracking-[.06em] text-muted uppercase">Serfex {{ $r['version'] }}</p>
                             @endif
                             <div class="release-notes mt-1 text-[13px] leading-relaxed [&_a]:text-accent [&_a]:underline [&_code]:font-mono [&_code]:text-[12.5px] [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_li]:mt-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mt-1 [&_ul]:list-disc [&_ul]:pl-5">{!! $notes($r['notes'] ?? '') !!}</div>
                             @if ($r['url'] ?? null)
@@ -106,7 +106,7 @@
 
         @if ($running)
             @php
-                $title = $running->kind === 'rollback' ? __('Servik :to_version sürümüne dönülüyor', ['to_version' => $running->to_version]) : __('Servik :to_version kuruluyor', ['to_version' => $running->to_version]);
+                $title = $running->kind === 'rollback' ? __('Serfex :to_version sürümüne dönülüyor', ['to_version' => $running->to_version]) : __('Serfex :to_version kuruluyor', ['to_version' => $running->to_version]);
             @endphp
             <div wire:key="update-{{ $running->id }}" wire:ignore class="border-t border-line px-5 py-4 text-[13.5px]"
                  x-data="{
@@ -175,7 +175,7 @@
                     <summary class="cursor-pointer text-muted hover:text-fg">{{ __('Ayrıntılı günlük') }}</summary>
                     <pre x-ref="log" x-text="log" class="scroll-thin mt-2 h-56 overflow-auto rounded-md bg-[#0f1a1c] p-3 font-mono text-[12px] whitespace-pre-wrap text-[#d7e4e4]"></pre>
                 </details>
-                <p class="mt-3 text-2xs text-muted">{{ __('Bu sayfayı kapatabilirsiniz; güncelleme sunucuda sürer. Panel geçiş sırasında kısa bir süre "Servik güncelleniyor" sayfasını gösterir.') }}</p>
+                <p class="mt-3 text-2xs text-muted">{{ __('Bu sayfayı kapatabilirsiniz; güncelleme sunucuda sürer. Panel geçiş sırasında kısa bir süre "Serfex güncelleniyor" sayfasını gösterir.') }}</p>
             </div>
         @endif
 
@@ -271,7 +271,7 @@
                     </div>
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                         <span>{{ __('Denetim') }}</span>
-                        <p class="text-[13px] text-muted">{{ __('Her gün 04:30\'da yeni sürüm aranır; bulunursa Genel Bakış\'ta ve menüde gösterilir. Güncellemeyi siz başlatırsınız, Servik kendiliğinden güncellenmez.') }}</p>
+                        <p class="text-[13px] text-muted">{{ __('Her gün 04:30\'da yeni sürüm aranır; bulunursa Genel Bakış\'ta ve menüde gösterilir. Güncellemeyi siz başlatırsınız, Serfex kendiliğinden güncellenmez.') }}</p>
                     </div>
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                         <span>{{ __('Saklanan sürüm') }}</span>
@@ -289,10 +289,10 @@
     <x-modal :title="__('Onay')" show="confirming" size="max-w-md">
         <div class="p-5 text-[13.5px]">
             @if ($confirming === 'rollback')
-                <p class="font-semibold">{{ __('Servik :previous sürümüne dönülsün mü?', ['previous' => $previous]) }}</p>
+                <p class="font-semibold">{{ __('Serfex :previous sürümüne dönülsün mü?', ['previous' => $previous]) }}</p>
                 <p class="mt-1 text-[13px] text-muted">{{ __('Önce panelin yedeği alınır. :version sürümünün veritabanı değişiklikleri geri alınır, ardından :previous çalışır. Panel yaklaşık bir dakika bakımda kalır; siteler etkilenmez. Yeniden :version sürümüne geçmek için Güncelle\'ye basmanız yeter.', ['version' => $version, 'previous' => $previous]) }}</p>
             @else
-                <p class="font-semibold">{{ __('Servik :version sürümüne güncellensin mi?', ['version' => $release['version'] ?? '']) }}</p>
+                <p class="font-semibold">{{ __('Serfex :version sürümüne güncellensin mi?', ['version' => $release['version'] ?? '']) }}</p>
                 <p class="mt-1 text-[13px] text-muted">{{ __('Önce panelin yedeği alınır. Panel yaklaşık bir dakika bakımda kalır; siteler, e-posta ve DNS çalışmaya devam eder. Yeni sürüm denetimden geçmezse :version sürümüne otomatik dönülür.', ['version' => $version]) }}</p>
             @endif
             <div class="mt-4 flex justify-end gap-2">

@@ -10,7 +10,7 @@ use App\Services\Agent\AgentUnavailableException;
 /**
  * The database servers customers' databases live on: MySQL or MariaDB
  * (one of them, server "mysql") and PostgreSQL, and the web database
- * manager (phpMyAdmin, Adminer) on Servik's own web server.
+ * manager (phpMyAdmin, Adminer) on Serfex's own web server.
  *
  * The setup's progress is kept in the "databases.setup" setting: state
  * installing, ready or failed, the products asked for, the step running

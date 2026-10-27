@@ -54,7 +54,7 @@ class AuthenticateApiKey
         if ($who === 'account' && ! $user->is_admin && ! $user->isCustomer()) {
             return self::refuse(403, __('Hesabınız yalnızca eklendiğiniz Laravel uygulamalarında çalışabilir.'));
         }
-        if (($limited = self::limit('servik-api:'.$key->id)) !== null) {
+        if (($limited = self::limit('serfex-api:'.$key->id)) !== null) {
             return $limited;
         }
 

@@ -1,6 +1,6 @@
-# Servik ekran yazım rehberi
+# Serfex ekran yazım rehberi
 
-Servik: açık kaynak web hosting paneli (Plesk/cPanel alternatifi), güçlü Laravel araç seti, yerleşik AI (Claude). Arayüz dili Türkçe.
+Serfex: açık kaynak web hosting paneli (Plesk/cPanel alternatifi), güçlü Laravel araç seti, yerleşik AI (Claude). Arayüz dili Türkçe.
 
 ## Dosya düzeni
 - `pages/<ad>.html` = YALNIZCA `<main>` etiketinin İÇERİĞİ, ardından isteğe bağlı tek bir `<script>` bloğu. Kenar menüsü, üst çubuk, AI çekmecesi, bildirim (toast), tema, ikonlar ortak kabukta (`src/`). Onlara dokunma.
@@ -16,7 +16,7 @@ Servik: açık kaynak web hosting paneli (Plesk/cPanel alternatifi), güçlü La
 
 ## Görsel kurallar
 - Renkler YALNIZCA token sınıfları: bg, surface, surface-2, line, fg, muted, accent, accent-fg, accent-soft, ok/ok-soft, warn/warn-soft, crit/crit-soft/on-crit, info/info-soft. Asla hex, `text-white` (kırmızı düğmede `text-on-crit`), `gray-*`, `blue-*` vb. kullanma. Açık/koyu tema otomatik çalışır.
-- Durum rengi anlamı: ok sorun yok, warn bakılmalı, crit ziyaretçi etkileniyor, info süren iş. accent yalnızca birincil eylem, bağlantı, Servik ve AI.
+- Durum rengi anlamı: ok sorun yok, warn bakılmalı, crit ziyaretçi etkileniyor, info süren iş. accent yalnızca birincil eylem, bağlantı, Serfex ve AI.
 - Yazı: IBM Plex Sans; alan adı, IP, yol, komut, sürüm, hash, kayıt değeri `font-mono`. Sayılar `num` sınıfı (tabular). Türkçe sayı biçimi: 1.240, 21,4 GB, %92; saat 24 saat (23:41).
 - Boyutlar: sayfa başlığı `text-[22px] font-semibold tracking-tight`; bölüm başlığı `text-[14.5px] font-semibold`; gövde 13–13.5px; etiket `text-2xs uppercase tracking-[.06em] text-muted font-medium`.
 - Bölüm kartı: `rounded-xl border border-line bg-surface`, başlık şeridi `flex items-center gap-3 px-5 h-12 border-b border-line`. Gölge yalnızca açılır katmanlarda.
@@ -29,10 +29,10 @@ Servik: açık kaynak web hosting paneli (Plesk/cPanel alternatifi), güçlü La
 - Telefon genişliğinde (400px) yatay kaydırma OLMAMALI; ızgaralar tek sütuna insin.
 - Emoji, gradyan, dekoratif süs yok. Boş durum gerekiyorsa ds-body.html örneği.
 - Metin: düğme ne yapacağını söyler ("Kaydı ekle", "Yedeği geri yükle"), hata nasıl düzeltileceğini söyler. Kullanıcının tanıdığı ad önce, teknik ad yanında mono. Geri dönüşü olmayan eylemler (silme, geri yükleme) onay penceresi ister; geri alınabilenler toast'ta "Geri al" verir.
-- AI: sayfaya özgü bir "Servik AI" önerisi/özeti en fazla bir yerde, `bg-accent-soft/60` zeminli, sparkles ikonlu. AI'ın onaysız yapabildiği tek şey IP engelleme ve geçici kaynak sınırı; diğer her öneri "Onayla / Vazgeç" kartıyla.
+- AI: sayfaya özgü bir "Serfex AI" önerisi/özeti en fazla bir yerde, `bg-accent-soft/60` zeminli, sparkles ikonlu. AI'ın onaysız yapabildiği tek şey IP engelleme ve geçici kaynak sınırı; diğer her öneri "Onayla / Vazgeç" kartıyla.
 
 ## Ortak örnek veri evreni (tutarlı kullan)
-- Sunucu `srv-ist-01`, Ubuntu 24.04.1 LTS, 8 çekirdek, 32 GB, 480 GB NVMe, IPv4 `185.98.142.21`, IPv6 `2a0e:1c80:4:2a::21`. Servik 1.4.1 kurulu, 1.4.2 hazır. Yönetici: Sercan Yılmaz. Diğer kullanıcı: Ayşe Kaya (müşteri yetkilisi).
+- Sunucu `srv-ist-01`, Ubuntu 24.04.1 LTS, 8 çekirdek, 32 GB, 480 GB NVMe, IPv4 `185.98.142.21`, IPv6 `2a0e:1c80:4:2a::21`. Serfex 1.4.1 kurulu, 1.4.2 hazır. Yönetici: Sercan Yılmaz. Diğer kullanıcı: Ayşe Kaya (müşteri yetkilisi).
 - 24 site. Önemli olanlar: magazaonline.com.tr (WordPress/Woo, şu an saldırı altında, PHP havuzu 12/12), ozkanlojistik.com + panel.ozkanlojistik.com (Laravel 12, kuyruğu takılı SendInvoiceJob), api.hizlikargo.app (Laravel 12, sağlıklı, sürüm #148 8f3c2a1), staging.hizlikargo.app (son dağıtım migrate adımında başarısız), bulten.atlasyayin.com (Laravel 11, toplu posta 1.840/sa), kahveatolyesi.com.tr (WooCommerce) ve eski.kahveatolyesi.com.tr (SSL 6 gün sonra bitiyor, A kaydı başka sunucuyu gösteriyor 104.21.8.17), klinikmavi.com (statik + PHP 8.4), atlasyayin.com, hizlikargo.app.
 - Müşteriler: Mağaza Online, Özkan Lojistik, Hızlı Kargo A.Ş., Atlas Yayıncılık, Kahve Atölyesi, Klinik Mavi (+ birkaç küçük). Paketler: Başlangıç, Profesyonel, Laravel Pro, Kurumsal.
 - Saldırgan IP'ler: 45.155.205.233, 193.42.33.117, 103.153.79.6; AI'ın otomatik engellediği 185.220.101.47 (23:41). Saat şu an ~23:50.
@@ -50,11 +50,11 @@ Sayfa yapısı, sırayla:
 5. Oluşturma/düzenleme: küçük modal form (3-5 alan). Silme ve geri dönüşü olmayan işler: onay modalı.
 
 YASAK (iç sayfalarda): metrik kutuları/sparkline şeritleri, "dikkat gerektirenler" listesi, AI öneri kartları, yan yana birden fazla bölüm kartı, sayfa başına birden fazla tablo aynı anda görünür, yan panelde grafikler, süs açıklamalar, ilk turdaki gibi her şeyi tek ekrana koymak. Bir sorun gerçekten o sayfanın nesnesiyle ilgiliyse tablo satırında rozet olarak göster (ör. SSL satırında "6 gün kaldı" uyarı rozeti), ayrı uyarı bloğu açma. En fazla bir satırlık bilgi şeridi istisna olabilir.
-AI yalnızca üst çubuktaki Servik AI çekmecesinde ve kendi sayfasında yaşar.
+AI yalnızca üst çubuktaki Serfex AI çekmecesinde ve kendi sayfasında yaşar.
 Türkçe adlandırma cPanel/Plesk kullanıcısının bildiği gibi: "Posta Kutuları", "DNS Kayıtları", "Zamanlanmış Görevler", "Veritabanı Kullanıcıları".
 Hedef: sayfa dosyası 20 KB altında; ekranda ilk bakışta tek bir tablo ya da tek bir form.
 Gizlemek için `hidden` özniteliği kullan (CSS'te `[hidden]{display:none!important}` var).
 - Birden çok nesneyi yöneten bölümler (DNS, siteler vb.) önce nesne LİSTESİ, satıra tıklayınca o nesnenin DETAY sayfası (Plesk gibi). Detay sayfasında konum satırı (breadcrumb) ve "listeye dön". Sercan DNS ve Laravel için bunu açıkça istedi; E-posta ve Dosya Yöneticisi de böyle. Liste sayfası üretmek için mklist.py.
 
 ## Özgünlük kuralı (Sercan, 2026-10-18)
-Plesk ve cPanel'in işleyişinden (liste → detay, site içi araçlar, site bazında web sunucusu seçimi) ilham alınır, ama görünüm birebir kopyalanmaz: onların sekme adları, menü/araç adları ve sıraları, ikonları, renkleri, sayfa yerleşimleri ve açıklama metinleri aynen alınmaz. Servik kendi düzenini, adlarını ve metinlerini kullanır. Hukuki görüş değildir; yayın öncesi bir avukata danışılmalı.
+Plesk ve cPanel'in işleyişinden (liste → detay, site içi araçlar, site bazında web sunucusu seçimi) ilham alınır, ama görünüm birebir kopyalanmaz: onların sekme adları, menü/araç adları ve sıraları, ikonları, renkleri, sayfa yerleşimleri ve açıklama metinleri aynen alınmaz. Serfex kendi düzenini, adlarını ve metinlerini kullanır. Hukuki görüş değildir; yayın öncesi bir avukata danışılmalı.

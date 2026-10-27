@@ -15,7 +15,7 @@ use GuzzleHttp\Client as Guzzle;
 use Psr\Http\Client\ClientInterface;
 
 /**
- * Sends Servik AI's requests to the Claude API with the official SDK.
+ * Sends Serfex AI's requests to the Claude API with the official SDK.
  * Content blocks travel as the API's own JSON arrays, so they can be
  * stored and sent back unchanged.
  */
@@ -47,7 +47,7 @@ class ClaudeClient
 
         try {
             $message = $this->client($key)->beta->messages->create(
-                maxTokens: (int) config('servik.ai.max_tokens'),
+                maxTokens: (int) config('serfex.ai.max_tokens'),
                 messages: $messages,
                 model: $model,
                 // Caches the system prompt, the tools and the conversation so far.
@@ -96,10 +96,10 @@ class ClaudeClient
     {
         return new Client(
             apiKey: $key,
-            baseUrl: config('servik.ai.base_url'),
+            baseUrl: config('serfex.ai.base_url'),
             requestOptions: [
                 'transporter' => $this->transporter ?? new Guzzle([
-                    'timeout' => (float) config('servik.ai.timeout'),
+                    'timeout' => (float) config('serfex.ai.timeout'),
                     'connect_timeout' => 10,
                 ]),
                 'maxRetries' => 2,
@@ -114,7 +114,7 @@ class ClaudeClient
     public static function explain(APIException $e): string
     {
         return match (true) {
-            $e instanceof AuthenticationException => __('Claude API anahtarı geçersiz. Servik AI ayarlarından anahtarı kontrol edin.'),
+            $e instanceof AuthenticationException => __('Claude API anahtarı geçersiz. Serfex AI ayarlarından anahtarı kontrol edin.'),
             $e instanceof PermissionDeniedException => __('Bu API anahtarının seçili modeli kullanma izni yok.'),
             $e instanceof NotFoundException => __('Seçili model bu hesapta bulunamadı. Ayarlardan başka bir model seçin.'),
             $e instanceof RateLimitException => __('Claude hesabınızın kullanım sınırına ulaşıldı. Biraz sonra yeniden deneyin.'),

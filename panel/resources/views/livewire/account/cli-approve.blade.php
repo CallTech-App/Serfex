@@ -8,7 +8,7 @@
 <div class="space-y-6">
     <div>
         <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Komut satırı girişi') }}</h1>
-        <p class="mt-1 text-[13px] text-muted">{{ __('servik komut satırı aracı bu hesapla çalışmak için onayınızı istiyor.') }}</p>
+        <p class="mt-1 text-[13px] text-muted">{{ __('serfex komut satırı aracı bu hesapla çalışmak için onayınızı istiyor.') }}</p>
     </div>
 
     <section class="max-w-3xl rounded-xl border border-line bg-surface">
@@ -28,7 +28,7 @@
         @elseif ($login === null || ! $login->isPending())
             <form wire:submit="lookup" class="px-5 py-5 text-[13.5px]">
                 @if ($code !== '')
-                    <p class="mb-3 text-muted">{{ __('Bu bağlantıdaki girişin süresi dolmuş ya da kullanılmış. servik login ile yeniden başlayın.') }}</p>
+                    <p class="mb-3 text-muted">{{ __('Bu bağlantıdaki girişin süresi dolmuş ya da kullanılmış. serfex login ile yeniden başlayın.') }}</p>
                 @endif
                 <label for="cli-code" class="mb-1.5 block">{{ __('Komut satırında görünen kodu yazın') }}</label>
                 <div class="flex flex-wrap items-center gap-2">

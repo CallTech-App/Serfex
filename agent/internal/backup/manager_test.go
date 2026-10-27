@@ -186,7 +186,7 @@ func TestRestoreBringsBackFilesAfterTheSiteChanged(t *testing.T) {
 	if got := read(t, sim, "/var/vmail/"+domain+"/info/Maildir/cur/1.eml"); got != "Subject: hello" {
 		t.Fatalf("mail = %q", got)
 	}
-	for _, p := range []string{"/home/magaza/web/." + domain + ".servik-restore", "/home/magaza/web/." + domain + ".servik-old"} {
+	for _, p := range []string{"/home/magaza/web/." + domain + ".serfex-restore", "/home/magaza/web/." + domain + ".serfex-old"} {
 		if _, err := os.Stat(sim.Path(p)); err == nil {
 			t.Fatalf("%s left behind", p)
 		}
@@ -249,7 +249,7 @@ func TestIncrementalBackupsRestoreAsAChain(t *testing.T) {
 func TestRemoteCopiesAreEncryptedAndFetchedBack(t *testing.T) {
 	m, sim := newTest(t)
 	ctx := context.Background()
-	target := &TargetSpec{Type: "s3", Bucket: "servik-yedek", AccessKey: "AK", SecretKey: "SK", Prefix: "servik/srv-ist-01"}
+	target := &TargetSpec{Type: "s3", Bucket: "serfex-yedek", AccessKey: "AK", SecretKey: "SK", Prefix: "serfex/srv-ist-01"}
 	res, err := m.Create(ctx, CreateSpec{Key: "k1", Scope: "server", Server: "srv-ist-01", Items: []ItemSpec{siteItem(), {Name: "panel"}}, Target: target, Passphrase: "correct horse battery"})
 	if err != nil {
 		t.Fatal(err)
@@ -257,7 +257,7 @@ func TestRemoteCopiesAreEncryptedAndFetchedBack(t *testing.T) {
 	if !res.Remote || res.Local || !res.Encrypted || res.RemoteError != "" {
 		t.Fatalf("unexpected result %+v", res)
 	}
-	remote := sim.Path("/var/lib/servik-sim/remote/s3/servik-yedek/servik/srv-ist-01/k1")
+	remote := sim.Path("/var/lib/serfex-sim/remote/s3/serfex-yedek/serfex/srv-ist-01/k1")
 	enc, err := os.ReadFile(remote + "/" + domain + ".tar.enc")
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestRemoteCopiesAreEncryptedAndFetchedBack(t *testing.T) {
 		t.Fatal("the local copy was kept")
 	}
 	// Another server finds it.
-	found, err := m.Scan(ctx, &TargetSpec{Type: "s3", Bucket: "servik-yedek", AccessKey: "AK", SecretKey: "SK", Prefix: "servik"})
+	found, err := m.Scan(ctx, &TargetSpec{Type: "s3", Bucket: "serfex-yedek", AccessKey: "AK", SecretKey: "SK", Prefix: "serfex"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,7 +338,7 @@ func TestTargetTestWritesReadsAndRemovesAFile(t *testing.T) {
 	if !res.OK {
 		t.Fatalf("%+v", res)
 	}
-	entries, _ := os.ReadDir(sim.Path("/var/lib/servik-sim/remote/sftp/yedek.atlasyayin.com/srv-ist-01"))
+	entries, _ := os.ReadDir(sim.Path("/var/lib/serfex-sim/remote/sftp/yedek.atlasyayin.com/srv-ist-01"))
 	if len(entries) != 0 {
 		t.Fatalf("the test left %d files", len(entries))
 	}
@@ -366,7 +366,7 @@ func TestOneBackupAtATime(t *testing.T) {
 
 func TestEncryptionRoundTripAndTampering(t *testing.T) {
 	for _, size := range []int{0, 10, encChunk, encChunk*2 + 17} {
-		plain := bytes.Repeat([]byte("servik"), size/6+1)[:size]
+		plain := bytes.Repeat([]byte("serfex"), size/6+1)[:size]
 		var buf bytes.Buffer
 		w, err := newEncryptWriter(&buf, "a long passphrase")
 		if err != nil {

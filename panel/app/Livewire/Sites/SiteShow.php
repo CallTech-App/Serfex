@@ -119,7 +119,7 @@ class SiteShow extends Component
             'openFindings' => SecurityFinding::open()->where('site_id', $site->id)->count(),
             'scanned' => SecurityScan::where(fn ($q) => $q->where('site_id', $site->id)->orWhere('scope', 'server'))->whereNotNull('finished_at')->exists(),
             'protectedDirs' => ProtectedDirectory::where('site_id', $site->id)->count(),
-        ])->title($site->domain.' · Servik');
+        ])->title($site->domain.' · Serfex');
     }
 
     private function site(): ?Site

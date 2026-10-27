@@ -23,7 +23,7 @@ var removePackages = map[string][]string{
 }
 
 // ComponentBackups keeps what a removed server left behind.
-const ComponentBackups = "/var/lib/servik/backups/components"
+const ComponentBackups = "/var/lib/serfex/backups/components"
 
 // Remove uninstalls a database server that holds no customer database or
 // user. MySQL's or MariaDB's data directory (only the system databases by

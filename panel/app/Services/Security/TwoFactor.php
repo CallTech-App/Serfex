@@ -73,7 +73,7 @@ class TwoFactor
      */
     public function qrSvg(User $user, string $secret): string
     {
-        $url = $this->google->getQRCodeUrl('Servik ('.parse_url((string) config('app.url'), PHP_URL_HOST).')', $user->email, $secret);
+        $url = $this->google->getQRCodeUrl('Serfex ('.parse_url((string) config('app.url'), PHP_URL_HOST).')', $user->email, $secret);
         $svg = (new Writer(new ImageRenderer(new RendererStyle(184, 0), new SvgImageBackEnd)))->writeString($url);
 
         return trim(preg_replace('/^<\?xml[^>]*>\s*/', '', $svg));

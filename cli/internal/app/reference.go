@@ -17,7 +17,7 @@ func Reference() string {
 	fmt.Fprintf(&b, "<!-- %s -->\n\n", T("Bu dosya üretilir: cd cli && go test ./internal/app -run TestReferenceIsCurrent -update"))
 	fmt.Fprintf(&b, "# %s\n\n", T("Komut satırı başvurusu"))
 	fmt.Fprintf(&b, "%s\n\n", paragraphs(root.Long))
-	fmt.Fprintf(&b, "%s\n\n", T("Her komut `--help` ile kendi yardımını da gösterir: `servik sites create --help`."))
+	fmt.Fprintf(&b, "%s\n\n", T("Her komut `--help` ile kendi yardımını da gösterir: `serfex sites create --help`."))
 
 	fmt.Fprintf(&b, "## %s\n\n", T("Genel seçenekler"))
 	fmt.Fprintf(&b, "%s\n\n", T("Bu seçenekler her komutta geçerlidir."))
@@ -116,7 +116,7 @@ func cell(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(s, "|", `\|`), "\n", " ")
 }
 
-// anchor is GitHub's heading anchor for "servik sites list".
+// anchor is GitHub's heading anchor for "serfex sites list".
 func anchor(heading string) string {
 	return strings.ReplaceAll(strings.ToLower(heading), " ", "-")
 }

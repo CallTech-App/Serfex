@@ -15,8 +15,8 @@ use function Laravel\Prompts\text;
  * Creates the panel's first administrator, or resets it. Customer logins
  * are never touched.
  */
-#[Signature('servik:admin {--email= : E-mail address used to sign in} {--name= : Display name} {--password= : Password (prompted when omitted)}')]
-#[Description('Create or reset the Servik administrator account')]
+#[Signature('serfex:admin {--email= : E-mail address used to sign in} {--name= : Display name} {--password= : Password (prompted when omitted)}')]
+#[Description('Create or reset the Serfex administrator account')]
 class CreateAdmin extends Command
 {
     public function handle(): int

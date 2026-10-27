@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * Runs from the scheduler every minute: copies Fail2ban's bans into the
  * panel's IP block list (Canlı İzleme → Saldırılar).
  */
-#[Signature('servik:fail2ban-sync')]
+#[Signature('serfex:fail2ban-sync')]
 #[Description('Copy Fail2ban bans into the IP block list')]
 class SyncFail2banBans extends Command
 {

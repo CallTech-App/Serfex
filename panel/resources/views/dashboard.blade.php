@@ -1,4 +1,4 @@
-<x-layouts.app :title="__('Genel Bakış · Servik')">
+<x-layouts.app :title="__('Genel Bakış · Serfex')">
     <div>
         <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Genel Bakış') }}</h1>
         <p class="mt-1 text-[13px] text-muted">{{ __('Sunucunun ve sitelerin durumu.') }}</p>
@@ -144,9 +144,9 @@
         <div class="flex items-center gap-2 hover:bg-surface-2/60">
             <a @if (auth()->user()->isFullAdmin()) href="{{ route('settings.updates') }}" wire:navigate @endif class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 pr-5">
                 <x-icon name="refresh-cw" @class(['text-muted' => ! $updateNotices, 'text-warn' => ($updateNotices[0]['level'] ?? '') === 'warn', 'text-info' => ($updateNotices[0]['level'] ?? '') === 'info']) />
-                <span>{{ __('Servik sürümü') }}</span>
+                <span>{{ __('Serfex sürümü') }}</span>
                 <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $updateNotices, 'font-medium text-warn' => ($updateNotices[0]['level'] ?? '') === 'warn', 'font-medium text-info' => ($updateNotices[0]['level'] ?? '') === 'info'])>
-                    {{ $updateNotices ? collect($updateNotices)->pluck('text')->join(' · ') : 'Servik '.config('servik.version') }}
+                    {{ $updateNotices ? collect($updateNotices)->pluck('text')->join(' · ') : 'Serfex '.config('serfex.version') }}
                 </span>
                 <x-icon name="chevron-right" class="text-muted" />
             </a>

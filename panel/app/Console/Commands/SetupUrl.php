@@ -10,17 +10,17 @@ use Illuminate\Console\Command;
 
 /**
  * Makes the one-time link that opens a new panel: install.sh prints it,
- * and `sudo servik setup-url` makes a new one when it is lost. Whoever can
+ * and `sudo serfex setup-url` makes a new one when it is lost. Whoever can
  * run this can already change the panel, so the link needs nothing else.
  */
-#[Signature('servik:setup-url {--json : Print the link as JSON (install.sh, servik setup-url)}')]
+#[Signature('serfex:setup-url {--json : Print the link as JSON (install.sh, serfex setup-url)}')]
 #[Description('Make the one-time link that creates the first administrator')]
 class SetupUrl extends Command
 {
     public function handle(FirstRun $firstRun): int
     {
         if (! $firstRun->needsAdministrator()) {
-            $message = __('Bu panelde zaten bir yönetici var; kendi e-posta ve parolanızla giriş yapın. Parolayı unuttuysanız sunucuda servik:admin ile sıfırlayın.');
+            $message = __('Bu panelde zaten bir yönetici var; kendi e-posta ve parolanızla giriş yapın. Parolayı unuttuysanız sunucuda serfex:admin ile sıfırlayın.');
             if ($this->option('json')) {
                 $this->line((string) json_encode(['error' => $message], JSON_UNESCAPED_UNICODE));
             } else {

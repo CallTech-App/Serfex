@@ -22,7 +22,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('site_id')->unique()->constrained()->cascadeOnDelete();
             // Application directory relative to the site directory:
-            // laravel/current when Servik deploys it.
+            // laravel/current when Serfex deploys it.
             $table->string('path');
             $table->string('status', 16)->index();
             // create (new project), git, or existing (found on the site).

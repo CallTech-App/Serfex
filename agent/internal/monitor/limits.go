@@ -26,9 +26,9 @@ import (
 // to its usual size; workers already in the scope finish their requests
 // there and are replaced as usual.
 //
-//	/etc/servik/limits/<domain>.json   a limit in force, root 0600
-//	servik-limit-<domain>.scope        the site's limited PHP-FPM workers
-const limitsDir = "/etc/servik/limits"
+//	/etc/serfex/limits/<domain>.json   a limit in force, root 0600
+//	serfex-limit-<domain>.scope        the site's limited PHP-FPM workers
+const limitsDir = "/etc/serfex/limits"
 
 // MaxLimitSeconds is the longest a temporary limit may last.
 const MaxLimitSeconds = 7 * 24 * 3600
@@ -74,7 +74,7 @@ func (l *Limit) caps() bool { return l.CPU > 0 || l.MemoryMB > 0 }
 
 func limitFile(domain string) string { return limitsDir + "/" + domain + ".json" }
 
-func scopeName(domain string) string { return "servik-limit-" + escape(domain) + ".scope" }
+func scopeName(domain string) string { return "serfex-limit-" + escape(domain) + ".scope" }
 
 // PHPWorkers returns a site's temporary PHP worker limit, or 0; site.Manager
 // asks so that re-applying a site keeps the limit.
@@ -330,7 +330,7 @@ func (m *Monitor) sweep(ctx context.Context, l *Limit, procs []proc) {
 	args := []string{"call", "org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
 		"StartTransientUnit", "ssa(sv)a(sa(sv))", scope, "fail"}
 	props := [][]string{
-		{"Description", "s", "Servik resource limit of " + l.Domain},
+		{"Description", "s", "Serfex resource limit of " + l.Domain},
 		append([]string{"PIDs", "au", itoa(len(pids))}, pids...),
 		{"Delegate", "b", "true"},
 		{"CollectMode", "s", "inactive-or-failed"},
@@ -427,7 +427,7 @@ func (m *Monitor) uncap(ctx context.Context, domain string) {
 // systemd has loaded.
 func (m *Monitor) laravelUnits(ctx context.Context, domain string) []string {
 	out, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"list-units", "--all", "--plain", "--no-legend", "--full",
-		"servik-queue-" + domain + "_*", "servik-proc-" + domain + "_*", "servik-schedule-" + domain + ".service"}})
+		"serfex-queue-" + domain + "_*", "serfex-proc-" + domain + "_*", "serfex-schedule-" + domain + ".service"}})
 	if err != nil {
 		return nil
 	}

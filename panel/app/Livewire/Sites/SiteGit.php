@@ -321,6 +321,6 @@ class SiteGit extends Component
             'firstDeploy' => $repo ? $deploys->firstDeploy($repo) : null,
             'log' => $this->logId ? $deployments->firstWhere('id', $this->logId) : null,
             'rollbackTo' => $this->rollbackId ? $deployments->firstWhere('id', $this->rollbackId) : null,
-        ])->title(__('Git dağıtımı · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Git dağıtımı · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

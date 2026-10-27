@@ -22,8 +22,8 @@ use Tests\TestCase;
 /**
  * The panel and a real agent (running as root) on a machine with Nginx
  * and PHP-FPM: a customer gets an existing site, fills their disk quota and
- * is suspended and brought back. Runs only with SERVIK_REALHOST=1 and the
- * agent's socket in SERVIK_AGENT_SOCKET (see the CI job).
+ * is suspended and brought back. Runs only with SERFEX_REALHOST=1 and the
+ * agent's socket in SERFEX_AGENT_SOCKET (see the CI job).
  */
 class CustomerRealHostTest extends TestCase
 {
@@ -36,8 +36,8 @@ class CustomerRealHostTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (getenv('SERVIK_REALHOST') !== '1') {
-            $this->markTestSkipped('SERVIK_REALHOST is not set.');
+        if (getenv('SERFEX_REALHOST') !== '1') {
+            $this->markTestSkipped('SERFEX_REALHOST is not set.');
         }
         $this->withoutVite();
         Setting::put('ssl.auto', false);
@@ -73,7 +73,7 @@ class CustomerRealHostTest extends TestCase
         $this->actingAs(User::factory()->create());
 
         // A site that belongs to no one yet.
-        $account = SystemUser::create(['name' => 'svkm9']);
+        $account = SystemUser::create(['name' => 'sfxm9']);
         $this->site = $account->sites()->create(['domain' => self::DOMAIN, 'aliases' => [], 'php_version' => '8.3', 'status' => SiteStatus::Provisioning]);
         ProvisionSite::dispatchSync($this->site);
         $this->assertSame(SiteStatus::Active, $this->site->fresh()->status, (string) $this->site->fresh()->last_error);
@@ -82,18 +82,18 @@ class CustomerRealHostTest extends TestCase
         // A customer with a 2 MB disk gets it.
         $customers = app(Customers::class);
         $package = Package::factory()->create(['max_disk_mb' => 2, 'max_sites' => 5]);
-        [$customer] = $customers->create(['name' => 'Gerçek Müşteri', 'email' => 'm9@example.org', 'username' => 'svkm9c', 'package_id' => $package->id]);
+        [$customer] = $customers->create(['name' => 'Gerçek Müşteri', 'email' => 'm9@example.org', 'username' => 'sfxm9c', 'package_id' => $package->id]);
         $customers->attach($customer, $account->fresh());
         $this->assertTrue($customer->owns($this->site->fresh()));
 
         // The agent measures the home directory; 3 MB more fills the quota.
-        $this->artisan('servik:disk-usage')->assertSuccessful();
+        $this->artisan('serfex:disk-usage')->assertSuccessful();
         $this->assertLessThan(2 * 1024 ** 2, $account->fresh()->disk_bytes);
         $this->assertNull(app(Quotas::class)->refusal($customer, 'sites'));
-        $docroot = $this->site->fresh()->document_root ?: '/home/svkm9/web/'.self::DOMAIN.'/public_html';
+        $docroot = $this->site->fresh()->document_root ?: '/home/sfxm9/web/'.self::DOMAIN.'/public_html';
         exec('dd if=/dev/urandom of='.escapeshellarg($docroot.'/blob.bin').' bs=1M count=3 status=none', $out, $code);
         $this->assertSame(0, $code);
-        $this->artisan('servik:disk-usage')->assertSuccessful();
+        $this->artisan('serfex:disk-usage')->assertSuccessful();
         $this->assertGreaterThanOrEqual(3 * 1024 ** 2, $account->fresh()->disk_bytes);
         $this->assertStringContainsString('Disk kotası doldu', app(Quotas::class)->refusal($customer->fresh(), 'sites'));
 

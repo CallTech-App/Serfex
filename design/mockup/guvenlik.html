@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Servik Güvenlik</title>
+<title>Serfex Güvenlik</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -93,7 +93,7 @@
         <rect x="6" y="11.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))" opacity=".75"/>
         <rect x="11" y="16.5" width="9" height="3" rx="1.5" fill="rgb(var(--accent-fg))"/>
       </svg>
-      <span class="text-[17px] font-semibold tracking-tight">servik</span>
+      <span class="text-[17px] font-semibold tracking-tight">serfex</span>
       <span class="ml-auto text-2xs font-mono text-nav-muted">v1.4.1</span>
     </div>
 
@@ -102,7 +102,7 @@
         <div class="space-y-0.5">
           <a href="index.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="layout-dashboard" class="w-4 h-4"></i>Genel Bakış</a>
           <a href="canli-izleme.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="activity" class="w-4 h-4"></i>Canlı İzleme<span class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-crit text-on-crit text-2xs font-semibold grid place-items-center num">2</span></a>
-          <a href="ai-asistan.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="sparkles" class="w-4 h-4"></i>Servik AI</a>
+          <a href="ai-asistan.html" class="flex items-center gap-3 px-3 h-9 rounded-md text-nav-fg/80 hover:bg-nav-active hover:text-white"><i data-lucide="sparkles" class="w-4 h-4"></i>Serfex AI</a>
         </div>
       </div>
       <div>
@@ -135,7 +135,7 @@
     </nav>
 
     <div class="p-3 border-t border-nav-line space-y-3">
-      <a href="guncellemeler.html" class="flex items-center gap-2 rounded-md bg-nav-active px-3 h-9 text-[13px] hover:text-white"><i data-lucide="download" class="w-4 h-4 text-accent"></i>Servik 1.4.2 hazır<span class="ml-auto text-2xs text-accent font-medium">Güncelle</span></a>
+      <a href="guncellemeler.html" class="flex items-center gap-2 rounded-md bg-nav-active px-3 h-9 text-[13px] hover:text-white"><i data-lucide="download" class="w-4 h-4 text-accent"></i>Serfex 1.4.2 hazır<span class="ml-auto text-2xs text-accent font-medium">Güncelle</span></a>
       <a href="tasarim-sistemi.html" class="block px-3 text-2xs text-nav-muted hover:text-white">Tasarım sistemi (taslak)</a>
       <div class="flex items-center gap-3 px-1">
         <div class="w-8 h-8 rounded-full bg-accent/20 text-accent grid place-items-center text-xs font-semibold">SY</div>
@@ -169,7 +169,7 @@
 
       <div class="ml-auto flex items-center gap-1">
         <button id="aiBtn" class="flex items-center gap-2 h-9 px-3 rounded-md bg-accent-soft text-accent hover:bg-accent/15 text-[13px] font-medium">
-          <i data-lucide="sparkles" class="w-4 h-4"></i><span class="hidden md:inline">Servik AI</span>
+          <i data-lucide="sparkles" class="w-4 h-4"></i><span class="hidden md:inline">Serfex AI</span>
         </button>
         <button class="relative p-2 rounded-md hover:bg-surface-2 text-muted hover:text-fg" aria-label="Bildirimler">
           <i data-lucide="bell" class="w-[18px] h-[18px]"></i><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crit ring-2 ring-surface"></span>
@@ -281,11 +281,11 @@
               <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Panel girişinde tüm kullanıcılar için zorunlu</label>
             </div>
             <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
-              <span class="text-[13.5px] sm:pt-0.5">Servik AI izinleri</span>
+              <span class="text-[13.5px] sm:pt-0.5">Serfex AI izinleri</span>
               <div class="text-[13.5px] space-y-2">
                 <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">IP engelleyebilir (en fazla 1 saat)</label>
                 <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Geçici kaynak sınırı koyabilir (en fazla 30 dk)</label>
-                <p class="text-2xs text-muted">Bunların dışındaki her işlem için Servik AI önce onayınızı ister.</p>
+                <p class="text-2xs text-muted">Bunların dışındaki her işlem için Serfex AI önce onayınızı ister.</p>
               </div>
             </div>
           </div>
@@ -337,11 +337,11 @@
 <script>
   const badge = (cls, dot, t) => `<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${cls}"><i class="w-1.5 h-1.5 rounded-full ${dot}"></i>${t}</span>`;
   const SRC = {
-    'Servik AI': 'bg-accent-soft text-accent', 'Fail2ban': 'bg-surface-2 text-muted',
+    'Serfex AI': 'bg-accent-soft text-accent', 'Fail2ban': 'bg-surface-2 text-muted',
     'WAF': 'bg-info-soft text-info', 'Elle': 'bg-surface-2 text-fg',
   };
   const ips = [
-    ['185.220.101.47', 'Servik AI', 'SMTP girişine 2 dk\'da 9.300 deneme', '00:41 · 50 dk kaldı'],
+    ['185.220.101.47', 'Serfex AI', 'SMTP girişine 2 dk\'da 9.300 deneme', '00:41 · 50 dk kaldı'],
     ['141.98.11.62', 'Fail2ban', 'postfix-sasl · 5 başarısız giriş', '00:38'],
     ['45.95.169.12', 'WAF', 'SQL enjeksiyonu (CRS 942100) · api.hizlikargo.app', 'Yarın 23:31'],
     ['92.118.39.73', 'Fail2ban', 'sshd · 6 başarısız giriş', 'Yarın 23:12'],
@@ -377,7 +377,7 @@
   const fw = [
     ['Web (HTTP/HTTPS)', '80, 443/tcp', 'Herkes', 1],
     ['SSH', '2222/tcp', 'Türkiye, Almanya + 78.186.144.0/24', 1],
-    ['Servik paneli', '8443/tcp', 'Türkiye', 1],
+    ['Serfex paneli', '8443/tcp', 'Türkiye', 1],
     ['SMTP', '25/tcp', 'Herkes', 1],
     ['Posta gönderimi', '465, 587/tcp', 'Herkes, hız sınırlı', 1],
     ['IMAP / POP3', '993, 995/tcp', 'Herkes', 1],
@@ -404,7 +404,7 @@
     ['postfix-sasl', 'SMTP girişi', '5 deneme / 10 dk → 1 sa', 21, 1],
     ['dovecot', 'IMAP / POP3', '8 deneme / 10 dk → 1 sa', 9, 1],
     ['wordpress', 'WordPress girişi', '10 deneme / 5 dk → 1 sa', 14, 1],
-    ['servik-panel', 'Servik paneli', '5 deneme / 15 dk → 24 sa', 2, 1],
+    ['serfex-panel', 'Serfex paneli', '5 deneme / 15 dk → 24 sa', 2, 1],
     ['recidive', 'Tekrarlayanlar', '3 yasak / 24 sa → 7 gün', 6, 1],
     ['proftpd', 'FTP', '5 deneme / 10 dk → 1 sa', 0, 0],
   ];
@@ -449,11 +449,11 @@
 </div>
 
 <!-- AI asistan çekmecesi -->
-<aside id="ai" class="drawer invisible fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] translate-x-full bg-surface border-l border-line shadow-2xl flex flex-col" aria-label="Servik AI" aria-hidden="true">
+<aside id="ai" class="drawer invisible fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] translate-x-full bg-surface border-l border-line shadow-2xl flex flex-col" aria-label="Serfex AI" aria-hidden="true">
   <div class="h-14 flex items-center gap-2.5 px-4 border-b border-line">
     <span class="w-7 h-7 rounded-md bg-accent-soft text-accent grid place-items-center"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
     <div class="leading-tight">
-      <p class="font-semibold text-[14px]">Servik AI</p>
+      <p class="font-semibold text-[14px]">Serfex AI</p>
       <p class="text-2xs text-muted">Claude ile çalışır · sunucuya kök erişimi yok</p>
     </div>
     <button id="aiClose" class="ml-auto p-2 rounded-md hover:bg-surface-2 text-muted" aria-label="Kapat"><i data-lucide="x" class="w-4 h-4"></i></button>
@@ -528,11 +528,11 @@
 
   // Tema
   const root = document.documentElement;
-  try { const t = localStorage.getItem('servik-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  try { const t = localStorage.getItem('serfex-theme'); if (t) root.dataset.theme = t; } catch (e) {}
   document.getElementById('themeBtn').addEventListener('click', () => {
     const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     root.dataset.theme = dark ? 'light' : 'dark';
-    try { localStorage.setItem('servik-theme', root.dataset.theme); } catch (e) {}
+    try { localStorage.setItem('serfex-theme', root.dataset.theme); } catch (e) {}
   });
 
   // Menü ve AI çekmecesi

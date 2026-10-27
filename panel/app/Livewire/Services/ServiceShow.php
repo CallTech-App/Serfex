@@ -185,12 +185,12 @@ class ServiceShow extends Component
 
         return view('livewire.services.show', [
             'service' => $service,
-            'agentError' => $service === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null,
+            'agentError' => $service === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')) : null,
             'logs' => $logs,
             'affects' => $services->affects($this->unit),
             'fields' => SystemServices::SETTINGS[$service['settings'] ?? ''] ?? [],
             'confirm' => $this->confirming && $service ? $services->confirmation($service, $this->confirming) : null,
-        ])->title(__(':name · Hizmetler · Servik', ['name' => __($service['name'] ?? $this->unit)]));
+        ])->title(__(':name · Hizmetler · Serfex', ['name' => __($service['name'] ?? $this->unit)]));
     }
 
     private function loadSettings(SystemServices $services, string $section): void

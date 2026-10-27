@@ -14,7 +14,7 @@ class CreateAdminTest extends TestCase
 
     public function test_creates_the_admin(): void
     {
-        $this->artisan('servik:admin', ['--email' => 'sercan@example.test', '--name' => 'Sercan', '--password' => 'correct-horse-battery'])
+        $this->artisan('serfex:admin', ['--email' => 'sercan@example.test', '--name' => 'Sercan', '--password' => 'correct-horse-battery'])
             ->assertSuccessful();
 
         $admin = User::sole();
@@ -26,7 +26,7 @@ class CreateAdminTest extends TestCase
     {
         User::factory()->create(['email' => 'old@example.test']);
 
-        $this->artisan('servik:admin', ['--email' => 'new@example.test', '--name' => 'Sercan', '--password' => 'another-long-password'])
+        $this->artisan('serfex:admin', ['--email' => 'new@example.test', '--name' => 'Sercan', '--password' => 'another-long-password'])
             ->assertSuccessful();
 
         $this->assertSame('new@example.test', User::sole()->email);
@@ -37,7 +37,7 @@ class CreateAdminTest extends TestCase
         $customer = Customer::factory()->withLogin()->create();
         $login = $customer->user->email;
 
-        $this->artisan('servik:admin', ['--email' => 'sercan@example.test', '--name' => 'Sercan', '--password' => 'another-long-password'])
+        $this->artisan('serfex:admin', ['--email' => 'sercan@example.test', '--name' => 'Sercan', '--password' => 'another-long-password'])
             ->assertSuccessful();
 
         $this->assertSame($login, $customer->user->fresh()->email);
@@ -46,7 +46,7 @@ class CreateAdminTest extends TestCase
 
     public function test_rejects_short_passwords(): void
     {
-        $this->artisan('servik:admin', ['--email' => 'sercan@example.test', '--name' => 'Sercan', '--password' => 'short'])
+        $this->artisan('serfex:admin', ['--email' => 'sercan@example.test', '--name' => 'Sercan', '--password' => 'short'])
             ->assertFailed();
 
         $this->assertSame(0, User::count());

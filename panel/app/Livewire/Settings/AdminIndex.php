@@ -16,7 +16,7 @@ use Livewire\Component;
  * server but not on Araçlar ve Ayarlar; Salt okunur only looks.
  */
 #[Layout('components.layouts.app')]
-#[Title('Yöneticiler · Servik')]
+#[Title('Yöneticiler · Serfex')]
 class AdminIndex extends Component
 {
     public bool $inviting = false;

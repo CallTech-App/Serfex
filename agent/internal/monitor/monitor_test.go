@@ -137,19 +137,19 @@ func TestProcessesAreAttributedToSites(t *testing.T) {
 	magaza, kahve := f.uid("magaza"), f.uid("kahve")
 	start := uint64(500 * clockTicks)
 	f.proc(10, magaza, "php-fpm: pool magaza.com.tr", "php8.4-fpm.service", 0, start, 50000, 0)
-	f.proc(11, magaza, "php artisan queue:work", "servik-queue-magaza.com.tr_default@1.service", 0, start, 30000, 0)
+	f.proc(11, magaza, "php artisan queue:work", "serfex-queue-magaza.com.tr_default@1.service", 0, start, 30000, 0)
 	f.proc(12, magaza, "/usr/sbin/cron", "", 0, start, 1000, 0)
 	f.proc(20, kahve, "php-fpm: pool kahve.com", "php8.4-fpm.service", 0, start, 20000, 0)
 	f.proc(21, kahve, "bash", "", 0, start, 2000, 0)
 	f.proc(30, 33, "nginx: worker process", "nginx.service", 0, start, 9000, 0)
-	f.proc(31, 0, "/usr/local/bin/servik-agent", "servik-agent.service", 0, start, 9000, 0)
+	f.proc(31, 0, "/usr/local/bin/serfex-agent", "serfex-agent.service", 0, start, 9000, 0)
 	f.pools["magaza.com.tr"] = poolStatus{Active: 3, Idle: 1, Total: 4}
 	f.tick(0)
 
 	// Two seconds later: magaza's worker used one core, its queue worker
 	// half of one; kahve's account shell a quarter.
 	f.proc(10, magaza, "php-fpm: pool magaza.com.tr", "php8.4-fpm.service", 200, start, 50000, 4096)
-	f.proc(11, magaza, "php artisan queue:work", "servik-queue-magaza.com.tr_default@1.service", 100, start, 30000, 0)
+	f.proc(11, magaza, "php artisan queue:work", "serfex-queue-magaza.com.tr_default@1.service", 100, start, 30000, 0)
 	f.proc(21, kahve, "bash", "", 50, start, 2000, 0)
 	f.proc(30, 33, "nginx: worker process", "nginx.service", 20, start, 9000, 0)
 	// A worker started since the last sample counts in full.
@@ -178,7 +178,7 @@ func TestProcessesAreAttributedToSites(t *testing.T) {
 	for _, s := range snap.Services {
 		groups[s.Name] = s.Group
 	}
-	if groups["Nginx"] != "shared" || groups["Servik agent"] != "servik" {
+	if groups["Nginx"] != "shared" || groups["Serfex agent"] != "serfex" {
 		t.Errorf("services = %+v", snap.Services)
 	}
 	if snap.Server.CPU != 30 || snap.Server.CPUs != 2 || snap.Server.MemoryTotal != 8000000*1024 {
@@ -312,7 +312,7 @@ func TestLimitsCapAndEnd(t *testing.T) {
 	f.proc(11, f.uid("magaza"), "php-fpm: pool magaza.com.tr.eski", "php8.4-fpm.service", 0, start, 1000, 0)
 	// The scope does not exist yet.
 	f.sim.Fail = func(c host.Command) error {
-		if c.String() == `systemctl is-active --quiet servik-limit-magaza.com.tr.scope` {
+		if c.String() == `systemctl is-active --quiet serfex-limit-magaza.com.tr.scope` {
 			return fmt.Errorf("inactive")
 		}
 		return nil
@@ -342,12 +342,12 @@ func TestLimitsCapAndEnd(t *testing.T) {
 			start1 = c.String()
 		}
 	}
-	for _, want := range []string{"StartTransientUnit", "servik-limit-magaza.com.tr.scope", "PIDs au 1 10 ", "Delegate b true", "CPUQuotaPerSecUSec t 500000", "MemoryMax t 536870912"} {
+	for _, want := range []string{"StartTransientUnit", "serfex-limit-magaza.com.tr.scope", "PIDs au 1 10 ", "Delegate b true", "CPUQuotaPerSecUSec t 500000", "MemoryMax t 536870912"} {
 		if !strings.Contains(start1, want) {
 			t.Errorf("busctl call lacks %q: %s", want, start1)
 		}
 	}
-	if !f.sim.Ran("systemctl set-property --runtime servik-limit-magaza.com.tr.scope CPUQuota=50% MemoryMax=512M") {
+	if !f.sim.Ran("systemctl set-property --runtime serfex-limit-magaza.com.tr.scope CPUQuota=50% MemoryMax=512M") {
 		t.Error("scope caps not set")
 	}
 
@@ -376,7 +376,7 @@ func TestLimitsCapAndEnd(t *testing.T) {
 	if b, _ := os.ReadFile(f.sim.Path(pool)); !strings.Contains(string(b), fmt.Sprintf("pm.max_children = %d\n", site.DefaultMaxChildren)) {
 		t.Fatalf("pool not restored:\n%s", b)
 	}
-	if !f.sim.Ran("systemctl set-property --runtime servik-limit-magaza.com.tr.scope CPUQuota= MemoryMax=infinity") {
+	if !f.sim.Ran("systemctl set-property --runtime serfex-limit-magaza.com.tr.scope CPUQuota= MemoryMax=infinity") {
 		t.Error("scope caps not lifted")
 	}
 	if len(f.m.Limits()) != 0 {
@@ -449,27 +449,27 @@ func TestParsers(t *testing.T) {
 	}
 	for in, want := range map[string]string{
 		"0::/system.slice/nginx.service\n":                                   "nginx.service",
-		"0::/system.slice/servik-limit-a\\x2db.com.scope\n":                  "servik-limit-a\\x2db.com.scope",
+		"0::/system.slice/serfex-limit-a\\x2db.com.scope\n":                  "serfex-limit-a\\x2db.com.scope",
 		"12:pids:/x\n1:name=systemd:/system.slice/cron.service\n0::/\n":      "cron.service",
 		"0::/user.slice/user-0.slice/session-3.scope\n":                      "session-3.scope",
-		"0::/system.slice/servik-queue-a.com_default@2.service/sub/cgroup\n": "servik-queue-a.com_default@2.service",
+		"0::/system.slice/serfex-queue-a.com_default@2.service/sub/cgroup\n": "serfex-queue-a.com_default@2.service",
 	} {
 		if got := unitOf(in); got != want {
 			t.Errorf("unitOf(%q) = %q, want %q", in, got, want)
 		}
 	}
 	for unit, want := range map[string]string{
-		"servik-queue-a.com_default@2.service": "a.com",
-		"servik-proc-a.com_horizon.service":    "a.com",
-		"servik-schedule-a.com.service":        "a.com",
-		"servik-limit-my\\x2dsite.com.scope":   "my-site.com",
+		"serfex-queue-a.com_default@2.service": "a.com",
+		"serfex-proc-a.com_horizon.service":    "a.com",
+		"serfex-schedule-a.com.service":        "a.com",
+		"serfex-limit-my\\x2dsite.com.scope":   "my-site.com",
 		"nginx.service":                        "",
 	} {
 		if got := unitSite(unit); got != want {
 			t.Errorf("unitSite(%q) = %q, want %q", unit, got, want)
 		}
 	}
-	if scopeName("my-site.com") != `servik-limit-my\x2dsite.com.scope` {
+	if scopeName("my-site.com") != `serfex-limit-my\x2dsite.com.scope` {
 		t.Error(scopeName("my-site.com"))
 	}
 }
@@ -597,8 +597,8 @@ func TestDescribeUnit(t *testing.T) {
 		"clamav-daemon.service":            {"ClamAV", "shared"},
 		"fail2ban.service":                 {"Fail2ban", "system"},
 		"postgresql@16-main.service":       {"PostgreSQL", "shared"},
-		"postgresql.service":               {"PostgreSQL (panel veritabanı)", "servik"},
-		"redis-server@servik-mail.service": {"Redis (posta)", "shared"},
+		"postgresql.service":               {"PostgreSQL (panel veritabanı)", "serfex"},
+		"redis-server@serfex-mail.service": {"Redis (posta)", "shared"},
 	} {
 		name, group := describeUnit(unit)
 		if name != want[0] || group != want[1] {

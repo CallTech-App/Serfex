@@ -59,13 +59,13 @@ func TestInfoAndSettings(t *testing.T) {
 		t.Error("PHP-FPM was not reloaded")
 	}
 	b, _ := os.ReadFile(sim.Path(IniFile("8.4")))
-	if !strings.HasPrefix(string(b), "; Managed by Servik") || !strings.Contains(string(b), "memory_limit = 512M\n") {
+	if !strings.HasPrefix(string(b), "; Managed by Serfex") || !strings.Contains(string(b), "memory_limit = 512M\n") {
 		t.Errorf("ini file:\n%s", b)
 	}
 
 	// The command line gets them without the web-only limits.
 	cli, _ := os.ReadFile(sim.Path(CLIIniFile("8.4")))
-	for _, want := range []string{"; Managed by Servik", "date.timezone = Europe/Istanbul\n", "upload_max_filesize = 64M\n"} {
+	for _, want := range []string{"; Managed by Serfex", "date.timezone = Europe/Istanbul\n", "upload_max_filesize = 64M\n"} {
 		if !strings.Contains(string(cli), want) {
 			t.Errorf("cli ini lacks %q:\n%s", want, cli)
 		}
@@ -137,7 +137,7 @@ func TestSyncCLI(t *testing.T) {
 		t.Errorf("cli ini: %v\n%s", err, b)
 	}
 	if _, err := os.Stat(sim.Path(CLIIniFile("8.3"))); err == nil {
-		t.Error("a file Servik does not manage was copied")
+		t.Error("a file Serfex does not manage was copied")
 	}
 	// A second run changes nothing.
 	before, _ := os.Stat(sim.Path(CLIIniFile("8.4")))

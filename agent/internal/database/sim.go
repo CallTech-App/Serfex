@@ -31,7 +31,7 @@ type simData struct {
 }
 
 func (e *simEngine) file() string {
-	return e.h.Path("/var/lib/servik-sim/databases-" + e.server + ".json")
+	return e.h.Path("/var/lib/serfex-sim/databases-" + e.server + ".json")
 }
 
 func (e *simEngine) load() (*simData, error) {
@@ -90,7 +90,7 @@ func (e *simEngine) dropDatabase(_ context.Context, name string) error {
 }
 
 func (e *simEngine) dump(_ context.Context, name string, w io.Writer, _ func(host.Command) host.Command) error {
-	_, err := fmt.Fprintf(w, "-- Servik dry run: dump of %s\n", name)
+	_, err := fmt.Fprintf(w, "-- Serfex dry run: dump of %s\n", name)
 	return err
 }
 

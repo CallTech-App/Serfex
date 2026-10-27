@@ -48,7 +48,7 @@ class RunComponentOperation implements ShouldQueue
             $method = 'component.'.$op->action;
         }
         try {
-            $agent->call($method, $params, config('servik.agent.component_timeout'));
+            $agent->call($method, $params, config('serfex.agent.component_timeout'));
         } catch (AgentException $e) {
             $op->update(['status' => 'failed', 'error' => $e->reason, 'finished_at' => now()]);
             $components->statuses();

@@ -29,7 +29,7 @@ var packageFiles = []string{
 }
 
 // debconf answers that keep the packages from configuring themselves:
-// Servik writes Postfix's configuration and Roundcube's database.
+// Serfex writes Postfix's configuration and Roundcube's database.
 const preseed = `postfix postfix/main_mailer_type select No configuration
 roundcube-core roundcube/dbconfig-install boolean false
 `
@@ -193,7 +193,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 			return SetupResult{}, err
 		}
 		res.Installed = true
-		// The packages start stock instances Servik does not use.
+		// The packages start stock instances Serfex does not use.
 		_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", "redis-server.service"}})
 	}
 
@@ -225,7 +225,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		}
 	}
 
-	vmail, err := m.ensureAccount(ctx, VmailUser, VmailDir, "Servik mail")
+	vmail, err := m.ensureAccount(ctx, VmailUser, VmailDir, "Serfex mail")
 	if err != nil {
 		return SetupResult{}, err
 	}
@@ -235,7 +235,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		uid, gid  int
 		groupUser string
 	}{
-		{path: "/etc/servik", mode: 0o755},
+		{path: "/etc/serfex", mode: 0o755},
 		{path: stateDir, mode: 0o755},
 		{path: domainsDir, mode: 0o700},
 		{path: dkimDir, mode: 0o750, groupUser: "_rspamd"},

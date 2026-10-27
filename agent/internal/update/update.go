@@ -1,17 +1,17 @@
-// Package update keeps an installed Servik up to date: it finds new
+// Package update keeps an installed Serfex up to date: it finds new
 // releases on GitHub, installs one (panel and agent together) and goes
 // back to the previous release, automatically when the new one fails its
 // health check or on request.
 //
-// A release is one archive, servik-<version>-linux-<arch>.tar.gz, listed
+// A release is one archive, serfex-<version>-linux-<arch>.tar.gz, listed
 // in the release's SHA256SUMS. It unpacks into its own directory under
-// /opt/servik/releases and becomes the running one when /opt/servik/current
+// /opt/serfex/releases and becomes the running one when /opt/serfex/current
 // is switched to it (see package panel for the layout). The panel's
 // database, settings and files live outside the releases, so the previous
 // release stays ready to switch back to.
 //
 // An update runs outside the agent, as a transient systemd unit started
-// from the running agent's binary ("servik-agent -update-run RUN"), because
+// from the running agent's binary ("serfex-agent -update-run RUN"), because
 // it restarts the agent and the panel it would otherwise run inside. Its
 // steps go to a run log the panel shows live, with the same markers as
 // component operations: "▸ " a step, "$ " a command, "↺ " the way back,
@@ -19,12 +19,12 @@
 //
 // Layout:
 //
-//	/var/lib/servik/updates/latest.json         the last check: releases newer than the running one
-//	/var/lib/servik/updates/state.json          previous release, migration batch, running and last update
-//	/var/lib/servik/updates/runs/<run>.json     what a run does
-//	/var/lib/servik/updates/runs/<run>.log      what it did, kept 180 days
-//	/var/lib/servik/updates/downloads/<v>/      archives being installed
-//	/var/lib/servik/updates/snapshots/          the panel database taken before the last switch
+//	/var/lib/serfex/updates/latest.json         the last check: releases newer than the running one
+//	/var/lib/serfex/updates/state.json          previous release, migration batch, running and last update
+//	/var/lib/serfex/updates/runs/<run>.json     what a run does
+//	/var/lib/serfex/updates/runs/<run>.log      what it did, kept 180 days
+//	/var/lib/serfex/updates/downloads/<v>/      archives being installed
+//	/var/lib/serfex/updates/snapshots/          the panel database taken before the last switch
 package update
 
 import (
@@ -49,7 +49,7 @@ import (
 )
 
 const (
-	stateDir    = "/var/lib/servik/updates"
+	stateDir    = "/var/lib/serfex/updates"
 	runDir      = stateDir + "/runs"
 	downloadDir = stateDir + "/downloads"
 	snapshotDir = stateDir + "/snapshots"
@@ -58,7 +58,7 @@ const (
 	lockFile    = stateDir + "/lock"
 
 	// AgentUnit is the agent's own systemd unit.
-	AgentUnit = "servik-agent"
+	AgentUnit = "serfex-agent"
 	// SumsAsset lists the SHA-256 sums of a release's archives.
 	SumsAsset = "SHA256SUMS"
 
@@ -117,15 +117,15 @@ type Manager struct {
 	// restarted in a dry run).
 	RestartAgent func(ctx context.Context, version string) error
 	// ApplyPanel applies the running agent's panel setup (Setup: units
-	// and servik-web) after a switch; nil skips it.
+	// and serfex-web) after a switch; nil skips it.
 	ApplyPanel func(ctx context.Context) error
-	// Web serves the panel on servik-web (the database package's
+	// Web serves the panel on serfex-web (the database package's
 	// SetupPanelWeb), for Setup.
 	Web func(ctx context.Context) (any, error)
 	// Health checks that the panel answers; nil checks it over HTTPS on
 	// WebPort, or skips the check on a simulator.
 	Health func(ctx context.Context) error
-	// WebPort is servik-web's port.
+	// WebPort is serfex-web's port.
 	WebPort func() int
 	// Fail, when set, is asked before each step; an error fails the step
 	// (tests and the real-host test's rollback check).
@@ -245,7 +245,7 @@ func (m *Manager) interrupted(st *state) {
 	ctx := i18n.WithLocale(context.Background(), spec.Locale)
 	if f, err := os.OpenFile(m.h.Path(runDir+"/"+run+".log"), os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
 		if chunk, _ := m.readRun(run, 0); !chunk.Done {
-			fmt.Fprintln(f, "✗ "+i18n.T(ctx, "Güncelleme yarıda kesildi; sunucuda journalctl -u %s ile bakın.", "servik-update-"+run))
+			fmt.Fprintln(f, "✗ "+i18n.T(ctx, "Güncelleme yarıda kesildi; sunucuda journalctl -u %s ile bakın.", "serfex-update-"+run))
 		}
 		f.Close()
 	}
@@ -302,7 +302,7 @@ func (m *Manager) fetchReleases(ctx context.Context, cfg panel.Config, channel s
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "servik-agent/"+m.Agent)
+	req.Header.Set("User-Agent", "serfex-agent/"+m.Agent)
 	authorize(req, cfg.Token)
 	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -369,7 +369,7 @@ func authorize(req *http.Request, token string) {
 
 // ArchiveName is the release archive for arch.
 func ArchiveName(version, arch string) string {
-	return "servik-" + version + "-linux-" + arch + ".tar.gz"
+	return "serfex-" + version + "-linux-" + arch + ".tar.gz"
 }
 
 // newer returns the releases newer than cur, newest first.
@@ -408,7 +408,7 @@ func (m *Manager) Start(ctx context.Context, spec StartSpec) (Started, error) {
 		return Started{}, invalid("run %q must be 1-64 letters, digits, - or _", spec.Run)
 	}
 	if !panel.Installed(m.h) {
-		return Started{}, invalid("Servik was not installed from a release here, so it cannot update itself")
+		return Started{}, invalid("Serfex was not installed from a release here, so it cannot update itself")
 	}
 	cur, err := panel.CurrentVersion(m.h)
 	if err != nil {

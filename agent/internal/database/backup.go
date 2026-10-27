@@ -49,7 +49,7 @@ func (c Credential) validate(server string) error {
 	case c.Plugin == "sim":
 		return nil
 	}
-	return invalid("the stored password of the user is not one Servik can restore")
+	return invalid("the stored password of the user is not one Serfex can restore")
 }
 
 // SetWrap sets how dumps and loads are run (Yedekler runs them at low

@@ -26,7 +26,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
-#[Title('Siteler · Servik')]
+#[Title('Siteler · Serfex')]
 #[ForCustomers]
 class SiteIndex extends Component
 {
@@ -191,7 +191,7 @@ class SiteIndex extends Component
         }
 
         if (! $agent->ping()) {
-            $this->agentError = __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.');
+            $this->agentError = __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.');
 
             return;
         }
@@ -256,10 +256,10 @@ class SiteIndex extends Component
                     ->orWhereHas('systemUser', fn ($u) => $u->where('name', 'like', $term));
             }))
             ->when($this->sort === 'trafik', fn ($q) => $q->orderByRaw('coalesce((select bytes from site_traffic where site_traffic.site_id = sites.id and month = ?), 0) desc',
-                [now(config('servik.timezone'))->startOfMonth()->toDateString()]))
+                [now(config('serfex.timezone'))->startOfMonth()->toDateString()]))
             ->orderBy('domain')
             ->paginate(25);
-        $traffic = SiteTraffic::whereIn('site_id', $sites->pluck('id'))->where('month', now(config('servik.timezone'))->startOfMonth()->toDateString())->pluck('bytes', 'site_id');
+        $traffic = SiteTraffic::whereIn('site_id', $sites->pluck('id'))->where('month', now(config('serfex.timezone'))->startOfMonth()->toDateString())->pluck('bytes', 'site_id');
 
         return view('livewire.sites.index', [
             'sites' => $sites,
@@ -286,7 +286,7 @@ class SiteIndex extends Component
     private function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')
             : __('Sunucu ajanı hata verdi: :reason', ['reason' => $e->reason]);
     }
 }

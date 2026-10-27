@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * DNS zones served by this server and their records. The panel is the
-     * source of truth; servik-agent makes PowerDNS serve exactly these.
+     * source of truth; serfex-agent makes PowerDNS serve exactly these.
      */
     public function up(): void
     {

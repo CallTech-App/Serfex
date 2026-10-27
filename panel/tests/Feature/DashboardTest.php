@@ -12,7 +12,7 @@ class DashboardTest extends TestCase
 
     public function test_dashboard_renders_when_agent_is_down(): void
     {
-        config(['servik.agent.socket' => sys_get_temp_dir().'/servik-missing.sock']);
+        config(['serfex.agent.socket' => sys_get_temp_dir().'/serfex-missing.sock']);
 
         $this->actingAs(User::factory()->create())
             ->get('/')

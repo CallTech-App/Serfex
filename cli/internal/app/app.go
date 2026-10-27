@@ -1,4 +1,4 @@
-// Package app is the servik command tree: parsing, help, output and the
+// Package app is the serfex command tree: parsing, help, output and the
 // commands themselves.
 package app
 
@@ -30,12 +30,12 @@ type Env struct {
 	Stdout, Stderr io.Writer
 	Getenv         func(string) string
 	// Interactive is true when a person is at the terminal (stdin and
-	// stderr are terminals): only then does servik ask questions.
+	// stderr are terminals): only then does serfex ask questions.
 	Interactive bool
 	// Color is true when stdout is a terminal that shows colors.
 	Color       bool
 	OpenBrowser func(url string) error
-	// Command runs a program and returns its standard output (servik
+	// Command runs a program and returns its standard output (serfex
 	// login --local).
 	Command  func(ctx context.Context, name string, args ...string) ([]byte, error)
 	Geteuid  func() int
@@ -106,11 +106,11 @@ func (e exitCode) Error() string { return "exit " + strconv.Itoa(int(e)) }
 
 func globalFlags() *Flags {
 	f := newFlags()
-	f.String("profile", "", T("ad"), T("Kullanılacak profil (varsayılan: son giriş yapılan; SERVIK_PROFILE)"))
+	f.String("profile", "", T("ad"), T("Kullanılacak profil (varsayılan: son giriş yapılan; SERFEX_PROFILE)"))
 	f.Bool("json", "", T("Çıktıyı JSON olarak yazar"))
-	f.String("lang", "", "tr|en", T("Dil (varsayılan: sistem dili; SERVIK_LANG)"))
-	f.String("url", "", T("adres"), T("Panel adresi (SERVIK_URL)"))
-	f.String("token", "", T("anahtar"), T("API anahtarı ya da uygulama belirteci (SERVIK_TOKEN)"))
+	f.String("lang", "", "tr|en", T("Dil (varsayılan: sistem dili; SERFEX_LANG)"))
+	f.String("url", "", T("adres"), T("Panel adresi (SERFEX_URL)"))
+	f.String("token", "", T("anahtar"), T("API anahtarı ya da uygulama belirteci (SERFEX_TOKEN)"))
 	f.Bool("yes", "y", T("Onay sormadan yapar"))
 	f.Bool("no-color", "", T("Renksiz çıktı (NO_COLOR)"))
 	f.Bool("help", "h", T("Yardımı gösterir"))
@@ -119,7 +119,7 @@ func globalFlags() *Flags {
 
 // Main runs the command line and returns its exit code.
 func Main(args []string, env *Env) int {
-	// "servik help deploy" is "servik deploy --help".
+	// "serfex help deploy" is "serfex deploy --help".
 	if len(args) > 0 && args[0] == "help" {
 		args = append(append([]string{}, args[1:]...), "--help")
 	}
@@ -237,18 +237,18 @@ func (c *Ctx) fail(err error) int {
 	if errors.As(err, &apiErr) {
 		c.errorf("%s", apiErr.Error())
 		if apiErr.Status == 401 {
-			fmt.Fprintln(c.env.Stderr, T("Yeniden giriş yapın: servik login %s", c.urlHint()))
+			fmt.Fprintln(c.env.Stderr, T("Yeniden giriş yapın: serfex login %s", c.urlHint()))
 		}
 		return 1
 	}
 	var pin *api.PinError
 	if errors.As(err, &pin) {
-		c.errorf("%s", T("Panelin sertifikası değişti ve tanıdığınız sertifika değil (parmak izi %s). Bu sizin yaptığınız bir değişiklikse servik login ile yeniden giriş yapın; değilse bağlanmayın.", api.Format(pin.Got)))
+		c.errorf("%s", T("Panelin sertifikası değişti ve tanıdığınız sertifika değil (parmak izi %s). Bu sizin yaptığınız bir değişiklikse serfex login ile yeniden giriş yapın; değilse bağlanmayın.", api.Format(pin.Got)))
 		return 1
 	}
 	if api.IsCertificateProblem(err) {
 		c.errorf("%s", T("Panelin sertifikası doğrulanamadı: %s", err))
-		fmt.Fprintln(c.env.Stderr, T("Panele ilk kez bağlanıyorsanız servik login ile giriş yapın; parmak izini orada onaylarsınız."))
+		fmt.Fprintln(c.env.Stderr, T("Panele ilk kez bağlanıyorsanız serfex login ile giriş yapın; parmak izini orada onaylarsınız."))
 		return 1
 	}
 	var urlErr *url.Error
@@ -374,14 +374,14 @@ func (c *Ctx) first(flag, env string) string {
 }
 
 // Client is the panel this run talks to: --url and --token (or
-// SERVIK_URL and SERVIK_TOKEN, for CI), else the profile.
+// SERFEX_URL and SERFEX_TOKEN, for CI), else the profile.
 func (c *Ctx) Client() (*api.Client, error) {
 	if c.client != nil {
 		return c.client, nil
 	}
 	opts := api.Options{Lang: Locale()}
-	token, rawURL := c.first("token", "SERVIK_TOKEN"), c.first("url", "SERVIK_URL")
-	profileName := c.first("profile", "SERVIK_PROFILE")
+	token, rawURL := c.first("token", "SERFEX_TOKEN"), c.first("url", "SERFEX_URL")
+	profileName := c.first("profile", "SERFEX_PROFILE")
 	if token == "" || rawURL == "" || profileName != "" {
 		cfg, err := c.config()
 		if err != nil {
@@ -390,9 +390,9 @@ func (c *Ctx) Client() (*api.Client, error) {
 		name, p := cfg.Get(profileName)
 		if p == nil && token == "" {
 			if profileName != "" {
-				return nil, fmt.Errorf("%s", T("%s adında bir profil yok; profiller: servik profile list", profileName))
+				return nil, fmt.Errorf("%s", T("%s adında bir profil yok; profiller: serfex profile list", profileName))
 			}
-			return nil, fmt.Errorf("%s", T("Henüz giriş yapılmadı. Önce: servik login <panel-adresi>"))
+			return nil, fmt.Errorf("%s", T("Henüz giriş yapılmadı. Önce: serfex login <panel-adresi>"))
 		}
 		if p != nil {
 			c.profileName, c.profile = name, p
@@ -408,11 +408,11 @@ func (c *Ctx) Client() (*api.Client, error) {
 	if token != "" {
 		opts.Token = token
 	}
-	if fp := c.env.Getenv("SERVIK_FINGERPRINT"); fp != "" {
+	if fp := c.env.Getenv("SERFEX_FINGERPRINT"); fp != "" {
 		opts.Fingerprint = fp
 	}
 	if opts.URL == "" {
-		return nil, fmt.Errorf("%s", T("Panel adresi yok: --url ya da SERVIK_URL ile verin."))
+		return nil, fmt.Errorf("%s", T("Panel adresi yok: --url ya da SERFEX_URL ile verin."))
 	}
 	client, err := api.New(opts)
 	if err != nil {

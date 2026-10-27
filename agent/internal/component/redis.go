@@ -22,7 +22,7 @@ import (
 // server per site, running as the site's user on 127.0.0.1 with a
 // password. Applications never share keys, FLUSHDB only empties their
 // own data, and live monitoring counts the instance's CPU and memory for
-// the site (unit servik-redis-<domain>).
+// the site (unit serfex-redis-<domain>).
 
 // RedisSpec is a site's Redis instance.
 type RedisSpec struct {
@@ -47,9 +47,9 @@ var redisPasswordRe = regexp.MustCompile(`^[A-Za-z0-9]{16,128}$`)
 // DefaultRedisMemory is an instance's memory cap when none is given.
 const DefaultRedisMemory = 128
 
-func redisUnit(domain string) string     { return "servik-redis-" + domain + ".service" }
+func redisUnit(domain string) string     { return "serfex-redis-" + domain + ".service" }
 func redisConf(domain string) string     { return redisDir + "/" + domain + ".conf" }
-func redisData(domain string) string     { return "/var/lib/servik/redis/" + domain }
+func redisData(domain string) string     { return "/var/lib/serfex/redis/" + domain }
 func redisUnitFile(domain string) string { return "/etc/systemd/system/" + redisUnit(domain) }
 
 var redisConfTmpl = template.Must(template.New("redis").Parse(`# {{.Marker}}. Manual changes are overwritten.
@@ -73,7 +73,7 @@ databases 16
 
 var redisUnitTmpl = template.Must(template.New("unit").Parse(`# {{.Marker}}. Manual changes are overwritten.
 [Unit]
-Description=Redis for {{.Domain}} (Servik)
+Description=Redis for {{.Domain}} (Serfex)
 After=network.target
 
 [Service]
@@ -145,7 +145,7 @@ func (m *Manager) ApplyRedis(ctx context.Context, spec RedisSpec) (res RedisResu
 		"Marker": txn.Marker, "Domain": spec.Domain, "User": spec.User, "Port": spec.Port,
 		"Password": spec.Password, "MaxMemoryMB": spec.MaxMemoryMB, "Data": redisData(spec.Domain), "Conf": redisConf(spec.Domain),
 	}
-	for _, d := range []string{"/var/lib/servik", "/var/lib/servik/redis"} {
+	for _, d := range []string{"/var/lib/serfex", "/var/lib/serfex/redis"} {
 		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 			return res, err
 		}
@@ -230,10 +230,10 @@ func (m *Manager) RemoveRedis(ctx context.Context, domain string) (bool, error) 
 
 // redisInstances lists the sites that have a Redis instance.
 func (m *Manager) redisInstances() []string {
-	files, _ := filepath.Glob(m.h.Path("/etc/systemd/system/servik-redis-*.service"))
+	files, _ := filepath.Glob(m.h.Path("/etc/systemd/system/serfex-redis-*.service"))
 	var out []string
 	for _, f := range files {
-		out = append(out, strings.TrimSuffix(strings.TrimPrefix(filepath.Base(f), "servik-redis-"), ".service"))
+		out = append(out, strings.TrimSuffix(strings.TrimPrefix(filepath.Base(f), "serfex-redis-"), ".service"))
 	}
 	sort.Strings(out)
 	return out

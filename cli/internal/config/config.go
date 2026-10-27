@@ -2,7 +2,7 @@
 // profile per panel (or per application token), and which one is used
 // when --profile does not say.
 //
-// The file is SERVIK_CONFIG, or servik/config.json in the user's
+// The file is SERFEX_CONFIG, or serfex/config.json in the user's
 // configuration folder (~/.config on Linux). It holds keys, so it is
 // written for its owner only (0600).
 package config
@@ -21,7 +21,7 @@ import (
 type Profile struct {
 	// URL is the panel's address, https://panel.example.com:8443.
 	URL string `json:"url"`
-	// Token is a command line key (svk_panel_…) or an application token (svk_…).
+	// Token is a command line key (sfx_panel_…) or an application token (sfx_…).
 	Token string `json:"token"`
 	// Fingerprint pins the panel's certificate (SHA-256, hex) when it is
 	// not one the computer trusts, such as the panel's own first one.
@@ -50,7 +50,7 @@ type Config struct {
 
 // Path is where the file lives.
 func Path(getenv func(string) string) (string, error) {
-	if p := getenv("SERVIK_CONFIG"); p != "" {
+	if p := getenv("SERFEX_CONFIG"); p != "" {
 		return p, nil
 	}
 	dir := getenv("XDG_CONFIG_HOME")
@@ -61,7 +61,7 @@ func Path(getenv func(string) string) (string, error) {
 		}
 		dir = d
 	}
-	return filepath.Join(dir, "servik", "config.json"), nil
+	return filepath.Join(dir, "serfex", "config.json"), nil
 }
 
 // Load reads the file; a missing file is an empty configuration.

@@ -44,7 +44,7 @@ class SettingsTest extends TestCase
         parent::setUp();
         Queue::fake();
         // The container's own disk is no business of these tests.
-        config(['servik.disk_paths' => []]);
+        config(['serfex.disk_paths' => []]);
         $this->agent = new FakeAgent([
             'system.info' => ['hostname' => 'srv-ist-01', 'os' => 'Ubuntu 24.04.3 LTS', 'kernel' => '6.8.0-60-generic', 'cpus' => 8, 'memory_bytes' => 16 * 1024 ** 3,
                 'timezone' => 'Europe/Istanbul', 'uptime_seconds' => 86400 * 12, 'addresses' => ['ipv4' => ['203.0.113.10'], 'ipv6' => ['2001:db8::10']]],
@@ -87,7 +87,7 @@ class SettingsTest extends TestCase
         Queue::assertPushed(IssuePanelCertificate::class);
 
         PanelSettings::apply();
-        $this->assertSame('Europe/Berlin', config('servik.timezone'));
+        $this->assertSame('Europe/Berlin', config('serfex.timezone'));
         $this->assertSame(480, config('session.lifetime'));
         $this->assertSame('Europe/Berlin', config('app.schedule_timezone'));
 
@@ -166,7 +166,7 @@ class SettingsTest extends TestCase
         $settings->changePort(9443);
         $this->travel(PanelSettings::CONFIRM_MINUTES + 1)->minutes();
 
-        $this->artisan('servik:settings-check')->assertSuccessful();
+        $this->artisan('serfex:settings-check')->assertSuccessful();
 
         $this->assertSame(['ports' => [8443]], $this->agent->called('panel.web.ports')[1]);
         $this->assertNull($settings->portChange());
@@ -231,7 +231,7 @@ class SettingsTest extends TestCase
     public function test_inviting_an_administrator_mails_a_link_and_undo_cancels_it(): void
     {
         Mail::fake();
-        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.kahve.com.tr', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => 'servik@kahve.com.tr', 'from_name' => 'Servik']);
+        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.kahve.com.tr', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => 'serfex@kahve.com.tr', 'from_name' => 'Serfex']);
 
         $page = Livewire::test(AdminIndex::class)
             ->call('openInvite')
@@ -329,7 +329,7 @@ class SettingsTest extends TestCase
             ->call('save')
             ->assertHasErrors('emails')
             ->set('emails', 'OPS@kahve.com.tr; sercan@kahve.com.tr')
-            ->set('webhookUrl', 'https://hooks.kahve.com.tr/servik')
+            ->set('webhookUrl', 'https://hooks.kahve.com.tr/serfex')
             ->set('events.update', false)
             ->call('save')
             ->assertHasNoErrors()
@@ -350,8 +350,8 @@ class SettingsTest extends TestCase
         Mail::fake();
         Http::fake(['hooks.kahve.com.tr/*' => Http::response('', 204)]);
         $notifications = app(Notifications::class);
-        $notifications->save(['emails' => ['ops@kahve.com.tr'], 'webhook_url' => 'https://hooks.kahve.com.tr/servik']);
-        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.kahve.com.tr', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Servik']);
+        $notifications->save(['emails' => ['ops@kahve.com.tr'], 'webhook_url' => 'https://hooks.kahve.com.tr/serfex']);
+        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.kahve.com.tr', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Serfex']);
         $certificate = Certificate::factory()->create(['site_id' => null, 'kind' => 'panel', 'name' => 'panel', 'not_after' => now()->addDays(3), 'renew_error' => 'DNS bu sunucuyu göstermiyor']);
 
         $this->assertSame(['opened' => 1, 'resolved' => 0], $notifications->check());
@@ -360,8 +360,8 @@ class SettingsTest extends TestCase
         Http::assertSent(function ($request) use ($notifications) {
             $payload = json_decode($request->body(), true);
 
-            return $request->hasHeader('X-Servik-Signature', 'sha256='.hash_hmac('sha256', $request->body(), $notifications->secret()))
-                && $payload['event'] === 'servik.problems' && $payload['problems'][0]['kind'] === 'certificate';
+            return $request->hasHeader('X-Serfex-Signature', 'sha256='.hash_hmac('sha256', $request->body(), $notifications->secret()))
+                && $payload['event'] === 'serfex.problems' && $payload['problems'][0]['kind'] === 'certificate';
         });
         $event = NotificationEvent::sole();
         $this->assertSame('open', $event->state);
@@ -379,14 +379,14 @@ class SettingsTest extends TestCase
     {
         Mail::fake();
         Http::fake(['*' => Http::response('nope', 500)]);
-        app(Notifications::class)->save(['emails' => ['ops@kahve.com.tr'], 'webhook_url' => 'https://hooks.kahve.com.tr/servik']);
-        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.kahve.com.tr', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Servik']);
+        app(Notifications::class)->save(['emails' => ['ops@kahve.com.tr'], 'webhook_url' => 'https://hooks.kahve.com.tr/serfex']);
+        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.kahve.com.tr', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Serfex']);
 
         Livewire::test(NotificationSettings::class)
             ->call('test')
             ->assertSet('tested', ['email' => null, 'webhook' => 'adres HTTP 500 yanıtı verdi'])
             ->assertSee('Webhook: adres HTTP 500 yanıtı verdi');
-        Mail::assertSent(PanelMail::class, fn ($m) => $m->title === 'Servik deneme bildirimi');
+        Mail::assertSent(PanelMail::class, fn ($m) => $m->title === 'Serfex deneme bildirimi');
     }
 
     public function test_switched_off_kinds_are_not_told(): void
@@ -395,7 +395,7 @@ class SettingsTest extends TestCase
         app(Notifications::class)->save(['emails' => ['ops@kahve.com.tr'], 'events' => ['certificate' => false]]);
         Certificate::factory()->create(['site_id' => null, 'kind' => 'panel', 'name' => 'panel', 'not_after' => now()->addDays(3), 'renew_error' => 'hata']);
 
-        $this->artisan('servik:notify')->assertSuccessful();
+        $this->artisan('serfex:notify')->assertSuccessful();
         $this->assertSame(0, NotificationEvent::count());
         Mail::assertNothingSent();
     }
@@ -410,7 +410,7 @@ class SettingsTest extends TestCase
             ->set('host', 'smtp.kahve.com.tr')
             ->set('port', '465')
             ->set('encryption', 'tls')
-            ->set('username', 'servik@kahve.com.tr')
+            ->set('username', 'serfex@kahve.com.tr')
             ->set('password', 'gizli-parola')
             ->call('saveMail')
             ->assertHasNoErrors()

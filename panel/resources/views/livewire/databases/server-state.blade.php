@@ -16,7 +16,7 @@
     <section class="rounded-xl border border-line bg-surface">
         <div class="border-b border-line px-5 py-4">
             <h2 class="text-[15px] font-semibold">{{ __('Veritabanı sunucusunu kurun') }}</h2>
-            <p class="mt-1 text-[13px] text-muted">{{ __('Müşteri veritabanları bu sunucuda çalışır. Servik seçtiğiniz sunucuyu kurar, yalnızca bu sunucudan bağlantı kabul edecek şekilde ayarlar ve tarayıcıdan yönetim için phpMyAdmin ya da Adminer\'ı kendi web sunucusunda açar. Kurulum yarıda kalırsa yapılanlar geri alınır.') }}</p>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Müşteri veritabanları bu sunucuda çalışır. Serfex seçtiğiniz sunucuyu kurar, yalnızca bu sunucudan bağlantı kabul edecek şekilde ayarlar ve tarayıcıdan yönetim için phpMyAdmin ya da Adminer\'ı kendi web sunucusunda açar. Kurulum yarıda kalırsa yapılanlar geri alınır.') }}</p>
         </div>
         <form wire:submit="setupServer" class="space-y-4 p-5 text-[13.5px]">
             <fieldset>
@@ -102,9 +102,9 @@
         [$tone, $title, $text, $action] = match ($state) {
             'missing' => ['warn', __('Veritabanı sunucusu henüz kurulmadı'), __('Sunucu yöneticiniz kurduğunda burada veritabanı oluşturabilirsiniz.'), null],
             'failed' => ['crit', __('Veritabanı sunucusu kurulamadı'), __('Yarıda kalan kurulum geri alındı.'), __('Tekrar dene')],
-            'stopped' => ['crit', __('Veritabanı sunucusu çalışmıyor'), __('Siteler veritabanlarına bağlanamıyor. Servik ayarları denetleyip sunucuyu yeniden başlatabilir.'), __('Onar ve başlat')],
+            'stopped' => ['crit', __('Veritabanı sunucusu çalışmıyor'), __('Siteler veritabanlarına bağlanamıyor. Serfex ayarları denetleyip sunucuyu yeniden başlatabilir.'), __('Onar ve başlat')],
             'nomanager' => ['warn', __('Web veritabanı yöneticisi hazır değil'), __('Veritabanları çalışıyor ama phpMyAdmin ve Adminer henüz kurulmadı.'), __('Kur')],
-            default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status servik-agent" ile kontrol edin.'), null],
+            default => ['crit', __('Sunucu ajanına ulaşılamıyor'), __('Sunucuda "systemctl status serfex-agent" ile kontrol edin.'), null],
         };
         if (! $admin) {
             $action = null;

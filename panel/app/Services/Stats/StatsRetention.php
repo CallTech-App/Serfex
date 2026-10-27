@@ -61,7 +61,7 @@ class StatsRetention
      */
     public function prune(): int
     {
-        $tz = config('servik.timezone');
+        $tz = config('serfex.timezone');
         $today = now($tz)->startOfDay();
         $n = DB::table('site_stats_hourly')->where('hour', '<', now()->subDays(self::HOURLY_DAYS))->delete();
         $n += DB::table('site_stats_daily')->where('day', '<', $today->copy()->subMonthsNoOverflow(self::DAILY_MONTHS)->toDateString())->delete();

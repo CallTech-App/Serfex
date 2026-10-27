@@ -62,7 +62,7 @@ class UsageReport extends Component
         }
         if ($this->tab === 'trafik') {
             $siteIds = Site::whereIn('system_user_id', $customer->systemUsers()->select('id'))->pluck('id')->all();
-            $tz = config('servik.timezone');
+            $tz = config('serfex.timezone');
             $from = CarbonImmutable::now($tz)->startOfMonth()->subMonthsNoOverflow(11);
             $byMonth = SiteTraffic::whereIn('site_id', $siteIds)->where('month', '>=', $from->toDateString())
                 ->selectRaw("to_char(month, 'YYYY-MM') as m, sum(bytes) as bytes")->groupByRaw("to_char(month, 'YYYY-MM')")->pluck('bytes', 'm');
@@ -78,6 +78,6 @@ class UsageReport extends Component
                 ->sortByDesc('bytes')->values()->all();
         }
 
-        return view('livewire.customers.report', $data)->title(__('Kullanım · :name · Servik', ['name' => $customer->displayName()]));
+        return view('livewire.customers.report', $data)->title(__('Kullanım · :name · Serfex', ['name' => $customer->displayName()]));
     }
 }

@@ -39,7 +39,7 @@ class CustomerUsageTest extends TestCase
         app(Customers::class)->account(Customer::factory()->create(['username' => 'bos'])); // no uid yet
         $this->agent->answers['usage.disk'] = ['kahve' => ['bytes' => 3 * 1024 ** 3, 'files' => 12]];
 
-        $this->artisan('servik:disk-usage')->assertSuccessful();
+        $this->artisan('serfex:disk-usage')->assertSuccessful();
 
         $this->assertSame([['users' => ['kahve']]], $this->agent->called('usage.disk'));
         $this->assertSame(3 * 1024 ** 3, $account->fresh()->disk_bytes);

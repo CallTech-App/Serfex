@@ -226,8 +226,8 @@
                     </thead>
                     <tbody class="divide-y divide-line">
                         <tr class="hover:bg-surface-2/60">
-                            <td class="py-3 pr-3 pl-5 whitespace-nowrap"><x-t text="Yerel disk:part"><x-slot:part><span class="mt-0.5 block text-2xs text-muted sm:hidden">/var/lib/servik/backups</span></x-slot:part></x-t></td>
-                            <td class="hidden px-3 py-3 font-mono text-[12.5px] text-muted sm:table-cell">{{ $status['path'] ?? '/var/lib/servik/backups' }}</td>
+                            <td class="py-3 pr-3 pl-5 whitespace-nowrap"><x-t text="Yerel disk:part"><x-slot:part><span class="mt-0.5 block text-2xs text-muted sm:hidden">/var/lib/serfex/backups</span></x-slot:part></x-t></td>
+                            <td class="hidden px-3 py-3 font-mono text-[12.5px] text-muted sm:table-cell">{{ $status['path'] ?? '/var/lib/serfex/backups' }}</td>
                             <td class="num hidden px-3 py-3 text-right whitespace-nowrap sm:table-cell">
                                 @if ($status)
                                     {{ Bytes::format((int) $status['used']) }} <span class="text-muted">{{ __('· :free boş', ['free' => Bytes::format((int) $status['free'])]) }}</span>
@@ -264,7 +264,7 @@
                     </tbody>
                 </table>
             </div>
-            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Uzak hedeflere giden yedekler varsayılan olarak AES-256 ile şifrelenir. Birden fazla Servik sunucusu aynı bucket\'ı kullanabilir; her sunucu kendi klasörüne yazar.') }}</p>
+            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Uzak hedeflere giden yedekler varsayılan olarak AES-256 ile şifrelenir. Birden fazla Serfex sunucusu aynı bucket\'ı kullanabilir; her sunucu kendi klasörüne yazar.') }}</p>
         @else
             <form wire:submit="saveSchedule" class="max-w-3xl px-5 py-5">
                 <div class="divide-y divide-line text-[13.5px]">
@@ -596,7 +596,7 @@
                         </div>
                         @if ($publicKey)
                             <div class="rounded-lg border border-line bg-surface-2/60 p-3">
-                                <p class="text-[13px]"><x-t text="Servik bu sunucuya kendi SSH anahtarıyla bağlanır. Aşağıdaki satırı hedef sunucudaki kullanıcının :part dosyasına ekleyin:"><x-slot:part><span class="font-mono">~/.ssh/authorized_keys</span></x-slot:part></x-t></p>
+                                <p class="text-[13px]"><x-t text="Serfex bu sunucuya kendi SSH anahtarıyla bağlanır. Aşağıdaki satırı hedef sunucudaki kullanıcının :part dosyasına ekleyin:"><x-slot:part><span class="font-mono">~/.ssh/authorized_keys</span></x-slot:part></x-t></p>
                                 <div x-data class="mt-2 flex items-start gap-2">
                                     <code x-ref="k" class="min-w-0 flex-1 rounded bg-surface px-2 py-1.5 font-mono text-[12px] break-all">{{ $publicKey }}</code>
                                     <button type="button" @click="navigator.clipboard.writeText($refs.k.textContent); $dispatch('toast', { message: @js(__('Anahtar kopyalandı.')) })" class="text-[13px] text-accent hover:underline">{{ __('Kopyala') }}</button>
@@ -611,7 +611,7 @@
                     @endif
                     <div class="grid items-center gap-1.5 sm:grid-cols-[130px_1fr] sm:gap-3">
                         <label for="t-folder">{{ __('Klasör') }}</label>
-                        <input id="t-folder" wire:model="tFolder" placeholder="servik" class="{{ $field }} w-full font-mono text-[13px]">
+                        <input id="t-folder" wire:model="tFolder" placeholder="serfex" class="{{ $field }} w-full font-mono text-[13px]">
                         <span></span>
                         <p class="text-[12.5px] text-muted"><x-t text="Yedekler :t_folder altına yazılır."><x-slot:t_folder><span class="font-mono">{{ ($tFolder !== '' ? $tFolder.'/' : '').BackupTarget::serverName() }}/</span></x-slot:t_folder></x-t></p>
                     </div>
@@ -632,7 +632,7 @@
             <div>
                 <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Yedek içe aktar') }}</h2>
                 <div class="space-y-4 p-5 text-[13.5px]">
-                    <p class="text-[13px] text-muted">{{ __('Başka bir Servik sunucusunun yedeğini buraya taşıyın ya da bu sunucuyu yeniden kurun. cPanel ve Plesk yedekleri içe aktarılamaz.') }}</p>
+                    <p class="text-[13px] text-muted">{{ __('Başka bir Serfex sunucusunun yedeğini buraya taşıyın ya da bu sunucuyu yeniden kurun. cPanel ve Plesk yedekleri içe aktarılamaz.') }}</p>
                     <div class="flex gap-4 border-b border-line text-[13.5px]" role="tablist">
                         @foreach (['upload' => __('Dosya yükle'), 'folder' => __('İçe aktarma klasörü'), 'target' => __('Hedeften')] as $k => $l)
                             <button type="button" role="tab" wire:click="$set('importFrom', '{{ $k }}')" @class(['-mb-px h-9 border-b-2 whitespace-nowrap', 'border-accent font-medium' => $importFrom === $k, 'border-transparent text-muted hover:text-fg' => $importFrom !== $k])>{{ $l }}</button>
@@ -668,13 +668,13 @@
                                 <p class="num mt-1 text-2xs text-muted" x-text="`${Math.round(sent / 1048576)} / ${Math.round((file?.size ?? 0) / 1048576)} MB`"></p>
                             </div>
                             <p x-show="error" x-text="error" x-cloak class="mt-2 text-[13px] text-crit"></p>
-                            <p class="mt-2 text-[12.5px] text-muted"><x-t text="Bir Servik site arşivi (:part ya da şifreli :part2). Çok büyük arşivleri sunucuya kopyalayıp &quot;İçe aktarma klasörü&quot;nden alın."><x-slot:part><span class="font-mono">.tar</span></x-slot:part><x-slot:part2><span class="font-mono">.tar.enc</span></x-slot:part2></x-t></p>
+                            <p class="mt-2 text-[12.5px] text-muted"><x-t text="Bir Serfex site arşivi (:part ya da şifreli :part2). Çok büyük arşivleri sunucuya kopyalayıp &quot;İçe aktarma klasörü&quot;nden alın."><x-slot:part><span class="font-mono">.tar</span></x-slot:part><x-slot:part2><span class="font-mono">.tar.enc</span></x-slot:part2></x-t></p>
                             <div class="mt-3 flex justify-end">
                                 <button type="button" @click="send()" :disabled="! file || busy" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Yükle ve içe aktar') }}</button>
                             </div>
                         </div>
                     @elseif ($importFrom === 'folder')
-                        <p class="text-[13px] text-muted"><x-t text="Arşivleri :part klasörüne kopyalayın (örneğin :part2 ile), sonra burada seçin."><x-slot:part><span class="font-mono">/var/lib/servik/backups/import</span></x-slot:part><x-slot:part2><span class="font-mono">scp</span></x-slot:part2></x-t></p>
+                        <p class="text-[13px] text-muted"><x-t text="Arşivleri :part klasörüne kopyalayın (örneğin :part2 ile), sonra burada seçin."><x-slot:part><span class="font-mono">/var/lib/serfex/backups/import</span></x-slot:part><x-slot:part2><span class="font-mono">scp</span></x-slot:part2></x-t></p>
                         @isset($importError)
                             <p class="text-[13px] text-crit">{{ $importError }}</p>
                         @endisset
@@ -719,14 +719,14 @@
                                             @endif
                                         </div>
                                     @empty
-                                        <p class="px-3 py-4 text-center text-[13px] text-muted">{{ __('Bu hedefte Servik yedeği bulunamadı.') }}</p>
+                                        <p class="px-3 py-4 text-center text-[13px] text-muted">{{ __('Bu hedefte Serfex yedeği bulunamadı.') }}</p>
                                     @endforelse
                                 </div>
                             @endif
                         @endif
                     @endif
                     @error('importPassphrase') <p class="text-[13px] break-words text-crit">{{ $message }}</p> @enderror
-                    <p class="text-2xs text-muted"><x-t text="Sunucunun tamamını yeniden kurmak için: aynı veritabanı sunucularını kurun, e-postayı ayarlayın, yedeği listeye ekleyin ve sunucuda :part çalıştırın."><x-slot:part><span class="font-mono">{{ __('php artisan servik:restore-server <yedek> --panel --sites') }}</span></x-slot:part></x-t></p>
+                    <p class="text-2xs text-muted"><x-t text="Sunucunun tamamını yeniden kurmak için: aynı veritabanı sunucularını kurun, e-postayı ayarlayın, yedeği listeye ekleyin ve sunucuda :part çalıştırın."><x-slot:part><span class="font-mono">{{ __('php artisan serfex:restore-server <yedek> --panel --sites') }}</span></x-slot:part></x-t></p>
                 </div>
                 <div class="flex justify-end border-t border-line px-5 py-3">
                     <button type="button" wire:click="$set('importing', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Kapat') }}</button>

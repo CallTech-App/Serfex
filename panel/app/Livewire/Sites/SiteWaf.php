@@ -204,6 +204,6 @@ class SiteWaf extends Component
             'wafError' => $error,
             'admin' => auth()->user()->is_admin,
             'blocked' => auth()->user()->is_admin ? IpBlock::active()->pluck('address')->all() : [],
-        ])->title('WAF · '.$site->domain.' · Servik');
+        ])->title('WAF · '.$site->domain.' · Serfex');
     }
 }

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Mail domains, their mailboxes and forwarders. The panel is the source
-     * of truth; servik-agent makes Postfix, Dovecot and Rspamd follow.
+     * of truth; serfex-agent makes Postfix, Dovecot and Rspamd follow.
      */
     public function up(): void
     {
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('status', 16)->index();
             // Messages Rspamd marks as spam go to Junk.
             $table->boolean('spam_filter')->default(true);
-            // Servik keeps MX, SPF, DKIM and DMARC in the domain's zone.
+            // Serfex keeps MX, SPF, DKIM and DMARC in the domain's zone.
             $table->boolean('manage_dns')->default(true);
             // The DKIM TXT record the agent returned (name inside the zone
             // of the domain, and content).

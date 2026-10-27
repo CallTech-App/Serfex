@@ -3,14 +3,14 @@
 ## Başlamadan önce
 
 - Ubuntu Server 24.04 LTS ya da daha yenisi kurulu, amd64 veya arm64, **boş**
-  bir sunucu. Servik Nginx'i, PHP-FPM'i, PowerDNS'i, Postfix'i ve diğerlerini
+  bir sunucu. Serfex Nginx'i, PHP-FPM'i, PowerDNS'i, Postfix'i ve diğerlerini
   kendisi yapılandırır ve kendi yazmadığı yapılandırmayı sahiplenmez. Başka bir
   kontrol panelinin yanına ya da zaten site barındıran bir sunucuya kurmayın.
 - SSH ile root erişimi.
 - Herkese açık bir IPv4 adresi ve sunucu için bir ad (ör. `sunucu.ornek.com`),
   bu ada sunucuyu gösteren bir A kaydı. Panelin ve posta sunucusunun
   sertifikaları için bu adın çözümlenmesi gerekir.
-- Alan adlarınızın DNS'ini Servik yanıtlayacaksa iki ad sunucusu adı (ör.
+- Alan adlarınızın DNS'ini Serfex yanıtlayacaksa iki ad sunucusu adı (ör.
   `ns1.ornek.com` ve `ns2.ornek.com`), alan adı firmanızda sunucuyu gösteren
   glue kayıtlarıyla.
 
@@ -30,18 +30,18 @@ Kurulum ne yapacağını gösterir ve başlamadan önce sorar. Sırasıyla:
 1. işletim sistemini ve mimariyi denetler;
 2. en yeni sürümü indirir ve `SHA256SUMS` ile doğrular;
 3. panelin kendi PHP 8.5'ini (Ondřej Surý arşivinden), 5433 portunda kendi
-   PostgreSQL kümesi `servik`'i (apt.postgresql.org'dan en yeni kararlı
+   PostgreSQL kümesi `serfex`'i (apt.postgresql.org'dan en yeni kararlı
    PostgreSQL; o depoya ulaşılamazsa Ubuntu'nunki) ve kendi web sunucusu
-   `servik-web`'i kurar;
+   `serfex-web`'i kurar;
    bunlar müşteri sitelerinin kullanacaklarından ayrıdır;
-4. `servik-agent`'ı systemd hizmeti olarak ve `servik` komut satırını kurar;
+4. `serfex-agent`'ı systemd hizmeti olarak ve `serfex` komut satırını kurar;
 5. paneli kendinden imzalı bir sertifikayla `https://<sunucu adı>:8443`
    adresinde başlatır;
 6. müşteri siteleri için varsayılanları kurar: Nginx, PHP 8.4, Composer,
    Node.js 24 ve Fail2ban (`--no-components` ile atlanır);
 7. tek kullanımlık bir kurulum bağlantısı yazar (aşağıda).
 
-Yazdığı her şey `/var/log/servik/install.log` dosyasına da gider.
+Yazdığı her şey `/var/log/serfex/install.log` dosyasına da gider.
 
 ### Seçenekler
 
@@ -55,7 +55,7 @@ Yazdığı her şey `/var/log/servik/install.log` dosyasına da gider.
 | `--channel stable\|beta` | `beta` ön sürümleri de (`v0.2.0-beta.1`) dikkate alır. |
 | `--no-components` | Siteler için Nginx, PHP 8.4, Composer, Node.js ve Fail2ban'ı şimdi kurmaz. |
 | `--source URL` | Sürümlerin listelendiği yer: bir deponun GitHub API adresi (çatallar ve aynalar için). |
-| `--token T` | Gizli bir deponun sürümleri için GitHub token'ı (ya da `SERVIK_GITHUB_TOKEN`). Panelin güncelleme denetimi de kullanabilsin diye yalnızca root'un okuyabildiği `/etc/servik/release-token` dosyasında saklanır. |
+| `--token T` | Gizli bir deponun sürümleri için GitHub token'ı (ya da `SERFEX_GITHUB_TOKEN`). Panelin güncelleme denetimi de kullanabilsin diye yalnızca root'un okuyabildiği `/etc/serfex/release-token` dosyasında saklanır. |
 
 ### Gizli bir depodan
 
@@ -64,13 +64,13 @@ verir. Depo içeriğini okuma izni olan ince ayarlı (fine-grained) bir token
 yeterlidir:
 
 ```sh
-export SERVIK_GITHUB_TOKEN=github_pat_...
-curl -fsSL -H "Authorization: Bearer $SERVIK_GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
+export SERFEX_GITHUB_TOKEN=github_pat_...
+curl -fsSL -H "Authorization: Bearer $SERFEX_GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
   https://api.github.com/repos/CallTech-App/Serfex/contents/scripts/install.sh | sudo -E bash
 ```
 
 Depo herkese açılınca token'ı hem GitHub'da hem sunucuda silin
-(`sudo rm /etc/servik/release-token`).
+(`sudo rm /etc/serfex/release-token`).
 | `-y`, `--yes` | Başlamadan önce sormaz. |
 
 ### Portlar
@@ -85,7 +85,7 @@ Sağlayıcınızın güvenlik duvarında açın:
 | 53 (TCP ve UDP) | DNS, DNS sunucusunu kurduğunuzda |
 | 25, 465, 587, 110, 995, 143, 993 | E-posta (SMTP, POP3, IMAP), posta sunucusunu kurduğunuzda |
 
-Servik'in kendi güvenlik duvarı da var (Güvenlik → Güvenlik duvarı). Siz
+Serfex'in kendi güvenlik duvarı da var (Güvenlik → Güvenlik duvarı). Siz
 açana kadar kapalıdır; açıldığında kurulu hizmetlerin ihtiyaç duyduğu portları
 açık tutar.
 
@@ -104,16 +104,16 @@ ve 24 saat çalışır. Kullanılana kadar kimse giriş yapamaz; yenisini yalnı
 sunucuda root olan oluşturabilir:
 
 ```sh
-sudo servik setup-url
+sudo serfex setup-url
 ```
 
 Yeni bağlantı öncekini geçersiz kılar. Bir yönetici varsa komut bağlantı
 oluşturmaz; unutulan parola sunucuda
-`sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:admin` ile
+`sudo -u serfex php8.5 /opt/serfex/current/panel/artisan serfex:admin` ile
 sıfırlanır (`--email`, `--name`, `--password` da alır). Diğer yöneticiler
 Araçlar ve Ayarlar → Yöneticiler'den davet edilir.
 
-Servik sunucunun root parolasıyla giriş yaptırmaz: PHP hiçbir zaman root
+Serfex sunucunun root parolasıyla giriş yaptırmaz: PHP hiçbir zaman root
 olarak çalışmaz, root parolası tarayıcıdan geçmez ve kurulum bağlantısı
 yalnızca SSH anahtarıyla girilen sunucularda da çalışır.
 
@@ -141,7 +141,7 @@ aynı ayarları kaydeder ve "Sonra" ile ertelenebilir:
 4. **Bildirimler:** sorun e-postalarının gideceği adresler. Sunucu henüz posta
    gönderemiyorsa adım bunu söyler ve giden posta ayarlarına bağlantı verir.
 5. **Güvenlik duvarı:** kurulu hizmetlerin ihtiyaç duyduğu portlarla (panel,
-   web, gerçek portundaki SSH; kurulunca DNS ve posta) Servik'in güvenlik
+   web, gerçek portundaki SSH; kurulunca DNS ve posta) Serfex'in güvenlik
    duvarını açar. Panele kendi bağlantınız hiçbir zaman kesilmez.
 6. **Varsayılanlar:** yeni sitelerin web sunucusu ve PHP sürümü, güncelleme
    kanalı (kararlı ya da beta). Güncellemeler hiçbir zaman kendiliğinden
@@ -162,21 +162,21 @@ yeniden çalıştırılır.
    Posta sunucusunu kur.
 3. **Bir veritabanı sunucusu kurun:** Veritabanları → Veritabanı sunucuları.
    Varsayılan MySQL'dir; MariaDB onun yerine geçer, PostgreSQL yanında çalışır.
-4. **İlk sitenizi ekleyin:** Siteler → Site ekle. Servik sistem kullanıcısını,
+4. **İlk sitenizi ekleyin:** Siteler → Site ekle. Serfex sistem kullanıcısını,
    PHP-FPM havuzunu, web sunucusu yapılandırmasını ve DNS bölgesini oluşturur;
    alan adı sunucuyu gösterdiği anda sertifikayı alır.
-5. İsteğe bağlı: **Servik AI** → Ayarlar, Claude API anahtarınızla.
+5. İsteğe bağlı: **Serfex AI** → Ayarlar, Claude API anahtarınızla.
 
 Her alanın ayrıntısı [yönetici kılavuzunda](../README.md#administrator-guide) (İngilizce).
 
 ## Sunucuda komut satırı
 
-Kurulum `servik` komutunu `/usr/local/bin` içine koyar. Root'u tarayıcı
+Kurulum `serfex` komutunu `/usr/local/bin` içine koyar. Root'u tarayıcı
 olmadan bağlayın:
 
 ```sh
-sudo servik login --local
-servik sites list
+sudo serfex login --local
+serfex sites list
 ```
 
 Bkz. [Komut satırı başvurusu](cli.md).
@@ -185,18 +185,18 @@ Bkz. [Komut satırı başvurusu](cli.md).
 
 | Yol | |
 |-----|---|
-| `/opt/servik/releases/<sürüm>/` | Kurulu sürümler: `panel/`, `bin/servik-agent`, `bin/servik` |
-| `/opt/servik/current` | Çalışan sürüme bağlantı |
-| `/etc/servik/panel.env` | Panelin ayarları (`APP_KEY`, veritabanı parolası). Yalnızca root ve `servik` grubu okuyabilir. |
-| `/etc/servik/` | Ajanın durumu: DNS, e-posta, güvenlik duvarı, cron, sınırlar |
-| `/var/lib/servik/panel/storage` | Panelin depolaması ve günlükleri |
-| `/var/lib/servik/backups/` | Yerel yedekler ve içe aktarma klasörü |
-| `/var/log/servik/` | Kurulum ve güncelleme günlükleri, sitelerin web sunucusu günlükleri |
+| `/opt/serfex/releases/<sürüm>/` | Kurulu sürümler: `panel/`, `bin/serfex-agent`, `bin/serfex` |
+| `/opt/serfex/current` | Çalışan sürüme bağlantı |
+| `/etc/serfex/panel.env` | Panelin ayarları (`APP_KEY`, veritabanı parolası). Yalnızca root ve `serfex` grubu okuyabilir. |
+| `/etc/serfex/` | Ajanın durumu: DNS, e-posta, güvenlik duvarı, cron, sınırlar |
+| `/var/lib/serfex/panel/storage` | Panelin depolaması ve günlükleri |
+| `/var/lib/serfex/backups/` | Yerel yedekler ve içe aktarma klasörü |
+| `/var/log/serfex/` | Kurulum ve güncelleme günlükleri, sitelerin web sunucusu günlükleri |
 | `/home/<kullanıcı>/web/<alan adı>/` | Bir sitenin dosyaları |
 
-Hizmetler: `servik-agent`, `servik-web`, `servik-php`, `postgresql@18-servik`
-(panelin veritabanı; sayı PostgreSQL sürümüdür), `servik-panel-queue`, `servik-panel-backups` ve
-`servik-panel-scheduler`. Hizmetler sayfası bunları müşteri hizmetlerinden
+Hizmetler: `serfex-agent`, `serfex-web`, `serfex-php`, `postgresql@18-serfex`
+(panelin veritabanı; sayı PostgreSQL sürümüdür), `serfex-panel-queue`, `serfex-panel-backups` ve
+`serfex-panel-scheduler`. Hizmetler sayfası bunları müşteri hizmetlerinden
 ayrı gösterir ve yanlışlıkla durdurulmalarına izin vermez.
 
 ## Güncelleme
@@ -208,9 +208,9 @@ olursa eski sürüm ve veritabanı kendiliğinden geri gelir.
 
 ## Sorun giderme
 
-- Kurulum bir mesajla durur; tüm çıktı `/var/log/servik/install.log`
-  dosyasındadır. Servik zaten kuruluysa yeniden çalışmaz: panelden güncelleyin.
-- Panel açılmıyor: `systemctl status servik-web servik-php`,
-  `/var/log/servik/web/` ve `journalctl -u servik-php`.
-- Panel ajana ulaşılamadığını söylüyor: `systemctl status servik-agent` ve
-  `journalctl -u servik-agent`.
+- Kurulum bir mesajla durur; tüm çıktı `/var/log/serfex/install.log`
+  dosyasındadır. Serfex zaten kuruluysa yeniden çalışmaz: panelden güncelleyin.
+- Panel açılmıyor: `systemctl status serfex-web serfex-php`,
+  `/var/log/serfex/web/` ve `journalctl -u serfex-php`.
+- Panel ajana ulaşılamadığını söylüyor: `systemctl status serfex-agent` ve
+  `journalctl -u serfex-agent`.

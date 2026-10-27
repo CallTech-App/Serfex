@@ -14,7 +14,7 @@ import (
 )
 
 // Setup writes the panel's own units (queue workers and scheduler) and
-// serves the panel on servik-web. install.sh runs it once, and every
+// serves the panel on serfex-web. install.sh runs it once, and every
 // update runs the new agent's version of it, so a release brings its
 // own layout. Units that changed and run are restarted; starting them is
 // left to the caller (they need migrated tables).
@@ -70,7 +70,7 @@ func (m *Manager) Setup(ctx context.Context) (SetupResult, error) {
 	if m.Web != nil {
 		web, err := m.Web(ctx)
 		if err != nil {
-			return SetupResult{}, fmt.Errorf("serving the panel on servik-web: %w", err)
+			return SetupResult{}, fmt.Errorf("serving the panel on serfex-web: %w", err)
 		}
 		res.Web = web
 	}
@@ -84,19 +84,19 @@ type SetupResult struct {
 	Web     any      `json:"web,omitempty"`
 }
 
-// needrestartConf keeps Ubuntu's needrestart from restarting Servik's
+// needrestartConf keeps Ubuntu's needrestart from restarting Serfex's
 // own services after a package upgrade. A worker waits on the agent while
 // it installs software; the PHP or library upgrade of that very install
 // would otherwise get it killed mid-job, and the job's outcome is lost.
 // The workers pick up new binaries on their hourly restart (--max-time).
-const needrestartConf = "/etc/needrestart/conf.d/servik.conf"
+const needrestartConf = "/etc/needrestart/conf.d/serfex.conf"
 
 var needrestartTmpl = "# " + txn.Marker + `. Manual changes are overwritten.
-# Servik restarts its own services itself; a restart in the middle of a
+# Serfex restarts its own services itself; a restart in the middle of a
 # job (software install, deploy, update) would lose the job's outcome.
-$nrconf{override_rc}->{qr(^servik-agent\b)} = 0;
-$nrconf{override_rc}->{qr(^servik-panel-)} = 0;
-$nrconf{override_rc}->{qr(^servik-update-)} = 0;
+$nrconf{override_rc}->{qr(^serfex-agent\b)} = 0;
+$nrconf{override_rc}->{qr(^serfex-panel-)} = 0;
+$nrconf{override_rc}->{qr(^serfex-update-)} = 0;
 `
 
 // writeNeedrestart writes needrestartConf where needrestart is installed.
@@ -115,15 +115,15 @@ type unitSpec struct{ name, description, args, stop string }
 // Long jobs (deploys, installs) get a minute to finish when a worker
 // stops; backups have a worker of their own, and updates wait for them.
 var panelUnits = []unitSpec{
-	{panel.Units[0], "Servik panel queue worker", "queue:work --sleep=1 --tries=1 --max-time=3600", "60"},
-	{panel.Units[1], "Servik panel backup worker", "queue:work backups --queue=backups --sleep=3 --tries=1 --max-time=86400", "60"},
-	{panel.Units[2], "Servik panel scheduler", "schedule:work", "15"},
+	{panel.Units[0], "Serfex panel queue worker", "queue:work --sleep=1 --tries=1 --max-time=3600", "60"},
+	{panel.Units[1], "Serfex panel backup worker", "queue:work backups --queue=backups --sleep=3 --tries=1 --max-time=86400", "60"},
+	{panel.Units[2], "Serfex panel scheduler", "schedule:work", "15"},
 }
 
 var unitTmpl = template.Must(template.New("unit").Parse(`# {{.Marker}}. Manual changes are overwritten.
 [Unit]
 Description={{.Description}}
-After=network-online.target postgresql.service servik-agent.service
+After=network-online.target postgresql.service serfex-agent.service
 Wants=network-online.target
 
 [Service]

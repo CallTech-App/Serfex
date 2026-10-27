@@ -43,8 +43,8 @@ class AppServiceProvider extends ServiceProvider
         // Remembers the agent's database status for one request or job.
         $this->app->scoped(DatabaseServers::class);
         $this->app->singleton(AgentClient::class, fn ($app) => new AgentClient(
-            socket: $app['config']->get('servik.agent.socket'),
-            timeout: $app['config']->get('servik.agent.timeout'),
+            socket: $app['config']->get('serfex.agent.socket'),
+            timeout: $app['config']->get('serfex.agent.timeout'),
         ));
     }
 

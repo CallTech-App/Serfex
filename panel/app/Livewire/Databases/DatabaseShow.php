@@ -198,7 +198,7 @@ class DatabaseShow extends Component
             'candidates' => $this->candidates($database),
             'prefix' => $database->systemUser ? Databases::prefix($database->systemUser) : '',
             ...$this->userDialogData(),
-        ])->title(__(':name · Veritabanları · Servik', ['name' => $database->name]));
+        ])->title(__(':name · Veritabanları · Serfex', ['name' => $database->name]));
     }
 
     private function database(): Database

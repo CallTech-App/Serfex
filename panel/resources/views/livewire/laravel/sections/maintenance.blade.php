@@ -12,7 +12,7 @@
         <x-status-badge :status="$down ? new Badge(__('Bakım modunda'), 'warn') : new Badge(__('Uygulama açık'), 'ok')" />
         <span class="text-[13px] text-muted">
             @if ($down && $nginx)
-                {{ __('Ziyaretçiler :maintenance_mode görüyor; uygulama, kuyruklar ve zamanlayıcı çalışmaya devam ediyor.', ['maintenance_mode' => $app->maintenance_mode === 'custom' ? __('özel bakım sayfasını') : __('Servik bakım sayfasını')]) }}
+                {{ __('Ziyaretçiler :maintenance_mode görüyor; uygulama, kuyruklar ve zamanlayıcı çalışmaya devam ediyor.', ['maintenance_mode' => $app->maintenance_mode === 'custom' ? __('özel bakım sayfasını') : __('Serfex bakım sayfasını')]) }}
             @elseif ($down)
                 <x-t text="Ziyaretçiler uygulamanın 503 sayfasını görüyor (:part)."><x-slot:part><span class="font-mono">artisan down</span></x-slot:part></x-t>
             @else
@@ -24,7 +24,7 @@
         <label for="m-mode" class="font-medium md:pt-2">{{ __('Ziyaretçinin göreceği sayfa') }}</label>
         <div class="max-w-xl">
             <select id="m-mode" wire:model.live="mode" @disabled($down || ! $operate) class="{{ $field }} h-9 w-full border-line px-2.5">
-                <option value="servik">{{ __('Servik bakım sayfası') }}</option>
+                <option value="serfex">{{ __('Serfex bakım sayfası') }}</option>
                 <option value="custom">{{ __('Özel HTML') }}</option>
                 <option value="app">{{ __('Uygulamanın kendi sayfası (resources/views/errors/503.blade.php)') }}</option>
             </select>

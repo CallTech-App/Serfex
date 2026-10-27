@@ -42,7 +42,7 @@ func TestApplyServesSubdomainsFromTheirOwnRoots(t *testing.T) {
 		}
 	}
 	// Every server block uses the site's own PHP pool and logs.
-	if n := strings.Count(vhost, "fastcgi_pass unix:/run/php/servik-kahveatolyesi.com.tr.sock;"); n != 3 {
+	if n := strings.Count(vhost, "fastcgi_pass unix:/run/php/serfex-kahveatolyesi.com.tr.sock;"); n != 3 {
 		t.Errorf("fastcgi_pass %d times, want 3:\n%s", n, vhost)
 	}
 
@@ -159,8 +159,8 @@ func TestApplyWritesErrorPagesAndDirectives(t *testing.T) {
 	}
 	vhost := read(t, sim, res.NginxConfig)
 	for _, want := range []string{
-		"error_page 404 /servik-error-404.html;\n    location = /servik-error-404.html {\n        root /var/lib/servik/errors/kahveatolyesi.com.tr;\n        internal;",
-		"error_page 500 502 504 /servik-error-50x.html;",
+		"error_page 404 /serfex-error-404.html;\n    location = /serfex-error-404.html {\n        root /var/lib/serfex/errors/kahveatolyesi.com.tr;\n        internal;",
+		"error_page 500 502 504 /serfex-error-50x.html;",
 		"    location /durum {\n        return 200 \"tamam\";\n    }",
 	} {
 		if !strings.Contains(vhost, want) {
@@ -170,8 +170,8 @@ func TestApplyWritesErrorPagesAndDirectives(t *testing.T) {
 	if strings.Contains(vhost, "error_page 403") {
 		t.Error("403 page written without being asked for")
 	}
-	page := read(t, sim, "/var/lib/servik/errors/kahveatolyesi.com.tr/servik-error-404.html")
-	if !strings.HasSuffix(page, "<h1>Bulunamadı</h1>") || !strings.Contains(page, "Servik") {
+	page := read(t, sim, "/var/lib/serfex/errors/kahveatolyesi.com.tr/serfex-error-404.html")
+	if !strings.HasSuffix(page, "<h1>Bulunamadı</h1>") || !strings.Contains(page, "Serfex") {
 		t.Errorf("404 page:\n%s", page)
 	}
 
@@ -180,7 +180,7 @@ func TestApplyWritesErrorPagesAndDirectives(t *testing.T) {
 	if _, err := m.Apply(context.Background(), s); err != nil {
 		t.Fatal(err)
 	}
-	if exists(sim, "/var/lib/servik/errors/kahveatolyesi.com.tr/servik-error-50x.html") {
+	if exists(sim, "/var/lib/serfex/errors/kahveatolyesi.com.tr/serfex-error-50x.html") {
 		t.Error("50x page left behind")
 	}
 
@@ -208,7 +208,7 @@ func TestApplyWritesErrorPagesAndDirectives(t *testing.T) {
 	if _, err := m.Delete(context.Background(), DeleteSpec{Domain: spec.Domain, User: spec.User}); err != nil {
 		t.Fatal(err)
 	}
-	if exists(sim, "/var/lib/servik/errors/kahveatolyesi.com.tr") {
+	if exists(sim, "/var/lib/serfex/errors/kahveatolyesi.com.tr") {
 		t.Error("error pages left after delete")
 	}
 }

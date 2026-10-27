@@ -52,7 +52,7 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
         $updatedAt = $zone->updated_at;
 
         try {
-            $result = $agent->call('dns.zone.apply', $zone->agentSpec(), config('servik.agent.job_timeout'));
+            $result = $agent->call('dns.zone.apply', $zone->agentSpec(), config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $zone->update([
                 'status' => ZoneStatus::Failed,

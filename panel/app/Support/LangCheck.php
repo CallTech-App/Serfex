@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\View\Compilers\BladeCompiler;
 
 /**
- * Checks the panel's translations (servik:lang-check, run in CI):
+ * Checks the panel's translations (serfex:lang-check, run in CI):
  *
  * - every key the code asks for (__(), trans_choice(), <x-t text>) has
  *   its English in lang/en.json;
@@ -43,7 +43,7 @@ final class LangCheck
         // The Turkish source of agent messages the panel matches on.
         'app/Services/Agent/AgentException.php' => 'agent message matching',
         // Language names are shown in their own language.
-        'config/servik.php' => 'language names',
+        'config/serfex.php' => 'language names',
         'app/Support/LangCheck.php' => 'this check',
         'app/Support/Translator.php' => 'Turkish capitalization',
         'app/Support/PanelValidator.php' => 'Turkish capitalization',

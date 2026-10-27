@@ -112,27 +112,27 @@ func TestS3PutsGetsListsAndDeletes(t *testing.T) {
 	bigData := bytes.Repeat([]byte("0123456789"), 350)
 	os.WriteFile(big, bigData, 0o600)
 
-	if err := s.Put(ctx, "servik/k1/a.tar", small); err != nil {
+	if err := s.Put(ctx, "serfex/k1/a.tar", small); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Put(ctx, "servik/k1/b.tar", big); err != nil {
+	if err := s.Put(ctx, "serfex/k1/b.tar", big); err != nil {
 		t.Fatal(err)
 	}
-	if fake.puts != 1 || !bytes.Equal(fake.objects["servik/k1/b.tar"], bigData) {
+	if fake.puts != 1 || !bytes.Equal(fake.objects["serfex/k1/b.tar"], bigData) {
 		t.Fatalf("the big file was not sent in parts (%d single puts)", fake.puts)
 	}
 	var buf bytes.Buffer
-	if err := s.Get(ctx, "servik/k1/a.tar", &buf); err != nil || buf.String() != "hello" {
+	if err := s.Get(ctx, "serfex/k1/a.tar", &buf); err != nil || buf.String() != "hello" {
 		t.Fatalf("get: %q %v", buf.String(), err)
 	}
-	objs, err := s.List(ctx, "servik/k1")
+	objs, err := s.List(ctx, "serfex/k1")
 	if err != nil || len(objs) != 2 || objs[1].Size != int64(len(bigData)) {
 		t.Fatalf("list: %+v %v", objs, err)
 	}
-	if err := s.Delete(ctx, "servik/k1/a.tar"); err != nil {
+	if err := s.Delete(ctx, "serfex/k1/a.tar"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Get(ctx, "servik/k1/a.tar", io.Discard); err == nil || !strings.Contains(err.Error(), "is not on the target") {
+	if err := s.Get(ctx, "serfex/k1/a.tar", io.Discard); err == nil || !strings.Contains(err.Error(), "is not on the target") {
 		t.Fatalf("get after delete: %v", err)
 	}
 	// A wrong bucket comes back as the storage's own words.
@@ -144,11 +144,11 @@ func TestS3PutsGetsListsAndDeletes(t *testing.T) {
 
 func TestS3AddressesBucketsByHostUnlessPathStyle(t *testing.T) {
 	s, _ := newS3(TargetSpec{Type: "s3", Region: "eu-central-1", Bucket: "yedek", AccessKey: "a", SecretKey: "b"}, nil)
-	if u := s.objectURL("servik/k1/a.tar", nil).String(); u != "https://yedek.s3.eu-central-1.amazonaws.com/servik/k1/a.tar" {
+	if u := s.objectURL("serfex/k1/a.tar", nil).String(); u != "https://yedek.s3.eu-central-1.amazonaws.com/serfex/k1/a.tar" {
 		t.Fatal(u)
 	}
 	s, _ = newS3(TargetSpec{Type: "s3", Endpoint: "http://127.0.0.1:9000", Bucket: "yedek", AccessKey: "a", SecretKey: "b", PathStyle: true}, nil)
-	if u := s.objectURL("", map[string][]string{"list-type": {"2"}, "prefix": {"servik/"}}).String(); u != "http://127.0.0.1:9000/yedek?list-type=2&prefix=servik%2F" {
+	if u := s.objectURL("", map[string][]string{"list-type": {"2"}, "prefix": {"serfex/"}}).String(); u != "http://127.0.0.1:9000/yedek?list-type=2&prefix=serfex%2F" {
 		t.Fatal(u)
 	}
 	for _, bad := range []string{"ftp://x", "https://x/y", "https://u:p@x"} {
@@ -159,12 +159,12 @@ func TestS3AddressesBucketsByHostUnlessPathStyle(t *testing.T) {
 }
 
 func TestSFTPListingIsParsed(t *testing.T) {
-	out := "sftp> -ls -ln servik\n" +
-		"drwxr-xr-x    2 1000     1000         4096 Oct 19 03:00 servik/k1\n" +
-		"-rw-r--r--    1 1000     1000          512 Oct 19 03:00 servik/k1/backup.json\n" +
-		"-rw-r--r--    1 1000     1000          512 Oct 19 03:00 servik/../etc/passwd\n"
+	out := "sftp> -ls -ln serfex\n" +
+		"drwxr-xr-x    2 1000     1000         4096 Oct 19 03:00 serfex/k1\n" +
+		"-rw-r--r--    1 1000     1000          512 Oct 19 03:00 serfex/k1/backup.json\n" +
+		"-rw-r--r--    1 1000     1000          512 Oct 19 03:00 serfex/../etc/passwd\n"
 	got := parseSFTPList(out)
-	if len(got) != 2 || !got[0].dir || got[1].name != "servik/k1/backup.json" || got[1].size != 512 {
+	if len(got) != 2 || !got[0].dir || got[1].name != "serfex/k1/backup.json" || got[1].size != 512 {
 		t.Fatalf("%+v", got)
 	}
 }

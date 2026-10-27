@@ -17,7 +17,7 @@
             @if ($pending && ! $expired)
                 <p class="text-2xs font-semibold tracking-[.08em] text-accent uppercase">{{ __('Onayınızı bekliyor') }}</p>
             @elseif ($auto)
-                <p class="text-2xs font-semibold tracking-[.08em] text-muted uppercase">{{ __('Servik AI kendisi yaptı') }}</p>
+                <p class="text-2xs font-semibold tracking-[.08em] text-muted uppercase">{{ __('Serfex AI kendisi yaptı') }}</p>
             @endif
             <p class="mt-0.5 font-medium">{{ $action->title }}</p>
             @if ($action->reason)

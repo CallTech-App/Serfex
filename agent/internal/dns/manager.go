@@ -1,11 +1,11 @@
-// Package dns runs Servik's authoritative DNS server: PowerDNS
+// Package dns runs Serfex's authoritative DNS server: PowerDNS
 // Authoritative with the LMDB backend, managed only through its HTTP API.
 //
 // Layout on the server (Ubuntu 24.04):
 //
-//	/etc/powerdns/pdns-servik.conf     instance config, root:pdns 0640 (holds the API key)
-//	/var/lib/powerdns/servik.lmdb      zone data
-//	pdns@servik.service                the instance (the stock pdns.service is disabled)
+//	/etc/powerdns/pdns-serfex.conf     instance config, root:pdns 0640 (holds the API key)
+//	/var/lib/powerdns/serfex.lmdb      zone data
+//	pdns@serfex.service                the instance (the stock pdns.service is disabled)
 //	127.0.0.1:8081                     HTTP API, reachable only from this host
 //
 // The panel keeps the records users edit in its own database and sends the

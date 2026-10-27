@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * For HTTP validation every name is first looked up in public DNS. Names
  * that do not point at this server yet are left out (www, aliases); when
  * the domain itself does not, nothing is sent to Let's Encrypt and the
- * certificate waits for DNS, retried by servik:ssl-renew. That keeps a
+ * certificate waits for DNS, retried by serfex:ssl-renew. That keeps a
  * domain whose DNS lives elsewhere from using up Let's Encrypt's limit on
  * failed validations.
  */
@@ -33,7 +33,7 @@ class IssueCertificate implements ShouldBeUnique, ShouldQueue
     public int $timeout = 360;
 
     /**
-     * @param  bool  $auto  requested by Servik itself (new site, retry, renewal)
+     * @param  bool  $auto  requested by Serfex itself (new site, retry, renewal)
      * @param  string|null  $zone  DNS zone on this server, for dns-01
      */
     public function __construct(public Certificate $certificate, public bool $auto = false, public ?string $zone = null) {}
@@ -83,7 +83,7 @@ class IssueCertificate implements ShouldBeUnique, ShouldQueue
                 'challenge' => $certificate->challenge ?? 'http-01',
                 'dns_zone' => $this->zone,
                 'email' => Certificates::email(),
-            ]), config('servik.agent.ssl_timeout'));
+            ]), config('serfex.agent.ssl_timeout'));
         } catch (AgentException $e) {
             [$reason, $retryAt] = Certificates::failure($e);
             $this->markFailed($certificate, CertificateStatus::Failed, $reason, $retryAt);
@@ -119,6 +119,6 @@ class IssueCertificate implements ShouldBeUnique, ShouldQueue
         $here = implode(', ', $dns->serverAddresses()) ?: 'bilinmiyor';
         $there = $found === [] ? __('hiçbir adrese') : __(':found adresine', ['found' => implode(', ', $found)]);
 
-        return __('DNS henüz bu sunucuya işaret etmiyor: :domain şu an :there çözülüyor (bu sunucu: :here). Alan adının A kaydını bu sunucuya yönlendirin; Servik her saat yeniden dener.', ['domain' => $domain, 'there' => $there, 'here' => $here]);
+        return __('DNS henüz bu sunucuya işaret etmiyor: :domain şu an :there çözülüyor (bu sunucu: :here). Alan adının A kaydını bu sunucuya yönlendirin; Serfex her saat yeniden dener.', ['domain' => $domain, 'there' => $there, 'here' => $here]);
     }
 }

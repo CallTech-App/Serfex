@@ -97,7 +97,7 @@ class SiteJobsTest extends TestCase
     {
         $site = Site::factory()->create(['status' => SiteStatus::Deleting]);
         $agent = Mockery::mock(AgentClient::class);
-        $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/servik-agent/agent.sock', 'Connection refused'));
+        $agent->shouldReceive('call')->andThrow(AgentException::unavailable('/run/serfex-agent/agent.sock', 'Connection refused'));
 
         (new DeleteSite($site))->handle($agent, app(Zones::class));
 

@@ -238,7 +238,7 @@ func (m *Manager) inspectFile(file string) (Inspection, error) {
 			break
 		}
 		if err != nil {
-			return Inspection{}, invalid("the file is not a Servik backup archive")
+			return Inspection{}, invalid("the file is not a Serfex backup archive")
 		}
 		switch hdr.Name {
 		case "manifest.json":
@@ -254,7 +254,7 @@ func (m *Manager) inspectFile(file string) (Inspection, error) {
 		}
 	}
 	if !found || in.Manifest.Version != 1 || (in.Manifest.Kind != "site" && in.Manifest.Kind != "panel") {
-		return Inspection{}, invalid("the file is not a Servik backup archive")
+		return Inspection{}, invalid("the file is not a Serfex backup archive")
 	}
 	if validateName(in.Manifest.Name) != nil || validateKey("backup", in.Manifest.Key) != nil {
 		return Inspection{}, invalid("the backup's manifest.json is damaged")
@@ -525,7 +525,7 @@ func (m *Manager) PublicKey() (string, error) {
 		return "", err
 	}
 	name, _ := os.Hostname()
-	block, err := ssh.MarshalPrivateKey(sk, "servik-backup@"+name)
+	block, err := ssh.MarshalPrivateKey(sk, "serfex-backup@"+name)
 	if err != nil {
 		return "", err
 	}
@@ -533,7 +533,7 @@ func (m *Manager) PublicKey() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sp))) + " servik-backup@" + name
+	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sp))) + " serfex-backup@" + name
 	if err := os.WriteFile(priv, pem.EncodeToMemory(block), 0o600); err != nil {
 		return "", err
 	}
@@ -585,9 +585,9 @@ func (m *Manager) TestTarget(ctx context.Context, spec TargetSpec) (TestResult, 
 	if err != nil {
 		return TestResult{}, err
 	}
-	name := ".servik-test-" + randomHex(6)
+	name := ".serfex-test-" + randomHex(6)
 	probe := m.h.Path(workRoot + "/" + name)
-	content := []byte("Servik backup target test " + m.now().UTC().Format(time.RFC3339) + "\n")
+	content := []byte("Serfex backup target test " + m.now().UTC().Format(time.RFC3339) + "\n")
 	if err := os.WriteFile(probe, content, 0o600); err != nil {
 		return TestResult{}, opError(err)
 	}

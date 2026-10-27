@@ -13,12 +13,12 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 /**
- * Signs the servik command line in on the server itself: `servik login
+ * Signs the serfex command line in on the server itself: `serfex login
  * --local`, run as root, calls this to get a key of a full administrator
  * without a browser. Whoever can run it can already change the panel.
  */
-#[Signature('servik:cli-key {--email= : The administrator the key acts as (default: the first full administrator)} {--client= : The computer\'s name, shown on the account security page} {--read-only : A key that only reads}')]
-#[Description('Make a command line key for an administrator on this server (servik login --local)')]
+#[Signature('serfex:cli-key {--email= : The administrator the key acts as (default: the first full administrator)} {--client= : The computer\'s name, shown on the account security page} {--read-only : A key that only reads}')]
+#[Description('Make a command line key for an administrator on this server (serfex login --local)')]
 class CliKey extends Command
 {
     public function handle(ApiKeys $keys, PanelSettings $settings): int
@@ -28,7 +28,7 @@ class CliKey extends Command
             ? User::where('email', mb_strtolower($email))->where('is_admin', true)->whereNull('removed_at')->first()
             : User::where('is_admin', true)->whereNull('removed_at')->where(fn ($q) => $q->where('role', 'full')->orWhereNull('role'))->oldest('id')->first();
         if ($user === null) {
-            $this->components->error($email !== null ? __(':email adında bir yönetici yok.', ['email' => $email]) : __('Henüz yönetici yok. Kurulum bağlantısını sudo servik setup-url ile alın ve yönetici hesabını panelde oluşturun.'));
+            $this->components->error($email !== null ? __(':email adında bir yönetici yok.', ['email' => $email]) : __('Henüz yönetici yok. Kurulum bağlantısını sudo serfex setup-url ile alın ve yönetici hesabını panelde oluşturun.'));
 
             return self::FAILURE;
         }

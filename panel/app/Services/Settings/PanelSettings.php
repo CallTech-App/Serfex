@@ -22,14 +22,14 @@ use Throwable;
  * logs agree) and the panel (times shown, schedules such as the 03:00
  * backup). Dates stay stored in UTC.
  *
- * A port change never locks anyone out: servik-web listens on the old
+ * A port change never locks anyone out: serfex-web listens on the old
  * and the new port until an administrator confirms from the new one. If
- * nobody does within CONFIRM_MINUTES, servik:settings-check goes back to
+ * nobody does within CONFIRM_MINUTES, serfex:settings-check goes back to
  * the old port.
  */
 class PanelSettings
 {
-    public const CACHE_KEY = 'servik.panel.settings';
+    public const CACHE_KEY = 'serfex.panel.settings';
 
     /** Minutes without activity before a sign-in ends. */
     public const DEFAULT_SESSION_MINUTES = 120;
@@ -59,14 +59,14 @@ class PanelSettings
             $saved = [];
         }
         if (! empty($saved['timezone'])) {
-            config(['servik.timezone' => $saved['timezone']]);
+            config(['serfex.timezone' => $saved['timezone']]);
         }
         if (! empty($saved['session'])) {
             config(['session.lifetime' => (int) $saved['session']]);
         }
-        config(['app.schedule_timezone' => config('servik.timezone')]);
+        config(['app.schedule_timezone' => config('serfex.timezone')]);
         if (Locales::supports($saved['locale'] ?? null)) {
-            config(['servik.locale' => $saved['locale']]);
+            config(['serfex.locale' => $saved['locale']]);
         }
         // Commands, jobs and anything without a person speak the server's
         // language; SetLocale switches requests to the person's.
@@ -75,7 +75,7 @@ class PanelSettings
 
     public function timezone(): string
     {
-        return (string) (Setting::get('panel.timezone') ?: config('servik.timezone'));
+        return (string) (Setting::get('panel.timezone') ?: config('serfex.timezone'));
     }
 
     /**
@@ -91,7 +91,7 @@ class PanelSettings
     public function setLocale(string $locale): void
     {
         Setting::put('panel.locale', $locale);
-        config(['servik.locale' => $locale]);
+        config(['serfex.locale' => $locale]);
         $this->forget();
     }
 
@@ -107,7 +107,7 @@ class PanelSettings
      */
     public function setTimezone(string $timezone): void
     {
-        $this->agent->call('system.timezone.set', ['timezone' => $timezone], config('servik.agent.job_timeout'));
+        $this->agent->call('system.timezone.set', ['timezone' => $timezone], config('serfex.agent.job_timeout'));
         Setting::put('panel.timezone', $timezone);
         $this->forget();
     }
@@ -152,7 +152,7 @@ class PanelSettings
      */
     public function setHostname(string $hostname): void
     {
-        $this->agent->call('system.hostname.set', ['hostname' => $hostname], config('servik.agent.job_timeout'));
+        $this->agent->call('system.hostname.set', ['hostname' => $hostname], config('serfex.agent.job_timeout'));
         Setting::put('server.hostname', $hostname);
     }
 
@@ -175,7 +175,7 @@ class PanelSettings
     }
 
     /**
-     * Every port servik-web listens on now, the new one first while a
+     * Every port serfex-web listens on now, the new one first while a
      * change waits.
      *
      * @return list<int>
@@ -209,7 +209,7 @@ class PanelSettings
     public function changePort(int $port): void
     {
         $from = $this->port();
-        $this->agent->call('panel.web.ports', ['ports' => [$port, $from]], config('servik.agent.job_timeout'));
+        $this->agent->call('panel.web.ports', ['ports' => [$port, $from]], config('serfex.agent.job_timeout'));
         Setting::put('panel.port_change', ['from' => $from, 'to' => $port, 'until' => now()->addMinutes(self::CONFIRM_MINUTES)->toIso8601String()]);
         $this->reapplyFirewall();
     }
@@ -225,7 +225,7 @@ class PanelSettings
         if ($change === null) {
             return;
         }
-        $this->agent->call('panel.web.ports', ['ports' => [(int) $change['to']]], config('servik.agent.job_timeout'));
+        $this->agent->call('panel.web.ports', ['ports' => [(int) $change['to']]], config('serfex.agent.job_timeout'));
         Setting::put('databases.manager_port', (int) $change['to']);
         Setting::put('panel.port_change', null);
         $this->reapplyFirewall();
@@ -242,7 +242,7 @@ class PanelSettings
         if ($change === null) {
             return;
         }
-        $this->agent->call('panel.web.ports', ['ports' => [(int) $change['from']]], config('servik.agent.job_timeout'));
+        $this->agent->call('panel.web.ports', ['ports' => [(int) $change['from']]], config('serfex.agent.job_timeout'));
         Setting::put('panel.port_change', null);
         $this->reapplyFirewall();
     }
@@ -279,7 +279,7 @@ class PanelSettings
         $info = $this->agent->call('ssl.panel.install', [
             'certificate' => trim($certificate)."\n".(trim($chain) === '' ? '' : trim($chain)."\n"),
             'private_key' => trim($key)."\n",
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
         $panel = Certificate::firstOrNew(['kind' => 'panel'], ['name' => 'panel']);
         $panel->fill([
             'source' => Certificate::CUSTOM,

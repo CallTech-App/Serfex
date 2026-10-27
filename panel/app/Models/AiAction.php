@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A change Servik AI made on its own (kind auto: an IP block or a
+ * A change Serfex AI made on its own (kind auto: an IP block or a
  * temporary limit) or proposed for a person to apply (kind proposal).
  */
 #[Fillable(['ai_conversation_id', 'tool_use_id', 'kind', 'action', 'params', 'title', 'reason', 'status', 'undo', 'error',

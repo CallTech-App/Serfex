@@ -33,7 +33,7 @@ use Tests\Support\FakeAgent;
 use Tests\TestCase;
 
 /**
- * The servik command line: signing in through the browser, its keys
+ * The serfex command line: signing in through the browser, its keys
  * acting as their person within that person's role, and the parts of
  * /api/v1 it uses for hosting and for Laravel applications.
  */
@@ -78,8 +78,8 @@ class CliApiTest extends TestCase
             ]],
         ]);
         $this->app->instance(AgentClient::class, $this->agent);
-        Setting::put('mail.hostname', 'mail.servik.net.tr');
-        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.servik.net.tr/', 'certificate' => '']);
+        Setting::put('mail.hostname', 'mail.serfex.net.tr');
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.serfex.net.tr/', 'certificate' => '']);
 
         $this->admin = User::factory()->create(['name' => 'Sercan', 'role' => 'full']);
         $this->customer = Customer::factory()->withLogin()->create(['company' => 'Kahve Atölyesi', 'username' => 'kahve']);
@@ -492,20 +492,20 @@ class CliApiTest extends TestCase
 
     public function test_the_server_serves_the_installer_and_the_binaries(): void
     {
-        $dir = sys_get_temp_dir().'/servik-cli-'.uniqid();
+        $dir = sys_get_temp_dir().'/serfex-cli-'.uniqid();
         mkdir($dir);
         file_put_contents($dir.'/install-cli.sh', "#!/bin/sh\nSOURCE='https://github.com/x'\necho ok\n");
-        file_put_contents($dir.'/servik-cli-linux-amd64', 'ELF');
-        config(['servik.cli_downloads' => $dir]);
+        file_put_contents($dir.'/serfex-cli-linux-amd64', 'ELF');
+        config(['serfex.cli_downloads' => $dir]);
 
         $script = $this->get('/cli/install.sh')->assertOk();
         $this->assertStringContainsString("SOURCE='".url('/cli/indir')."'", $script->getContent());
-        $this->get('/cli/indir/servik-cli-linux-amd64')->assertOk();
-        $this->get('/cli/indir/servik-cli-darwin-arm64')->assertNotFound();
+        $this->get('/cli/indir/serfex-cli-linux-amd64')->assertOk();
+        $this->get('/cli/indir/serfex-cli-darwin-arm64')->assertNotFound();
         $this->get('/cli/indir/..%2Fpanel.json')->assertNotFound();
 
         // A checkout from git serves the repository's script.
-        config(['servik.cli_downloads' => $dir.'/yok']);
+        config(['serfex.cli_downloads' => $dir.'/yok']);
         $script = $this->get('/cli/install.sh')->assertOk()->getContent();
         $this->assertStringContainsString("SOURCE='".url('/cli/indir')."'", $script);
         $this->assertStringNotContainsString('github.com/CallTech-App/Serfex/releases', explode("\n", explode('SOURCE=', $script, 2)[1])[0]);
@@ -513,12 +513,12 @@ class CliApiTest extends TestCase
 
     public function test_cli_key_signs_the_command_line_in_on_the_server(): void
     {
-        $this->assertSame(0, Artisan::call('servik:cli-key', ['--client' => 'sunucu (root)']));
+        $this->assertSame(0, Artisan::call('serfex:cli-key', ['--client' => 'sunucu (root)']));
         $out = json_decode(trim(Artisan::output()), true);
         $this->assertStringStartsWith(ApiKeys::PREFIX, $out['key']);
         $this->assertSame($this->admin->email, $out['email']);
         $this->assertSame('sunucu (root)', ApiKey::sole()->client);
 
-        $this->assertSame(1, Artisan::call('servik:cli-key', ['--email' => 'yok@example.com']));
+        $this->assertSame(1, Artisan::call('serfex:cli-key', ['--email' => 'yok@example.com']));
     }
 }

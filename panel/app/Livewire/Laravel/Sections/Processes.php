@@ -134,7 +134,7 @@ class Processes extends Section
             return;
         }
         try {
-            $agent->call('laravel.process.restart', ['domain' => $this->app()->site->domain, 'name' => $process->name], config('servik.agent.job_timeout'));
+            $agent->call('laravel.process.restart', ['domain' => $this->app()->site->domain, 'name' => $process->name], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $this->agentError = self::agentMessage($e);
 

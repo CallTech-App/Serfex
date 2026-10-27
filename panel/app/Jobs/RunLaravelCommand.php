@@ -36,7 +36,7 @@ class RunLaravelCommand implements ShouldQueue
                 'run' => $command->run,
                 'tool' => $command->tool,
                 'args' => CommandLine::split($command->command),
-            ], config('servik.agent.deploy_timeout'));
+            ], config('serfex.agent.deploy_timeout'));
         } catch (AgentException $e) {
             $command->update(['status' => 'failed', 'exit_code' => null, 'error' => $e->reason ?: $e->getMessage(), 'finished_at' => now()]);
 

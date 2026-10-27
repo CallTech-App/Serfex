@@ -3,7 +3,7 @@
         [null, [
             ['dashboard', 'layout-dashboard', __('Genel Bakış')],
             ['monitor.index', 'activity', __('Canlı İzleme')],
-            ['ai.index', 'sparkles', 'Servik AI'],
+            ['ai.index', 'sparkles', 'Serfex AI'],
         ]],
         [__('Barındırma'), [
             ['sites.index', 'globe', __('Siteler')],
@@ -27,7 +27,7 @@
     $user = auth()->user();
     if ($user?->is_admin && ! $user->isFullAdmin()) {
         // Araçlar ve Ayarlar is for full administrators; Salt okunur
-        // accounts do not use Servik AI either.
+        // accounts do not use Serfex AI either.
         $nav[3][1] = array_values(array_filter($nav[3][1], fn ($i) => $i[0] !== 'settings.general'));
         if ($user->isReadOnly()) {
             $nav[0][1] = array_values(array_filter($nav[0][1], fn ($i) => $i[0] !== 'ai.index'));
@@ -76,9 +76,9 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <title>{{ __($title ?? 'Servik') }}</title>
+        <title>{{ __($title ?? 'Serfex') }}</title>
         <script>
-            try { const t = localStorage.getItem('servik-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+            try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
@@ -89,8 +89,8 @@
             <aside :class="menu ? 'translate-x-0' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-nav-line bg-nav text-nav-fg transition-transform lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0">
                 <div class="flex h-14 items-center gap-2.5 border-b border-nav-line px-5">
                     <x-logo />
-                    <span class="text-[17px] font-semibold tracking-tight">servik</span>
-                    <span class="ml-auto font-mono text-2xs text-nav-muted">{{ config('servik.version') }}</span>
+                    <span class="text-[17px] font-semibold tracking-tight">serfex</span>
+                    <span class="ml-auto font-mono text-2xs text-nav-muted">{{ config('serfex.version') }}</span>
                 </div>
 
                 <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-4 text-[13.5px]" aria-label="{{ __('Ana menü') }}">
@@ -154,15 +154,15 @@
                         @if ($user?->is_admin && ! $user->isReadOnly())
                             @if (request()->routeIs('ai.*'))
                                 <a href="{{ route('ai.index') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md bg-accent-soft px-3 text-[13px] font-medium text-accent hover:bg-accent/15">
-                                    <x-icon name="sparkles" /><span class="hidden md:inline">Servik AI</span>
+                                    <x-icon name="sparkles" /><span class="hidden md:inline">Serfex AI</span>
                                 </a>
                             @else
-                                <button type="button" x-on:click="$dispatch('ai-open')" class="flex h-9 items-center gap-2 rounded-md bg-accent-soft px-3 text-[13px] font-medium text-accent hover:bg-accent/15" aria-label="Servik AI">
-                                    <x-icon name="sparkles" /><span class="hidden md:inline">Servik AI</span>
+                                <button type="button" x-on:click="$dispatch('ai-open')" class="flex h-9 items-center gap-2 rounded-md bg-accent-soft px-3 text-[13px] font-medium text-accent hover:bg-accent/15" aria-label="Serfex AI">
+                                    <x-icon name="sparkles" /><span class="hidden md:inline">Serfex AI</span>
                                 </button>
                             @endif
                         @endif
-                        <button type="button" onclick="servikToggleTheme()" class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Temayı değiştir') }}" title="{{ __('Temayı değiştir') }}">
+                        <button type="button" onclick="serfexToggleTheme()" class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Temayı değiştir') }}" title="{{ __('Temayı değiştir') }}">
                             <x-icon name="sun-moon" class="size-[18px]" />
                         </button>
                     </div>

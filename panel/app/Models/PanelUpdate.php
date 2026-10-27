@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One update of Servik to a newer release, or a return to the previous
+ * One update of Serfex to a newer release, or a return to the previous
  * one. The agent performs it and writes its steps to the run log.
  */
 #[Fillable(['kind', 'from_version', 'to_version', 'status', 'run', 'error', 'backup_id', 'user_id', 'started_at', 'finished_at'])]

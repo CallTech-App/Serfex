@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
  * Runs every night: drops statistics past their keeping time and keeps
  * the top values of finished days.
  */
-#[Signature('servik:stats-prune')]
+#[Signature('serfex:stats-prune')]
 #[Description('Drop old statistics and keep the top values of finished days')]
 class PruneStats extends Command
 {

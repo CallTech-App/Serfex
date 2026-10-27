@@ -13,11 +13,11 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// SSHConfig is Servik's SSH hardening file. sshd keeps the first value it
+// SSHConfig is Serfex's SSH hardening file. sshd keeps the first value it
 // reads for each setting and reads sshd_config.d/ in order, so this file
 // wins over the distribution's and cloud-init's. The SFTP accounts' Match
 // block (package ftp) keeps password logins for them.
-const SSHConfig = "/etc/ssh/sshd_config.d/00-servik.conf"
+const SSHConfig = "/etc/ssh/sshd_config.d/00-serfex.conf"
 
 // Root login values of sshd's PermitRootLogin.
 const (
@@ -37,7 +37,7 @@ type SSHStatus struct {
 	Installed bool `json:"installed"`
 	SSHSettings
 	Ports []int `json:"ports"`
-	// Managed is true once Servik wrote its file.
+	// Managed is true once Serfex wrote its file.
 	Managed bool `json:"managed"`
 	// KeyAccounts are the administrator accounts with an SSH key, who
 	// can still log in when passwords are turned off.

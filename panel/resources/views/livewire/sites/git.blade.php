@@ -149,7 +149,7 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="hidden px-3 py-3 whitespace-nowrap md:table-cell">{{ $d->triggered_by ?? 'Servik' }}</td>
+                                <td class="hidden px-3 py-3 whitespace-nowrap md:table-cell">{{ $d->triggered_by ?? 'Serfex' }}</td>
                                 <td class="num hidden px-3 py-3 whitespace-nowrap text-muted sm:table-cell">{{ $d->durationLabel() ?? '…' }}</td>
                                 <td class="hidden px-3 py-3 sm:table-cell">
                                     <x-status-badge :status="$d->status" />

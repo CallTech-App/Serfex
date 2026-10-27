@@ -72,11 +72,11 @@ class BackupsTest extends TestCase
             'backup.delete' => ['deleted' => true],
             'backup.upload.write' => fn ($p) => ['size' => $p['offset'] + strlen(base64_decode($p['data']))],
             'backup.target.test' => ['ok' => true],
-            'backup.status' => ['path' => '/var/lib/servik/backups', 'used' => 4096, 'total' => 1 << 30, 'free' => 1 << 29, 'public_key' => 'ssh-ed25519 AAAAC3Nza servik-backup', 'busy' => false],
+            'backup.status' => ['path' => '/var/lib/serfex/backups', 'used' => 4096, 'total' => 1 << 30, 'free' => 1 << 29, 'public_key' => 'ssh-ed25519 AAAAC3Nza serfex-backup', 'busy' => false],
             'backup.run.read' => ['data' => "▸ Yedek başladı\n✓ Yedek tamamlandı\n", 'offset' => 40, 'size' => 40],
             'site.apply' => ['uid' => 1001, 'home' => '/home/kahve', 'document_root' => '/home/kahve/web/kahveatolyesi.com.tr/public_html'],
             'php.versions' => ['8.3', '8.4'],
-            'mail.domain.apply' => ['dkim' => ['name' => 'servik._domainkey', 'record' => 'v=DKIM1; k=rsa; p=abc']],
+            'mail.domain.apply' => ['dkim' => ['name' => 'serfex._domainkey', 'record' => 'v=DKIM1; k=rsa; p=abc']],
             'dns.zone.apply' => [],
         ]);
         $this->app->instance(AgentClient::class, $this->agent);
@@ -209,7 +209,7 @@ class BackupsTest extends TestCase
             ->set('tName', 'Wasabi')
             ->set('tProvider', 'wasabi')
             ->assertSet('tEndpoint', 's3.eu-central-2.wasabisys.com')
-            ->set('tBucket', 'servik-yedek')
+            ->set('tBucket', 'serfex-yedek')
             ->set('tAccessKey', 'AKIA1')
             ->set('tSecretKey', 'gizli')
             ->call('saveTarget')
@@ -219,7 +219,7 @@ class BackupsTest extends TestCase
 
         $this->agent->answers['backup.target.test'] = ['ok' => true];
         Livewire::test(BackupIndex::class)
-            ->call('openTarget')->set('tName', 'Wasabi')->set('tProvider', 'wasabi')->set('tBucket', 'servik-yedek')
+            ->call('openTarget')->set('tName', 'Wasabi')->set('tProvider', 'wasabi')->set('tBucket', 'serfex-yedek')
             ->set('tAccessKey', 'AKIA1')->set('tSecretKey', 'gizli')
             ->call('saveTarget')->assertHasNoErrors();
         $target = BackupTarget::firstOrFail();
@@ -227,7 +227,7 @@ class BackupsTest extends TestCase
         $this->assertSame('gizli', $target->config['secret_key']);
         $this->assertStringNotContainsString('gizli', (string) $target->getRawOriginal('config'), 'keys are stored encrypted');
         $spec = $this->agent->called('backup.target.test')[1];
-        $this->assertSame(['s3', 'servik-yedek', 'servik/'.BackupTarget::serverName()], [$spec['type'], $spec['bucket'], $spec['prefix']]);
+        $this->assertSame(['s3', 'serfex-yedek', 'serfex/'.BackupTarget::serverName()], [$spec['type'], $spec['bucket'], $spec['prefix']]);
     }
 
     public function test_an_sftp_target_learns_the_servers_host_key_and_shows_the_agents_key(): void
@@ -236,8 +236,8 @@ class BackupsTest extends TestCase
 
         Livewire::test(BackupIndex::class)
             ->call('openTarget')->set('tType', 'sftp')
-            ->assertSee('ssh-ed25519 AAAAC3Nza servik-backup')
-            ->set('tName', 'Yedek sunucusu')->set('tHost', 'yedek.example.com')->set('tUser', 'servik')
+            ->assertSee('ssh-ed25519 AAAAC3Nza serfex-backup')
+            ->set('tName', 'Yedek sunucusu')->set('tHost', 'yedek.example.com')->set('tUser', 'serfex')
             ->call('saveTarget')->assertHasNoErrors();
 
         $target = BackupTarget::firstOrFail();
@@ -247,7 +247,7 @@ class BackupsTest extends TestCase
 
     public function test_remote_copies_are_encrypted_and_the_local_copy_goes(): void
     {
-        $target = BackupTarget::create(['name' => 'MinIO', 'type' => 's3', 'config' => ['endpoint' => 'http://127.0.0.1:9000', 'bucket' => 'yedek', 'access_key' => 'a', 'secret_key' => 'b', 'path_style' => true, 'folder' => 'servik'], 'status' => 'ok']);
+        $target = BackupTarget::create(['name' => 'MinIO', 'type' => 's3', 'config' => ['endpoint' => 'http://127.0.0.1:9000', 'bucket' => 'yedek', 'access_key' => 'a', 'secret_key' => 'b', 'path_style' => true, 'folder' => 'serfex'], 'status' => 'ok']);
         app(BackupSettings::class)->save(['target_id' => $target->id]);
 
         $backup = $this->serverBackup();
@@ -266,7 +266,7 @@ class BackupsTest extends TestCase
         // Sunday 03:00 full, then incrementals on the days after.
         $sunday = Carbon::parse('2026-10-18 03:05', config('app.timezone'));
         Carbon::setTestNow($sunday);
-        $this->artisan('servik:backups')->assertSuccessful();
+        $this->artisan('serfex:backups')->assertSuccessful();
         $full = Backup::firstOrFail();
         $this->assertSame(['full', 'scheduled'], [$full->type, $full->trigger]);
         app(Backups::class)->take($full);
@@ -491,13 +491,13 @@ class BackupsTest extends TestCase
 
     public function test_backups_found_on_a_target_are_listed_with_their_chain(): void
     {
-        $target = BackupTarget::create(['name' => 'B2', 'type' => 's3', 'config' => ['bucket' => 'yedek', 'access_key' => 'a', 'secret_key' => 'b', 'folder' => 'servik'], 'status' => 'ok']);
+        $target = BackupTarget::create(['name' => 'B2', 'type' => 's3', 'config' => ['bucket' => 'yedek', 'access_key' => 'a', 'secret_key' => 'b', 'folder' => 'serfex'], 'status' => 'ok']);
         $d = fn ($key, $created, $incr) => ['path' => 'srv-old', 'encrypted' => true, 'descriptor' => ['version' => 1, 'key' => $key, 'server' => 'srv-old', 'scope' => 'server', 'created' => $created, 'incremental' => $incr, 'encrypted' => true,
             'items' => [['name' => 'eski.example.com', 'size' => 100, 'parts' => ['files' => 100], 'incremental' => $incr ? ['files'] : []]]]];
         $this->agent->answers['backup.scan'] = [$d('k3', '2026-10-13T03:00:00Z', true), $d('k2', '2026-10-12T03:00:00Z', true), $d('k1', '2026-10-11T03:00:00Z', false), $d('k0', '2026-10-04T03:00:00Z', false)];
 
         $page = Livewire::test(BackupIndex::class)->call('openImport')->set('importFrom', 'target')->set('scanTargetId', $target->id)->call('scanTarget')->assertSee('srv-old');
-        $this->assertSame('servik', $this->agent->called('backup.scan')[0]['target']['prefix']);
+        $this->assertSame('serfex', $this->agent->called('backup.scan')[0]['target']['prefix']);
         $page->call('adopt', 'k3')->assertHasErrors('importPassphrase');
         $page->set('importPassphrase', 'eski-sunucunun-parolasi')->call('adopt', 'k3')->assertHasNoErrors();
 
@@ -505,7 +505,7 @@ class BackupsTest extends TestCase
         $item = Backup::where('key', 'k3')->first()->items()->first();
         $this->assertSame(['k1', 'k2', 'k3'], array_map(fn ($i) => $i->backup->key, app(Backups::class)->chain($item)));
         $ref = app(Backups::class)->chainRef($item);
-        $this->assertSame('servik/srv-old', $ref['target']['prefix']);
+        $this->assertSame('serfex/srv-old', $ref['target']['prefix']);
         $this->assertSame('eski-sunucunun-parolasi', Backup::where('key', 'k3')->first()->passphrase);
     }
 

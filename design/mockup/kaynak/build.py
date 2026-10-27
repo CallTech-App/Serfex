@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Servik ekranlarını derler: pages/<ad>.html (main içeriği + isteğe bağlı <script>) -> out/<ad>.html"""
+"""Serfex ekranlarını derler: pages/<ad>.html (main içeriği + isteğe bağlı <script>) -> out/<ad>.html"""
 import os, sys
 D = os.path.dirname(os.path.abspath(__file__))
 PAGES = {
-  'index': 'Servik Panel', 'canli-izleme': 'Servik Canlı İzleme', 'ai-asistan': 'Servik AI Asistan',
-  'siteler': 'Servik Siteler', 'site-detay': 'Servik Site Detayı', 'laravel': 'Servik Laravel',
-  'dns': 'Servik DNS', 'dns-detay': 'Servik DNS Kayıtları', 'laravel-detay': 'Servik Laravel Uygulaması', 'eposta-detay': 'Servik Posta Kutuları', 'dosyalar-detay': 'Servik Dosya Yöneticisi', 'php-ayarlari': 'Servik PHP ve Web Sunucusu', 'eposta': 'Servik E-posta', 'veritabanlari': 'Servik Veritabanları',
-  'ssl': 'Servik SSL', 'guvenlik': 'Servik Güvenlik',
-  'yedekler': 'Servik Yedekler', 'hizmetler': 'Servik Hizmetler', 'musteriler': 'Servik Müşteriler',
-  'bilesenler': 'Servik Yazılım Yönetimi', 'ayarlar': 'Servik Ayarlar', 'guncellemeler': 'Servik Güncellemeler',
+  'index': 'Serfex Panel', 'canli-izleme': 'Serfex Canlı İzleme', 'ai-asistan': 'Serfex AI Asistan',
+  'siteler': 'Serfex Siteler', 'site-detay': 'Serfex Site Detayı', 'laravel': 'Serfex Laravel',
+  'dns': 'Serfex DNS', 'dns-detay': 'Serfex DNS Kayıtları', 'laravel-detay': 'Serfex Laravel Uygulaması', 'eposta-detay': 'Serfex Posta Kutuları', 'dosyalar-detay': 'Serfex Dosya Yöneticisi', 'php-ayarlari': 'Serfex PHP ve Web Sunucusu', 'eposta': 'Serfex E-posta', 'veritabanlari': 'Serfex Veritabanları',
+  'ssl': 'Serfex SSL', 'guvenlik': 'Serfex Güvenlik',
+  'yedekler': 'Serfex Yedekler', 'hizmetler': 'Serfex Hizmetler', 'musteriler': 'Serfex Müşteriler',
+  'bilesenler': 'Serfex Yazılım Yönetimi', 'ayarlar': 'Serfex Ayarlar', 'guncellemeler': 'Serfex Güncellemeler',
 }
 ACTIVE_ALIAS = {'site-detay': 'siteler', 'dns-detay': 'dns', 'laravel-detay': 'laravel', 'eposta-detay': 'eposta', 'dosyalar-detay': 'siteler', 'php-ayarlari': 'siteler', 'guncellemeler': 'ayarlar'}
 NAV = [
-  (None, [('index', 'layout-dashboard', 'Genel Bakış', ''), ('canli-izleme', 'activity', 'Canlı İzleme', 'crit:2'), ('ai-asistan', 'sparkles', 'Servik AI', '')]),
+  (None, [('index', 'layout-dashboard', 'Genel Bakış', ''), ('canli-izleme', 'activity', 'Canlı İzleme', 'crit:2'), ('ai-asistan', 'sparkles', 'Serfex AI', '')]),
   ('Barındırma', [('siteler', 'globe', 'Siteler', '24'), ('laravel', 'layers', 'Laravel', '7'), ('dns', 'network', 'Alan Adları ve DNS', ''),
                   ('eposta', 'mail', 'E-posta', ''), ('veritabanlari', 'database', 'Veritabanları', ''), ('ssl', 'shield-check', 'SSL Sertifikaları', '')]),
   ('Hesaplar', [('musteriler', 'users', 'Müşteriler ve Paketler', '')]),

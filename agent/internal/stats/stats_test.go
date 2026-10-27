@@ -212,7 +212,7 @@ func TestMail(t *testing.T) {
 		"2026-10-20T09:30:02 mail postfix/smtp[2301]: 4QAB1: to=<yok@ornek.net>, relay=mx.ornek.net[198.51.100.4]:25, delay=1, dsn=5.1.1, status=bounced (host said: 550 5.1.1 User unknown)",
 		// Incoming: delivered to a mailbox, and a mail for another domain.
 		"2026-10-20T09:30:03 mail postfix/qmgr[2210]: 4QAB2: from=<ayse@gmail.com>, size=8000, nrcpt=1 (queue active)",
-		"2026-10-20T09:30:03 mail postfix/lmtp[2302]: 4QAB2: to=<bilgi@kahveatolyesi.com.tr>, relay=mail.servik.test[private/dovecot-lmtp], delay=0.2, dsn=2.0.0, status=sent (250 2.0.0 <bilgi@kahveatolyesi.com.tr> Saved)",
+		"2026-10-20T09:30:03 mail postfix/lmtp[2302]: 4QAB2: to=<bilgi@kahveatolyesi.com.tr>, relay=mail.serfex.test[private/dovecot-lmtp], delay=0.2, dsn=2.0.0, status=sent (250 2.0.0 <bilgi@kahveatolyesi.com.tr> Saved)",
 		"2026-10-20T09:30:03 mail postfix/smtp[2301]: 4QAB2: to=<x@baska.com>, relay=mx.baska.com[198.51.100.5]:25, status=sent (250 ok)",
 		// Refused on the way in.
 		"2026-10-20T09:30:04 mail postfix/smtpd[2400]: NOQUEUE: reject: RCPT from unknown[203.0.113.9]: 550 5.1.1 <yok@kahveatolyesi.com.tr>: Recipient address rejected: User unknown in virtual mailbox table; from=<spam@kotu.example> to=<yok@kahveatolyesi.com.tr> proto=ESMTP helo=<x>",

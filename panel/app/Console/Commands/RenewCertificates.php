@@ -16,12 +16,12 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Runs hourly from the scheduler: renews Let's Encrypt certificates that
- * expire within servik.ssl.renew_days, retries the ones waiting for DNS,
+ * expire within serfex.ssl.renew_days, retries the ones waiting for DNS,
  * retries failed requests once a day (within the hour when Let's Encrypt
  * was not reached), and reissues site certificates
  * when names they lack now point here.
  */
-#[Signature('servik:ssl-renew')]
+#[Signature('serfex:ssl-renew')]
 #[Description("Renew Let's Encrypt certificates and retry pending ones")]
 class RenewCertificates extends Command
 {
@@ -42,7 +42,7 @@ class RenewCertificates extends Command
                 // Expiring: when due, then twice a day while renewals fail.
                 ->orWhere(fn (Builder $q) => $q->where('status', CertificateStatus::Active)
                     ->where('auto_renew', true)
-                    ->where('not_after', '<=', now()->addDays((int) config('servik.ssl.renew_days')))
+                    ->where('not_after', '<=', now()->addDays((int) config('serfex.ssl.renew_days')))
                     ->where(fn (Builder $q) => $q->whereNull('attempted_at')->orWhere('attempted_at', '<=', now()->subHours(12)))))
             ->with('site', 'users')
             ->get();

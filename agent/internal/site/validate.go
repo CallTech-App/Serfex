@@ -22,7 +22,7 @@ var (
 	reserved  = map[string]bool{}
 	reservedL = "root daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody " +
 		"systemd-network systemd-resolve systemd-timesync messagebus syslog ubuntu admin administrator " +
-		"nginx apache httpd postgres mysql redis servik servik-agent ftp sshd dovecot postfix pdns named " +
+		"nginx apache httpd postgres mysql redis serfex serfex-agent ftp sshd dovecot postfix pdns named " +
 		"bind clamav debian-exim _apt tss uuidd tcpdump landscape fwupd-refresh polkitd"
 )
 
@@ -41,7 +41,7 @@ func ValidateDomain(d string) error {
 	return nil
 }
 
-// ValidateUser checks a system account name Servik may create.
+// ValidateUser checks a system account name Serfex may create.
 func ValidateUser(u string) error {
 	if !userRe.MatchString(u) {
 		return invalid("user %q must start with a letter and contain only a-z, 0-9, - or _ (max 32)", u)

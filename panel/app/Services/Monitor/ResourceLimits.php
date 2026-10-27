@@ -12,13 +12,13 @@ use App\Services\Agent\AgentException;
  * Temporary caps on a site's CPU, memory and PHP workers, which the agent
  * enforces and ends on time.
  *
- * This is one of the two actions Servik AI may take without asking, so
+ * This is one of the two actions Serfex AI may take without asking, so
  * every caller goes through here; the AI (source "ai") may set limits of
  * at most two hours.
  */
 class ResourceLimits
 {
-    /** The longest limit Servik AI may set on its own. */
+    /** The longest limit Serfex AI may set on its own. */
     public const AI_MAX_MINUTES = 120;
 
     /** The longest limit anyone may set: a week. */
@@ -59,7 +59,7 @@ class ResourceLimits
             throw new MonitorException(__('Süre 1 dakika ile 7 gün arasında olmalı.'));
         }
         if ($source === 'ai' && $minutes > self::AI_MAX_MINUTES) {
-            throw new MonitorException(__('Servik AI bir siteyi en fazla 2 saat sınırlayabilir.'));
+            throw new MonitorException(__('Serfex AI bir siteyi en fazla 2 saat sınırlayabilir.'));
         }
 
         $this->agent->call('monitor.limit.apply', [
@@ -68,7 +68,7 @@ class ResourceLimits
             'memory_mb' => $memoryMb ?? 0,
             'php_workers' => $phpWorkers ?? 0,
             'seconds' => $minutes * 60,
-        ], config('servik.agent.job_timeout'));
+        ], config('serfex.agent.job_timeout'));
 
         $site->resourceLimits()->active()->update(['removed_at' => now()]);
 
@@ -91,7 +91,7 @@ class ResourceLimits
     public function lift(ResourceLimit $limit): void
     {
         if ($limit->isActive()) {
-            $this->agent->call('monitor.limit.remove', ['domain' => $limit->site->domain], config('servik.agent.job_timeout'));
+            $this->agent->call('monitor.limit.remove', ['domain' => $limit->site->domain], config('serfex.agent.job_timeout'));
         }
         $limit->update(['removed_at' => $limit->removed_at ?? now()]);
     }
@@ -105,7 +105,7 @@ class ResourceLimits
      */
     public function restartPhp(Site $site): int
     {
-        $result = $this->agent->call('php.restart', ['domain' => $site->domain], config('servik.agent.job_timeout'));
+        $result = $this->agent->call('php.restart', ['domain' => $site->domain], config('serfex.agent.job_timeout'));
 
         return (int) ($result['stopped'] ?? 0);
     }

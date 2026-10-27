@@ -38,7 +38,7 @@ Manual backups (**Take a backup**) stay until you delete them.
 - **S3-compatible storage**: Amazon S3, Backblaze B2, Wasabi, Hetzner Object
   Storage, Cloudflare R2, MinIO or any other S3-compatible service (endpoint,
   region, bucket and keys).
-- **SFTP**: any server with SSH. Servik shows its own public key to add
+- **SFTP**: any server with SSH. Serfex shows its own public key to add
   there, and remembers the server's host key at the first test.
 
 A connection and write test runs before a destination is saved. Copies sent
@@ -60,23 +60,23 @@ A backup that is only on a remote destination is fetched to the server first
 
 ## Import
 
-**Import** brings another Servik server's backup here: upload a file, drop
-archives into `/var/lib/servik/backups/import/`, or scan a destination.
+**Import** brings another Serfex server's backup here: upload a file, drop
+archives into `/var/lib/serfex/backups/import/`, or scan a destination.
 cPanel and Plesk backups cannot be imported in 0.1.
 
 ## Rebuilding a server
 
 To move to a new server, or after losing one:
 
-1. Install Servik on the new server (see [Installation](../installation.md)),
+1. Install Serfex on the new server (see [Installation](../installation.md)),
    then the same database servers and the mail server.
 2. Add the old server's destination (with the encryption passphrase) and
    scan it, or import the archive.
 3. On the server:
 
    ```sh
-   sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:restore-server            # lists whole-server backups
-   sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:restore-server KEY --panel --sites
+   sudo -u serfex php8.5 /opt/serfex/current/panel/artisan serfex:restore-server            # lists whole-server backups
+   sudo -u serfex php8.5 /opt/serfex/current/panel/artisan serfex:restore-server KEY --panel --sites
    ```
 
 ## Customers

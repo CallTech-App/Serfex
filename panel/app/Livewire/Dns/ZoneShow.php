@@ -248,7 +248,7 @@ class ZoneShow extends Component
         return view('livewire.dns.show', [
             'zone' => $zone,
             'records' => $records,
-        ])->title($zone->name.' · DNS · Servik');
+        ])->title($zone->name.' · DNS · Serfex');
     }
 
     private function zone(): ?DnsZone

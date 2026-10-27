@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 #[Fillable(['laravel_app_id', 'name', 'ability', 'token_hash', 'last_four', 'created_by', 'last_used_at', 'last_used_ip', 'last_used_agent', 'revoked_at'])]
 class LaravelApiToken extends Model
 {
-    public const PREFIX = 'svk_';
+    public const PREFIX = 'sfx_';
 
     /** Abilities: key => [name, what the token may do]. */
     public const ABILITIES = [

@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
  * update also writes customers' PHP-FPM pools again, so sites created
  * before PHP settings existed get the disabled functions.
  */
-#[Signature('servik:services-check')]
+#[Signature('serfex:services-check')]
 #[Description('Record stopped or failed system services')]
 class CheckServices extends Command
 {

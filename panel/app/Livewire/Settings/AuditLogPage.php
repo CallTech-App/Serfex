@@ -13,10 +13,10 @@ use Livewire\WithPagination;
 
 /**
  * Araçlar ve Ayarlar → İşlem günlüğü: what was done through the panel,
- * the API and Servik AI, by whom and when, with Undo while it applies.
+ * the API and Serfex AI, by whom and when, with Undo while it applies.
  */
 #[Layout('components.layouts.app')]
-#[Title('İşlem günlüğü · Servik')]
+#[Title('İşlem günlüğü · Serfex')]
 class AuditLogPage extends Component
 {
     use WithPagination;

@@ -13,14 +13,14 @@ use Livewire\Component;
 
 /**
  * Güncellemeler (Araçlar ve Ayarlar, administrators only): the running
- * Servik release, the newer ones with their notes, one-click update with
+ * Serfex release, the newer ones with their notes, one-click update with
  * its steps shown live, the way back to the previous release, the
  * history and the channel. While an update runs the panel restarts, so
  * its progress is read with plain requests (UpdateProgressController)
  * that keep trying through the restart.
  */
 #[Layout('components.layouts.app')]
-#[Title('Güncellemeler · Servik')]
+#[Title('Güncellemeler · Serfex')]
 class UpdatesPage extends Component
 {
     #[Url(as: 'sekme', except: 'gecmis')]
@@ -52,7 +52,7 @@ class UpdatesPage extends Component
             return;
         }
         $release = $updates->available($result);
-        $this->dispatch('toast', message: $release ? __('Servik :version hazır.', ['version' => $release['version']]) : __('Servik güncel.'));
+        $this->dispatch('toast', message: $release ? __('Serfex :version hazır.', ['version' => $release['version']]) : __('Serfex güncel.'));
     }
 
     public function ask(string $kind): void

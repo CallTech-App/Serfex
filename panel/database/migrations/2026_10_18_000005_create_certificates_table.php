@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * TLS certificates. The files live on the server under
-     * /etc/servik/ssl/certs/<name>; a site serves HTTPS with the
+     * /etc/serfex/ssl/certs/<name>; a site serves HTTPS with the
      * certificate its certificate_id points at.
      */
     public function up(): void

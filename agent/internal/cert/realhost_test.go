@@ -7,7 +7,7 @@
 // PowerDNS and validate HTTP-01 on port 80:
 //
 //	pebble -config pebble.json -dnsserver 127.0.0.1:53
-//	sudo SERVIK_ACME_DIRECTORY=https://localhost:14000/dir SERVIK_ACME_CA=pebble.minica.pem \
+//	sudo SERFEX_ACME_DIRECTORY=https://localhost:14000/dir SERFEX_ACME_CA=pebble.minica.pem \
 //	    go test -tags realhost -run TestRealHost ./internal/cert
 //
 // CI runs it on a throwaway runner.
@@ -57,13 +57,13 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 	case c.Args[0] == "reload" && strings.HasPrefix(unit, "php"):
 		ver := strings.TrimSuffix(strings.TrimPrefix(unit, "php"), "-fpm")
 		return h.System.Run(ctx, host.Command{Name: "sh", Args: []string{"-c", "kill -USR2 $(cat /run/php/php" + ver + "-fpm.pid)"}})
-	case c.Args[0] == "restart" && unit == "pdns@servik":
-		_ = exec.Command("pkill", "-f", "pdns_server --config-name=servik").Run()
+	case c.Args[0] == "restart" && unit == "pdns@serfex":
+		_ = exec.Command("pkill", "-f", "pdns_server --config-name=serfex").Run()
 		time.Sleep(300 * time.Millisecond)
-		_ = os.MkdirAll("/run/pdns-servik", 0o755)
-		_ = exec.Command("chown", "pdns:pdns", "/run/pdns-servik").Run()
-		cmd := exec.Command("/usr/sbin/pdns_server", "--config-name=servik", "--guardian=no", "--daemon=no",
-			"--setuid=pdns", "--setgid=pdns", "--socket-dir=/run/pdns-servik")
+		_ = os.MkdirAll("/run/pdns-serfex", 0o755)
+		_ = exec.Command("chown", "pdns:pdns", "/run/pdns-serfex").Run()
+		cmd := exec.Command("/usr/sbin/pdns_server", "--config-name=serfex", "--guardian=no", "--daemon=no",
+			"--setuid=pdns", "--setgid=pdns", "--socket-dir=/run/pdns-serfex")
 		if err := cmd.Start(); err != nil {
 			return "", err
 		}
@@ -91,9 +91,9 @@ func TestRealHost(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("needs root")
 	}
-	directory, caFile := os.Getenv("SERVIK_ACME_DIRECTORY"), os.Getenv("SERVIK_ACME_CA")
+	directory, caFile := os.Getenv("SERFEX_ACME_DIRECTORY"), os.Getenv("SERFEX_ACME_CA")
 	if directory == "" || caFile == "" {
-		t.Skip("SERVIK_ACME_DIRECTORY and SERVIK_ACME_CA are not set")
+		t.Skip("SERFEX_ACME_DIRECTORY and SERFEX_ACME_CA are not set")
 	}
 	ca, err := os.ReadFile(caFile)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestRealHost(t *testing.T) {
 	if _, err := dnsm.Setup(ctx); err != nil {
 		t.Fatal(err)
 	}
-	const zone = "servik-ssl.example"
+	const zone = "serfex-ssl.example"
 	t.Cleanup(func() { _, _ = dnsm.DeleteZone(ctx, zone) })
 	if _, err := dnsm.ApplyZone(ctx, dns.ZoneSpec{
 		Zone: zone,
@@ -134,7 +134,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatalf("no PHP-FPM installed: %v", err)
 	}
 	start(t, "php"+versions[0]+"-fpm", "/run/php/php"+versions[0]+"-fpm.pid", "php-fpm"+versions[0])
-	spec := site.Spec{Domain: zone, User: "servikssl", PHPVersion: versions[0], Aliases: []string{"www." + zone}}
+	spec := site.Spec{Domain: zone, User: "serfexssl", PHPVersion: versions[0], Aliases: []string{"www." + zone}}
 	t.Cleanup(func() {
 		_, _ = sites.Delete(ctx, site.DeleteSpec{Domain: spec.Domain, User: spec.User, RemoveFiles: true, RemoveUser: true})
 	})
@@ -144,8 +144,8 @@ func TestRealHost(t *testing.T) {
 
 	certs := cert.NewManager(h, dnsm, &cert.ACME{H: h, DirectoryURL: directory, HTTPClient: acmeClient})
 	t.Cleanup(func() {
-		_ = os.Remove("/etc/nginx/sites-enabled/servik-panel.conf")
-		_ = os.Remove("/etc/nginx/sites-available/servik-panel.conf")
+		_ = os.Remove("/etc/nginx/sites-enabled/serfex-panel.conf")
+		_ = os.Remove("/etc/nginx/sites-available/serfex-panel.conf")
 		_, _ = certs.Delete(zone)
 		_, _ = certs.Delete("wild")
 		_ = os.RemoveAll(cert.PanelDir)

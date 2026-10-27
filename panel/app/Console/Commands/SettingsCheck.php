@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * Runs every minute from the scheduler: a panel port change nobody
  * confirmed from the new port in time goes back to the old port.
  */
-#[Signature('servik:settings-check')]
+#[Signature('serfex:settings-check')]
 #[Description('Revert an unconfirmed panel port change')]
 class SettingsCheck extends Command
 {

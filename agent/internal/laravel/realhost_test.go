@@ -52,7 +52,7 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 	return h.System.Run(ctx, c)
 }
 
-const realDomain = "servik-laravel.example"
+const realDomain = "serfex-laravel.example"
 
 func TestRealHost(t *testing.T) {
 	if os.Geteuid() != 0 {
@@ -74,7 +74,7 @@ func TestRealHost(t *testing.T) {
 	m := NewManager(h)
 	// Where getcomposer.org is not reachable, a local composer.phar can
 	// stand in for it.
-	if phar := os.Getenv("SERVIK_TEST_COMPOSER_PHAR"); phar != "" {
+	if phar := os.Getenv("SERFEX_TEST_COMPOSER_PHAR"); phar != "" {
 		download := m.Download
 		m.Download = func(ctx context.Context, url string) ([]byte, error) {
 			if strings.HasPrefix(url, composerURL) {
@@ -88,7 +88,7 @@ func TestRealHost(t *testing.T) {
 			return download(ctx, url)
 		}
 	}
-	tg := Target{Domain: realDomain, User: "servikl", PHPVersion: php}
+	tg := Target{Domain: realDomain, User: "serfexl", PHPVersion: php}
 	siteSpec := site.Spec{Domain: realDomain, User: tg.User, PHPVersion: php}
 	t.Cleanup(func() {
 		_, _ = m.Remove(ctx, RemoveSpec{Target: tg, RemoveFiles: true})
@@ -102,7 +102,7 @@ func TestRealHost(t *testing.T) {
 	// 1. A new application, with its front end built, on SQLite. Where the
 	// build cannot fetch its web fonts (a locked-down network), it can be
 	// left out.
-	frontend := os.Getenv("SERVIK_TEST_NO_FRONTEND") == ""
+	frontend := os.Getenv("SERFEX_TEST_NO_FRONTEND") == ""
 	first := DeploySpec{
 		Target: tg, Run: "install", Release: "1",
 		Source: Source{Type: "create", Package: "laravel/laravel"},
@@ -169,22 +169,22 @@ func TestRealHost(t *testing.T) {
 	if err != nil || files.Env == nil {
 		t.Fatal(err)
 	}
-	if _, err := m.SetEnv(ctx, EnvSpec{App: app, Content: setEnv(*files.Env, map[string]string{"APP_NAME": "Servik Test"})}); err != nil {
+	if _, err := m.SetEnv(ctx, EnvSpec{App: app, Content: setEnv(*files.Env, map[string]string{"APP_NAME": "Serfex Test"})}); err != nil {
 		t.Fatal(err)
 	}
-	if out, _ := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=echo config('app.name');"}}); !strings.Contains(out.Output, "Servik Test") {
+	if out, _ := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=echo config('app.name');"}}); !strings.Contains(out.Output, "Serfex Test") {
 		t.Fatalf("config not updated: %+v", out)
 	}
 
 	// Maintenance mode with a bypass link.
-	if _, err := m.Maintenance(ctx, MaintenanceSpec{App: app, Down: true, Secret: "servik-bypass", Retry: 30}); err != nil {
+	if _, err := m.Maintenance(ctx, MaintenanceSpec{App: app, Down: true, Secret: "serfex-bypass", Retry: 30}); err != nil {
 		t.Fatal(err)
 	}
 	get(t, "/", 503)
-	if st, _ := m.Status(ctx, app); st.Maintenance == nil || st.Maintenance.Secret != "servik-bypass" {
+	if st, _ := m.Status(ctx, app); st.Maintenance == nil || st.Maintenance.Secret != "serfex-bypass" {
 		t.Fatalf("status: %+v", st.Maintenance)
 	}
-	get(t, "/servik-bypass", 302)
+	get(t, "/serfex-bypass", 302)
 	if _, err := m.Maintenance(ctx, MaintenanceSpec{App: app}); err != nil {
 		t.Fatal(err)
 	}
@@ -198,14 +198,14 @@ func TestRealHost(t *testing.T) {
 
 	// Maintenance in Nginx: the page for everyone, the site for listed
 	// addresses and holders of the bypass cookie.
-	siteSpec.Maintenance = &site.MaintenanceSpec{Secret: "servik-nginx-bypass", Retry: 30}
+	siteSpec.Maintenance = &site.MaintenanceSpec{Secret: "serfex-nginx-bypass", Retry: 30}
 	if _, err := sites.Apply(ctx, siteSpec); err != nil {
 		t.Fatal(err)
 	}
 	if body := get(t, "/", 503); !strings.Contains(body, "bakım") {
 		t.Fatalf("maintenance page: %.300s", body)
 	}
-	get(t, "/servik-nginx-bypass", 302)
+	get(t, "/serfex-nginx-bypass", 302)
 	siteSpec.Maintenance.Allow = []string{"127.0.0.1"}
 	if _, err := sites.Apply(ctx, siteSpec); err != nil {
 		t.Fatal(err)
@@ -227,7 +227,7 @@ func TestRealHost(t *testing.T) {
 	}
 	waitFor(t, 60*time.Second, func() bool {
 		chunk, _ := m.ReadRun(realDomain, "tinker-real", 0)
-		return strings.Contains(chunk.Data, "SERVIK TEST")
+		return strings.Contains(chunk.Data, "SERFEX TEST")
 	})
 	if _, err := m.StopTinker(TinkerInput{Domain: realDomain, Session: "tinker-real"}); err != nil {
 		t.Fatal(err)
@@ -239,10 +239,10 @@ func TestRealHost(t *testing.T) {
 
 	// 5. A backup brings storage, .env and the database back.
 	db := base + "/shared/database/database.sqlite"
-	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=DB::table('cache')->insert(['key' => 'servik', 'value' => 'v1', 'expiration' => 0]); echo 'ok';"}}); err != nil || !strings.Contains(out.Output, "ok") {
+	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=DB::table('cache')->insert(['key' => 'serfex', 'value' => 'v1', 'expiration' => 0]); echo 'ok';"}}); err != nil || !strings.Contains(out.Output, "ok") {
 		t.Fatalf("insert: %+v %v", out, err)
 	}
-	if err := os.WriteFile(base+"/shared/storage/app/servik.txt", []byte("v1"), 0o644); err != nil {
+	if err := os.WriteFile(base+"/shared/storage/app/serfex.txt", []byte("v1"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	b, err := m.Backup(ctx, BackupSpec{App: app, ID: "real", Parts: []string{"code", "env", "storage", "database"}, Run: "backup-real"})
@@ -251,7 +251,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatalf("backup: %v\n%s", err, chunk.Data)
 	}
 	t.Logf("backup: %d bytes, parts %v", b.Size, b.Parts)
-	_ = os.WriteFile(base+"/shared/storage/app/servik.txt", []byte("v2"), 0o644)
+	_ = os.WriteFile(base+"/shared/storage/app/serfex.txt", []byte("v2"), 0o644)
 	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=DB::table('cache')->delete(); echo 'ok';"}}); err != nil || !strings.Contains(out.Output, "ok") {
 		t.Fatalf("delete: %+v %v", out, err)
 	}
@@ -259,14 +259,14 @@ func TestRealHost(t *testing.T) {
 		chunk, _ := m.ReadRun(realDomain, "restore-real", 0)
 		t.Fatalf("restore: %v\n%s", err, chunk.Data)
 	}
-	if got, _ := os.ReadFile(base + "/shared/storage/app/servik.txt"); string(got) != "v1" {
+	if got, _ := os.ReadFile(base + "/shared/storage/app/serfex.txt"); string(got) != "v1" {
 		t.Fatalf("storage after restore: %q", got)
 	}
 	if out, _ := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=echo DB::table('cache')->value('value');"}}); !strings.Contains(out.Output, "v1") {
 		t.Fatalf("database after restore: %+v", out)
 	}
 	assertOwner(t, db, tg.User)
-	assertOwner(t, base+"/shared/storage/app/servik.txt", tg.User)
+	assertOwner(t, base+"/shared/storage/app/serfex.txt", tg.User)
 	get(t, "/up", 200)
 
 	if !hasSystemd() {
@@ -282,13 +282,13 @@ func TestRealHost(t *testing.T) {
 	waitFor(t, 30*time.Second, func() bool { return activeState(ctx, h, states[0].Unit) == "active" })
 	// A closure defined in tinker cannot be serialized (it has no source
 	// file), so the job is a queued Artisan command with a visible effect.
-	job := "Illuminate\\Support\\Facades\\Artisan::queue('down', ['--secret' => 'servik-queued']); echo 'queued';"
+	job := "Illuminate\\Support\\Facades\\Artisan::queue('down', ['--secret' => 'serfex-queued']); echo 'queued';"
 	if out, err := m.Run(ctx, RunSpec{App: app, Tool: "artisan", Args: []string{"tinker", "--execute=" + job}}); err != nil || out.ExitCode != 0 || !strings.Contains(out.Output, "queued") {
 		t.Fatalf("dispatch: %+v %v", out, err)
 	}
 	deadline := time.Now().Add(60 * time.Second)
 	for {
-		if st, _ := m.Status(ctx, app); st.Maintenance != nil && st.Maintenance.Secret == "servik-queued" {
+		if st, _ := m.Status(ctx, app); st.Maintenance != nil && st.Maintenance.Secret == "serfex-queued" {
 			break
 		}
 		if time.Now().After(deadline) {

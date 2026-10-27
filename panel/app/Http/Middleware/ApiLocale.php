@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The API answers in the language the caller asks for with
- * Accept-Language (the servik command line sends its own), else in
+ * Accept-Language (the serfex command line sends its own), else in
  * English, so scripts see the same messages on every server.
  */
 class ApiLocale

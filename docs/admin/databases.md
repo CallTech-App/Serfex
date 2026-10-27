@@ -14,8 +14,8 @@ PostgreSQL. You install them from the panel when you need them.
 
 ### Supported versions
 
-Servik installs only the major versions it supports, each from its vendor's
-own apt archive, which Servik adds to apt when the server is installed:
+Serfex installs only the major versions it supports, each from its vendor's
+own apt archive, which Serfex adds to apt when the server is installed:
 
 | Server | Versions (default first) | Archive |
 |--------|--------------------------|---------|
@@ -26,11 +26,11 @@ own apt archive, which Servik adds to apt when the server is installed:
 The install confirmation (Software) and the setup card (Databases) let you
 choose among them and show the package version each would bring. A new major
 version (PostgreSQL 19, say) is never installed because the vendor published
-it: it is added to this list by a Servik release once it has been tested.
+it: it is added to this list by a Serfex release once it has been tested.
 
 A server then stays on its major version; Software → Database servers →
 **Update** installs its minor releases. If the archive cannot be reached, the
-installation fails and is rolled back; Servik does not fall back to Ubuntu's
+installation fails and is rolled back; Serfex does not fall back to Ubuntu's
 older versions. A server installed earlier in a version no longer listed
 (Ubuntu's MySQL 8.0, MariaDB 10.11, PostgreSQL 16) keeps running in it and
 gets its minor updates. Removing MySQL or MariaDB also takes its archive out
@@ -48,7 +48,7 @@ the database service → Settings.
 Names start with the account's prefix: for account `kahve`, databases and
 users are `kahve_<name>`.
 
-- **Create database**: pick the site, the server and a name. Servik can
+- **Create database**: pick the site, the server and a name. Serfex can
   create a user with the same name in the same step. The password (24
   characters, or your own) is shown once with the connection details and is
   never stored.
@@ -60,7 +60,7 @@ users are `kahve_<name>`.
   valid for a minute signs you in with a temporary user that is removed after
   four hours. No password is needed.
 - **Delete database**: type its name. A compressed dump is taken first by
-  default and kept for 30 days in `/var/lib/servik/backups/databases`; users
+  default and kept for 30 days in `/var/lib/serfex/backups/databases`; users
   lose access at once and the data is deleted after 10 minutes, so it can be
   undone until then.
 

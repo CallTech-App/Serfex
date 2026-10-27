@@ -36,7 +36,7 @@ class OutgoingMail
         'username' => '',
         'password' => null,
         'from_address' => '',
-        'from_name' => 'Servik',
+        'from_name' => 'Serfex',
     ];
 
     /**
@@ -86,7 +86,7 @@ class OutgoingMail
         }
         $host = Setting::get('panel.hostname') ?: Setting::get('mail.hostname') ?: 'localhost.localdomain';
 
-        return 'servik@'.preg_replace('/^(panel|mail)\./', '', (string) $host);
+        return 'serfex@'.preg_replace('/^(panel|mail)\./', '', (string) $host);
     }
 
     /**
@@ -103,7 +103,7 @@ class OutgoingMail
             return $problem;
         }
         try {
-            $mail = (new PanelMail($subject, $body))->from($this->fromAddress(), $this->settings()['from_name'] ?: 'Servik');
+            $mail = (new PanelMail($subject, $body))->from($this->fromAddress(), $this->settings()['from_name'] ?: 'Serfex');
             $this->mailer()->to($to)->send($mail);
         } catch (Throwable $e) {
             return Str::limit($e->getMessage(), 300);
@@ -128,9 +128,9 @@ class OutgoingMail
             'transport' => 'sendmail',
             'path' => '/usr/sbin/sendmail -bs -i',
         ];
-        config(['mail.mailers.servik' => $config]);
-        Mail::purge('servik');
+        config(['mail.mailers.serfex' => $config]);
+        Mail::purge('serfex');
 
-        return Mail::mailer('servik');
+        return Mail::mailer('serfex');
     }
 }

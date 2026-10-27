@@ -236,7 +236,7 @@ class CustomerShow extends Component
             'accounts' => $customer->systemUsers()->with(['sites' => fn ($q) => $q->whereDoesntHave('preview')->with('certificate', 'laravelApp')->orderBy('domain')])->orderBy('name')->get(),
             'freeAccounts' => $this->attaching ? $this->freeAccounts() : collect(),
             'packages' => Package::orderBy('id')->get(),
-        ])->title($customer->displayName().' · Servik');
+        ])->title($customer->displayName().' · Serfex');
     }
 
     /**

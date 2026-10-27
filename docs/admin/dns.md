@@ -1,12 +1,12 @@
 # DNS
 
-Servik can answer DNS for your domains itself, with PowerDNS Authoritative.
+Serfex can answer DNS for your domains itself, with PowerDNS Authoritative.
 The panel is the source of truth: you change records in the panel, and the
 agent publishes exactly those records with a new serial number. PowerDNS
 runs as its own instance, so the distribution's `pdns.conf` is left alone.
 
 If your domains' DNS is elsewhere (Cloudflare, your registrar), you do not
-have to install the DNS server: Servik then shows the records you need to add
+have to install the DNS server: Serfex then shows the records you need to add
 there (for example the mail records).
 
 ## Setting it up
@@ -53,6 +53,6 @@ publishing the previous records.
 
 ## Not in 0.1
 
-DNSSEC signing (shown as coming) and secondary DNS servers. Servik's
+DNSSEC signing (shown as coming) and secondary DNS servers. Serfex's
 PowerDNS is the only authoritative server for its zones, so both name
 server names point at the same server for now.

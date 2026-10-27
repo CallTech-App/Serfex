@@ -12,7 +12,7 @@ func TestLogsReturnsTheEndOfALog(t *testing.T) {
 	if _, err := m.Apply(context.Background(), spec); err != nil {
 		t.Fatal(err)
 	}
-	access := "/var/log/servik/sites/kahveatolyesi.com.tr/access.log"
+	access := "/var/log/serfex/sites/kahveatolyesi.com.tr/access.log"
 	if err := os.WriteFile(sim.Path(access), []byte(strings.Repeat("a", 100)+"\nlast line\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}

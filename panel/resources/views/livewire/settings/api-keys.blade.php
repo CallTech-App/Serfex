@@ -73,7 +73,7 @@
             <p><x-t text="Uç noktalar: :part"><x-slot:part><span class="font-mono">GET /server · GET|POST /sites · GET|DELETE /sites/{{ '{'.__('alan-adı').'}' }} · GET|POST /customers · POST /customers/{id}/suspend · GET /packages · GET /dns/zones · POST /dns/zones/{{ '{'.__('alan-adı').'}' }}/records</span></x-slot:part></x-t></p>
         </div>
         <div class="border-t border-line px-5 py-3 text-2xs text-muted">
-            <x-t text="Komut satırı için anahtar gerekmez: :install ile kurulan servik aracı :login ile girer, giriş tarayıcıda onaylanır ve kişinin kendi yetkisiyle çalışır. Bu oturumlar herkesin Hesap güvenliği sayfasında listelenir."><x-slot:install><span class="font-mono break-all text-fg">curl -fsSL {{ $installUrl }} | sh</span></x-slot:install><x-slot:login><span class="font-mono text-fg">servik login</span></x-slot:login></x-t>
+            <x-t text="Komut satırı için anahtar gerekmez: :install ile kurulan serfex aracı :login ile girer, giriş tarayıcıda onaylanır ve kişinin kendi yetkisiyle çalışır. Bu oturumlar herkesin Hesap güvenliği sayfasında listelenir."><x-slot:install><span class="font-mono break-all text-fg">curl -fsSL {{ $installUrl }} | sh</span></x-slot:install><x-slot:login><span class="font-mono text-fg">serfex login</span></x-slot:login></x-t>
         </div>
     </section>
 

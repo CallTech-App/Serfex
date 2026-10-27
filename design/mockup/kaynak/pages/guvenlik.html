@@ -98,11 +98,11 @@
               <label class="flex items-center gap-2.5 text-[13.5px]"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Panel girişinde tüm kullanıcılar için zorunlu</label>
             </div>
             <div class="grid sm:grid-cols-[220px_1fr] gap-2 sm:gap-6 py-3.5 items-start">
-              <span class="text-[13.5px] sm:pt-0.5">Servik AI izinleri</span>
+              <span class="text-[13.5px] sm:pt-0.5">Serfex AI izinleri</span>
               <div class="text-[13.5px] space-y-2">
                 <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">IP engelleyebilir (en fazla 1 saat)</label>
                 <label class="flex items-center gap-2.5"><input type="checkbox" checked class="w-4 h-4 accent-[rgb(var(--accent))]">Geçici kaynak sınırı koyabilir (en fazla 30 dk)</label>
-                <p class="text-2xs text-muted">Bunların dışındaki her işlem için Servik AI önce onayınızı ister.</p>
+                <p class="text-2xs text-muted">Bunların dışındaki her işlem için Serfex AI önce onayınızı ister.</p>
               </div>
             </div>
           </div>
@@ -154,11 +154,11 @@
 <script>
   const badge = (cls, dot, t) => `<span class="inline-flex items-center gap-1.5 text-2xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${cls}"><i class="w-1.5 h-1.5 rounded-full ${dot}"></i>${t}</span>`;
   const SRC = {
-    'Servik AI': 'bg-accent-soft text-accent', 'Fail2ban': 'bg-surface-2 text-muted',
+    'Serfex AI': 'bg-accent-soft text-accent', 'Fail2ban': 'bg-surface-2 text-muted',
     'WAF': 'bg-info-soft text-info', 'Elle': 'bg-surface-2 text-fg',
   };
   const ips = [
-    ['185.220.101.47', 'Servik AI', 'SMTP girişine 2 dk\'da 9.300 deneme', '00:41 · 50 dk kaldı'],
+    ['185.220.101.47', 'Serfex AI', 'SMTP girişine 2 dk\'da 9.300 deneme', '00:41 · 50 dk kaldı'],
     ['141.98.11.62', 'Fail2ban', 'postfix-sasl · 5 başarısız giriş', '00:38'],
     ['45.95.169.12', 'WAF', 'SQL enjeksiyonu (CRS 942100) · api.hizlikargo.app', 'Yarın 23:31'],
     ['92.118.39.73', 'Fail2ban', 'sshd · 6 başarısız giriş', 'Yarın 23:12'],
@@ -194,7 +194,7 @@
   const fw = [
     ['Web (HTTP/HTTPS)', '80, 443/tcp', 'Herkes', 1],
     ['SSH', '2222/tcp', 'Türkiye, Almanya + 78.186.144.0/24', 1],
-    ['Servik paneli', '8443/tcp', 'Türkiye', 1],
+    ['Serfex paneli', '8443/tcp', 'Türkiye', 1],
     ['SMTP', '25/tcp', 'Herkes', 1],
     ['Posta gönderimi', '465, 587/tcp', 'Herkes, hız sınırlı', 1],
     ['IMAP / POP3', '993, 995/tcp', 'Herkes', 1],
@@ -221,7 +221,7 @@
     ['postfix-sasl', 'SMTP girişi', '5 deneme / 10 dk → 1 sa', 21, 1],
     ['dovecot', 'IMAP / POP3', '8 deneme / 10 dk → 1 sa', 9, 1],
     ['wordpress', 'WordPress girişi', '10 deneme / 5 dk → 1 sa', 14, 1],
-    ['servik-panel', 'Servik paneli', '5 deneme / 15 dk → 24 sa', 2, 1],
+    ['serfex-panel', 'Serfex paneli', '5 deneme / 15 dk → 24 sa', 2, 1],
     ['recidive', 'Tekrarlayanlar', '3 yasak / 24 sa → 7 gün', 6, 1],
     ['proftpd', 'FTP', '5 deneme / 10 dk → 1 sa', 0, 0],
   ];

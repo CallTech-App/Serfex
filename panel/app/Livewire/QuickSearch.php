@@ -43,7 +43,7 @@ class QuickSearch extends Component
         return [
             [__('Genel Bakış'), 'dashboard', [], 'layout-dashboard', __('pano özet anasayfa'), 'all'],
             [__('Canlı İzleme'), 'monitor.index', [], 'activity', __('izleme saldırı kaynak cpu bellek posta kuyruğu'), 'admin'],
-            ['Servik AI', 'ai.index', [], 'sparkles', 'yapay zeka asistan claude', 'write'],
+            ['Serfex AI', 'ai.index', [], 'sparkles', 'yapay zeka asistan claude', 'write'],
             [__('Siteler'), 'sites.index', [], 'globe', __('site ekle web'), 'all'],
             ['Laravel', 'laravel.index', [], 'layers', __('uygulama dağıtım deploy kuyruk'), 'laravel'],
             [__('Alan Adları ve DNS'), 'dns.index', [], 'network', __('dns bölge kayıt zone'), 'dns'],
@@ -67,7 +67,7 @@ class QuickSearch extends Component
             [__('API anahtarları'), 'settings.api', [], 'key-round', __('api token anahtar'), 'full'],
             [__('İşlem günlüğü'), 'settings.audit', [], 'file-text', __('kayıt denetim log geçmiş'), 'full'],
             [__('Güncellemeler'), 'settings.updates', [], 'refresh-cw', __('sürüm güncelle yükselt'), 'full'],
-            [__('Servik AI ayarları'), 'ai.settings', [], 'sparkles', __('api anahtarı model bütçe'), 'full'],
+            [__('Serfex AI ayarları'), 'ai.settings', [], 'sparkles', __('api anahtarı model bütçe'), 'full'],
             [__('Hesap güvenliği'), 'account.security', [], 'lock', __('parola iki adımlı 2fa oturum'), 'everyone'],
         ];
     }

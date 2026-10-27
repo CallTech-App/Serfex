@@ -9,7 +9,7 @@ use App\Services\Dns\Zones;
 
 /**
  * Points the mail server's own name at this server when that name lives in
- * a zone hosted here (mail.servik.example in servik.example), so mail
+ * a zone hosted here (mail.serfex.example in serfex.example), so mail
  * clients, webmail and Let's Encrypt find it.
  */
 class MailServerDns

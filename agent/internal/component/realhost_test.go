@@ -41,7 +41,7 @@ func TestRealHost(t *testing.T) {
 	}
 	php := versions[len(versions)-1]
 
-	spec := site.Spec{Domain: "servik-comp.example", User: "servikc", PHPVersion: php}
+	spec := site.Spec{Domain: "serfex-comp.example", User: "serfexc", PHPVersion: php}
 	t.Cleanup(func() {
 		_, _ = m.RemoveRedis(ctx, spec.Domain)
 		_, _ = sites.Delete(ctx, site.DeleteSpec{Domain: spec.Domain, User: spec.User, RemoveFiles: true, RemoveUser: true})
@@ -68,11 +68,11 @@ func TestRealHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeAs(t, h, "servikc", res.DocumentRoot+"/.htaccess", "RewriteEngine On\nRewriteRule ^pretty$ info.php [L]\n")
-	writeAs(t, h, "servikc", res.DocumentRoot+"/info.php", `<?php echo $_SERVER['SERVER_SOFTWARE'], '|', get_current_user(), '|', $_SERVER['REMOTE_ADDR'];`)
-	writeAs(t, h, "servikc", res.DocumentRoot+"/style.css", "body{}\n")
+	writeAs(t, h, "serfexc", res.DocumentRoot+"/.htaccess", "RewriteEngine On\nRewriteRule ^pretty$ info.php [L]\n")
+	writeAs(t, h, "serfexc", res.DocumentRoot+"/info.php", `<?php echo $_SERVER['SERVER_SOFTWARE'], '|', get_current_user(), '|', $_SERVER['REMOTE_ADDR'];`)
+	writeAs(t, h, "serfexc", res.DocumentRoot+"/style.css", "body{}\n")
 	body := get(t, spec.Domain, "/pretty", "Apache")
-	if !strings.Contains(body, "|servikc|127.0.0.1") {
+	if !strings.Contains(body, "|serfexc|127.0.0.1") {
 		t.Fatalf("PHP through Apache: %q", body)
 	}
 	// Static files come from Nginx.
@@ -82,16 +82,16 @@ func TestRealHost(t *testing.T) {
 	// own Apache directives are tested and used.
 	withSub := spec
 	withSub.Subdomains = []site.SubdomainSpec{{Name: "blog." + spec.Domain, WebRoot: "subdomains/blog"}}
-	withSub.ApacheDirectives = "SetEnv SERVIK_ALAN evet"
+	withSub.ApacheDirectives = "SetEnv SERFEX_ALAN evet"
 	if _, err := sites.Apply(ctx, withSub); err != nil {
 		t.Fatal(err)
 	}
-	writeAs(t, h, "servikc", filepath.Dir(res.DocumentRoot)+"/subdomains/blog/who.php", `<?php echo $_SERVER['SERVER_SOFTWARE'], '|', get_current_user();`)
-	writeAs(t, h, "servikc", res.DocumentRoot+"/env.php", `<?php echo 'alan=', $_SERVER['SERVIK_ALAN'] ?? '';`)
+	writeAs(t, h, "serfexc", filepath.Dir(res.DocumentRoot)+"/subdomains/blog/who.php", `<?php echo $_SERVER['SERVER_SOFTWARE'], '|', get_current_user();`)
+	writeAs(t, h, "serfexc", res.DocumentRoot+"/env.php", `<?php echo 'alan=', $_SERVER['SERFEX_ALAN'] ?? '';`)
 	get(t, "blog."+spec.Domain, "/who.php", "Apache")
 	get(t, spec.Domain, "/env.php", "alan=evet")
 	bad := withSub
-	bad.ApacheDirectives = "ServikBilinmeyen on"
+	bad.ApacheDirectives = "SerfexBilinmeyen on"
 	var ce *site.ConfigError
 	if _, err := sites.Apply(ctx, bad); !errors.As(err, &ce) || ce.Server != "apache" {
 		t.Fatalf("apply with a directive Apache refuses: %v", err)
@@ -109,7 +109,7 @@ func TestRealHost(t *testing.T) {
 	if _, err := sites.Apply(ctx, spec); err != nil {
 		t.Fatal(err)
 	}
-	get(t, spec.Domain, "/info.php", "|servikc|")
+	get(t, spec.Domain, "/info.php", "|serfexc|")
 	if _, err := m.Remove(ctx, OpSpec{ID: "apache", Run: "rh-apache-rm"}); err != nil {
 		t.Fatalf("remove apache: %v\n%s", err, runLog("rh-apache-rm"))
 	}
@@ -119,7 +119,7 @@ func TestRealHost(t *testing.T) {
 	if backups, _ := filepath.Glob(BackupDir + "/apache-*.tar.gz"); len(backups) == 0 {
 		t.Fatal("no backup of the Apache configuration")
 	}
-	get(t, spec.Domain, "/info.php", "|servikc|")
+	get(t, spec.Domain, "/info.php", "|serfexc|")
 
 	// A failed install puts the server back as it was.
 	m.Fail = func(id, step string) error {
@@ -144,7 +144,7 @@ func TestRealHost(t *testing.T) {
 		t.Fatalf("install redis: %v\n%s", err, runLog("rh-redis"))
 	}
 	password := "Rh" + strings.Repeat("x7", 12)
-	if _, err := m.ApplyRedis(ctx, RedisSpec{Domain: spec.Domain, User: "servikc", Port: 26379, Password: password}); err != nil {
+	if _, err := m.ApplyRedis(ctx, RedisSpec{Domain: spec.Domain, User: "serfexc", Port: 26379, Password: password}); err != nil {
 		t.Fatal(err)
 	}
 	out, err := h.Run(ctx, host.Command{Name: "redis-cli", Args: []string{"-p", "26379", "--no-auth-warning", "set", "k", "v"}, Env: []string{"REDISCLI_AUTH=" + password}})
@@ -154,7 +154,7 @@ func TestRealHost(t *testing.T) {
 	if out, _ := h.Run(ctx, host.Command{Name: "redis-cli", Args: []string{"-p", "26379", "ping"}}); strings.Contains(out, "PONG") {
 		t.Fatal("redis answered without a password")
 	}
-	if out, _ := h.Run(ctx, host.Command{Name: "ps", Args: []string{"-o", "user=", "-C", "redis-server"}}); !strings.Contains(out, "servikc") {
+	if out, _ := h.Run(ctx, host.Command{Name: "ps", Args: []string{"-o", "user=", "-C", "redis-server"}}); !strings.Contains(out, "serfexc") {
 		t.Fatalf("redis does not run as the site user: %q", out)
 	}
 	var redisUsed *InUseError

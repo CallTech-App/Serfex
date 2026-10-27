@@ -86,7 +86,7 @@ class PanelApiTest extends TestCase
     public function test_requests_need_a_usable_key_from_an_allowed_address(): void
     {
         $this->getJson('/api/v1/sites')->assertUnauthorized();
-        $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer svk_panel_yanlis'])->assertUnauthorized();
+        $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer sfx_panel_yanlis'])->assertUnauthorized();
 
         $limited = $this->key('read', ['198.51.100.7']);
         $this->getJson('/api/v1/sites', ['Authorization' => 'Bearer '.$limited])->assertForbidden();

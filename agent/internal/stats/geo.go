@@ -35,12 +35,12 @@ var RegistryFiles = []string{
 }
 
 // GeoFile is where the built country table is kept.
-const GeoFile = "/var/lib/servik/stats/countries.bin"
+const GeoFile = "/var/lib/serfex/stats/countries.bin"
 
 // GeoMaxAge is how old the table may get before it is downloaded again.
 const GeoMaxAge = 30 * 24 * time.Hour
 
-const geoMagic = "SVKGEO1\n"
+const geoMagic = "SFXGEO1\n"
 
 type range4 struct {
 	start, end uint32
@@ -276,7 +276,7 @@ func fetchRegistry(ctx context.Context, client *http.Client, url string, g *Geo)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "servik-agent")
+	req.Header.Set("User-Agent", "serfex-agent")
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

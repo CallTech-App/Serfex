@@ -90,7 +90,7 @@ class DeployApiController extends Controller
         }
         // As on the page: a live release still on disk that is not live now.
         try {
-            $onDisk = collect($agent->call('laravel.status', $app->agentApp(), config('servik.agent.job_timeout'))['releases'] ?? [])->pluck('name')->all();
+            $onDisk = collect($agent->call('laravel.status', $app->agentApp(), config('serfex.agent.job_timeout'))['releases'] ?? [])->pluck('name')->all();
         } catch (AgentException $e) {
             return response()->json(['message' => __('Sunucu ajanına ulaşılamadı: :reason', ['reason' => $e->reason])], 503);
         }

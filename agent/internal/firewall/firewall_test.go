@@ -44,7 +44,7 @@ func TestBlockAddsATimedElement(t *testing.T) {
 		t.Fatalf("block = %+v", b)
 	}
 	s := scripts(sim)
-	if len(s) != 1 || !strings.Contains(s[0], "add element inet servik blocked4 { 45.155.205.233 timeout 3600s }") {
+	if len(s) != 1 || !strings.Contains(s[0], "add element inet serfex blocked4 { 45.155.205.233 timeout 3600s }") {
 		t.Fatalf("nft scripts = %q", s)
 	}
 
@@ -124,7 +124,7 @@ func TestExpiredBlocksDisappearAndUnblock(t *testing.T) {
 		t.Fatalf("second unblock = %v, %v", removed, err)
 	}
 	s := scripts(sim)
-	if !strings.Contains(s[len(s)-1], "delete element inet servik blocked4 { 192.0.2.2 }") {
+	if !strings.Contains(s[len(s)-1], "delete element inet serfex blocked4 { 192.0.2.2 }") {
 		t.Fatalf("unblock script = %q", s[len(s)-1])
 	}
 }
@@ -141,7 +141,7 @@ func TestRestoreRecreatesTheTableWithRemainingTime(t *testing.T) {
 	}
 	s := scripts(sim)
 	last := s[len(s)-1]
-	if !strings.HasPrefix(last, "add table inet servik\ndelete table inet servik\n") || !strings.Contains(last, "{ 192.0.2.1 timeout 2400s }") {
+	if !strings.HasPrefix(last, "add table inet serfex\ndelete table inet serfex\n") || !strings.Contains(last, "{ 192.0.2.1 timeout 2400s }") {
 		t.Fatalf("restore script:\n%s", last)
 	}
 }

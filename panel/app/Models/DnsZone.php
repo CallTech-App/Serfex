@@ -105,7 +105,7 @@ class DnsZone extends Model
         [$local, $domain] = explode('@', $this->hostmasterEmail(), 2) + [1 => $this->name];
         $mbox = str_replace('.', '\\.', $local).'.'.$domain.'.';
         $lines = [
-            '; '.$this->name.' exported from Servik on '.now()->toIso8601String(),
+            '; '.$this->name.' exported from Serfex on '.now()->toIso8601String(),
             '$ORIGIN '.$origin,
             '$TTL '.$this->default_ttl,
             sprintf('@ %d IN SOA %s %s %d %d %d %d %d', $this->default_ttl, $this->nameservers()[0] ?? 'ns1.'.$origin, $mbox,

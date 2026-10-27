@@ -19,9 +19,9 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// Releases are the major versions Servik installs, newest first; the
-// first is the default. Servik decides them, as Plesk and cPanel do: a new
-// major version (PostgreSQL 19, say) is added by a Servik release once it
+// Releases are the major versions Serfex installs, newest first; the
+// first is the default. Serfex decides them, as Plesk and cPanel do: a new
+// major version (PostgreSQL 19, say) is added by a Serfex release once it
 // has been tested, never by the vendor publishing it. Each comes from its
 // vendor's own apt archive. A server installed earlier, in a version no
 // longer listed (Ubuntu's MySQL 8.0, MariaDB 10.11, PostgreSQL 16), keeps
@@ -66,17 +66,17 @@ func (m *Manager) archiveFor(product, major string) archive {
 	switch product {
 	case MySQL:
 		return archive{
-			id: "mysql-" + major, sources: "/etc/apt/sources.list.d/servik-mysql.sources",
+			id: "mysql-" + major, sources: "/etc/apt/sources.list.d/serfex-mysql.sources",
 			uri: "https://repo.mysql.com/apt/ubuntu", suite: codename, components: "mysql-" + major + "-lts",
-			keyring: keyringDir + "/servik-mysql.gpg",
+			keyring: keyringDir + "/serfex-mysql.gpg",
 			keyURLs: []string{"https://repo.mysql.com/RPM-GPG-KEY-mysql-2025", "https://repo.mysql.com/RPM-GPG-KEY-mysql-2023"},
 			pkg:     "mysql-server",
 		}
 	case MariaDB:
 		return archive{
-			id: "mariadb-" + major, sources: "/etc/apt/sources.list.d/servik-mariadb.sources",
+			id: "mariadb-" + major, sources: "/etc/apt/sources.list.d/serfex-mariadb.sources",
 			uri: "https://dlm.mariadb.com/repo/mariadb-server/" + major + "/repo/ubuntu", suite: codename, components: "main",
-			keyring: keyringDir + "/servik-mariadb.gpg",
+			keyring: keyringDir + "/serfex-mariadb.gpg",
 			keyURLs: []string{"https://supplychain.mariadb.com/mariadb-keyring-2019.gpg"},
 			pkg:     "mariadb-server",
 		}
@@ -148,14 +148,14 @@ func ofMajor(version, major string) bool {
 }
 
 // probeDir holds the probes' copies of archives' package lists.
-const probeDir = "/var/lib/servik/components/probe"
+const probeDir = "/var/lib/serfex/components/probe"
 
 // probe refreshes a copy of an archive's package lists and returns the apt
 // options that read it instead of apt's own lists.
 func (m *Manager) probe(ctx context.Context, a archive) ([]string, error) {
 	if a.suite == "" || (a.keyring == "" && a.keyURLs == nil) {
-		// Servik's own PostgreSQL brings postgresql-common and the
-		// PostgreSQL archive's key, so this is a release Servik does not
+		// Serfex's own PostgreSQL brings postgresql-common and the
+		// PostgreSQL archive's key, so this is a release Serfex does not
 		// know.
 		return nil, errors.New("the archive cannot be read here")
 	}

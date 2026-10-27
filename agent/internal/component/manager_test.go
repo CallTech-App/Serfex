@@ -22,7 +22,7 @@ func newTest(t *testing.T) (*Manager, *host.Simulator, *site.Manager) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Nginx and PHP 8.3 are there from the start, as on a Servik server.
+	// Nginx and PHP 8.3 are there from the start, as on a Serfex server.
 	for _, f := range []string{"/usr/sbin/nginx", "/usr/sbin/php-fpm8.3", "/etc/php/8.3/fpm/pool.d/www.conf"} {
 		if err := os.MkdirAll(filepath.Dir(sim.Path(f)), 0o755); err != nil {
 			t.Fatal(err)
@@ -290,20 +290,20 @@ func TestRedisInstances(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Unit != "servik-redis-api.hizlikargo.app.service" || !res.Changed {
+	if res.Unit != "serfex-redis-api.hizlikargo.app.service" || !res.Changed {
 		t.Fatalf("result = %+v", res)
 	}
-	conf := read(t, sim, "/etc/servik/redis/api.hizlikargo.app.conf")
-	for _, want := range []string{"bind 127.0.0.1", "port 21000", `requirepass "Abcdefghij0123456789"`, "maxmemory 128mb", "maxmemory-policy noeviction", "dir /var/lib/servik/redis/api.hizlikargo.app"} {
+	conf := read(t, sim, "/etc/serfex/redis/api.hizlikargo.app.conf")
+	for _, want := range []string{"bind 127.0.0.1", "port 21000", `requirepass "Abcdefghij0123456789"`, "maxmemory 128mb", "maxmemory-policy noeviction", "dir /var/lib/serfex/redis/api.hizlikargo.app"} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("redis conf lacks %q", want)
 		}
 	}
-	unit := read(t, sim, "/etc/systemd/system/servik-redis-api.hizlikargo.app.service")
-	if !strings.Contains(unit, "User=hizli") || !strings.Contains(unit, "ExecStart=/usr/bin/redis-server /etc/servik/redis/api.hizlikargo.app.conf") {
+	unit := read(t, sim, "/etc/systemd/system/serfex-redis-api.hizlikargo.app.service")
+	if !strings.Contains(unit, "User=hizli") || !strings.Contains(unit, "ExecStart=/usr/bin/redis-server /etc/serfex/redis/api.hizlikargo.app.conf") {
 		t.Errorf("unit:\n%s", unit)
 	}
-	if !ran(sim, "systemctl restart servik-redis-api.hizlikargo.app.service") {
+	if !ran(sim, "systemctl restart serfex-redis-api.hizlikargo.app.service") {
 		t.Error("instance not started")
 	}
 	// The same port cannot go to another site.
@@ -320,7 +320,7 @@ func TestRedisInstances(t *testing.T) {
 	if err != nil || !removed {
 		t.Fatalf("remove = %v %v", removed, err)
 	}
-	if exists(sim, "/etc/systemd/system/servik-redis-api.hizlikargo.app.service") || exists(sim, "/var/lib/servik/redis/api.hizlikargo.app") {
+	if exists(sim, "/etc/systemd/system/serfex-redis-api.hizlikargo.app.service") || exists(sim, "/var/lib/serfex/redis/api.hizlikargo.app") {
 		t.Error("instance left behind")
 	}
 	if _, err := m.Remove(context.Background(), OpSpec{ID: "redis", Run: "y"}); err != nil {
@@ -336,7 +336,7 @@ func TestRedisStaysForTheMailServer(t *testing.T) {
 	if _, err := m.Install(context.Background(), OpSpec{ID: "redis", Run: "r"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(sim.Path("/etc/servik/mail"), 0o755); err != nil {
+	if err := os.MkdirAll(sim.Path("/etc/serfex/mail"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(sim.Path(mailState), []byte("{}"), 0o600); err != nil {
@@ -359,7 +359,7 @@ func TestModSecuritySettings(t *testing.T) {
 	if !strings.Contains(main, "SecRuleEngine DetectionOnly") || !strings.Contains(main, "Include /usr/share/modsecurity-crs/rules/*.conf") {
 		t.Errorf("main.conf:\n%s", main)
 	}
-	if !strings.Contains(read(t, sim, modsecNginx), "modsecurity_rules_file /etc/servik/modsecurity/main.conf;") {
+	if !strings.Contains(read(t, sim, modsecNginx), "modsecurity_rules_file /etc/serfex/modsecurity/main.conf;") {
 		t.Error("nginx does not load the rules")
 	}
 	if !ran(sim, "nginx -t") || !ran(sim, "systemctl reload nginx") {
@@ -518,7 +518,7 @@ func TestPHPDefaultsAndExtensionPackages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ini := read(t, sim, php.IniFile("8.4")); !strings.Contains(ini, "memory_limit = 256M") || !strings.Contains(ini, "opcache.enable = 1") {
-		t.Errorf("PHP 8.4 without Servik's defaults:\n%s", ini)
+		t.Errorf("PHP 8.4 without Serfex's defaults:\n%s", ini)
 	}
 
 	if _, err := m.Extension(ctx, ExtensionSpec{Version: "8.4", Name: "imagick", Run: "e1"}); err != nil {
@@ -608,7 +608,7 @@ func TestPostgreSQLNewestVersionAndMinorUpdates(t *testing.T) {
 func TestCandidatesBeforeInstall(t *testing.T) {
 	m, sim, _ := newTest(t)
 	ctx := context.Background()
-	// Servik's own PostgreSQL brought postgresql-common and the
+	// Serfex's own PostgreSQL brought postgresql-common and the
 	// PostgreSQL archive's key.
 	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-common"}}); err != nil {
 		t.Fatal(err)
@@ -645,7 +645,7 @@ func TestCandidatesBeforeInstall(t *testing.T) {
 			t.Errorf("%s after check = %+v", id, s)
 		}
 	}
-	if exists(sim, "/etc/apt/sources.list.d/pgdg.sources") || exists(sim, "/etc/apt/sources.list.d/servik-mysql.sources") {
+	if exists(sim, "/etc/apt/sources.list.d/pgdg.sources") || exists(sim, "/etc/apt/sources.list.d/serfex-mysql.sources") {
 		t.Error("the check listed an archive for apt")
 	}
 	if s := status(t, m, "mysql"); len(s.Choices) != 2 || s.Choices[1].Major != "8.4" || s.Choices[1].Version != "8.4.0-1ubuntu24.04" || !s.Choices[0].Default {
@@ -656,7 +656,7 @@ func TestCandidatesBeforeInstall(t *testing.T) {
 	if _, err := m.Install(ctx, OpSpec{ID: "mysql", Run: "m", Version: "8.4", Port: 8443}); err != nil {
 		t.Fatal(err)
 	}
-	if src := read(t, sim, "/etc/apt/sources.list.d/servik-mysql.sources"); !strings.Contains(src, "mysql-8.4-lts") {
+	if src := read(t, sim, "/etc/apt/sources.list.d/serfex-mysql.sources"); !strings.Contains(src, "mysql-8.4-lts") {
 		t.Errorf("sources:\n%s", src)
 	}
 

@@ -17,7 +17,7 @@
             <div class="space-y-4 p-5 text-[13.5px]">
                 <p class="flex gap-2 rounded-lg bg-warn-soft p-3 text-[13px]">
                     <x-icon name="key-round" class="mt-0.5 shrink-0 text-warn" />
-                    <span>{{ __('Parolayı şimdi kopyalayın. Servik parolaları saklamaz; bu pencere kapanınca bir daha gösterilmez, gerekirse yenisini belirlersiniz.') }}</span>
+                    <span>{{ __('Parolayı şimdi kopyalayın. Serfex parolaları saklamaz; bu pencere kapanınca bir daha gösterilmez, gerekirse yenisini belirlersiniz.') }}</span>
                 </p>
                 <dl class="divide-y divide-line rounded-lg border border-line">
                     @foreach ($rows as $label => $value)

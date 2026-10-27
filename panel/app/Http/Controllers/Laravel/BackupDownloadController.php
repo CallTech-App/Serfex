@@ -26,7 +26,7 @@ class BackupDownloadController extends Controller
             $offset = 0;
             do {
                 try {
-                    $chunk = $agent->call('laravel.backup.read', ['domain' => $domain, 'id' => $file->key, 'offset' => $offset], config('servik.agent.job_timeout'));
+                    $chunk = $agent->call('laravel.backup.read', ['domain' => $domain, 'id' => $file->key, 'offset' => $offset], config('serfex.agent.job_timeout'));
                 } catch (AgentException) {
                     return;
                 }

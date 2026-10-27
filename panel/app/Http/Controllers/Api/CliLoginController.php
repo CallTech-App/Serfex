@@ -44,7 +44,7 @@ class CliLoginController extends Controller
             'approved' => response()->json(['status' => 'approved', 'key' => $result['key'], 'name' => $result['user']->name, 'email' => $result['user']->email]),
             'pending' => response()->json(['status' => 'pending', 'message' => __('Tarayıcıdaki onay bekleniyor.')], 202),
             'denied' => response()->json(['status' => 'denied', 'message' => __('Giriş tarayıcıda reddedildi.')], 403),
-            default => response()->json(['status' => 'expired', 'message' => __('Bu girişin süresi doldu; servik login ile yeniden başlayın.')], 410),
+            default => response()->json(['status' => 'expired', 'message' => __('Bu girişin süresi doldu; serfex login ile yeniden başlayın.')], 410),
         };
     }
 }

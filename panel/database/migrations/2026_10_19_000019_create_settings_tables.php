@@ -28,7 +28,7 @@ return new class extends Migration
         Schema::create('audit_entries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            // Who it was when it happened: a name, "Servik AI" or "API: <key>".
+            // Who it was when it happened: a name, "Serfex AI" or "API: <key>".
             $table->string('actor', 120);
             // panel, api, ai or system.
             $table->string('via', 16)->default('panel');
@@ -50,7 +50,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name', 80);
-            // The first characters, shown in lists (svk_live_a91c…).
+            // The first characters, shown in lists (sfx_live_a91c…).
             $table->string('prefix', 24);
             $table->string('token_hash', 64)->unique();
             // read or write.

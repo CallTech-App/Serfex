@@ -50,7 +50,7 @@ type DatabaseRef struct {
 }
 
 // LaravelSpec is a Laravel application whose database is backed up with
-// the application's own backup (one Servik does not manage, or SQLite).
+// the application's own backup (one Serfex does not manage, or SQLite).
 type LaravelSpec struct {
 	laravel.App
 }
@@ -154,7 +154,7 @@ type Descriptor struct {
 }
 
 // Members a site or panel archive may hold.
-var memberRe = []string{"manifest.json", "site.json", "files.tar.gz", "home.tar.gz", "database-users.json", "mail.tar.gz", "certificates.json", "panel.sql.gz", "panel.env", "etc-servik.tar.gz"}
+var memberRe = []string{"manifest.json", "site.json", "files.tar.gz", "home.tar.gz", "database-users.json", "mail.tar.gz", "certificates.json", "panel.sql.gz", "panel.env", "etc-serfex.tar.gz"}
 
 func knownMember(name string) bool {
 	if slices.Contains(memberRe, name) {
@@ -541,7 +541,7 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 		}
 	}
 
-	// Laravel databases Servik does not manage.
+	// Laravel databases Serfex does not manage.
 	for i, app := range it.Laravel {
 		id := "site-" + spec.Key
 		if len(id) > 60 {
@@ -570,7 +570,7 @@ type certFile struct {
 }
 
 // panelParts writes the panel archive: the panel's database and settings
-// (uploaded by the panel) and the agent's state in /etc/servik.
+// (uploaded by the panel) and the agent's state in /etc/serfex.
 func (m *Manager) panelParts(ctx context.Context, it ItemSpec, tmp string, ir *ItemResult) error {
 	members := make([]string, 0, len(it.Uploads))
 	for member := range it.Uploads {
@@ -584,18 +584,18 @@ func (m *Manager) panelParts(ctx context.Context, it ItemSpec, tmp string, ir *I
 		}
 		ir.Parts[map[string]string{"panel.sql.gz": "database", "panel.env": "settings"}[member]] = fileSize(filepath.Join(tmp, member))
 	}
-	if m.isDir("/etc/servik") {
-		f, err := os.OpenFile(filepath.Join(tmp, "etc-servik.tar.gz"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if m.isDir("/etc/serfex") {
+		f, err := os.OpenFile(filepath.Join(tmp, "etc-serfex.tar.gz"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 		if err != nil {
 			return err
 		}
-		c := m.slow(host.Command{Name: "tar", Args: []string{"-czf", "-", "--exclude=./backups/known_hosts", "-C", "/etc/servik", "."}, Stdout: f})
+		c := m.slow(host.Command{Name: "tar", Args: []string{"-czf", "-", "--exclude=./backups/known_hosts", "-C", "/etc/serfex", "."}, Stdout: f})
 		_, err = m.h.Run(ctx, c)
 		f.Close()
 		if err != nil {
-			return fmt.Errorf("archiving /etc/servik: %w", err)
+			return fmt.Errorf("archiving /etc/serfex: %w", err)
 		}
-		ir.Parts["agent"] = fileSize(filepath.Join(tmp, "etc-servik.tar.gz"))
+		ir.Parts["agent"] = fileSize(filepath.Join(tmp, "etc-serfex.tar.gz"))
 	}
 	return nil
 }

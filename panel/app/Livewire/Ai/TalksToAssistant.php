@@ -10,7 +10,7 @@ use App\Services\Ai\Assistant;
 use App\Services\Monitor\MonitorException;
 
 /**
- * Asking Servik AI and deciding about its proposals, shared by the Servik
+ * Asking Serfex AI and deciding about its proposals, shared by the Serfex
  * AI page and the drawer behind the top-bar button.
  */
 trait TalksToAssistant

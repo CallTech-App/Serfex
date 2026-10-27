@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * The servik command line: keys it signs in with (each person's own,
+     * The serfex command line: keys it signs in with (each person's own,
      * approved in the browser), the sign-ins waiting for that approval,
      * and what a Laravel application's token may do.
      */

@@ -1,4 +1,4 @@
-// Package api talks to a Servik panel's /api/v1.
+// Package api talks to a Serfex panel's /api/v1.
 //
 // Every request carries the key or token, the user's language (the panel
 // answers in it) and the command line's version. A panel whose
@@ -260,7 +260,7 @@ func (r *Response) Message() string {
 
 // UserAgent names the command line to the panel (shown under Erişim ve API).
 func UserAgent() string {
-	return "servik/" + version.Version + " (" + runtime.GOOS + "/" + runtime.GOARCH + ")"
+	return "serfex/" + version.Version + " (" + runtime.GOOS + "/" + runtime.GOARCH + ")"
 }
 
 // Do sends a request to /api/v1<path>. body, when not nil, is sent as JSON.

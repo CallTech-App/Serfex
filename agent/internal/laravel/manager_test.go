@@ -92,12 +92,12 @@ func TestDeployCreatesTheFirstRelease(t *testing.T) {
 		t.Error("shared database or storage missing")
 	}
 	// Tools were set up first.
-	for _, want := range []string{"apt-get install -y -q --no-install-recommends php8.4-cli", "/opt/servik/composer/composer.phar"} {
+	for _, want := range []string{"apt-get install -y -q --no-install-recommends php8.4-cli", "/opt/serfex/composer/composer.phar"} {
 		if !strings.Contains(commands(sim), want) {
 			t.Errorf("no command with %q", want)
 		}
 	}
-	if !exists(sim, "/opt/servik/php/8.4/bin/composer") || !exists(sim, "/opt/servik/node/current") {
+	if !exists(sim, "/opt/serfex/php/8.4/bin/composer") || !exists(sim, "/opt/serfex/node/current") {
 		t.Error("tool shims missing")
 	}
 	// The build ran as the site's account, in order.
@@ -321,16 +321,16 @@ func TestQueueWorkers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(states) != 3 || states[0].Unit != "servik-queue-api.hizlikargo.app_default@1.service" || states[0].State != "active" {
+	if len(states) != 3 || states[0].Unit != "serfex-queue-api.hizlikargo.app_default@1.service" || states[0].State != "active" {
 		t.Fatalf("states = %+v", states)
 	}
-	unit := read(t, sim, "/etc/systemd/system/servik-queue-api.hizlikargo.app_reports@.service")
+	unit := read(t, sim, "/etc/systemd/system/serfex-queue-api.hizlikargo.app_reports@.service")
 	for _, want := range []string{
 		"User=hizlikargo",
 		"WorkingDirectory=" + appDir + "/current",
 		"ExecStart=/usr/bin/php8.4 artisan queue:work redis --queue=reports,default --sleep=3 --tries=1 --timeout=900 --memory=128",
 		"TimeoutStopSec=930",
-		"StandardOutput=append:/var/log/servik/laravel/api.hizlikargo.app/queue.log",
+		"StandardOutput=append:/var/log/serfex/laravel/api.hizlikargo.app/queue.log",
 	} {
 		if !strings.Contains(unit, want) {
 			t.Errorf("unit lacks %q:\n%s", want, unit)
@@ -340,7 +340,7 @@ func TestQueueWorkers(t *testing.T) {
 	if _, err := m.Deploy(ctx, gitDeploy("2")); err != nil {
 		t.Fatal(err)
 	}
-	if !sim.Ran("systemctl try-restart servik-queue-api.hizlikargo.app_default@1.service") {
+	if !sim.Ran("systemctl try-restart serfex-queue-api.hizlikargo.app_default@1.service") {
 		t.Error("workers were not restarted after the deploy")
 	}
 	// Scaling down and removing a group.
@@ -348,10 +348,10 @@ func TestQueueWorkers(t *testing.T) {
 	if err != nil || len(states) != 1 {
 		t.Fatalf("states = %+v err=%v", states, err)
 	}
-	if !sim.Ran("systemctl disable --now servik-queue-api.hizlikargo.app_default@2.service servik-queue-api.hizlikargo.app_reports@1.service") {
+	if !sim.Ran("systemctl disable --now serfex-queue-api.hizlikargo.app_default@2.service serfex-queue-api.hizlikargo.app_reports@1.service") {
 		t.Errorf("workers not stopped:\n%s", commands(sim))
 	}
-	if exists(sim, "/etc/systemd/system/servik-queue-api.hizlikargo.app_reports@.service") {
+	if exists(sim, "/etc/systemd/system/serfex-queue-api.hizlikargo.app_reports@.service") {
 		t.Error("removed worker group kept its unit")
 	}
 	var v *ValidationError
@@ -371,7 +371,7 @@ func TestScheduler(t *testing.T) {
 	if err != nil || !st.Enabled {
 		t.Fatalf("st=%+v err=%v", st, err)
 	}
-	if svc := read(t, sim, "/etc/systemd/system/servik-schedule-api.hizlikargo.app.service"); !strings.Contains(svc, "ExecStart=/usr/bin/php8.4 artisan schedule:run") {
+	if svc := read(t, sim, "/etc/systemd/system/serfex-schedule-api.hizlikargo.app.service"); !strings.Contains(svc, "ExecStart=/usr/bin/php8.4 artisan schedule:run") {
 		t.Errorf("service:\n%s", svc)
 	}
 	if err := os.WriteFile(sim.Path(scheduleLog(target.Domain)),
@@ -472,7 +472,7 @@ func TestDeployKeyAndRemove(t *testing.T) {
 	m, sim := newTest(t)
 	ctx := context.Background()
 	key, err := m.DeployKey(ctx, target)
-	if err != nil || !strings.HasPrefix(key, "ssh-ed25519 ") || !strings.HasSuffix(key, " servik@api.hizlikargo.app") {
+	if err != nil || !strings.HasPrefix(key, "ssh-ed25519 ") || !strings.HasSuffix(key, " serfex@api.hizlikargo.app") {
 		t.Fatalf("key = %q %v", key, err)
 	}
 	again, _ := m.DeployKey(ctx, target)
@@ -496,7 +496,7 @@ func TestDeployKeyAndRemove(t *testing.T) {
 	if _, err := m.Remove(ctx, RemoveSpec{Target: target, RemoveFiles: true}); err != nil {
 		t.Fatal(err)
 	}
-	if exists(sim, appDir) || exists(sim, "/etc/systemd/system/servik-queue-api.hizlikargo.app_default@.service") {
+	if exists(sim, appDir) || exists(sim, "/etc/systemd/system/serfex-queue-api.hizlikargo.app_default@.service") {
 		t.Fatal("application not removed")
 	}
 	if !exists(sim, "/home/hizlikargo/web/api.hizlikargo.app/public_html") {

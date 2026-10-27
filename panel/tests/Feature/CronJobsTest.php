@@ -154,7 +154,7 @@ class CronJobsTest extends TestCase
         $this->assertSame([['domain' => 'kahve.com.tr', 'id' => $task->id]], $this->agent->called('cron.run'));
         $this->assertSame('running', $task->fresh()->last_status);
 
-        $this->artisan('servik:cron-history')->assertSuccessful();
+        $this->artisan('serfex:cron-history')->assertSuccessful();
         $this->assertSame('failed', $task->fresh()->last_status);
         $this->assertSame('2026-10-19 14:00:00', $task->fresh()->last_run_at->utc()->format('Y-m-d H:i:s'));
     }

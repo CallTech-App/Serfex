@@ -1,6 +1,6 @@
 @php
     use App\Support\Badge;
-    $tz = config('servik.timezone');
+    $tz = config('serfex.timezone');
     $field = 'h-9 rounded-md border bg-surface px-3 text-[13.5px] outline-none focus:border-accent';
     $btn = 'flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2 disabled:opacity-40';
     $primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40';
@@ -105,7 +105,7 @@
                 <span>{{ __('Komut satırı') }}</span>
                 <div>
                     @if ($cliKeys->isEmpty())
-                        <p class="text-muted"><x-t text="Hiçbir bilgisayarda oturum yok. :command ile girildiğinde burada görünür."><x-slot:command><span class="font-mono text-fg">servik login</span></x-slot:command></x-t></p>
+                        <p class="text-muted"><x-t text="Hiçbir bilgisayarda oturum yok. :command ile girildiğinde burada görünür."><x-slot:command><span class="font-mono text-fg">serfex login</span></x-slot:command></x-t></p>
                     @else
                         <ul class="divide-y divide-line border-y border-line">
                             @foreach ($cliKeys as $k)
@@ -120,7 +120,7 @@
                             @endforeach
                         </ul>
                     @endif
-                    <p class="mt-2 text-2xs text-muted">{{ __('servik komut satırı aracı bu hesapla, sizin yetkilerinizle çalışır. Kullanmadığınız bilgisayarların oturumunu kapatın.') }}</p>
+                    <p class="mt-2 text-2xs text-muted">{{ __('serfex komut satırı aracı bu hesapla, sizin yetkilerinizle çalışır. Kullanmadığınız bilgisayarların oturumunu kapatın.') }}</p>
                 </div>
             </div>
         </div>

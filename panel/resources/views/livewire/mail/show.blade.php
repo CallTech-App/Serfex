@@ -245,7 +245,7 @@
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                         <span>{{ __('DNS kayıtları') }}</span>
                         <div>
-                            <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="manageDns" @disabled($closed) class="size-4 accent-accent">{{ __('MX, SPF, DKIM ve DMARC kayıtlarını Servik yönetsin') }}</label>
+                            <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="manageDns" @disabled($closed) class="size-4 accent-accent">{{ __('MX, SPF, DKIM ve DMARC kayıtlarını Serfex yönetsin') }}</label>
                             <p class="mt-1 ml-[26px] text-2xs text-muted">{{ __('Eksik kayıtlar alan adının bu sunucudaki DNS bölgesine yazılır; sizin değiştirdiğiniz kayıtlara dokunulmaz.') }}</p>
                         </div>
                     </div>
@@ -369,7 +369,7 @@
                     @error('mbPassword')
                         <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                     @else
-                        <p class="mt-1.5 text-2xs text-muted">{{ __('Parolayı şimdi not edin; Servik parolaları saklamaz, yalnızca doğrular.') }}</p>
+                        <p class="mt-1.5 text-2xs text-muted">{{ __('Parolayı şimdi not edin; Serfex parolaları saklamaz, yalnızca doğrular.') }}</p>
                     @enderror
                 </div>
                 <div>
@@ -466,7 +466,7 @@
         <div class="p-5 text-[13.5px]">
             <p class="font-semibold"><x-t text=":name için e-posta kapatılsın mı?"><x-slot:name><span class="font-mono">{{ $domain->name }}</span></x-slot:name></x-t></p>
             <p class="mt-1 text-[13px] text-muted">
-                {{ __('Bu alan adına posta gelmez ve :mailbox_count posta kutusu oturum açamaz. Posta kutuları ve içindeki postalar :undo_seconds dakika içinde geri alınabilir, sonra silinir. Servik\'in yazdığı MX, SPF, DKIM ve DMARC kayıtları da kaldırılır.', ['mailbox_count' => $mailboxCount, 'undo_seconds' => intdiv(\App\Services\Mail\MailDomains::UNDO_SECONDS, 60)]) }}
+                {{ __('Bu alan adına posta gelmez ve :mailbox_count posta kutusu oturum açamaz. Posta kutuları ve içindeki postalar :undo_seconds dakika içinde geri alınabilir, sonra silinir. Serfex\'in yazdığı MX, SPF, DKIM ve DMARC kayıtları da kaldırılır.', ['mailbox_count' => $mailboxCount, 'undo_seconds' => intdiv(\App\Services\Mail\MailDomains::UNDO_SECONDS, 60)]) }}
             </p>
             <div class="mt-4 flex justify-end gap-2">
                 <button type="button" wire:click="$set('disabling', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * A conversation of one administrator with Servik AI.
+ * A conversation of one administrator with Serfex AI.
  */
 #[Fillable(['user_id', 'title', 'status', 'error', 'client_ip'])]
 class AiConversation extends Model

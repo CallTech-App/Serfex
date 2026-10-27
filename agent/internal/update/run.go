@@ -38,7 +38,7 @@ type runSpec struct {
 }
 
 // Execute performs a started run and records how it ended. The helper
-// process runs it ("servik-agent -update-run RUN"); it holds the update
+// process runs it ("serfex-agent -update-run RUN"); it holds the update
 // lock throughout.
 func (m *Manager) Execute(ctx context.Context, run string) error {
 	if !runRe.MatchString(run) {
@@ -91,11 +91,11 @@ func (m *Manager) Execute(ctx context.Context, run string) error {
 	}
 	switch {
 	case err == nil && spec.Kind == "rollback":
-		fmt.Fprintf(w, "✓ %s\n", i18n.T(ctx, "Servik %s sürümüne dönüldü.", spec.To))
+		fmt.Fprintf(w, "✓ %s\n", i18n.T(ctx, "Serfex %s sürümüne dönüldü.", spec.To))
 	case err == nil:
-		fmt.Fprintf(w, "✓ %s\n", i18n.T(ctx, "Servik %s kuruldu.", spec.To))
+		fmt.Fprintf(w, "✓ %s\n", i18n.T(ctx, "Serfex %s kuruldu.", spec.To))
 	case x.recovered:
-		fmt.Fprintf(w, "✗ %s\n", i18n.T(ctx, "%s Servik %s ile çalışmaya devam ediyor.", lastLine(err.Error()), spec.From))
+		fmt.Fprintf(w, "✗ %s\n", i18n.T(ctx, "%s Serfex %s ile çalışmaya devam ediyor.", lastLine(err.Error()), spec.From))
 	default:
 		fmt.Fprintf(w, "✗ %s\n", lastLine(err.Error()))
 	}
@@ -168,7 +168,7 @@ func (x *execution) systemctl(args ...string) error {
 func (x *execution) prepare() error {
 	cfg, ok := panel.Load(x.m.h)
 	if !ok {
-		return fmt.Errorf("%s is missing: Servik was not installed with install.sh", panel.ConfigFile)
+		return fmt.Errorf("%s is missing: Serfex was not installed with install.sh", panel.ConfigFile)
 	}
 	x.cfg = cfg
 	env, err := panel.Env(x.m.h)
@@ -196,7 +196,7 @@ func (x *execution) prepare() error {
 // the previous release back.
 func (x *execution) upgrade() (err error) {
 	s := x.spec
-	fmt.Fprintf(x.w, "Servik %s → %s\n", s.From, s.To)
+	fmt.Fprintf(x.w, "Serfex %s → %s\n", s.From, s.To)
 	if err := x.prepare(); err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func (x *execution) upgrade() (err error) {
 // release takes over. A failure brings the running release back.
 func (x *execution) rollback() (err error) {
 	s := x.spec
-	fmt.Fprintf(x.w, "%s\n", i18n.T(x.ctx, "Servik %s → %s (önceki sürüm)", s.From, s.To))
+	fmt.Fprintf(x.w, "%s\n", i18n.T(x.ctx, "Serfex %s → %s (önceki sürüm)", s.From, s.To))
 	if err := x.prepare(); err != nil {
 		return err
 	}
@@ -302,7 +302,7 @@ func (x *execution) rollback() (err error) {
 		return err
 	}
 	// The release returned from stays on disk until the next update:
-	// processes still running its code (servik:update, an open page's
+	// processes still running its code (serfex:update, an open page's
 	// request) would fail on files that disappear under them.
 	x.cleanup(s.To, s.From)
 	return nil
@@ -357,13 +357,13 @@ func (x *execution) fetch(dir string) error {
 	if err != nil || strings.TrimSpace(string(data)) != s.To {
 		return fmt.Errorf("the archive is not release %s (VERSION says %q)", s.To, strings.TrimSpace(string(data)))
 	}
-	for _, f := range []string{"/bin/servik-agent", "/panel/artisan", "/panel/public/index.php", "/panel/vendor/autoload.php"} {
+	for _, f := range []string{"/bin/serfex-agent", "/panel/artisan", "/panel/public/index.php", "/panel/vendor/autoload.php"} {
 		if !x.m.exists(tmp + f) {
 			return fmt.Errorf("the archive has no %s", strings.TrimPrefix(f, "/"))
 		}
 	}
 	if !x.m.sim {
-		out, err := x.m.h.Run(x.ctx, host.Command{Name: x.m.h.Path(tmp + "/bin/servik-agent"), Args: []string{"-version"}})
+		out, err := x.m.h.Run(x.ctx, host.Command{Name: x.m.h.Path(tmp + "/bin/serfex-agent"), Args: []string{"-version"}})
 		if err != nil || strings.TrimSpace(out) != s.To {
 			return fmt.Errorf("the new agent does not run or is not %s: %s", s.To, strings.TrimSpace(out))
 		}
@@ -377,7 +377,7 @@ func (x *execution) download(url, file string) (int64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	req.Header.Set("User-Agent", "servik-agent/"+x.m.Agent)
+	req.Header.Set("User-Agent", "serfex-agent/"+x.m.Agent)
 	req.Header.Set("Accept", "application/octet-stream")
 	authorize(req, x.cfg.Token)
 	resp, err := x.m.HTTP.Do(req)
@@ -510,12 +510,12 @@ func (x *execution) link(version string) error {
 			return err
 		}
 	}
-	// The servik command line follows current; servers installed before
+	// The serfex command line follows current; servers installed before
 	// it shipped get the link with their first release that has it.
-	if _, err := os.Stat(x.m.h.Path(panel.ReleasesDir + "/" + version + "/bin/servik")); err == nil {
+	if _, err := os.Stat(x.m.h.Path(panel.ReleasesDir + "/" + version + "/bin/serfex")); err == nil {
 		if _, err := os.Lstat(x.m.h.Path(panel.CLILink)); errors.Is(err, os.ErrNotExist) {
 			_ = os.MkdirAll(filepath.Dir(x.m.h.Path(panel.CLILink)), 0o755)
-			if err := os.Symlink(panel.CurrentLink+"/bin/servik", x.m.h.Path(panel.CLILink)); err != nil {
+			if err := os.Symlink(panel.CurrentLink+"/bin/serfex", x.m.h.Path(panel.CLILink)); err != nil {
 				return err
 			}
 		}
@@ -617,7 +617,7 @@ func (x *execution) batchNow() (int, error) {
 
 // switchTo points current at version, atomically.
 func (x *execution) switchTo(version string) error {
-	x.step("Servik %s etkinleştiriliyor", version)
+	x.step("Serfex %s etkinleştiriliyor", version)
 	if err := x.failpoint("switch"); err != nil {
 		return err
 	}
@@ -640,7 +640,7 @@ func setCurrent(h host.Host, version string) error {
 }
 
 // restart brings the services up on the release current points at: the
-// agent (which then applies its own panel setup), servik-php, the
+// agent (which then applies its own panel setup), serfex-php, the
 // workers and the panel itself.
 func (x *execution) restart(version string) error {
 	x.step("Hizmetler yeniden başlatılıyor")
@@ -659,7 +659,7 @@ func (x *execution) restart(version string) error {
 			return fmt.Errorf("setting the panel up failed: %w", err)
 		}
 	}
-	if err := x.systemctl("reload-or-restart", "servik-php"); err != nil {
+	if err := x.systemctl("reload-or-restart", "serfex-php"); err != nil {
 		return err
 	}
 	x.stopped = false
@@ -673,7 +673,7 @@ func (x *execution) restart(version string) error {
 	return nil
 }
 
-// check is the health check: the panel answers on servik-web and its
+// check is the health check: the panel answers on serfex-web and its
 // services run.
 func (x *execution) check() error {
 	x.step("Denetleniyor: panel yanıt veriyor mu")
@@ -692,13 +692,13 @@ func (x *execution) check() error {
 func (x *execution) recover(from, to string) {
 	ctx := context.WithoutCancel(x.ctx)
 	x.ctx = ctx
-	fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s sürümüne geri dönülüyor", from))
+	fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Serfex %s sürümüne geri dönülüyor", from))
 	if !x.down {
 		_ = x.artisan(currentOr(x.m.h, from), "down", "--render=errors::updating", "--retry=10")
 	}
 	_ = x.systemctl(append([]string{"stop"}, panel.Units...)...)
 	if x.switched {
-		fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s yeniden etkinleştiriliyor", from))
+		fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Serfex %s yeniden etkinleştiriliyor", from))
 		if err := setCurrent(x.m.h, from); err != nil {
 			fmt.Fprintf(x.w, "↺ %s\n", err)
 			return
@@ -725,7 +725,7 @@ func (x *execution) recover(from, to string) {
 			}
 		}
 	}
-	_ = x.systemctl("reload-or-restart", "servik-php")
+	_ = x.systemctl("reload-or-restart", "serfex-php")
 	if err := x.systemctl(append([]string{"start"}, panel.Units...)...); err != nil {
 		return
 	}
@@ -733,11 +733,11 @@ func (x *execution) recover(from, to string) {
 		return
 	}
 	if err := x.m.health(ctx); err != nil {
-		fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s de yanıt vermiyor: %s", from, lastLine(err.Error())))
+		fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Serfex %s de yanıt vermiyor: %s", from, lastLine(err.Error())))
 		return
 	}
 	x.recovered = true
-	fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Servik %s yeniden çalışıyor", from))
+	fmt.Fprintf(x.w, "↺ %s\n", i18n.T(x.ctx, "Serfex %s yeniden çalışıyor", from))
 }
 
 // currentOr is the release current points at, or fallback.
@@ -810,7 +810,7 @@ func (m *Manager) health(ctx context.Context) error {
 		case <-time.After(m.wait):
 		}
 	}
-	units := append([]string{"servik-web", "servik-php"}, panel.Units...)
+	units := append([]string{"serfex-web", "serfex-php"}, panel.Units...)
 	out, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: append([]string{"is-active"}, units...)})
 	if err != nil {
 		var down []string

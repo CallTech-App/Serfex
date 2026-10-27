@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\IpUtils;
  *
  * Two kinds: panel keys, made by a full administrator under API
  * anahtarları for billing systems and scripts; and cli keys, made when
- * someone signs the servik command line in and approves it in the
+ * someone signs the serfex command line in and approves it in the
  * browser. A cli key can do what its person can do in the panel.
  */
 #[Fillable(['user_id', 'kind', 'client', 'name', 'prefix', 'token_hash', 'scope', 'allowed_ips', 'last_used_at', 'last_used_ip', 'expires_at', 'revoked_at'])]

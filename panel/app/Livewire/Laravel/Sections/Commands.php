@@ -107,7 +107,7 @@ class Commands extends Section
             'status' => 'running',
         ]);
         try {
-            $agent->call('laravel.tinker.start', $app->agentApp() + ['session' => $session->run], config('servik.agent.job_timeout'));
+            $agent->call('laravel.tinker.start', $app->agentApp() + ['session' => $session->run], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $session->update(['status' => 'failed', 'error' => $e->reason ?: $e->getMessage(), 'finished_at' => now()]);
         }

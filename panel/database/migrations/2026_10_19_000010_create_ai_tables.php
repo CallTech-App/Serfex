@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Servik AI: conversations with the assistant, the actions it took or
+     * Serfex AI: conversations with the assistant, the actions it took or
      * proposed, what each request to Claude cost, and an audit log of what
      * it read, proposed and did.
      */

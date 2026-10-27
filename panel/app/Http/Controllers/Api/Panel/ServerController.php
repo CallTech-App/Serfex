@@ -25,7 +25,7 @@ class ServerController extends ApiController
             'hostname' => Setting::get('server.hostname') ?: gethostname(),
             'panel_hostname' => Setting::get('panel.hostname'),
             'panel_port' => $settings->port(),
-            'version' => config('servik.version'),
+            'version' => config('serfex.version'),
             'timezone' => $settings->timezone(),
             'sites' => Site::count(),
             'customers' => Customer::count(),

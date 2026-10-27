@@ -19,7 +19,7 @@
           class="flex items-end gap-2 rounded-lg border bg-surface px-3 py-2 focus-within:border-accent {{ $errors->has('question') ? 'border-crit' : 'border-line' }}">
         <label for="{{ $compact ? 'aiDrawerInput' : 'aiInput' }}" class="sr-only">{{ __('Mesaj') }}</label>
         <textarea id="{{ $compact ? 'aiDrawerInput' : 'aiInput' }}" wire:model="question" rows="1" maxlength="4000"
-                  placeholder="{{ $compact ? __('Sunucunuz hakkında bir şey sorun') : __('Servik AI\'a sorun') }}"
+                  placeholder="{{ $compact ? __('Sunucunuz hakkında bir şey sorun') : __('Serfex AI\'a sorun') }}"
                   x-on:input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 160) + 'px'"
                   x-on:keydown.enter="if (! $event.shiftKey) { $event.preventDefault(); $el.form.requestSubmit() }"
                   class="min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[13.5px] outline-none placeholder:text-muted"></textarea>
@@ -29,5 +29,5 @@
     @error('question')
         <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
     @enderror
-    <p class="mt-2 text-2xs text-muted"><x-t text="IP engelleme ve geçici sınırlar dışında her işlem onayınızla yapılır · :link"><x-slot:link><a href="{{ route('ai.settings') }}" wire:navigate class="text-accent hover:underline">{{ __('Servik AI ayarları') }}</a></x-slot:link></x-t></p>
+    <p class="mt-2 text-2xs text-muted"><x-t text="IP engelleme ve geçici sınırlar dışında her işlem onayınızla yapılır · :link"><x-slot:link><a href="{{ route('ai.settings') }}" wire:navigate class="text-accent hover:underline">{{ __('Serfex AI ayarları') }}</a></x-slot:link></x-t></p>
 </div>

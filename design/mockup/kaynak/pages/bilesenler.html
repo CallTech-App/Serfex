@@ -40,7 +40,7 @@
               <tbody id="db" class="divide-y divide-line"></tbody>
             </table>
           </div>
-          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Panelin kendi PostgreSQL'i (<span class="font-mono">servik-postgresql</span>) ayrı çalışır. Buradaki kurulum ve kaldırma işlemleri onu etkilemez.</p>
+          <p class="px-5 py-3 border-t border-line text-2xs text-muted">Panelin kendi PostgreSQL'i (<span class="font-mono">serfex-postgresql</span>) ayrı çalışır. Buradaki kurulum ve kaldırma işlemleri onu etkilemez.</p>
         </div>
 
         <!-- Diğer bileşenler -->
@@ -114,7 +114,7 @@
 
   // ---- Tablolar: [ad, açıklama, sürüm, kurulu, kullanım, kurulum adımları, kaldırma etkisi, kilit nedeni] ----
   const webs = [
-    ['Nginx', 'Tüm sitelerin önünde durur, statik dosyaları sunar', '1.26.2', 1, '24 site', '', '', 'Gerekli. Servik tüm sitelerde Nginx kullanır.'],
+    ['Nginx', 'Tüm sitelerin önünde durur, statik dosyaları sunar', '1.26.2', 1, '24 site', '', '', 'Gerekli. Serfex tüm sitelerde Nginx kullanır.'],
     ['Apache', '.htaccess kullanan siteler için, Nginx arkasında çalışır', '2.4.62', 1, '5 site', '', '', 'Kullanılıyor. Önce siteleri Nginx\'e alın.'],
     ['Brotli sıkıştırma', 'Nginx için gzip\'ten daha iyi sıkıştırma', '1.0.0', 0, '—', 'Nginx brotli modülü kuruluyor|Yapılandırma test ediliyor', 'Siteler yeniden gzip ile sıkıştırılır.', ''],
   ];
@@ -142,7 +142,7 @@
       ['SnappyMail', 'Hafif webmail alternatifi', '2.38', 0, '—', 'SnappyMail kuruluyor|Webmail adresine ekleniyor', '', ''],
     ]],
     ['Güvenlik', [
-      ['Fail2ban', 'Kaba kuvvet saldırılarını engeller', '1.1.0', 1, 'SSH, FTP, posta, panel', '', '', 'Servik güvenlik izlemesi için gerekli.'],
+      ['Fail2ban', 'Kaba kuvvet saldırılarını engeller', '1.1.0', 1, 'SSH, FTP, posta, panel', '', '', 'Serfex güvenlik izlemesi için gerekli.'],
       ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP kuralları)', '3.0.13', 0, '—', 'ModSecurity ve OWASP CRS 4 kuruluyor|Web sunucusuna bağlanıyor|Yalnızca izleme kipinde başlatılıyor', '', ''],
       ['ClamAV', 'Posta ve dosya virüs taraması', '1.4.1', 0, '—', 'ClamAV kuruluyor (yaklaşık 300 MB)|Virüs veritabanı indiriliyor|Rspamd taramasına bağlanıyor', '', ''],
     ]],
@@ -172,7 +172,7 @@
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.in) {
       const c = find(b.dataset.in);
-      confirmBox(`${c[0]} ${c[2]} kurulsun mu?`, `Servik Agent paketleri Ubuntu depolarından kurar ve hizmeti başlatır. Siteler bu sırada çalışmaya devam eder.`, 'Kur', false,
+      confirmBox(`${c[0]} ${c[2]} kurulsun mu?`, `Serfex Agent paketleri Ubuntu depolarından kurar ve hizmeti başlatır. Siteler bu sırada çalışmaya devam eder.`, 'Kur', false,
         () => runJob(`${c[0]} kuruluyor`, (c[5] || `${c[0]} kuruluyor`).split('|').concat('Hizmet başlatılıyor ve test ediliyor'), () => {
           c[3] = 1; c[4] = 'Henüz kullanılmıyor'; drawTables(); toast(`${c[0]} kuruldu.`);
         }));

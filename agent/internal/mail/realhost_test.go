@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	testHost   = "mail.servik.test"
+	testHost   = "mail.serfex.test"
 	testDomain = "example.test"
 	password   = "Gizli-parola-42"
 )
@@ -63,14 +63,14 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 	}
 	verb, unit := c.Args[0], c.Args[len(c.Args)-1]
 	running := map[string]string{
-		redisUnit: "pgrep -f '[r]edis-server.*servik-mail'",
+		redisUnit: "pgrep -f '[r]edis-server.*serfex-mail'",
 		"rspamd":  "pgrep -f '[r]spamd: main'",
 		"dovecot": "test -f /run/dovecot/master.pid && kill -0 $(cat /run/dovecot/master.pid)",
 		"postfix": "postfix status",
 		"nginx":   "test -f /run/nginx.pid && kill -0 $(cat /run/nginx.pid)",
 	}
 	start := map[string]string{
-		redisUnit: "install -d -o redis -g redis -m 2755 /run/redis-servik-mail && runuser -u redis -- redis-server " + redisConf + " --daemonize yes",
+		redisUnit: "install -d -o redis -g redis -m 2755 /run/redis-serfex-mail && runuser -u redis -- redis-server " + redisConf + " --daemonize yes",
 		// No systemd drop-in here: put Rspamd into Redis's group instead.
 		"rspamd":  "usermod -a -G redis _rspamd && install -d -o _rspamd /run/rspamd && (runuser -u _rspamd -- rspamd -c /etc/rspamd/rspamd.conf >/dev/null 2>&1 &) && sleep 5",
 		"dovecot": "dovecot",
@@ -78,7 +78,7 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 		"nginx":   "nginx",
 	}
 	stop := map[string]string{
-		redisUnit: "pkill -f '[r]edis-server.*servik-mail'; sleep 0.5",
+		redisUnit: "pkill -f '[r]edis-server.*serfex-mail'; sleep 0.5",
 		"rspamd":  "pkill -f '[r]spamd: main'; sleep 1",
 		"dovecot": "doveadm stop; sleep 0.5",
 		"postfix": "postfix stop",
@@ -140,12 +140,12 @@ func TestRealHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("setup: %+v", res)
-	if os.Getenv("SERVIK_KEEP") == "" {
+	if os.Getenv("SERFEX_KEEP") == "" {
 		t.Cleanup(func() { _, _ = m.DeleteDomain(context.Background(), testDomain, true) })
 	}
 	if !hasSystemd() {
 		// No journal in containers: keep the mail logs in files.
-		_, _ = h.sh(ctx, "postconf -e maillog_file=/var/log/servik-test-postfix.log && postfix reload")
+		_, _ = h.sh(ctx, "postconf -e maillog_file=/var/log/serfex-test-postfix.log && postfix reload")
 	}
 
 	// Sending limits count from zero.
@@ -179,7 +179,7 @@ func TestRealHost(t *testing.T) {
 	}
 
 	ali, veli := "ali@"+testDomain, "veli@"+testDomain
-	if err := submit(ali, password, ali, []string{veli}, "Merhaba", "Servik posta testi."); err != nil {
+	if err := submit(ali, password, ali, []string{veli}, "Merhaba", "Serfex posta testi."); err != nil {
 		t.Fatal(err)
 	}
 	if err := submit(ali, password, ali, []string{"satis@" + testDomain}, "Fiyat", "Forwarder testi."); err != nil {
@@ -293,7 +293,7 @@ func submit(user, pass, from string, to []string, subject, body string) error {
 		return err
 	}
 	defer c.Close()
-	if err := c.Hello("client.servik.test"); err != nil {
+	if err := c.Hello("client.serfex.test"); err != nil {
 		return err
 	}
 	if err := c.StartTLS(&tls.Config{ServerName: testHost, InsecureSkipVerify: true}); err != nil {
@@ -314,7 +314,7 @@ func submit(user, pass, from string, to []string, subject, body string) error {
 	if err != nil {
 		return err
 	}
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nDate: %s\r\nMessage-ID: <%d@client.servik.test>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n%s\r\n",
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nDate: %s\r\nMessage-ID: <%d@client.serfex.test>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n%s\r\n",
 		from, strings.Join(to, ", "), subject, time.Now().Format(time.RFC1123Z), time.Now().UnixNano(), body)
 	if _, err := io.WriteString(w, msg); err != nil {
 		return err

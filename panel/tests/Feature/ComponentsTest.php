@@ -51,7 +51,7 @@ class ComponentsTest extends TestCase
         parent::setUp();
         Queue::fake();
         $this->components = [
-            'nginx' => ['id' => 'nginx', 'installed' => true, 'version' => '1.24.0-2ubuntu7', 'latest' => '1.24.0-2ubuntu7.1', 'running' => true, 'units' => ['nginx'], 'required' => 'Servik serves every site with Nginx'],
+            'nginx' => ['id' => 'nginx', 'installed' => true, 'version' => '1.24.0-2ubuntu7', 'latest' => '1.24.0-2ubuntu7.1', 'running' => true, 'units' => ['nginx'], 'required' => 'Serfex serves every site with Nginx'],
             'apache' => ['id' => 'apache', 'installed' => false, 'running' => false],
             'php8.4' => ['id' => 'php8.4', 'installed' => true, 'version' => '8.4.13', 'running' => true, 'units' => ['php8.4-fpm'], 'used_by' => ['webmail (Roundcube)']],
             'php8.3' => ['id' => 'php8.3', 'installed' => true, 'version' => '8.3.6', 'running' => true, 'units' => ['php8.3-fpm']],
@@ -73,7 +73,7 @@ class ComponentsTest extends TestCase
             'php.versions' => ['8.3', '8.4'],
             'site.apply' => ['document_root' => '/home/kahve/web/kahveatolyesi.com.tr/public_html'],
             'db.status' => ['servers' => ['mysql' => ['installed' => true, 'product' => 'mysql', 'running' => true]], 'manager' => ['configured' => true]],
-            'redis.apply' => ['unit' => 'servik-redis-kahveatolyesi.com.tr.service'],
+            'redis.apply' => ['unit' => 'serfex-redis-kahveatolyesi.com.tr.service'],
             'redis.remove' => ['removed' => true],
             'laravel.env.get' => ['env' => "APP_NAME=Kahve\nCACHE_STORE=database\n", 'example' => null],
             'laravel.env.set' => ['cached' => true],
@@ -102,7 +102,7 @@ class ComponentsTest extends TestCase
             ->assertSee('Nginx')
             ->assertSee('Güncelleme var')
             ->assertSee('1.24.0-2ubuntu7.1')
-            ->assertSee('Gerekli. Servik tüm sitelerde Nginx kullanır.')
+            ->assertSee('Gerekli. Serfex tüm sitelerde Nginx kullanır.')
             ->assertDontSee('PHP 8.4')
             ->assertSee('artık Hizmetler sayfasında')
             ->assertSee('Kurulu değil')
@@ -182,7 +182,7 @@ class ComponentsTest extends TestCase
         $this->assertSame('mirror.example.net', Components::source('nginx', 'mirror.example.net/ubuntu'));
     }
 
-    public function test_database_servers_install_in_a_version_servik_offers(): void
+    public function test_database_servers_install_in_a_version_serfex_offers(): void
     {
         $this->components['mysql'] = ['id' => 'mysql', 'installed' => false, 'running' => false, 'candidate' => '9.7.0-1ubuntu24.04', 'candidate_from' => 'repo.mysql.com/apt/ubuntu', 'choices' => [
             ['major' => '9.7', 'default' => true, 'version' => '9.7.0-1ubuntu24.04', 'from' => 'repo.mysql.com/apt/ubuntu'],
@@ -215,7 +215,7 @@ class ComponentsTest extends TestCase
         $this->assertSame('8.4', $this->agent->called('component.install')[0]['version']);
         $op->delete();
 
-        // A version Servik does not offer is refused.
+        // A version Serfex does not offer is refused.
         $this->assertSame('MySQL için bu sürüm sunulmuyor.', app(Components::class)->start('mysql', 'install', null, '8.0'));
 
         Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
@@ -342,7 +342,7 @@ class ComponentsTest extends TestCase
         // PHP versions: sites and what the agent reports.
         $this->assertStringStartsWith('Kullanılıyor: kahveatolyesi.com.tr, webmail (Roundcube).', app(Components::class)->removalRefusal('php8.4'));
         $this->assertNull(app(Components::class)->removalRefusal('php8.3'));
-        $this->assertSame('Gerekli. Servik tüm sitelerde Nginx kullanır.', app(Components::class)->removalRefusal('nginx'));
+        $this->assertSame('Gerekli. Serfex tüm sitelerde Nginx kullanır.', app(Components::class)->removalRefusal('nginx'));
 
         // Database servers: their databases.
         Setting::put('databases.products', ['mysql' => 'mysql']);

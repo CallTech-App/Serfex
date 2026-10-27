@@ -227,7 +227,7 @@
                         @error('password')
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
-                            <p class="mt-1.5 text-2xs text-muted">{{ __('Oluşturduktan sonra bir kez gösterilir; Servik parolayı saklamaz.') }}</p>
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Oluşturduktan sonra bir kez gösterilir; Serfex parolayı saklamaz.') }}</p>
                         @enderror
                     </div>
                     <div>

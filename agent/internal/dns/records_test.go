@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-var soa = SOA{Primary: "ns1.servik.net.tr", Hostmaster: "hostmaster@kahveatolyesi.com.tr", Refresh: 10800, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600}
+var soa = SOA{Primary: "ns1.serfex.net.tr", Hostmaster: "hostmaster@kahveatolyesi.com.tr", Refresh: 10800, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600}
 
 func zoneSpec(records ...Record) ZoneSpec {
 	base := []Record{
-		{Name: "@", Type: "NS", TTL: 3600, Content: "ns1.servik.net.tr."},
-		{Name: "@", Type: "NS", TTL: 3600, Content: "ns2.servik.net.tr"},
+		{Name: "@", Type: "NS", TTL: 3600, Content: "ns1.serfex.net.tr."},
+		{Name: "@", Type: "NS", TTL: 3600, Content: "ns2.serfex.net.tr"},
 	}
 	return ZoneSpec{Zone: "kahveatolyesi.com.tr", SOA: soa, Records: append(base, records...)}
 }
@@ -39,11 +39,11 @@ func TestNormalizeBuildsRecordSets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sets[0].Type != "SOA" || sets[0].Records[0] != "ns1.servik.net.tr. hostmaster.kahveatolyesi.com.tr. 0 10800 3600 604800 3600" {
+	if sets[0].Type != "SOA" || sets[0].Records[0] != "ns1.serfex.net.tr. hostmaster.kahveatolyesi.com.tr. 0 10800 3600 604800 3600" {
 		t.Fatalf("SOA = %+v", sets[0])
 	}
 	want := map[string]string{
-		"kahveatolyesi.com.tr. NS":            "ns1.servik.net.tr.|ns2.servik.net.tr.",
+		"kahveatolyesi.com.tr. NS":            "ns1.serfex.net.tr.|ns2.serfex.net.tr.",
 		"kahveatolyesi.com.tr. AAAA":          "2a0e:1c80:4:2a::21",
 		"www.kahveatolyesi.com.tr. CNAME":     "kahveatolyesi.com.tr.",
 		"kahveatolyesi.com.tr. MX":            "10 mail.kahveatolyesi.com.tr.",
@@ -85,8 +85,8 @@ func TestNormalizeRejects(t *testing.T) {
 		"bad CAA tag":      zoneSpec(Record{Name: "@", Type: "CAA", TTL: 3600, Content: `0 policy "x"`}),
 		"no NS":            {Zone: "kahveatolyesi.com.tr", SOA: soa},
 		"bad zone":         {Zone: "localhost", SOA: soa},
-		"bad hostmaster":   {Zone: "kahveatolyesi.com.tr", SOA: SOA{Primary: "ns1.servik.net.tr", Hostmaster: "a b@c", Refresh: 10800, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600}},
-		"bad SOA timer":    {Zone: "kahveatolyesi.com.tr", SOA: SOA{Primary: "ns1.servik.net.tr", Hostmaster: "h@kahveatolyesi.com.tr", Refresh: 1, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600}},
+		"bad hostmaster":   {Zone: "kahveatolyesi.com.tr", SOA: SOA{Primary: "ns1.serfex.net.tr", Hostmaster: "a b@c", Refresh: 10800, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600}},
+		"bad SOA timer":    {Zone: "kahveatolyesi.com.tr", SOA: SOA{Primary: "ns1.serfex.net.tr", Hostmaster: "h@kahveatolyesi.com.tr", Refresh: 1, Retry: 3600, Expire: 604800, Minimum: 3600, TTL: 3600}},
 	}
 	for name, spec := range cases {
 		if _, err := spec.normalize(); err == nil {

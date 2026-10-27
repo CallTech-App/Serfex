@@ -1,19 +1,19 @@
-// Package panel describes how an installed Servik panel is laid out on
+// Package panel describes how an installed Serfex panel is laid out on
 // the server. The installer (install.sh) writes Config; the updater, the
-// panel's own web server (servik-web, servik-php) and Yazılım Yönetimi
+// panel's own web server (serfex-web, serfex-php) and Yazılım Yönetimi
 // read it.
 //
 // Layout of a server installed from a release:
 //
-//	/opt/servik/releases/<version>/      one release: VERSION, bin/servik-agent, panel/
-//	/opt/servik/current                  symlink to the release that runs
-//	/etc/servik/panel.json               Config
-//	/etc/servik/panel.env                the panel's .env (root:servik 0640), linked into each release
-//	/var/lib/servik/panel/storage        the panel's storage directory, linked into each release
+//	/opt/serfex/releases/<version>/      one release: VERSION, bin/serfex-agent, panel/
+//	/opt/serfex/current                  symlink to the release that runs
+//	/etc/serfex/panel.json               Config
+//	/etc/serfex/panel.env                the panel's .env (root:serfex 0640), linked into each release
+//	/var/lib/serfex/panel/storage        the panel's storage directory, linked into each release
 //
-// The panel runs as the servik account under servik-php (PHP-FPM) and
-// servik-web (Nginx) on port 8443, with its queue workers and scheduler
-// as the servik-panel-* units. Releases never hold state, so switching
+// The panel runs as the serfex account under serfex-php (PHP-FPM) and
+// serfex-web (Nginx) on port 8443, with its queue workers and scheduler
+// as the serfex-panel-* units. Releases never hold state, so switching
 // the current symlink switches the code and nothing else.
 package panel
 
@@ -27,40 +27,36 @@ import (
 )
 
 const (
-	OptDir      = "/opt/servik"
+	OptDir      = "/opt/serfex"
 	ReleasesDir = OptDir + "/releases"
 	CurrentLink = OptDir + "/current"
-	// CLILink puts the release's servik command line on the PATH.
-	CLILink    = "/usr/local/bin/servik"
-	ConfigFile = "/etc/servik/panel.json"
+	// CLILink puts the release's serfex command line on the PATH.
+	CLILink    = "/usr/local/bin/serfex"
+	ConfigFile = "/etc/serfex/panel.json"
 	// TokenFile holds a GitHub token for reading the releases of a
 	// private repository (root only). It is meant for testing before the
 	// repository is public; without it releases are read anonymously.
-	TokenFile  = "/etc/servik/release-token"
-	EnvFile    = "/etc/servik/panel.env"
-	StateDir   = "/var/lib/servik/panel"
+	TokenFile  = "/etc/serfex/release-token"
+	EnvFile    = "/etc/serfex/panel.env"
+	StateDir   = "/var/lib/serfex/panel"
 	StorageDir = StateDir + "/storage"
 
 	// User runs the panel's PHP, queue workers and scheduler.
-	User = "servik"
-	// Socket is the panel's PHP-FPM pool in servik-php.
-	Socket = "/run/servik-php/panel.sock"
+	User = "serfex"
+	// Socket is the panel's PHP-FPM pool in serfex-php.
+	Socket = "/run/serfex-php/panel.sock"
 
 	// DefaultSource is where releases are published: GitHub's API for the
 	// repository. A mirror serving the same /releases JSON works too.
 	DefaultSource = "https://api.github.com/repos/CallTech-App/Serfex"
-	// LegacySource is where releases were published before the repository
-	// moved to CallTech-App/Serfex. Installs that still name it in
-	// ConfigFile read releases from DefaultSource instead.
-	LegacySource = "https://api.github.com/repos/Winchester37/Servik"
 )
 
-// Units are the panel's own services besides servik-web and servik-php.
-var Units = []string{"servik-panel-queue", "servik-panel-backups", "servik-panel-scheduler"}
+// Units are the panel's own services besides serfex-web and serfex-php.
+var Units = []string{"serfex-panel-queue", "serfex-panel-backups", "serfex-panel-scheduler"}
 
 // Config is what the installer chose.
 type Config struct {
-	// PHP is the PHP version the panel runs on (servik-php uses it).
+	// PHP is the PHP version the panel runs on (serfex-php uses it).
 	PHP string `json:"php"`
 	// Source is the release source: GitHub's API URL of the repository.
 	Source string `json:"source,omitempty"`
@@ -81,7 +77,7 @@ func Load(h host.Host) (Config, bool) {
 	if err := json.Unmarshal(data, &c); err != nil || c.PHP == "" {
 		return Config{}, false
 	}
-	if c.Source == "" || strings.EqualFold(strings.TrimRight(c.Source, "/"), LegacySource) {
+	if c.Source == "" {
 		c.Source = DefaultSource
 	}
 	if b, err := os.ReadFile(h.Path(TokenFile)); err == nil {

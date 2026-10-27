@@ -18,7 +18,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// product is a database server Servik can install.
+// product is a database server Serfex can install.
 type product struct {
 	name     string
 	server   string
@@ -34,25 +34,25 @@ type product struct {
 var products = map[string]product{
 	MySQL: {
 		name: MySQL, server: MySQL, packages: []string{"mysql-server"}, marker: "/usr/sbin/mysqld",
-		unit: "mysql", conf: "/etc/mysql/mysql.conf.d/zz-servik.cnf", dataDir: "/var/lib/mysql",
+		unit: "mysql", conf: "/etc/mysql/mysql.conf.d/zz-serfex.cnf", dataDir: "/var/lib/mysql",
 	},
 	MariaDB: {
 		name: MariaDB, server: MySQL, packages: []string{"mariadb-server", "mariadb-client"}, marker: "/usr/sbin/mariadbd",
-		unit: "mariadb", conf: "/etc/mysql/mariadb.conf.d/90-servik.cnf", dataDir: "/var/lib/mysql",
+		unit: "mariadb", conf: "/etc/mysql/mariadb.conf.d/90-serfex.cnf", dataDir: "/var/lib/mysql",
 	},
 	PostgreSQL: {
 		name: PostgreSQL, server: PostgreSQL, dataDir: "/var/lib/postgresql",
 	},
 }
 
-// pgHBA is PostgreSQL's client authentication file, which Servik owns.
+// pgHBA is PostgreSQL's client authentication file, which Serfex owns.
 const pgHBA = stateDir + "/pg_hba.conf"
 
 // installedProduct returns the product serving server, if installed.
 // MariaDB is checked before MySQL: it also ships a mysqld.
 func (m *Manager) installedProduct(server string) (product, bool) {
 	if server == PostgreSQL {
-		// The binaries may serve other clusters (Servik's own); the
+		// The binaries may serve other clusters (Serfex's own); the
 		// customers' server is the "main" cluster.
 		if v := m.pgMainVersion(); v != "" {
 			return pgProduct(v), true
@@ -73,7 +73,7 @@ func pgProduct(v string) product {
 	p.packages = []string{"postgresql-" + v, "postgresql-client-" + v}
 	p.marker = "/usr/lib/postgresql/" + v + "/bin/postgres"
 	p.unit = "postgresql@" + v + "-main"
-	p.conf = "/etc/postgresql/" + v + "/main/conf.d/servik.conf"
+	p.conf = "/etc/postgresql/" + v + "/main/conf.d/serfex.conf"
 	return p
 }
 
@@ -160,7 +160,7 @@ type InstallResult struct {
 }
 
 // Install installs a database server when missing, configures it for
-// Servik and starts it. Running it again repairs a stopped server. A
+// Serfex and starts it. Running it again repairs a stopped server. A
 // server installed by a failed call is removed again; one that was
 // already there gets its previous configuration back.
 func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallResult, err error) {
@@ -220,7 +220,7 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 			res.Installed = true
 		}
 		if !m.exists(pgClusterConf(p)) {
-			// Never installed, or dropped by a removal. Servik's own
+			// Never installed, or dropped by a removal. Serfex's own
 			// cluster has 5433.
 			fmt.Fprintln(log, "▸ "+i18n.T(ctx, "Müşteri kümesi oluşturuluyor (PostgreSQL %s main, port %s)", v, pgCustomerPort))
 			if _, err := m.h.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{"--port", pgCustomerPort, v, "main"}, Stream: log}); err != nil {
@@ -322,7 +322,7 @@ func installPackages(ctx context.Context, h host.Host, packages []string, presee
 }
 
 var mysqlConfTmpl = template.Must(template.New("mysql").Parse(`# {{.Marker}}. Manual changes are overwritten.
-# Servik listens on other machines only while a database user may
+# Serfex listens on other machines only while a database user may
 # connect from one (Veritabanları > kullanıcı > Uzak bağlantı).
 [mysqld]
 bind-address = {{.Bind}}

@@ -24,7 +24,7 @@ class PublicDns
      */
     public function lookup(string $name, string $type): ?array
     {
-        if (! config('servik.mail.check_dns')) {
+        if (! config('serfex.mail.check_dns')) {
             return null;
         }
 

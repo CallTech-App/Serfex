@@ -1,4 +1,4 @@
 {!! $body !!}
 
 --
-Servik · {{ \App\Models\Setting::get('panel.hostname') ?: gethostname() }}
+Serfex · {{ \App\Models\Setting::get('panel.hostname') ?: gethostname() }}

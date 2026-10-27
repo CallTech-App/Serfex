@@ -32,8 +32,8 @@ class DnsZoneFactory extends Factory
     {
         return $this->afterCreating(function (DnsZone $zone) {
             $zone->records()->createMany([
-                ['name' => '@', 'type' => 'NS', 'content' => 'ns1.servik.net.tr.', 'ttl' => 3600],
-                ['name' => '@', 'type' => 'NS', 'content' => 'ns2.servik.net.tr.', 'ttl' => 3600],
+                ['name' => '@', 'type' => 'NS', 'content' => 'ns1.serfex.net.tr.', 'ttl' => 3600],
+                ['name' => '@', 'type' => 'NS', 'content' => 'ns2.serfex.net.tr.', 'ttl' => 3600],
                 ['name' => '@', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600],
                 ['name' => 'www', 'type' => 'CNAME', 'content' => $zone->name.'.', 'ttl' => 3600],
             ]);

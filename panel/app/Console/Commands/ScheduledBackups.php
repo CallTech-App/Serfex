@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * backup when it is due, applies retention and removes copies fetched
  * from targets that are no longer needed.
  */
-#[Signature('servik:backups')]
+#[Signature('serfex:backups')]
 #[Description('Take the scheduled whole-server backup and apply retention')]
 class ScheduledBackups extends Command
 {

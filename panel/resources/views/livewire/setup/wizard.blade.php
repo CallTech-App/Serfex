@@ -54,8 +54,8 @@
                     @case('ad-sunuculari') {{ __('Alan adlarınızın bu sunucuyu ad sunucusu olarak kullanması için kendi ad sunucularınız. Sonra da Alan Adları ve DNS → Ayarlar\'dan değiştirebilirsiniz.') }} @break
                     @case('panel') {{ __('Paneli sunucunun adıyla, ayrı bir adla ya da yalnızca IP adresi ve portla açabilirsiniz. Bir ad seçerseniz sertifikası Let\'s Encrypt\'ten alınır.') }} @break
                     @case('bildirimler') {{ __('Sertifika, yedek, disk ya da duran bir hizmet sorunu olduğunda e-posta gidecek adresler.') }} @break
-                    @case('guvenlik') {{ __('Açıkken sunucu yalnızca Servik\'in kullandığı portlarda yanıt verir. Panele şu anki bağlantınız hiçbir zaman kesilmez.') }} @break
-                    @case('varsayilanlar') {{ __('Yeni bir site eklendiğinde seçili gelecek web sunucusu ve PHP sürümü, ve Servik\'in hangi sürümleri önereceği.') }} @break
+                    @case('guvenlik') {{ __('Açıkken sunucu yalnızca Serfex\'in kullandığı portlarda yanıt verir. Panele şu anki bağlantınız hiçbir zaman kesilmez.') }} @break
+                    @case('varsayilanlar') {{ __('Yeni bir site eklendiğinde seçili gelecek web sunucusu ve PHP sürümü, ve Serfex\'in hangi sürümleri önereceği.') }} @break
                     @case('yedekler') {{ __('Sunucu yedeği her gün tüm siteleri, veritabanlarını ve e-postaları alır.') }} @break
                     @default {{ __('Neler yapıldı, neler sonraya kaldı. Açık kalanlar siz bitirene kadar Genel Bakış\'ta da görünür.') }}
                 @endswitch
@@ -294,7 +294,7 @@
                             </div>
                         </div>
                         <div class="{{ $row }}">
-                            <span class="sm:pt-0.5">{{ __('Servik güncellemeleri') }}</span>
+                            <span class="sm:pt-0.5">{{ __('Serfex güncellemeleri') }}</span>
                             <div class="space-y-2">
                                 @foreach (\App\Services\Updates\Updates::CHANNELS as $value => $name)
                                     <label class="flex items-start gap-2">

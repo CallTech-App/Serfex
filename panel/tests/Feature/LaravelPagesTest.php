@@ -67,9 +67,9 @@ class LaravelPagesTest extends TestCase
             'laravel.health' => ['ok' => true, 'status' => 200, 'ms' => 41],
             'laravel.status' => [
                 'exists' => true, 'current' => '2', 'releases' => [['name' => '2'], ['name' => '1']],
-                'maintenance' => null, 'workers' => [['worker' => 'default', 'unit' => 'servik-queue-api.hizlikargo.app_default@1.service', 'state' => 'active']],
+                'maintenance' => null, 'workers' => [['worker' => 'default', 'unit' => 'serfex-queue-api.hizlikargo.app_default@1.service', 'state' => 'active']],
                 'schedule' => ['enabled' => true, 'last_run' => now()->subSeconds(30)->toIso8601String(), 'tasks' => [['command' => 'inspire', 'at' => now()->format('Y-m-d H:i:s'), 'duration' => '4.21ms', 'ok' => true]]],
-                'processes' => [['name' => 'horizon', 'unit' => 'servik-proc-api.hizlikargo.app_horizon.service', 'enabled' => true, 'state' => 'active']],
+                'processes' => [['name' => 'horizon', 'unit' => 'serfex-proc-api.hizlikargo.app_horizon.service', 'enabled' => true, 'state' => 'active']],
                 'info' => ['laravel' => '13.6.0', 'packages' => ['laravel/horizon' => 'v5.40.1', 'laravel/reverb' => 'v1.6.2']],
             ],
             'laravel.probe' => match ($params['kind']) {
@@ -83,7 +83,7 @@ class LaravelPagesTest extends TestCase
             'laravel.logs' => ['files' => [['name' => 'laravel-2026-10-18.log', 'size' => 120]], 'file' => 'laravel-2026-10-18.log',
                 'content' => "[2026-10-18 21:05:13] production.ERROR: Kargo servisine ulaşılamadı\n#0 trace\n[2026-10-18 21:06:00] production.INFO: Eşitlendi\n", 'truncated' => false],
             'laravel.run.read' => ['data' => "\$ php artisan about\nok\n", 'offset' => 22, 'size' => 22],
-            'laravel.key' => ['public_key' => 'ssh-ed25519 AAAAC3Nza servik@api.hizlikargo.app'],
+            'laravel.key' => ['public_key' => 'ssh-ed25519 AAAAC3Nza serfex@api.hizlikargo.app'],
             'laravel.maintenance' => ['exit_code' => 0, 'ms' => 120],
             'laravel.queue.restart' => [],
             'laravel.scan' => [['domain' => 'klinikmavi.com', 'path' => 'public_html/randevu', 'laravel' => '11.45.0', 'php_requirement' => '^8.4', 'package_manager' => 'npm']],
@@ -136,7 +136,7 @@ class LaravelPagesTest extends TestCase
     {
         $site = Site::factory()->for(SystemUser::factory()->state(['name' => 'hizlikargo']))->create(['domain' => 'api.hizlikargo.app']);
         $this->agent->shouldReceive('call')->once()->with('laravel.key', ['domain' => 'api.hizlikargo.app', 'user' => 'hizlikargo', 'php_version' => '8.4'], Mockery::any())
-            ->andReturn(['public_key' => 'ssh-ed25519 AAAAC3Nza servik@api.hizlikargo.app']);
+            ->andReturn(['public_key' => 'ssh-ed25519 AAAAC3Nza serfex@api.hizlikargo.app']);
 
         $page = Livewire::withoutLazyLoading()->test(LaravelIndex::class)->call('openInstall', $site->id)
             ->set('source', 'git')->set('repository', 'hizlikargo/api')->set('private', true)->set('database', 'none')
@@ -148,7 +148,7 @@ class LaravelPagesTest extends TestCase
         $page->call('install')->assertRedirect();
         $app = LaravelApp::sole();
         $this->assertSame('git@github.com:hizlikargo/api.git', $app->repository);
-        $this->assertSame('ssh-ed25519 AAAAC3Nza servik@api.hizlikargo.app', $app->deploy_key);
+        $this->assertSame('ssh-ed25519 AAAAC3Nza serfex@api.hizlikargo.app', $app->deploy_key);
     }
 
     public function test_scan_finds_apps_and_adopts_them_with_undo(): void

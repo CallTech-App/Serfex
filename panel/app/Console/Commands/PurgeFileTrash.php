@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
  * Runs from the scheduler: empties what has been in each site's trash
  * longer than FileManager::TRASH_DAYS, also on sites nobody opens.
  */
-#[Signature('servik:files-trash')]
+#[Signature('serfex:files-trash')]
 #[Description('Remove old entries from the file manager trash of every site')]
 class PurgeFileTrash extends Command
 {

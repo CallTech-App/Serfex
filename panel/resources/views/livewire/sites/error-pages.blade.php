@@ -50,7 +50,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('503 sayfası bakım ve askıya alma için Servik\'e ayrılmıştır. Her sayfa en fazla 256 KB olabilir; görseller için tam adres kullanın.') }}</p>
+        <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('503 sayfası bakım ve askıya alma için Serfex\'e ayrılmıştır. Her sayfa en fazla 256 KB olabilir; görseller için tam adres kullanın.') }}</p>
     </section>
 
     {{-- Düzenle --}}

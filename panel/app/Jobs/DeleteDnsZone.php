@@ -38,7 +38,7 @@ class DeleteDnsZone implements ShouldQueue
         }
 
         try {
-            $agent->call('dns.zone.delete', ['zone' => $zone->name], config('servik.agent.job_timeout'));
+            $agent->call('dns.zone.delete', ['zone' => $zone->name], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             // Without a DNS server there is nothing to remove there.
             if ($e->getCode() !== SyncDnsZone::NOT_SET_UP) {

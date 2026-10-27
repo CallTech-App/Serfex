@@ -43,7 +43,7 @@ class CreateLaravelPreview implements ShouldQueue
         }
         $parent = $preview->app;
         try {
-            $files = $agent->call('laravel.env.get', $parent->agentApp(), config('servik.agent.job_timeout'));
+            $files = $agent->call('laravel.env.get', $parent->agentApp(), config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $this->fail($preview, __('Uygulamanın .env dosyası okunamadı: :reason', ['reason' => ($e->reason ?: $e->getMessage())]));
 

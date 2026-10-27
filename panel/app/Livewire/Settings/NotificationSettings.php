@@ -19,7 +19,7 @@ use Livewire\Component;
  * e-mail and webhook, and how the panel sends its mail.
  */
 #[Layout('components.layouts.app')]
-#[Title('Bildirimler · Servik')]
+#[Title('Bildirimler · Serfex')]
 class NotificationSettings extends Component
 {
     public string $emails = '';

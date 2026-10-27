@@ -43,7 +43,7 @@ class DeploySiteFromGit implements ShouldQueue
                 'commit' => $deployment->kind === 'rollback' ? (string) $deployment->commit : '',
                 'undo' => $deployment->kind === 'undo',
                 'commands' => $deployment->kind === 'undo' ? '' : (string) $repo->commands,
-            ], config('servik.agent.deploy_timeout'));
+            ], config('serfex.agent.deploy_timeout'));
         } catch (AgentException $e) {
             $deployment->update(['status' => GitDeploymentStatus::Failed, 'error' => $e->reason ?: $e->getMessage(), 'finished_at' => now()]);
 

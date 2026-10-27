@@ -1,12 +1,12 @@
 // Package firewall blocks IP addresses with nftables.
 //
-// Servik keeps its own table so the distribution's firewall (ufw,
+// Serfex keeps its own table so the distribution's firewall (ufw,
 // iptables-nft, a hand-written ruleset) stays untouched:
 //
-//	table inet servik
+//	table inet serfex
 //	  set blocked4, blocked6   addresses and prefixes, each with its own timeout
 //	  chain input              drops everything from those sets, before other filters
-//	/etc/servik/firewall/blocks.json   the blocks as last applied, root 0600
+//	/etc/serfex/firewall/blocks.json   the blocks as last applied, root 0600
 //
 // A block is time-boxed by the kernel itself (the set element's timeout),
 // so it ends on time even while the agent or the panel is down. The state
@@ -29,11 +29,11 @@ import (
 )
 
 const (
-	stateDir  = "/etc/servik/firewall"
+	stateDir  = "/etc/serfex/firewall"
 	stateFile = stateDir + "/blocks.json"
 
-	// Table is the nftables table Servik owns.
-	Table = "servik"
+	// Table is the nftables table Serfex owns.
+	Table = "serfex"
 
 	// MaxSeconds is the longest timed block; longer ones are permanent.
 	MaxSeconds = 365 * 24 * 3600
@@ -41,9 +41,9 @@ const (
 
 // ruleset creates the table from scratch. "add table" before "delete
 // table" makes the delete work whether or not the table exists.
-const ruleset = `add table inet servik
-delete table inet servik
-table inet servik {
+const ruleset = `add table inet serfex
+delete table inet serfex
+table inet serfex {
 	set blocked4 {
 		type ipv4_addr
 		flags interval, timeout

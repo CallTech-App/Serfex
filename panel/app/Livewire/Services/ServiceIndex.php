@@ -31,7 +31,7 @@ use Livewire\Component;
  * without.
  */
 #[Layout('components.layouts.app')]
-#[Title('Hizmetler · Servik')]
+#[Title('Hizmetler · Serfex')]
 class ServiceIndex extends Component
 {
     use ShowsComponentOperations;
@@ -208,7 +208,7 @@ class ServiceIndex extends Component
         return view('livewire.services.index', [
             'groups' => $groups ?? [],
             'phpRows' => $phpRows ?? [],
-            'agentError' => $failed ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')) : null,
+            'agentError' => $failed ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')) : null,
             'busy' => $blocker !== null,
             'blocker' => $blocker,
             'checkedAt' => $php->checkedAt(),
@@ -270,9 +270,9 @@ class ServiceIndex extends Component
             $sites = Site::where('php_version', $version)->count();
 
             return match ($ask['action']) {
-                'install' => ['title' => __(':name kurulsun mu?', ['name' => $name]), 'text' => __('PHP-FPM, komut satırı ve yaygın eklentiler kurulur; Ubuntu\'da olmayan sürümler ondrej/php deposundan gelir. Servik\'in php.ini varsayılanları yazılır. Bir adım başarısız olursa yapılanlar geri alınır.'), 'button' => __('Kur'), 'danger' => false, 'candidate' => $components->candidate($ask['id'])],
+                'install' => ['title' => __(':name kurulsun mu?', ['name' => $name]), 'text' => __('PHP-FPM, komut satırı ve yaygın eklentiler kurulur; Ubuntu\'da olmayan sürümler ondrej/php deposundan gelir. Serfex\'in php.ini varsayılanları yazılır. Bir adım başarısız olursa yapılanlar geri alınır.'), 'button' => __('Kur'), 'danger' => false, 'candidate' => $components->candidate($ask['id'])],
                 'update' => ['title' => __(':name güncellensin mi?', ['name' => $name]), 'text' => $sites ? __('Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır; bu sürümü kullanan :sites site birkaç saniye yanıt vermeyebilir.', ['sites' => $sites]) : __('Yeni sürüm kurulur ve PHP-FPM yeniden başlatılır.'), 'button' => __('Güncelle'), 'danger' => false],
-                default => ['title' => __(':name kaldırılsın mı?', ['name' => $name]), 'text' => __('Paketler kaldırılır; yapılandırma önce /var/lib/servik/backups/components altına yedeklenir.'), 'button' => __('Kaldır'), 'danger' => true],
+                default => ['title' => __(':name kaldırılsın mı?', ['name' => $name]), 'text' => __('Paketler kaldırılır; yapılandırma önce /var/lib/serfex/backups/components altına yedeklenir.'), 'button' => __('Kaldır'), 'danger' => true],
             };
         }
 

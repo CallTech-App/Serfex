@@ -1,8 +1,8 @@
-@php $at = fn ($d) => $d?->timezone(config('servik.timezone')); @endphp
+@php $at = fn ($d) => $d?->timezone(config('serfex.timezone')); @endphp
 <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <h1 class="text-[22px] font-semibold tracking-tight">Servik AI</h1>
+            <h1 class="text-[22px] font-semibold tracking-tight">Serfex AI</h1>
             <p class="mt-1 text-[13px] text-muted">{{ __('Sunucunuz hakkında soru sorun; değişiklikleri onayınızla yapar.') }}</p>
         </div>
         <div class="flex items-center gap-2">
@@ -71,7 +71,7 @@
                 @if ($ready)
                     @include('livewire.ai.partials.compose')
                 @else
-                    <p class="border-t border-line px-5 py-4 text-[13px] text-muted"><x-t text="Servik AI şu an kullanılamıyor. :link"><x-slot:link><a href="{{ route('ai.settings') }}" wire:navigate class="text-accent hover:underline">{{ __('Ayarlar') }}</a></x-slot:link></x-t></p>
+                    <p class="border-t border-line px-5 py-4 text-[13px] text-muted"><x-t text="Serfex AI şu an kullanılamıyor. :link"><x-slot:link><a href="{{ route('ai.settings') }}" wire:navigate class="text-accent hover:underline">{{ __('Ayarlar') }}</a></x-slot:link></x-t></p>
                 @endif
             @endif
         </div>

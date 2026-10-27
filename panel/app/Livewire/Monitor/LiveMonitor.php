@@ -30,7 +30,7 @@ use Livewire\Component;
  * and what the system services use; with one-click interventions.
  */
 #[Layout('components.layouts.app')]
-#[Title('Canlı İzleme · Servik')]
+#[Title('Canlı İzleme · Serfex')]
 class LiveMonitor extends Component
 {
     public const TABS = ['siteler' => 'Siteler', 'saldirilar' => 'Saldırılar', 'posta' => 'Posta kuyruğu', 'sistem' => 'Sistem'];
@@ -364,7 +364,7 @@ class LiveMonitor extends Component
     public static function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')
             : $e->reason;
     }
 
@@ -492,11 +492,11 @@ class LiveMonitor extends Component
                 $this->span = '24s';
             }
             // Cached as plain values: the cache does not unserialize objects.
-            $cached = Cache::remember('servik.server-history.'.$this->span, 60, fn () => array_map(
+            $cached = Cache::remember('serfex.server-history.'.$this->span, 60, fn () => array_map(
                 fn (array $p) => ['at' => $p['at']->getTimestamp()] + $p,
                 app(ServerHistory::class)->series($this->span),
             ));
-            $points = array_map(fn (array $p) => ['at' => CarbonImmutable::createFromTimestamp($p['at'], config('servik.timezone'))] + $p, $cached);
+            $points = array_map(fn (array $p) => ['at' => CarbonImmutable::createFromTimestamp($p['at'], config('serfex.timezone'))] + $p, $cached);
             $server = ['points' => $points, 'summary' => ServerHistory::summary($points)];
         }
 

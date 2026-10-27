@@ -35,10 +35,10 @@ use Tests\Support\FakeAgent;
 use Tests\TestCase;
 
 /**
- * Servik AI against a fake Claude API: the HTTP client answers with
+ * Serfex AI against a fake Claude API: the HTTP client answers with
  * scripted Messages API responses, so no real key or network is needed.
  */
-class ServikAiTest extends TestCase
+class SerfexAiTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -208,7 +208,7 @@ class ServikAiTest extends TestCase
         // markup Claude wrote.
         $page->assertSee('Saldırılar')
             ->assertSee('Günlük · magazaonline.com.tr')
-            ->assertSee('Servik AI kendisi yaptı')
+            ->assertSee('Serfex AI kendisi yaptı')
             ->assertSee('45.155.205.233 adresini 1 saat engelle')
             ->assertSee('+ mail.magazaonline.com.tr A 203.0.113.10')
             ->assertSee('Onayla ve uygula')
@@ -339,7 +339,7 @@ class ServikAiTest extends TestCase
         $this->assertCount(0, $this->requests);
 
         Setting::put('ai.enabled', false);
-        Livewire::test(AiAssistant::class)->assertSee('Servik AI kapalı');
+        Livewire::test(AiAssistant::class)->assertSee('Serfex AI kapalı');
     }
 
     public function test_settings_store_the_key_encrypted_and_check_it(): void
@@ -439,7 +439,7 @@ class ServikAiTest extends TestCase
         $this->assertNotSoftDeleted($mine);
     }
 
-    public function test_only_administrators_reach_servik_ai(): void
+    public function test_only_administrators_reach_serfex_ai(): void
     {
         $this->actingAs(User::factory()->member()->create());
 
@@ -450,8 +450,8 @@ class ServikAiTest extends TestCase
 
     public function test_pages_render(): void
     {
-        $this->get('/ai')->assertOk()->assertSee('Servik AI')->assertSee('Size nasıl yardımcı olabilirim?');
-        $this->get('/')->assertOk()->assertSee('Servik AI');
+        $this->get('/ai')->assertOk()->assertSee('Serfex AI')->assertSee('Size nasıl yardımcı olabilirim?');
+        $this->get('/')->assertOk()->assertSee('Serfex AI');
     }
 
     public function test_markdown_is_rendered_without_raw_html(): void

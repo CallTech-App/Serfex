@@ -105,7 +105,7 @@ func (m *Manager) ApplyProtect(ctx context.Context, spec ProtectSpec) (WAFResult
 	var conf strings.Builder
 	if len(dirs) > 0 {
 		conf.WriteString(header("Password-protected folders of " + spec.Domain + "."))
-		conf.WriteString("set $servik_auth off;\nset $servik_auth_file /dev/null;\n")
+		conf.WriteString("set $serfex_auth off;\nset $serfex_auth_file /dev/null;\n")
 	}
 	for i, d := range dirs {
 		file := fmt.Sprintf("protect-%d.htpasswd", i+1)
@@ -113,7 +113,7 @@ func (m *Manager) ApplyProtect(ctx context.Context, spec ProtectSpec) (WAFResult
 		if realm == "" {
 			realm = "Korumalı alan"
 		}
-		fmt.Fprintf(&conf, "if ($uri ~ \"^%s\") {\n    set $servik_auth \"%s\";\n    set $servik_auth_file %s/%s;\n}\n", regexp.QuoteMeta(d.Path), realm, extra, file)
+		fmt.Fprintf(&conf, "if ($uri ~ \"^%s\") {\n    set $serfex_auth \"%s\";\n    set $serfex_auth_file %s/%s;\n}\n", regexp.QuoteMeta(d.Path), realm, extra, file)
 		var pw strings.Builder
 		pw.WriteString(header("Users of " + d.Path + " on " + spec.Domain + "."))
 		for _, u := range d.Users {
@@ -124,8 +124,8 @@ func (m *Manager) ApplyProtect(ctx context.Context, spec ProtectSpec) (WAFResult
 	var data []byte
 	if len(dirs) > 0 {
 		// Let's Encrypt must reach the site whatever is protected.
-		conf.WriteString("if ($uri ~ \"^/\\.well-known/acme-challenge/\") {\n    set $servik_auth off;\n}\n")
-		conf.WriteString("auth_basic $servik_auth;\nauth_basic_user_file $servik_auth_file;\n")
+		conf.WriteString("if ($uri ~ \"^/\\.well-known/acme-challenge/\") {\n    set $serfex_auth off;\n}\n")
+		conf.WriteString("auth_basic $serfex_auth;\nauth_basic_user_file $serfex_auth_file;\n")
 		data = []byte(conf.String())
 	}
 	snippets = append(snippets, snippet{Name: "protect.conf", Data: data})
@@ -201,7 +201,7 @@ func fetchLocal(ctx context.Context, domain, path string) int {
 		if err != nil {
 			return 0
 		}
-		req.Header.Set("User-Agent", "Servik security scan")
+		req.Header.Set("User-Agent", "Serfex security scan")
 		req.Header.Set("Range", "bytes=0-0")
 		resp, err := client.Do(req)
 		if err != nil {

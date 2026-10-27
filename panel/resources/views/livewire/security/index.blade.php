@@ -7,7 +7,7 @@
     use App\Services\Security\TwoFactor;
     use App\Services\Security\Waf;
     use App\Support\Badge;
-    $tz = config('servik.timezone');
+    $tz = config('serfex.timezone');
     $field = 'h-9 rounded-md border bg-surface px-3 text-[13.5px] outline-none focus:border-accent';
     $btn = 'flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2 disabled:opacity-40';
     $primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40';

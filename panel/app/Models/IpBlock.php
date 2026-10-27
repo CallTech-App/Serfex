@@ -59,7 +59,7 @@ class IpBlock extends Model
     public function byLabel(): string
     {
         return match ($this->source) {
-            'ai' => 'Servik AI',
+            'ai' => 'Serfex AI',
             'api' => 'API',
             'fail2ban' => 'Fail2ban',
             default => $this->user->name ?? 'Panel',

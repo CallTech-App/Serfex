@@ -27,7 +27,7 @@ class Usage
         $accounts ??= SystemUser::whereNotNull('uid')->get();
         $count = 0;
         foreach ($accounts->filter(fn (SystemUser $a) => $a->uid !== null)->chunk(500) as $chunk) {
-            $result = (array) $this->agent->call('usage.disk', ['users' => $chunk->pluck('name')->values()->all()], config('servik.agent.job_timeout'));
+            $result = (array) $this->agent->call('usage.disk', ['users' => $chunk->pluck('name')->values()->all()], config('serfex.agent.job_timeout'));
             foreach ($chunk as $account) {
                 if (isset($result[$account->name])) {
                     $measured = (array) $result[$account->name];

@@ -53,7 +53,7 @@ class SiteErrorPages extends Component
     }
 
     /**
-     * Servik's starting page for $key, in the site's name and the
+     * Serfex's starting page for $key, in the site's name and the
      * panel user's language.
      */
     public static function template(string $key, string $domain): string
@@ -183,6 +183,6 @@ class SiteErrorPages extends Component
         return view('livewire.sites.error-pages', [
             'site' => $site,
             'pages' => $site->error_pages ?? [],
-        ])->title(__('Hata sayfaları · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('Hata sayfaları · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

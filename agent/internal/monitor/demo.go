@@ -151,7 +151,7 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 		if pr.busy {
 			webCPU = 8 * w
 			add("queue:"+si.Domain, 1000+i, "php artisan queue:work --queue=default",
-				"servik-queue-"+si.Domain+"_default@1.service", cpu-webCPU, 420<<20, 30<<10)
+				"serfex-queue-"+si.Domain+"_default@1.service", cpu-webCPU, 420<<20, 30<<10)
 		}
 		busy := int(math.Min(float64(maxWorkers), math.Ceil(webCPU/45+rps/60)))
 		if pr.attack {
@@ -177,11 +177,11 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 	// System services.
 	add("nginx", 33, "nginx: worker process", "nginx.service", 6*wave(1), 64<<20, 200<<10)
 	add("fpm-master", 0, "php-fpm: master process (/etc/php/8.4/fpm/php-fpm.conf)", "php8.4-fpm.service", 0.4, 18<<20, 0)
-	add("panel-web", 999, "php-fpm: pool servik", "servik-web.service", 2.5*wave(2), 140<<20, 4<<10)
-	add("panel-db", 113, "postgres: servik servik [local] idle", "postgresql@16-main.service", 1.2*wave(3), 210<<20, 40<<10)
-	add("agent", 0, "/usr/local/bin/servik-agent", "servik-agent.service", 0.6, 22<<20, 0)
+	add("panel-web", 999, "php-fpm: pool serfex", "serfex-web.service", 2.5*wave(2), 140<<20, 4<<10)
+	add("panel-db", 113, "postgres: serfex serfex [local] idle", "postgresql@16-main.service", 1.2*wave(3), 210<<20, 40<<10)
+	add("agent", 0, "/usr/local/bin/serfex-agent", "serfex-agent.service", 0.6, 22<<20, 0)
 	add("mysql", 114, "/usr/sbin/mysqld", "mysql.service", 14*wave(4), 1200<<20, 900<<10)
-	add("pdns", 112, "/usr/sbin/pdns_server --config-name=servik", "pdns@servik.service", 0.3, 30<<20, 0)
+	add("pdns", 112, "/usr/sbin/pdns_server --config-name=serfex", "pdns@serfex.service", 0.3, 30<<20, 0)
 	add("postfix", 0, "/usr/lib/postfix/sbin/master -w", "postfix@-.service", 0.2, 6<<20, 0)
 	add("dovecot", 0, "/usr/sbin/dovecot -F", "dovecot.service", 0.8, 24<<20, 2<<10)
 	add("rspamd", 115, "rspamd: normal process", "rspamd.service", 1.4*wave(5), 180<<20, 0)
@@ -194,7 +194,7 @@ func (s *demoSampler) sample(_ context.Context, sites []siteInfo) raw {
 		add("fail2ban", 0, "/usr/bin/python3 /usr/bin/fail2ban-server -xf start", "fail2ban.service", 0.3, 40<<20, 0)
 	}
 	if s.h != nil {
-		units, _ := filepath.Glob(s.h.Path("/etc/systemd/system/servik-redis-*.service"))
+		units, _ := filepath.Glob(s.h.Path("/etc/systemd/system/serfex-redis-*.service"))
 		for i, u := range units {
 			unit := filepath.Base(u)
 			add("redis:"+unit, 1000+i, "/usr/bin/redis-server 127.0.0.1", unit, 0.4*wave(8), 12<<20, 1<<10)
@@ -330,7 +330,7 @@ func (s *demoSampler) traffic(domain string, n float64, now time.Time, attack bo
 }
 
 // simMailQueue is host.SimMailQueue (the simulated "postqueue -j").
-const simMailQueue = "/var/spool/postfix/servik-sim-queue.jsonl"
+const simMailQueue = "/var/spool/postfix/serfex-sim-queue.jsonl"
 
 // seedQueue fills the simulated mail queue once the simulated mail server
 // is installed: a site whose contact form sends to dead addresses, and a

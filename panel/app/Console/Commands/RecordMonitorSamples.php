@@ -14,9 +14,9 @@ use Illuminate\Console\Command;
 /**
  * Keeps a per-minute history of what each site and the server used (a
  * day of it), for the "last hour" and "last 24 hours" views of Canlı
- * İzleme; servik:stats-rollup turns the server's minutes into hours.
+ * İzleme; serfex:stats-rollup turns the server's minutes into hours.
  */
-#[Signature('servik:monitor-record')]
+#[Signature('serfex:monitor-record')]
 #[Description('Record the last minute of every site\'s resource use')]
 class RecordMonitorSamples extends Command
 {

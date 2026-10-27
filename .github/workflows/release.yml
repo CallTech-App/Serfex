@@ -1,7 +1,7 @@
 name: Release
 
 # Pushing a version tag (v1.2.3, or v1.2.3-beta.1 for the beta channel)
-# builds the release archives and the servik command line for Linux and
+# builds the release archives and the serfex command line for Linux and
 # macOS, and publishes them as a GitHub Release. "Run workflow" on main
 # with a version does the same and creates the tag itself.
 # Installed servers find it with their daily check (or "Şimdi denetle")
@@ -84,7 +84,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          args=(--title "Servik $VERSION" --verify-tag)
+          args=(--title "Serfex $VERSION" --verify-tag)
           [[ $VERSION == *-* ]] && args+=(--prerelease) || args+=(--latest)
           if [ -f "release-notes/$VERSION.md" ]; then
             args+=(--notes-file "release-notes/$VERSION.md")

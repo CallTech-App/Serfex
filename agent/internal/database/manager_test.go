@@ -65,7 +65,7 @@ func TestInstallAndExclusivity(t *testing.T) {
 	if !sim.Ran("apt-get install -y -q --no-install-recommends mariadb-server") || !sim.Ran("systemctl restart mariadb") {
 		t.Errorf("commands: %v", sim.Commands())
 	}
-	contains(t, "mariadb conf", read(t, sim, "/etc/mysql/mariadb.conf.d/90-servik.cnf"), "bind-address = 127.0.0.1", "local-infile = 0")
+	contains(t, "mariadb conf", read(t, sim, "/etc/mysql/mariadb.conf.d/90-serfex.cnf"), "bind-address = 127.0.0.1", "local-infile = 0")
 	if _, err := m.Install(ctx, InstallSpec{Product: MySQL}); err == nil || !strings.Contains(err.Error(), "cannot run on the same server") {
 		t.Fatalf("MySQL next to MariaDB: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestInstallAndExclusivity(t *testing.T) {
 	if _, err := m.Install(ctx, InstallSpec{Product: PostgreSQL}); err != nil {
 		t.Fatal(err)
 	}
-	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/servik.conf"), "listen_addresses = 'localhost'", "hba_file = '/etc/servik/databases/pg_hba.conf'")
+	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/serfex.conf"), "listen_addresses = 'localhost'", "hba_file = '/etc/serfex/databases/pg_hba.conf'")
 	contains(t, "pg_hba", read(t, sim, pgHBA), "local   all             postgres                                peer", "host    all             all             127.0.0.1/32            scram-sha-256")
 
 	st := m.Status(ctx)
@@ -112,7 +112,7 @@ func TestInstallFailureRemovesNewServer(t *testing.T) {
 	if !sim.Ran("apt-get purge -y -q mysql-server") {
 		t.Errorf("the new server was not removed: %v", sim.Commands())
 	}
-	if _, err := os.Stat(sim.Path("/etc/mysql/mysql.conf.d/zz-servik.cnf")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(sim.Path("/etc/mysql/mysql.conf.d/zz-serfex.cnf")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("configuration kept: %v", err)
 	}
 }
@@ -141,7 +141,7 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 	if _, err := m.ApplyUser(ctx, UserSpec{Server: MySQL, Name: "acme_app", Password: "Tq4-demlik-73", Grants: []Grant{{"acme_shop", AccessAll}}}); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(read(t, sim, "/etc/mysql/mysql.conf.d/zz-servik.cnf"), "bind-address = 0.0.0.0") {
+	if strings.Contains(read(t, sim, "/etc/mysql/mysql.conf.d/zz-serfex.cnf"), "bind-address = 0.0.0.0") {
 		t.Error("listening on all addresses without remote users")
 	}
 
@@ -150,7 +150,7 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 	if _, err := m.ApplyUser(ctx, UserSpec{Server: MySQL, Name: "acme_app", Hosts: []string{"88.247.120.0/28", "88.247.120.0/28"}, Grants: []Grant{{"acme_shop", AccessReadOnly}}}); err != nil {
 		t.Fatal(err)
 	}
-	contains(t, "mysql conf", read(t, sim, "/etc/mysql/mysql.conf.d/zz-servik.cnf"), "bind-address = 0.0.0.0", "mysqlx-bind-address = 127.0.0.1")
+	contains(t, "mysql conf", read(t, sim, "/etc/mysql/mysql.conf.d/zz-serfex.cnf"), "bind-address = 0.0.0.0", "mysqlx-bind-address = 127.0.0.1")
 	restarted := false
 	for _, c := range sim.Commands()[before:] {
 		restarted = restarted || c.String() == "systemctl restart mysql"
@@ -166,7 +166,7 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	contains(t, "pg_hba", read(t, sim, pgHBA), `"acme_bi"`, "0.0.0.0/0", "::/0", "10.8.0.0/24")
-	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/servik.conf"), "listen_addresses = '*'")
+	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/serfex.conf"), "listen_addresses = '*'")
 
 	// Removing the last remote user closes the server again.
 	if _, err := m.DeleteUser(ctx, UserRef{Server: PostgreSQL, Name: "acme_bi"}); err != nil {
@@ -175,7 +175,7 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 	if hba := read(t, sim, pgHBA); strings.Contains(hba, "acme_bi") {
 		t.Errorf("pg_hba still lists the user:\n%s", hba)
 	}
-	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/servik.conf"), "listen_addresses = 'localhost'")
+	contains(t, "pg conf", read(t, sim, "/etc/postgresql/18/main/conf.d/serfex.conf"), "listen_addresses = 'localhost'")
 
 	l, err := m.List(ctx, MySQL)
 	if err != nil {
@@ -230,7 +230,7 @@ func TestValidation(t *testing.T) {
 		"double grant":  {Server: MySQL, Name: "acme_app", Password: "long-enough", Grants: []Grant{{"acme_shop", AccessAll}, {"acme_shop", AccessReadOnly}}},
 		"bad server":    {Server: "oracle", Name: "acme_app", Password: "long-enough"},
 		"line in pass":  {Server: MySQL, Name: "acme_app", Password: "long\nenough"},
-		"session names": {Server: MySQL, Name: "servik-s-abc", Password: "long-enough"},
+		"session names": {Server: MySQL, Name: "serfex-s-abc", Password: "long-enough"},
 	} {
 		var v *ValidationError
 		if _, err := m.ApplyUser(ctx, spec); !errors.As(err, &v) {
@@ -288,14 +288,14 @@ func TestManagerSetupAndLogin(t *testing.T) {
 	if res.Port != DefaultPort || !res.PhpMyAdmin || !res.Adminer || res.PHPVersion != "8.3" {
 		t.Errorf("setup %+v", res)
 	}
-	contains(t, "nginx", read(t, sim, webConf), "user servik-web;", "listen 8443 ssl http2 default_server;", "location = /phpmyadmin/servik-sso.php",
-		"fastcgi_pass unix:/run/servik-php/dbadmin.sock;", "location = /adminer/", "ssl_certificate /etc/servik/web/tls/fullchain.pem;")
-	contains(t, "php-fpm", read(t, sim, phpConf), "user = servik-dbadmin", "listen.owner = servik-web", "php_admin_value[session.save_path] = /var/lib/servik/dbadmin/sessions")
-	contains(t, "units", read(t, sim, webUnitFile)+read(t, sim, phpUnitFile), "ExecStart=/usr/sbin/nginx -c /etc/servik/web/nginx.conf", "ExecStart=/usr/sbin/php-fpm8.3 --nodaemonize")
+	contains(t, "nginx", read(t, sim, webConf), "user serfex-web;", "listen 8443 ssl http2 default_server;", "location = /phpmyadmin/serfex-sso.php",
+		"fastcgi_pass unix:/run/serfex-php/dbadmin.sock;", "location = /adminer/", "ssl_certificate /etc/serfex/web/tls/fullchain.pem;")
+	contains(t, "php-fpm", read(t, sim, phpConf), "user = serfex-dbadmin", "listen.owner = serfex-web", "php_admin_value[session.save_path] = /var/lib/serfex/dbadmin/sessions")
+	contains(t, "units", read(t, sim, webUnitFile)+read(t, sim, phpUnitFile), "ExecStart=/usr/sbin/nginx -c /etc/serfex/web/nginx.conf", "ExecStart=/usr/sbin/php-fpm8.3 --nodaemonize")
 	pma := read(t, sim, pmaConf)
-	contains(t, "phpMyAdmin", pma, "'auth_type'] = 'signon'", "SignonSession'] = 'ServikSignon'", "AllowRoot'] = false")
+	contains(t, "phpMyAdmin", pma, "'auth_type'] = 'signon'", "SignonSession'] = 'SerfexSignon'", "AllowRoot'] = false")
 	contains(t, "pages", read(t, sim, adminWWW+"/adminer.php")+read(t, sim, adminWWW+"/phpmyadmin-sso.php"), "'server' => '127.0.0.1'", "PMA_single_signon_user")
-	if !sim.Ran("systemctl enable servik-php servik-web") || !sim.Ran("nginx -t -q -c /etc/servik/web/nginx.conf") {
+	if !sim.Ran("systemctl enable serfex-php serfex-web") || !sim.Ran("nginx -t -q -c /etc/serfex/web/nginx.conf") {
 		t.Errorf("commands: %v", sim.Commands())
 	}
 
@@ -314,7 +314,7 @@ func TestManagerSetupAndLogin(t *testing.T) {
 	}
 
 	if _, err := m.Login(ctx, LoginSpec{Server: MySQL, Database: "acme_shop"}); err == nil {
-		t.Fatal("login to a database Servik does not manage")
+		t.Fatal("login to a database Serfex does not manage")
 	}
 	if _, err := m.CreateDatabase(ctx, DatabaseSpec{Server: PostgreSQL, Name: "acme_shop"}); err != nil {
 		t.Fatal(err)
@@ -325,11 +325,11 @@ func TestManagerSetupAndLogin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if login.Tool != "adminer" || login.Port != DefaultPort || !strings.HasPrefix(login.Path, "/adminer/?servik_token=") {
+	if login.Tool != "adminer" || login.Port != DefaultPort || !strings.HasPrefix(login.Path, "/adminer/?serfex_token=") {
 		t.Errorf("login %+v", login)
 	}
-	token := strings.TrimPrefix(login.Path, "/adminer/?servik_token=")
-	contains(t, "token", read(t, sim, adminTokens+"/"+token+".json"), `"server":"postgresql"`, `"database":"acme_shop"`, `"user":"servik-s-`)
+	token := strings.TrimPrefix(login.Path, "/adminer/?serfex_token=")
+	contains(t, "token", read(t, sim, adminTokens+"/"+token+".json"), `"server":"postgresql"`, `"database":"acme_shop"`, `"user":"serfex-s-`)
 	st, _ := m.loadState()
 	if len(st.Sessions) != 1 {
 		t.Fatalf("sessions %+v", st.Sessions)
@@ -352,13 +352,13 @@ func TestPanelCertificateChanged(t *testing.T) {
 	if _, err := m.SetupManager(ctx, ManagerSpec{Port: 8443}); err != nil {
 		t.Fatal(err)
 	}
-	// No certificate of its own yet: one server with servik-web's.
+	// No certificate of its own yet: one server with serfex-web's.
 	if err := m.PanelCertificateChanged(ctx); err != nil {
 		t.Fatal(err)
 	}
 	conf := read(t, sim, webConf)
-	contains(t, "nginx", conf, "listen 8443 ssl http2 default_server;", "ssl_certificate /etc/servik/web/tls/fullchain.pem;")
-	if strings.Contains(conf, "server_name") || strings.Contains(conf, "/etc/servik/panel/ssl/") {
+	contains(t, "nginx", conf, "listen 8443 ssl http2 default_server;", "ssl_certificate /etc/serfex/web/tls/fullchain.pem;")
+	if strings.Contains(conf, "server_name") || strings.Contains(conf, "/etc/serfex/panel/ssl/") {
 		t.Fatalf("panel certificate served before it exists:\n%s", conf)
 	}
 
@@ -385,9 +385,9 @@ func TestPanelCertificateChanged(t *testing.T) {
 	if !ok {
 		t.Fatalf("no server for the panel's name:\n%s", conf)
 	}
-	contains(t, "default server", byIP, "listen 8443 ssl http2 default_server;", "ssl_certificate /etc/servik/web/tls/fullchain.pem;", "location ^~ /phpmyadmin/")
-	contains(t, "panel's name", byName, "ssl_certificate /etc/servik/panel/ssl/fullchain.pem;", "ssl_certificate_key /etc/servik/panel/ssl/privkey.pem;", "location ^~ /phpmyadmin/")
-	if strings.Contains(byIP, "/etc/servik/panel/ssl/") {
+	contains(t, "default server", byIP, "listen 8443 ssl http2 default_server;", "ssl_certificate /etc/serfex/web/tls/fullchain.pem;", "location ^~ /phpmyadmin/")
+	contains(t, "panel's name", byName, "ssl_certificate /etc/serfex/panel/ssl/fullchain.pem;", "ssl_certificate_key /etc/serfex/panel/ssl/privkey.pem;", "location ^~ /phpmyadmin/")
+	if strings.Contains(byIP, "/etc/serfex/panel/ssl/") {
 		t.Errorf("the IP address serves the panel's certificate:\n%s", byIP)
 	}
 	if n := strings.Count(conf, " ssl http2 default_server;"); n == 0 || strings.Count(conf, " ssl http2;") != n {
@@ -467,7 +467,7 @@ func TestPanelWeb(t *testing.T) {
 	for abs, content := range map[string]string{
 		panel.ConfigFile: `{"php":"8.5"}`,
 		panel.ReleasesDir + "/0.1.0/panel/public/index.php": "<?php\n",
-		"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nservik:x:998:998::/var/lib/servik/panel:/usr/sbin/nologin\n",
+		"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nserfex:x:998:998::/var/lib/serfex/panel:/usr/sbin/nologin\n",
 	} {
 		if err := os.MkdirAll(filepath.Dir(sim.Path(abs)), 0o755); err != nil {
 			t.Fatal(err)
@@ -479,7 +479,7 @@ func TestPanelWeb(t *testing.T) {
 	if err := os.Symlink("releases/0.1.0", sim.Path(panel.CurrentLink)); err != nil {
 		t.Fatal(err)
 	}
-	// Without a database server, servik-web serves the panel alone.
+	// Without a database server, serfex-web serves the panel alone.
 	res, err := m.SetupPanelWeb(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -488,11 +488,11 @@ func TestPanelWeb(t *testing.T) {
 		t.Errorf("setup %+v", res)
 	}
 	conf := read(t, sim, webConf)
-	contains(t, "nginx", conf, "root /opt/servik/current/panel/public;", "fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;", "fastcgi_pass unix:/run/servik-php/panel.sock;")
+	contains(t, "nginx", conf, "root /opt/serfex/current/panel/public;", "fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;", "fastcgi_pass unix:/run/serfex-php/panel.sock;")
 	if strings.Contains(conf, "phpmyadmin") || strings.Contains(conf, "return 404;\n        }\n    }") {
 		t.Errorf("nginx:\n%s", conf)
 	}
-	contains(t, "php-fpm", read(t, sim, phpConf), "[panel]", "user = servik", "listen = /run/servik-php/panel.sock")
+	contains(t, "php-fpm", read(t, sim, phpConf), "[panel]", "user = serfex", "listen = /run/serfex-php/panel.sock")
 	contains(t, "unit", read(t, sim, phpUnitFile), "ExecStart=/usr/sbin/php-fpm8.5 --nodaemonize")
 
 	// The manager set up later keeps the panel and uses its PHP.
@@ -506,7 +506,7 @@ func TestPanelWeb(t *testing.T) {
 	if ms.PHPVersion != "8.5" {
 		t.Errorf("manager PHP %s", ms.PHPVersion)
 	}
-	contains(t, "nginx", read(t, sim, webConf), "root /opt/servik/current/panel/public;", "location = /phpmyadmin/servik-sso.php")
+	contains(t, "nginx", read(t, sim, webConf), "root /opt/serfex/current/panel/public;", "location = /phpmyadmin/serfex-sso.php")
 	if !sim.Ran("apt-get install -y -q --no-install-recommends nginx php8.5-fpm php8.5-mbstring php8.5-xml php8.5-mysql phpmyadmin") {
 		t.Errorf("commands: %v", sim.Commands())
 	}
@@ -518,17 +518,17 @@ func TestPanelWeb(t *testing.T) {
 func TestPostgreSQLComesFromItsArchive(t *testing.T) {
 	ctx := context.Background()
 
-	// Servik's own cluster runs on Ubuntu's 16; the customers' cluster
+	// Serfex's own cluster runs on Ubuntu's 16; the customers' cluster
 	// gets the archive's newest version on port 5432.
 	m, sim := newSim(t)
 	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-16"}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sim.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{"--port", "5433", "16", "servik"}}); err != nil {
+	if _, err := sim.Run(ctx, host.Command{Name: "pg_createcluster", Args: []string{"--port", "5433", "16", "serfex"}}); err != nil {
 		t.Fatal(err)
 	}
 	if st := m.Status(ctx); st.Servers[PostgreSQL].Installed {
-		t.Fatalf("Servik's own cluster counts as the customers': %+v", st.Servers[PostgreSQL])
+		t.Fatalf("Serfex's own cluster counts as the customers': %+v", st.Servers[PostgreSQL])
 	}
 	res, err := m.Install(ctx, InstallSpec{Product: PostgreSQL})
 	if err != nil {
@@ -579,7 +579,7 @@ func TestPostgreSQLComesFromItsArchive(t *testing.T) {
 func TestReleasesComeFromTheVendorsArchives(t *testing.T) {
 	ctx := context.Background()
 	m, sim := newSim(t)
-	// Servik's own PostgreSQL brought postgresql-common and its key.
+	// Serfex's own PostgreSQL brought postgresql-common and its key.
 	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-common", "postgresql-16"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -623,12 +623,12 @@ func TestReleasesComeFromTheVendorsArchives(t *testing.T) {
 	if _, err := m.Install(ctx, InstallSpec{Product: MySQL}); err == nil || !strings.Contains(err.Error(), "could not be read") {
 		t.Fatalf("offline install: %v", err)
 	}
-	if m.exists("/etc/apt/sources.list.d/servik-mysql.sources") || m.exists(keyringDir+"/servik-mysql.gpg") || m.exists("/usr/sbin/mysqld") {
+	if m.exists("/etc/apt/sources.list.d/serfex-mysql.sources") || m.exists(keyringDir+"/serfex-mysql.gpg") || m.exists("/usr/sbin/mysqld") {
 		t.Error("the failed install left the archive or the server behind")
 	}
 	sim.Fail = nil
 
-	// A version Servik does not offer is refused.
+	// A version Serfex does not offer is refused.
 	var v *ValidationError
 	if _, err := m.Install(ctx, InstallSpec{Product: MySQL, Version: "8.0"}); !errors.As(err, &v) {
 		t.Fatalf("MySQL 8.0: %v", err)
@@ -639,8 +639,8 @@ func TestReleasesComeFromTheVendorsArchives(t *testing.T) {
 	if err != nil || !res.Installed {
 		t.Fatalf("MySQL 8.4: %+v %v", res, err)
 	}
-	contains(t, "mysql sources", read(t, sim, "/etc/apt/sources.list.d/servik-mysql.sources"), "Components: mysql-8.4-lts", "Signed-By: /etc/apt/keyrings/servik-mysql.gpg")
-	contains(t, "mysql key", read(t, sim, keyringDir+"/servik-mysql.gpg"), "simulated key from https://repo.mysql.com/RPM-GPG-KEY-mysql-2023")
+	contains(t, "mysql sources", read(t, sim, "/etc/apt/sources.list.d/serfex-mysql.sources"), "Components: mysql-8.4-lts", "Signed-By: /etc/apt/keyrings/serfex-mysql.gpg")
+	contains(t, "mysql key", read(t, sim, keyringDir+"/serfex-mysql.gpg"), "simulated key from https://repo.mysql.com/RPM-GPG-KEY-mysql-2023")
 	if !sim.Ran("apt-get install -y -q --no-install-recommends mysql-server") {
 		t.Errorf("commands: %v", sim.Commands())
 	}
@@ -651,7 +651,7 @@ func TestReleasesComeFromTheVendorsArchives(t *testing.T) {
 	if err := m.Remove(ctx, MySQL, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if !sim.Ran("apt-get purge -y -q mysql-server* mysql-client* mysql-community-server* mysql-community-client*") || m.exists("/etc/apt/sources.list.d/servik-mysql.sources") || m.exists(keyringDir+"/servik-mysql.gpg") {
+	if !sim.Ran("apt-get purge -y -q mysql-server* mysql-client* mysql-community-server* mysql-community-client*") || m.exists("/etc/apt/sources.list.d/serfex-mysql.sources") || m.exists(keyringDir+"/serfex-mysql.gpg") {
 		t.Errorf("removal: %v", sim.Commands())
 	}
 
@@ -659,5 +659,5 @@ func TestReleasesComeFromTheVendorsArchives(t *testing.T) {
 	if _, err := m.Install(ctx, InstallSpec{Product: MariaDB}); err != nil {
 		t.Fatal(err)
 	}
-	contains(t, "mariadb sources", read(t, sim, "/etc/apt/sources.list.d/servik-mariadb.sources"), "URIs: https://dlm.mariadb.com/repo/mariadb-server/12.3/repo/ubuntu", "Components: main")
+	contains(t, "mariadb sources", read(t, sim, "/etc/apt/sources.list.d/serfex-mariadb.sources"), "URIs: https://dlm.mariadb.com/repo/mariadb-server/12.3/repo/ubuntu", "Components: main")
 }

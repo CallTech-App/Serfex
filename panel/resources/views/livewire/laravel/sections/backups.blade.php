@@ -89,7 +89,7 @@
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Yedekler sunucuda :domain altında tutulur ve yalnızca root okuyabilir. Bu uygulama, hesabın diğer sitelerine dokunmadan geri yüklenir. Önbellek, oturum ve günlük dosyaları yedeğe girmez."><x-slot:domain><span class="font-mono">/var/lib/servik/backups/laravel/{{ $app->site->domain }}/</span></x-slot:domain></x-t></p>
+    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Yedekler sunucuda :domain altında tutulur ve yalnızca root okuyabilir. Bu uygulama, hesabın diğer sitelerine dokunmadan geri yüklenir. Önbellek, oturum ve günlük dosyaları yedeğe girmez."><x-slot:domain><span class="font-mono">/var/lib/serfex/backups/laravel/{{ $app->site->domain }}/</span></x-slot:domain></x-t></p>
 
     {{-- Şimdi yedekle --}}
     <x-modal :title="__('Şimdi yedekle')" show="creating" size="max-w-md">
@@ -126,7 +126,7 @@
                     <label for="bk-time" class="sm:pt-2">{{ __('Saat') }}</label>
                     <div>
                         <input id="bk-time" type="time" wire:model="time" class="num h-9 w-32 rounded-md border bg-surface px-3 outline-none focus:border-accent {{ $errors->has('time') ? 'border-crit' : 'border-line' }}">
-                        @error('time')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">{{ __('Sunucu saatiyle (:config).', ['config' => config('servik.timezone')]) }}</p>@enderror
+                        @error('time')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">{{ __('Sunucu saatiyle (:config).', ['config' => config('serfex.timezone')]) }}</p>@enderror
                     </div>
                     <label for="bk-keep" class="sm:pt-2">{{ __('Saklanan') }}</label>
                     <div>

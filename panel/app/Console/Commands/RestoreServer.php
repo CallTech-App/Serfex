@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 /**
- * Rebuilds a server from a whole-server backup, on a fresh Servik install
+ * Rebuilds a server from a whole-server backup, on a fresh Serfex install
  * that has the backup listed (imported from the import folder or found on
  * a target in Yedekler):
  *
@@ -31,7 +31,7 @@ use Illuminate\Support\Str;
  * Install the same database servers and set up mail first, so databases
  * and mailboxes have somewhere to go.
  */
-#[Signature('servik:restore-server {key? : The backup to restore from} {--panel : Load the panel database and settings} {--sites : Restore every site} {--force : Do not ask}')]
+#[Signature('serfex:restore-server {key? : The backup to restore from} {--panel : Load the panel database and settings} {--sites : Restore every site} {--force : Do not ask}')]
 #[Description('Rebuild this server from a whole-server backup')]
 class RestoreServer extends Command
 {
@@ -195,7 +195,7 @@ class RestoreServer extends Command
 
     private function read(AgentClient $agent, string $key, string $member): string
     {
-        $file = tempnam(sys_get_temp_dir(), 'svk');
+        $file = tempnam(sys_get_temp_dir(), 'sfx');
         try {
             $this->download($agent, $key, $member, $file);
 

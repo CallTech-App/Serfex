@@ -66,7 +66,7 @@ class PhpVersions
     /** Functions customers' sites run without, unless allowed per site. */
     public const DANGEROUS = ['exec', 'passthru', 'shell_exec', 'system', 'proc_open', 'popen', 'pcntl_exec', 'show_source'];
 
-    /** Settings Servik sets for every pool; never changeable. */
+    /** Settings Serfex sets for every pool; never changeable. */
     public const RESERVED = ['open_basedir', 'upload_tmp_dir', 'sys_temp_dir', 'session.save_path', 'error_log', 'log_errors',
         'disable_functions', 'disable_classes', 'extension', 'zend_extension', 'extension_dir', 'doc_root', 'user_dir'];
 
@@ -144,7 +144,7 @@ class PhpVersions
     }
 
     /**
-     * A version's php.ini values, extensions and Servik's defaults.
+     * A version's php.ini values, extensions and Serfex's defaults.
      *
      * @return array<string, mixed>
      */
@@ -187,7 +187,7 @@ class PhpVersions
             return __('Başka bir kurulum sürüyor. Bitince yeniden deneyin.');
         }
         if (PanelUpdate::running()->exists()) {
-            return __('Servik güncelleniyor. Bitince yeniden deneyin.');
+            return __('Serfex güncelleniyor. Bitince yeniden deneyin.');
         }
         $operation = ComponentOperation::create([
             'component' => 'php'.$version,
@@ -250,7 +250,7 @@ class PhpVersions
                 return __('":key" geçerli bir php.ini adı değil.', ['key' => $key]);
             }
             if (in_array($key, self::RESERVED, true) || ($customer && in_array($key, ['auto_prepend_file', 'auto_append_file'], true))) {
-                return __(':key Servik tarafından ayarlanır, değiştirilemez.', ['key' => $key]);
+                return __(':key Serfex tarafından ayarlanır, değiştirilemez.', ['key' => $key]);
             }
             if (array_key_exists($key, self::SITE_INI)) {
                 return __(':key için yukarıdaki alanı kullanın.', ['key' => $key]);

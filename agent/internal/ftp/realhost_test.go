@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	domain = "servik-ftp.example"
-	owner  = "servikf"
-	acct   = "servikf_deploy"
+	domain = "serfex-ftp.example"
+	owner  = "serfexf"
+	acct   = "serfexf_deploy"
 	pass   = "Sftp-Pass-2026"
 )
 
@@ -43,8 +43,8 @@ func TestRealHost(t *testing.T) {
 
 	// The file helper is the agent binary itself, run as the site's user;
 	// it must be somewhere every user may execute it.
-	bin := "/usr/local/lib/servik-test/servik-agent"
-	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/servik-agent").CombinedOutput(); err != nil {
+	bin := "/usr/local/lib/serfex-test/serfex-agent"
+	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/serfex-agent").CombinedOutput(); err != nil {
 		t.Fatalf("building the agent: %v\n%s", err, out)
 	}
 	_ = os.Chmod(filepath.Dir(bin), 0o755)

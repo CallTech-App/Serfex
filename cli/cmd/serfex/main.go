@@ -1,4 +1,4 @@
-// Command servik is Servik's command line: sites, domains, DNS, SSL, mail,
+// Command serfex is Serfex's command line: sites, domains, DNS, SSL, mail,
 // databases, backups and services, and deploying and running Laravel
 // applications, on the server itself or from a developer's computer.
 package main

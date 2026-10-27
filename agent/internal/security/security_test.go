@@ -27,7 +27,7 @@ func newTest(t *testing.T) (*Manager, *host.Simulator) {
 	if _, err := sites.Apply(context.Background(), site.Spec{Domain: domain, User: "kahve", PHPVersion: "8.4"}); err != nil {
 		t.Fatal(err)
 	}
-	m := NewManager(sim, files.NewManager(sim, "servik-agent"))
+	m := NewManager(sim, files.NewManager(sim, "serfex-agent"))
 	m.Now = func() time.Time { return time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC) }
 	return m, sim
 }
@@ -57,12 +57,12 @@ func read(t *testing.T, sim *host.Simulator, abs string) string {
 
 func installWAF(t *testing.T, sim *host.Simulator) {
 	write(t, sim, "/usr/lib/nginx/modules/ngx_http_modsecurity_module.so", "", 0o644)
-	write(t, sim, "/etc/nginx/conf.d/servik-modsecurity.conf", "# Managed by Servik\n", 0o644)
+	write(t, sim, "/etc/nginx/conf.d/serfex-modsecurity.conf", "# Managed by Serfex\n", 0o644)
 }
 
 func TestVhostIncludesTheSiteSnippets(t *testing.T) {
 	_, sim := newTest(t)
-	if conf := read(t, sim, "/etc/nginx/sites-available/kahve.com.conf"); !strings.Contains(conf, "include /etc/servik/nginx/sites/kahve.com/*.conf;") {
+	if conf := read(t, sim, "/etc/nginx/sites-available/kahve.com.conf"); !strings.Contains(conf, "include /etc/serfex/nginx/sites/kahve.com/*.conf;") {
 		t.Fatalf("vhost lacks the include:\n%s", conf)
 	}
 }
@@ -82,9 +82,9 @@ func TestWAFModes(t *testing.T) {
 	if err != nil || !res.Changed {
 		t.Fatalf("block: %+v %v", res, err)
 	}
-	conf := read(t, sim, "/etc/servik/nginx/sites/kahve.com/waf.conf")
-	rules := read(t, sim, "/etc/servik/nginx/sites/kahve.com/waf.rules")
-	if !strings.Contains(conf, "modsecurity on;") || !strings.Contains(conf, "modsecurity_rules_file /etc/servik/nginx/sites/kahve.com/waf.rules;") {
+	conf := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/waf.conf")
+	rules := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/waf.rules")
+	if !strings.Contains(conf, "modsecurity on;") || !strings.Contains(conf, "modsecurity_rules_file /etc/serfex/nginx/sites/kahve.com/waf.rules;") {
 		t.Fatalf("waf.conf:\n%s", conf)
 	}
 	for _, want := range []string{"SecRuleEngine On", `SecAction "id:10001,phase:1,pass,nolog,ctl:ruleRemoveById=920350"`,
@@ -100,10 +100,10 @@ func TestWAFModes(t *testing.T) {
 	if _, err := m.ApplyWAF(ctx, WAFSpec{Domain: domain, Mode: ModeOff}); err != nil {
 		t.Fatal(err)
 	}
-	if conf := read(t, sim, "/etc/servik/nginx/sites/kahve.com/waf.conf"); !strings.Contains(conf, "modsecurity off;") {
+	if conf := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/waf.conf"); !strings.Contains(conf, "modsecurity off;") {
 		t.Fatalf("off:\n%s", conf)
 	}
-	if _, err := os.Stat(sim.Path("/etc/servik/nginx/sites/kahve.com/waf.rules")); !os.IsNotExist(err) {
+	if _, err := os.Stat(sim.Path("/etc/serfex/nginx/sites/kahve.com/waf.rules")); !os.IsNotExist(err) {
 		t.Fatal("off keeps a rules file")
 	}
 
@@ -117,7 +117,7 @@ func TestWAFModes(t *testing.T) {
 	if _, err := m.ApplyWAF(ctx, WAFSpec{Domain: domain, Mode: ModeDetect}); err == nil {
 		t.Fatal("a refused configuration was applied")
 	}
-	if conf := read(t, sim, "/etc/servik/nginx/sites/kahve.com/waf.conf"); !strings.Contains(conf, "modsecurity off;") {
+	if conf := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/waf.conf"); !strings.Contains(conf, "modsecurity off;") {
 		t.Fatalf("not rolled back:\n%s", conf)
 	}
 	sim.Fail = nil
@@ -125,7 +125,7 @@ func TestWAFModes(t *testing.T) {
 	if _, err := m.ApplyWAF(ctx, WAFSpec{Domain: domain}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(sim.Path("/etc/servik/nginx/sites/kahve.com/waf.conf")); !os.IsNotExist(err) {
+	if _, err := os.Stat(sim.Path("/etc/serfex/nginx/sites/kahve.com/waf.conf")); !os.IsNotExist(err) {
 		t.Fatal("server mode keeps a waf.conf")
 	}
 	for _, bad := range []WAFSpec{{Domain: domain, Mode: "on"}, {Domain: domain, Exclusions: []Exclusion{{RuleID: 0}}},
@@ -179,28 +179,28 @@ func TestProtectAndDeny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	conf := read(t, sim, "/etc/servik/nginx/sites/kahve.com/protect.conf")
+	conf := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/protect.conf")
 	i, j := strings.Index(conf, `^/admin/"`), strings.Index(conf, `^/admin/deep/"`)
-	if i < 0 || j < i || !strings.Contains(conf, "auth_basic $servik_auth;") || !strings.Contains(conf, "acme-challenge") {
+	if i < 0 || j < i || !strings.Contains(conf, "auth_basic $serfex_auth;") || !strings.Contains(conf, "acme-challenge") {
 		t.Fatalf("protect.conf:\n%s", conf)
 	}
-	if pw := read(t, sim, "/etc/servik/nginx/sites/kahve.com/protect-1.htpasswd"); !strings.Contains(pw, "ali:"+hash) {
+	if pw := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/protect-1.htpasswd"); !strings.Contains(pw, "ali:"+hash) {
 		t.Fatalf("htpasswd:\n%s", pw)
 	}
-	if fi, _ := os.Stat(sim.Path("/etc/servik/nginx/sites/kahve.com/protect-1.htpasswd")); fi.Mode().Perm() != 0o640 {
+	if fi, _ := os.Stat(sim.Path("/etc/serfex/nginx/sites/kahve.com/protect-1.htpasswd")); fi.Mode().Perm() != 0o640 {
 		t.Fatalf("htpasswd mode %v", fi.Mode())
 	}
 	// One folder left: its file is renumbered, the other goes.
 	if _, err := m.ApplyProtect(ctx, ProtectSpec{Domain: domain, Dirs: []ProtectedDir{{Path: "/admin/deep/", Users: []Login{{Name: "veli", Hash: hash}}}}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(sim.Path("/etc/servik/nginx/sites/kahve.com/protect-2.htpasswd")); !os.IsNotExist(err) {
+	if _, err := os.Stat(sim.Path("/etc/serfex/nginx/sites/kahve.com/protect-2.htpasswd")); !os.IsNotExist(err) {
 		t.Fatal("stale password file kept")
 	}
 	if _, err := m.ApplyProtect(ctx, ProtectSpec{Domain: domain}); err != nil {
 		t.Fatal(err)
 	}
-	if entries, _ := os.ReadDir(sim.Path("/etc/servik/nginx/sites/kahve.com")); len(entries) != 0 {
+	if entries, _ := os.ReadDir(sim.Path("/etc/serfex/nginx/sites/kahve.com")); len(entries) != 0 {
 		t.Fatalf("files left: %v", entries)
 	}
 	for _, bad := range []ProtectSpec{
@@ -217,7 +217,7 @@ func TestProtectAndDeny(t *testing.T) {
 	if _, err := m.ApplyDeny(ctx, DenySpec{Domain: domain, Paths: []string{"/backup.sql", "/old/"}}); err != nil {
 		t.Fatal(err)
 	}
-	deny := read(t, sim, "/etc/servik/nginx/sites/kahve.com/deny.conf")
+	deny := read(t, sim, "/etc/serfex/nginx/sites/kahve.com/deny.conf")
 	if !strings.Contains(deny, "location = /backup.sql {") || !strings.Contains(deny, "location ^~ /old/ {") {
 		t.Fatalf("deny.conf:\n%s", deny)
 	}

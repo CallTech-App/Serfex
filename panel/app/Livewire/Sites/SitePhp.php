@@ -186,7 +186,7 @@ class SitePhp extends Component
             'customerSite' => $site->customer() !== null,
             'memoryCap' => $site->customer()?->package?->max_php_memory_mb,
             'maxChildrenCap' => auth()->user()->is_admin ? 1000 : PhpVersions::CUSTOMER_MAX_CHILDREN,
-        ])->title(__('PHP ve Web Sunucusu · :domain · Servik', ['domain' => $site->domain]));
+        ])->title(__('PHP ve Web Sunucusu · :domain · Serfex', ['domain' => $site->domain]));
     }
 
     /**
@@ -201,7 +201,7 @@ class SitePhp extends Component
         $before = ['php_version' => $site->php_version, 'web_server' => $site->web_server, 'php_settings' => $site->php_settings];
         $site->fill(['php_version' => $php, 'web_server' => $web, 'php_settings' => $settings === [] ? null : $settings]);
         try {
-            $agent->call('site.apply', $site->agentSpec(), config('servik.agent.job_timeout'));
+            $agent->call('site.apply', $site->agentSpec(), config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             $site->fill($before);
             $this->phpVersion = $before['php_version'];
@@ -349,7 +349,7 @@ class SitePhp extends Component
     private static function agentMessage(AgentException $e): string
     {
         return $e instanceof AgentUnavailableException
-            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status servik-agent" ile kontrol edin.')
+            ? __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')
             : $e->reason;
     }
 }

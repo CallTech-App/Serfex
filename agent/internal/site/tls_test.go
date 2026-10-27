@@ -16,7 +16,7 @@ func TestApplyServesHTTPS(t *testing.T) {
 		t.Fatal(err)
 	}
 	vhost := read(t, sim, "/etc/nginx/sites-available/"+spec.Domain+".conf")
-	if !strings.Contains(vhost, "location ^~ /.well-known/acme-challenge/ {\n        root /var/lib/servik/acme;") || strings.Contains(vhost, "443") {
+	if !strings.Contains(vhost, "location ^~ /.well-known/acme-challenge/ {\n        root /var/lib/serfex/acme;") || strings.Contains(vhost, "443") {
 		t.Fatalf("plain HTTP vhost should answer ACME validation only:\n%s", vhost)
 	}
 	if !exists(sim, cert.ChallengeDir) {
@@ -38,9 +38,9 @@ func TestApplyServesHTTPS(t *testing.T) {
 	for _, want := range []string{
 		"return 301 https://$host$request_uri;",
 		"listen 443 ssl http2;",
-		"ssl_certificate /etc/servik/ssl/certs/kahveatolyesi.com.tr/fullchain.pem;",
-		"ssl_certificate_key /etc/servik/ssl/certs/kahveatolyesi.com.tr/privkey.pem;",
-		"include /etc/servik/nginx/tls.conf;",
+		"ssl_certificate /etc/serfex/ssl/certs/kahveatolyesi.com.tr/fullchain.pem;",
+		"ssl_certificate_key /etc/serfex/ssl/certs/kahveatolyesi.com.tr/privkey.pem;",
+		"include /etc/serfex/nginx/tls.conf;",
 	} {
 		if !strings.Contains(vhost, want) {
 			t.Errorf("vhost lacks %q:\n%s", want, vhost)

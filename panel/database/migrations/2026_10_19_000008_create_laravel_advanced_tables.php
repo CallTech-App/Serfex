@@ -35,9 +35,9 @@ return new class extends Migration
             $table->text('preview_env')->nullable();
             $table->unsignedSmallInteger('preview_limit')->default(5);
 
-            // servik (Servik's page in Nginx), custom (own HTML in Nginx) or
+            // serfex (Serfex's page in Nginx), custom (own HTML in Nginx) or
             // app (php artisan down, the application's 503 page).
-            $table->string('maintenance_mode', 16)->default('servik');
+            $table->string('maintenance_mode', 16)->default('serfex');
             $table->boolean('maintenance_on')->default(false);
             $table->text('maintenance_allow')->nullable();
             $table->text('maintenance_html')->nullable();

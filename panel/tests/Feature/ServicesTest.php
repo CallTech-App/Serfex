@@ -61,7 +61,7 @@ class ServicesTest extends TestCase
             'memcached' => $row('memcached', 'Memcached', 'hosting', ['state' => 'inactive', 'sub_state' => 'dead', 'enabled' => 'disabled', 'cpu' => 0, 'memory' => 0]),
             'fail2ban' => $row('fail2ban', 'Fail2ban', 'system', ['state' => 'failed', 'sub_state' => 'failed', 'cpu' => 0, 'memory' => 0]),
             'ssh' => $row('ssh', 'SSH', 'system', ['protected' => 'x']),
-            'servik-agent' => $row('servik-agent', 'Servik Agent', 'servik', ['protected' => 'x']),
+            'serfex-agent' => $row('serfex-agent', 'Serfex Agent', 'serfex', ['protected' => 'x']),
         ];
         $this->ini = [
             'memory_limit' => '256M', 'upload_max_filesize' => '64M', 'post_max_size' => '64M', 'max_execution_time' => '60',
@@ -136,7 +136,7 @@ class ServicesTest extends TestCase
         $this->get('/hizmetler')->assertOk()
             ->assertSee('Hizmetler')
             ->assertSee('Barındırma hizmetleri')
-            ->assertSee('Servik&#039;in kendi hizmetleri', false)
+            ->assertSee('Serfex&#039;in kendi hizmetleri', false)
             ->assertSee('Nginx')
             ->assertSee('php8.4-fpm')
             ->assertSee('Çalışıyor')
@@ -212,10 +212,10 @@ class ServicesTest extends TestCase
     public function test_apache_and_powerdns_settings(): void
     {
         $this->services['apache2'] = [...$this->services['nginx'], 'unit' => 'apache2', 'name' => 'Apache', 'settings' => 'apache'];
-        $this->services['pdns@servik'] = [...$this->services['nginx'], 'unit' => 'pdns@servik', 'name' => 'PowerDNS (DNS sunucusu)', 'can_reload' => false, 'settings' => 'powerdns'];
+        $this->services['pdns@serfex'] = [...$this->services['nginx'], 'unit' => 'pdns@serfex', 'name' => 'PowerDNS (DNS sunucusu)', 'can_reload' => false, 'settings' => 'powerdns'];
         $settings = [
             'apache2' => ['max_request_workers' => 150, 'timeout' => 300],
-            'pdns@servik' => ['cache_ttl' => 20, 'negquery_cache_ttl' => 60, 'log_queries' => false, 'axfr_allow' => []],
+            'pdns@serfex' => ['cache_ttl' => 20, 'negquery_cache_ttl' => 60, 'log_queries' => false, 'axfr_allow' => []],
         ];
         $this->agent->answers['service.settings'] = fn ($p) => ['unit' => $p['unit'], $p['unit'] === 'apache2' ? 'apache' : 'powerdns' => $settings[$p['unit']]];
         $this->agent->answers['service.settings.apply'] = fn ($p) => ['unit' => $p['unit'], ...array_diff_key($p, ['unit' => 1])];
@@ -233,7 +233,7 @@ class ServicesTest extends TestCase
             ->assertDispatched('toast', fn ($name, $p) => $p['undo']['args'][0] === ['max_request_workers' => 150, 'timeout' => 300]);
         $this->assertSame(['max_request_workers' => 400, 'timeout' => 120], $this->agent->called('service.settings.apply')[0]['apache']);
 
-        Livewire::test(ServiceShow::class, ['unit' => 'pdns@servik', 'tab' => 'ayarlar'])
+        Livewire::test(ServiceShow::class, ['unit' => 'pdns@serfex', 'tab' => 'ayarlar'])
             ->assertSee('Bölge aktarımı izni')
             ->assertSet('settings.log_queries', false)
             ->assertSet('settings.axfr_allow', '')
@@ -246,12 +246,12 @@ class ServicesTest extends TestCase
             ->call('saveSettings')
             ->assertHasNoErrors()
             ->assertSet('settings.axfr_allow', "192.0.2.10\n2001:db8::/48\n198.51.100.0/24")
-            ->call('undoSettings', $settings['pdns@servik']);
+            ->call('undoSettings', $settings['pdns@serfex']);
         $applied = $this->agent->called('service.settings.apply');
         $this->assertSame(['cache_ttl' => 0, 'negquery_cache_ttl' => 60, 'log_queries' => true, 'axfr_allow' => ['192.0.2.10', '2001:db8::/48', '198.51.100.0/24']], $applied[1]['powerdns']);
-        $this->assertSame($settings['pdns@servik'], $applied[2]['powerdns']);
+        $this->assertSame($settings['pdns@serfex'], $applied[2]['powerdns']);
 
-        // Without Servik's Apache configuration there is no settings tab.
+        // Without Serfex's Apache configuration there is no settings tab.
         $this->services['apache2']['settings'] = null;
         Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
             ->assertSet('tab', 'gunluk')
@@ -260,7 +260,7 @@ class ServicesTest extends TestCase
 
     public function test_protected_services_cannot_be_stopped_from_the_page(): void
     {
-        $this->get('/hizmetler/servik-agent')->assertOk()
+        $this->get('/hizmetler/serfex-agent')->assertOk()
             ->assertSee('Panel sunucuyu onunla yönetir; durdurulamaz.')
             ->assertDontSee('wire:click="act(&#039;stop&#039;)"', false);
     }
@@ -508,8 +508,8 @@ class ServicesTest extends TestCase
 
     public function test_check_command_records_problems_and_syncs_pools_once(): void
     {
-        $this->artisan('servik:services-check')->assertSuccessful();
-        $this->artisan('servik:services-check')->assertSuccessful();
+        $this->artisan('serfex:services-check')->assertSuccessful();
+        $this->artisan('serfex:services-check')->assertSuccessful();
 
         $this->assertSame(['fail2ban'], array_column(SystemServices::problems(), 'unit'));
         Queue::assertPushed(ApplySitePhp::class, 1);

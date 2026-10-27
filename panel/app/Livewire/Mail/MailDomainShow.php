@@ -488,7 +488,7 @@ class MailDomainShow extends Component
             'webmail' => $settings->webmailUrl(),
             'quotas' => MailSettings::QUOTAS,
             'traffic' => $this->tab === 'trafik' ? $traffic->days([$domain->name]) : null,
-        ])->title(__(':name · E-posta · Servik', ['name' => $domain->name]));
+        ])->title(__(':name · E-posta · Serfex', ['name' => $domain->name]));
     }
 
     private function domain(): ?MailDomain

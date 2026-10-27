@@ -6,8 +6,8 @@
 // connections and buffers, Postfix's message size, PowerDNS's caches,
 // query log and zone transfers), applied with a rollback.
 //
-// Only services Servik knows are listed and controlled. The panel's own
-// services (servik-web, servik-php, its PostgreSQL cluster and workers),
+// Only services Serfex knows are listed and controlled. The panel's own
+// services (serfex-web, serfex-php, its PostgreSQL cluster and workers),
 // SSH and the agent itself can be restarted but never stopped, so the
 // panel cannot lock itself or the administrator out.
 package service
@@ -47,11 +47,11 @@ const (
 	GroupHosting = "hosting"
 	// GroupSystem are the operating system's services.
 	GroupSystem = "system"
-	// GroupServik are the panel's own services.
-	GroupServik = "servik"
+	// GroupSerfex are the panel's own services.
+	GroupSerfex = "serfex"
 )
 
-// def describes a service Servik knows.
+// def describes a service Serfex knows.
 type def struct {
 	unit  string
 	name  string
@@ -80,10 +80,10 @@ const (
 	protectAgent = "The panel manages the server through it"
 )
 
-// catalog lists every service Servik knows, the PostgreSQL clusters and
+// catalog lists every service Serfex knows, the PostgreSQL clusters and
 // PHP versions found on the server included.
 func (m *Manager) catalog() []def {
-	// Apache's settings live in Servik's own Apache configuration, which
+	// Apache's settings live in Serfex's own Apache configuration, which
 	// only an Apache installed from Yazılım Yönetimi has.
 	apacheSettings := ""
 	if _, err := os.Stat(m.h.Path(apacheEnabled)); err == nil {
@@ -97,8 +97,8 @@ func (m *Manager) catalog() []def {
 		defs = append(defs, def{unit: "php" + v + "-fpm", name: "PHP " + v + " (PHP-FPM)", group: GroupHosting, marker: "/usr/sbin/php-fpm" + v, test: []string{"php-fpm" + v, "-t"}, reload: true})
 	}
 	defs = append(defs,
-		def{unit: "mysql", name: "MySQL", group: GroupHosting, marker: "/etc/mysql/mysql.conf.d/zz-servik.cnf", settings: "database"},
-		def{unit: "mariadb", name: "MariaDB", group: GroupHosting, marker: "/etc/mysql/mariadb.conf.d/90-servik.cnf", settings: "database"},
+		def{unit: "mysql", name: "MySQL", group: GroupHosting, marker: "/etc/mysql/mysql.conf.d/zz-serfex.cnf", settings: "database"},
+		def{unit: "mariadb", name: "MariaDB", group: GroupHosting, marker: "/etc/mysql/mariadb.conf.d/90-serfex.cnf", settings: "database"},
 	)
 	for _, c := range m.clusters() {
 		if c[1] == "main" {
@@ -106,11 +106,11 @@ func (m *Manager) catalog() []def {
 		}
 	}
 	defs = append(defs,
-		def{unit: "pdns@servik", name: "PowerDNS (DNS sunucusu)", group: GroupHosting, marker: pdnsConf, test: []string{"pdns_server", "--config-name=servik", "--config=check"}, settings: "powerdns"},
+		def{unit: "pdns@serfex", name: "PowerDNS (DNS sunucusu)", group: GroupHosting, marker: pdnsConf, test: []string{"pdns_server", "--config-name=serfex", "--config=check"}, settings: "powerdns"},
 		def{unit: "postfix", name: "Postfix (posta gönderme ve alma)", group: GroupHosting, marker: "/usr/sbin/postfix", test: []string{"postfix", "check"}, reload: true, settings: "postfix", logs: []string{"postfix", "postfix@-"}},
 		def{unit: "dovecot", name: "Dovecot (IMAP ve POP3)", group: GroupHosting, marker: "/usr/sbin/dovecot", test: []string{"doveconf", "-n"}, reload: true},
 		def{unit: "rspamd", name: "Rspamd (spam filtresi)", group: GroupHosting, marker: "/usr/bin/rspamd", test: []string{"rspamadm", "configtest"}, reload: true},
-		def{unit: "redis-server@servik-mail", name: "Redis (posta)", group: GroupHosting, marker: "/etc/redis/servik-mail.conf"},
+		def{unit: "redis-server@serfex-mail", name: "Redis (posta)", group: GroupHosting, marker: "/etc/redis/serfex-mail.conf"},
 		def{unit: "memcached", name: "Memcached", group: GroupHosting, marker: "/usr/bin/memcached"},
 		def{unit: "supervisor", name: "Supervisor", group: GroupHosting, marker: "/usr/bin/supervisord", reload: true},
 		def{unit: "clamav-daemon", name: "ClamAV (virüs tarayıcı)", group: GroupHosting, marker: "/usr/sbin/clamd", reload: true},
@@ -120,19 +120,19 @@ func (m *Manager) catalog() []def {
 		def{unit: "fail2ban", name: "Fail2ban", group: GroupSystem, marker: "/usr/bin/fail2ban-server", test: []string{"fail2ban-client", "--test"}, reload: true},
 		def{unit: "cron", name: "Cron (zamanlanmış görevler)", group: GroupSystem, marker: "/usr/sbin/cron"},
 
-		def{unit: "servik-agent", name: "Servik Agent", group: GroupServik, protect: protectAgent},
-		def{unit: "servik-web", name: "Panel web sunucusu (Nginx)", group: GroupServik, marker: "/etc/servik/web/nginx.conf", test: []string{"nginx", "-t", "-q", "-c", "/etc/servik/web/nginx.conf"}, reload: true, protect: protectPanel},
-		def{unit: "servik-php", name: "Panel PHP", group: GroupServik, marker: "/etc/servik/web/php-fpm.conf", reload: true, protect: protectPanel},
+		def{unit: "serfex-agent", name: "Serfex Agent", group: GroupSerfex, protect: protectAgent},
+		def{unit: "serfex-web", name: "Panel web sunucusu (Nginx)", group: GroupSerfex, marker: "/etc/serfex/web/nginx.conf", test: []string{"nginx", "-t", "-q", "-c", "/etc/serfex/web/nginx.conf"}, reload: true, protect: protectPanel},
+		def{unit: "serfex-php", name: "Panel PHP", group: GroupSerfex, marker: "/etc/serfex/web/php-fpm.conf", reload: true, protect: protectPanel},
 	)
 	for _, c := range m.clusters() {
-		if c[1] == "servik" {
-			defs = append(defs, def{unit: "postgresql@" + c[0] + "-servik", name: "Panel veritabanı (PostgreSQL " + c[0] + ")", group: GroupServik, reload: true, protect: protectPanel})
+		if c[1] == "serfex" {
+			defs = append(defs, def{unit: "postgresql@" + c[0] + "-serfex", name: "Panel veritabanı (PostgreSQL " + c[0] + ")", group: GroupSerfex, reload: true, protect: protectPanel})
 		}
 	}
 	defs = append(defs,
-		def{unit: "servik-panel-queue", name: "Panel iş kuyruğu", group: GroupServik, marker: "/etc/systemd/system/servik-panel-queue.service", protect: protectPanel},
-		def{unit: "servik-panel-scheduler", name: "Panel zamanlayıcısı", group: GroupServik, marker: "/etc/systemd/system/servik-panel-scheduler.service", protect: protectPanel},
-		def{unit: "servik-panel-backups", name: "Panel yedekleme kuyruğu", group: GroupServik, marker: "/etc/systemd/system/servik-panel-backups.service", protect: protectPanel},
+		def{unit: "serfex-panel-queue", name: "Panel iş kuyruğu", group: GroupSerfex, marker: "/etc/systemd/system/serfex-panel-queue.service", protect: protectPanel},
+		def{unit: "serfex-panel-scheduler", name: "Panel zamanlayıcısı", group: GroupSerfex, marker: "/etc/systemd/system/serfex-panel-scheduler.service", protect: protectPanel},
+		def{unit: "serfex-panel-backups", name: "Panel yedekleme kuyruğu", group: GroupSerfex, marker: "/etc/systemd/system/serfex-panel-backups.service", protect: protectPanel},
 	)
 	return defs
 }
@@ -146,14 +146,14 @@ func (m *Manager) clusters() [][2]string {
 	var out [][2]string
 	for _, d := range dirs {
 		v, name := filepath.Base(filepath.Dir(d)), filepath.Base(d)
-		if clusterRe.MatchString(v) && (name == "main" || name == "servik") {
+		if clusterRe.MatchString(v) && (name == "main" || name == "serfex") {
 			out = append(out, [2]string{v, name})
 		}
 	}
 	if m.sim && len(out) == 0 {
 		// A dry run stands in for an installed server, which has the
 		// panel's own cluster.
-		out = append(out, [2]string{"16", "servik"})
+		out = append(out, [2]string{"16", "serfex"})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i][0]+out[i][1] < out[j][0]+out[j][1] })
 	return out
@@ -313,7 +313,7 @@ func (m *Manager) find(ctx context.Context, unit string) (def, Status, error) {
 			}
 		}
 	}
-	return def{}, Status{}, invalid("%s is not a service Servik manages on this server", unit)
+	return def{}, Status{}, invalid("%s is not a service Serfex manages on this server", unit)
 }
 
 var unitRe = regexp.MustCompile(`^[a-z0-9][a-z0-9@.-]{0,63}$`)
@@ -351,7 +351,7 @@ func (m *Manager) Do(ctx context.Context, spec ActionSpec) (Status, error) {
 			return Status{}, invalid("configuration test failed, %s was left as it is: %s", d.name, tail(out, err))
 		}
 	}
-	if d.unit == "servik-agent" {
+	if d.unit == "serfex-agent" {
 		if spec.Action != "restart" {
 			return Status{}, invalid("the agent can only be restarted")
 		}
@@ -432,7 +432,7 @@ func (m *Manager) Logs(ctx context.Context, spec LogsSpec) (Logs, error) {
 		}
 	}
 	if units == nil {
-		return Logs{}, invalid("%s is not a service Servik manages", spec.Unit)
+		return Logs{}, invalid("%s is not a service Serfex manages", spec.Unit)
 	}
 	n := spec.Lines
 	if n <= 0 {
@@ -474,7 +474,7 @@ type simUnit struct {
 	Log     []string  `json:"log"`
 }
 
-const simFile = "/var/lib/servik/services/simulated.json"
+const simFile = "/var/lib/serfex/services/simulated.json"
 
 func (m *Manager) simLoad() simState {
 	st := simState{Units: map[string]simUnit{}}
@@ -496,7 +496,7 @@ func (m *Manager) simSave(st simState) {
 func (m *Manager) simInstalled(d def) bool {
 	// A dry run stands in for an installed server, which runs the
 	// panel's own services.
-	if d.marker == "" || d.group == GroupServik {
+	if d.marker == "" || d.group == GroupSerfex {
 		return true
 	}
 	_, err := os.Stat(m.h.Path(d.marker))
@@ -510,7 +510,7 @@ func (m *Manager) simUnit(st simState, d def) simUnit {
 		// Started when the server booted, a few days ago; the panel's
 		// own services with the last update.
 		u = simUnit{State: "active", Enabled: "enabled", Since: m.now().Add(-(76*time.Hour + time.Duration(len(d.unit))*time.Minute)).UTC().Truncate(time.Second)}
-		if d.group == GroupServik {
+		if d.group == GroupSerfex {
 			u.Since = m.now().Add(-5 * time.Hour).UTC().Truncate(time.Second)
 		}
 	}
@@ -543,7 +543,7 @@ func (m *Manager) simDo(d def, action string) {
 	st := m.simLoad()
 	u := m.simUnit(st, d)
 	at := m.now().UTC()
-	stamp := at.Local().Format("2006-01-02T15:04:05-0700") + " servik "
+	stamp := at.Local().Format("2006-01-02T15:04:05-0700") + " serfex "
 	switch action {
 	case "start", "restart":
 		if action == "restart" && u.State == "active" {
@@ -581,7 +581,7 @@ func (m *Manager) simLogs(unit string, n int) Logs {
 	if _, ok := st.Units[unit]; ok {
 		start = m.now().Add(-76 * time.Hour)
 	}
-	stamp := func(t time.Time) string { return t.Local().Format("2006-01-02T15:04:05-0700") + " servik " }
+	stamp := func(t time.Time) string { return t.Local().Format("2006-01-02T15:04:05-0700") + " serfex " }
 	lines := []string{
 		stamp(start) + "systemd[1]: Starting " + unit + ".service - " + d.name + "...",
 		stamp(start.Add(time.Second)) + "systemd[1]: Started " + unit + ".service - " + d.name + ".",

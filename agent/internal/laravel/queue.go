@@ -16,7 +16,7 @@ import (
 )
 
 // Queue workers run as systemd services, one template unit per worker
-// group (servik-queue-<domain>_<name>@.service) and one instance per
+// group (serfex-queue-<domain>_<name>@.service) and one instance per
 // process, so a crashed worker restarts on its own and workers start with
 // the server. No Composer package is needed in the application.
 
@@ -241,7 +241,7 @@ func (m *Manager) ApplyQueues(ctx context.Context, spec QueueSpec) (states []Wor
 }
 
 // enabledWorkers lists the worker instances enabled at boot, which are
-// the ones Servik started.
+// the ones Serfex started.
 func (m *Manager) enabledWorkers(domain string) []string {
 	links, _ := filepath.Glob(m.h.Path(unitDir + "/multi-user.target.wants/" + unitPrefix(domain) + "*@*.service"))
 	out := []string{}
@@ -306,7 +306,7 @@ func (m *Manager) RestartQueues(ctx context.Context, t Target) ([]WorkerState, e
 // logDirs creates the root-owned log directory systemd appends to, and
 // the logrotate rule that keeps it small.
 func (m *Manager) logDirs(t *txn.Tx, domain string) error {
-	for _, d := range []string{"/var/log/servik", logDir, logDir + "/" + domain} {
+	for _, d := range []string{"/var/log/serfex", logDir, logDir + "/" + domain} {
 		if err := t.RootDir(d, 0o750, 0, 0); err != nil {
 			return err
 		}
@@ -314,7 +314,7 @@ func (m *Manager) logDirs(t *txn.Tx, domain string) error {
 	if !m.isDir("/etc/logrotate.d") {
 		return nil
 	}
-	return t.WriteFile("/etc/logrotate.d/servik-laravel", []byte("# "+txn.Marker+". Manual changes are overwritten.\n"+
+	return t.WriteFile("/etc/logrotate.d/serfex-laravel", []byte("# "+txn.Marker+". Manual changes are overwritten.\n"+
 		logDir+"/*/*.log {\n    weekly\n    rotate 4\n    compress\n    missingok\n    notifempty\n    copytruncate\n}\n"))
 }
 

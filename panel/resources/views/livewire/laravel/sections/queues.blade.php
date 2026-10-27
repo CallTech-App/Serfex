@@ -97,7 +97,7 @@
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Her süreç ayrı bir systemd hizmeti olarak sürekli çalışır, çökerse yeniden başlar ve günlüğü :domain dosyasına yazılır. Her dağıtımdan ve .env kaydından sonra işçiler yeniden başlar. Uygulamaya ek bir Composer paketi gerekmez."><x-slot:domain><span class="font-mono">/var/log/servik/laravel/{{ $app->site->domain }}/queue.log</span></x-slot:domain></x-t></p>
+    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Her süreç ayrı bir systemd hizmeti olarak sürekli çalışır, çökerse yeniden başlar ve günlüğü :domain dosyasına yazılır. Her dağıtımdan ve .env kaydından sonra işçiler yeniden başlar. Uygulamaya ek bir Composer paketi gerekmez."><x-slot:domain><span class="font-mono">/var/log/serfex/laravel/{{ $app->site->domain }}/queue.log</span></x-slot:domain></x-t></p>
 
     {{-- İşçi ayarları --}}
     <x-modal :title="__('İşçi ayarları')" show="editing">

@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
  * Runs from the scheduler every Sunday night: scans every site and the
  * server's settings. --now runs the scan here instead of queueing it.
  */
-#[Signature('servik:security-scan {--now : Run the scan in this process}')]
+#[Signature('serfex:security-scan {--now : Run the scan in this process}')]
 #[Description('Scan every site and the server for security problems')]
 class ScheduledSecurityScan extends Command
 {

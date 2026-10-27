@@ -11,11 +11,11 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Servik AI's audit log: everything it read, proposed and did, and what
+ * Serfex AI's audit log: everything it read, proposed and did, and what
  * people decided, newest first.
  */
 #[Layout('components.layouts.app')]
-#[Title('Servik AI kaydı · Servik')]
+#[Title('Serfex AI kaydı · Serfex')]
 class AiAudit extends Component
 {
     use WithPagination;

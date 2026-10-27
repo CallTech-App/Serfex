@@ -13,7 +13,7 @@
  * Design tokens from the approved mockup (design/mockup/kaynak/src/head.html).
  * Colours are used only through these names; light and dark themes swap the
  * values. Status colours: ok = fine, warn = needs a look, crit = visitors
- * affected, info = work in progress. accent = primary action, links, Servik.
+ * affected, info = work in progress. accent = primary action, links, Serfex.
  */
 :root {
     --bg: 245 247 247; --surface: 255 255 255; --surface-2: 240 243 243; --line: 222 228 229;
@@ -114,7 +114,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Servik AI's answers, rendered from Markdown. */
+/* Serfex AI's answers, rendered from Markdown. */
 .ai-prose {
     line-height: 1.6;
     overflow-wrap: anywhere;

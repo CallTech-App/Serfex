@@ -32,7 +32,7 @@ use Livewire\WithPagination;
  * their own sites' WAF and scan on the site pages.
  */
 #[Layout('components.layouts.app')]
-#[Title('Güvenlik · Servik')]
+#[Title('Güvenlik · Serfex')]
 class SecurityIndex extends Component
 {
     use BlocksAddresses, HandlesFindings, WithPagination;

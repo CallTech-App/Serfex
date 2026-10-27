@@ -91,7 +91,7 @@
                     </tbody>
                 </table>
             </div>
-            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Servik\'in kendi hizmetleri (panel, ajan, panelin PostgreSQL\'i) müşteri hizmetlerinden ayrı çalışır; ajan ve panel durdurulamaz. Hizmetin günlüğü ve ayarları için adına tıklayın.') }}</p>
+            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Serfex\'in kendi hizmetleri (panel, ajan, panelin PostgreSQL\'i) müşteri hizmetlerinden ayrı çalışır; ajan ve panel durdurulamaz. Hizmetin günlüğü ve ayarları için adına tıklayın.') }}</p>
         @else
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-5 py-3">
                 <p class="text-[13px] text-muted">{{ __('PHP\'nin yama sürümleri Ubuntu ve ondrej/php paket depolarından gelir; paket listeleri her gece denetlenir.') }}</p>

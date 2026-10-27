@@ -22,7 +22,7 @@ type siteInfo struct {
 	Names        []string // the domain and its aliases
 }
 
-// discoverSites reads the PHP-FPM pools Servik wrote: one per site.
+// discoverSites reads the PHP-FPM pools Serfex wrote: one per site.
 func discoverSites(h host.Host) []siteInfo {
 	files, _ := filepath.Glob(h.Path("/etc/php/*/fpm/pool.d/*.conf"))
 	var sites []siteInfo

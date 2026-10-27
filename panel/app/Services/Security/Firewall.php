@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 
 /**
  * The port firewall (Güvenlik → Güvenlik duvarı): while it is on, the
- * server answers only on the ports its rules open. Servik's own services
+ * server answers only on the ports its rules open. Serfex's own services
  * have ready rules (the panel's cannot be closed); administrators add
  * their own, open to everyone or to some addresses, or refusing some
  * addresses. IP blocks (Canlı İzleme) are separate and come first.
@@ -59,7 +59,7 @@ class Firewall
     }
 
     /**
-     * Servik's ready rules: id => name, ports, protocol, whether it is on,
+     * Serfex's ready rules: id => name, ports, protocol, whether it is on,
      * whether it may be turned off, and why it exists.
      *
      * @param  array{enabled: bool, services: array<string, bool>, rules: list<array<string, mixed>>}|null  $settings  the saved ones when null
@@ -72,7 +72,7 @@ class Firewall
         $mail = app(MailSettings::class)->isSetUp();
         $dns = (Setting::get('dns.server', [])['state'] ?? null) === 'ready' || DnsZone::exists();
         $list = [
-            'panel' => [__('Servik paneli'), (string) $panel, 'tcp', true, true, __('Panel, phpMyAdmin ve Adminer; kapatılamaz')],
+            'panel' => [__('Serfex paneli'), (string) $panel, 'tcp', true, true, __('Panel, phpMyAdmin ve Adminer; kapatılamaz')],
             'web' => [__('Web siteleri'), '80, 443', 'tcp', true, false, __('HTTP ve HTTPS')],
             'ssh' => [__('SSH ve SFTP'), implode(', ', $this->sshPorts()), 'tcp', true, false, __('Sunucu yönetimi ve FTP hesapları')],
             'mail' => [__('E-posta'), '25, 465, 587, 110, 995, 143, 993', 'tcp', $mail, false, __('SMTP, POP3 ve IMAP')],
@@ -141,7 +141,7 @@ class Firewall
             $params['protect'] = ['address' => $ip, 'port' => app(DatabaseServers::class)->managerPort()];
         }
         try {
-            $this->agent->call('firewall.rules.apply', $params, config('servik.agent.job_timeout'));
+            $this->agent->call('firewall.rules.apply', $params, config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
             if ($e->getCode() === AgentException::INVALID_PARAMS) {
                 throw new MonitorException(self::message($e), previous: $e);
@@ -161,7 +161,7 @@ class Firewall
     {
         $settings = $this->settings();
         if ($settings['enabled']) {
-            $this->agent->call('firewall.rules.apply', ['enabled' => true, 'rules' => $this->compile($settings)], config('servik.agent.job_timeout'));
+            $this->agent->call('firewall.rules.apply', ['enabled' => true, 'rules' => $this->compile($settings)], config('serfex.agent.job_timeout'));
         }
     }
 
