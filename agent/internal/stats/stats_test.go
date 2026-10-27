@@ -203,6 +203,8 @@ func TestMail(t *testing.T) {
 	a := New()
 	a.MailDomains = func() map[string]bool { return map[string]bool{"kahveatolyesi.com.tr": true} }
 	at := time.Date(2026, 10, 20, 9, 30, 0, 0, time.UTC)
+	// The lines are dated; a week later the real clock would age them out.
+	a.SetClock(func() time.Time { return at })
 	a.AddMail([]string{
 		// Outgoing: sent and bounced.
 		"2026-10-20T09:30:01 mail postfix/qmgr[2210]: 4QAB1: from=<siparis@kahveatolyesi.com.tr>, size=4210, nrcpt=2 (queue active)",
