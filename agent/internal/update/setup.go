@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/panel"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/panel"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // Setup writes the panel's own units (queue workers and scheduler) and

@@ -85,7 +85,7 @@ servik deploy -a api.example.com --wait
 On a fresh Ubuntu Server 24.04 or newer (amd64 or arm64), as root:
 
 ```sh
-curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
+curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install.sh -o install.sh
 sudo bash install.sh
 ```
 
@@ -100,7 +100,7 @@ ports and first steps.
 The command line alone, on Linux or macOS:
 
 ```sh
-curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install-cli.sh | sh
+curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install-cli.sh | sh
 ```
 
 ## Requirements
@@ -141,7 +141,7 @@ applications for paying customers. Known gaps, planned for later releases:
 - signed releases (releases are checked with SHA-256 today);
 - more than one server per panel, and distributions other than Ubuntu.
 
-Bug reports and ideas are welcome in [Issues](https://github.com/Winchester37/Servik/issues).
+Bug reports and ideas are welcome in [Issues](https://github.com/CallTech-App/Serfex/issues).
 
 ## Documentation
 

@@ -48,5 +48,7 @@ sudo -u servik php8.5 /opt/servik/current/panel/artisan servik:update --rollback
 
 - Releases are verified with SHA-256 checksums from the same release; they
   are not signed yet.
-- Updates come from `https://api.github.com/repos/Winchester37/Servik` (the
+- Updates come from `https://api.github.com/repos/CallTech-App/Serfex` (the
   `source` in `/etc/servik/panel.json`, set by `install.sh --source`).
+  Installs that still name the repository's old address
+  (`https://api.github.com/repos/Winchester37/Servik`) read from the new one.

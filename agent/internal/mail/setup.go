@@ -9,10 +9,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/cert"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/tuning"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/tuning"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // Packages are the Ubuntu packages of the mail server.

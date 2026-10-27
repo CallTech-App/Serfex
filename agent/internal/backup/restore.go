@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/cert"
-	"github.com/winchester37/servik/agent/internal/database"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/i18n"
-	"github.com/winchester37/servik/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/laravel"
 )
 
 // ChainRef names one archive of a restore chain: where it is kept, and

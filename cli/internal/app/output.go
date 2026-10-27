@@ -14,8 +14,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/winchester37/servik/cli/internal/api"
-	. "github.com/winchester37/servik/cli/internal/i18n"
+	"github.com/calltech-app/serfex/cli/internal/api"
+	. "github.com/calltech-app/serfex/cli/internal/i18n"
 )
 
 func (c *Ctx) paint(code, s string) string {

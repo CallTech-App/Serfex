@@ -18,9 +18,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/i18n"
-	"github.com/winchester37/servik/agent/internal/panel"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/panel"
 )
 
 // runSpec is what a run does, written by Start or Rollback for Execute.

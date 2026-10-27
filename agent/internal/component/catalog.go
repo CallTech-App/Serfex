@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/aptcache"
-	"github.com/winchester37/servik/agent/internal/database"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/i18n"
-	"github.com/winchester37/servik/agent/internal/panel"
-	"github.com/winchester37/servik/agent/internal/site"
-	"github.com/winchester37/servik/agent/internal/tuning"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/aptcache"
+	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/panel"
+	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/tuning"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // PHPVersions are the PHP versions Servik offers. Ubuntu 24.04 ships 8.3;

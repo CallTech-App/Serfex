@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/cert"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // WebmailPackages are installed when webmail is on. php-cgi keeps apt

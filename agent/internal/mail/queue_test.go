@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 const queueFixture = `{"queue_name":"deferred","queue_id":"A1","arrival_time":1760000000,"message_size":900,"sender":"bilgi@kahve.com","recipients":[{"address":"x@dead.example","delay_reason":"host mx.dead.example said: 550 User unknown"}]}

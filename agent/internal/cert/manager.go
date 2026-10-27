@@ -17,9 +17,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/hostname"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/hostname"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // MaxNames bounds the names on one certificate (Let's Encrypt allows 100).

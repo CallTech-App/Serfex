@@ -4,7 +4,7 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // A site can run behind Apache: Nginx still answers every request (TLS,

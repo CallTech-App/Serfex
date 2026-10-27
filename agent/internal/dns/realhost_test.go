@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // serviceHost is the real system. Where systemd is not PID 1 (containers)

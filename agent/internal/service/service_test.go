@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/tuning"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/tuning"
 )
 
 func newTest(t *testing.T, files ...string) (*Manager, *host.Simulator) {

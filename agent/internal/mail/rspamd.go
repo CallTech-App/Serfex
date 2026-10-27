@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // Postfix passes mail on unsigned while Rspamd's milter does not answer

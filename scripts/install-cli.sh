@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs the servik command line on Linux or macOS (amd64 or arm64).
 #
-#   curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install-cli.sh | sh
+#   curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install-cli.sh | sh
 #
 # A Servik panel serves its own copy, which installs the panel's version:
 #
@@ -16,7 +16,7 @@
 set -eu
 
 # The panel replaces this line with its own address.
-SOURCE='https://github.com/Winchester37/Servik/releases/latest/download'
+SOURCE='https://github.com/CallTech-App/Serfex/releases/latest/download'
 
 case ${LANG:-}${LC_ALL:-} in tr* | *tr_*) tr=1 ;; *) tr=0 ;; esac
 say() { if [ "$tr" = 1 ]; then printf '%s\n' "$1"; else printf '%s\n' "$2"; fi; }

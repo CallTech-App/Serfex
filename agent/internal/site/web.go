@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // What else a vhost can do besides serving files and PHP: hand requests to

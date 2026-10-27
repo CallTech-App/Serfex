@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 // serviceHost is the real system; without systemd, reloads of Nginx and

@@ -18,9 +18,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/winchester37/servik/cli/internal/api"
-	"github.com/winchester37/servik/cli/internal/config"
-	. "github.com/winchester37/servik/cli/internal/i18n"
+	"github.com/calltech-app/serfex/cli/internal/api"
+	"github.com/calltech-app/serfex/cli/internal/config"
+	. "github.com/calltech-app/serfex/cli/internal/i18n"
 )
 
 // Env is everything the command line takes from the computer, so tests

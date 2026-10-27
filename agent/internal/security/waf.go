@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/component"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/component"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 // WAF modes of a site.

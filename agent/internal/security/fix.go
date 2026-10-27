@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/winchester37/servik/agent/internal/files"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/files"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 // FixSpec asks for one finding to be fixed, or a fix to be undone.

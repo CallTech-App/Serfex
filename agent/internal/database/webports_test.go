@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/panel"
+	"github.com/calltech-app/serfex/agent/internal/panel"
 )
 
 func installPanel(t *testing.T, m *Manager) {

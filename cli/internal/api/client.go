@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/cli/internal/version"
+	"github.com/calltech-app/serfex/cli/internal/version"
 )
 
 // Options say how to reach a panel.

@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/aptcache"
-	"github.com/winchester37/servik/agent/internal/database"
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/i18n"
-	"github.com/winchester37/servik/agent/internal/txn"
+	"github.com/calltech-app/serfex/agent/internal/aptcache"
+	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 // component describes one piece of software and how Servik handles it.

@@ -14,7 +14,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/winchester37/servik/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
 )
 
 // Standard JSON-RPC 2.0 error codes.

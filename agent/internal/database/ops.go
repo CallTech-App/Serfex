@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/winchester37/servik/agent/internal/hostname"
+	"github.com/calltech-app/serfex/agent/internal/hostname"
 )
 
 // DatabaseSpec names a database.

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security problem
-    url: https://github.com/Winchester37/Servik/security/advisories/new
+    url: https://github.com/CallTech-App/Serfex/security/advisories/new
     about: Please report vulnerabilities privately, not in a public issue.
   - name: Documentation
-    url: https://github.com/Winchester37/Servik/tree/main/docs
+    url: https://github.com/CallTech-App/Serfex/tree/main/docs
     about: Installation, the administrator guide, the command line and the API.

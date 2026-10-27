@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // newSite makes a simulated server with account kahve and site kahve.com.

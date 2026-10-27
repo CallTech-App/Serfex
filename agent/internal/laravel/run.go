@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/winchester37/servik/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/i18n"
 )
 
 // Output of deploys and long commands goes to a run log the panel reads

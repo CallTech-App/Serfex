@@ -21,7 +21,7 @@ fazlasını planlayın.
 ## Kurulum
 
 ```sh
-curl -fsSL https://github.com/Winchester37/Servik/releases/latest/download/install.sh -o install.sh
+curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/install.sh -o install.sh
 sudo bash install.sh --lang tr
 ```
 
@@ -66,7 +66,7 @@ yeterlidir:
 ```sh
 export SERVIK_GITHUB_TOKEN=github_pat_...
 curl -fsSL -H "Authorization: Bearer $SERVIK_GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
-  https://api.github.com/repos/Winchester37/Servik/contents/scripts/install.sh | sudo -E bash
+  https://api.github.com/repos/CallTech-App/Serfex/contents/scripts/install.sh | sudo -E bash
 ```
 
 Depo herkese açılınca token'ı hem GitHub'da hem sunucuda silin

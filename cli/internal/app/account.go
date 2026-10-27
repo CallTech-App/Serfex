@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/winchester37/servik/cli/internal/api"
-	"github.com/winchester37/servik/cli/internal/config"
-	. "github.com/winchester37/servik/cli/internal/i18n"
-	"github.com/winchester37/servik/cli/internal/version"
+	"github.com/calltech-app/serfex/cli/internal/api"
+	"github.com/calltech-app/serfex/cli/internal/config"
+	. "github.com/calltech-app/serfex/cli/internal/i18n"
+	"github.com/calltech-app/serfex/cli/internal/version"
 )
 
 // me is GET /me: who the key or token acts as.

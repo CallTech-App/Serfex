@@ -53,7 +53,7 @@ cli=$work/downloads
 mkdir -p "$cli"
 for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
 	(cd "$root/cli" && CGO_ENABLED=0 GOOS=${target%/*} GOARCH=${target#*/} go build -trimpath \
-		-ldflags "-s -w -X github.com/winchester37/servik/cli/internal/version.Version=$version" \
+		-ldflags "-s -w -X github.com/calltech-app/serfex/cli/internal/version.Version=$version" \
 		-o "$cli/servik-cli-${target%/*}-${target#*/}" ./cmd/servik)
 done
 cp "$root/scripts/install-cli.sh" "$cli/install-cli.sh"
@@ -77,7 +77,7 @@ for arch in ${SERVIK_ARCHES:-amd64 arm64}; do
 	echo "$version" > "$stage/VERSION"
 	echo "$version" > "$stage/panel/VERSION"
 	(cd "$root/agent" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
-		-ldflags "-s -w -X github.com/winchester37/servik/agent/internal/version.Version=$version" \
+		-ldflags "-s -w -X github.com/calltech-app/serfex/agent/internal/version.Version=$version" \
 		-o "$stage/bin/servik-agent" ./cmd/servik-agent)
 	cp "$cli/servik-cli-linux-$arch" "$stage/bin/servik"
 	cp -a "$cli" "$stage/downloads"

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
 // clockTicks is USER_HZ, the unit of the CPU times in /proc. It is 100 on

@@ -23,8 +23,8 @@ import (
 
 	"golang.org/x/crypto/acme"
 
-	"github.com/winchester37/servik/agent/internal/host"
-	"github.com/winchester37/servik/agent/internal/version"
+	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/version"
 )
 
 // LetsEncrypt is the production ACME directory.

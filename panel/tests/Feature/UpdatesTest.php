@@ -58,7 +58,7 @@ class UpdatesTest extends TestCase
                 'notes' => "## Yenilikler\n\n- Güncellemeler sayfası",
                 'published_at' => now()->subDay()->toIso8601String(),
                 'prerelease' => false,
-                'url' => 'https://github.com/Winchester37/Servik/releases/tag/v0.2.0',
+                'url' => 'https://github.com/CallTech-App/Serfex/releases/tag/v0.2.0',
                 'size' => 31457280,
             ]],
         ];

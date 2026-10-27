@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/cert"
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 func TestApplyServesSubdomainsFromTheirOwnRoots(t *testing.T) {

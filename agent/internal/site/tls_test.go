@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/winchester37/servik/agent/internal/cert"
+	"github.com/calltech-app/serfex/agent/internal/cert"
 )
 
 func TestApplyServesHTTPS(t *testing.T) {

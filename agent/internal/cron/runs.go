@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/winchester37/servik/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
 // The run records live in the site user's home, which the user may

@@ -508,7 +508,7 @@ class CliApiTest extends TestCase
         config(['servik.cli_downloads' => $dir.'/yok']);
         $script = $this->get('/cli/install.sh')->assertOk()->getContent();
         $this->assertStringContainsString("SOURCE='".url('/cli/indir')."'", $script);
-        $this->assertStringNotContainsString('github.com/Winchester37/Servik/releases', explode("\n", explode('SOURCE=', $script, 2)[1])[0]);
+        $this->assertStringNotContainsString('github.com/CallTech-App/Serfex/releases', explode("\n", explode('SOURCE=', $script, 2)[1])[0]);
     }
 
     public function test_cli_key_signs_the_command_line_in_on_the_server(): void
