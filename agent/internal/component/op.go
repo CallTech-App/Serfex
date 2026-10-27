@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/winchester37/servik/agent/internal/aptcache"
+	"github.com/winchester37/servik/agent/internal/database"
 	"github.com/winchester37/servik/agent/internal/host"
 	"github.com/winchester37/servik/agent/internal/i18n"
 	"github.com/winchester37/servik/agent/internal/txn"
@@ -46,11 +47,11 @@ type component struct {
 	unitList  func(m *Manager) []string
 	version   func(ctx context.Context, m *Manager) string
 	latest    func(ctx context.Context, m *Manager) (string, error)
-	// candidate is what an install would bring, for components without
-	// versionPkg; probe allows reading archives apt does not list yet.
-	// Without it, latest from the address in from tells (Node.js,
-	// Composer).
-	candidate     func(ctx context.Context, m *Manager, probe bool) (aptcache.Candidate, error)
+	// choices are the versions a database server can be installed in;
+	// probe allows reading archives apt does not list yet. Components
+	// without them or versionPkg tell what an install brings by latest,
+	// from the address in from (Node.js, Composer).
+	choices       func(ctx context.Context, m *Manager, probe bool) []database.Release
 	from          string
 	inUse         func(m *Manager) []string
 	isDefault     func(m *Manager) bool
@@ -102,6 +103,8 @@ type op struct {
 	w    io.Writer
 	t    *txn.Tx
 	port int
+	// version is the major version a database server is installed in.
+	version string
 	// added are the packages this operation installed.
 	added []string
 	// ppaAdded is the archive file this operation added.

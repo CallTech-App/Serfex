@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -558,7 +559,8 @@ func TestPostgreSQLComesFromItsArchive(t *testing.T) {
 		t.Errorf("the archive was added for an existing cluster: %v", sim.Commands())
 	}
 
-	// Without the archive Ubuntu's own version serves.
+	// Without the archive nothing is installed: Ubuntu's 16 is not
+	// offered.
 	m, sim = newSim(t)
 	sim.Fail = func(c host.Command) error {
 		if c.String() == "apt-get update -q --error-on=any" && m.exists(pgdgSources) {
@@ -566,55 +568,96 @@ func TestPostgreSQLComesFromItsArchive(t *testing.T) {
 		}
 		return nil
 	}
-	var log strings.Builder
-	if res, err := m.Install(ctx, InstallSpec{Product: PostgreSQL, Log: &log}); err != nil || res.Version != "16.10" {
-		t.Fatalf("offline: %+v %v", res, err)
+	if _, err := m.Install(ctx, InstallSpec{Product: PostgreSQL}); err == nil || !strings.Contains(err.Error(), "the PostgreSQL archive could not be read") {
+		t.Fatalf("offline: %v", err)
 	}
-	if m.exists(pgdgSources) || !sim.Ran("pg_createcluster --port 5432 16 main") {
+	if m.exists(pgdgSources) || sim.Ran("pg_createcluster --port 5432 16 main") {
 		t.Errorf("offline install: %v", sim.Commands())
 	}
-	contains(t, "log", log.String(), "the PostgreSQL archive could not be read, Ubuntu's packages are used")
 }
 
-func TestPostgreSQLCandidate(t *testing.T) {
+func TestReleasesComeFromTheVendorsArchives(t *testing.T) {
 	ctx := context.Background()
 	m, sim := newSim(t)
-	// Servik's own PostgreSQL brought postgresql-common and the archive's key.
+	// Servik's own PostgreSQL brought postgresql-common and its key.
 	if _, err := sim.Run(ctx, host.Command{Name: "apt-get", Args: []string{"install", "postgresql-common", "postgresql-16"}}); err != nil {
 		t.Fatal(err)
 	}
 
-	// Not listed for apt: unknown without a probe.
-	if c, err := m.PGCandidate(ctx, false); err != nil || c.Version != "" {
-		t.Fatalf("without probe: %+v %v", c, err)
+	// Before a check nothing but the list is known; apt's own lists have
+	// none of these archives.
+	for _, product := range []string{MySQL, MariaDB, PostgreSQL} {
+		for i, r := range m.Choices(ctx, product, false) {
+			if r.Major != Releases[product][i] || r.Default != (i == 0) || r.Version != "" {
+				t.Errorf("%s without probe: %+v", product, r)
+			}
+		}
 	}
-	// The probe reads the archive in its own directory; apt stays as it is.
-	c, err := m.PGCandidate(ctx, true)
-	if err != nil || c.Version != "18.1-1.pgdg24.04+2" || c.From != "apt.postgresql.org/pub/repos/apt" {
-		t.Fatalf("probe: %+v %v", c, err)
+	// A probe reads each archive in a directory of its own.
+	want := map[string][]Release{
+		MySQL:      {{"9.7", true, "9.7.0-1ubuntu24.04", "repo.mysql.com/apt/ubuntu"}, {"8.4", false, "8.4.0-1ubuntu24.04", "repo.mysql.com/apt/ubuntu"}},
+		MariaDB:    {{"12.3", true, "1:12.3.1+maria~ubu2404", "dlm.mariadb.com/repo/mariadb-server/12.3/repo/ubuntu"}, {"11.8", false, "1:11.8.1+maria~ubu2404", "dlm.mariadb.com/repo/mariadb-server/11.8/repo/ubuntu"}},
+		PostgreSQL: {{"18", true, "18.1-1.pgdg24.04+2", "apt.postgresql.org/pub/repos/apt"}},
 	}
-	if m.exists(pgdgSources) || !sim.Ran("apt-get -o Dir::Etc::SourceList=/dev/null -o Dir::Etc::SourceParts="+pgProbeDir+"/sources.list.d -o Dir::State::Lists="+pgProbeDir+"/lists -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= update -q --error-on=any") {
-		t.Errorf("probe changed apt or did not run: %v", sim.Commands())
+	for product, w := range want {
+		if got := m.Choices(ctx, product, true); !slices.Equal(got, w) {
+			t.Errorf("%s: %+v", product, got)
+		}
 	}
-	contains(t, "probe sources", read(t, sim, pgProbeDir+"/sources.list.d/pgdg.sources"), "Suites: noble-pgdg")
+	contains(t, "probe", read(t, sim, probeDir+"/mysql-8.4/sources.list.d/archive.sources"), "URIs: https://repo.mysql.com/apt/ubuntu", "Suites: noble", "Components: mysql-8.4-lts", "Signed-By: "+probeDir+"/mysql-8.4/keyring.gpg")
+	if files, _ := os.ReadDir(sim.Path("/etc/apt/sources.list.d")); len(files) != 0 {
+		t.Errorf("the probe changed apt: %v", files)
+	}
 
-	// An unreachable archive leaves Ubuntu's version, as an install would.
+	// An archive that cannot be read leaves the version unknown.
 	sim.Fail = func(c host.Command) error {
 		if strings.HasSuffix(c.String(), "update -q --error-on=any") {
-			return errors.New("E: Failed to fetch https://apt.postgresql.org/pub/repos/apt/dists/noble-pgdg/InRelease")
+			return errors.New("E: Failed to fetch https://repo.mysql.com/apt/ubuntu/dists/noble/InRelease")
 		}
 		return nil
 	}
-	if c, err := m.PGCandidate(ctx, true); err != nil || c.Version != "16.10-0ubuntu0.24.04.1" || c.From != "archive.ubuntu.com/ubuntu" {
-		t.Fatalf("offline: %+v %v", c, err)
+	if got := m.Choices(ctx, MySQL, true); got[0].Version != "" {
+		t.Errorf("offline: %+v", got)
+	}
+	// So does installing: it fails and apt is left as it was.
+	if _, err := m.Install(ctx, InstallSpec{Product: MySQL}); err == nil || !strings.Contains(err.Error(), "could not be read") {
+		t.Fatalf("offline install: %v", err)
+	}
+	if m.exists("/etc/apt/sources.list.d/servik-mysql.sources") || m.exists(keyringDir+"/servik-mysql.gpg") || m.exists("/usr/sbin/mysqld") {
+		t.Error("the failed install left the archive or the server behind")
 	}
 	sim.Fail = nil
 
-	// Listed: apt's own lists answer, no probe needed.
-	if _, err := m.Install(ctx, InstallSpec{Product: PostgreSQL}); err != nil {
+	// A version Servik does not offer is refused.
+	var v *ValidationError
+	if _, err := m.Install(ctx, InstallSpec{Product: MySQL, Version: "8.0"}); !errors.As(err, &v) {
+		t.Fatalf("MySQL 8.0: %v", err)
+	}
+
+	// The chosen version: its archive is listed for apt, then installed.
+	res, err := m.Install(ctx, InstallSpec{Product: MySQL, Version: "8.4"})
+	if err != nil || !res.Installed {
+		t.Fatalf("MySQL 8.4: %+v %v", res, err)
+	}
+	contains(t, "mysql sources", read(t, sim, "/etc/apt/sources.list.d/servik-mysql.sources"), "Components: mysql-8.4-lts", "Signed-By: /etc/apt/keyrings/servik-mysql.gpg")
+	contains(t, "mysql key", read(t, sim, keyringDir+"/servik-mysql.gpg"), "simulated key from https://repo.mysql.com/RPM-GPG-KEY-mysql-2023")
+	if !sim.Ran("apt-get install -y -q --no-install-recommends mysql-server") {
+		t.Errorf("commands: %v", sim.Commands())
+	}
+	if got := m.Choices(ctx, MySQL, false); got[1].Version != "8.4.0-1ubuntu24.04" {
+		t.Errorf("listed archive: %+v", got)
+	}
+	// Removing it takes Oracle's packages and archive away again.
+	if err := m.Remove(ctx, MySQL, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if c, err := m.PGCandidate(ctx, false); err != nil || c.Version != "18.1-1.pgdg24.04+2" {
-		t.Fatalf("listed: %+v %v", c, err)
+	if !sim.Ran("apt-get purge -y -q mysql-server* mysql-client* mysql-community-server* mysql-community-client*") || m.exists("/etc/apt/sources.list.d/servik-mysql.sources") || m.exists(keyringDir+"/servik-mysql.gpg") {
+		t.Errorf("removal: %v", sim.Commands())
 	}
+
+	// MariaDB defaults to the newest version offered.
+	if _, err := m.Install(ctx, InstallSpec{Product: MariaDB}); err != nil {
+		t.Fatal(err)
+	}
+	contains(t, "mariadb sources", read(t, sim, "/etc/apt/sources.list.d/servik-mariadb.sources"), "URIs: https://dlm.mariadb.com/repo/mariadb-server/12.3/repo/ubuntu", "Components: main")
 }

@@ -94,6 +94,7 @@ var english = map[string]string{
 	"Posta kutuları arşivleniyor":                                     "Archiving mailboxes",
 	"Posta kutuları":                                                  "Mailboxes",
 	"PostgreSQL paket deposu ekleniyor (apt.postgresql.org)":          "Adding the PostgreSQL package archive (apt.postgresql.org)",
+	"Paket deposu ekleniyor (%s)":                                     "Adding the package archive (%s)",
 	"Redis is not installed; install it from Yazılım Yönetimi first":  "Redis is not installed; install it from Software first",
 	"SQLite dosyası sitenin dizininde değil":                          "the SQLite file is not in the site's folder",
 	"SQLite dosyası yok":                                              "there is no SQLite file",

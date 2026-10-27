@@ -168,6 +168,9 @@ type Status struct {
 	// that is not known yet (component.check finds out).
 	Candidate     string `json:"candidate,omitempty"`
 	CandidateFrom string `json:"candidate_from,omitempty"`
+	// Choices are the major versions a database server can be installed
+	// in, the default first (database.Releases).
+	Choices []database.Release `json:"choices,omitempty"`
 	// Running is true when every service of the component is active.
 	Running bool     `json:"running"`
 	Units   []string `json:"units,omitempty"`
@@ -257,10 +260,21 @@ func (m *Manager) List(ctx context.Context) List {
 		} else {
 			var cand aptcache.Candidate
 			switch {
+			case c.choices != nil:
+				// Archives apt does not list were read by the last check.
+				s.Choices = c.choices(ctx, m, false)
+				for i, r := range s.Choices {
+					if r.Version == "" {
+						for _, l := range latest.Choices[id] {
+							if l.Major == r.Major {
+								s.Choices[i].Version, s.Choices[i].From = l.Version, l.From
+							}
+						}
+					}
+				}
+				cand = aptcache.Candidate{Version: s.Choices[0].Version, From: s.Choices[0].From}
 			case c.versionPkg != "":
 				cand = candidates[c.pkg(m)]
-			case c.candidate != nil:
-				cand, _ = c.candidate(ctx, m, false)
 			}
 			if cand.Version == "" {
 				cand = latest.Candidates[id]
@@ -286,7 +300,7 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 		m.op.Unlock()
 		return List{}, opError(fmt.Errorf("apt-get update failed: %w", err))
 	}
-	l := latestState{Versions: map[string]string{}, Candidates: map[string]aptcache.Candidate{}, CheckedAt: m.now().UTC().Format(time.RFC3339)}
+	l := latestState{Versions: map[string]string{}, Candidates: map[string]aptcache.Candidate{}, Choices: map[string][]database.Release{}, CheckedAt: m.now().UTC().Format(time.RFC3339)}
 	for id, c := range m.comps {
 		switch {
 		case c.isInstalled(m):
@@ -296,10 +310,8 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 			if v, err := c.latest(ctx, m); err == nil {
 				l.Versions[id] = v
 			}
-		case c.candidate != nil:
-			if cand, err := c.candidate(ctx, m, true); err == nil && cand.Version != "" {
-				l.Candidates[id] = cand
-			}
+		case c.choices != nil:
+			l.Choices[id] = c.choices(ctx, m, true)
 		case c.latest != nil && c.from != "":
 			if v, err := c.latest(ctx, m); err == nil && v != "" {
 				l.Candidates[id] = aptcache.Candidate{Version: v, From: c.from}
@@ -320,6 +332,7 @@ type latestState struct {
 	// bring when apt's own lists cannot tell.
 	Versions   map[string]string             `json:"versions"`
 	Candidates map[string]aptcache.Candidate `json:"candidates,omitempty"`
+	Choices    map[string][]database.Release `json:"choices,omitempty"`
 	CheckedAt  string                        `json:"checked_at"`
 }
 
@@ -334,6 +347,9 @@ func (m *Manager) loadLatest() latestState {
 	}
 	if l.Candidates == nil {
 		l.Candidates = map[string]aptcache.Candidate{}
+	}
+	if l.Choices == nil {
+		l.Choices = map[string][]database.Release{}
 	}
 	return l
 }
@@ -353,6 +369,9 @@ type OpSpec struct {
 	Run string `json:"run"`
 	// Port is the web database manager's port, for database servers.
 	Port int `json:"port,omitempty"`
+	// Version is the major version a database server is installed in
+	// (one of its Choices; "" for the default).
+	Version string `json:"version,omitempty"`
 }
 
 // Result is the component's status after an operation.
@@ -403,7 +422,7 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		m.mu.Unlock()
 	}()
 
-	o := &op{ctx: ctx, m: m, c: c, w: w, port: spec.Port}
+	o := &op{ctx: ctx, m: m, c: c, w: w, port: spec.Port, version: spec.Version}
 	switch action {
 	case "install":
 		err = o.install()

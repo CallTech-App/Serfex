@@ -6,7 +6,9 @@ use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
 use App\Jobs\RemoveLaravelApp;
 use App\Jobs\RunComponentOperation;
+use App\Jobs\SetupDatabaseServers;
 use App\Livewire\Components\ComponentIndex;
+use App\Livewire\Databases\DatabaseIndex;
 use App\Livewire\Laravel\Sections\Environment;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SitePhp;
@@ -22,6 +24,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
 use App\Services\Customers\Customers;
+use App\Services\Databases\DatabaseServers;
 use App\Services\Dns\Zones;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -158,9 +161,6 @@ class ComponentsTest extends TestCase
     public function test_shows_the_version_an_install_would_bring(): void
     {
         $this->components['apache'] += ['candidate' => '2.4.58-1ubuntu8.8', 'candidate_from' => 'archive.ubuntu.com/ubuntu'];
-        $this->components['mysql'] = ['id' => 'mysql', 'installed' => false, 'running' => false, 'candidate' => '8.0.46-0ubuntu0.24.04.4', 'candidate_from' => 'archive.ubuntu.com/ubuntu'];
-        $this->components['mariadb'] += ['candidate' => '1:10.11.14-0ubuntu0.24.04.1', 'candidate_from' => 'archive.ubuntu.com/ubuntu'];
-        $this->components['postgresql'] += ['candidate' => '18.1-1.pgdg24.04+2', 'candidate_from' => 'apt.postgresql.org/pub/repos/apt'];
         $this->components['php8.5'] = ['id' => 'php8.5', 'installed' => false, 'running' => false, 'candidate' => '8.5.0-1+ubuntu24.04.1+deb.sury.org+1', 'candidate_from' => 'ppa.launchpadcontent.net/ondrej/php/ubuntu'];
 
         Livewire::test(ComponentIndex::class)
@@ -170,16 +170,6 @@ class ComponentsTest extends TestCase
             ->assertSee('Kurulacak sürüm')
             ->assertSee('Ubuntu deposu');
 
-        Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
-            // Epoch and build suffix are left out, as for installed versions.
-            ->assertSee('8.0.46-0ubuntu0.24.04.4')
-            ->assertSee('10.11.14-0ubuntu0.24.04.1')
-            ->assertSee('18.1-1.pgdg24.04')
-            ->assertSee('kurulacak · apt.postgresql.org')
-            ->call('ask', 'postgresql', 'install')
-            ->assertSee('PostgreSQL kurulsun mu?')
-            ->assertSee('18.1-1.pgdg24.04');
-
         // Node.js is looked up by the update check; until then it is unknown.
         $this->components['node22'] = ['id' => 'node22', 'installed' => false, 'running' => false];
         Livewire::test(ComponentIndex::class)->set('tab', 'diger')
@@ -187,20 +177,83 @@ class ComponentsTest extends TestCase
             ->assertSee('Henüz bilinmiyor; "Güncellemeleri denetle" ile öğrenilir.')
             ->assertSee('nodejs.org');
 
-        $this->assertSame(['version' => '8.5.0-1', 'source' => 'ppa:ondrej/php'], app(Components::class)->candidate('php8.5'));
+        $this->assertSame(['version' => '8.5.0-1', 'source' => 'ppa:ondrej/php', 'choices' => []], app(Components::class)->candidate('php8.5'));
         $this->assertNull(app(Components::class)->candidate('nginx'));
         $this->assertSame('mirror.example.net', Components::source('nginx', 'mirror.example.net/ubuntu'));
+    }
 
-        // The Veritabanları setup card says it too.
+    public function test_database_servers_install_in_a_version_servik_offers(): void
+    {
+        $this->components['mysql'] = ['id' => 'mysql', 'installed' => false, 'running' => false, 'candidate' => '9.7.0-1ubuntu24.04', 'candidate_from' => 'repo.mysql.com/apt/ubuntu', 'choices' => [
+            ['major' => '9.7', 'default' => true, 'version' => '9.7.0-1ubuntu24.04', 'from' => 'repo.mysql.com/apt/ubuntu'],
+            ['major' => '8.4', 'version' => '8.4.7-1ubuntu24.04', 'from' => 'repo.mysql.com/apt/ubuntu'],
+        ]];
+        $this->components['mariadb'] += ['choices' => [['major' => '12.3', 'default' => true], ['major' => '11.8']]];
+        $this->components['postgresql'] += ['candidate' => '18.1-1.pgdg24.04+2', 'candidate_from' => 'apt.postgresql.org/pub/repos/apt', 'choices' => [
+            ['major' => '18', 'default' => true, 'version' => '18.1-1.pgdg24.04+2', 'from' => 'apt.postgresql.org/pub/repos/apt'],
+        ]];
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
+            ->assertSee('9.7.0-1ubuntu24.04')
+            ->assertSee('kurulacak · MySQL deposu (repo.mysql.com)')
+            ->assertSee('Kurarken 8.4 de seçilebilir')
+            // Before the check MariaDB's package versions are unknown.
+            ->assertSee('12.3 · 11.8')
+            ->assertSee('18.1-1.pgdg24.04')
+            ->call('ask', 'mysql', 'install')
+            ->assertSee('MySQL kurulsun mu?')
+            ->assertSee('MySQL 9.7 LTS')
+            ->assertSee('MySQL 8.4 LTS')
+            ->assertSee('8.4.7-1ubuntu24.04')
+            ->assertSet('installVersion', '9.7')
+            ->set('installVersion', '8.4')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['mysql', 'install', '8.4'], [$op->component, $op->action, $op->detail]);
+        $page->assertSee('MySQL 8.4 LTS kuruluyor');
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame('8.4', $this->agent->called('component.install')[0]['version']);
+        $op->delete();
+
+        // A version Servik does not offer is refused.
+        $this->assertSame('MySQL için bu sürüm sunulmuyor.', app(Components::class)->start('mysql', 'install', null, '8.0'));
+
+        Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
+            ->call('ask', 'mariadb', 'install')
+            ->assertSee('Paket sürümü henüz bilinmiyor; "Güncellemeleri denetle" ile öğrenilir.')
+            ->assertSee('MariaDB deposu (dlm.mariadb.com)');
+    }
+
+    public function test_database_setup_card_offers_the_versions(): void
+    {
+        $this->components['mysql'] = ['id' => 'mysql', 'installed' => false, 'running' => false, 'choices' => [
+            ['major' => '9.7', 'default' => true, 'version' => '9.7.0-1ubuntu24.04', 'from' => 'repo.mysql.com/apt/ubuntu'],
+            ['major' => '8.4', 'version' => '8.4.7-1ubuntu24.04', 'from' => 'repo.mysql.com/apt/ubuntu'],
+        ]];
+        $this->components['postgresql'] += ['choices' => [['major' => '18', 'default' => true, 'version' => '18.1-1.pgdg24.04+2', 'from' => 'apt.postgresql.org/pub/repos/apt']]];
         $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => false], 'postgresql' => ['installed' => false]], 'manager' => ['configured' => false]];
-        $this->app->forgetScopedInstances();
         $this->actingAs(User::factory()->create(['is_admin' => true]));
+
         $this->get(route('databases.index'))->assertOk()
             ->assertSee('Veritabanı sunucusunu kurun')
-            ->assertSee('Kurulacak sürüm:')
-            ->assertSee('8.0.46-0ubuntu0.24.04.4')
-            ->assertSee('10.11.14-0ubuntu0.24.04.1')
-            ->assertSee('18.1-1.pgdg24.04');
+            ->assertSee('MySQL 9.7 LTS · 9.7.0-1ubuntu24.04 · MySQL deposu (repo.mysql.com)')
+            ->assertSee('MySQL 8.4 LTS · 8.4.7-1ubuntu24.04')
+            ->assertSee('Kurulacak sürüm: PostgreSQL 18 · 18.1-1.pgdg24.04 · apt.postgresql.org');
+
+        Livewire::test(DatabaseIndex::class)
+            ->set('setupVersions.mysql', '8.0')
+            ->call('setupServer')
+            ->assertHasErrors('setupVersions');
+        Livewire::test(DatabaseIndex::class)
+            ->set('setupVersions.mysql', '8.4')
+            ->set('setupPostgres', true)
+            ->call('setupServer');
+        Queue::assertPushed(SetupDatabaseServers::class, fn ($job) => $job->products === ['mysql', 'postgresql'] && $job->versions === ['mysql' => '8.4']);
+
+        $this->agent->answers['db.server.install'] = ['installed' => true];
+        $this->agent->answers['db.manager.setup'] = ['configured' => true];
+        (new SetupDatabaseServers(['mysql', 'postgresql'], ['mysql' => '8.4']))->handle($this->agent, app(DatabaseServers::class));
+        $this->assertSame([['product' => 'mysql', 'version' => '8.4'], ['product' => 'postgresql']], $this->agent->called('db.server.install'));
     }
 
     public function test_failed_install_reports_the_rollback(): void

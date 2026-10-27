@@ -3,6 +3,7 @@
 namespace App\Livewire\Databases;
 
 use App\Jobs\SetupDatabaseServers;
+use App\Services\Components\Components;
 use App\Services\Databases\DatabaseServers;
 use Illuminate\Validation\Rule;
 
@@ -23,6 +24,9 @@ trait ChecksDatabaseServers
     public string $setupProduct = 'mysql';
 
     public bool $setupPostgres = false;
+
+    /** @var array<string, string> product => the major version chosen (none: the default) */
+    public array $setupVersions = [];
 
     /**
      * Polled while a server is being installed.
@@ -66,19 +70,35 @@ trait ChecksDatabaseServers
                 'setupPostgres' => ['boolean'],
             ]);
             $products = [$this->setupProduct, ...($this->setupPostgres ? ['postgresql'] : [])];
+            $versions = [];
+            foreach ($products as $product) {
+                $major = $this->setupVersions[$product] ?? null;
+                if ($major === null || $major === '') {
+                    continue;
+                }
+                $offered = array_column(app(Components::class)->candidate($product)['choices'] ?? [], 'major');
+                if (! in_array($major, $offered, true)) {
+                    $this->addError('setupVersions', __(':name için bu sürüm sunulmuyor.', ['name' => DatabaseServers::PRODUCTS[$product][1] ?? $product]));
+
+                    return;
+                }
+                $versions[$product] = $major;
+            }
         } else {
             $products = array_values($installed);
+            $versions = [];
         }
-        $this->startSetup($servers, $products);
+        $this->startSetup($servers, $products, $versions);
     }
 
     /**
      * @param  list<string>  $products
+     * @param  array<string, string>  $versions  product => major version for a new server
      */
-    protected function startSetup(DatabaseServers $servers, array $products): void
+    protected function startSetup(DatabaseServers $servers, array $products, array $versions = []): void
     {
         $servers->saveSetup(['state' => 'installing', 'products' => $products, 'step' => $products[0] ?? 'manager', 'error' => null]);
         $this->server = ['state' => 'installing', 'step' => $products[0] ?? 'manager'];
-        SetupDatabaseServers::dispatch($products);
+        SetupDatabaseServers::dispatch($products, $versions);
     }
 }

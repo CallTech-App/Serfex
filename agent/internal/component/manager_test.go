@@ -614,11 +614,11 @@ func TestCandidatesBeforeInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	for id, want := range map[string][2]string{
-		"mysql":   {"8.0.43-0ubuntu0.24.04.2", "archive.ubuntu.com/ubuntu"},
-		"mariadb": {"1:10.11.13-0ubuntu0.24.04.1", "archive.ubuntu.com/ubuntu"},
-		"php8.4":  {"8.4.13-1+ubuntu24.04.1+deb.sury.org+1", "ppa.launchpadcontent.net/ondrej/php/ubuntu"},
-		"apache":  {"2.4.58-1ubuntu8.8", "archive.ubuntu.com/ubuntu"},
-		// Not known before component.check: no apt list says it.
+		"php8.4": {"8.4.13-1+ubuntu24.04.1+deb.sury.org+1", "ppa.launchpadcontent.net/ondrej/php/ubuntu"},
+		"apache": {"2.4.58-1ubuntu8.8", "archive.ubuntu.com/ubuntu"},
+		// Not known before component.check: no apt list says it (Ubuntu's
+		// MySQL 8.0 is not offered).
+		"mysql":      {"", ""},
 		"postgresql": {"", ""},
 		"node24":     {"", ""},
 	} {
@@ -636,6 +636,8 @@ func TestCandidatesBeforeInstall(t *testing.T) {
 	}
 	for id, want := range map[string][2]string{
 		"postgresql": {"18.1-1.pgdg24.04+2", "apt.postgresql.org/pub/repos/apt"},
+		"mysql":      {"9.7.0-1ubuntu24.04", "repo.mysql.com/apt/ubuntu"},
+		"mariadb":    {"1:12.3.1+maria~ubu2404", "dlm.mariadb.com/repo/mariadb-server/12.3/repo/ubuntu"},
 		"node24":     {"v24.21.0", "nodejs.org"},
 		"composer":   {"2.8.12", "getcomposer.org"},
 	} {
@@ -643,8 +645,19 @@ func TestCandidatesBeforeInstall(t *testing.T) {
 			t.Errorf("%s after check = %+v", id, s)
 		}
 	}
-	if exists(sim, "/etc/apt/sources.list.d/pgdg.sources") {
-		t.Error("the check listed the PostgreSQL archive for apt")
+	if exists(sim, "/etc/apt/sources.list.d/pgdg.sources") || exists(sim, "/etc/apt/sources.list.d/servik-mysql.sources") {
+		t.Error("the check listed an archive for apt")
+	}
+	if s := status(t, m, "mysql"); len(s.Choices) != 2 || s.Choices[1].Major != "8.4" || s.Choices[1].Version != "8.4.0-1ubuntu24.04" || !s.Choices[0].Default {
+		t.Errorf("mysql choices = %+v", s.Choices)
+	}
+
+	// The chosen version is installed.
+	if _, err := m.Install(ctx, OpSpec{ID: "mysql", Run: "m", Version: "8.4", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	if src := read(t, sim, "/etc/apt/sources.list.d/servik-mysql.sources"); !strings.Contains(src, "mysql-8.4-lts") {
+		t.Errorf("sources:\n%s", src)
 	}
 
 	// What was installed shows its version and no stale update.

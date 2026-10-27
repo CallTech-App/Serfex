@@ -38,6 +38,9 @@ class ComponentIndex extends Component
     /** @var array{id: string, action: string}|null asked to confirm */
     public ?array $confirming = null;
 
+    /** The major version a database server is installed in (the confirmation's choice). */
+    public ?string $installVersion = null;
+
     public string $defaultStack = Site::NGINX;
 
     public bool $configuring = false;
@@ -70,6 +73,8 @@ class ComponentIndex extends Component
             return;
         }
         $this->confirming = ['id' => $id, 'action' => $action];
+        $choices = $action === 'install' ? ($components->candidate($id)['choices'] ?? []) : [];
+        $this->installVersion = collect($choices)->firstWhere('default', true)['major'] ?? ($choices[0]['major'] ?? null);
     }
 
     public function confirm(Components $components, MailSettings $mail): void
@@ -85,7 +90,7 @@ class ComponentIndex extends Component
 
             return;
         }
-        $result = $components->start($ask['id'], $ask['action'], auth()->user());
+        $result = $components->start($ask['id'], $ask['action'], auth()->user(), $ask['action'] === 'install' ? $this->installVersion : null);
         if (is_string($result)) {
             $this->refused = $result;
 

@@ -4233,5 +4233,11 @@
     "Kurulacak sürüm": "Version to install",
     "Kurulacak sürüm:": "Version to install:",
     "Henüz bilinmiyor; \"Güncellemeleri denetle\" ile öğrenilir.": "Not known yet; \"Check for updates\" finds out.",
-    "Ubuntu deposu": "Ubuntu archive"
+    "Ubuntu deposu": "Ubuntu archive",
+    ":name için bu sürüm sunulmuyor.": "This version of :name is not offered.",
+    "MySQL deposu (repo.mysql.com)": "MySQL archive (repo.mysql.com)",
+    "MariaDB deposu (dlm.mariadb.com)": "MariaDB archive (dlm.mariadb.com)",
+    "Paket sürümü henüz bilinmiyor; \"Güncellemeleri denetle\" ile öğrenilir.": "Package version not known yet; \"Check for updates\" finds out.",
+    "Kurarken :versions de seçilebilir": ":versions can be chosen when installing",
+    "kurulabilir sürümler": "versions offered"
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/winchester37/servik/agent/internal/host"
@@ -94,12 +95,20 @@ func (m *Manager) Remove(ctx context.Context, productName string, w io.Writer) (
 			return err
 		}
 	} else {
-		fmt.Fprintf(w, "▸ %s\n", i18n.T(ctx, "Paketler kaldırılıyor: %s", strings.Join(removePackages[p.name], " ")))
-		purge := host.Command{Name: "apt-get", Args: append([]string{"purge", "-y", "-q"}, removePackages[p.name]...), Env: aptEnv, Stream: w}
+		pkgs := removePackages[p.name]
+		if p.name == MySQL && m.exists(m.archiveFor(MySQL, Releases[MySQL][0]).sources) {
+			// Oracle's packages.
+			pkgs = append(slices.Clone(pkgs), "mysql-community-server*", "mysql-community-client*")
+		}
+		fmt.Fprintf(w, "▸ %s\n", i18n.T(ctx, "Paketler kaldırılıyor: %s", strings.Join(pkgs, " ")))
+		purge := host.Command{Name: "apt-get", Args: append([]string{"purge", "-y", "-q"}, pkgs...), Env: aptEnv, Stream: w}
 		if _, err := m.h.Run(ctx, purge); err != nil {
 			return err
 		}
 		_, _ = m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"autoremove", "-y", "-q"}, Env: aptEnv, Stream: w})
+		// The next install may choose another major version, or the
+		// other product.
+		m.dropArchive(ctx, p.name)
 		// From here on the server is gone; its system databases are kept
 		// aside rather than left where the other product would trip over
 		// them.

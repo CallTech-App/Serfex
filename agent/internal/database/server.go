@@ -144,6 +144,9 @@ func lastLine(s string) string {
 type InstallSpec struct {
 	// Product is mysql, mariadb or postgresql.
 	Product string `json:"product"`
+	// Version is the major version a new server gets, one of Releases
+	// ("" for the default). An installed server keeps its own.
+	Version string `json:"version,omitempty"`
 	// Log gets the progress (Yazılım Yönetimi's run log); nil drops it.
 	Log io.Writer `json:"-"`
 }
@@ -202,8 +205,10 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 	if p.server == PostgreSQL {
 		v := m.pgMainVersion()
 		if v == "" {
-			// A new cluster gets the newest major version.
-			if v, err = m.pgTarget(ctx, t, log); err != nil {
+			if v, err = pickRelease(PostgreSQL, spec.Version); err != nil {
+				return res, err
+			}
+			if err := m.addArchive(ctx, t, m.archiveFor(PostgreSQL, v), v, log); err != nil {
 				return res, err
 			}
 		}
@@ -228,6 +233,13 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 		}
 	} else {
 		if !m.exists(p.marker) {
+			major, err := pickRelease(p.name, spec.Version)
+			if err != nil {
+				return res, err
+			}
+			if err := m.addArchive(ctx, t, m.archiveFor(p.name, major), major, log); err != nil {
+				return res, err
+			}
 			if err := installPackages(ctx, m.h, p.packages, "", log); err != nil {
 				return res, err
 			}

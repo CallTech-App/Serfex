@@ -76,12 +76,15 @@ configuration is archived before removal. Updates are checked daily at 04:30.
 
 Before you install a component, its Version column shows the version an
 install would bring and where it comes from (the Ubuntu archive,
-`ppa:ondrej/php`, apt.postgresql.org, nodejs.org or getcomposer.org); the
-install confirmation and the Databases setup card repeat it. For
-packages apt already lists this is apt's own candidate. Node.js, Composer and
-a PostgreSQL archive apt does not list yet are looked up by **Check for
-updates** and the nightly check: the archive's lists are read into
-`/var/lib/servik/components/pgdg-probe` without adding it to apt.
+`ppa:ondrej/php`, repo.mysql.com, dlm.mariadb.com, apt.postgresql.org,
+nodejs.org or getcomposer.org); the install confirmation and the Databases
+setup card repeat it. For packages apt already lists this is apt's own
+candidate. Database servers can be installed only in the versions Servik
+supports, and their confirmation lets you choose one (see
+[Databases](databases.md#supported-versions)). Node.js, Composer and the
+database archives apt does not list yet are looked up by **Check for
+updates** and the nightly check: each archive's lists are read into
+`/var/lib/servik/components/probe` without adding it to apt.
 
 An operation outlives the page and the panel's worker: if the worker is
 restarted while it waits (a package upgrade restarting services, for one),

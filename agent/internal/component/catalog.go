@@ -271,9 +271,12 @@ func databaseComponent(product string) *component {
 			return ok && p[0] == product
 		},
 		unitList: units,
+		choices: func(ctx context.Context, m *Manager, probe bool) []database.Release {
+			return m.db.Choices(ctx, product, probe)
+		},
 		install: func(o *op) error {
 			o.step("%s kuruluyor ve ayarlanıyor", dbLabel[product])
-			if _, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Log: o.w}); err != nil {
+			if _, err := o.m.db.Install(o.ctx, database.InstallSpec{Product: product, Version: o.version, Log: o.w}); err != nil {
 				return err
 			}
 			o.step("Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor")
@@ -314,11 +317,6 @@ func databaseComponent(product string) *component {
 				return "", nil
 			}
 			return aptcache.Upstream(m.candidates(ctx, []string{p})[p].Version), nil
-		}
-		// A new cluster gets the newest major version of the PostgreSQL
-		// archive (database.Install).
-		c.candidate = func(ctx context.Context, m *Manager, probe bool) (aptcache.Candidate, error) {
-			return m.db.PGCandidate(ctx, probe)
 		}
 		c.update = func(o *op) error {
 			v := o.m.db.PGVersion()

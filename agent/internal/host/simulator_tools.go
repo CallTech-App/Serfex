@@ -610,16 +610,38 @@ func (s *Simulator) tar(c Command, cwd string) (string, error) {
 }
 
 // aptCache answers "apt-cache [-o OPT]... pkgnames postgresql-" and
-// "apt-cache [-o OPT]... policy PKG...": Ubuntu 24.04 has PostgreSQL 16;
-// the PostgreSQL archive, once listed (or read by a probe through
-// Dir::Etc::SourceParts), every supported version up to 18.
+// "apt-cache [-o OPT]... policy PKG..." from the archives listed under
+// /etc/apt/sources.list.d (or the directory a probe names through
+// Dir::Etc::SourceParts, without Ubuntu's own): Ubuntu 24.04 has MySQL
+// 8.0, MariaDB 10.11 and PostgreSQL 16; the PostgreSQL archive every
+// version up to 18, Oracle's and MariaDB's archives the major version of
+// their listed component.
 func (s *Simulator) aptCache(args []string) string {
-	pgdg := s.exists("/etc/apt/sources.list.d/pgdg.sources")
+	parts, ubuntu := "/etc/apt/sources.list.d", true
 	for len(args) > 1 && args[0] == "-o" {
 		if dir, ok := strings.CutPrefix(args[1], "Dir::Etc::SourceParts="); ok {
-			pgdg = s.exists(dir + "/pgdg.sources")
+			parts, ubuntu = dir, false
 		}
 		args = args[2:]
+	}
+	var pgdg bool
+	var mysql, mariadb string
+	files, _ := filepath.Glob(s.Path(parts + "/*.sources"))
+	for _, f := range files {
+		b, _ := os.ReadFile(f)
+		src := string(b)
+		switch {
+		case strings.Contains(src, "apt.postgresql.org"):
+			pgdg = true
+		case strings.Contains(src, "repo.mysql.com"):
+			if m := regexp.MustCompile(`Components: mysql-([0-9.]+)-lts`).FindStringSubmatch(src); m != nil {
+				mysql = m[1]
+			}
+		case strings.Contains(src, "dlm.mariadb.com"):
+			if m := regexp.MustCompile(`mariadb-server/([0-9.]+)/repo`).FindStringSubmatch(src); m != nil {
+				mariadb = m[1]
+			}
+		}
 	}
 	if len(args) == 0 {
 		return ""
@@ -636,10 +658,19 @@ func (s *Simulator) aptCache(args []string) string {
 		for _, p := range args[1:] {
 			v, from := "", ""
 			switch {
-			case p == "postgresql-16":
-				v, from = "16.10-0ubuntu0.24.04.1", "http://archive.ubuntu.com/ubuntu noble-updates/main"
 			case pgdg && simPGServer.MatchString(p):
 				v, from = strings.TrimPrefix(p, "postgresql-")+".1-1.pgdg24.04+2", "https://apt.postgresql.org/pub/repos/apt noble-pgdg/main"
+			case p == "mysql-server" && mysql != "":
+				v, from = mysql+".0-1ubuntu24.04", "https://repo.mysql.com/apt/ubuntu noble/mysql-"+mysql+"-lts"
+			case p == "mariadb-server" && mariadb != "":
+				v, from = "1:"+mariadb+".1+maria~ubu2404", "https://dlm.mariadb.com/repo/mariadb-server/"+mariadb+"/repo/ubuntu noble/main"
+			case !ubuntu:
+			case p == "postgresql-16":
+				v, from = "16.10-0ubuntu0.24.04.1", "http://archive.ubuntu.com/ubuntu noble-updates/main"
+			case p == "mysql-server":
+				v, from = "8.0.46-0ubuntu0.24.04.4", "http://archive.ubuntu.com/ubuntu noble-updates/main"
+			case p == "mariadb-server":
+				v, from = "1:10.11.14-0ubuntu0.24.04.1", "http://archive.ubuntu.com/ubuntu noble-updates/universe"
 			}
 			if v == "" {
 				fmt.Fprintf(&b, "%s:\n  Installed: (none)\n  Candidate: (none)\n  Version table:\n", p)
