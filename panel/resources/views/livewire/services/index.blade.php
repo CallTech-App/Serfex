@@ -37,6 +37,9 @@
             <button type="button" wire:click="$set('refused', null)" class="text-muted hover:text-fg" aria-label="{{ __('Kapat') }}"><x-icon name="x" /></button>
         </div>
     @endif
+    @if ($tab === 'php')
+        @include('livewire.components.blocker')
+    @endif
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
@@ -90,6 +93,17 @@
             </div>
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Servik\'in kendi hizmetleri (panel, ajan, panelin PostgreSQL\'i) müşteri hizmetlerinden ayrı çalışır; ajan ve panel durdurulamaz. Hizmetin günlüğü ve ayarları için adına tıklayın.') }}</p>
         @else
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-5 py-3">
+                <p class="text-[13px] text-muted">{{ __('PHP\'nin yama sürümleri Ubuntu ve ondrej/php paket depolarından gelir; paket listeleri her gece denetlenir.') }}</p>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    @if ($checkedAt)
+                        <span class="text-2xs text-muted" title="{{ \App\Support\When::dateTime(\Illuminate\Support\Carbon::parse($checkedAt)) }}">{{ __('Son denetim :checked_at', ['checked_at' => \Illuminate\Support\Carbon::parse($checkedAt)->diffForHumans()]) }}</span>
+                    @endif
+                    <button type="button" wire:click="check" wire:loading.attr="disabled" wire:target="check" @disabled($busy || $agentError) title="{{ $blocker['text'] ?? '' }}" class="flex h-9 items-center gap-2 whitespace-nowrap rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2 disabled:opacity-40">
+                        <x-icon name="refresh-cw" wire:loading.class="animate-spin" wire:target="check" />{{ __('Güncellemeleri denetle') }}
+                    </button>
+                </div>
+            </div>
             <div class="relative overflow-x-auto">
                 <table class="w-full text-[13.5px] sm:min-w-[720px]">
                     <thead>

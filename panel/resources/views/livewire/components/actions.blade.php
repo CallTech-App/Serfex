@@ -15,7 +15,7 @@
             <a href="{{ route('mail.settings') }}" wire:navigate class="{{ $link }}">{{ __('E-posta ayarları') }}</a>
         @endif
         @if ($r['latest'])
-            <button type="button" wire:click="ask('{{ $r['id'] }}', 'update')" @disabled($busy) class="{{ $link }}">{{ __('Güncelle') }}</button>
+            <button type="button" wire:click="ask('{{ $r['id'] }}', 'update')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Güncelle') }}</button>
         @endif
         @if ($r['refusal'])
             <span class="cursor-not-allowed text-[13px] text-muted opacity-50" title="{{ $r['refusal'] }}" aria-disabled="true">{{ __('Kaldır') }}</span>
@@ -32,5 +32,5 @@
         <a href="{{ route('mail.index') }}" wire:navigate class="mt-0.5 block text-2xs text-accent hover:underline">{{ __('E-postaya git') }}</a>
     @endif
 @else
-    <button type="button" wire:click="ask('{{ $r['id'] }}', 'install')" @disabled($busy) class="{{ $link }}">{{ __('Kur') }}</button>
+    <button type="button" wire:click="ask('{{ $r['id'] }}', 'install')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Kur') }}</button>
 @endif

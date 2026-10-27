@@ -299,6 +299,46 @@ class ServicesTest extends TestCase
         Queue::assertPushed(RunComponentOperation::class);
     }
 
+    public function test_php_updates_are_checked_and_wait_for_the_running_operation(): void
+    {
+        $list = $this->agent->answers['component.list'];
+        $this->agent->answers['component.check'] = function () use ($list) {
+            $list['components'][2]['latest'] = '8.4.15';
+            $this->agent->answers['component.list'] = $list;
+
+            return $list;
+        };
+
+        Livewire::test(ServiceIndex::class)
+            ->set('tab', 'php')
+            ->assertSee('Son denetim')
+            ->assertDontSee('→ 8.4.15')
+            ->call('check')
+            ->assertDispatched('toast')
+            ->assertSee('→ 8.4.15')
+            ->assertSee('Güncelleme var')
+            ->assertSeeHtml("askPhp('php8.4', 'update')");
+
+        // Another component's install holds every button and says why.
+        $op = ComponentOperation::create(['component' => 'postgresql', 'action' => 'install', 'run' => 'cpgsql', 'status' => 'running']);
+        Livewire::test(ServiceIndex::class)
+            ->set('tab', 'php')
+            ->assertSee('PostgreSQL kuruluyor.')
+            ->assertSee('Bitene kadar başka kurulum, güncelleme veya kaldırma başlatılamaz.')
+            ->assertSeeHtml('wire:click="show('.$op->id.')"')
+            ->call('show', $op->id)
+            ->assertSet('operationId', $op->id);
+
+        $op->update(['status' => 'failed', 'finished_at' => now()]);
+        Livewire::test(ServiceIndex::class)
+            ->set('tab', 'php')
+            ->assertDontSee('PostgreSQL kuruluyor.')
+            ->call('askPhp', 'php8.4', 'update')
+            ->assertSee('PHP 8.4 güncellensin mi?')
+            ->call('confirm');
+        $this->assertSame(['php8.4', 'update'], [ComponentOperation::latest('id')->first()->component, ComponentOperation::latest('id')->first()->action]);
+    }
+
     public function test_php_version_defaults_are_validated_applied_and_undone(): void
     {
         Livewire::test(PhpVersionShow::class, ['version' => '8.4'])
