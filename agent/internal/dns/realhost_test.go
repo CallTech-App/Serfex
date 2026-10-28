@@ -43,6 +43,11 @@ func (h serviceHost) Run(ctx context.Context, c host.Command) (string, error) {
 		_ = exec.Command("chown", "pdns:pdns", "/run/pdns-"+instance).Run()
 		cmd := exec.Command(pdnsBinary, "--config-name="+instance, "--guardian=no", "--daemon=no",
 			"--setuid=pdns", "--setgid=pdns", "--socket-dir=/run/pdns-"+instance)
+		if f := os.Getenv("SERFEX_PDNS_LOG"); f != "" {
+			if w, err := os.OpenFile(f, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
+				cmd.Stdout, cmd.Stderr = w, w
+			}
+		}
 		if err := cmd.Start(); err != nil {
 			return "", err
 		}

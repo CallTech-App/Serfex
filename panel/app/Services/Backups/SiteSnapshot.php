@@ -97,7 +97,9 @@ class SiteSnapshot
                 'forwarders' => $mail->forwarders->map(fn ($f) => ['name' => $f->name, 'destinations' => $f->destinations])->values()->all(),
             ],
             'dns' => $zone === null ? null : [
-                'zone' => $zone->only(['name', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum']),
+                // With its DNSSEC key, so that a restored zone keeps the DS
+                // record at the registrar valid, on this server or another.
+                'zone' => $zone->only(['name', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec', 'dnssec_key']),
                 'records' => $zone->records->map(fn ($r) => $r->only(['name', 'type', 'content', 'priority', 'ttl']))->values()->all(),
             ],
             'certificates' => $this->certificates($site)->map(fn (Certificate $c) => [

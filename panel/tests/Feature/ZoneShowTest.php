@@ -8,6 +8,7 @@ use App\Livewire\Dns\ZoneShow;
 use App\Models\DnsZone;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
+use App\Services\Dns\Zones;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -185,6 +186,68 @@ class ZoneShowTest extends TestCase
         $zone = $this->zone->fresh();
         $this->assertSame([300, 'dns@kahve.com.tr', 7200], [$zone->default_ttl, $zone->hostmaster, $zone->refresh]);
         Queue::assertPushed(SyncDnsZone::class);
+    }
+
+    public function test_dnssec_shows_the_ds_record_and_asks_before_turning_off(): void
+    {
+        $page = $this->show()
+            ->set('tab', 'settings')
+            ->assertSee('Bölgeyi imzala')
+            ->assertDontSee('Kayıt firmasına eklenecek DS kaydı')
+            ->set('dnssec', true)
+            ->call('saveSettings')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast', fn ($name, $p) => str_contains($p['message'], 'DNSSEC açılıyor') && $p['undo']['method'] === 'undo')
+            ->assertSee('Anahtar oluşturuluyor');
+        $this->assertTrue($this->zone->fresh()->dnssec);
+        $this->assertSame(['enabled' => true], $this->zone->fresh()->agentSpec()['dnssec']);
+        Queue::assertPushed(SyncDnsZone::class);
+
+        // The agent signed it and sent the key back.
+        $this->zone->update([
+            'status' => ZoneStatus::Active,
+            'dnssec_key' => "Private-key-format: v1.2\nAlgorithm: 13 (ECDSAP256SHA256)\nPrivateKey: c2VjcmV0\n",
+            'dnssec_info' => ['key_tag' => 34249, 'algorithm' => 13, 'ds' => ['34249 13 2 0808c5f8226ad554bf9ec260dd1600fca0d099149a40f4ebaef69cb3e3155d69', '34249 13 4 8d1e87'], 'dnskey' => '257 3 13 u6J0IISi7zOFewuOTb4OV9Dtjk=='],
+        ]);
+        $page->call('$refresh')
+            ->assertSee('Kayıt firmasına eklenecek DS kaydı')
+            ->assertSee('34249')
+            ->assertSee('0808C5F8226AD554BF9EC260DD1600FCA0D099149A40F4EBAEF69CB3E3155D69')
+            ->assertSee('u6J0IISi7zOFewuOTb4OV9Dtjk==')
+            ->assertDontSee('c2VjcmV0');
+        $this->assertSame('kahve.com.tr. IN DS 34249 13 2 0808c5f8226ad554bf9ec260dd1600fca0d099149a40f4ebaef69cb3e3155d69', $this->zone->fresh()->dsRecord()['record']);
+        $this->assertStringContainsString('PrivateKey: c2VjcmV0', $this->zone->fresh()->agentSpec()['dnssec']['key']);
+        $this->assertArrayNotHasKey('dnssec_key', $this->zone->fresh()->toArray());
+
+        // Off only after confirming; the key stays for later.
+        $page->set('dnssec', false)
+            ->call('saveSettings')
+            ->assertSet('confirmingDnssecOff', true)
+            ->call('keepDnssec')
+            ->assertSet('dnssec', true);
+        $this->assertTrue($this->zone->fresh()->dnssec);
+        $page->set('dnssec', false)
+            ->call('saveSettings')
+            ->call('confirmDnssecOff')
+            ->assertSet('confirmingDnssecOff', false)
+            ->assertDispatched('toast', fn ($name, $p) => str_contains($p['message'], 'DNSSEC kapatıldı'));
+        $zone = $this->zone->fresh();
+        $this->assertFalse($zone->dnssec);
+        $this->assertNull($zone->dsRecord());
+        $this->assertSame(false, $zone->agentSpec()['dnssec']['enabled']);
+        $this->assertNotEmpty($zone->agentSpec()['dnssec']['key']);
+    }
+
+    public function test_undo_brings_dnssec_and_its_key_back_to_a_deleted_zone(): void
+    {
+        $this->zone->update(['dnssec' => true, 'dnssec_key' => 'Private-key-format: v1.2']);
+        $zones = app(Zones::class);
+        $token = $zones->delete($this->zone)[$this->zone->id];
+        $this->zone->delete();
+
+        $restored = $zones->undo($token);
+        $this->assertTrue($restored->dnssec);
+        $this->assertSame('Private-key-format: v1.2', $restored->fresh()->dnssec_key);
     }
 
     public function test_exports_a_zone_file(): void

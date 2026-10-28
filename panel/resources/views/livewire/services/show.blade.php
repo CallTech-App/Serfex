@@ -119,9 +119,11 @@
                                         <input id="set-{{ $key }}" type="checkbox" wire:model="settings.{{ $key }}" @disabled(! $running) class="size-4 accent-accent">
                                         {{ __('Açık') }}
                                     </label>
-                                @elseif ($kind === 'list')
-                                    <textarea id="set-{{ $key }}" wire:model="settings.{{ $key }}" rows="3" @disabled(! $running) placeholder="192.0.2.10&#10;2001:db8::/48"
-                                              class="w-full rounded-md border border-line bg-surface px-2.5 py-2 font-mono text-[13px] sm:w-80"></textarea>
+                                @elseif ($kind === 'link')
+                                    <p id="set-{{ $key }}" class="font-mono text-[13px] leading-6 md:pt-2">
+                                        @forelse ($current[$key] ?? [] as $address) {{ $address }}<br> @empty <span class="font-sans text-muted">{{ __('Yok') }}</span> @endforelse
+                                    </p>
+                                    <a href="{{ route('dns.settings') }}#secondaries" wire:navigate class="mt-1 inline-block text-[13px] text-accent hover:underline">{{ __('Sunucu DNS ayarlarında değiştir') }}</a>
                                 @else
                                     <div class="flex items-center gap-2">
                                         <input id="set-{{ $key }}" type="text" inputmode="{{ $key === 'worker_processes' ? 'text' : 'numeric' }}" wire:model="settings.{{ $key }}" @disabled(! $running)
