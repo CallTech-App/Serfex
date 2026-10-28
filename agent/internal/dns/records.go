@@ -51,6 +51,8 @@ type ZoneSpec struct {
 	Zone    string   `json:"zone"`
 	SOA     SOA      `json:"soa"`
 	Records []Record `json:"records"`
+	// DNSSEC is the signing wanted; nil leaves it as it is.
+	DNSSEC *DNSSECSpec `json:"dnssec,omitempty"`
 }
 
 // RRSet is all records of one name and type, in PowerDNS's terms: Name is

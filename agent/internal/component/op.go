@@ -533,6 +533,27 @@ func (o *op) update() (err error) {
 	return o.finish(true)
 }
 
+// upgrade moves a database server to its next major version; the
+// database package checks, backs up, verifies and rolls back.
+func (o *op) upgrade() error {
+	if o.c.choices == nil {
+		return invalid("%s has no major versions to upgrade to", o.c.id)
+	}
+	if !o.c.isInstalled(o.m) {
+		return invalid("%s is not installed", o.c.id)
+	}
+	_, err := o.m.db.Upgrade(o.ctx, database.UpgradeSpec{Product: o.c.id, To: o.version, Log: o.w, Fail: o.failpoint})
+	return err
+}
+
+// removeOld deletes the old version a database server's upgrade kept.
+func (o *op) removeOld() error {
+	if o.c.choices == nil {
+		return invalid("%s keeps no old versions", o.c.id)
+	}
+	return o.m.db.RemoveOld(o.ctx, o.c.id, o.w)
+}
+
 // packageInstalled asks dpkg whether a package is installed.
 func (m *Manager) packageInstalled(ctx context.Context, pkg string) bool {
 	if sim, ok := m.h.(*host.Simulator); ok {
@@ -551,6 +572,11 @@ func (m *Manager) versions(ctx context.Context, pkgs []string) map[string]string
 	if m.sim {
 		for _, p := range pkgs {
 			out[p] = simVersions[p]
+			if product, ok := strings.CutSuffix(p, "-server"); ok {
+				if v := database.SimVersion(m.h, product); v != "" {
+					out[p] = v
+				}
+			}
 		}
 		return out
 	}

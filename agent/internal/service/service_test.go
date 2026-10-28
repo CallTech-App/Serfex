@@ -10,6 +10,7 @@ import (
 
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/tuning"
+	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
 func newTest(t *testing.T, files ...string) (*Manager, *host.Simulator) {
@@ -343,19 +344,23 @@ func TestPowerDNSSettings(t *testing.T) {
 	if err != nil || got.PowerDNS == nil || got.PowerDNS.CacheTTL != 20 || got.PowerDNS.NegativeTTL != 60 || got.PowerDNS.LogQueries || got.PowerDNS.AXFRAllow == nil {
 		t.Fatalf("defaults: %+v %v", got.PowerDNS, err)
 	}
+	// Secondary servers are set on the DNS settings page (dns.secondaries.set);
+	// whatever this page sends, the allowed addresses stay.
+	if err := tuning.Save(txn.New(sim), tuning.Settings{PowerDNS: tuning.PowerDNS{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"192.0.2.10", "2001:db8::/48"}, Catalog: "catalog.example.invalid."}}); err != nil {
+		t.Fatal(err)
+	}
 	got, err = m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &tuning.PowerDNS{
-		CacheTTL: 60, NegativeTTL: 30, LogQueries: true,
-		AXFRAllow: []string{" 192.0.2.10 ", "2001:db8::1/48", "192.0.2.10", ""},
+		CacheTTL: 60, NegativeTTL: 30, LogQueries: true, AXFRAllow: []string{"198.51.100.1"},
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p := got.PowerDNS; p.CacheTTL != 60 || !p.LogQueries || strings.Join(p.AXFRAllow, ",") != "192.0.2.10,2001:db8::/48" {
+	if p := got.PowerDNS; p.CacheTTL != 60 || !p.LogQueries || strings.Join(p.AXFRAllow, ",") != "192.0.2.10,2001:db8::/48" || p.Catalog != "catalog.example.invalid." {
 		t.Errorf("after apply: %+v", p)
 	}
 	b, _ := os.ReadFile(sim.Path(pdnsConf))
-	want := "# Managed by Serfex. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# Zone transfers (to secondary name servers), caching and query logging\n# are changed on the panel's Hizmetler page.\ndisable-axfr=no\nversion-string=anonymous\n" +
-		"allow-axfr-ips=192.0.2.10,2001:db8::/48\ncache-ttl=60\nnegquery-cache-ttl=30\nlog-dns-queries=yes\nloglevel=5\n"
+	want := "# Managed by Serfex. Manual changes are overwritten.\nlaunch=lmdb\napi-key=secret\n\n# Secondary name servers are set on the panel's Server DNS settings page;\n# caching and query logging on its Services page.\ndisable-axfr=no\nversion-string=anonymous\n" +
+		"allow-axfr-ips=192.0.2.10,2001:db8::/48\nprimary=yes\nalso-notify=192.0.2.10\ncache-ttl=60\nnegquery-cache-ttl=30\nlog-dns-queries=yes\nloglevel=5\n"
 	if string(b) != want {
 		t.Errorf("pdns-serfex.conf:\n%s", b)
 	}
@@ -366,12 +371,12 @@ func TestPowerDNSSettings(t *testing.T) {
 		t.Errorf("commands: %v", sim.Commands())
 	}
 
-	// Back to no transfers; lines already there are replaced in place.
+	// Lines already there are replaced in place.
 	if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &tuning.PowerDNS{CacheTTL: 20, NegativeTTL: 60}}); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(sim.Path(pdnsConf))
-	if !strings.Contains(string(b), "\ndisable-axfr=yes\nversion-string=anonymous\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\n") {
+	if !strings.Contains(string(b), "\ndisable-axfr=no\nversion-string=anonymous\nallow-axfr-ips=192.0.2.10,2001:db8::/48\nprimary=yes\nalso-notify=192.0.2.10\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\n") {
 		t.Errorf("pdns-serfex.conf:\n%s", b)
 	}
 
@@ -393,11 +398,30 @@ func TestPowerDNSSettings(t *testing.T) {
 	for _, bad := range []tuning.PowerDNS{
 		{CacheTTL: -1, NegativeTTL: 60},
 		{CacheTTL: 20, NegativeTTL: 100000},
-		{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"ns2.example.net"}},
-		{CacheTTL: 20, NegativeTTL: 60, AXFRAllow: []string{"192.0.2.0/33"}},
 	} {
 		if _, err := m.ApplySettings(ctx, SettingsSpec{Unit: "pdns@serfex", PowerDNS: &bad}); !errors.As(err, &v) {
 			t.Errorf("%+v: %v", bad, err)
 		}
+	}
+}
+
+func TestOldClusterKeptByAnUpgradeIsNotListed(t *testing.T) {
+	m, sim := newTest(t, "/etc/postgresql/16/main/postgresql.conf", "/etc/postgresql/18/main/postgresql.conf", "/etc/postgresql/16/serfex/postgresql.conf")
+	if err := os.WriteFile(sim.Path("/etc/postgresql/16/main/start.conf"), []byte("# Automatic startup configuration\nmanual\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sim.Path("/etc/postgresql/18/main/start.conf"), []byte("auto\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	units := map[string]bool{}
+	list, err := m.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range list {
+		units[s.Unit] = true
+	}
+	if !units["postgresql@18-main"] || units["postgresql@16-main"] || !units["postgresql@16-serfex"] {
+		t.Errorf("units %v", units)
 	}
 }

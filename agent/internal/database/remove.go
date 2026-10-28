@@ -41,6 +41,12 @@ func (m *Manager) Remove(ctx context.Context, productName string, w io.Writer) (
 	if !ok || have.name != p.name {
 		return invalid("%s is not installed", productName)
 	}
+	if m.Upgrading() == p.server {
+		return ErrUpgrading
+	}
+	if k, ok := m.loadKept()[p.name]; ok {
+		return invalid("%s %s is kept from the last upgrade; remove the old version first", label(k.Product), k.From)
+	}
 	p = have
 	st, err := m.loadState()
 	if err != nil {

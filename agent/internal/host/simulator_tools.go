@@ -130,6 +130,29 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 			return "", err
 		}
 		return "", os.WriteFile(s.Path(dir+"/postgresql.conf"), nil, 0o644)
+	case c.Name == "pg_upgradecluster" && len(args) >= 4 && args[0] == "-v":
+		// pg_upgradecluster -v NEW [OPTIONS] OLD NAME: the new cluster gets
+		// the old one's settings; the old one moves to another port and
+		// starts only by hand.
+		oldDir := "/etc/postgresql/" + args[len(args)-2] + "/" + args[len(args)-1]
+		newDir := "/etc/postgresql/" + args[1] + "/" + args[len(args)-1]
+		conf, err := os.ReadFile(s.Path(oldDir + "/postgresql.conf"))
+		if err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(s.Path(newDir)); err == nil {
+			return "", fmt.Errorf("target cluster %s already exists", newDir)
+		}
+		if err := os.MkdirAll(s.Path(newDir+"/conf.d"), 0o755); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(s.Path(newDir+"/postgresql.conf"), conf, 0o644); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(s.Path(oldDir+"/postgresql.conf"), append(conf, "port = 5434\n"...), 0o644); err != nil {
+			return "", err
+		}
+		return "", os.WriteFile(s.Path(oldDir+"/start.conf"), []byte("manual\n"), 0o644)
 	case c.Name == "dd":
 		// dd of=FILE status=none (stdin is written to FILE)
 		for _, a := range args {

@@ -47,6 +47,8 @@ of JSON-RPC 2.0. Errors use JSON-RPC codes plus Serfex's own:
 | -32008 | A file manager operation was refused |
 | -32009 | ModSecurity is not installed |
 | -32010 | The web server refused the configuration (output included) |
+| -32011 | The certificate authority could not be reached |
+| -32012 | The database server is being upgraded to a new major version |
 
 Messages are translated: the agent reads the request's language and answers
 in Turkish or English.
@@ -91,7 +93,7 @@ in Turkish or English.
 | Monitoring and statistics | `monitor.live`, `monitor.limit.apply`, `monitor.limit.remove`, `monitor.limits`, `stats.collect` |
 | Security | `firewall.block`, `firewall.unblock`, `firewall.list`, `firewall.rules`, `firewall.rules.apply`, `waf.site.apply`, `waf.events`, `scan.run`, `scan.files`, `scan.fix`, `fail2ban.status`, `fail2ban.refresh`, `fail2ban.ban`, `fail2ban.unban`, `ssh.status`, `ssh.apply` |
 | Services | `service.list`, `service.action`, `service.logs`, `service.settings`, `service.settings.apply` |
-| Software | `component.list`, `component.check`, `component.install`, `component.update`, `component.remove`, `component.configure`, `component.extension`, `component.run.read` |
+| Software | `component.list`, `component.check`, `component.install`, `component.update`, `component.upgrade`, `component.remove-old`, `component.remove`, `component.configure`, `component.extension`, `component.run.read` |
 | Backups | `backup.create`, `backup.restore`, `backup.status`, `backup.read`, `backup.run.read`, `backup.delete`, `backup.fetch`, `backup.import`, `backup.scan`, `backup.inspect`, `backup.member.read`, `backup.upload.write`, `backup.target.test` |
 | Panel and updates | `panel.setup`, `panel.web.status`, `panel.web.ports`, `update.status`, `update.check`, `update.start`, `update.rollback`, `update.run.read` |
 

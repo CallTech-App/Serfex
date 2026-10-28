@@ -146,9 +146,15 @@ func (m *Manager) clusters() [][2]string {
 	var out [][2]string
 	for _, d := range dirs {
 		v, name := filepath.Base(filepath.Dir(d)), filepath.Base(d)
-		if clusterRe.MatchString(v) && (name == "main" || name == "serfex") {
-			out = append(out, [2]string{v, name})
+		if !clusterRe.MatchString(v) || (name != "main" && name != "serfex") {
+			continue
 		}
+		// The old customers' cluster a major upgrade keeps for a while
+		// is stopped on purpose (start.conf "manual"): not a service.
+		if b, err := os.ReadFile(filepath.Join(d, "start.conf")); name == "main" && err == nil && startsManually(string(b)) {
+			continue
+		}
+		out = append(out, [2]string{v, name})
 	}
 	if m.sim && len(out) == 0 {
 		// A dry run stands in for an installed server, which has the
@@ -157,6 +163,18 @@ func (m *Manager) clusters() [][2]string {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i][0]+out[i][1] < out[j][0]+out[j][1] })
 	return out
+}
+
+// startsManually reads a cluster's start.conf: "manual" or "disabled".
+func startsManually(conf string) bool {
+	for _, line := range strings.Split(conf, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		return line == "manual" || line == "disabled"
+	}
+	return false
 }
 
 // Manager reads and controls services.

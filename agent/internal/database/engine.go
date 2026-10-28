@@ -37,6 +37,14 @@ type engine interface {
 	createWithCredential(ctx context.Context, name string, c Credential) error
 	// loadDump runs the SQL read from r in an empty database.
 	loadDump(ctx context.Context, name string, r io.Reader, wrap func(host.Command) host.Command) error
+	// rowCounts counts the rows of every table of a database, by table
+	// name (an upgrade compares them before and after).
+	rowCounts(ctx context.Context, db string) (map[string]int64, error)
+	// maintenance stops (on) or allows again customers' changes while an
+	// upgrade runs: PostgreSQL ends their connections (Serfex's
+	// pg_hba.conf lets nobody else in by then), MySQL and MariaDB go
+	// read-only.
+	maintenance(ctx context.Context, on bool) error
 }
 
 // Listing is what a server holds: customer databases with their size and

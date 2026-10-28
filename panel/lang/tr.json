@@ -2,5 +2,7 @@
     "Başlangıç (saldırı)": "Başlangıç",
     "Kur (iki adımlı doğrulama)": "Kur",
     "Açık (bulgu)": "Açık",
-    "Açık (uygulama)": "Açık"
+    "Açık (uygulama)": "Açık",
+    "Açık (DNSSEC)": "Açık",
+    "Kapalı (DNSSEC)": "Kapalı"
 }

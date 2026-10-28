@@ -88,7 +88,7 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Managed by Serfex", "launch=lmdb", "api=yes", "webserver-address=127.0.0.1", "disable-axfr=yes\nallow-axfr-ips=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\nversion-string=anonymous"} {
+	for _, want := range []string{"Managed by Serfex", "launch=lmdb", "api=yes", "webserver-address=127.0.0.1", "disable-axfr=yes\nallow-axfr-ips=\nprimary=no\nalso-notify=\ncache-ttl=20\nnegquery-cache-ttl=60\nlog-dns-queries=no\nloglevel=4\nversion-string=anonymous"} {
 		if !strings.Contains(string(conf), want) {
 			t.Errorf("config lacks %q:\n%s", want, conf)
 		}
@@ -245,8 +245,8 @@ func TestApplyZoneCreatesUpdatesAndIsIdempotent(t *testing.T) {
 	if !strings.Contains(info.SOA, " 7200 ") {
 		t.Errorf("SOA = %s", info.SOA)
 	}
-	if mem.Zones()[0] != "kahveatolyesi.com.tr." {
-		t.Errorf("zones = %v", mem.Zones())
+	if mem.ZoneNames()[0] != "kahveatolyesi.com.tr." {
+		t.Errorf("zones = %v", mem.ZoneNames())
 	}
 }
 
@@ -274,8 +274,8 @@ func TestDeleteZone(t *testing.T) {
 	if err != nil || !res.Deleted {
 		t.Fatalf("delete = %+v, %v", res, err)
 	}
-	if len(mem.Zones()) != 0 {
-		t.Fatalf("zones left: %v", mem.Zones())
+	if len(mem.ZoneNames()) != 0 {
+		t.Fatalf("zones left: %v", mem.ZoneNames())
 	}
 	res, err = m.DeleteZone(ctx, "kahveatolyesi.com.tr")
 	if err != nil || res.Deleted {

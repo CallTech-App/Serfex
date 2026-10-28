@@ -184,6 +184,11 @@ type Status struct {
 	Settings map[string]any `json:"settings,omitempty"`
 	// Default marks the Node.js line builds use.
 	Default bool `json:"default,omitempty"`
+	// Upgrade is the major version an installed database server can be
+	// upgraded to (component.upgrade), Kept the old version an upgrade
+	// keeps until component.remove-old or its time is up.
+	Upgrade *database.UpgradeOffer `json:"upgrade,omitempty"`
+	Kept    *database.Kept         `json:"kept,omitempty"`
 }
 
 // List is every component's status.
@@ -257,6 +262,10 @@ func (m *Manager) List(ctx context.Context) List {
 			if c.isDefault != nil {
 				s.Default = c.isDefault(m)
 			}
+			if c.choices != nil {
+				s.Upgrade = m.db.Offer(id, s.Version)
+				s.Kept = m.db.KeptVersion(id)
+			}
 		} else {
 			var cand aptcache.Candidate
 			switch {
@@ -296,6 +305,9 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 	if !m.op.TryLock() {
 		return List{}, ErrBusy
 	}
+	// Old database server versions kept after an upgrade go when their
+	// time is up.
+	m.db.PruneKept(ctx, nil)
 	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv}); err != nil {
 		m.op.Unlock()
 		return List{}, opError(fmt.Errorf("apt-get update failed: %w", err))
@@ -370,7 +382,7 @@ type OpSpec struct {
 	// Port is the web database manager's port, for database servers.
 	Port int `json:"port,omitempty"`
 	// Version is the major version a database server is installed in
-	// (one of its Choices; "" for the default).
+	// (one of its Choices; "" for the default), or upgraded to.
 	Version string `json:"version,omitempty"`
 }
 
@@ -393,6 +405,17 @@ func (m *Manager) Remove(ctx context.Context, spec OpSpec) (Result, error) {
 // Update installs a component's newest version.
 func (m *Manager) Update(ctx context.Context, spec OpSpec) (Result, error) {
 	return m.operate(ctx, spec, "update")
+}
+
+// Upgrade moves a database server to the next major version Serfex
+// offers, keeping its data (database.Manager.Upgrade).
+func (m *Manager) Upgrade(ctx context.Context, spec OpSpec) (Result, error) {
+	return m.operate(ctx, spec, "upgrade")
+}
+
+// RemoveOld deletes the old version an upgrade kept.
+func (m *Manager) RemoveOld(ctx context.Context, spec OpSpec) (Result, error) {
+	return m.operate(ctx, spec, "remove-old")
 }
 
 func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Result, error) {
@@ -428,6 +451,10 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		err = o.install()
 	case "remove":
 		err = o.remove()
+	case "upgrade":
+		err = o.upgrade()
+	case "remove-old":
+		err = o.removeOld()
 	default:
 		err = o.update()
 	}
@@ -435,7 +462,7 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		fmt.Fprintf(w, "✗ %s\n", lastLine(err.Error()))
 		return Result{}, opError(err)
 	}
-	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi"}[action]))
+	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi", "upgrade": "Yükseltildi", "remove-old": "Eski sürüm kaldırıldı"}[action]))
 	for _, s := range m.List(ctx).Components {
 		if s.ID == c.id {
 			return Result{Action: action, Status: s}, nil

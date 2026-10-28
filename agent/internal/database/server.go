@@ -94,8 +94,11 @@ type ServerStatus struct {
 	Running bool   `json:"running"`
 	Version string `json:"version,omitempty"`
 	// Remote is true while it accepts connections from other machines.
-	Remote bool   `json:"remote"`
-	Error  string `json:"error,omitempty"`
+	Remote bool `json:"remote"`
+	// Upgrading is true while it is being upgraded to a new major
+	// version (component.upgrade); its databases cannot be used.
+	Upgrading bool   `json:"upgrading,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // Status describes the database servers and the web manager.
@@ -115,6 +118,11 @@ func (m *Manager) Status(ctx context.Context) Status {
 			continue
 		}
 		s := ServerStatus{Installed: true, Product: p.name}
+		if m.Upgrading() == server {
+			s.Upgrading, s.Error = true, ErrUpgrading.Error()
+			st.Servers[server] = s
+			continue
+		}
 		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		v, err := m.engines[server].version(ctx)
 		cancel()
@@ -173,6 +181,9 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 
 	if have, ok := m.installedProduct(p.server); ok && have.name != p.name {
 		return InstallResult{}, invalid("%s is installed; MySQL and MariaDB cannot run on the same server", have.name)
+	}
+	if m.Upgrading() == p.server {
+		return InstallResult{}, ErrUpgrading
 	}
 	res = InstallResult{Server: p.server, Product: p.name}
 	dataExisted := m.exists(p.dataDir)

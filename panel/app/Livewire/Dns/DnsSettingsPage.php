@@ -8,6 +8,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Dns\DnsSettings;
 use App\Services\Dns\NameserverIps;
+use App\Services\Dns\Secondaries;
 use App\Services\Dns\Zones;
 use App\Services\Dns\ZoneTemplate;
 use App\Support\DnsRecords;
@@ -18,7 +19,8 @@ use Livewire\Component;
 
 /**
  * Server-wide DNS settings: name servers, addresses and SOA defaults for
- * new zones, and the records every new zone starts with.
+ * new zones, the records every new zone starts with, and the secondary
+ * name servers that copy every zone.
  */
 #[Layout('components.layouts.app')]
 #[Title('Sunucu DNS ayarları · Serfex')]
@@ -59,8 +61,20 @@ class DnsSettingsPage extends Component
     /** @var array{ipv4: list<string>, ipv6: list<string>} */
     public array $detected = ['ipv4' => [], 'ipv6' => []];
 
-    public function mount(DnsSettings $settings, ZoneTemplate $template, AgentClient $agent): void
+    /** Secondary name servers' addresses, one per line. */
+    public string $secondaries = '';
+
+    /**
+     * What the agent reports for the secondaries; null while the DNS
+     * server cannot answer.
+     *
+     * @var array{addresses: list<string>, notify: list<string>, catalog: string, zones: int}|null
+     */
+    public ?array $secondaryState = null;
+
+    public function mount(DnsSettings $settings, ZoneTemplate $template, AgentClient $agent, Secondaries $secondaries): void
     {
+        $this->useSecondaries($secondaries->get());
         $template->detectAddresses();
         $this->nameservers = implode(', ', $settings->nameservers());
         $this->nameserverIps = $this->ipRows($settings->nameserverIps());
@@ -172,6 +186,59 @@ class DnsSettingsPage extends Component
             .($moved ? ' '.trans_choice(':count bölgede ad sunucusunun A kaydı yeni adrese taşındı.', $moved) : ''));
     }
 
+    public function saveSecondaries(Secondaries $secondaries): void
+    {
+        $list = Secondaries::lines($this->secondaries);
+        if (count($list) > Secondaries::MAX) {
+            $this->addError('secondaries', __('En fazla :max adres girilebilir.', ['max' => Secondaries::MAX]));
+
+            return;
+        }
+        foreach ($list as $address) {
+            if (! Secondaries::isAddress($address)) {
+                $this->addError('secondaries', __(':address bir IP adresi ya da ağı değil.', ['address' => $address]));
+
+                return;
+            }
+        }
+        $before = $this->secondaryState['addresses'] ?? [];
+        $result = $secondaries->set($list);
+        if (is_string($result)) {
+            $this->addError('secondaries', __('Kaydedilemedi, DNS sunucusu önceki ayarlarla çalışıyor: :result', ['result' => $result]));
+
+            return;
+        }
+        if ($result['addresses'] === $before) {
+            $this->useSecondaries($result);
+            $this->dispatch('toast', message: __('Değişiklik yok.'));
+
+            return;
+        }
+        $this->useSecondaries($result);
+        $this->dispatch('toast',
+            message: $result['addresses'] === []
+                ? __('İkincil ad sunucuları kaldırıldı; bölgeler artık aktarılmıyor.')
+                : trans_choice(':count bölge ikincil ad sunucularına açıldı ve onlara bildirildi.', $result['zones']),
+            source: $this->getId(),
+            undo: ['method' => 'undoSecondaries', 'args' => [$before]],
+        );
+    }
+
+    /**
+     * @param  list<string>  $addresses
+     */
+    public function undoSecondaries(array $addresses, Secondaries $secondaries): void
+    {
+        $result = $secondaries->set(array_values(array_filter($addresses, 'is_string')));
+        if (is_string($result)) {
+            $this->addError('secondaries', __('Önceki ayarlar geri yüklenemedi: :result', ['result' => $result]));
+
+            return;
+        }
+        $this->useSecondaries($result);
+        $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
+    }
+
     public function openAdd(): void
     {
         $this->openRecordForm(defaultTtl: $this->defaultTtl);
@@ -259,6 +326,16 @@ class DnsSettingsPage extends Component
             'example' => $template->nameservers('ornek.com.tr'),
             'server' => Setting::get('dns.server', []),
         ]);
+    }
+
+    /**
+     * @param  array{addresses: list<string>, notify: list<string>, catalog: string, zones: int}|null  $state
+     */
+    private function useSecondaries(?array $state): void
+    {
+        $this->secondaryState = $state;
+        $this->secondaries = implode("\n", $state['addresses'] ?? []);
+        $this->resetErrorBag('secondaries');
     }
 
     /**

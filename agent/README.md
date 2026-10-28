@@ -73,7 +73,7 @@ lists every method by area.
 | `mail.queue` | | Postfix's queue: counts, messages grouped by sender domain, the oldest 200 messages |
 | `mail.queue.flush` | | retries every deferred message now |
 | `mail.queue.hold` / `mail.queue.release` | `domain` | holds a sender domain's queued messages (those being delivered right now finish their attempt) or releases them (`""` for bounces); returns `messages` |
-| `db.status` | | per server (`mysql`, `postgresql`): `installed`, `product`, `running`, `version`, `remote`; and the web manager's `manager` (`configured`, `port`, `phpmyadmin`, `adminer`) |
+| `db.status` | | per server (`mysql`, `postgresql`): `installed`, `product`, `running`, `version`, `remote`, `upgrading` (during `component.upgrade`); and the web manager's `manager` (`configured`, `port`, `phpmyadmin`, `adminer`) |
 | `db.server.install` | `product` (`mysql`, `mariadb` or `postgresql`) | installs the server if missing, configures and starts it; a failed fresh install is removed again. MySQL and MariaDB exclude each other. Returns `server`, `product`, `installed`, `version` |
 | `db.manager.setup` | `port` | installs phpMyAdmin and/or Adminer for the installed servers and serves them from `serfex-web` on `port` (default 8443) |
 | `db.manager.login` | `server`, `database` | a one-time `path` on the manager's `port` (valid one minute) that opens the database with a temporary user (removed after four hours) |
@@ -82,10 +82,12 @@ lists every method by area.
 | `db.user.apply` | `server`, `name`, `password`, `hosts`, `grants` | creates or changes a user: `password` (empty keeps it), remote `hosts` besides this server (`%`, an IPv4 address, `10.8.0.%`, a CIDR or an IPv6 address), `grants` (`database`, `access`: `all`, `readwrite`, `readonly`) replace the previous ones |
 | `db.user.delete` | `server`, `name` | removes a user |
 | `db.list` | `server` | the customer databases with `size` and `tables`, and the users with their remote `hosts` |
-| `component.list` | | every optional component (`id`, `installed`, `version`, `latest` when an update is available, `running`, `units`, `busy`, `used_by`, `required`, `settings`, `default`) and `checked_at` |
+| `component.list` | | every optional component (`id`, `installed`, `version`, `latest` when an update is available, `running`, `units`, `busy`, `used_by`, `required`, `settings`, `default`; database servers also `choices`, `upgrade` (`from`, `to`) and `kept` (`from`, `to`, `old`, `dump`, `until`)) and `checked_at` |
 | `component.check` | | refreshes the package lists and the newest Node.js and Composer versions, then lists like `component.list` |
 | `component.install` | `id`, `run`, `port` (database servers: the web manager's port) | installs or repairs a component, writing each step to the run log; a failed install is rolled back. Returns `action`, `status` |
 | `component.update` | `id`, `run` | installs the newest version; the previous configuration comes back if the service does not start |
+| `component.upgrade` | `id`, `run`, `version` (the major version in `upgrade.to`) | upgrades a customers' database server to a newer major version Serfex allows (PostgreSQL to the newest, MySQL and MariaDB one LTS at a time): disk check, maintenance mode, a full dump with row counts, the new version (PostgreSQL: `pg_upgradecluster` copy mode beside the old cluster; MySQL/MariaDB: in place after a cold copy of the data directory, old packages saved), every database, user and row count checked; any failure puts the old version back. The old cluster or data directory is kept for 7 days (`kept`); database calls on that server get `-32012` meanwhile |
+| `component.remove-old` | `id`, `run` | deletes the old version an upgrade kept (PostgreSQL's packages only when no other cluster uses them); the dumps stay 30 days |
 | `component.remove` | `id`, `run` | archives the configuration, stops and purges the component; refused with `-32004` while something uses it |
 | `component.configure` | `id`, `settings` (`modsecurity_mode`: `detect` or `block`, `modsecurity_paranoia`: 1-4) | applies new settings; the previous ones come back if Nginx refuses them |
 | `component.run.read` | `run`, `offset` | the next part of an operation's log: `data`, `offset`, `size`, `done` |

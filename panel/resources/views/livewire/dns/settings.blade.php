@@ -125,6 +125,96 @@
         </form>
     </section>
 
+    @php
+        $sec = $secondaryState;
+        $catalog = $sec['catalog'] ?? '';
+        $primary = $ipv4 !== '' ? $ipv4 : ($detected['ipv4'][0] ?? '203.0.113.10');
+    @endphp
+    <section id="secondaries" class="rounded-xl border border-line bg-surface">
+        <form wire:submit="saveSecondaries" class="max-w-3xl px-5 py-5 text-[13.5px]">
+            <h2 class="text-[14.5px] font-semibold">{{ __('İkincil ad sunucuları') }}</h2>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Bölgeleriniz başka bir DNS sunucusuna da kopyalanır; bu sunucu yanıt veremezse alan adları ikinci sunucudan çözülmeye devam eder.') }}</p>
+            @if ($sec === null)
+                <p class="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-[13px]">
+                    <x-t text="DNS sunucusu çalışmıyor ya da kurulmadı. Durumu ve kurulumu :link sayfasında."><x-slot:link><a href="{{ route('dns.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Alan Adları ve DNS') }}</a></x-slot:link></x-t>
+                </p>
+            @else
+                <div class="mt-2 divide-y divide-line">
+                    <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                        <label for="secondaries-field" class="sm:pt-2">{{ __('İkincil sunucuların adresleri') }}</label>
+                        <div>
+                            <textarea id="secondaries-field" wire:model="secondaries" rows="3" spellcheck="false" placeholder="192.0.2.53&#10;2001:db8::53"
+                                      class="w-full rounded-md border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-accent sm:w-80 {{ $errors->has('secondaries') ? 'border-crit' : 'border-line' }}"></textarea>
+                            @error('secondaries')
+                                <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
+                            @else
+                                <p class="mt-1.5 text-2xs text-muted">{{ __('Her satıra bir IP adresi ya da ağ. Yalnızca bunlar bölgeleri aktarabilir (AXFR); tek adreslere her değişiklik anında bildirilir (NOTIFY), ağlar SOA yenileme süresinde denetler. Boşsa bölgeler kimseye aktarılmaz. Kaydedince DNS sunucusu bir iki saniyeliğine yeniden başlar.') }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                    @if ($sec['addresses'] !== [])
+                        <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                            <span>{{ __('Durum') }}</span>
+                            <p>
+                                <span class="text-ok">{{ trans_choice(':count bölge aktarılabilir', $sec['zones']) }}</span>
+                                @if ($sec['notify'] !== [])
+                                    <span class="text-muted">· {{ __('bildirim:') }}</span> <span class="font-mono text-[13px]">{{ implode(', ', $sec['notify']) }}</span>
+                                @endif
+                            </p>
+                        </div>
+                        <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                            <span>{{ __('Katalog bölgesi') }}</span>
+                            <div>
+                                <span class="font-mono text-[13px] break-all">{{ $catalog }}</span>
+                                <p class="mt-1 text-2xs text-muted">{{ __('Tüm alan adlarınızın listesi (RFC 9432). İkincil sunucu bu bölgeyi okursa yeni alan adlarını bir dakika içinde kendiliğinden ekler, silinenleri kaldırır.') }}</p>
+                            </div>
+                        </div>
+                    @endif
+                    <div class="grid items-center gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                        <span>{{ __('Birincil sunucu adresi') }}</span>
+                        <p><span class="font-mono text-[13px]">{{ $primary }}</span> <span class="text-2xs text-muted">{{ __('İkincil sunucuya bölgeleri buradan alacağını yazın.') }}</span></p>
+                    </div>
+                </div>
+                <details class="mt-2">
+                    <summary class="cursor-pointer py-2 text-[13px] text-accent">{{ __('İkincil sunucu nasıl ayarlanır?') }}</summary>
+                    <ol class="mt-1 list-decimal space-y-3 pl-5 text-[13px]">
+                        <li>{{ __('İkincil sunucunun adresini yukarıya yazıp kaydedin.') }}</li>
+                        @if ($catalog === '')
+                            <li>{{ __('Kaydettikten sonra burada bu sunucuya göre hazırlanmış BIND ve PowerDNS ayarları görünür.') }}</li>
+                        @else
+                        <li>
+                            {{ __('BIND 9.18 ya da daha yenisi: aşağıdakileri named.conf.options içindeki options bölümüne ve named.conf.local dosyasına ekleyip BIND\'i yeniden yükleyin. Bölgeler ve sonradan eklenenler kendiliğinden gelir.') }}
+                            <pre class="scroll-thin mt-1.5 overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-[12px] leading-5">// {{ __('named.conf.options, options bölümünün içine') }}
+catalog-zones {
+    zone "{{ $catalog }}" default-primaries { {{ $primary }}; };
+};
+
+// named.conf.local
+zone "{{ $catalog }}" {
+    type secondary;
+    file "/var/cache/bind/{{ $catalog }}.db";
+    primaries { {{ $primary }}; };
+};</pre>
+                        </li>
+                        <li>
+                            {{ __('PowerDNS 4.7 ya da daha yenisi: ayarlarda secondary=yes olsun, sonra şu iki komutu çalıştırın. Başka bir Serfex sunucusu şimdilik ikincil sunucu olamaz.') }}
+                            <pre class="scroll-thin mt-1.5 overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-[12px] leading-5">pdnsutil create-secondary-zone {{ $catalog }} {{ $primary }}
+pdnsutil set-kind {{ $catalog }} consumer</pre>
+                        </li>
+                        @endif
+                        <li>{{ __('Katalog bölgesini desteklemeyen bir ikincil DNS hizmetinde her alan adını ikincil bölge olarak ekleyin ve birincil sunucu olarak yukarıdaki adresi girin; yeni alan adlarını orada da eklemeniz gerekir.') }}</li>
+                        <li>{{ __('İkincil sunucunun adını alan adlarının NS kayıtlarına ve kayıt firmasındaki ad sunucularına ekleyin; yalnızca listelenen ad sunucuları sorgu alır.') }}</li>
+                    </ol>
+                </details>
+                <div class="mt-5">
+                    <button type="submit" wire:loading.attr="disabled" wire:target="saveSecondaries" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 font-medium text-accent-fg hover:brightness-110 disabled:opacity-60">
+                        <x-icon name="loader-circle" class="animate-spin" wire:loading wire:target="saveSecondaries" />{{ __('Kaydet ve uygula') }}
+                    </button>
+                </div>
+            @endif
+        </form>
+    </section>
+
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
             <h2 class="mr-auto text-[14.5px] font-semibold">{{ __('Yeni alan adları için kayıt şablonu') }}</h2>
