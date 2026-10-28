@@ -575,6 +575,9 @@ func registerLaravel(srv *rpc.Server, svc services) {
 	handle(srv, "laravel.deploy", func(ctx context.Context, p laravel.DeploySpec) (any, error) { return l.Deploy(ctx, p) })
 	handle(srv, "laravel.rollback", func(ctx context.Context, p laravel.RollbackSpec) (any, error) { return l.Rollback(ctx, p) })
 	handle(srv, "laravel.run", func(ctx context.Context, p laravel.RunSpec) (any, error) { return l.Run(ctx, p) })
+	handle(srv, "laravel.package.install", func(ctx context.Context, p laravel.PackageSpec) (any, error) { return l.InstallPackage(ctx, p) })
+	handle(srv, "laravel.setup", func(ctx context.Context, p laravel.SetupSpec) (any, error) { return l.Setup(ctx, p) })
+	handle(srv, "laravel.version", func(ctx context.Context, p laravel.VersionSpec) (any, error) { return l.Version(ctx, p) })
 	handle(srv, "site.tool.run", func(ctx context.Context, p laravel.SiteRunSpec) (any, error) { return l.SiteRun(ctx, p) })
 	handle(srv, "site.tool.scan", func(ctx context.Context, p laravel.Target) (any, error) { return l.SiteScan(ctx, p) })
 	handle(srv, "laravel.run.read", func(_ context.Context, q struct {

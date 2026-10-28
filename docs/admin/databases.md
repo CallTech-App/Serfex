@@ -81,7 +81,7 @@ Customers can turn it on in their own databases. **Turn off** drops it only
 while no column or index uses it; nothing is dropped with it. Both can be
 undone.
 
-Servers installed before Serfex 0.1.46 get the package with the next
+Servers installed before Serfex 0.1.45 get the package with the next
 **Update** of PostgreSQL, or when the extension is first turned on. Updates
 upgrade pgvector too, and a major-version upgrade installs the new version's
 pgvector package first, so databases that use it upgrade like any other.

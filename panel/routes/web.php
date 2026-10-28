@@ -55,6 +55,8 @@ use App\Livewire\Services\ServiceIndex;
 use App\Livewire\Services\ServiceShow;
 use App\Livewire\Settings\AdminIndex;
 use App\Livewire\Settings\ApiKeyIndex;
+use App\Livewire\Settings\AppTemplateIndex;
+use App\Livewire\Settings\AppTemplateShow;
 use App\Livewire\Settings\AuditLogPage;
 use App\Livewire\Settings\GeneralSettings;
 use App\Livewire\Settings\GitProviderSettings;
@@ -213,6 +215,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
             Route::livewire('/settings/admins', AdminIndex::class)->name('settings.admins');
             Route::livewire('/settings/api', ApiKeyIndex::class)->name('settings.api');
             Route::livewire('/settings/git-providers', GitProviderSettings::class)->name('settings.git');
+            Route::livewire('/settings/app-templates', AppTemplateIndex::class)->name('settings.templates');
+            Route::livewire('/settings/app-templates/{template}', AppTemplateShow::class)->whereNumber('template')->name('settings.templates.show');
             Route::livewire('/settings/audit-log', AuditLogPage::class)->name('settings.audit');
             Route::livewire('/settings/updates', UpdatesPage::class)->name('settings.updates');
             Route::get('/settings/updates/progress/{run}', UpdateProgressController::class)->where('run', 'upd-[a-z0-9]{20}')->name('settings.updates.progress');

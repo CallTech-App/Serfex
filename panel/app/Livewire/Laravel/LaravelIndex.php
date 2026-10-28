@@ -3,6 +3,7 @@
 namespace App\Livewire\Laravel;
 
 use App\Enums\SiteStatus;
+use App\Livewire\Concerns\InstallsAppTemplate;
 use App\Livewire\Concerns\PicksGitRepository;
 use App\Models\Customer;
 use App\Models\Database;
@@ -28,6 +29,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -38,7 +40,9 @@ use Livewire\WithPagination;
 #[Title('Laravel · Serfex')]
 class LaravelIndex extends Component
 {
+    use InstallsAppTemplate;
     use PicksGitRepository;
+    use WithFileUploads;
     use WithPagination;
 
     /** Git hosts offered in the wizard: label and host name. */
@@ -172,7 +176,8 @@ class LaravelIndex extends Component
             return;
         }
         $this->reset('step', 'siteId', 'source', 'kit', 'provider', 'repository', 'private', 'branch', 'phpVersion', 'database', 'dbDriver', 'dbHost',
-            'dbPort', 'dbName', 'dbUser', 'dbPassword', 'newDbSuffix', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError', 'typeAddress', 'remoteKeyId', 'keyError');
+            'dbPort', 'dbName', 'dbUser', 'dbPassword', 'newDbSuffix', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError', 'typeAddress', 'remoteKeyId', 'keyError',
+            'templateId', 'answers', 'uploads', 'adminName', 'adminEmail');
         $this->resetPicker();
         $this->resetValidation();
         $this->installing = true;
@@ -201,6 +206,49 @@ class LaravelIndex extends Component
         if ($site !== null) {
             $this->phpVersion = $site->php_version;
         }
+        if ($this->source === 'template') {
+            $this->prepareTemplateForm($site);
+        }
+    }
+
+    public function updatedSource(): void
+    {
+        if ($this->source === 'template') {
+            $this->templateId = $this->templateId !== '' ? $this->templateId : (string) ($this->installableTemplates()->first()?->id ?? '');
+            $this->updatedTemplateId();
+        }
+    }
+
+    public function updatedTemplateId(): void
+    {
+        $this->resetValidation();
+        $this->prepareTemplateForm($this->siteId ? Site::visibleTo(auth()->user())->find($this->siteId) : null);
+    }
+
+    /**
+     * From a template: its database, code and setup come from it; only
+     * the site and the template's questions are asked.
+     */
+    private function installTemplate(): void
+    {
+        $template = $this->pickedTemplate();
+        if ($template === null) {
+            $this->addError('templateId', __('Bir şablon seçin.'));
+
+            return;
+        }
+        $this->validate(['siteId' => $this->rules()['siteId']] + $this->templateRules($template), [
+            'siteId.required' => __('Bir site seçin.'),
+        ], $this->templateAttributes($template));
+        $site = Site::visibleTo(auth()->user())->with('systemUser.customer')->findOrFail($this->siteId);
+        if (($refusal = $this->templateRefusal($template, $site)) !== null) {
+            $this->agentError = $refusal;
+
+            return;
+        }
+        $app = $this->startTemplateInstall($template, $site);
+        session()->flash('toast', __('Kurulum başladı. Adımları bu sayfada canlı izleyebilirsiniz.'));
+        $this->redirectRoute('laravel.show', $app, navigate: true);
     }
 
     public function updatedDbDriver(): void
@@ -213,6 +261,11 @@ class LaravelIndex extends Component
      */
     public function install(AgentClient $agent, LaravelApps $apps, Quotas $quotas, GitAccounts $accounts, GitProviders $providers): void
     {
+        if ($this->source === 'template') {
+            $this->installTemplate();
+
+            return;
+        }
         $picked = null;
         if ($this->pickingFrom() !== null) {
             $picked = $this->pickedRepository();
@@ -442,6 +495,9 @@ class LaravelIndex extends Component
             'canInstall' => auth()->user()->is_admin || auth()->user()->isCustomer(),
             'picker' => $this->installing ? $this->picker() : null,
             'hosts' => $this->installing ? $this->gitHosts() : [],
+            'templates' => $this->installing ? $this->installableTemplates() : collect(),
+            'picked' => $picked = ($this->installing && $this->source === 'template' ? $this->pickedTemplate() : null),
+            'summary' => $picked ? $this->templateSummary($picked, $this->freeSites()->firstWhere('id', $this->siteId)) : '',
         ]);
     }
 
@@ -478,7 +534,7 @@ class LaravelIndex extends Component
 
         return [
             'siteId' => ['required', Rule::exists('sites', 'id')->where('status', SiteStatus::Active->value), Rule::unique('laravel_apps', 'site_id')],
-            'source' => ['required', Rule::in(['create', 'git'])],
+            'source' => ['required', Rule::in(['create', 'git', 'template'])],
             'kit' => [Rule::in(array_keys(LaravelApps::STARTER_KITS))],
             'provider' => [Rule::in(array_keys(self::PROVIDERS))],
             'repository' => ['required_if:source,git', 'nullable', 'max:300', 'regex:'.LaravelApps::REPOSITORY_PATTERN],

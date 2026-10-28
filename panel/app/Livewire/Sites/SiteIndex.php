@@ -5,6 +5,7 @@ namespace App\Livewire\Sites;
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Livewire\Attributes\ForCustomers;
+use App\Livewire\Concerns\InstallsAppTemplate;
 use App\Models\BackupItem;
 use App\Models\Customer;
 use App\Models\DnsZone;
@@ -25,6 +26,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
@@ -32,6 +34,8 @@ use Livewire\WithPagination;
 #[ForCustomers]
 class SiteIndex extends Component
 {
+    use InstallsAppTemplate;
+    use WithFileUploads;
     use WithPagination;
 
     #[Url(as: 'q', except: '')]
@@ -85,7 +89,7 @@ class SiteIndex extends Component
 
     public function openCreate(AgentClient $agent, Quotas $quotas): void
     {
-        $this->reset('domain', 'systemUser', 'phpVersion', 'address', 'agentError', 'userEdited');
+        $this->reset('domain', 'systemUser', 'phpVersion', 'address', 'agentError', 'userEdited', 'templateId', 'answers', 'uploads', 'adminName', 'adminEmail');
         $this->resetValidation();
         $this->creating = true;
         $this->updatedCustomerId();
@@ -136,12 +140,31 @@ class SiteIndex extends Component
     public function updatedCustomerId(): void
     {
         $customer = $this->customer();
+        if ($this->templateId !== '' && $customer !== null) {
+            $this->adminName = $customer->displayName();
+            $this->adminEmail = (string) $customer->email;
+        }
         if ($customer !== null) {
             $this->systemUser = $customer->username;
             $this->userEdited = true;
         } elseif (auth()->user()->is_admin && $this->userEdited && $this->systemUser !== '' && Customer::where('username', $this->systemUser)->exists()) {
             $this->systemUser = Hostnames::suggestUser(Hostnames::normalize($this->domain));
             $this->userEdited = false;
+        }
+    }
+
+    /**
+     * "Uygulama": the template's questions, with the customer's name and
+     * e-mail, and its PHP version when the server has it.
+     */
+    public function updatedTemplateId(): void
+    {
+        $this->resetValidation();
+        $customer = $this->customer();
+        $this->prepareTemplateForm(null, $customer?->displayName(), $customer?->email, Hostnames::normalize($this->domain));
+        $php = $this->pickedTemplate()?->php_version;
+        if ($php && in_array($php, $this->phpVersions, true)) {
+            $this->phpVersion = $php;
         }
     }
 
@@ -153,6 +176,7 @@ class SiteIndex extends Component
             $this->systemUser = $customer->username;
         }
         $this->systemUser = trim($this->systemUser);
+        $template = $this->pickedTemplate();
 
         $this->validate([
             'domain' => [
@@ -167,7 +191,8 @@ class SiteIndex extends Component
             ],
             'phpVersion' => ['required', Rule::in($this->phpVersions)],
             'address' => ['required', Rule::in([...Site::PREFERRED, 'only'])],
-        ], [
+            'templateId' => ['nullable', Rule::in($this->installableTemplates()->pluck('id')->map(fn ($id) => (string) $id)->all())],
+        ] + ($template !== null ? $this->templateRules($template) : []), [
             'domain.unique' => __('Bu alan adı zaten bir siteye ait.'),
             'systemUser.regex' => __('Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).'),
             'systemUser.not_in' => __('Bu ad sisteme ayrılmış, başka bir ad seçin.'),
@@ -175,7 +200,7 @@ class SiteIndex extends Component
             'domain' => __('alan adı'),
             'systemUser' => __('sistem kullanıcısı'),
             'phpVersion' => __('PHP sürümü'),
-        ]);
+        ] + ($template ? $this->templateAttributes($template) : []));
 
         // An account that belongs to a customer takes the site to that
         // customer, within their package.
@@ -196,6 +221,12 @@ class SiteIndex extends Component
 
             return;
         }
+        if ($template !== null && ($refusal = $quotas->refusal($owner, 'laravel_apps')
+            ?? (in_array($template->database, ['mysql', 'postgresql'], true) ? $quotas->refusal($owner, 'databases') : null))) {
+            $this->agentError = $refusal;
+
+            return;
+        }
 
         if (! $agent->ping()) {
             $this->agentError = __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.');
@@ -205,6 +236,16 @@ class SiteIndex extends Component
 
         $only = $this->address === 'only';
         $site = $creator->create($this->domain, $this->systemUser, $this->phpVersion, ! $only, $customer, $owner, $only ? Site::PREFER_BARE : $this->address);
+
+        // With an application: it is installed once the site is ready, and
+        // its page shows that live.
+        if ($template !== null) {
+            $app = $this->startTemplateInstall($template, $site->load('systemUser.customer'));
+            session()->flash('toast', __(':domain oluşturuluyor; ardından :template kurulacak.', ['domain' => $site->domain, 'template' => $template->name]));
+            $this->redirectRoute('laravel.show', $app, navigate: true);
+
+            return;
+        }
 
         $this->creating = false;
         $this->dispatch('toast',
@@ -288,6 +329,9 @@ class SiteIndex extends Component
             'sites' => $sites,
             'traffic' => $traffic,
             'customers' => $user->is_admin && $this->creating ? Customer::orderByRaw('lower(coalesce(company, name))')->get(['id', 'company', 'name']) : collect(),
+            'templates' => $this->creating ? $this->installableTemplates() : collect(),
+            'picked' => $picked = ($this->creating ? $this->pickedTemplate() : null),
+            'summary' => $picked ? $this->templateSummary($picked, null) : '',
             'busy' => $sites->getCollection()->contains(fn (Site $s) => $s->status->isBusy()),
         ]);
     }

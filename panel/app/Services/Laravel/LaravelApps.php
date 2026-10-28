@@ -5,6 +5,7 @@ namespace App\Services\Laravel;
 use App\Enums\DeploymentStatus;
 use App\Enums\LaravelAppStatus;
 use App\Jobs\DeployLaravelApp;
+use App\Jobs\InstallFromTemplate;
 use App\Jobs\ProvisionSite;
 use App\Jobs\RemoveLaravelApp;
 use App\Jobs\RollbackLaravelApp;
@@ -100,7 +101,13 @@ class LaravelApps
     {
         $app->update(['status' => LaravelAppStatus::Installing, 'last_error' => null]);
         $deployment = $this->newDeployment($app, 'install', $app->branch, $user, $app->migrate, $app->frontend);
-        DeployLaravelApp::dispatch($deployment);
+        // A template's install (its database, answers and setup) starts over
+        // where it stopped.
+        if ($app->app_template_id !== null && ($app->template_setup !== null || $app->isPackage())) {
+            InstallFromTemplate::dispatch($deployment);
+        } else {
+            DeployLaravelApp::dispatch($deployment);
+        }
 
         return $deployment;
     }
@@ -149,6 +156,14 @@ class LaravelApps
         DeployLaravelApp::dispatch($deployment);
 
         return $deployment;
+    }
+
+    /**
+     * A deployment of a new release, not queued: the caller runs it.
+     */
+    public function newDeploy(LaravelApp $app, ?string $ref, ?string $triggeredBy): LaravelDeployment
+    {
+        return $this->newDeployment($app, 'deploy', $ref ?: $app->branch, null, $app->migrate, $app->frontend, $triggeredBy);
     }
 
     /**

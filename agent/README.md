@@ -45,6 +45,9 @@ lists every method by area.
 | `laravel.deploy` | target, `run`, `release`, `source`, `build`, `hooks`, `env`, `health`, `rollback`, `keep`, `seed_from` | builds a release, switches `current` to it, checks health and rolls back on failure; returns `release`, `commit`, `laravel`, `health`, `rolled_back`, `problem` |
 | `laravel.rollback` | target, `run`, `release` | switches `current` back to an earlier release |
 | `laravel.run` | app, `run`, `tool`, `args` | runs Artisan, Composer, npm, pnpm or bun as the site's user; with `run` it writes a log instead of returning the output |
+| `laravel.package.install` | app, `run`, `url`, `headers`, `sha256`, `env`, `files`, `version_file`, `replace` | downloads a release zip (HTTPS, at most 512 MB), refuses unsafe entries, unpacks it as the site's user into the app's empty directory and writes `.env` and the given files (0600); returns `version`, `sha256`, `bytes`, `files` |
+| `laravel.setup` | app, `run`, `commands`, `redact` | runs the template's setup commands (Artisan, Composer, npm…) one after the other into the same log, hiding the `redact` values; returns `failed` (-1 when all succeeded) and `exit_code` |
+| `laravel.version` | app, `file` | the version the application keeps in a file (default `VERSION`) |
 | `laravel.run.read` | `domain`, `run`, `offset` | the next part of a run's log: `data`, `offset`, `size`, `done` |
 | `laravel.status` | app | `exists`, `current`, `releases`, `maintenance`, `workers`, `schedule` |
 | `laravel.env.get` / `laravel.env.set` | app (+ `content`) | reads or writes the shared `.env`, then rebuilds the config cache and restarts workers |

@@ -25,7 +25,7 @@ use Illuminate\Support\Str;
     'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
     'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
     'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id', 'redis_port', 'redis_password',
-    'git_account_id', 'remote_repository', 'remote_key_id', 'remote_hook_id'])]
+    'git_account_id', 'remote_repository', 'remote_key_id', 'remote_hook_id', 'app_template_id', 'template_version', 'template_setup'])]
 class LaravelApp extends Model
 {
     /** @use HasFactory<LaravelAppFactory> */
@@ -36,7 +36,7 @@ class LaravelApp extends Model
     /** Where the live release of an application Serfex deploys is. */
     public const MANAGED_PATH = 'laravel/current';
 
-    protected $hidden = ['install_env', 'deploy_key', 'webhook_token', 'redis_password'];
+    protected $hidden = ['install_env', 'deploy_key', 'webhook_token', 'redis_password', 'template_setup'];
 
     protected $attributes = [
         'status' => 'installing',
@@ -91,6 +91,7 @@ class LaravelApp extends Model
             'maintenance_on' => 'boolean',
             'backup_before_deploy' => 'boolean',
             'redis_password' => 'encrypted',
+            'template_setup' => 'encrypted:array',
         ];
     }
 
@@ -110,6 +111,25 @@ class LaravelApp extends Model
     public function gitAccount(): BelongsTo
     {
         return $this->belongsTo(GitAccount::class);
+    }
+
+    /**
+     * The application template it was installed from, if any.
+     *
+     * @return BelongsTo<AppTemplate, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(AppTemplate::class, 'app_template_id');
+    }
+
+    /**
+     * True when it was installed from a release package: it updates
+     * itself, Serfex never deploys it.
+     */
+    public function isPackage(): bool
+    {
+        return $this->source === 'package';
     }
 
     /**

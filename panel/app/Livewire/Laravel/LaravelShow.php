@@ -7,7 +7,9 @@ use App\Models\LaravelApp;
 use App\Models\LaravelPreview;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\Previews;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Crypt;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -50,7 +52,7 @@ class LaravelShow extends Component
     /** Sections a preview environment does not have. */
     public const NOT_IN_PREVIEWS = ['previews', 'backups', 'access'];
 
-    protected const VIEW_METHODS = ['show', 'refreshStatus'];
+    protected const VIEW_METHODS = ['show', 'refreshStatus', 'dismissAdmin'];
 
     protected const MANAGE_METHODS = ['openRemove', 'remove'];
 
@@ -74,6 +76,14 @@ class LaravelShow extends Component
     public string $confirmDomain = '';
 
     /**
+     * The first administrator an application template created, shown
+     * once after the install started: name, email, password, template.
+     *
+     * @var array{name: string, email: string, password: string, template: string}|null
+     */
+    public ?array $adminShown = null;
+
+    /**
      * Takes the id rather than a bound model, like SiteShow: a removed
      * application then sends the browser back to the list instead of a 404.
      */
@@ -85,6 +95,22 @@ class LaravelShow extends Component
         if ($this->component($this->section) === null) {
             $this->section = 'overview';
         }
+        $admin = session('template_admin');
+        if (is_string($admin)) {
+            try {
+                $admin = Crypt::decrypt($admin);
+            } catch (DecryptException) {
+                $admin = null;
+            }
+            if (is_array($admin) && ($admin['app'] ?? null) === $model->id) {
+                $this->adminShown = array_intersect_key($admin, array_flip(['name', 'email', 'password', 'template']));
+            }
+        }
+    }
+
+    public function dismissAdmin(): void
+    {
+        $this->adminShown = null;
     }
 
     #[On('show-section')]
@@ -199,7 +225,7 @@ class LaravelShow extends Component
 
     protected function app(): ?LaravelApp
     {
-        return LaravelApp::with('site.systemUser', 'site.certificate', 'previewOf.site')->find($this->appId);
+        return LaravelApp::with('site.systemUser', 'site.certificate', 'previewOf.site', 'template')->find($this->appId);
     }
 
     /**
