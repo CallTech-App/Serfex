@@ -106,6 +106,8 @@ class BackupIndex extends Component
 
     public int $sKeepMonthly = 3;
 
+    public int $sDeleteDays = 30;
+
     public string $sTarget = '';
 
     public bool $sKeepLocal = false;
@@ -237,7 +239,9 @@ class BackupIndex extends Component
         }
         $this->restoreBackupId = $backup->id;
         $this->restoreItemId = $item->id;
-        $this->restoreParts = array_values(array_intersect(['files', 'databases'], $item->restorable())) ?: $item->restorable();
+        // A site that is gone comes back whole.
+        $this->restoreParts = app(Restores::class)->siteFor($item) === null ? $item->restorable()
+            : (array_values(array_intersect(['files', 'databases'], $item->restorable())) ?: $item->restorable());
         $this->safety = true;
         $this->resetValidation();
         $this->restoring = true;
@@ -406,9 +410,10 @@ class BackupIndex extends Component
             'sKeepDaily' => ['required', 'integer', 'between:0,90'],
             'sKeepWeekly' => ['required', 'integer', 'between:0,52'],
             'sKeepMonthly' => ['required', 'integer', 'between:0,60'],
+            'sDeleteDays' => ['required', 'integer', 'between:1,365'],
             'sTarget' => ['nullable', Rule::in(BackupTarget::pluck('id')->map(fn ($id) => (string) $id)->all())],
             'sSkip.*' => ['string'],
-        ], ['sTime.regex' => __('Saati SS:DD biçiminde yazın, örneğin 03:00.')], ['sKeepDaily' => __('günlük'), 'sKeepWeekly' => __('haftalık'), 'sKeepMonthly' => __('aylık')]);
+        ], ['sTime.regex' => __('Saati SS:DD biçiminde yazın, örneğin 03:00.')], ['sKeepDaily' => __('günlük'), 'sKeepWeekly' => __('haftalık'), 'sKeepMonthly' => __('aylık'), 'sDeleteDays' => __('gün')]);
         $exclude = collect(preg_split('/[\r\n,]+/', $this->sExclude))->map(fn ($p) => trim($p))->filter()->values();
         foreach ($exclude as $pattern) {
             if (! preg_match('/^[^\x00-\x1f\'"\\\\]{1,200}$/', $pattern) || str_starts_with($pattern, '-')) {
@@ -427,6 +432,7 @@ class BackupIndex extends Component
             'keep_daily' => $this->sKeepDaily,
             'keep_weekly' => $this->sKeepWeekly,
             'keep_monthly' => $this->sKeepMonthly,
+            'delete_days' => $this->sDeleteDays,
             'target_id' => $this->sTarget === '' ? null : (int) $this->sTarget,
             'keep_local' => $this->sKeepLocal,
             'encrypt' => $this->sEncrypt,
@@ -775,6 +781,7 @@ class BackupIndex extends Component
         $this->sKeepDaily = (int) $s['keep_daily'];
         $this->sKeepWeekly = (int) $s['keep_weekly'];
         $this->sKeepMonthly = (int) $s['keep_monthly'];
+        $this->sDeleteDays = (int) $s['delete_days'];
         $this->sTarget = $s['target_id'] === null ? '' : (string) $s['target_id'];
         $this->sKeepLocal = (bool) $s['keep_local'];
         $this->sEncrypt = (bool) $s['encrypt'];

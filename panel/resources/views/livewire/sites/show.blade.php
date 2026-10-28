@@ -124,6 +124,14 @@
         </div>
     @endif
 
+    @if ($backingUp)
+        <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
+            <span class="absolute inset-y-0 left-0 w-1 bg-info"></span>
+            <x-icon name="archive" class="text-info" />
+            <p class="min-w-0 flex-1">{{ __('Silmeden önce sitenin yedeği alınıyor. Yedek bitince site silinir.') }}</p>
+        </div>
+    @endif
+
     @if ($site->status === \App\Enums\SiteStatus::Failed)
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
             <span class="absolute inset-y-0 left-0 w-1 bg-crit"></span>
@@ -224,7 +232,17 @@
     <x-modal :title="__('Siteyi sil')" show="deleting" size="max-w-md">
         <form wire:submit="delete" class="p-5 text-[13.5px]">
             <p class="font-semibold"><x-t text=":domain silinsin mi?"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t></p>
-            <p class="mt-1 text-[13px] text-muted"><x-t text="Nginx ve PHP-FPM ayarları ile :document_root içindeki tüm dosyalar silinir. Bu işlem geri alınamaz."><x-slot:document_root><span class="font-mono">{{ $site->document_root ? dirname($site->document_root) : __('site klasörü') }}</span></x-slot:document_root></x-t></p>
+            <p class="mt-1 text-[13px] text-muted"><x-t text="Nginx ve PHP-FPM ayarları ile :document_root içindeki tüm dosyalar silinir."><x-slot:document_root><span class="font-mono">{{ $site->document_root ? dirname($site->document_root) : __('site klasörü') }}</span></x-slot:document_root></x-t></p>
+            @if ($noRoom !== null)
+                <p class="mt-3 rounded-md bg-warn-soft px-3 py-2 text-[13px] text-warn">{{ $noRoom }} {{ __('Site yedek alınmadan silinir ve geri getirilemez.') }}</p>
+            @elseif (auth()->user()->is_admin)
+                <label class="mt-3 flex items-start gap-2 text-[13px]">
+                    <input type="checkbox" wire:model.live="backup" class="mt-0.5 size-4 shrink-0 accent-accent">
+                    <span>{{ __('Silmeden önce yedek al') }}<span class="block text-[12.5px] text-muted">{{ $backup ? __('Dosyalar, veritabanları, e-posta ve DNS :days gün Yedekler\'de saklanır; oradan geri yüklenebilir.', ['days' => $deleteDays]) : __('Yedek alınmazsa site geri getirilemez.') }}</span></span>
+                </label>
+            @else
+                <p class="mt-3 text-[13px] text-muted">{{ __('Silmeden önce sitenin yedeği alınır ve :days gün Yedekler\'de saklanır.', ['days' => $deleteDays]) }}</p>
+            @endif
             @if ($otherSites === 0)
                 <label class="mt-3 flex items-center gap-2 text-[13px]">
                     <input type="checkbox" wire:model="removeUser" class="size-4 accent-accent">

@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\SiteStatus;
+use App\Jobs\DeleteSite;
 use App\Jobs\PurgeBackup;
+use App\Jobs\PurgeCustomer;
 use App\Jobs\RestoreBackup;
 use App\Jobs\RunBackup;
 use App\Jobs\SyncDnsZone;
 use App\Livewire\Backups\BackupIndex;
+use App\Livewire\Sites\SiteIndex;
+use App\Livewire\Sites\SiteShow;
 use App\Models\Backup;
 use App\Models\BackupItem;
 use App\Models\BackupRestore;
@@ -28,7 +33,9 @@ use App\Services\Backups\BackupSettings;
 use App\Services\Backups\Restores;
 use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
+use App\Services\Dns\Zones;
 use App\Services\Mail\MailSettings;
+use App\Support\When;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Process;
@@ -72,7 +79,7 @@ class BackupsTest extends TestCase
             'backup.delete' => ['deleted' => true],
             'backup.upload.write' => fn ($p) => ['size' => $p['offset'] + strlen(base64_decode($p['data']))],
             'backup.target.test' => ['ok' => true],
-            'backup.status' => ['path' => '/var/lib/serfex/backups', 'used' => 4096, 'total' => 1 << 30, 'free' => 1 << 29, 'public_key' => 'ssh-ed25519 AAAAC3Nza serfex-backup', 'busy' => false],
+            'backup.status' => ['path' => '/var/lib/serfex/backups', 'used' => 4096, 'total' => 1 << 34, 'free' => 1 << 33, 'public_key' => 'ssh-ed25519 AAAAC3Nza serfex-backup', 'busy' => false],
             'backup.run.read' => ['data' => "▸ Yedek başladı\n✓ Yedek tamamlandı\n", 'offset' => 40, 'size' => 40],
             'site.apply' => ['uid' => 1001, 'home' => '/home/kahve', 'document_root' => '/home/kahve/web/kahveatolyesi.com.tr/public_html'],
             'php.versions' => ['8.3', '8.4'],
@@ -532,5 +539,157 @@ class BackupsTest extends TestCase
 
         $this->get('/sites/'.$this->site->id)->assertOk()->assertSee('Son yedek')->assertSee(route('backups.index', ['site' => $this->site->id]), false);
         $this->get('/backups?site='.$this->site->id)->assertOk()->assertSee('sitesinin yedekleri')->assertSee('İndir');
+    }
+
+    public function test_a_site_is_backed_up_before_it_is_deleted_and_undo_brings_it_back(): void
+    {
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String()]);
+        $this->fullSite();
+        $page = Livewire::test(SiteShow::class, ['site' => $this->site->id])
+            ->call('openDelete')->set('confirmDomain', 'kahveatolyesi.com.tr')->call('delete');
+        $job = Queue::pushed(DeleteSite::class)->first();
+        $this->assertSame([true, 'backups', auth()->id()], [$job->backup, $job->connection, $job->userId]);
+        $job->handle($this->agent, app(Zones::class));
+
+        $this->assertNull($this->site->fresh());
+        $page->call('refreshStatus')->assertRedirect(route('sites.index'));
+        $toast = session('toast');
+        $this->assertSame("Site silindi. Yedeği 30 gün Yedekler'de saklanır.", $toast['message']);
+        $this->assertSame(['sites.site-index', 'restoreDeleted'], [$toast['undo']['name'], $toast['undo']['method']]);
+        $this->assertSame('sites.site-index', Livewire::test(SiteIndex::class)->instance()->getName());
+        $methods = $this->agent->methods();
+        $this->assertLessThan(array_search('site.delete', $methods, true), array_search('backup.create', $methods, true));
+        $create = $this->agent->called('backup.create')[0];
+        $this->assertSame(['kahve_shop'], array_column($create['items'][0]['databases'], 'name'));
+        $this->assertTrue($create['items'][0]['mail']);
+        $this->assertArrayNotHasKey('target', $create);
+        $backup = Backup::firstOrFail();
+        $this->assertSame(['site', 'delete', 'succeeded', null], [$backup->scope, $backup->trigger, $backup->status, $backup->target_id]);
+        $this->assertSame('Silme öncesi', $backup->triggerLabel());
+        $item = $backup->items()->firstOrFail();
+        $this->assertNull($item->site_id);
+        $this->assertSame(['files', 'databases', 'mail', 'dns'], $item->restorable());
+        $this->get('/backups')->assertOk()->assertSee('Silme öncesi')->assertSee('kahveatolyesi.com.tr');
+        // The queued removals of the zone and the mail ran.
+        DnsZone::query()->delete();
+        MailDomain::query()->delete();
+
+        Livewire::test(BackupIndex::class)->call('openRestore', $backup->id)->assertSet('restoreParts', ['files', 'databases', 'mail', 'dns']);
+        Livewire::test(SiteIndex::class)->call('restoreDeleted', ...$toast['undo']['args'])->assertDispatched('toast');
+        $restore = BackupRestore::firstOrFail();
+        $this->assertSame(['files', 'databases', 'mail', 'dns'], $restore->parts);
+        Queue::assertPushed(RestoreBackup::class);
+        app(Restores::class)->run($restore);
+
+        $this->assertSame('succeeded', $restore->fresh()->status, (string) $restore->fresh()->error);
+        $site = Site::where('domain', 'kahveatolyesi.com.tr')->firstOrFail();
+        $this->assertSame('kahve_shop', Database::where('site_id', $site->id)->value('name'));
+        $this->assertSame(['info'], MailDomain::where('name', $site->domain)->first()->mailboxes()->pluck('name')->all());
+        $this->assertSame(2, DnsZone::where('name', $site->domain)->first()->records()->count());
+    }
+
+    public function test_nothing_is_deleted_when_the_backup_before_it_fails(): void
+    {
+        $this->agent->answers['backup.create'] = AgentException::rpcError('backup.create', -32000, 'no space left on device');
+        $this->site->update(['status' => SiteStatus::Deleting]);
+
+        (new DeleteSite($this->site, backup: true))->handle($this->agent, app(Zones::class));
+
+        $site = $this->site->fresh();
+        $this->assertSame(SiteStatus::Failed, $site->status);
+        $this->assertSame('Silmeden önce yedek alınamadı, site silinmedi: no space left on device', $site->last_error);
+        $this->assertNotContains('site.delete', $this->agent->methods());
+        // The failed backup is no way back; it goes.
+        $this->assertSame(0, Backup::count());
+        $this->assertCount(1, $this->agent->called('backup.delete'));
+    }
+
+    public function test_without_room_for_the_backup_the_dialog_says_so_and_the_job_refuses(): void
+    {
+        $this->agent->answers['backup.status'] = ['free' => 2 << 30, 'used' => 0, 'total' => 10 << 30, 'public_key' => '', 'busy' => false];
+        $this->site->update(['disk_bytes' => 3 << 30]);
+
+        $this->assertStringContainsString('yeterli boş alan yok', (string) app(Backups::class)->noRoomBeforeDelete($this->site));
+        Livewire::test(SiteShow::class, ['site' => $this->site->id])
+            ->call('openDelete')
+            ->assertSet('backup', false)
+            ->assertSee('yeterli boş alan yok')
+            ->assertSee('yedek alınmadan silinir')
+            ->set('confirmDomain', 'kahveatolyesi.com.tr')
+            ->call('delete');
+        Queue::assertPushed(DeleteSite::class, fn ($job) => ! $job->backup);
+
+        $this->site->update(['status' => SiteStatus::Deleting]);
+        (new DeleteSite($this->site, backup: true))->handle($this->agent, app(Zones::class));
+        $this->assertSame(SiteStatus::Failed, $this->site->fresh()->status);
+        $this->assertStringContainsString('yeterli boş alan yok', $this->site->fresh()->last_error);
+        $this->assertNotContains('site.delete', $this->agent->methods());
+
+        $this->agent->answers['backup.status'] = ['free' => 5 << 30];
+        $this->assertNull(app(Backups::class)->noRoomBeforeDelete($this->site));
+    }
+
+    public function test_administrators_may_skip_the_backup_and_customers_may_not(): void
+    {
+        Livewire::test(SiteShow::class, ['site' => $this->site->id])
+            ->call('openDelete')
+            ->assertSet('backup', true)
+            ->assertSee('Silmeden önce yedek al')
+            ->assertSee('30 gün')
+            ->set('backup', false)
+            ->set('confirmDomain', 'kahveatolyesi.com.tr')
+            ->call('delete');
+        Queue::assertPushed(DeleteSite::class, fn ($job) => ! $job->backup && $job->connection === null);
+
+        $customer = Customer::factory()->withLogin()->create(['username' => 'klinik']);
+        $mine = Site::factory()->for(app(Customers::class)->account($customer))->create(['domain' => 'klinikmavi.com', 'provisioned_at' => now()]);
+        $this->actingAs($customer->user);
+        Livewire::test(SiteShow::class, ['site' => $mine->id])
+            ->call('openDelete')
+            ->assertDontSee('Silmeden önce yedek al<')
+            ->assertSee('Silmeden önce sitenin yedeği alınır')
+            ->set('backup', false)
+            ->set('confirmDomain', 'klinikmavi.com')
+            ->call('delete');
+        Queue::assertPushed(DeleteSite::class, fn ($job) => $job->site->is($mine) && $job->backup && $job->connection === 'backups' && $job->userId === $customer->user->id);
+    }
+
+    public function test_deleting_a_customer_with_their_sites_backs_each_up(): void
+    {
+        $customer = Customer::factory()->withLogin()->create(['username' => 'klinik']);
+        Site::factory()->for(app(Customers::class)->account($customer))->create(['domain' => 'klinikmavi.com', 'provisioned_at' => now()]);
+        app(Customers::class)->delete($customer, true);
+        $this->travel(Customers::UNDO_SECONDS + 10)->seconds();
+
+        (new PurgeCustomer($customer->id))->handle(app(Customers::class));
+
+        Queue::assertPushed(DeleteSite::class, fn ($job) => $job->site->domain === 'klinikmavi.com' && $job->backup && $job->removeDatabases);
+    }
+
+    public function test_backups_taken_before_deletion_are_kept_for_the_days_set(): void
+    {
+        $this->site->update(['status' => SiteStatus::Deleting]);
+        $this->travelTo(now()->subDays(31));
+        $old = app(Backups::class)->takeBeforeDelete($this->site, null);
+        $this->travelBack();
+        $this->travelTo(now()->subDays(29));
+        $recent = app(Backups::class)->takeBeforeDelete($this->site, null);
+        $this->travelBack();
+        $manual = $this->serverBackup('manual', now()->subDays(60));
+        Carbon::setTestNow();
+
+        app(Backups::class)->prune();
+
+        $this->assertNull($old->fresh());
+        $this->assertNotNull($recent->fresh());
+        $this->assertNotNull($manual->fresh());
+        $this->assertTrue(app(Backups::class)->expiresAt($recent)->isSameDay(now()->addDay()));
+        $this->get('/backups')->assertSee(When::dayMonth(app(Backups::class)->expiresAt($recent)).' tarihine kadar');
+
+        Livewire::test(BackupIndex::class)->set('sDeleteDays', 7)->call('saveSchedule')->assertHasNoErrors();
+        $this->assertSame(7, app(BackupSettings::class)->schedule()['delete_days']);
+        Livewire::test(BackupIndex::class)->set('sDeleteDays', 0)->call('saveSchedule')->assertHasErrors('sDeleteDays');
+        app(Backups::class)->prune();
+        $this->assertNull($recent->fresh());
     }
 }

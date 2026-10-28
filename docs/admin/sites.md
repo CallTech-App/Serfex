@@ -120,6 +120,16 @@ removed. Four boxes, all ticked by default, decide the rest:
   they stay with the account);
 - the system user, when it owns no other site.
 
+Before anything is removed, the whole site (files, databases, email, DNS
+records and certificates) is backed up on this server. The backup shows in
+**Backups** as *Before deletion* and is kept for 30 days (Backups →
+Schedule → *Backups before deletion*). The toast after the deletion has an
+**Undo** that restores it straight away; later, open the backup and choose
+**Restore**, which creates the site again. Administrators can untick *Take a
+backup before deleting*. When the disk has no room for the backup, the dialog says
+so and the site is deleted without one. If the backup fails, nothing is
+deleted and the site shows the reason.
+
 ## Limits for customers
 
 A customer's plan limits the number of sites, subdomains, aliases, SFTP

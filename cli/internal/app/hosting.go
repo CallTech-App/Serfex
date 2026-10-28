@@ -92,8 +92,11 @@ func siteCommands() *Command {
 			},
 			{
 				Name: "delete", Aliases: []string{"rm"}, Args: T("<site>"), MinArgs: 1, MaxArgs: 1,
-				Short:    T("Siteyi dosyaları, veritabanları ve e-postasıyla siler"),
-				Flags:    func(f *Flags) { f.Bool("keep-dns", "", T("DNS bölgesini bırakır")) },
+				Short: T("Siteyi dosyaları, veritabanları ve e-postasıyla siler"),
+				Flags: func(f *Flags) {
+					f.Bool("keep-dns", "", T("DNS bölgesini bırakır"))
+					f.Bool("no-backup", "", T("Silmeden önce yedek almaz (yalnızca yönetici)"))
+				},
 				Complete: completeSites,
 				Run:      sitesDelete,
 			},
@@ -232,9 +235,16 @@ func sitesDelete(c *Ctx) error {
 	if err := c.confirmTyped(T("%s sitesi dosyaları, veritabanları, e-postası ve DNS bölgesiyle birlikte silinecek.", domain), domain); err != nil {
 		return err
 	}
-	path := "/sites/" + esc(domain)
+	query := url.Values{}
 	if c.Bool("keep-dns") {
-		path += "?keep_dns=1"
+		query.Set("keep_dns", "1")
+	}
+	if c.Bool("no-backup") {
+		query.Set("backup", "0")
+	}
+	path := "/sites/" + esc(domain)
+	if len(query) > 0 {
+		path += "?" + query.Encode()
 	}
 	resp, err := c.send(http.MethodDelete, path, nil)
 	if err != nil {

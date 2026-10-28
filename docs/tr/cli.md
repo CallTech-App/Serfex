@@ -233,6 +233,7 @@ Diğer adları: `rm`
 | Seçenek | |
 | --- | --- |
 | `--keep-dns` | DNS bölgesini bırakır |
+| `--no-backup` | Silmeden önce yedek almaz (yalnızca yönetici) |
 
 ### serfex domains
 

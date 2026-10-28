@@ -9,6 +9,8 @@ use App\Models\Backup;
 use App\Models\BackupItem;
 use App\Models\BackupRestore;
 use App\Models\BackupTarget;
+use App\Models\Database;
+use App\Models\MailDomain;
 use App\Models\PanelUpdate;
 use App\Models\Site;
 use App\Models\User;
@@ -16,6 +18,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 use App\Services\Customers\Quotas;
+use App\Support\Bytes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -50,6 +53,15 @@ class Backups
 
     /** Days the panel backups taken before updates are kept. */
     public const UPDATE_DAYS = 30;
+
+    /**
+     * Site backups the panel takes for itself, before a restore and before
+     * a deletion: on this server only, outside the queue and the package.
+     */
+    public const LOCAL_TRIGGERS = ['safety', 'delete'];
+
+    /** Room left free on the backup disk besides the archive itself. */
+    public const DELETE_MARGIN = 1 << 30;
 
     public function __construct(
         private readonly AgentClient $agent,
@@ -134,11 +146,13 @@ class Backups
 
     /**
      * Queues a backup of one site. Customers back up within their
-     * package; safety backups (before a restore) stay on this server.
+     * package; the panel's own (before a restore or a deletion) stay on
+     * this server and are taken by the caller.
      */
     public function startSite(Site $site, ?User $user, string $trigger = 'manual'): Backup|string
     {
-        if ($trigger !== 'safety') {
+        $local = in_array($trigger, self::LOCAL_TRIGGERS, true);
+        if (! $local) {
             if ($this->busy()) {
                 return __(self::BUSY);
             }
@@ -151,9 +165,9 @@ class Backups
         }
         $site->loadMissing('systemUser.customer');
         $customer = $user?->isCustomer() ? $user->customer : null;
-        $backup = $this->record('site', $trigger, $user, $customer, 'full', null, $trigger === 'safety' ? null : $this->settings->target());
+        $backup = $this->record('site', $trigger, $user, $customer, 'full', null, $local ? null : $this->settings->target());
         $backup->items()->create(['name' => $site->domain, 'site_id' => $site->id, 'customer_id' => $site->systemUser->customer_id, 'status' => 'pending']);
-        if ($trigger !== 'safety') {
+        if (! $local) {
             RunBackup::dispatch($backup);
         }
         Quotas::forget();
@@ -322,6 +336,65 @@ class Backups
         $this->take($backup);
 
         return $backup->refresh();
+    }
+
+    /**
+     * Takes a site backup now, before the site is deleted, so the deletion
+     * can be undone from Yedekler; returns it.
+     */
+    public function takeBeforeDelete(Site $site, ?User $user): Backup
+    {
+        $backup = $this->startSite($site, $user, 'delete');
+        $this->take($backup);
+
+        return $backup->refresh();
+    }
+
+    /**
+     * Why the backup before deleting $site would not fit on this server's
+     * disk, or null. The site's files, databases and mail are measured
+     * from time to time; the archive is compressed, so this errs on the
+     * safe side. Null too when the agent cannot tell.
+     */
+    public function noRoomBeforeDelete(Site $site): ?string
+    {
+        $free = $this->status()['free'] ?? null;
+        if ($free === null) {
+            return null;
+        }
+        $need = $this->siteBytes($site);
+        if ($free >= $need + self::DELETE_MARGIN) {
+            return null;
+        }
+
+        return __('Yedek için sunucuda yeterli boş alan yok (yaklaşık :need gerekiyor, :free boş).', [
+            'need' => Bytes::format($need + self::DELETE_MARGIN),
+            'free' => Bytes::format((int) $free),
+        ]);
+    }
+
+    /**
+     * The measured size of a site's files, databases and mail.
+     */
+    public function siteBytes(Site $site): int
+    {
+        $mail = MailDomain::where('name', $site->domain)->first();
+
+        return (int) $site->disk_bytes
+            + (int) Database::where('site_id', $site->id)->sum('size_bytes')
+            + ($mail ? (int) $mail->mailboxes()->sum('usage_bytes') : 0);
+    }
+
+    /**
+     * When a backup taken before a deletion goes, or null for others.
+     */
+    public function expiresAt(Backup $backup): ?Carbon
+    {
+        if ($backup->trigger !== 'delete') {
+            return null;
+        }
+
+        return $backup->created_at->copy()->addDays(max(1, (int) $this->settings->schedule()['delete_days']));
     }
 
     /**
@@ -510,8 +583,9 @@ class Backups
      * Retention: the newest scheduled backup of each of the last
      * keep_daily days, keep_weekly weeks and keep_monthly months stay, with
      * the archives they continue from; older ones go. Backups taken before
-     * restores go after SAFETY_DAYS, failed ones after FAILED_DAYS. Manual
-     * backups stay until deleted.
+     * restores go after SAFETY_DAYS, those taken before a site was deleted
+     * after the days set in the schedule, failed ones after FAILED_DAYS.
+     * Manual backups stay until deleted.
      */
     public function prune(): void
     {
@@ -549,6 +623,9 @@ class Backups
             $this->purge($b);
         }
         foreach (Backup::where('trigger', 'update')->where('created_at', '<', now()->subDays(self::UPDATE_DAYS))->whereNot('status', 'running')->get() as $b) {
+            $this->purge($b);
+        }
+        foreach (Backup::where('trigger', 'delete')->where('created_at', '<', now()->subDays(max(1, (int) $s['delete_days'])))->whereNot('status', 'running')->get() as $b) {
             $this->purge($b);
         }
         foreach (Backup::where('status', 'failed')->where('created_at', '<', now()->subDays(self::FAILED_DAYS))->get() as $b) {

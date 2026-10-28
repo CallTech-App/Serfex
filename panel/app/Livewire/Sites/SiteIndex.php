@@ -5,6 +5,7 @@ namespace App\Livewire\Sites;
 use App\Enums\SiteStatus;
 use App\Jobs\DeleteSite;
 use App\Livewire\Attributes\ForCustomers;
+use App\Models\BackupItem;
 use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\Site;
@@ -13,6 +14,7 @@ use App\Models\SystemUser;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Backups\Restores;
 use App\Services\Customers\Quotas;
 use App\Services\Php\PhpVersions;
 use App\Services\Sites\SiteCreator;
@@ -243,6 +245,21 @@ class SiteIndex extends Component
         $site->update(['status' => SiteStatus::Deleting]);
         DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true);
         $this->dispatch('toast', message: __(':domain geri alınıyor.', ['domain' => $site->domain]));
+    }
+
+    /**
+     * Undo for "Siteyi sil": restores everything in the backup taken just
+     * before the deletion, creating the site again.
+     */
+    public function restoreDeleted(int $itemId, Restores $restores): void
+    {
+        $item = BackupItem::visibleTo(auth()->user())->with('backup')->where('status', 'succeeded')
+            ->whereHas('backup', fn ($q) => $q->where('trigger', 'delete'))->find($itemId);
+        if ($item === null) {
+            return;
+        }
+        $result = $restores->start($item, $item->restorable(), false, auth()->user());
+        $this->dispatch('toast', message: is_string($result) ? $result : __(':domain yedekten geri yükleniyor; ilerlemesi Yedekler sayfasında.', ['domain' => $item->name]));
     }
 
     public function render(): View
