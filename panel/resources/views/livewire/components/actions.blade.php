@@ -17,6 +17,11 @@
         @if ($r['latest'])
             <button type="button" wire:click="ask('{{ $r['id'] }}', 'update')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Güncelle') }}</button>
         @endif
+        @if ($r['kept'] ?? null)
+            <button type="button" wire:click="ask('{{ $r['id'] }}', 'remove-old')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="text-[13px] text-muted hover:text-crit disabled:opacity-40">{{ __('Eski sürümü kaldır') }}</button>
+        @elseif ($r['upgrade'] ?? null)
+            <button type="button" wire:click="ask('{{ $r['id'] }}', 'upgrade')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Sürümü yükselt') }}</button>
+        @endif
         @if ($r['refusal'])
             <span class="cursor-not-allowed text-[13px] text-muted opacity-50" title="{{ $r['refusal'] }}" aria-disabled="true">{{ __('Kaldır') }}</span>
         @else

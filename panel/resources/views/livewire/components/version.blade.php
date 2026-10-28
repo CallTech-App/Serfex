@@ -5,6 +5,11 @@
     @if ($r['latest'])
         <span class="block text-2xs text-warn">→ {{ $r['latest'] }}</span>
     @endif
+    @if ($r['kept'] ?? null)
+        <span class="block font-sans text-2xs">{{ $r['kept']['until'] ? __(':name :date tarihine kadar saklanıyor', ['name' => $r['kept']['name'], 'date' => \App\Support\When::date(\Illuminate\Support\Carbon::parse($r['kept']['until']))]) : __(':name saklanıyor', ['name' => $r['kept']['name']]) }}</span>
+    @elseif ($r['upgrade'] ?? null)
+        <span class="block font-sans text-2xs">{{ __(':name sürümüne yükseltilebilir', ['name' => $r['upgrade']['name']]) }}</span>
+    @endif
 @elseif ($r['candidate'] ?? null)
     {{ $r['candidate'] }}
     <span class="block font-sans text-2xs">{{ $r['source'] ? __('kurulacak · :source', ['source' => $r['source']]) : __('kurulacak') }}</span>

@@ -4,6 +4,7 @@ namespace App\Livewire\Components;
 
 use App\Jobs\SetupMailServer;
 use App\Models\ComponentOperation;
+use App\Models\Database;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
@@ -24,7 +25,9 @@ use Livewire\Component;
  * web server, PHP versions, database servers and other software, with a
  * confirmation first and the agent's steps shown as they run. A failed
  * install is rolled back by the agent; a component in use cannot be
- * removed and the page says what uses it.
+ * removed and the page says what uses it. A database server can be
+ * upgraded to the next major version Serfex allows; the old version is
+ * kept for a week and removed from here.
  */
 #[Layout('components.layouts.app')]
 #[Title('Yazılım Yönetimi · Serfex')]
@@ -35,7 +38,7 @@ class ComponentIndex extends Component
     #[Url(except: 'web')]
     public string $tab = 'web';
 
-    /** @var array{id: string, action: string}|null asked to confirm */
+    /** @var array{id: string, action: string, to?: ?string}|null asked to confirm */
     public ?array $confirming = null;
 
     /** The major version a database server is installed in (the confirmation's choice). */
@@ -65,14 +68,20 @@ class ComponentIndex extends Component
     }
 
     /**
-     * Opens the confirmation for install, update or remove.
+     * Opens the confirmation for install, update, remove, upgrade or
+     * remove-old.
      */
     public function ask(string $id, string $action, Components $components): void
     {
-        if ((! $components->operable($id) && $id !== 'roundcube') || ! in_array($action, ['install', 'update', 'remove'], true)) {
+        if ((! $components->operable($id) && $id !== 'roundcube') || ! in_array($action, ['install', 'update', 'remove', 'upgrade', 'remove-old'], true)) {
             return;
         }
         $this->confirming = ['id' => $id, 'action' => $action];
+        if ($action === 'upgrade') {
+            // The version confirmed is the one upgraded to, even when a
+            // newer offer turns up meanwhile.
+            $this->confirming['to'] = $components->statuses()[$id]['upgrade']['to'] ?? null;
+        }
         $choices = $action === 'install' ? ($components->candidate($id)['choices'] ?? []) : [];
         $this->installVersion = collect($choices)->firstWhere('default', true)['major'] ?? ($choices[0]['major'] ?? null);
     }
@@ -90,7 +99,12 @@ class ComponentIndex extends Component
 
             return;
         }
-        $result = $components->start($ask['id'], $ask['action'], auth()->user(), $ask['action'] === 'install' ? $this->installVersion : null);
+        $version = match ($ask['action']) {
+            'install' => $this->installVersion,
+            'upgrade' => $ask['to'] ?? null,
+            default => null,
+        };
+        $result = $components->start($ask['id'], $ask['action'], auth()->user(), $version);
         if (is_string($result)) {
             $this->refused = $result;
 
@@ -200,6 +214,39 @@ class ComponentIndex extends Component
         ]);
     }
 
+    /**
+     * The upgrade confirmation: what happens, how long customers wait and
+     * what is kept.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array{title: string, text: string, button: string, danger: bool, upgrade: array<string, mixed>}
+     */
+    private function upgradeText(string $id, array $row): array
+    {
+        $upgrade = $row['upgrade'] ?? ['from' => '', 'to' => '', 'name' => ''];
+        $server = $id === 'postgresql' ? DatabaseServers::POSTGRESQL : DatabaseServers::MYSQL;
+        $databases = Database::where('server', $server)->count();
+
+        return [
+            'title' => __(':name sürümüne yükseltilsin mi?', ['name' => $upgrade['name']]),
+            'text' => __('Serfex önce yeterli boş disk olduğunu denetler, sunucuyu bakım kipine alır ve her veritabanının tam dökümünü yedek klasörüne yazar. Ardından yeni sürümü kurar, verileri taşır ve her veritabanını, kullanıcıyı ve tablolardaki satır sayılarını yükseltmeden öncekiyle karşılaştırır. Bir adım başarısız olursa eski sürüme dönülür ve hiçbir veri kaybolmaz.'),
+            'button' => __('Yükselt'),
+            'danger' => false,
+            'upgrade' => [
+                'from' => Components::releaseName($id, $upgrade['from']),
+                'to' => $upgrade['name'],
+                'databases' => $databases,
+                'downtime' => $id === 'postgresql'
+                    ? __('Yükseltme boyunca siteler veritabanlarına bağlanamaz. Süre veri boyutuna bağlıdır: birkaç GB için genellikle birkaç dakika.')
+                    : __('Döküm alınırken veritabanları salt okunurdur, yeni sürüm kurulurken bağlantı kesilir. Süre veri boyutuna bağlıdır: birkaç GB için genellikle birkaç dakika.'),
+                'kept' => ($id === 'postgresql'
+                    ? __('Eski küme durdurulmuş olarak 7 gün saklanır, sonra kendiliğinden silinir; daha önce bu sayfadan kaldırabilirsiniz.')
+                    : __('Eski veri klasörünün kopyası ve eski paketler 7 gün saklanır, sonra kendiliğinden silinir; daha önce bu sayfadan kaldırabilirsiniz.'))
+                    .' '.__('Yükseltme öncesi döküm 30 gün saklanır.'),
+            ],
+        ];
+    }
+
     private function configureModsec(AgentClient $agent, string $mode, int $paranoia): bool
     {
         try {
@@ -239,6 +286,16 @@ class ComponentIndex extends Component
         $version = $row['latest'] ?? $row['version'] ?? null;
 
         return match ($action) {
+            'upgrade' => $this->upgradeText($id, $row),
+            'remove-old' => [
+                'title' => __(':name silinsin mi?', ['name' => $row['kept']['name'] ?? $name]),
+                'text' => ($id === 'postgresql'
+                    ? __('Yükseltmeden kalan durdurulmuş eski küme silinir. Panelin kendi PostgreSQL\'i ve onun kullandığı paketler etkilenmez.')
+                    : __('Yükseltmeden kalan eski veri klasörünün kopyası ve saklanan eski paketler silinir.'))
+                    .' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
+                'button' => __('Eski sürümü kaldır'),
+                'danger' => true,
+            ],
             'install' => [
                 'title' => __(':name kurulsun mu?', ['name' => $name]),
                 'text' => match (true) {

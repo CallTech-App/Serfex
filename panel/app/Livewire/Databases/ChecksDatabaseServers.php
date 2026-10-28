@@ -13,10 +13,11 @@ use Illuminate\Validation\Rule;
 trait ChecksDatabaseServers
 {
     /**
-     * State is one of ready, missing, installing, failed, stopped or
-     * offline; step names what is being installed.
+     * State is one of ready, missing, installing, upgrading, failed,
+     * stopped or offline; step names what is being installed, upgrading
+     * the servers being upgraded to a new major version.
      *
-     * @var array{state: string, step?: ?string, error?: ?string, stopped?: list<string>}
+     * @var array{state: string, step?: ?string, error?: ?string, stopped?: list<string>, upgrading?: list<string>}
      */
     public array $server = ['state' => 'ready'];
 
@@ -46,8 +47,10 @@ trait ChecksDatabaseServers
             return;
         }
         $installed = collect($status['servers'] ?? [])->filter(fn ($s) => $s['installed'] ?? false);
-        $stopped = $installed->reject(fn ($s) => $s['running'] ?? false);
+        $upgrading = $installed->filter(fn ($s) => $s['upgrading'] ?? false);
+        $stopped = $installed->reject(fn ($s) => ($s['running'] ?? false) || ($s['upgrading'] ?? false));
         $this->server = match (true) {
+            $upgrading->isNotEmpty() => ['state' => 'upgrading', 'upgrading' => $upgrading->map(fn ($s) => DatabaseServers::PRODUCTS[$s['product']][1] ?? $s['product'])->values()->all()],
             // A first setup that failed offers the choice again.
             $installed->isEmpty() => ['state' => 'missing', 'error' => ($setup['state'] ?? null) === 'failed' ? ($setup['error'] ?? null) : null],
             ($setup['state'] ?? null) === 'failed' => ['state' => 'failed', 'error' => $setup['error'] ?? null],

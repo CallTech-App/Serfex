@@ -15,6 +15,10 @@ use Illuminate\Foundation\Queue\Queueable;
  * Installs, updates or removes a component through the agent. The agent
  * writes each step to the operation's run log and rolls back a failed
  * install; this records the outcome.
+ *
+ * Upgrading a database server to a new major version dumps every
+ * database first and can run for hours: it goes to the "backups" queue,
+ * so it never runs next to a backup or restore.
  */
 class RunComponentOperation implements ShouldQueue
 {
@@ -24,7 +28,13 @@ class RunComponentOperation implements ShouldQueue
 
     public int $timeout = 1800;
 
-    public function __construct(public ComponentOperation $operation) {}
+    public function __construct(public ComponentOperation $operation)
+    {
+        if ($operation->action === 'upgrade') {
+            $this->timeout = 43400;
+            $this->onConnection('backups')->onQueue('backups');
+        }
+    }
 
     public function handle(AgentClient $agent, Components $components): void
     {
@@ -37,7 +47,7 @@ class RunComponentOperation implements ShouldQueue
         $database = in_array($op->component, ['mysql', 'mariadb', 'postgresql'], true);
         if ($database) {
             $params += app(PanelSettings::class)->managerSetupParams();
-            if ($op->action === 'install' && $op->detail) {
+            if (in_array($op->action, ['install', 'upgrade'], true) && $op->detail) {
                 $params['version'] = $op->detail;
             }
         }
@@ -48,7 +58,7 @@ class RunComponentOperation implements ShouldQueue
             $method = 'component.'.$op->action;
         }
         try {
-            $agent->call($method, $params, config('serfex.agent.component_timeout'));
+            $agent->call($method, $params, $op->action === 'upgrade' ? config('serfex.agent.upgrade_timeout') : config('serfex.agent.component_timeout'));
         } catch (AgentException $e) {
             $op->update(['status' => 'failed', 'error' => $e->reason, 'finished_at' => now()]);
             $components->statuses();

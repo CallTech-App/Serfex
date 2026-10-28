@@ -6,6 +6,8 @@
 @endphp
 @if ($state === 'installing')
     <div wire:poll.3s="refreshServer" hidden></div>
+@elseif ($state === 'upgrading')
+    <div wire:poll.15s="refreshServer" hidden></div>
 @endif
 @if ($state === 'missing' && $admin)
     @php
@@ -96,6 +98,15 @@
                 </li>
             @endforeach
         </ol>
+    </div>
+@elseif ($state === 'upgrading')
+    <div class="relative flex items-start gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]" role="status">
+        <span class="absolute inset-y-0 left-0 w-1 bg-info"></span>
+        <x-icon name="loader-circle" class="mt-0.5 size-4 shrink-0 animate-spin text-info" />
+        <div class="min-w-0 flex-1">
+            <p class="font-medium">{{ __(':names bakımda: yeni sürüme yükseltiliyor', ['names' => implode(', ', $server['upgrading'] ?? [])]) }}</p>
+            <p class="mt-0.5 text-[13px] text-muted">{{ __('Bu sırada siteler veritabanlarına bağlanamayabilir ya da yalnızca okuyabilir; yeni veritabanı ve kullanıcı açılamaz. Yükseltme bitince her şey kendiliğinden açılır, verileriniz korunur.') }}</p>
+        </div>
     </div>
 @elseif ($state !== 'ready')
     @php

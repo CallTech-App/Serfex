@@ -1,8 +1,8 @@
 {{-- Progress of a component operation: needs $operation, $operationName and the ShowsComponentOperations trait. --}}
 @if ($operation)
     @php
-        $verb = ['install' => 'kuruluyor', 'update' => __('güncelleniyor'), 'remove' => __('kaldırılıyor'), 'ext-install' => 'kuruluyor', 'ext-remove' => __('kaldırılıyor')][$operation->action] ?? '';
-        $doneText = ['install' => 'kuruldu', 'update' => __('güncellendi'), 'remove' => __('kaldırıldı'), 'ext-install' => 'kuruldu', 'ext-remove' => __('kaldırıldı')][$operation->action] ?? '';
+        $verb = ['install' => 'kuruluyor', 'update' => __('güncelleniyor'), 'remove' => __('kaldırılıyor'), 'ext-install' => 'kuruluyor', 'ext-remove' => __('kaldırılıyor'), 'upgrade' => __('sürümüne yükseltiliyor'), 'remove-old' => __('kaldırılıyor')][$operation->action] ?? '';
+        $doneText = ['install' => 'kuruldu', 'update' => __('güncellendi'), 'remove' => __('kaldırıldı'), 'ext-install' => 'kuruldu', 'ext-remove' => __('kaldırıldı'), 'upgrade' => __('sürümüne yükseltildi'), 'remove-old' => __('kaldırıldı')][$operation->action] ?? '';
     @endphp
     <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" wire:key="op-{{ $operation->id }}">
         <div class="max-h-full w-full max-w-3xl overflow-y-auto rounded-xl border border-line bg-surface shadow-xl" wire:ignore role="dialog" aria-modal="true" aria-label="{{ $operationName }} {{ $verb }}"
