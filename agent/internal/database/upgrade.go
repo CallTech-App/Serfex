@@ -754,6 +754,20 @@ func (u *upgrader) postgres() error {
 			return err
 		}
 	}
+	// pg_upgrade needs every extension a database uses in the new
+	// version too.
+	var exts []string
+	for _, x := range pgExtensions {
+		if m.exists(controlFile(u.from, x.name)) && !m.exists(controlFile(u.to, x.name)) {
+			exts = append(exts, x.pkg(u.to))
+		}
+	}
+	if len(exts) > 0 {
+		u.added = append(u.added, exts...)
+		if err := installPackages(u.ctx, m.h, exts, "", u.log); err != nil {
+			return err
+		}
+	}
 	// The package may have made an empty main cluster of its own.
 	if m.exists("/etc/postgresql/" + u.to + "/main") {
 		if _, err := u.run(host.Command{Name: "pg_dropcluster", Args: []string{"--stop", u.to, "main"}}); err != nil {

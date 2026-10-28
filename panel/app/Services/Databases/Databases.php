@@ -279,6 +279,47 @@ class Databases
     }
 
     /**
+     * The PostgreSQL extensions Serfex offers: name => [label, what it is
+     * for]. Only a superuser may create them, so the agent does it when
+     * the database's owner turns one on.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function extensionInfo(): array
+    {
+        return [
+            'vector' => ['pgvector', __('Vektör kolonları ve benzerlik araması: yapay zekâ gömmeleri (embeddings), anlamsal arama, Laravel\'in vector kolonları.')],
+        ];
+    }
+
+    /**
+     * The offered extensions' state in a PostgreSQL database.
+     *
+     * @return list<array{name: string, enabled: bool, version?: string, available?: string}>
+     */
+    public function extensions(Database $database): array
+    {
+        return $this->agent->call('db.extension.list', ['server' => $database->server, 'database' => $database->name]) ?? [];
+    }
+
+    /**
+     * Turns an offered extension on or off in a PostgreSQL database. Turning
+     * one on may install its package first. Throws AgentException when the
+     * server refuses, e.g. while columns still use it.
+     *
+     * @return array{name: string, enabled: bool, version?: string, available?: string}
+     */
+    public function setExtension(Database $database, string $name, bool $enabled): array
+    {
+        return $this->agent->call('db.extension.set', [
+            'server' => $database->server,
+            'database' => $database->name,
+            'name' => $name,
+            'enabled' => $enabled,
+        ], config('serfex.agent.job_timeout'));
+    }
+
+    /**
      * A one-time address that opens the database in phpMyAdmin or Adminer.
      * $host is the address the panel was reached at.
      */

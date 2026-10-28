@@ -110,6 +110,10 @@ prefix). The password is shown once; copy it then. **phpMyAdmin** or
 **Adminer** opens the database in the browser without a password. A user can
 be allowed to connect from your own computer's address.
 
+On a PostgreSQL database, **Extensions** → **Turn on** enables pgvector
+(vector columns and similarity search, Laravel's `vector` columns). Your
+application does not need to run `CREATE EXTENSION`.
+
 ## Laravel
 
 If your plan includes Laravel: install an application from a Git repository

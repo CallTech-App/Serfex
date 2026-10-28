@@ -5102,5 +5102,14 @@
     "uygulama kimliği": "application ID",
     "yönetici değilsiniz": "not an administrator",
     ":count hesap bağlı.": ":count account connected.|:count accounts connected.",
-    "Henüz bağlanan hesap yok.": "No account connected yet."
+    "Henüz bağlanan hesap yok.": "No account connected yet.",
+    "Vektör kolonları ve benzerlik araması: yapay zekâ gömmeleri (embeddings), anlamsal arama, Laravel'in vector kolonları.": "Vector columns and similarity search: AI embeddings, semantic search, Laravel's vector columns.",
+    ":name kapatılamadı: bu veritabanında onu kullanan kolonlar veya indeksler var. Önce onları kaldırın.": ":name could not be turned off: columns or indexes in this database use it. Remove them first.",
+    ":name değiştirilemedi: :reason": ":name could not be changed: :reason",
+    ":name açıldı. Bu veritabanının kullanıcıları artık vector kolonları kullanabilir.": ":name is on. This database's users can now use vector columns.",
+    ":name kapatıldı.": ":name is off.",
+    "Eklentiler okunamadı: :reason": "The extensions could not be read: :reason",
+    "Sunucu hazır olunca eklentiler burada görünür.": "The extensions appear here once the server is ready.",
+    "Eklentiyi aç": "Turn on",
+    "Açık bir eklenti için uygulamanın :sql çalıştırması gerekmez; çalıştırırsa zaten açık olduğu için atlanır.": "With an extension on, the application need not run :sql; if it does, it is skipped because the extension is already there."
 }

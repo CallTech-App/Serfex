@@ -600,7 +600,11 @@ func TestPostgreSQLNewestVersionAndMinorUpdates(t *testing.T) {
 	if _, err := m.Update(ctx, OpSpec{ID: "postgresql", Run: "pg2"}); err != nil {
 		t.Fatal(err)
 	}
-	if !ran(sim, "apt-get install --only-upgrade -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold postgresql-18 postgresql-client-18") {
+	// The extensions' packages come with the server and its updates.
+	if !ran(sim, "apt-get install -y -q --no-install-recommends postgresql-18-pgvector") {
+		t.Errorf("install: %v", sim.Commands())
+	}
+	if !ran(sim, "apt-get install --only-upgrade -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold postgresql-18 postgresql-client-18 postgresql-18-pgvector") {
 		t.Errorf("update: %v", sim.Commands())
 	}
 }

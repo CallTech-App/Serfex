@@ -96,6 +96,44 @@
         </dl>
     </section>
 
+    @if ($database->server === 'postgresql' && ! $deleted)
+        <section class="rounded-xl border border-line bg-surface">
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Eklentiler') }}</h2>
+            @if ($extensions === null)
+                <p class="px-5 py-4 text-[13px] text-muted">{{ $extensionsError ? __('Eklentiler okunamadı: :reason', ['reason' => $extensionsError]) : __('Sunucu hazır olunca eklentiler burada görünür.') }}</p>
+            @else
+                <ul class="divide-y divide-line text-[13.5px]">
+                    @foreach ($extensions as $x)
+                        @php([$label, $about] = Databases::extensionInfo()[$x['name']] ?? [$x['name'], ''])
+                        <li wire:key="x-{{ $x['name'] }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
+                            <div class="min-w-0 flex-1">
+                                <p class="flex flex-wrap items-center gap-2">
+                                    <span class="font-mono font-medium">{{ $label }}</span>
+                                    @if ($x['enabled'])
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-ok-soft px-2 py-0.5 text-2xs font-medium text-ok"><i class="size-1.5 rounded-full bg-ok"></i>{{ __('Açık') }}@if (! empty($x['version'])) · {{ $x['version'] }}@endif</span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2 py-0.5 text-2xs font-medium text-muted"><i class="size-1.5 rounded-full bg-muted"></i>{{ __('Kapalı') }}</span>
+                                    @endif
+                                </p>
+                                <p class="mt-0.5 text-[13px] text-muted">{{ $about }}</p>
+                            </div>
+                            @if ($x['enabled'])
+                                <button type="button" wire:click="setExtension('{{ $x['name'] }}', false)" wire:loading.attr="disabled" wire:target="setExtension" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2 disabled:opacity-40">{{ __('Kapat') }}</button>
+                            @else
+                                <button type="button" wire:click="setExtension('{{ $x['name'] }}', true)" wire:loading.attr="disabled" wire:target="setExtension" class="flex h-8 items-center gap-2 rounded-md border border-line px-3 text-[13px] font-medium hover:bg-surface-2 disabled:opacity-40">
+                                    <x-icon name="loader-circle" class="size-3.5 animate-spin" wire:loading wire:target="setExtension" />{{ __('Eklentiyi aç') }}
+                                </button>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="border-t border-line px-5 py-3 text-[12.5px] text-muted">
+                    <x-t text="Açık bir eklenti için uygulamanın :sql çalıştırması gerekmez; çalıştırırsa zaten açık olduğu için atlanır."><x-slot:sql><span class="font-mono">CREATE EXTENSION</span></x-slot:sql></x-t>
+                </p>
+            @endif
+        </section>
+    @endif
+
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
             <h2 class="mr-auto text-[14.5px] font-semibold">{{ __('Kullanıcılar') }}</h2>

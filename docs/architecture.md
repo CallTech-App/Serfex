@@ -87,7 +87,7 @@ in Turkish or English.
 | DNS | `dns.status`, `dns.setup`, `dns.zone.apply`, `dns.zone.get`, `dns.zone.delete` |
 | Certificates | `ssl.issue`, `ssl.install`, `ssl.get`, `ssl.delete`, `ssl.panel.issue`, `ssl.panel.install`, `ssl.panel.get` |
 | Mail | `mail.status`, `mail.setup`, `mail.domain.apply`, `mail.domain.delete`, `mail.mailbox.purge`, `mail.usage`, `mail.webmail.login`, `mail.queue`, `mail.queue.flush`, `mail.queue.hold`, `mail.queue.release` |
-| Databases | `db.status`, `db.server.install`, `db.manager.setup`, `db.manager.login`, `db.database.create`, `db.database.delete`, `db.user.apply`, `db.user.delete`, `db.list` |
+| Databases | `db.status`, `db.server.install`, `db.manager.setup`, `db.manager.login`, `db.database.create`, `db.database.delete`, `db.user.apply`, `db.user.delete`, `db.extension.list`, `db.extension.set`, `db.list` |
 | Laravel | `laravel.tools`, `laravel.deploy`, `laravel.rollback`, `laravel.run`, `laravel.run.read`, `laravel.status`, `laravel.env.get`, `laravel.env.set`, `laravel.queue.apply`, `laravel.queue.restart`, `laravel.schedule.apply`, `laravel.process.apply`, `laravel.process.restart`, `laravel.process.log`, `laravel.maintenance`, `laravel.logs`, `laravel.probe`, `laravel.scan`, `laravel.key`, `laravel.health`, `laravel.tinker.start`, `laravel.tinker.send`, `laravel.tinker.status`, `laravel.tinker.stop`, `laravel.backup.create`, `laravel.backup.read`, `laravel.backup.restore`, `laravel.backup.delete`, `laravel.remove`, `redis.apply`, `redis.remove` |
 | Git deploys | `site.git.deploy`, `site.git.key`, `site.git.read`, `site.git.remove` |
 | Monitoring and statistics | `monitor.live`, `monitor.limit.apply`, `monitor.limit.remove`, `monitor.limits`, `stats.collect` |

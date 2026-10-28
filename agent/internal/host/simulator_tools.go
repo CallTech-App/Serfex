@@ -28,6 +28,8 @@ var phpBinary = regexp.MustCompile(`^php[5-9]\.[0-9]{1,2}$`)
 
 var simPGServer = regexp.MustCompile(`^postgresql-(\d+)$`)
 
+var simPGVector = regexp.MustCompile(`^postgresql-(\d+)-pgvector$`)
+
 // runTool simulates the commands not handled in Run. Unknown commands
 // succeed without output.
 func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (string, error) {
