@@ -110,6 +110,16 @@ or start a new project, deploy without downtime, roll back, run Artisan,
 manage queues, the scheduler and `.env`, and give your developers access.
 See the [Laravel guide](laravel.md).
 
+## WordPress
+
+Site → **WordPress**: install WordPress in one click (the database and the
+administrator account are made for you), or manage one already on the site.
+Update WordPress, plugins and themes safely: a restore point is taken before
+every update, a broken site is rolled back by itself, and you can undo the
+last update for 7 days. **Sign in to WordPress** opens the dashboard without a
+password. Maintenance mode and the recommended security settings are one
+click each.
+
 ## Backups
 
 Your sites are included in the server's scheduled backups. **Take a backup**

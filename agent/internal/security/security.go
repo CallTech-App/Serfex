@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -96,6 +97,24 @@ func (m *Manager) checkSite(domain string) error {
 	}
 	return nil
 }
+
+// WriteSnippet replaces one file of a site's ExtraDir for another part
+// of Serfex (the WordPress toolkit's hardening rules); nil data removes
+// it. Nothing changes when Nginx refuses the result.
+func (m *Manager) WriteSnippet(ctx context.Context, domain, name string, data []byte) error {
+	if err := m.checkSite(domain); err != nil {
+		return err
+	}
+	if !snippetNameRe.MatchString(name) {
+		return invalid("snippet name %q is not valid", name)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_, err := m.writeSnippets(ctx, domain, []snippet{{Name: name, Data: data}}, nil)
+	return err
+}
+
+var snippetNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*\.conf$`)
 
 // snippet is one file of a site's ExtraDir; nil Data removes it.
 type snippet struct {
