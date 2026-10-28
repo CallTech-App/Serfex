@@ -12,6 +12,8 @@
         <p class="mt-1 text-[13px] text-muted"><x-t text=":email hesabının girişi ve açık oturumları."><x-slot:email><span class="font-mono">{{ $user->email }}</span></x-slot:email></x-t></p>
     </div>
 
+    <x-account-nav current="account.security" />
+
     @if ($required && ! $user->hasTwoFactor())
         <div class="flex items-start gap-3 rounded-xl border border-line bg-warn-soft px-5 py-3 text-[13.5px]" role="alert">
             <x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />
@@ -22,19 +24,11 @@
     <section class="rounded-xl border border-line bg-surface">
         <div class="max-w-4xl divide-y divide-line px-5 text-[13.5px]">
             <div class="{{ $row }}">
-                <label for="locale" class="sm:pt-2">{{ __('Dil') }}</label>
-                <form wire:submit="saveLocale">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <select id="locale" wire:model="locale" class="{{ $field }} border-line px-2.5">
-                            <option value="">{{ __('Sunucunun dili (:name)', ['name' => \App\Support\Locales::all()[\App\Support\Locales::serverDefault()]]) }}</option>
-                            @foreach (\App\Support\Locales::all() as $code => $name)
-                                <option value="{{ $code }}">{{ $name }}</option>
-                            @endforeach
-                        </select>
-                        <button type="submit" class="{{ $btn }}">{{ __('Kaydet') }}</button>
-                    </div>
-                    <p class="mt-1.5 text-2xs text-muted">{{ __('Panel ve size gönderilen e-postalar bu dilde olur.') }}</p>
-                </form>
+                <span class="sm:pt-2">{{ __('Parola') }}</span>
+                <div>
+                    <button type="button" wire:click="openPassword" class="{{ $btn }}"><x-icon name="key-round" />{{ __('Parolayı değiştir') }}</button>
+                    <p class="mt-1.5 text-2xs text-muted">{{ __('Değiştirdiğinizde bu tarayıcı dışındaki oturumlarınız kapanır.') }}</p>
+                </div>
             </div>
             <div class="{{ $row }}">
                 <span>{{ __('İki adımlı doğrulama') }}</span>
@@ -125,6 +119,34 @@
             </div>
         </div>
     </section>
+
+    {{-- Parola --}}
+    <x-modal :title="__('Parolayı değiştir')" show="changingPassword">
+        <form wire:submit="changePassword">
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Parolayı değiştir') }}</h2>
+            <div class="space-y-4 p-5 text-[13.5px]">
+                <input type="email" value="{{ $user->email }}" autocomplete="username" class="hidden" readonly tabindex="-1" aria-hidden="true">
+                <div>
+                    <label for="current-password" class="mb-1.5 block">{{ __('Şimdiki parola') }}</label>
+                    <input id="current-password" type="password" wire:model="currentPassword" autocomplete="current-password" class="{{ $field }} w-full {{ $errors->has('currentPassword') ? 'border-crit' : 'border-line' }}">
+                    @error('currentPassword') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="new-password" class="mb-1.5 block">{{ __('Yeni parola') }}</label>
+                    <input id="new-password" type="password" wire:model="newPassword" autocomplete="new-password" class="{{ $field }} w-full {{ $errors->has('newPassword') ? 'border-crit' : 'border-line' }}">
+                    @error('newPassword')<p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">{{ $minLength === 12 ? __('En az 12 karakter.') : __('En az 10 karakter.') }}</p>@enderror
+                </div>
+                <div>
+                    <label for="new-password-confirmation" class="mb-1.5 block">{{ __('Parola (tekrar)') }}</label>
+                    <input id="new-password-confirmation" type="password" wire:model="newPassword_confirmation" autocomplete="new-password" class="{{ $field }} w-full border-line">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+                <button type="button" wire:click="$set('changingPassword', false)" class="{{ $btn }}">{{ __('Vazgeç') }}</button>
+                <button type="submit" class="{{ $primary }}">{{ __('Parolayı kaydet') }}</button>
+            </div>
+        </form>
+    </x-modal>
 
     {{-- Kurulum --}}
     <x-modal :title="__('İki adımlı doğrulamayı kur')" show="settingUp">
