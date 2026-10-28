@@ -14,6 +14,7 @@ use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
 use App\Services\Dns\ZoneTemplate;
 use App\Services\Migrations\SiteMigrations;
+use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,9 +25,10 @@ use Livewire\Component;
 
 /**
  * Başka sunucudan taşı: an account archive from cPanel is uploaded (or
- * picked from the import folder) and read; the administrator sees what
- * it holds and what will not come, picks the sites, the parts and the
- * customer, and starts the move. Progress and the report (new passwords,
+ * picked from the import folder), or a Plesk server is connected to over
+ * SSH and one of its subscriptions copied here; the archive is read, the
+ * administrator sees what it holds and what will not come, picks the
+ * sites, the parts and the customer, and starts the move. Progress and the report (new passwords,
  * what to do next) stay on the page. Administrators only.
  */
 #[Layout('components.layouts.app')]
@@ -57,6 +59,25 @@ class SiteMigrate extends Component
 
     public ?string $error = null;
 
+    public string $pleskHost = '';
+
+    public int $pleskPort = 22;
+
+    public string $pleskUser = 'root';
+
+    /** "key" (Serfex's own key) or "password". */
+    public string $pleskAuth = 'key';
+
+    public string $pleskPassword = '';
+
+    /** @var array<string, mixed>|null The server connected to, with its subscriptions. */
+    public ?array $pleskServer = null;
+
+    public ?int $pleskSubscription = null;
+
+    /** The migration whose starting choices are on the page. */
+    public ?int $chosenFor = null;
+
     public function mount(): void
     {
         if ($this->migrationId === null) {
@@ -79,6 +100,7 @@ class SiteMigrate extends Component
      */
     private function choose(SiteMigration $m): void
     {
+        $this->chosenFor = $m->id;
         $review = app(SiteMigrations::class)->review($m);
         $this->sites = collect($m->plan['sites'] ?? [])->pluck('domain')->filter(fn ($d) => ($review['taken'][$d] ?? null) === null)->values()->all();
         $this->parts = array_values(array_filter(array_keys(SiteMigrations::PARTS), fn ($p) => ! ($p === 'databases' && ! $review['mysql']) && ! ($p === 'mail' && ! $review['mail'])));
@@ -121,6 +143,78 @@ class SiteMigrate extends Component
         $this->error = null;
         $this->migrationId = $result->id;
         $this->choose($result);
+    }
+
+    /**
+     * Signs in to the Plesk server and lists its subscriptions.
+     */
+    public function connectPlesk(SiteMigrations $migrations): void
+    {
+        $this->resetValidation();
+        $this->error = null;
+        $this->validate([
+            'pleskHost' => ['required', 'max:253', function ($attr, $value, $fail) {
+                if (filter_var($value, FILTER_VALIDATE_IP) === false && ! Hostnames::isValidDomain(Hostnames::normalize($value))) {
+                    $fail(__('Geçerli bir sunucu adı ya da IP adresi girin.'));
+                }
+            }],
+            'pleskPort' => ['required', 'integer', 'between:1,65535'],
+            'pleskUser' => ['required', 'regex:/^[a-z_][a-z0-9_.-]{0,31}$/'],
+            'pleskAuth' => ['required', Rule::in(['key', 'password'])],
+            'pleskPassword' => [$this->pleskAuth === 'password' ? 'required' : 'nullable', 'max:1024'],
+        ], ['pleskPassword.required' => __('Parolayı girin.')]);
+        $server = $migrations->pleskConnect($this->pleskConnection());
+        if (is_string($server)) {
+            $this->error = $server;
+
+            return;
+        }
+        $this->pleskServer = $server;
+        $this->pleskSubscription = count($server['subscriptions']) === 1 ? $server['subscriptions'][0]['id'] : null;
+    }
+
+    /**
+     * @return array{host: string, port: int, user: string, password: string, host_key: string}
+     */
+    private function pleskConnection(): array
+    {
+        return [
+            'host' => filter_var(trim($this->pleskHost), FILTER_VALIDATE_IP) !== false ? trim($this->pleskHost) : Hostnames::normalize($this->pleskHost),
+            'port' => $this->pleskPort,
+            'user' => $this->pleskUser,
+            'password' => $this->pleskAuth === 'password' ? $this->pleskPassword : '',
+            'host_key' => (string) ($this->pleskServer['host_key'] ?? ''),
+        ];
+    }
+
+    /**
+     * Back to the server's address and sign-in.
+     */
+    public function disconnectPlesk(): void
+    {
+        $this->reset('pleskServer', 'pleskSubscription', 'error');
+    }
+
+    /**
+     * Starts copying the chosen subscription here.
+     */
+    public function pullPlesk(SiteMigrations $migrations): void
+    {
+        $this->error = null;
+        $sub = collect($this->pleskServer['subscriptions'] ?? [])->firstWhere('id', $this->pleskSubscription);
+        if ($sub === null) {
+            $this->error = __('Taşınacak aboneliği seçin.');
+
+            return;
+        }
+        $result = $migrations->pleskPull($this->pleskConnection(), $sub, auth()->user());
+        if (is_string($result)) {
+            $this->error = $result;
+
+            return;
+        }
+        $this->reset('pleskServer', 'pleskSubscription', 'pleskPassword');
+        $this->migrationId = $result->id;
     }
 
     public function confirmStart(): void
@@ -216,7 +310,7 @@ class SiteMigrate extends Component
      */
     public function fresh(): void
     {
-        $this->reset('migrationId', 'sites', 'parts', 'confirming', 'error');
+        $this->reset('migrationId', 'sites', 'parts', 'confirming', 'error', 'chosenFor');
     }
 
     public function forgetSecrets(): void
@@ -239,7 +333,7 @@ class SiteMigrate extends Component
             return null;
         }
         $restore = BackupRestore::where('run', $run)->first();
-        $running = $restore !== null ? $restore->isRunning() : $m->status === 'queued' || $m->status === 'converting';
+        $running = $restore !== null ? $restore->isRunning() : in_array($m->status, ['pulling', 'queued', 'converting'], true);
         try {
             $chunk = app(AgentClient::class)->call('backup.run.read', ['run' => $run, 'offset' => max(0, $offset)]);
         } catch (AgentException) {
@@ -253,11 +347,18 @@ class SiteMigrate extends Component
     public function render(SiteMigrations $migrations): View
     {
         $m = $this->migration();
+        if ($m !== null && $m->status === SiteMigration::READY && $this->chosenFor !== $m->id) {
+            // A Plesk subscription just copied.
+            $this->choose($m);
+        }
         $data = [
             'migration' => $m,
             'history' => SiteMigration::whereIn('status', ['succeeded', 'partial', 'failed'])->latest('id')->limit(10)->get(),
         ];
         if ($m === null) {
+            if ($this->from === 'plesk' && $this->pleskServer === null && $this->pleskAuth === 'key') {
+                $data['publicKey'] = $migrations->publicKey();
+            }
             if ($this->from === 'folder') {
                 try {
                     $data['files'] = $migrations->files();

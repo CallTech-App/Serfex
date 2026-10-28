@@ -147,6 +147,9 @@ type Manager struct {
 	systemd bool
 	// newTarget opens a remote target; dry runs keep them on local disk.
 	newTarget func(TargetSpec) (Target, error)
+	// dialPlesk signs in to a Plesk server and returns its host key; dry
+	// runs reach a made-up one.
+	dialPlesk func(context.Context, PleskConn) (remote, string, error)
 	// now is time.Now, replaced in tests.
 	now func() time.Time
 }
@@ -160,6 +163,10 @@ func NewManager(h host.Host, db *database.Manager, l *laravel.Manager) *Manager 
 		m.systemd = err == nil
 	}
 	m.newTarget = m.openTarget
+	m.dialPlesk = m.dialSSH
+	if sim {
+		m.dialPlesk = dialDemoPlesk
+	}
 	db.SetWrap(m.slow)
 	return m
 }

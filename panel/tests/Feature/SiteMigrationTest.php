@@ -79,7 +79,7 @@ class SiteMigrationTest extends TestCase
 
     public function test_the_page_reads_an_archive_and_shows_what_will_move_and_what_will_not(): void
     {
-        $this->get('/sites/migrate')->assertOk()->assertSee('cPanel yedeğini seçin')->assertSee('Yedeği nereden alırım?');
+        $this->get('/sites/migrate')->assertOk()->assertSee('Taşınacak hesabı seçin')->assertSee('Yedeği nereden alırım?');
         Livewire::test(SiteMigrate::class)->set('from', 'folder')->assertSee('cpmove-magaza.tar.gz');
 
         $m = $this->read();

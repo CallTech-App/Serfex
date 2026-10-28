@@ -143,7 +143,7 @@ applications for paying customers. Known gaps, planned for later releases:
 - an SSH terminal in the browser, and moving sites from another server
   (shown as "Soon" in the panel);
 - DNSSEC and secondary DNS servers;
-- importing cPanel and Plesk backups, backing up mailboxes on their own, CalDAV and CardDAV;
+- backing up mailboxes on their own, CalDAV and CardDAV;
 - Slack and Telegram notifications;
 - signed releases (releases are checked with SHA-256 today);
 - more than one server per panel, and distributions other than Ubuntu.
