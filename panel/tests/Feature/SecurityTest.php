@@ -78,7 +78,7 @@ class SecurityTest extends TestCase
         Setting::put('components.installed', ['fail2ban', 'modsecurity']);
         $this->site = Site::factory()->create(['domain' => 'kahveatolyesi.com.tr']);
         $this->site->systemUser->update(['name' => 'kahve']);
-        $this->admin = User::factory()->create(['name' => 'Sercan']);
+        $this->admin = User::factory()->create(['name' => 'Aylin']);
         $this->actingAs($this->admin);
     }
 

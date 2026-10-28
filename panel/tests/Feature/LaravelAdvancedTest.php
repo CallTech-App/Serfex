@@ -274,16 +274,16 @@ class LaravelAdvancedTest extends TestCase
         $backup = $this->backup($app);
         $this->agent->answers['laravel.backup.create'] = ['parts' => ['database' => 5], 'size' => 5];
         $this->agent->answers['laravel.backup.restore'] = ['current' => '4'];
-        app(Backups::class)->restore($backup, ['code', 'database'], true, User::factory()->create(['name' => 'Sercan']));
+        app(Backups::class)->restore($backup, ['code', 'database'], true, User::factory()->create(['name' => 'Aylin']));
         Queue::assertPushed(RestoreLaravelApp::class);
 
-        (new RestoreLaravelApp($backup->fresh(), ['code', 'database'], true, 'Sercan'))->handle($this->agent, app(Backups::class));
+        (new RestoreLaravelApp($backup->fresh(), ['code', 'database'], true, 'Aylin'))->handle($this->agent, app(Backups::class));
 
         $this->assertSame(['laravel.backup.create', 'laravel.backup.restore'], array_values(array_filter($this->agent->methods(), fn ($m) => str_starts_with($m, 'laravel.backup'))));
         $this->assertSame('succeeded', $backup->fresh()->restore_status);
         $this->assertSame('4', $app->fresh()->current_release);
         $safety = $app->backups()->where('kind', 'restore')->sole();
-        $this->assertSame('Sercan', $safety->user_name);
+        $this->assertSame('Aylin', $safety->user_name);
     }
 
     public function test_restore_stops_when_the_safety_backup_fails(): void

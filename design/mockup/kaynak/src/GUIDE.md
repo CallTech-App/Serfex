@@ -32,14 +32,14 @@ Serfex: açık kaynak web hosting paneli (Plesk/cPanel alternatifi), güçlü La
 - AI: sayfaya özgü bir "Serfex AI" önerisi/özeti en fazla bir yerde, `bg-accent-soft/60` zeminli, sparkles ikonlu. AI'ın onaysız yapabildiği tek şey IP engelleme ve geçici kaynak sınırı; diğer her öneri "Onayla / Vazgeç" kartıyla.
 
 ## Ortak örnek veri evreni (tutarlı kullan)
-- Sunucu `srv-ist-01`, Ubuntu 24.04.1 LTS, 8 çekirdek, 32 GB, 480 GB NVMe, IPv4 `185.98.142.21`, IPv6 `2a0e:1c80:4:2a::21`. Serfex 1.4.1 kurulu, 1.4.2 hazır. Yönetici: Sercan Yılmaz. Diğer kullanıcı: Ayşe Kaya (müşteri yetkilisi).
+- Sunucu `srv-ist-01`, Ubuntu 24.04.1 LTS, 8 çekirdek, 32 GB, 480 GB NVMe, IPv4 `203.0.113.21`, IPv6 `2001:db8:4:2a::21`. Serfex 1.4.1 kurulu, 1.4.2 hazır. Yönetici: Aylin Yılmaz. Diğer kullanıcı: Ayşe Kaya (müşteri yetkilisi).
 - 24 site. Önemli olanlar: magazaonline.com.tr (WordPress/Woo, şu an saldırı altında, PHP havuzu 12/12), ozkanlojistik.com + panel.ozkanlojistik.com (Laravel 12, kuyruğu takılı SendInvoiceJob), api.hizlikargo.app (Laravel 12, sağlıklı, sürüm #148 8f3c2a1), staging.hizlikargo.app (son dağıtım migrate adımında başarısız), bulten.atlasyayin.com (Laravel 11, toplu posta 1.840/sa), kahveatolyesi.com.tr (WooCommerce) ve eski.kahveatolyesi.com.tr (SSL 6 gün sonra bitiyor, A kaydı başka sunucuyu gösteriyor 104.21.8.17), klinikmavi.com (statik + PHP 8.4), atlasyayin.com, hizlikargo.app.
 - Müşteriler: Mağaza Online, Özkan Lojistik, Hızlı Kargo A.Ş., Atlas Yayıncılık, Kahve Atölyesi, Klinik Mavi (+ birkaç küçük). Paketler: Başlangıç, Profesyonel, Laravel Pro, Kurumsal.
 - Saldırgan IP'ler: 45.155.205.233, 193.42.33.117, 103.153.79.6; AI'ın otomatik engellediği 185.220.101.47 (23:41). Saat şu an ~23:50.
 - Servis yığını: Nginx 1.26.2, PHP-FPM 8.3/8.4/8.5, MySQL 8.4.3 (müşteri), PostgreSQL 17.2 (panel), Redis 7.4.1, PowerDNS 4.9.2, Postfix 3.8.6, Dovecot 2.3.21, Rspamd 3.10, Roundcube, Let's Encrypt, nftables + fail2ban + ModSecurity/Coraza WAF, cgroup v2 site başına sınır.
 
 ## 2. TUR: SADE İÇ SAYFA KURALLARI (yukarıdakilerle çelişirse BUNLAR geçerli)
-Sercan'ın geri bildirimi: "İç sayfalar aşırı karışık, Plesk ve cPanel'i örnek al." İlk turdaki sayfalar (pages-v1/) çok yoğundu. Yeni kalıp Plesk ve cPanel'in araç sayfaları gibi: her sayfa TEK iş yapar.
+Geri bildirim: "İç sayfalar aşırı karışık, Plesk ve cPanel'i örnek al." İlk turdaki sayfalar (pages-v1/) çok yoğundu. Yeni kalıp Plesk ve cPanel'in araç sayfaları gibi: her sayfa TEK iş yapar.
 Referans sayfalar: `pages/eposta.html` (liste sayfası kalıbı) ve `pages/site-detay.html` (cPanel tarzı araç ızgarası). Bunları birebir kalıp olarak al.
 
 Sayfa yapısı, sırayla:
@@ -54,7 +54,7 @@ AI yalnızca üst çubuktaki Serfex AI çekmecesinde ve kendi sayfasında yaşar
 Türkçe adlandırma cPanel/Plesk kullanıcısının bildiği gibi: "Posta Kutuları", "DNS Kayıtları", "Zamanlanmış Görevler", "Veritabanı Kullanıcıları".
 Hedef: sayfa dosyası 20 KB altında; ekranda ilk bakışta tek bir tablo ya da tek bir form.
 Gizlemek için `hidden` özniteliği kullan (CSS'te `[hidden]{display:none!important}` var).
-- Birden çok nesneyi yöneten bölümler (DNS, siteler vb.) önce nesne LİSTESİ, satıra tıklayınca o nesnenin DETAY sayfası (Plesk gibi). Detay sayfasında konum satırı (breadcrumb) ve "listeye dön". Sercan DNS ve Laravel için bunu açıkça istedi; E-posta ve Dosya Yöneticisi de böyle. Liste sayfası üretmek için mklist.py.
+- Birden çok nesneyi yöneten bölümler (DNS, siteler vb.) önce nesne LİSTESİ, satıra tıklayınca o nesnenin DETAY sayfası (Plesk gibi). Detay sayfasında konum satırı (breadcrumb) ve "listeye dön". DNS ve Laravel için bu açıkça istendi; E-posta ve Dosya Yöneticisi de böyle. Liste sayfası üretmek için mklist.py.
 
-## Özgünlük kuralı (Sercan, 2026-10-18)
+## Özgünlük kuralı (2026-10-18)
 Plesk ve cPanel'in işleyişinden (liste → detay, site içi araçlar, site bazında web sunucusu seçimi) ilham alınır, ama görünüm birebir kopyalanmaz: onların sekme adları, menü/araç adları ve sıraları, ikonları, renkleri, sayfa yerleşimleri ve açıklama metinleri aynen alınmaz. Serfex kendi düzenini, adlarını ve metinlerini kullanır. Hukuki görüş değildir; yayın öncesi bir avukata danışılmalı.

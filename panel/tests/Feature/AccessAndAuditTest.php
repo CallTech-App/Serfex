@@ -91,7 +91,7 @@ class AccessAndAuditTest extends TestCase
 
     public function test_a_page_action_is_logged_with_section_and_undo_from_the_log(): void
     {
-        $admin = User::factory()->create(['name' => 'Sercan']);
+        $admin = User::factory()->create(['name' => 'Aylin']);
         $this->actingAs($admin);
         $page = '/sites/'.$this->site->id.'/zamanlanmis-gorevler';
 
@@ -105,7 +105,7 @@ class AccessAndAuditTest extends TestCase
         $entries = AuditEntry::orderBy('id')->get();
         $this->assertSame(['Zamanlanmış görev eklendi: Her 5 dakikada.', 'Zamanlanmış görev silindi.'], $entries->pluck('message')->all());
         $deleted = $entries[1];
-        $this->assertSame('Sercan', $deleted->actor);
+        $this->assertSame('Aylin', $deleted->actor);
         $this->assertSame('Siteler · kahve.com.tr', $deleted->section);
         // Browsers send the page as Referer with Livewire updates; the test
         // client cannot, so the page is filled in here.
@@ -166,13 +166,13 @@ class AccessAndAuditTest extends TestCase
 
     public function test_the_log_filters_by_person_and_text_and_records_sign_ins(): void
     {
-        $admin = User::factory()->create(['name' => 'Sercan', 'email' => 'sercan@kahve.com.tr']);
-        $this->post('/login', ['email' => 'sercan@kahve.com.tr', 'password' => 'password'])->assertRedirect();
+        $admin = User::factory()->create(['name' => 'Aylin', 'email' => 'aylin@kahve.com.tr']);
+        $this->post('/login', ['email' => 'aylin@kahve.com.tr', 'password' => 'password'])->assertRedirect();
         $this->assertSame('Panele giriş yaptı.', AuditEntry::sole()->message);
         $this->assertNotNull($admin->fresh()->last_login_at);
 
         AuditLog::record('DNS kaydı eklendi: www.kahve.com.tr', $admin, extra: ['section' => 'Alan Adları ve DNS']);
-        AuditLog::record('Site oluşturuluyor.', $admin, 'api', ['actor' => 'API: Faturalama (Sercan)']);
+        AuditLog::record('Site oluşturuluyor.', $admin, 'api', ['actor' => 'API: Faturalama (Aylin)']);
 
         Livewire::test(AuditLogPage::class)
             ->assertSee('Panele giriş yaptı.')
@@ -181,7 +181,7 @@ class AccessAndAuditTest extends TestCase
             ->assertDontSee('Panele giriş yaptı.')
             ->set('search', '')
             ->set('who', 'api')
-            ->assertSee('API: Faturalama (Sercan)')
+            ->assertSee('API: Faturalama (Aylin)')
             ->assertDontSee('www.kahve.com.tr');
     }
 

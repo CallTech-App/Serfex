@@ -119,7 +119,7 @@ func vars(t *testing.T) map[string]string {
 }
 
 var adminMe = map[string]any{"data": map[string]any{
-	"kind": "key", "name": "Sercan", "email": "sercan@ornek.com.tr", "account": "admin", "role": "full", "role_name": "Tam yetkili yönetici",
+	"kind": "key", "name": "Aylin", "email": "aylin@ornek.com.tr", "account": "admin", "role": "full", "role_name": "Tam yetkili yönetici",
 	"key":    map[string]any{"name": "Komut satırı: dizustu · Linux", "kind": "cli", "scope": "write", "expires_at": "2027-10-20T10:00:00+03:00"},
 	"server": map[string]any{"hostname": "web1", "version": "1.4.0"},
 }}
@@ -156,7 +156,7 @@ func TestLoginWithATokenKeepsAProfile(t *testing.T) {
 	}
 
 	r := run(t, v, "", "whoami")
-	if r.code != 0 || !strings.Contains(r.out, "Sercan <sercan@ornek.com.tr>") || !strings.Contains(r.out, "Serfex 1.4.0") {
+	if r.code != 0 || !strings.Contains(r.out, "Aylin <aylin@ornek.com.tr>") || !strings.Contains(r.out, "Serfex 1.4.0") {
 		t.Fatalf("whoami: %+v", r)
 	}
 	r = run(t, v, "", "whoami", "--lang", "en")
@@ -199,7 +199,7 @@ func TestLoginThroughTheBrowser(t *testing.T) {
 	if cfg.Current != "web1" || cfg.Profiles["web1"].Token != "sfx_panel_new" {
 		t.Fatalf("%+v", cfg)
 	}
-	if !strings.Contains(r.out, "Sercan olarak giriş yapıldı") {
+	if !strings.Contains(r.out, "Aylin olarak giriş yapıldı") {
 		t.Fatalf("out %s", r.out)
 	}
 }

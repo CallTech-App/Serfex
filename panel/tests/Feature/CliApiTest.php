@@ -78,10 +78,10 @@ class CliApiTest extends TestCase
             ]],
         ]);
         $this->app->instance(AgentClient::class, $this->agent);
-        Setting::put('mail.hostname', 'mail.serfex.net.tr');
-        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.serfex.net.tr/', 'certificate' => '']);
+        Setting::put('mail.hostname', 'mail.example.net');
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.example.net/', 'certificate' => '']);
 
-        $this->admin = User::factory()->create(['name' => 'Sercan', 'role' => 'full']);
+        $this->admin = User::factory()->create(['name' => 'Aylin', 'role' => 'full']);
         $this->customer = Customer::factory()->withLogin()->create(['company' => 'Kahve Atölyesi', 'username' => 'kahve']);
         $this->mine = Site::factory()->for(app(Customers::class)->account($this->customer))->create(['domain' => 'kahveatolyesi.com.tr']);
         $other = Customer::factory()->withLogin()->create(['username' => 'klinik']);
@@ -110,7 +110,7 @@ class CliApiTest extends TestCase
 
     public function test_signing_in_through_the_browser_gives_the_key_once(): void
     {
-        $start = $this->postJson('/api/v1/cli/login', ['client' => 'sercan-mbp'])->assertCreated();
+        $start = $this->postJson('/api/v1/cli/login', ['client' => 'aylin-mbp'])->assertCreated();
         $code = $start->json('code');
         $this->assertMatchesRegularExpression('/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/', $code);
         $this->assertStringContainsString('/cli/onay?kod='.$code, $start->json('url'));
@@ -120,7 +120,7 @@ class CliApiTest extends TestCase
         $this->postJson('/api/v1/cli/login/token', ['device' => 'yanlış'])->assertStatus(410);
 
         $this->actingAs($this->admin);
-        $this->get('/cli/onay?kod='.$code)->assertOk()->assertSee('sercan-mbp')->assertSee($code);
+        $this->get('/cli/onay?kod='.$code)->assertOk()->assertSee('aylin-mbp')->assertSee($code);
         Livewire::test(CliApprove::class)
             ->set('typed', strtolower(str_replace('-', '', $code)))
             ->call('lookup')
@@ -134,7 +134,7 @@ class CliApiTest extends TestCase
             ->assertJsonPath('email', $this->admin->email);
         $key = ApiKey::sole();
         $this->assertSame(ApiKey::CLI, $key->kind);
-        $this->assertSame('sercan-mbp', $key->client);
+        $this->assertSame('aylin-mbp', $key->client);
         $this->assertSame(hash('sha256', $got->json('key')), $key->token_hash);
         $this->assertTrue($key->expires_at->between(now()->addDays(364), now()->addDays(366)));
         $this->assertNull(CliLogin::sole()->secret);
@@ -347,8 +347,8 @@ class CliApiTest extends TestCase
     {
         $app = $this->laravelApp();
         $app->update(['current_release' => '2']);
-        LaravelDeployment::create(['laravel_app_id' => $app->id, 'number' => 1, 'release' => '1', 'kind' => 'deploy', 'status' => DeploymentStatus::Succeeded, 'run' => 'deploy-1', 'triggered_by' => 'Sercan']);
-        LaravelDeployment::create(['laravel_app_id' => $app->id, 'number' => 2, 'release' => '2', 'kind' => 'deploy', 'status' => DeploymentStatus::Succeeded, 'run' => 'deploy-2', 'triggered_by' => 'Sercan']);
+        LaravelDeployment::create(['laravel_app_id' => $app->id, 'number' => 1, 'release' => '1', 'kind' => 'deploy', 'status' => DeploymentStatus::Succeeded, 'run' => 'deploy-1', 'triggered_by' => 'Aylin']);
+        LaravelDeployment::create(['laravel_app_id' => $app->id, 'number' => 2, 'release' => '2', 'kind' => 'deploy', 'status' => DeploymentStatus::Succeeded, 'run' => 'deploy-2', 'triggered_by' => 'Aylin']);
         $token = LaravelApiToken::issue($app, 'CI')[1];
 
         $this->postJson('/api/v1/apps/api.hizlikargo.com.tr/rollback', ['to' => 2], $this->bearer($token))->assertStatus(409);

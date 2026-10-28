@@ -50,7 +50,7 @@ class GitDeployTest extends TestCase
         $this->app->instance(AgentClient::class, $this->agent);
         $this->site = Site::factory()->create(['domain' => 'kahve.com.tr', 'php_version' => '8.4']);
         $this->site->systemUser->update(['name' => 'kahve']);
-        $this->actingAs(User::factory()->create(['name' => 'Sercan']));
+        $this->actingAs(User::factory()->create(['name' => 'Aylin']));
     }
 
     private function repo(array $values = []): GitRepository
@@ -95,7 +95,7 @@ class GitDeployTest extends TestCase
         $this->assertSame(['production', 'public_html', null], [$repo->branch, $repo->path, $repo->token]);
         $this->assertSame(40, strlen($repo->webhook_token));
         $deployment = $repo->deployments()->sole();
-        $this->assertSame([1, 'deploy', 'production', 'Sercan'], [$deployment->number, $deployment->kind, $deployment->branch, $deployment->triggered_by]);
+        $this->assertSame([1, 'deploy', 'production', 'Aylin'], [$deployment->number, $deployment->kind, $deployment->branch, $deployment->triggered_by]);
         Queue::assertPushed(DeploySiteFromGit::class);
 
         // The agent checks the commit out; the result is recorded.

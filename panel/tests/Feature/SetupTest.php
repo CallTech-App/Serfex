@@ -80,13 +80,13 @@ class SetupTest extends TestCase
         $this->get('/install/'.$token)->assertOk()->assertSee('Yönetici hesabını oluşturun');
 
         $this->post('/install/'.$token, [
-            'name' => 'Sercan', 'email' => 'Sercan@Ornek.com.tr', 'password' => 'correct-horse-battery',
+            'name' => 'Aylin', 'email' => 'Aylin@Ornek.com.tr', 'password' => 'correct-horse-battery',
             'password_confirmation' => 'correct-horse-battery', 'locale' => 'en',
         ])->assertRedirect('/install');
 
         $admin = User::sole();
         $this->assertAuthenticatedAs($admin);
-        $this->assertSame('sercan@ornek.com.tr', $admin->email);
+        $this->assertSame('aylin@ornek.com.tr', $admin->email);
         $this->assertTrue($admin->isFullAdmin());
         $this->assertTrue(Hash::check('correct-horse-battery', $admin->password));
         $this->assertSame('en', Setting::get('panel.locale'));
@@ -115,7 +115,7 @@ class SetupTest extends TestCase
     {
         $token = $this->link();
         $this->from('/install/'.$token)->post('/install/'.$token, [
-            'name' => 'Sercan', 'email' => 'sercan@example.test', 'password' => 'short', 'password_confirmation' => 'short', 'locale' => 'tr',
+            'name' => 'Aylin', 'email' => 'aylin@example.test', 'password' => 'short', 'password_confirmation' => 'short', 'locale' => 'tr',
         ])->assertSessionHasErrors('password');
         $this->assertSame(0, User::count());
     }
@@ -137,7 +137,7 @@ class SetupTest extends TestCase
 
     public function test_the_wizard_saves_each_step_through_the_settings_it_belongs_to(): void
     {
-        $admin = User::factory()->create(['role' => 'full', 'email' => 'sercan@ornek.com.tr']);
+        $admin = User::factory()->create(['role' => 'full', 'email' => 'aylin@ornek.com.tr']);
         $this->actingAs($admin);
 
         $wizard = Livewire::test(SetupWizard::class)
@@ -190,14 +190,14 @@ class SetupTest extends TestCase
         $this->assertSame('srv1.ornek.com.tr', Setting::get('panel.hostname'));
         Queue::assertPushed(IssuePanelCertificate::class);
 
-        $wizard->assertSet('emails', 'sercan@ornek.com.tr')
-            ->set('emails', 'sercan@ornek.com.tr, bad')
+        $wizard->assertSet('emails', 'aylin@ornek.com.tr')
+            ->set('emails', 'aylin@ornek.com.tr, bad')
             ->call('save')
             ->assertHasErrors('emails')
-            ->set('emails', 'sercan@ornek.com.tr, ops@ornek.com.tr')
+            ->set('emails', 'aylin@ornek.com.tr, ops@ornek.com.tr')
             ->call('save')
             ->assertSet('step', 'guvenlik');
-        $this->assertSame(['sercan@ornek.com.tr', 'ops@ornek.com.tr'], app(Notifications::class)->settings()['emails']);
+        $this->assertSame(['aylin@ornek.com.tr', 'ops@ornek.com.tr'], app(Notifications::class)->settings()['emails']);
 
         $wizard->call('save')->assertHasNoErrors()->assertSet('step', 'varsayilanlar');
         $this->assertTrue(app(Firewall::class)->enabled());
@@ -386,9 +386,9 @@ class SetupTest extends TestCase
 
     public function test_a_full_administrators_first_sign_in_opens_the_wizard_once(): void
     {
-        User::factory()->create(['email' => 'sercan@example.test', 'password' => 'correct-horse-battery', 'role' => 'full']);
-        $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/install');
+        User::factory()->create(['email' => 'aylin@example.test', 'password' => 'correct-horse-battery', 'role' => 'full']);
+        $this->post('/login', ['email' => 'aylin@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/install');
         $this->post('/logout');
-        $this->post('/login', ['email' => 'sercan@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/');
+        $this->post('/login', ['email' => 'aylin@example.test', 'password' => 'correct-horse-battery'])->assertRedirect('/');
     }
 }

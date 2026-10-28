@@ -147,13 +147,13 @@
   let recs = [
     ['@', 'NS', 'ns1.serfex-ornek.net.', 86400],
     ['@', 'NS', 'ns2.serfex-ornek.net.', 86400],
-    ['@', 'A', '185.98.142.21', 3600],
-    ['@', 'AAAA', '2a0e:1c80:4:2a::21', 3600],
+    ['@', 'A', '203.0.113.21', 3600],
+    ['@', 'AAAA', '2001:db8:4:2a::21', 3600],
     ['www', 'CNAME', D + '.', 3600],
-    ['mail', 'A', '185.98.142.21', 3600],
+    ['mail', 'A', '203.0.113.21', 3600],
     ['eski', 'A', '104.21.8.17', 3600],
     ['@', 'MX', 'mail.' + D + '.', 3600, 10],
-    ['@', 'TXT', 'v=spf1 a mx ip4:185.98.142.21 ip6:2a0e:1c80:4:2a::21 ~all', 3600],
+    ['@', 'TXT', 'v=spf1 a mx ip4:203.0.113.21 ip6:2001:db8:4:2a::21 ~all', 3600],
     ['default._domainkey', 'TXT', 'v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu7x2Lq', 3600],
     ['_dmarc', 'TXT', 'v=DMARC1; p=quarantine; rua=mailto:dmarc@' + D + '; adkim=s', 3600],
     ['@', 'CAA', '0 issue "letsencrypt.org"', 3600],
@@ -189,7 +189,7 @@
   };
 
   // Ekle / düzenle
-  const F = { A: ['IPv4 adresi', '185.98.142.21'], AAAA: ['IPv6 adresi', '2a0e:1c80:4:2a::21'], CNAME: ['Hedef alan adı', D + '.'], MX: ['Posta sunucusu', 'mail.' + D + '.'], TXT: ['Değer', 'v=spf1 a mx ~all'], CAA: ['Değer', '0 issue "letsencrypt.org"'], NS: ['Ad sunucusu', 'ns1.serfex-ornek.net.'] };
+  const F = { A: ['IPv4 adresi', '203.0.113.21'], AAAA: ['IPv6 adresi', '2001:db8:4:2a::21'], CNAME: ['Hedef alan adı', D + '.'], MX: ['Posta sunucusu', 'mail.' + D + '.'], TXT: ['Değer', 'v=spf1 a mx ~all'], CAA: ['Değer', '0 issue "letsencrypt.org"'], NS: ['Ad sunucusu', 'ns1.serfex-ornek.net.'] };
   const m = $('recModal'); let editing = -1;
   const setType = () => { const t = $('fT').value; $('fVl').textContent = F[t][0]; $('fV').placeholder = F[t][1]; $('fPw').hidden = t !== 'MX'; };
   $('fT').onchange = setType;
@@ -204,7 +204,7 @@
   $('recForm').addEventListener('submit', e => {
     e.preventDefault();
     const t = $('fT').value, h = $('fH').value.trim() || '@', v = $('fV').value.trim();
-    if (t === 'A' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) { toast('Geçerli bir IPv4 adresi yazın, örneğin 185.98.142.21.'); $('fV').focus(); return; }
+    if (t === 'A' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) { toast('Geçerli bir IPv4 adresi yazın, örneğin 203.0.113.21.'); $('fV').focus(); return; }
     const r = [h, t, v, +$('fL').value]; if (t === 'MX') r.push(+$('fP').value || 10);
     if (editing < 0) recs.push(r); else recs[editing] = r;
     draw(); m.hidden = true;

@@ -39,7 +39,7 @@ class PanelApiTest extends TestCase
         Queue::fake();
         $this->agent = new FakeAgent(['php.versions' => ['8.4', '8.3']]);
         $this->app->instance(AgentClient::class, $this->agent);
-        $this->admin = User::factory()->create(['name' => 'Sercan', 'role' => 'full']);
+        $this->admin = User::factory()->create(['name' => 'Aylin', 'role' => 'full']);
     }
 
     /**
@@ -134,7 +134,7 @@ class PanelApiTest extends TestCase
 
         $entries = AuditEntry::orderBy('id')->get();
         $this->assertSame(['kahve.com.tr oluşturuluyor.', 'kahve.com.tr siliniyor.'], $entries->pluck('message')->all());
-        $this->assertSame('API: Faturalama (Sercan)', $entries[0]->actor);
+        $this->assertSame('API: Faturalama (Aylin)', $entries[0]->actor);
         $this->assertSame('api', $entries[0]->via);
     }
 
