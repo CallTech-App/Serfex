@@ -2,9 +2,12 @@
 
 namespace App\Livewire\Laravel\Sections;
 
+use App\Livewire\Concerns\PicksGitRepository;
 use App\Livewire\Laravel\LaravelIndex;
 use App\Livewire\Laravel\ReadsRunLogs;
 use App\Models\LaravelDeployment;
+use App\Services\Git\GitAccounts;
+use App\Services\Git\GitProviders;
 use App\Services\Laravel\LaravelApps;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -18,8 +21,9 @@ class Deployments extends Section
 {
     protected const VIEW_METHODS = ['showLog', 'closeLog'];
 
-    protected const MANAGE_METHODS = ['openConnect', 'connect'];
+    protected const MANAGE_METHODS = ['openConnect', 'connect', 'refreshRepositories'];
 
+    use PicksGitRepository;
     use ReadsRunLogs;
 
     public ?int $logId = null;
@@ -45,6 +49,12 @@ class Deployments extends Section
 
     public bool $private = false;
 
+    /** Type the repository address although the host's list could be used. */
+    public bool $typeAddress = false;
+
+    /** What the host refused while linking the picked repository. */
+    public array $linkErrors = [];
+
     public string $healthPath = '/up';
 
     public function mount(int $appId): void
@@ -53,6 +63,28 @@ class Deployments extends Section
         $app = $this->app();
         $this->hooks = $app->hookScripts();
         $this->healthPath = $app->health_path;
+        // Back from connecting a Git account: the form as it was left.
+        $provider = request()->query('connect');
+        if (is_string($provider) && isset(LaravelIndex::PROVIDERS[$provider]) && $this->can('manage')) {
+            $this->openConnect();
+            $this->provider = $provider;
+        }
+    }
+
+    protected function pickingFrom(): ?string
+    {
+        return $this->connecting && ! $this->typeAddress && isset($this->gitHosts()[$this->provider]) ? $this->provider : null;
+    }
+
+    protected function pickerReturnPath(string $provider): string
+    {
+        return route('laravel.show', [$this->appId, 'section' => 'deployments', 'connect' => $provider], false);
+    }
+
+    public function updatedProvider(): void
+    {
+        $this->resetPicker();
+        $this->typeAddress = false;
     }
 
     #[On('show-deploy-log')]
@@ -168,7 +200,8 @@ class Deployments extends Section
 
     public function openConnect(): void
     {
-        $this->reset('provider', 'repository', 'branch', 'private');
+        $this->reset('provider', 'repository', 'branch', 'private', 'typeAddress');
+        $this->resetPicker();
         $this->resetValidation();
         $this->connecting = true;
     }
@@ -177,8 +210,13 @@ class Deployments extends Section
      * Attach a Git repository to an application installed as a new project
      * or found on the site, so it can be deployed.
      */
-    public function connect(): void
+    public function connect(GitAccounts $accounts, GitProviders $providers): void
     {
+        if ($this->pickingFrom() !== null) {
+            $this->connectPicked($accounts, $providers);
+
+            return;
+        }
         $this->repository = trim($this->repository);
         $this->branch = trim($this->branch);
         $this->validate([
@@ -197,12 +235,51 @@ class Deployments extends Section
             $repo = "git@{$m[1]}:".preg_replace('~\.git$~', '', $m[2]).'.git';
         }
         $app = $this->app();
+        if ($app->remote_repository !== null && $app->repository !== $repo) {
+            // Another repository: the key and webhook added to the old one go.
+            $accounts->unlink($app);
+        }
         $app->update(['repository' => $repo, 'branch' => $this->branch ?: null]);
         $this->connecting = false;
         if ($this->private) {
             $this->showKey();
         }
         $this->dispatch('toast', message: __('Depo bağlandı. "Dağıt" ile ilk sürümü yayına alabilirsiniz.'));
+    }
+
+    /**
+     * Connects the repository picked from the account's list: fetched
+     * with the deploy key, which is added to it together with the webhook.
+     */
+    private function connectPicked(GitAccounts $accounts, GitProviders $providers): void
+    {
+        $picked = $this->pickedRepository();
+        if ($picked === null) {
+            return;
+        }
+        $this->branch = trim($this->branch);
+        $this->validate(['branch' => ['nullable', 'max:200', 'regex:~^[A-Za-z0-9][A-Za-z0-9._/-]*$~', 'not_regex:~\.\.~']], [], ['branch' => 'dal']);
+        $app = $this->app();
+        $key = $this->agent('laravel.key', $app->target());
+        if ($key === null) {
+            return;
+        }
+        $accounts->unlink($app);
+        $app->update(['repository' => $picked['repo']['ssh_url'], 'branch' => $this->branch ?: null, 'deploy_key' => $key['public_key'] ?? null]);
+        $linked = $accounts->link($app, $picked['account'], $picked['repo']['name'], (string) ($key['public_key'] ?? ''), $providers->webhookUrl($app->webhook_token), pullRequests: true);
+        $this->connecting = false;
+        $this->linkErrors = $linked['errors'];
+        $this->resetPicker();
+        if (! $linked['key']) {
+            $this->publicKey = $key['public_key'] ?? null;
+            $this->showingKey = true;
+        }
+        $label = GitProviders::LABELS[$picked['account']->provider];
+        $this->dispatch('toast', message: match (true) {
+            $linked['key'] && $linked['hook'] => __('Depo bağlandı; dağıtım anahtarı ve webhook :provider\'a eklendi. "Dağıt" ile ilk sürümü yayına alabilirsiniz.', ['provider' => $label]),
+            $linked['key'] => __('Depo bağlandı ve dağıtım anahtarı :provider\'a eklendi; webhook eklenemedi.', ['provider' => $label]),
+            default => __('Depo bağlandı; dağıtım anahtarını depoya elle ekleyin.'),
+        });
     }
 
     public function render(): View
@@ -223,6 +300,8 @@ class Deployments extends Section
             'rollbackTo' => $this->rollbackId ? $deployments->firstWhere('id', $this->rollbackId) : null,
             'busy' => $busy,
             'webhookShort' => Str::limit($app->webhookUrl(), 60),
+            'picker' => $this->connecting ? $this->picker() : null,
+            'hosts' => $this->connecting ? $this->gitHosts() : [],
         ]);
     }
 }

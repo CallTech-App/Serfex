@@ -70,8 +70,11 @@ On a site's page:
   a Git repository. Connect a public `https://` address, one opened with an
   access token, or an SSH address with the deploy key Serfex makes; then
   **Deploy**, or add the webhook address to the repository to deploy on
-  every push. Files the repository does not track stay; any earlier deploy
-  can be put back, and the first one undone.
+  every push. With your GitHub, GitLab or Bitbucket account connected (your
+  name → Git accounts, when the server offers it) you pick the repository and
+  branch from lists, and Serfex adds the deploy key and webhook to it. Files
+  the repository does not track stay; any earlier deploy can be put back, and
+  the first one undone.
 - **Statistics**: visitors, pages, bandwidth, referrers, countries and bots.
 - **Logs**: the site's access and error logs.
 - **Domains**: subdomains, other domains that open the same site, and
