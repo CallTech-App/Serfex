@@ -144,6 +144,7 @@ class SiteShow extends Component
             'cronJobs' => CronJob::where('site_id', $site->id)->count(),
             'mail' => MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
             'webmail' => app(MailSettings::class)->webmailUrl(),
+            'webmailApp' => MailSettings::WEBMAIL_APPS[app(MailSettings::class)->servedWebmailApp() ?? 'roundcube'],
             'wafInstalled' => app(Components::class)->isInstalled('modsecurity'),
             'openFindings' => SecurityFinding::open()->where('site_id', $site->id)->count(),
             'scanned' => SecurityScan::where(fn ($q) => $q->where('site_id', $site->id)->orWhere('scope', 'server'))->whereNotNull('finished_at')->exists(),

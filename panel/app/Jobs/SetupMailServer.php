@@ -47,6 +47,7 @@ class SetupMailServer implements ShouldBeUnique, ShouldQueue
                 'certificate' => $certificate,
                 'hourly_limit' => $settings->hourlyLimit(),
                 'webmail' => $settings->webmail(),
+                'webmail_app' => $settings->webmailApp(),
             ], 840);
         } catch (AgentException $e) {
             $settings->saveServer(['state' => 'failed', 'error' => $e->reason]);
@@ -60,6 +61,10 @@ class SetupMailServer implements ShouldBeUnique, ShouldQueue
             'hostname' => $result['hostname'] ?? $hostname,
             'certificate' => $certificate,
             'webmail_url' => $result['webmail_url'] ?? null,
+            'webmail_app' => $result['webmail_app'] ?? null,
+            'webmail_version' => $result['webmail_version'] ?? null,
+            // This setup installed the newest SnappyMail the agent has.
+            'webmail_latest' => null,
             'setup_at' => now()->toIso8601String(),
         ]);
 

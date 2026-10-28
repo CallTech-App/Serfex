@@ -1,6 +1,6 @@
 // Package mail runs Serfex's mail server: Postfix for SMTP, Dovecot for
 // IMAP, POP3, LMTP delivery and Sieve, Rspamd for spam filtering, DKIM
-// signing and sending limits, and Roundcube for webmail.
+// signing and sending limits, and Roundcube or SnappyMail for webmail.
 //
 // Mail domains and mailboxes are virtual: every mailbox belongs to the
 // single vmail account, so a mailbox never needs a system user.
@@ -19,6 +19,8 @@
 //	/etc/rspamd/local.d/                    Rspamd settings (Rspamd's own files stay untouched)
 //	/etc/redis/redis-serfex-mail.conf       Redis instance for Rspamd only, on a Unix socket
 //	/var/vmail/<domain>/<mailbox>/Maildir/  mail, owned by vmail
+//	/var/lib/serfex/webmail/                webmail data: Roundcube's database, SnappyMail's data folder
+//	/opt/serfex/snappymail/<version>/       SnappyMail releases, when SnappyMail is the webmail
 //
 // The panel keeps mail domains in its own database and sends a whole
 // domain with mail.domain.apply. The agent stores it, rebuilds every map
@@ -28,6 +30,7 @@
 package mail
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -100,12 +103,17 @@ type Manager struct {
 	h       host.Host
 	webUser string
 	mu      sync.Mutex
+	sim     bool
+
+	// Download fetches a URL (the SnappyMail release); tests replace it.
+	Download func(ctx context.Context, url string) ([]byte, error)
 }
 
 // NewManager returns a Manager. webUser is the account Nginx runs as; it
 // connects to the webmail's PHP-FPM socket.
 func NewManager(h host.Host, webUser string) *Manager {
-	return &Manager{h: h, webUser: webUser}
+	_, sim := h.(*host.Simulator)
+	return &Manager{h: h, webUser: webUser, sim: sim, Download: download}
 }
 
 // opError wraps everything but validation errors as an OperationError.

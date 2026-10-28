@@ -5,6 +5,7 @@ namespace App\Services\Mail;
 use App\Enums\CertificateStatus;
 use App\Models\Certificate;
 use App\Models\Setting;
+use App\Services\Agent\AgentClient;
 use App\Support\Hostnames;
 
 /**
@@ -14,6 +15,9 @@ class MailSettings
 {
     /** Name of the mail server's certificate in the certificate store. */
     public const CERTIFICATE = 'mail';
+
+    /** The webmail applications the server can serve. */
+    public const WEBMAIL_APPS = ['roundcube' => 'Roundcube', 'snappymail' => 'SnappyMail'];
 
     /** Quota choices for new mailboxes, in MB; 0 is no limit. */
     public const QUOTAS = [1024 => '1 GB', 2048 => '2 GB', 5120 => '5 GB', 10240 => '10 GB', 25600 => '25 GB', 0 => 'Sınırsız'];
@@ -57,6 +61,30 @@ class MailSettings
     }
 
     /**
+     * The webmail application chosen: roundcube (the default) or
+     * snappymail. It is kept while webmail is off.
+     */
+    public function webmailApp(): string
+    {
+        $app = Setting::get('mail.webmail_app', 'roundcube');
+
+        return array_key_exists($app, self::WEBMAIL_APPS) ? $app : 'roundcube';
+    }
+
+    /**
+     * The webmail application the mail server serves now, as the last
+     * setup left it; null while webmail is off or not set up.
+     */
+    public function servedWebmailApp(): ?string
+    {
+        if ($this->webmailUrl() === null) {
+            return null;
+        }
+
+        return $this->server()['webmail_app'] ?? 'roundcube';
+    }
+
+    /**
      * Turn mail on for new sites when the mail server is set up.
      */
     public function autoEnable(): bool
@@ -91,6 +119,19 @@ class MailSettings
     }
 
     /**
+     * Asks the agent whether it brings a newer SnappyMail than the one
+     * served (a Serfex update can); Yazılım Yönetimi then offers it.
+     */
+    public function checkWebmailUpdate(AgentClient $agent): void
+    {
+        if ($this->servedWebmailApp() !== 'snappymail' || ($this->server()['state'] ?? null) === 'installing') {
+            return;
+        }
+        $status = $agent->call('mail.status');
+        Setting::put('mail.server', [...$this->server(), 'webmail_latest' => $status['webmail_latest'] ?? null]);
+    }
+
+    /**
      * @param  array<string, mixed>  $state
      */
     public function saveServer(array $state): void
@@ -99,7 +140,7 @@ class MailSettings
     }
 
     /**
-     * @param  array{hostname?: ?string, default_quota_mb?: int, hourly_limit?: int, webmail?: bool, auto?: bool}  $values
+     * @param  array{hostname?: ?string, default_quota_mb?: int, hourly_limit?: int, webmail?: bool, webmail_app?: string, auto?: bool}  $values
      */
     public function save(array $values): void
     {

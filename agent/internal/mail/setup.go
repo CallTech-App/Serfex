@@ -45,8 +45,12 @@ type SetupSpec struct {
 	// HourlyLimit is how many messages a mailbox may send per hour; 0 is
 	// no limit.
 	HourlyLimit int `json:"hourly_limit"`
-	// Webmail installs and serves Roundcube at https://<hostname>/.
+	// Webmail installs and serves webmail at https://<hostname>/.
 	Webmail bool `json:"webmail"`
+	// WebmailApp is the webmail served: Roundcube (also when empty) or
+	// SnappyMail. Each keeps its settings and contacts when the other
+	// one is chosen.
+	WebmailApp string `json:"webmail_app,omitempty"`
 }
 
 // server is what the agent stores about the applied setup.
@@ -57,6 +61,8 @@ type server struct {
 	MasterPassword string `json:"master_password"`
 	DESKey         string `json:"des_key"`
 	PHPVersion     string `json:"php_version,omitempty"`
+	// SnappyMailVersion is the SnappyMail release in use.
+	SnappyMailVersion string `json:"snappymail_version,omitempty"`
 }
 
 func (s *SetupSpec) validate() error {
@@ -70,6 +76,9 @@ func (s *SetupSpec) validate() error {
 	}
 	if s.HourlyLimit < 0 || s.HourlyLimit > 100000 {
 		return invalid("hourly_limit must be between 0 and 100000")
+	}
+	if s.WebmailApp != "" && s.WebmailApp != Roundcube && s.WebmailApp != SnappyMail {
+		return invalid("webmail_app must be %s or %s", Roundcube, SnappyMail)
 	}
 	return nil
 }
@@ -106,7 +115,13 @@ type Status struct {
 	Services   map[string]bool `json:"services"`
 	Hostname   string          `json:"hostname,omitempty"`
 	Webmail    string          `json:"webmail_url,omitempty"`
-	Error      string          `json:"error,omitempty"`
+	// WebmailApp is the webmail served, with its version for SnappyMail;
+	// WebmailLatest is set when this agent brings a newer SnappyMail
+	// (mail.setup installs it).
+	WebmailApp     string `json:"webmail_app,omitempty"`
+	WebmailVersion string `json:"webmail_version,omitempty"`
+	WebmailLatest  string `json:"webmail_latest,omitempty"`
+	Error          string `json:"error,omitempty"`
 }
 
 // Status reports whether the mail server is installed, set up and running.
@@ -123,6 +138,13 @@ func (m *Manager) Status(ctx context.Context) Status {
 	st.Configured, st.Hostname = true, s.Hostname
 	if s.Webmail {
 		st.Webmail = "https://" + s.Hostname + "/"
+		st.WebmailApp = s.webmailApp()
+		if st.WebmailApp == SnappyMail {
+			st.WebmailVersion = s.SnappyMailVersion
+			if s.SnappyMailVersion != SnappyMailRelease.Version {
+				st.WebmailLatest = SnappyMailRelease.Version
+			}
+		}
 	}
 	st.Running = true
 	for _, u := range Units {
@@ -148,6 +170,9 @@ type SetupResult struct {
 	Changed   bool   `json:"changed"`
 	Hostname  string `json:"hostname"`
 	Webmail   string `json:"webmail_url,omitempty"`
+	// WebmailApp and WebmailVersion (SnappyMail's) describe the webmail.
+	WebmailApp     string `json:"webmail_app,omitempty"`
+	WebmailVersion string `json:"webmail_version,omitempty"`
 }
 
 // Setup installs the mail server's packages when missing, writes the
@@ -182,13 +207,15 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		err = opError(err)
 	}()
 
-	packages := slices.Clone(Packages)
-	files := slices.Clone(packageFiles)
-	if spec.Webmail {
-		packages = append(packages, WebmailPackages...)
-		files = append(files, webmailFiles...)
+	if spec.WebmailApp == "" {
+		spec.WebmailApp = Roundcube
 	}
-	if !m.installed(files) {
+	roundcube := spec.Webmail && spec.WebmailApp == Roundcube
+	if !m.installed(packageFiles) {
+		packages := slices.Clone(Packages)
+		if roundcube {
+			packages = append(packages, WebmailPackages...)
+		}
 		if err := m.install(ctx, "the mail server", packages); err != nil {
 			return SetupResult{}, err
 		}
@@ -196,13 +223,24 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		// The packages start stock instances Serfex does not use.
 		_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", "redis-server.service"}})
 	}
+	// Roundcube chosen later is installed on its own.
+	if roundcube && !m.installed(webmailFiles) {
+		if err := m.install(ctx, "Roundcube", WebmailPackages); err != nil {
+			return SetupResult{}, err
+		}
+	}
 
 	// Like the packages, PHP parts installed for webmail stay on a
 	// failure.
-	php := ""
+	php, snappy := "", ""
 	if spec.Webmail {
 		if php, err = m.webmailPHP(ctx); err != nil {
 			return SetupResult{}, err
+		}
+		if spec.WebmailApp == SnappyMail {
+			if snappy, err = m.ensureSnappyMail(ctx); err != nil {
+				return SetupResult{}, err
+			}
 		}
 	}
 
@@ -210,7 +248,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	if err != nil && !errors.Is(err, ErrNotSetUp) {
 		return SetupResult{}, err
 	}
-	s := &server{SetupSpec: spec, PHPVersion: php}
+	s := &server{SetupSpec: spec, PHPVersion: php, SnappyMailVersion: snappy}
 	if prev != nil {
 		s.MasterPassword, s.DESKey = prev.MasterPassword, prev.DESKey
 	}
@@ -372,6 +410,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	res.Hostname = spec.Hostname
 	if spec.Webmail {
 		res.Webmail = "https://" + spec.Hostname + "/"
+		res.WebmailApp, res.WebmailVersion = spec.WebmailApp, snappy
 	}
 
 	// Check every configuration before touching a running service.
@@ -420,6 +459,14 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		if err := m.reloadWeb(ctx, s.PHPVersion); err != nil {
 			return SetupResult{}, err
 		}
+	}
+	// The release before stays for a rollback; older ones go.
+	if snappy != "" {
+		before := ""
+		if prev != nil {
+			before = prev.SnappyMailVersion
+		}
+		m.pruneSnappyMail(snappy, before)
 	}
 	return res, nil
 }

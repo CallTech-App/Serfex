@@ -25,6 +25,11 @@ type tmplData struct {
 
 	// Webmail
 	Webmail       bool
+	WebmailApp    string
+	WebmailRoot   string
+	SnappyData    string
+	SSODir        string
+	SSOFile       string
 	WebUser       string
 	PHPSocket     string
 	TLSConf       string

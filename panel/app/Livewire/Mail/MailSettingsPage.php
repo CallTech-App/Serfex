@@ -32,7 +32,8 @@ class MailSettingsPage extends Component
 
     public int $hourlyLimit = 500;
 
-    public bool $webmail = true;
+    /** roundcube, snappymail or off. */
+    public string $webmail = 'roundcube';
 
     public bool $auto = true;
 
@@ -42,7 +43,7 @@ class MailSettingsPage extends Component
             'hostname' => $settings->hostname() ?? $settings->suggestedHostname(),
             'defaultQuota' => $settings->defaultQuotaMb(),
             'hourlyLimit' => $settings->hourlyLimit(),
-            'webmail' => $settings->webmail(),
+            'webmail' => $settings->webmail() ? $settings->webmailApp() : 'off',
             'auto' => $settings->autoEnable(),
         ]);
         $this->refreshServer($agent, $settings);
@@ -60,6 +61,7 @@ class MailSettingsPage extends Component
             ],
             'defaultQuota' => ['required', 'integer', Rule::in(array_keys(MailSettings::QUOTAS))],
             'hourlyLimit' => ['required', 'integer', 'min:0', 'max:100000'],
+            'webmail' => ['required', Rule::in([...array_keys(MailSettings::WEBMAIL_APPS), 'off'])],
         ], [], [
             'hostname' => __('posta sunucusunun adı'),
             'defaultQuota' => __('varsayılan kota'),
@@ -71,7 +73,9 @@ class MailSettingsPage extends Component
             'hostname' => $this->hostname,
             'default_quota_mb' => $this->defaultQuota,
             'hourly_limit' => $this->hourlyLimit,
-            'webmail' => $this->webmail,
+            'webmail' => $this->webmail !== 'off',
+            // Turned off, the application chosen before is kept.
+            'webmail_app' => $this->webmail === 'off' ? $settings->webmailApp() : $this->webmail,
             'auto' => $this->auto,
         ]);
         $applied = $this->applyToServer($settings, $previous);
@@ -124,7 +128,8 @@ class MailSettingsPage extends Component
     private function applyToServer(MailSettings $settings, array $previous): bool
     {
         $now = $this->current($settings);
-        $changed = $now['hostname'] !== $previous['hostname'] || $now['hourly_limit'] !== $previous['hourly_limit'] || $now['webmail'] !== $previous['webmail'];
+        $changed = $now['hostname'] !== $previous['hostname'] || $now['hourly_limit'] !== $previous['hourly_limit'] || $now['webmail'] !== $previous['webmail']
+            || ($now['webmail'] && $now['webmail_app'] !== $previous['webmail_app']);
         if (! $changed || ! $settings->isSetUp() || ($settings->server()['state'] ?? null) === 'installing') {
             return false;
         }
@@ -136,7 +141,7 @@ class MailSettingsPage extends Component
     }
 
     /**
-     * @return array{hostname: ?string, default_quota_mb: int, hourly_limit: int, webmail: bool, auto: bool}
+     * @return array{hostname: ?string, default_quota_mb: int, hourly_limit: int, webmail: bool, webmail_app: string, auto: bool}
      */
     private function current(MailSettings $settings): array
     {
@@ -145,6 +150,7 @@ class MailSettingsPage extends Component
             'default_quota_mb' => $settings->defaultQuotaMb(),
             'hourly_limit' => $settings->hourlyLimit(),
             'webmail' => $settings->webmail(),
+            'webmail_app' => $settings->webmailApp(),
             'auto' => $settings->autoEnable(),
         ];
     }

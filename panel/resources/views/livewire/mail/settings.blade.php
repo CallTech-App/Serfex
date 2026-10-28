@@ -62,10 +62,17 @@
                     </div>
                 </div>
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
-                    <span>{{ __('Web posta') }}</span>
+                    <span class="sm:pt-0.5">{{ __('Web posta') }}</span>
                     <div>
-                        <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="webmail" class="size-4 accent-accent">{{ __('Roundcube web postayı aç') }}</label>
-                        <p class="mt-1 ml-[26px] text-2xs text-muted">{{ __('Panelden tek tıkla posta kutusuna girilir. Web posta, sitelerin web sunucusunda kendi PHP havuzuyla çalışır; panelden ayrıdır.') }}</p>
+                        <div class="space-y-2">
+                            @foreach (['roundcube' => ['Roundcube', __('Yaygın ve eklentili; önerilen.')], 'snappymail' => ['SnappyMail', __('Hafif, hızlı ve sade görünümlü.')], 'off' => [__('Kapalı'), __('Postalara yalnızca posta programlarıyla ulaşılır.')]] as $key => [$label, $note])
+                                <label class="flex items-start gap-2.5">
+                                    <input type="radio" wire:model="webmail" value="{{ $key }}" class="mt-0.5 size-4 accent-accent">
+                                    <span>{{ $label }} <span class="text-muted">· {{ $note }}</span></span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <p class="mt-2 text-2xs text-muted">{{ __('Webmail adresi aynı kalır ve panelden tek tıkla posta kutusuna girilir. Uygulama değişince kişiler ve ayarlar taşınmaz; öncekinin verileri sunucuda kalır. Web posta, sitelerin web sunucusunda kendi PHP havuzuyla çalışır; panelden ayrıdır.') }}</p>
                     </div>
                 </div>
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">

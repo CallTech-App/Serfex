@@ -7,6 +7,7 @@ use App\Jobs\ProvisionSite;
 use App\Jobs\RemoveLaravelApp;
 use App\Jobs\RunComponentOperation;
 use App\Jobs\SetupDatabaseServers;
+use App\Jobs\SetupMailServer;
 use App\Livewire\Components\ComponentIndex;
 use App\Livewire\Databases\DatabaseIndex;
 use App\Livewire\Laravel\Sections\Environment;
@@ -27,6 +28,7 @@ use App\Services\Components\Components;
 use App\Services\Customers\Customers;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Dns\Zones;
+use App\Services\Mail\MailSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -116,7 +118,6 @@ class ComponentsTest extends TestCase
             ->assertSee('Derlemelerde kullanılıyor')
             ->assertSee('Yalnızca izleme · seviye 1')
             ->assertSee('SnappyMail')
-            ->assertSee('Sonraki sürümde.')
             ->assertSee('E-posta sunucusu kurulunca gelir.')
             // Not known to this agent version.
             ->assertSee('Ajan bu bileşeni tanımıyor');
@@ -450,6 +451,51 @@ class ComponentsTest extends TestCase
         $this->assertSame([['id' => 'postgresql', 'run' => $op->run, 'port' => 8444]], $this->agent->called('component.install'));
         $this->assertSame(['postgresql' => 'postgresql'], Setting::get('databases.products'));
         $this->assertSame('ready', Setting::get('databases.setup')['state']);
+    }
+
+    public function test_webmail_switches_between_roundcube_and_snappymail(): void
+    {
+        $mail = app(MailSettings::class);
+        Setting::put('mail.hostname', 'mail.example.net');
+        $mail->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.example.net/', 'webmail_app' => 'roundcube']);
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->call('ask', 'snappymail', 'install')
+            ->assertSee('Roundcube kapanır. Kişiler ve ayarlar taşınmaz')
+            ->call('confirm')
+            ->assertDispatched('toast', fn ($name, $p) => $p['message'] === 'SnappyMail açılıyor.');
+        $this->assertTrue($mail->webmail());
+        $this->assertSame('snappymail', $mail->webmailApp());
+        Queue::assertPushed(SetupMailServer::class, 1);
+        // While the server is set up, SnappyMail installs and Roundcube goes.
+        $rows = collect(app(Components::class)->rows('other'))->flatten(1)->keyBy('id');
+        $this->assertSame('install', $rows['snappymail']['busy']);
+        $this->assertSame('remove', $rows['roundcube']['busy']);
+
+        // Set up: SnappyMail is served; a newer agent brings a newer release.
+        $mail->saveServer(['state' => 'ready', 'webmail_app' => 'snappymail', 'webmail_version' => '2.38.2']);
+        $this->agent->answers['mail.status'] = ['webmail_app' => 'snappymail', 'webmail_version' => '2.38.2', 'webmail_latest' => '2.39.0'];
+        $page->call('check');
+        $rows = collect(app(Components::class)->rows('other'))->flatten(1)->keyBy('id');
+        $this->assertTrue($rows['snappymail']['installed']);
+        $this->assertFalse($rows['roundcube']['installed']);
+        $this->assertSame('2.39.0', $rows['snappymail']['latest']);
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('2.38.2')
+            ->call('ask', 'snappymail', 'update')
+            ->assertSee('SnappyMail 2.39.0 sürümünü GitHub')
+            ->call('confirm');
+        $this->assertSame('snappymail', $mail->webmailApp());
+        Queue::assertPushed(SetupMailServer::class, 2);
+
+        // Roundcube cannot be "removed" while it is not served; SnappyMail
+        // removed turns webmail off.
+        $mail->saveServer(['state' => 'ready']);
+        Livewire::test(ComponentIndex::class)->call('ask', 'roundcube', 'remove')->call('confirm');
+        Queue::assertPushed(SetupMailServer::class, 2);
+        Livewire::test(ComponentIndex::class)->call('ask', 'snappymail', 'remove')->call('confirm');
+        $this->assertFalse($mail->webmail());
+        Queue::assertPushed(SetupMailServer::class, 3);
     }
 
     public function test_checks_for_updates_and_configures_modsecurity(): void

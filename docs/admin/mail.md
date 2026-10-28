@@ -1,7 +1,8 @@
 # Email
 
 Serfex runs a complete mail server: Postfix for SMTP, Dovecot for IMAP and
-POP3, Rspamd for spam filtering and DKIM signing, and Roundcube for webmail.
+POP3, Rspamd for spam filtering and DKIM signing, and Roundcube or SnappyMail
+for webmail.
 Mailboxes are virtual (they are not system users) and their passwords are
 stored only as hashes.
 
@@ -12,7 +13,7 @@ stored only as hashes.
    domain on the server (like cPanel), and it gets its own Let's Encrypt
    certificate once it resolves to the server.
 2. **Install the mail server** (on the Email page). Serfex installs and
-   configures Postfix, Dovecot, Rspamd and, if turned on, Roundcube. The stock
+   configures Postfix, Dovecot, Rspamd and, if turned on, the webmail. The stock
    configuration files are kept with a `.before-serfex` suffix.
 3. Make sure the server's reverse DNS (PTR) record, set at your hosting
    provider, matches the mail server's name, and that port 25 is open
@@ -24,8 +25,26 @@ Email settings also hold the defaults:
 |---------|---------|
 | New mailbox quota | 1 GB |
 | Hourly sending limit | 500 messages per mailbox. Keeps a mailbox with a stolen password from turning the server into a spam source. 0 is unlimited. |
-| Webmail | Roundcube on, opened from the panel with one click |
+| Webmail | Roundcube, opened from the panel with one click. SnappyMail (lighter, with a modern look) or Off can be chosen instead. |
 | New sites | Email turned on for each new site's domain |
+
+### Webmail
+
+Webmail answers at `https://<mail server name>/`. **Roundcube** (Ubuntu's
+package) is the default; **SnappyMail** can be chosen under Email settings
+or under Software → Other. Only one of them is served at a time, at the
+same address, and switching does not carry contacts or settings across:
+each application keeps its own on the server, so they are there again when
+you switch back.
+
+SnappyMail has no Ubuntu package. Serfex downloads the release it was
+tested with from GitHub, checks its SHA-256 checksum and keeps it in
+`/opt/serfex/snappymail/<version>`, with the data (settings, contacts) in
+`/var/lib/serfex/webmail/snappymail`. Its admin panel is off; Serfex writes
+its settings. A Serfex update can bring a newer SnappyMail: Software shows
+**Update** on its row (after the daily check or **Check for updates**).
+Both applications run on the newest PHP up to 8.4 on the server, in their
+own PHP-FPM pool.
 
 ## Domains
 
@@ -35,7 +54,7 @@ off), or with **Turn on email** on the Email page. A domain's page has:
 - **Mailboxes**: create with a password you type or one Serfex generates
   (shown once). Each mailbox has a quota, forwarding (with or without
   keeping a copy) and an auto-reply with an optional last day. **Webmail**
-  opens the mailbox in Roundcube with a one-time link.
+  opens the mailbox in webmail with a one-time link.
 - **Forwarders**: an address that passes mail on to other addresses, on any
   domain, without a mailbox. One forwarder per domain can catch all unknown
   addresses (catch-all).

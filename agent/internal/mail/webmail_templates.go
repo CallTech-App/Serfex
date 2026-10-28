@@ -8,7 +8,7 @@ import (
 
 var mailVhostTmpl = template.Must(template.New("vhost").Parse(`# {{.Marker}}. Manual changes are overwritten.
 # The mail server's own address: certificate validation, settings for
-# mail clients{{if .Webmail}} and webmail (Roundcube){{end}}. Customers' sites have
+# mail clients{{if .Webmail}} and webmail ({{if eq .WebmailApp "snappymail"}}SnappyMail{{else}}Roundcube{{end}}){{end}}. Customers' sites have
 # their own vhosts; autoconfig.<domain> and autodiscover.<domain> of every
 # mail domain end up here.
 server {
@@ -44,7 +44,11 @@ server {
     ssl_certificate_key {{.KeyFile}};
     include {{.TLSConf}};
 
+{{- if eq .WebmailApp "snappymail"}}
+    root {{.WebmailRoot}};
+{{- else}}
     root /var/lib/roundcube/public_html;
+{{- end}}
     index index.php;
     client_max_body_size 26m;
     access_log {{.LogDir}}/access.log;
@@ -56,6 +60,30 @@ server {
         fastcgi_param HTTPS on;
         fastcgi_pass unix:{{.PHPSocket}};
     }
+{{- if eq .WebmailApp "snappymail"}}
+    # One-click login from the panel; the script lives outside the release.
+    location = /serfex-sso.php {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME {{.SSOFile}};
+        fastcgi_param HTTPS on;
+        fastcgi_pass unix:{{.PHPSocket}};
+    }
+    # Only the release's static files are served; its code, data and
+    # sample files are not.
+    location ^~ /snappymail/ {
+        location ~ ^/snappymail/v/[0-9.]+/(static|themes)/ {
+            location ~ \.php$ {
+                return 404;
+            }
+            expires 7d;
+            try_files $uri =404;
+        }
+        return 404;
+    }
+    location ^~ /data/ {
+        return 404;
+    }
+{{- end}}
     location ~ \.php$ {
         return 404;
     }
@@ -119,7 +147,7 @@ var autoconfigTmpl = template.Must(template.New("autoconfig").Parse(`<!-- {{.Mar
 `))
 
 var webmailPoolTmpl = template.Must(template.New("pool").Parse(`; {{.Marker}}. Manual changes are overwritten.
-; Roundcube runs as its own account, apart from every customer site.
+; Webmail runs as its own account, apart from every customer site.
 [serfex-webmail]
 user = serfex-webmail
 group = serfex-webmail
@@ -135,8 +163,12 @@ pm.process_idle_timeout = 30s
 pm.max_requests = 500
 
 chdir = /
+{{- if eq .WebmailApp "snappymail"}}
+php_admin_value[open_basedir] = {{.WebmailRoot}}/:/var/lib/serfex/webmail/:{{.LogDir}}/
+{{- else}}
 env[ROUNDCUBE_CONFIG_DIR] = {{.ConfigDir}}
 php_admin_value[open_basedir] = /var/lib/roundcube/:/usr/share/roundcube/:/etc/roundcube/:{{.ConfigDir}}/:/var/lib/serfex/webmail/:{{.LogDir}}/:/usr/share/php/:/usr/share/javascript/:/usr/share/fonts/
+{{- end}}
 php_admin_value[upload_tmp_dir] = {{.DataDir}}/temp
 php_admin_value[sys_temp_dir] = {{.DataDir}}/temp
 php_admin_value[session.save_path] = {{.DataDir}}/temp
@@ -274,3 +306,104 @@ class serfex_sso extends rcube_plugin
     }
 }
 `)
+
+var snappyMailIncludeTmpl = template.Must(template.New("include").Parse(`<?php // {{.Marker}}. Manual changes are overwritten.
+// SnappyMail for Serfex: its data folder is outside the release, so a new
+// release starts with every mailbox's settings and contacts.
+define('APP_DATA_FOLDER_PATH', '{{.SnappyData}}/');
+`))
+
+// snappyMailConfigTmpl is SnappyMail's application.ini. SnappyMail fills in
+// what is missing with its defaults; the file is root's and read-only to
+// SnappyMail, so nothing is changed from the browser.
+var snappyMailConfigTmpl = template.Must(template.New("snappymail").Parse(`; {{.Marker}}. Manual changes are overwritten.
+; SnappyMail for Serfex. The admin panel is off; Serfex writes this file.
+
+[webmail]
+title = "Webmail"
+loading_description = "Webmail"
+language = "en"
+allow_languages_on_settings = On
+attachment_size_limit = 25
+popup_identity = Off
+
+[contacts]
+enable = On
+type = "sqlite"
+
+[security]
+allow_admin_panel = Off
+admin_password = ""
+force_https = On
+encrypt_cipher = "aes-256-cbc"
+cookie_samesite = "Strict"
+
+[admin_panel]
+allow_update = Off
+
+[login]
+default_domain = ""
+determine_user_language = On
+determine_user_domain = Off
+allow_languages_on_login = On
+
+[plugins]
+enable = On
+enabled_list = ""
+
+[logs]
+enable = On
+path = "{{.LogDir}}/"
+filename = "snappymail.log"
+level = 4
+time_zone = "UTC"
+
+[cache]
+enable = On
+`))
+
+// snappyMailSSOTmpl signs into SnappyMail from the panel. It works like
+// Roundcube's serfex_sso plugin: the agent writes a token to SSODir, the
+// script uses it once and signs in through Dovecot's master user, which
+// only accepts connections from this host.
+var snappyMailSSOTmpl = template.Must(template.New("sso").Parse(`<?php // {{.Marker}}. Manual changes are overwritten.
+
+// One-click login from the Serfex panel into SnappyMail.
+$token = (string) ($_GET['token'] ?? '');
+$data = null;
+if (preg_match('/^[a-f0-9]{64}$/', $token)) {
+    $file = '{{.SSODir}}/' . $token . '.json';
+    $claimed = $file . '.used';
+    // Renaming first makes the token single-use, even for two requests at once.
+    if (@rename($file, $claimed)) {
+        $data = json_decode((string) file_get_contents($claimed), true);
+        @unlink($claimed);
+    }
+}
+if (!is_array($data) || !is_int($data['expires'] ?? null) || $data['expires'] < time() || !is_string($data['user'] ?? null)) {
+    header('Location: /', true, 302);
+    exit;
+}
+
+$_ENV['SNAPPYMAIL_INCLUDE_AS_API'] = true;
+require '{{.WebmailRoot}}/index.php';
+
+$actions = \RainLoop\Api::Actions();
+$actions->Plugins()->AddHook('login.credentials', function (&$email, &$imapUser, &$password, &$smtpUser) {
+    $imapUser = $email . '*{{.MasterUser}}';
+    $smtpUser = $email . '*{{.MasterUser}}';
+});
+try {
+    $actions->LoginProcess($data['user'], new \SnappyMail\SensitiveString('{{.MasterPass}}'));
+} catch (\Throwable $e) {
+    error_log('Serfex one-click login for ' . $data['user'] . ' failed: ' . $e->getMessage());
+    header('Location: /', true, 302);
+    exit;
+}
+
+// A page of SnappyMail's own origin opens the mailbox, so the browser
+// sends its SameSite=Strict cookies.
+header('Content-Type: text/html; charset=utf-8');
+header('Cache-Control: no-store');
+echo '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/"><title>Webmail</title>';
+`))

@@ -158,7 +158,7 @@ agent, Nginx, PHP 8.4, Composer, Node.js 24, Fail2ban). Everything else is
 installed from Software, Databases, Email or Domains & DNS when it is
 needed, through `component.install` and the `*.setup` methods: Apache, PHP
 8.1–8.5, MySQL or MariaDB, PostgreSQL, phpMyAdmin and Adminer, PowerDNS,
-Postfix, Dovecot, Rspamd and Roundcube, Redis, Memcached, Supervisor, Node.js
+Postfix, Dovecot, Rspamd and Roundcube or SnappyMail, Redis, Memcached, Supervisor, Node.js
 22/24/26, Python, ModSecurity with the OWASP CRS, ClamAV. Each install is a
 logged, stepwise run that rolls back on failure; a component that is in use
 cannot be removed.

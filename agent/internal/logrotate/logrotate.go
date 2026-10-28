@@ -7,7 +7,7 @@
 //	/etc/logrotate.d/serfex-sites     every site's Nginx and Apache logs
 //	/etc/logrotate.d/serfex-php       every site's PHP error log
 //	/etc/logrotate.d/serfex-web       serfex-web and serfex-php (the panel)
-//	/etc/logrotate.d/serfex-webmail   the webmail's Nginx, PHP and Roundcube logs
+//	/etc/logrotate.d/serfex-webmail   the webmail's Nginx, PHP and Roundcube or SnappyMail logs
 //
 // The rules are rebuilt from what is on the server (Sync): the sites are
 // the PHP-FPM pools Serfex wrote. Laravel's and ModSecurity's logs have
@@ -241,7 +241,7 @@ func Rules(h host.Host, s Settings) []RuleFile {
 				paths:   []string{webmailLogs + "/*.log"},
 				su:      webmailUser,
 				reopen:  []string{reopenNginx},
-				comment: "The webmail: Nginx, PHP and Roundcube.",
+				comment: "The webmail: Nginx, PHP and Roundcube or SnappyMail.",
 			})
 		}
 	}

@@ -26,8 +26,8 @@ software under its own licenses, among them:
 
 Serfex installs, but does not include, Nginx, Apache, PHP, PostgreSQL,
 MySQL or MariaDB, PowerDNS, Postfix, Dovecot, Rspamd, Roundcube,
-phpMyAdmin, Adminer, Redis, ModSecurity and the OWASP Core Rule Set,
-ClamAV, Fail2ban and Node.js, from Ubuntu's archive or their own
+SnappyMail, phpMyAdmin, Adminer, Redis, ModSecurity and the OWASP Core
+Rule Set, ClamAV, Fail2ban and Node.js, from Ubuntu's archive or their own
 distributors, each under its own license.
 
 "Laravel" is a trademark of Taylor Otwell. "Claude" is a trademark of

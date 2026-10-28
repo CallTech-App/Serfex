@@ -167,7 +167,8 @@ class MailJobsTest extends TestCase
             'certificate' => '',
             'hourly_limit' => 200,
             'webmail' => true,
-        ], 840)->andReturn(['installed' => true, 'changed' => true, 'hostname' => 'mail.example.net', 'webmail_url' => 'https://mail.example.net/']);
+            'webmail_app' => 'roundcube',
+        ], 840)->andReturn(['installed' => true, 'changed' => true, 'hostname' => 'mail.example.net', 'webmail_url' => 'https://mail.example.net/', 'webmail_app' => 'roundcube']);
 
         (new SetupMailServer)->handle($agent, app(MailSettings::class), app(Certificates::class), app(MailServerDns::class));
 
@@ -175,6 +176,7 @@ class MailJobsTest extends TestCase
         $this->assertSame('ready', $settings->server()['state']);
         $this->assertTrue($settings->isSetUp());
         $this->assertSame('https://mail.example.net/', $settings->webmailUrl());
+        $this->assertSame('roundcube', $settings->servedWebmailApp());
         $this->assertSame(MailDomainStatus::Syncing, $failed->fresh()->status);
         Queue::assertPushed(SyncMailDomain::class, fn ($job) => $job->domain->is($failed));
         // The server's name points here in its zone.
@@ -183,6 +185,22 @@ class MailJobsTest extends TestCase
         $this->assertSame(['mail.example.net'], $certificate->domains);
         $this->assertSame(CertificateStatus::Issuing, $certificate->status);
         Queue::assertPushed(IssueMailCertificate::class);
+    }
+
+    public function test_setup_serves_snappymail_when_chosen(): void
+    {
+        Setting::put('mail.webmail_app', 'snappymail');
+        app(MailSettings::class)->saveServer(['webmail_latest' => '2.39.0']);
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->once()->with('mail.setup', Mockery::on(fn ($p) => $p['webmail'] === true && $p['webmail_app'] === 'snappymail'), 840)
+            ->andReturn(['hostname' => 'mail.example.net', 'webmail_url' => 'https://mail.example.net/', 'webmail_app' => 'snappymail', 'webmail_version' => '2.38.2']);
+
+        (new SetupMailServer)->handle($agent, app(MailSettings::class), app(Certificates::class), app(MailServerDns::class));
+
+        $settings = app(MailSettings::class);
+        $this->assertSame('snappymail', $settings->servedWebmailApp());
+        $this->assertSame('2.38.2', $settings->server()['webmail_version']);
+        $this->assertNull($settings->server()['webmail_latest']);
     }
 
     public function test_setup_failure_is_kept(): void
