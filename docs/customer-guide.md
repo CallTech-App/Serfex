@@ -12,9 +12,16 @@ password. Then sign in at the panel's address with your email and password.
 If you forget the password, **Forgot password?** on the sign-in page mails
 you a link that sets a new one (it works for 60 minutes).
 
-Under your name at the top right → **Account security** you can:
+Click your name in the menu to open **Account details**, where you can:
 
-- choose the panel's language (Turkish or English);
+- change your name, phone number and the panel's language (Turkish or English);
+- change your email address: type your current password, then open the link
+  sent to the new address (it works for 24 hours). Until you do, you keep
+  signing in with the old address.
+
+Next to it, **Account security** lets you:
+
+- change your password (your other sessions are signed out);
 - turn on **two-step verification** with an authenticator app (Google
   Authenticator, Microsoft Authenticator, 1Password, Bitwarden…) and keep the
   recovery codes somewhere safe;

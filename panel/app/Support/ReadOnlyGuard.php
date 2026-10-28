@@ -28,7 +28,26 @@ final class ReadOnlyGuard
     private const READING = '/(^|\.)(status|list|get|info|logs|log|live|ping|versions|addresses|events|rules|health|usage|runs|timezones|check|scan|search|stat|read|queue|limits|inspect)$/';
 
     /** Tables the sign-in itself, the log and the person's own command line keys write to. */
-    private const BOOKKEEPING = ['sessions', 'cache', 'cache_locks', 'users', 'audit_entries', 'api_keys', 'cli_logins'];
+    private const BOOKKEEPING = ['sessions', 'cache', 'cache_locks', 'users', 'audit_entries', 'api_keys', 'cli_logins', 'password_reset_tokens'];
+
+    /** True while bookkeeping() runs. */
+    private static bool $bookkeeping = false;
+
+    /**
+     * Runs $write, which only follows a change to the account itself (its
+     * address in the notification recipients), even for a read-only
+     * administrator.
+     */
+    public static function bookkeeping(Closure $write): mixed
+    {
+        $was = self::$bookkeeping;
+        self::$bookkeeping = true;
+        try {
+            return $write();
+        } finally {
+            self::$bookkeeping = $was;
+        }
+    }
 
     /**
      * True while the signed-in account is a read-only administrator. Never
@@ -77,7 +96,7 @@ final class ReadOnlyGuard
         if (! preg_match('/^\s*(insert\s+into|update|delete\s+from|truncate|alter|drop|create)\s+(?:table\s+)?"?([a-z0-9_]+)"?/i', $sql, $m)) {
             return;
         }
-        if (in_array(strtolower($m[2]), self::BOOKKEEPING, true)) {
+        if (self::$bookkeeping || in_array(strtolower($m[2]), self::BOOKKEEPING, true)) {
             return;
         }
         if (self::active()) {
