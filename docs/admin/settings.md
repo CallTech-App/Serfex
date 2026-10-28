@@ -67,6 +67,29 @@ default). A key acts as the full administrator who created it and stops
 working if that person is no longer one. The key is shown once; only its hash
 is stored. See [API](../api.md).
 
+## Git providers
+
+Lets people connect their GitHub, GitLab or Bitbucket account (under their
+name → **Git accounts**) and pick a repository and branch from lists in Git
+deployment, the Laravel install and Laravel → Deployments. Serfex then adds a
+read-only deploy key and the deploy webhook to the repository itself, and
+removes both when the repository is disconnected or the application removed.
+Code is always fetched with the site's deploy key, never with the account.
+
+Each provider needs an OAuth application registered on it with the callback
+address shown in its dialog (`https://<panel>:<port>/git/callback/<provider>`):
+
+| Provider | Where | Settings |
+|----------|-------|----------|
+| GitHub | Settings → Developer settings → OAuth Apps → New OAuth App (or the organisation's settings) | Homepage URL: the panel; Authorization callback URL: the callback address. Enter the Client ID and a generated client secret. Serfex asks for the `repo` and `admin:repo_hook` scopes. |
+| GitLab | Edit profile → Applications (GitLab.com or your own server) | Redirect URI: the callback address; Confidential; scope `api`. Enter the Application ID and Secret, and the server address for your own GitLab. |
+| Bitbucket | Workspace settings → OAuth consumers → Add consumer | Callback URL: the callback address; permissions Account: Read, Repositories: Admin, Webhooks: Read and write. Enter the Key and Secret. |
+
+The secret is stored encrypted. Give the panel a name (General) before
+registering: the callback address uses it, and without a name and a trusted
+certificate webhooks are added without certificate verification. Turning a
+provider off keeps the repositories already picked working.
+
 ## Activity log
 
 Every change made in the panel, by whom (people, customers, API keys, the
@@ -86,9 +109,12 @@ installation. Run it again at any time; each step saves through the same
 settings as its own page. Overview lists the open steps until the wizard is
 finished. See [Installation](../installation.md#the-setup-wizard).
 
-## Account details and Account security (everyone)
+## Account details, Account security and Git accounts (everyone)
 
-Click your name in the menu. **Account details** has your name, email
+Click your name in the menu. **Git accounts** connects your own GitHub,
+GitLab or Bitbucket account when an administrator has set the provider up
+(above); disconnecting leaves the repositories picked with it deploying.
+**Account details** has your name, email
 address and language (and a customer's phone). A new email address asks for
 the current password and takes effect once the link mailed to it is opened
 (24 hours); the old address stays in use until then. The notification

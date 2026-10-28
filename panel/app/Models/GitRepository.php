@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  * The Git repository a site's folder (usually public_html) is deployed
  * from (Git dağıtımı). Laravel applications deploy through LaravelApp.
  */
-#[Fillable(['site_id', 'repository', 'branch', 'path', 'token', 'commands', 'auto_deploy', 'deploy_key', 'live_commit'])]
+#[Fillable(['site_id', 'repository', 'branch', 'path', 'token', 'commands', 'auto_deploy', 'deploy_key', 'live_commit', 'git_account_id', 'remote_repository', 'remote_key_id', 'remote_hook_id'])]
 class GitRepository extends Model
 {
     use HasGitRepository;
@@ -50,6 +50,16 @@ class GitRepository extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * The connected account the repository was picked with, if it was.
+     *
+     * @return BelongsTo<GitAccount, $this>
+     */
+    public function gitAccount(): BelongsTo
+    {
+        return $this->belongsTo(GitAccount::class);
     }
 
     /**

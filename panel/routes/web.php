@@ -11,6 +11,7 @@ use App\Http\Controllers\CliDownloadController;
 use App\Http\Controllers\Customers\ImpersonationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Databases\DatabaseManagerController;
+use App\Http\Controllers\Git\GitConnectController;
 use App\Http\Controllers\Laravel\BackupDownloadController;
 use App\Http\Controllers\Laravel\DeployWebhookController;
 use App\Http\Controllers\Mail\WebmailController;
@@ -24,6 +25,7 @@ use App\Http\Middleware\EnsureFullAdmin;
 use App\Http\Middleware\EnsureHostingAccess;
 use App\Http\Middleware\EnsureTwoFactor;
 use App\Http\Middleware\RefuseReadOnlyChanges;
+use App\Livewire\Account\AccountGit;
 use App\Livewire\Account\AccountProfile;
 use App\Livewire\Account\AccountSecurity;
 use App\Livewire\Account\CliApprove;
@@ -55,6 +57,7 @@ use App\Livewire\Settings\AdminIndex;
 use App\Livewire\Settings\ApiKeyIndex;
 use App\Livewire\Settings\AuditLogPage;
 use App\Livewire\Settings\GeneralSettings;
+use App\Livewire\Settings\GitProviderSettings;
 use App\Livewire\Settings\NotificationSettings;
 use App\Livewire\Settings\ServerSettings;
 use App\Livewire\Settings\UpdatesPage;
@@ -120,6 +123,10 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
     Route::post('/impersonation/leave', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     Route::livewire('/account', AccountProfile::class)->name('account.profile');
     Route::livewire('/account/security', AccountSecurity::class)->name('account.security');
+    Route::livewire('/account/git', AccountGit::class)->name('account.git');
+    // Connecting a GitHub, GitLab or Bitbucket account (OAuth).
+    Route::get('/git/connect/{provider}', [GitConnectController::class, 'redirect'])->whereIn('provider', ['github', 'gitlab', 'bitbucket'])->middleware('throttle:20,1')->name('git.connect');
+    Route::get('/git/callback/{provider}', [GitConnectController::class, 'callback'])->whereIn('provider', ['github', 'gitlab', 'bitbucket'])->middleware('throttle:20,1')->name('git.callback');
     Route::livewire('/cli/approve', CliApprove::class)->name('cli.approve');
 
     // Laravel pages are also for members of applications; each page
@@ -199,6 +206,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
             Route::livewire('/settings/notifications', NotificationSettings::class)->name('settings.notifications');
             Route::livewire('/settings/admins', AdminIndex::class)->name('settings.admins');
             Route::livewire('/settings/api', ApiKeyIndex::class)->name('settings.api');
+            Route::livewire('/settings/git-providers', GitProviderSettings::class)->name('settings.git');
             Route::livewire('/settings/audit-log', AuditLogPage::class)->name('settings.audit');
             Route::livewire('/settings/updates', UpdatesPage::class)->name('settings.updates');
             Route::get('/settings/updates/progress/{run}', UpdateProgressController::class)->where('run', 'upd-[a-z0-9]{20}')->name('settings.updates.progress');

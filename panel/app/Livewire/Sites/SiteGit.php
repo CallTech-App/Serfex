@@ -4,10 +4,13 @@ namespace App\Livewire\Sites;
 
 use App\Enums\GitDeploymentStatus;
 use App\Livewire\Attributes\ForCustomers;
+use App\Livewire\Concerns\PicksGitRepository;
 use App\Models\GitDeployment;
 use App\Models\GitRepository;
 use App\Models\Site;
 use App\Services\Agent\AgentException;
+use App\Services\Git\GitAccounts;
+use App\Services\Git\GitProviders;
 use App\Services\Sites\GitDeploys;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Json;
@@ -21,12 +24,24 @@ use Livewire\Component;
  * branch out into the folder; a webhook can do it on every push. Files the
  * repository does not track stay. Every deploy can be returned to, and
  * the first one undone, which brings back the files it overwrote.
+ *
+ * With a connected GitHub, GitLab or Bitbucket account the repository is
+ * picked from a list; Serfex then adds the deploy key and the webhook to
+ * it, and removes both when the repository is disconnected.
  */
 #[Layout('components.layouts.app')]
 #[ForCustomers]
 class SiteGit extends Component
 {
+    use PicksGitRepository;
+
     public int $siteId;
+
+    /** github, gitlab or bitbucket to pick from the account's list; '' to type the address. */
+    public string $gitSource = '';
+
+    /** What the host refused while linking the picked repository. */
+    public array $linkErrors = [];
 
     public string $repository = '';
 
@@ -57,6 +72,28 @@ class SiteGit extends Component
     public function mount(int $site): void
     {
         $this->siteId = Site::visibleTo(auth()->user())->findOrFail($site)->id;
+        $hosts = $this->gitHosts();
+        $asked = (string) request()->query('source', '');
+        $this->gitSource = match (true) {
+            isset($hosts[$asked]) => $asked,
+            default => collect(array_keys($hosts))->first(fn ($p) => $this->gitAccount($p) !== null) ?? array_key_first($hosts) ?? '',
+        };
+    }
+
+    protected function pickingFrom(): ?string
+    {
+        return $this->gitSource !== '' && isset($this->gitHosts()[$this->gitSource]) ? $this->gitSource : null;
+    }
+
+    protected function pickerReturnPath(string $provider): string
+    {
+        return route('sites.git', [$this->siteId, 'source' => $provider], false);
+    }
+
+    public function updatedGitSource(): void
+    {
+        $this->resetPicker();
+        $this->resetValidation();
     }
 
     private function site(): Site
@@ -80,11 +117,20 @@ class SiteGit extends Component
      * Connect the repository from the form; an SSH address shows the
      * deploy key to add to it.
      */
-    public function connect(GitDeploys $deploys): void
+    public function connect(GitDeploys $deploys, GitAccounts $accounts, GitProviders $providers): void
     {
         $site = $this->site();
         if ($site->laravelApp !== null || $site->gitRepository !== null) {
             return;
+        }
+        $picked = null;
+        if ($this->pickingFrom() !== null) {
+            $picked = $this->pickedRepository();
+            if ($picked === null) {
+                return;
+            }
+            $this->repository = $picked['repo']['ssh_url'];
+            $this->token = '';
         }
         $this->validateForm();
         $repo = GitRepository::create([
@@ -96,6 +142,33 @@ class SiteGit extends Component
             'commands' => $this->commands !== '' ? $this->commands : null,
         ]);
         $this->token = '';
+        $this->linkErrors = [];
+        if ($picked !== null) {
+            try {
+                $key = $deploys->key($repo);
+            } catch (AgentException $e) {
+                // Nothing was added to the repository yet: start over.
+                $repo->delete();
+                $this->dispatch('toast', message: __('Dağıtım anahtarı oluşturulamadı: :reason', ['reason' => $e->reason ?: $e->getMessage()]));
+
+                return;
+            }
+            $linked = $accounts->link($repo, $picked['account'], $picked['repo']['name'], $key, $providers->webhookUrl($repo->webhook_token), pullRequests: false);
+            $this->linkErrors = $linked['errors'];
+            $this->resetPicker();
+            if (! $linked['key']) {
+                $this->publicKey = $key;
+                $this->showingKey = true;
+            }
+            $label = GitProviders::LABELS[$picked['account']->provider];
+            $this->dispatch('toast', message: match (true) {
+                $linked['key'] && $linked['hook'] => __('Depo bağlandı; dağıtım anahtarı ve webhook :provider\'a eklendi. "Dağıt" ile dosyaları :path klasörüne alabilirsiniz.', ['provider' => $label, 'path' => $repo->path]),
+                $linked['key'] => __('Depo bağlandı ve dağıtım anahtarı :provider\'a eklendi; webhook eklenemedi.', ['provider' => $label]),
+                default => __('Depo bağlandı; dağıtım anahtarını depoya elle ekleyin.'),
+            });
+
+            return;
+        }
         if ($repo->usesKey()) {
             $this->showKey($deploys);
         }
@@ -138,13 +211,17 @@ class SiteGit extends Component
         $this->editing = true;
     }
 
-    public function saveSettings(): void
+    public function saveSettings(GitAccounts $accounts): void
     {
         $repo = $this->repo();
         if ($repo === null) {
             return;
         }
         $this->validateForm();
+        if ($repo->remote_repository !== null && $this->repository !== $repo->repository) {
+            // Another repository: the key and webhook added to the old one go.
+            $accounts->unlink($repo);
+        }
         $before = $repo->only(['repository', 'branch', 'path', 'commands']);
         $token = match (true) {
             ! str_starts_with($this->repository, 'https://'), $this->clearToken => null,
@@ -274,13 +351,14 @@ class SiteGit extends Component
         }
     }
 
-    public function disconnect(GitDeploys $deploys): void
+    public function disconnect(GitDeploys $deploys, GitAccounts $accounts): void
     {
         $this->disconnecting = false;
         $repo = $this->repo();
         if ($repo === null || $repo->hasRunningDeployment()) {
             return;
         }
+        $accounts->unlink($repo);
         try {
             $deploys->disconnect($repo);
         } catch (AgentException $e) {
@@ -288,7 +366,7 @@ class SiteGit extends Component
 
             return;
         }
-        $this->reset('repository', 'branch', 'path', 'token', 'commands', 'logId', 'rollbackId', 'publicKey');
+        $this->reset('repository', 'branch', 'path', 'token', 'commands', 'logId', 'rollbackId', 'publicKey', 'linkErrors');
         $this->dispatch('toast', message: __('Depo bağlantısı kaldırıldı; dosyalar :path klasöründe duruyor.', ['path' => $repo->path]));
     }
 
@@ -321,6 +399,8 @@ class SiteGit extends Component
             'firstDeploy' => $repo ? $deploys->firstDeploy($repo) : null,
             'log' => $this->logId ? $deployments->firstWhere('id', $this->logId) : null,
             'rollbackTo' => $this->rollbackId ? $deployments->firstWhere('id', $this->rollbackId) : null,
+            'hosts' => $this->gitHosts(),
+            'picker' => $repo === null ? $this->picker() : null,
         ])->title(__('Git dağıtımı · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

@@ -21,11 +21,20 @@ Laravel → **Install Laravel application**:
 |-------|---|
 | Site | The site it runs on; its document root becomes the application's `public/`. |
 | Source | **New project** (plain Laravel, or the React, Vue or Livewire starter kit), or **From a Git repository** (`user/repository` on GitHub, GitLab or Bitbucket, or any https or SSH address). |
-| Private repository | Serfex makes a read-only **deploy key** (ed25519) for the site and shows it; add it to the repository, then continue. |
+| Private repository | Serfex makes a read-only **deploy key** (ed25519) for the site and shows it; add it to the repository, then continue. With a connected account (below) the repository and branch are picked from lists and Serfex adds the key and the webhook itself. |
 | Branch | Empty: the repository's default branch. |
 | PHP version | Set as the site's PHP version; Composer and Artisan use it too. |
 | Database | A new MySQL, MariaDB or PostgreSQL database and user created for it (`<prefix>laravel`), an existing database, an SQLite file shared between releases, or none. `DB_*` is written to `.env`. |
 | Front end | Install dependencies and build, with npm, pnpm, yarn or bun. |
+
+When an administrator has set up GitHub, GitLab or Bitbucket under Tools &
+Settings → Git providers, choosing that provider asks you to connect your
+account once (your name → Git accounts) and then lists your repositories.
+The application is fetched with its deploy key, which Serfex adds to the
+repository together with the deploy webhook (push and pull request events);
+**Type the repository address** goes back to the field. When the provider
+refuses the key (you are not an administrator of the repository), it is shown
+to add by hand.
 
 **Find existing applications** scans the sites for Laravel applications that
 are already there and links them.
@@ -73,7 +82,8 @@ Under Deployments, **Automatic deployment** gives a webhook URL:
 https://panel.example.com:8443/hooks/deploy/<token>
 ```
 
-Add it to the repository's webhooks (GitHub: content type JSON, push and pull
+A repository picked through a connected account already has it. Otherwise
+add it to the repository's webhooks (GitHub: content type JSON, push and pull
 request events; GitLab: push and merge request events; Bitbucket: push and
 pull request). A push to the application's branch deploys it; pushes to
 other branches are ignored. The token in the URL is the secret, so keep it

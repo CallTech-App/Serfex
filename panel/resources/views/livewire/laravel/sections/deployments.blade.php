@@ -41,7 +41,11 @@
                     <x-t text="Webhook: :app"><x-slot:app><span class="font-mono break-all">{{ $app->webhookUrl() }}</span></x-slot:app></x-t>
                     <button type="button" @click="navigator.clipboard.writeText(@js($app->webhookUrl())); copied = true; setTimeout(() => copied = false, 2000)" class="text-accent hover:underline"><span x-show="! copied">{{ __('Kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span></button>
                 </p>
+                @if ($app->remote_hook_id)
+                    <p class="text-2xs text-muted"><x-t text="Webhook :provider deposuna eklendi (push ve pull request olayları). CI'dan dağıtmak için aynı adrese boş bir :part gönderin; :part2 ile dal veya etiket seçilir."><x-slot:provider>{{ $app->providerLabel() }}</x-slot:provider><x-slot:part><span class="font-mono">POST</span></x-slot:part><x-slot:part2><span class="font-mono">?ref=v1.2.0</span></x-slot:part2></x-t></p>
+                @else
                 <p class="text-2xs text-muted"><x-t text="Adresi deponun webhook ayarlarına (push olayı) ekleyin. CI'dan dağıtmak için aynı adrese boş bir :part gönderin; :part2 ile dal veya etiket seçilir."><x-slot:part><span class="font-mono">POST</span></x-slot:part><x-slot:part2><span class="font-mono">?ref=v1.2.0</span></x-slot:part2></x-t></p>
+                @endif
             </dd>
         </div>
         <div class="{{ $dl }}">
@@ -178,6 +182,9 @@
     <x-modal :title="__('Dağıtım anahtarı')" show="showingKey">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Dağıtım anahtarı') }}</h2>
         <div class="space-y-2 p-5 text-[13.5px]" x-data="{ copied: false }">
+            @foreach ($linkErrors as $error)
+                <p class="flex items-start gap-2 rounded-md bg-warn-soft px-3 py-2"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $error }}</p>
+            @endforeach
             <p class="text-muted"><x-t text="Özel depolar bu anahtarla çekilir. Açık anahtarı deponun :part bölümüne :part2 olarak ekleyin."><x-slot:part><span class="font-medium text-fg">{{ __('Deploy keys') }}</span></x-slot:part><x-slot:part2><span class="font-medium text-fg">{{ __('salt okunur') }}</span></x-slot:part2></x-t>@if ($app->deployKeysUrl()) <a href="{{ $app->deployKeysUrl() }}" target="_blank" rel="noopener" class="text-accent hover:underline">{{ __(':app\'da aç', ['app' => $app->providerLabel()]) }}</a>@endif</p>
             <pre class="rounded-md border border-line bg-surface-2 p-3 font-mono text-[12px] break-all whitespace-pre-wrap">{{ $publicKey }}</pre>
             <button type="button" @click="navigator.clipboard.writeText(@js($publicKey)); copied = true; setTimeout(() => copied = false, 2000)" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2"><span x-show="! copied">{{ __('Kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span></button>
@@ -200,14 +207,22 @@
                         <label class="flex h-8 cursor-pointer items-center gap-2 rounded-md border border-line px-3 text-[13px] has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"><input type="radio" wire:model.live="provider" value="{{ $key }}" class="{{ $check }}">{{ $label }}</label>
                     @endforeach
                 </div>
-                <input wire:model="repository" aria-label="{{ __('Depo') }}" placeholder="{{ __('kullanıcı/depo veya depo adresi') }}" autocomplete="off" spellcheck="false"
-                       class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('repository') ? 'border-crit' : 'border-line' }}">
-                @error('repository')<p class="text-[13px] text-crit">{{ $message }}</p>@enderror
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <input wire:model="branch" aria-label="{{ __('Dal') }}" placeholder="{{ __('main') }}" class="h-9 w-40 rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('branch') ? 'border-crit' : 'border-line' }}">
-                    <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="private" class="{{ $check }}">{{ __('Özel depo (dağıtım anahtarıyla)') }}</label>
-                </div>
-                @error('branch')<p class="text-[13px] text-crit">{{ $message }}</p>@enderror
+                @if ($picker)
+                    @include('livewire.partials.git-picker')
+                    <button type="button" wire:click="$set('typeAddress', true)" class="text-[13px] text-accent hover:underline">{{ __('Depo adresini elle yaz') }}</button>
+                @else
+                    <input wire:model="repository" aria-label="{{ __('Depo') }}" placeholder="{{ __('kullanıcı/depo veya depo adresi') }}" autocomplete="off" spellcheck="false"
+                           class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('repository') ? 'border-crit' : 'border-line' }}">
+                    @error('repository')<p class="text-[13px] text-crit">{{ $message }}</p>@enderror
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <input wire:model="branch" aria-label="{{ __('Dal') }}" placeholder="{{ __('main') }}" class="h-9 w-40 rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('branch') ? 'border-crit' : 'border-line' }}">
+                        <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="private" class="{{ $check }}">{{ __('Özel depo (dağıtım anahtarıyla)') }}</label>
+                    </div>
+                    @error('branch')<p class="text-[13px] text-crit">{{ $message }}</p>@enderror
+                    @if ($typeAddress && isset($hosts[$provider]))
+                        <button type="button" wire:click="$set('typeAddress', false)" class="text-[13px] text-accent hover:underline">{{ __(':provider listesinden seç', ['provider' => $hosts[$provider]]) }}</button>
+                    @endif
+                @endif
             </div>
             <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('connecting', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
