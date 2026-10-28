@@ -122,6 +122,9 @@ type Manager struct {
 	// Web serves the panel on serfex-web (the database package's
 	// SetupPanelWeb), for Setup.
 	Web func(ctx context.Context) (any, error)
+	// DefaultSite writes the customers' Nginx default server (the site
+	// package's), so servers set up before it existed get it too.
+	DefaultSite func(ctx context.Context) (bool, error)
 	// Health checks that the panel answers; nil checks it over HTTPS on
 	// WebPort, or skips the check on a simulator.
 	Health func(ctx context.Context) error

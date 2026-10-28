@@ -188,6 +188,7 @@ func main() {
 	svc.updates = update.NewManager(h, version.Version, runtime.GOARCH)
 	svc.updates.WebPort = svc.databases.WebPort
 	svc.updates.Web = func(ctx context.Context) (any, error) { return svc.databases.SetupPanelWeb(ctx) }
+	svc.updates.DefaultSite = svc.sites.EnsureDefaultSite
 	if *dryRun {
 		// The run stays in this process, which is not restarted.
 		svc.updates.ApplyPanel = func(ctx context.Context) error {

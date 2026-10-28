@@ -357,16 +357,10 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 			return Result{}, err
 		}
 	}
-	if data.TLS {
-		if err := t.RootDir("/etc/serfex", 0o755, 0, 0); err != nil {
-			return Result{}, err
-		}
-		if err := t.RootDir("/etc/serfex/nginx", 0o755, 0, 0); err != nil {
-			return Result{}, err
-		}
-		if err := t.WriteFile(cert.TLSConf, tlsConf); err != nil {
-			return Result{}, err
-		}
+	// The default server (and tls.conf, which it shares with every HTTPS
+	// site): a name this site does not serve yet must not reach another.
+	if err := m.writeDefaultSite(t); err != nil {
+		return Result{}, err
 	}
 
 	// Server-wide Nginx limits (Hizmetler) every vhost inherits.
