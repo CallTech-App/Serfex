@@ -390,6 +390,17 @@ func TestPanelCertificateChanged(t *testing.T) {
 	if strings.Contains(byIP, "/etc/serfex/panel/ssl/") {
 		t.Errorf("the IP address serves the panel's certificate:\n%s", byIP)
 	}
+	// Neither may be framed by another site; only the name, with a
+	// certificate browsers trust, asks for HTTPS from then on.
+	frame := []string{"add_header X-Frame-Options DENY always;", `add_header Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" always;`, "add_header X-Content-Type-Options nosniff always;"}
+	contains(t, "default server", byIP, frame...)
+	contains(t, "panel's name", byName, append(frame, `add_header Strict-Transport-Security "max-age=31536000" always;`)...)
+	if strings.Contains(byIP, "Strict-Transport-Security") {
+		t.Errorf("HSTS on the IP address and its self-signed certificate:\n%s", byIP)
+	}
+	if strings.Contains(conf, "includeSubDomains") || strings.Contains(conf, "preload") {
+		t.Errorf("HSTS must not reach the customers' sites under the panel's domain:\n%s", conf)
+	}
 	if n := strings.Count(conf, " ssl http2 default_server;"); n == 0 || strings.Count(conf, " ssl http2;") != n {
 		t.Errorf("the name's server must listen on the same ports without default_server:\n%s", conf)
 	}
