@@ -394,7 +394,7 @@ class SiteDomains
     /**
      * Public DNS of $name, remembered for five minutes.
      *
-     * @return array{ok: bool, found: list<string>}
+     * @return array{ok: bool, found: list<string>, proxied: bool}
      */
     private function pointing(string $name): array
     {
