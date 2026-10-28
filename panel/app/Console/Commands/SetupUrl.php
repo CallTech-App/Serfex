@@ -20,7 +20,7 @@ class SetupUrl extends Command
     public function handle(FirstRun $firstRun): int
     {
         if (! $firstRun->needsAdministrator()) {
-            $message = __('Bu panelde zaten bir yönetici var; kendi e-posta ve parolanızla giriş yapın. Parolayı unuttuysanız sunucuda serfex:admin ile sıfırlayın.');
+            $message = __('Bu panelde zaten bir yönetici var; kendi e-posta ve parolanızla giriş yapın. Parolayı unuttuysanız giriş sayfasındaki Parolamı unuttum bağlantısını ya da sudo serfex reset-password <e-posta> komutunu kullanın.');
             if ($this->option('json')) {
                 $this->line((string) json_encode(['error' => $message], JSON_UNESCAPED_UNICODE));
             } else {

@@ -67,6 +67,22 @@ install.sh ilk bağlantıyı kurulumun sonunda yazar. Sunucunun kendisinde root 
 sudo serfex setup-url
 ```
 
+### serfex reset-password
+
+```
+serfex reset-password <e-posta>
+```
+
+Bir yönetici, müşteri ya da ekip üyesi hesabı için tek kullanımlık parola sıfırlama bağlantısı oluşturur. Bağlantıyı açan kişi yeni parolasını belirler; iki adımlı doğrulama açıksa girişte yine sorulur. Bağlantı 60 dakika geçerlidir; yenisi oluşunca eskisi çalışmaz.
+
+Panel e-posta gönderemediğinde ya da e-posta ulaşmadığında kullanın. Sunucunun kendisinde root olarak çalışır.
+
+Örnekler:
+
+```sh
+sudo serfex reset-password ayse@ornek.com.tr
+```
+
 ### serfex logout
 
 ```

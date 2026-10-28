@@ -96,6 +96,14 @@ func accountCommands() []*Command {
 			Run:      setupURL,
 		},
 		{
+			Name: "reset-password", Group: T("Hesap"), Args: T("<e-posta>"), MinArgs: 1, MaxArgs: 1,
+			Short: T("Bir hesabın parola sıfırlama bağlantısını yazar"),
+			Long: T("Bir yönetici, müşteri ya da ekip üyesi hesabı için tek kullanımlık parola sıfırlama bağlantısı oluşturur. Bağlantıyı açan kişi yeni parolasını belirler; iki adımlı doğrulama açıksa girişte yine sorulur. Bağlantı 60 dakika geçerlidir; yenisi oluşunca eskisi çalışmaz.\n\n" +
+				"Panel e-posta gönderemediğinde ya da e-posta ulaşmadığında kullanın. Sunucunun kendisinde root olarak çalışır."),
+			Examples: []string{"sudo serfex reset-password ayse@ornek.com.tr"},
+			Run:      resetPassword,
+		},
+		{
 			Name: "logout", Group: T("Hesap"),
 			Short: T("Profilden çıkar ve anahtarını panelde kapatır"),
 			Run:   logout,
@@ -397,6 +405,42 @@ func setupURL(c *Ctx) error {
 		until = t.Local().Format("2006-01-02 15:04")
 	}
 	c.note("%s", T("Kurulum bağlantısı: bir kez kullanılır, %s tarihine kadar geçerli. Önceki bağlantı artık çalışmaz.", until))
+	for _, u := range link.URLs {
+		c.println(u)
+	}
+	return nil
+}
+
+// resetPassword prints a one-time password reset link for an account:
+// the way back in when the panel can't mail one.
+func resetPassword(c *Ctx) error {
+	if c.env.Geteuid() != 0 {
+		return fmt.Errorf("%s", T("serfex reset-password sunucunun kendisinde root olarak çalışır: sudo serfex reset-password <e-posta>"))
+	}
+	out, err := localArtisan(c, "serfex:reset-link", "--json", "--", c.Args[0])
+	var link struct {
+		Email     string   `json:"email"`
+		URLs      []string `json:"urls"`
+		ExpiresAt string   `json:"expires_at"`
+		Error     string   `json:"error"`
+	}
+	if jerr := json.Unmarshal(lastLine(out), &link); jerr != nil {
+		if err != nil {
+			return fmt.Errorf("%s", T("Panel sıfırlama bağlantısı oluşturamadı: %s", err))
+		}
+		return fmt.Errorf("%s", T("Panelin yanıtı anlaşılamadı."))
+	}
+	if link.Error != "" {
+		return fmt.Errorf("%s", link.Error)
+	}
+	if c.json {
+		return c.printJSON(lastLine(out))
+	}
+	until := link.ExpiresAt
+	if t, err := time.Parse(time.RFC3339, link.ExpiresAt); err == nil {
+		until = t.Local().Format("2006-01-02 15:04")
+	}
+	c.note("%s", T("%s için parola sıfırlama bağlantısı: bir kez kullanılır, %s tarihine kadar geçerli. Önceki bağlantı artık çalışmaz.", link.Email, until))
 	for _, u := range link.URLs {
 		c.println(u)
 	}

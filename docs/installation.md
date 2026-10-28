@@ -90,10 +90,28 @@ sudo serfex setup-url
 ```
 
 A new link stops the previous one. Once an administrator exists, the command
-refuses; a lost password is reset on the server with
-`sudo -u serfex php8.5 /opt/serfex/current/panel/artisan serfex:admin`, which
-also takes `--email`, `--name` and `--password`. Other administrators are
-invited under Settings → Administrators.
+refuses. Other administrators are invited under Settings → Administrators.
+
+### Forgotten passwords
+
+**Forgot password?** on the sign-in page mails a one-time link to the
+account's address (administrators, customers and team members alike). The
+mail goes out the way the panel's notifications do (Settings →
+Notifications: this server's mail server or your SMTP server), in the
+person's language. The link works once and for 60 minutes, only the newest
+one works, and one address gets at most one link a minute and five an hour.
+The page answers the same whether or not the address has an account.
+Setting the new password signs the account out everywhere and mails a
+notice; two-step verification, when it is on, is still asked at the next
+sign-in. Requests and resets are written to the audit log.
+
+When the panel cannot send mail, the page says so and points to the server:
+
+```sh
+sudo serfex reset-password ayse@example.com
+```
+
+prints the same kind of link for any account, without sending mail.
 
 Serfex does not sign in with the server's root password: PHP never runs as
 root, the root password never crosses the browser, and the setup link works

@@ -92,10 +92,30 @@ sudo serfex setup-url
 ```
 
 Yeni bağlantı öncekini geçersiz kılar. Bir yönetici varsa komut bağlantı
-oluşturmaz; unutulan parola sunucuda
-`sudo -u serfex php8.5 /opt/serfex/current/panel/artisan serfex:admin` ile
-sıfırlanır (`--email`, `--name`, `--password` da alır). Diğer yöneticiler
-Araçlar ve Ayarlar → Yöneticiler'den davet edilir.
+oluşturmaz. Diğer yöneticiler Araçlar ve Ayarlar → Yöneticiler'den davet
+edilir.
+
+### Unutulan parolalar
+
+Giriş sayfasındaki **Parolamı unuttum** bağlantısı hesabın adresine tek
+kullanımlık bir bağlantı gönderir (yöneticiler, müşteriler ve ekip üyeleri
+için aynı). E-posta panelin bildirimleriyle aynı yoldan çıkar (Araçlar ve
+Ayarlar → Bildirimler: bu sunucunun posta sunucusu ya da sizin SMTP
+sunucunuz) ve kişinin dilindedir. Bağlantı bir kez ve 60 dakika çalışır,
+yalnızca en yenisi geçerlidir; bir adrese dakikada en fazla bir, saatte en
+fazla beş bağlantı gider. Sayfa adresin hesabı olsa da olmasa da aynı yanıtı
+verir. Yeni parola kaydedilince hesabın bütün oturumları kapanır ve bir
+bilgi e-postası gider; iki adımlı doğrulama açıksa sonraki girişte yine
+sorulur. İstekler ve sıfırlamalar işlem günlüğüne yazılır.
+
+Panel e-posta gönderemiyorsa sayfa bunu söyler ve sunucuyu gösterir:
+
+```sh
+sudo serfex reset-password ayse@ornek.com.tr
+```
+
+komutu herhangi bir hesap için aynı türden bir bağlantıyı e-posta göndermeden
+yazar.
 
 Serfex sunucunun root parolasıyla giriş yaptırmaz: PHP hiçbir zaman root
 olarak çalışmaz, root parolası tarayıcıdan geçmez ve kurulum bağlantısı
