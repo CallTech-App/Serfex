@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A Linux account on the server that owns sites, and the customer it
  * belongs to, if any.
  */
-#[Fillable(['customer_id', 'name', 'uid', 'home', 'disk_bytes', 'disk_measured_at', 'quota_limit_bytes'])]
+#[Fillable(['customer_id', 'name', 'uid', 'home', 'disk_bytes', 'disk_measured_at', 'quota_limit_bytes', 'ssh_access', 'ssh_password_at'])]
 class SystemUser extends Model
 {
     use HasFactory;
@@ -21,6 +21,7 @@ class SystemUser extends Model
     {
         return [
             'disk_measured_at' => 'datetime',
+            'ssh_password_at' => 'datetime',
         ];
     }
 
@@ -41,5 +42,13 @@ class SystemUser extends Model
     public function sites(): HasMany
     {
         return $this->hasMany(Site::class);
+    }
+
+    /**
+     * @return HasMany<SshKey, $this>
+     */
+    public function sshKeys(): HasMany
+    {
+        return $this->hasMany(SshKey::class);
     }
 }

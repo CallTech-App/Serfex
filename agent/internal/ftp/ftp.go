@@ -20,6 +20,9 @@
 // A locked account (suspended customer, deleted with Undo pending) keeps
 // its password but cannot sign in: its password is locked and the account
 // expired, which also refuses keys.
+//
+// The same drop-in gives a site's own user SSH access when the panel turns
+// it on (siteuser.go): SFTP locked in a copy of its home, or a shell.
 package ftp
 
 import (
@@ -209,6 +212,37 @@ Match Group ` + Group + `
     PermitTTY no
     PermitUserRC no
     X11Forwarding no
+
+# SSH access of site users (Sites > SSH access): SFTP only, locked in a
+# copy of the user's home. Keys come from the panel, never from ~/.ssh.
+Match Group ` + GroupSFTP + `
+    ChrootDirectory ` + UserJailRoot + `/%u
+    ForceCommand internal-sftp -u 0022
+    AuthorizedKeysFile ` + KeysDir + `/%u
+    PubkeyAuthentication yes
+    PasswordAuthentication yes
+    KbdInteractiveAuthentication no
+    AllowTcpForwarding no
+    AllowAgentForwarding no
+    AllowStreamLocalForwarding no
+    PermitTunnel no
+    PermitTTY no
+    PermitUserRC no
+    X11Forwarding no
+
+# Site users the administrator gave a shell: their own home, no chroot.
+# Local forwarding stays for tunnels to the site's database.
+Match Group ` + GroupShell + `
+    AuthorizedKeysFile ` + KeysDir + `/%u
+    PubkeyAuthentication yes
+    PasswordAuthentication yes
+    KbdInteractiveAuthentication no
+    AllowTcpForwarding local
+    AllowAgentForwarding no
+    AllowStreamLocalForwarding no
+    PermitTunnel no
+    PermitUserRC no
+    X11Forwarding no
 `
 
 // setup installs OpenSSH when missing and puts Serfex's configuration in
@@ -224,13 +258,17 @@ func (m *Manager) setup(ctx context.Context, t *txn.Tx) error {
 	if err != nil {
 		return err
 	}
-	if !strings.Contains("\n"+string(group), "\n"+Group+":") {
-		if _, err := m.h.Run(ctx, host.Command{Name: "groupadd", Args: []string{"--system", Group}}); err != nil {
-			return err
+	for _, g := range []string{Group, GroupSFTP, GroupShell} {
+		if !strings.Contains("\n"+string(group), "\n"+g+":") {
+			if _, err := m.h.Run(ctx, host.Command{Name: "groupadd", Args: []string{"--system", g}}); err != nil {
+				return err
+			}
 		}
 	}
-	if err := t.RootDir(JailRoot, 0o755, 0, 0); err != nil {
-		return err
+	for _, d := range []string{JailRoot, UserJailRoot} {
+		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
+			return err
+		}
 	}
 	current, _ := os.ReadFile(m.h.Path(ConfigFile))
 	if string(current) == sshdConfig {

@@ -70,6 +70,7 @@ use App\Livewire\Sites\SitePhp;
 use App\Livewire\Sites\SiteProtect;
 use App\Livewire\Sites\SiteScan;
 use App\Livewire\Sites\SiteShow;
+use App\Livewire\Sites\SiteSsh;
 use App\Livewire\Sites\SiteStatistics;
 use App\Livewire\Sites\SiteWaf;
 use App\Livewire\Ssl\SiteSsl;
@@ -129,6 +130,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::post('/sites/{site}/files/save', [SiteFileController::class, 'save'])->whereNumber('site')->name('sites.files.save');
         Route::post('/sites/{site}/files/upload', [SiteFileController::class, 'upload'])->whereNumber('site')->name('sites.files.upload');
         Route::livewire('/sites/{site}/ftp', SiteFtp::class)->whereNumber('site')->name('sites.ftp');
+        Route::livewire('/sites/{site}/ssh', SiteSsh::class)->whereNumber('site')->name('sites.ssh');
         Route::livewire('/sites/{site}/waf', SiteWaf::class)->whereNumber('site')->name('sites.waf');
         Route::livewire('/sites/{site}/scan', SiteScan::class)->whereNumber('site')->name('sites.scan');
         Route::livewire('/sites/{site}/protected-folders', SiteProtect::class)->whereNumber('site')->name('sites.protect');

@@ -29,6 +29,7 @@
         [__('Geliştirme'), 'code', [
             ['code', __('PHP ve web sunucusu'), 'PHP '.$site->php_version.' · '.($site->web_server === \App\Models\Site::APACHE ? 'Apache' : 'Nginx'), route('sites.php', $site)],
             $laravelTool,
+            $missing('ssh') ? ['square-terminal', __('SSH erişimi'), $missing('ssh')] : ['square-terminal', __('SSH erişimi'), __(\App\Services\Files\SshAccess::LABELS[$site->systemUser->ssh_access] ?? 'Kapalı'), route('sites.ssh', $site)],
             ['terminal', __('SSH terminali'), null],
             ['clock', __('Zamanlanmış görevler'), $cronJobs ? __(':cron_jobs görev', ['cron_jobs' => $cronJobs]) : __('Yok'), route('sites.cron', $site)],
             $laravel ? ['git-branch', __('Git dağıtımı'), $laravel->repository ? $laravel->repositoryName() : __('Bağlı değil'), route('laravel.show', [$laravel, 'section' => 'deployments'])]

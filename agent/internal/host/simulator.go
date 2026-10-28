@@ -170,6 +170,10 @@ unwrap:
 		err = s.useradd(inner.Args)
 	case "userdel":
 		err = s.userdel(inner.Args)
+	case "chpasswd":
+		err = s.chpasswd(inner.Stdin)
+	case "usermod":
+		err = s.usermod(inner.Args)
 	case "install":
 		err = s.install(inner.Args)
 	case "rm":
@@ -300,6 +304,75 @@ func (s *Simulator) userdel(args []string) error {
 		return fmt.Errorf("userdel: user '%s' does not exist", name)
 	}
 	return nil
+}
+
+// chpasswd: "name:password" lines; Root/etc/shadow gets a fake hash.
+func (s *Simulator) chpasswd(stdin []byte) error {
+	for _, line := range strings.Split(strings.TrimSpace(string(stdin)), "\n") {
+		name, _, ok := strings.Cut(line, ":")
+		if !ok {
+			return fmt.Errorf("chpasswd: malformed line")
+		}
+		if err := s.setShadow(name, func(string) string { return "$6$simulated$" + name }); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// usermod --lock / --unlock change the "!" in front of a hash in
+// Root/etc/shadow; other options only get recorded.
+func (s *Simulator) usermod(args []string) error {
+	if len(args) == 0 {
+		return nil
+	}
+	name := args[len(args)-1]
+	switch {
+	case slices.Contains(args, "--lock"):
+		return s.setShadow(name, func(h string) string {
+			if strings.HasPrefix(h, "!") {
+				return h
+			}
+			return "!" + h
+		})
+	case slices.Contains(args, "--unlock"):
+		return s.setShadow(name, func(h string) string {
+			if h == "!" || h == "" {
+				return h
+			}
+			return strings.TrimPrefix(h, "!")
+		})
+	}
+	return nil
+}
+
+// setShadow rewrites the password field of name in Root/etc/shadow,
+// adding the entry ("!") when it is missing.
+func (s *Simulator) setShadow(name string, f func(string) string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.Path("/etc/shadow")
+	data, err := os.ReadFile(p)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	var lines []string
+	found := false
+	for _, line := range strings.Split(strings.TrimRight(string(data), "\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		if fields := strings.Split(line, ":"); len(fields) > 1 && fields[0] == name {
+			fields[1] = f(fields[1])
+			line = strings.Join(fields, ":")
+			found = true
+		}
+		lines = append(lines, line)
+	}
+	if !found {
+		lines = append(lines, name+":"+f("!")+":20000:0:99999:7:::")
+	}
+	return os.WriteFile(p, []byte(strings.Join(lines, "\n")+"\n"), 0o640)
 }
 
 // install -d -m MODE DIR...

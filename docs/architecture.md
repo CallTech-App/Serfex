@@ -80,7 +80,7 @@ in Turkish or English.
 | System | `system.ping`, `agent.info`, `system.info`, `system.addresses`, `system.hostname.set`, `system.timezone.set`, `system.timezones`, `usage.disk`, `logs.rotation.get`, `logs.rotation.set`, `quota.status`, `quota.enable`, `quota.report`, `quota.set` |
 | Sites | `site.apply`, `site.delete`, `site.logs`, `web.protect.apply`, `web.deny.apply` |
 | PHP | `php.versions`, `php.info`, `php.settings.apply`, `php.extension.set`, `php.restart` |
-| Files and SFTP | `files.*` (list, read, save, upload, move, copy, delete, chmod, compress, extract, search, trash…), `ftp.status`, `ftp.account.apply`, `ftp.account.delete`, `ftp.account.list` |
+| Files, SFTP and SSH | `files.*` (list, read, save, upload, move, copy, delete, chmod, compress, extract, search, trash…), `ftp.status`, `ftp.account.apply`, `ftp.account.delete`, `ftp.account.list`, `ssh.user.apply` |
 | Scheduled tasks | `cron.apply`, `cron.remove`, `cron.run`, `cron.runs` |
 | DNS | `dns.status`, `dns.setup`, `dns.zone.apply`, `dns.zone.get`, `dns.zone.delete` |
 | Certificates | `ssl.issue`, `ssl.install`, `ssl.get`, `ssl.delete`, `ssl.panel.issue`, `ssl.panel.install`, `ssl.panel.get` |
