@@ -90,6 +90,8 @@ func TestApplyRefusesBadDomains(t *testing.T) {
 		"open block":             {NginxDirectives: "location /a {\n  return 200;\n"},
 		"closing block":          {NginxDirectives: "}\nserver {"},
 		"apache open block":      {ApacheDirectives: "<Directory /x>\n{"},
+		"preferred elsewhere":    {PreferredHost: "kahveatolyesi.com"},
+		"preferred subdomain":    {PreferredHost: "blog.kahveatolyesi.com.tr"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			s.Domain, s.User, s.PHPVersion, s.Aliases = spec.Domain, spec.User, spec.PHPVersion, spec.Aliases
@@ -100,8 +102,14 @@ func TestApplyRefusesBadDomains(t *testing.T) {
 			}
 		})
 	}
-	// Braces inside quotes and comments do not count.
+	// The preferred host's pair must be one of the site's names.
 	s := spec
+	s.Aliases, s.PreferredHost = nil, spec.Domain
+	if _, err := m.Apply(context.Background(), s); !errors.As(err, new(*ValidationError)) {
+		t.Errorf("preferred host without www: err = %v, want a validation error", err)
+	}
+	// Braces inside quotes and comments do not count.
+	s = spec
 	s.NginxDirectives = "# a } comment\nadd_header X-Test \"a{b\";"
 	if _, err := m.Apply(context.Background(), s); err != nil {
 		t.Fatalf("directives with quoted braces: %v", err)
@@ -253,6 +261,86 @@ func TestApplyKeepsNamesWithoutCertificateOnHTTP(t *testing.T) {
 	}
 	if strings.Count(vhost, "server_name kahveatolyesi.com.tr ") != 2 {
 		t.Errorf("covered names must be in the redirect and the HTTPS block only:\n%s", vhost)
+	}
+}
+
+func TestApplyRedirectsToThePreferredHost(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	const www = "www.kahveatolyesi.com.tr"
+	certs := cert.NewManager(sim, nil, &cert.Simulated{})
+	issue := func(names ...string) {
+		t.Helper()
+		if _, err := certs.Issue(ctx, cert.IssueSpec{Name: spec.Domain, Names: names}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apply := func(s Spec) string {
+		t.Helper()
+		res, err := m.Apply(ctx, s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return read(t, sim, res.NginxConfig)
+	}
+	// block is the server block that serves name.
+	block := func(vhost, name string) string {
+		t.Helper()
+		i := strings.LastIndex(vhost, "server_name "+name+";")
+		if i < 0 {
+			t.Fatalf("no server block for %s alone:\n%s", name, vhost)
+		}
+		start := strings.LastIndex(vhost[:i], "server {")
+		return vhost[start : i+strings.Index(vhost[i:], "\n}")]
+	}
+
+	// Without a certificate the other name is sent to http://.
+	s := spec
+	s.PreferredHost = spec.Domain
+	vhost := apply(s)
+	if strings.Contains(vhost, "server_name kahveatolyesi.com.tr www.") {
+		t.Errorf("www still served by the site:\n%s", vhost)
+	}
+	if b := block(vhost, www); !strings.Contains(b, `return 301 "http://kahveatolyesi.com.tr$request_uri";`) || strings.Contains(b, "443") {
+		t.Errorf("www redirect without a certificate:\n%s", b)
+	}
+
+	// With a certificate for both: HTTPS on both, one hop to the preferred name.
+	issue(spec.Domain, www)
+	s.TLS = &TLSSpec{Certificate: spec.Domain, Redirect: true}
+	vhost = apply(s)
+	b := block(vhost, www)
+	for _, want := range []string{"listen 80;", "listen 443 ssl http2;", `return 301 "https://kahveatolyesi.com.tr$request_uri";`, "/.well-known/acme-challenge/"} {
+		if !strings.Contains(b, want) {
+			t.Errorf("www redirect lacks %q:\n%s", want, b)
+		}
+	}
+	if strings.Count(vhost, "server_name kahveatolyesi.com.tr;") != 2 {
+		t.Errorf("the domain should have its HTTP redirect and HTTPS blocks:\n%s", vhost)
+	}
+
+	// The other way round.
+	s.PreferredHost = www
+	vhost = apply(s)
+	if b := block(vhost, spec.Domain); !strings.Contains(b, `return 301 "https://www.kahveatolyesi.com.tr$request_uri";`) || !strings.Contains(b, "listen 443 ssl http2;") {
+		t.Errorf("domain redirect:\n%s", b)
+	}
+	if !strings.Contains(vhost, "server_name "+www+";\n\n    root ") {
+		t.Errorf("www should serve the site:\n%s", vhost)
+	}
+
+	if !strings.Contains(vhost, "}\n\n# Preferred address (Tercih edilen adres): kahveatolyesi.com.tr goes to www.kahveatolyesi.com.tr\nserver {") {
+		t.Errorf("redirect block not explained:\n%s", vhost)
+	}
+
+	// A certificate without the preferred name: both stay as they are.
+	issue(spec.Domain)
+	vhost = apply(s)
+	if strings.Contains(vhost, `return 301 "https://www.`) || strings.Contains(vhost, `return 301 "http://www.`) {
+		t.Errorf("redirected to a name the certificate does not cover:\n%s", vhost)
+	}
+	if !strings.Contains(vhost, "server_name "+www+";\n\n    root ") || !strings.Contains(vhost, "server_name kahveatolyesi.com.tr;\n\n    root ") {
+		t.Errorf("both names should be served:\n%s", vhost)
 	}
 }
 

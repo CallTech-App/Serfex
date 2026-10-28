@@ -464,6 +464,46 @@ class SiteDomainList extends Component
         }
     }
 
+    /**
+     * Which of the domain and its www. name visitors end up on.
+     */
+    public function setPreferred(SiteDomains $domains, string $value): void
+    {
+        $site = $this->site();
+        if (! in_array($value, Site::PREFERRED, true) || $site->wwwPair() === null || $site->preferred_host === $value) {
+            return;
+        }
+        $before = $site->preferred_host;
+        try {
+            $domains->change($site, fn () => $site->update(['preferred_host' => $value]));
+        } catch (AgentException $e) {
+            $this->dispatch('toast', message: __('Sunucu değişikliği uygulayamadı: :for_people', ['for_people' => $e->forPeople()]));
+
+            return;
+        }
+        $site->refresh();
+        $message = $site->preferredName() === null
+            ? __(':domain ve :www artık ayrı ayrı açılıyor.', ['domain' => $site->domain, 'www' => $site->wwwPair()])
+            : __('Tercih edilen adres: :name.', ['name' => $site->preferredName()]);
+        $this->dispatch('toast', message: $message, source: $this->getId(), undo: ['method' => 'undoPreferred', 'args' => [$before]]);
+    }
+
+    public function undoPreferred(SiteDomains $domains, string $before): void
+    {
+        $site = $this->site();
+        if (! in_array($before, Site::PREFERRED, true) || $site->preferred_host === $before) {
+            return;
+        }
+        try {
+            $domains->change($site, fn () => $site->update(['preferred_host' => $before]));
+        } catch (AgentException $e) {
+            $this->dispatch('toast', message: __('Geri alınamadı: :for_people', ['for_people' => $e->forPeople()]));
+
+            return;
+        }
+        $this->dispatch('toast', message: __('Tercih edilen adres geri alındı.'));
+    }
+
     public function updateCertificate(SiteDomains $domains): void
     {
         $site = $this->site();

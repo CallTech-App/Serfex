@@ -133,7 +133,8 @@ class SiteDomainsTest extends TestCase
 
     public function test_an_additional_domain_gets_a_zone_of_its_own_and_comes_back_after_undo(): void
     {
-        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id, 'tab' => 'aliases'])
+        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id])
+            ->call('switchTab', 'aliases')
             ->call('openAlias')
             ->set('aliasName', 'Kahve.NET')
             ->assertSee('Bu alan adı için DNS bölgesi oluştur')
@@ -303,6 +304,58 @@ class SiteDomainsTest extends TestCase
         $this->assertCount(1, $spec['subdomains']);
         $this->assertArrayNotHasKey('redirects', $spec);
         $this->assertArrayNotHasKey('nginx_directives', $spec);
+        $site->update(['aliases' => ['www.adapansiyon.com'], 'preferred_host' => Site::PREFER_BARE]);
+        $this->assertArrayNotHasKey('preferred_host', $site->fresh()->agentSpec());
+    }
+
+    public function test_the_preferred_address_sends_the_other_name_there(): void
+    {
+        // Sites that existed before keep opening on both names.
+        $this->assertSame(Site::PREFER_NONE, $this->site->fresh()->preferred_host);
+        $this->assertArrayNotHasKey('preferred_host', $this->site->fresh()->agentSpec());
+
+        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id])
+            ->call('switchTab', 'aliases')
+            ->assertSee('Tercih edilen adres')
+            ->assertSee('İki ad da siteyi açıyor.')
+            ->call('setPreferred', 'www')
+            ->assertDispatched('toast', message: 'Tercih edilen adres: www.kahve.com.tr.')
+            ->assertSee('kalıcı (301) yönleniyor');
+        $this->assertSame('www.kahve.com.tr', $this->lastSpec()['preferred_host']);
+        $this->assertSame('www.kahve.com.tr', $this->site->fresh()->primaryHost());
+
+        $page->call('setPreferred', 'bare');
+        $this->assertSame('kahve.com.tr', $this->lastSpec()['preferred_host']);
+        $page->call('undoPreferred', 'www')->assertDispatched('toast', message: 'Tercih edilen adres geri alındı.');
+        $this->assertSame('www.kahve.com.tr', $this->lastSpec()['preferred_host']);
+        $page->call('setPreferred', 'nonsense');
+        $this->assertSame(Site::PREFER_WWW, $this->site->fresh()->preferred_host);
+
+        // A certificate without the preferred name: no redirect until it has it.
+        $this->site->certificate->update(['domains' => ['kahve.com.tr']]);
+        $this->assertArrayNotHasKey('preferred_host', $this->site->fresh()->agentSpec());
+        $page->call('$refresh')->assertSee('sertifikaya girince yönlendirme başlar');
+        $this->site->certificate->update(['domains' => ['kahve.com.tr', 'www.kahve.com.tr']]);
+
+        // The server refuses: nothing changes.
+        $this->agent->answers['site.apply'] = AgentException::rpcError('site.apply', AgentException::CONFIG_REJECTED, 'nginx rejected the configuration');
+        $page->call('setPreferred', 'none');
+        $this->assertSame(Site::PREFER_WWW, $this->site->fresh()->preferred_host);
+
+        // Without its www. name there is nothing to choose between.
+        $this->site->update(['aliases' => []]);
+        $this->assertNull($this->site->fresh()->preferredName());
+        $this->assertArrayNotHasKey('preferred_host', $this->site->fresh()->agentSpec());
+        $page->call('$refresh')->assertSee('bu sitede yok');
+    }
+
+    public function test_without_a_certificate_only_the_domain_itself_is_preferred(): void
+    {
+        $this->site->update(['certificate_id' => null, 'preferred_host' => Site::PREFER_BARE]);
+        $this->assertSame('kahve.com.tr', $this->site->fresh()->agentSpec()['preferred_host']);
+        // www.<domain> may not point here yet.
+        $this->site->update(['preferred_host' => Site::PREFER_WWW]);
+        $this->assertArrayNotHasKey('preferred_host', $this->site->fresh()->agentSpec());
     }
 
     public function test_hourly_renewal_adds_names_whose_dns_points_here(): void

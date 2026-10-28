@@ -237,7 +237,7 @@ class LaravelApps
             'APP_NAME' => $site->domain,
             'APP_ENV' => 'production',
             'APP_DEBUG' => 'false',
-            'APP_URL' => ($site->hasHttps() ? 'https://' : 'http://').$site->domain,
+            'APP_URL' => ($site->hasHttps() ? 'https://' : 'http://').$site->primaryHost(),
             // Daily files, kept two weeks; the Günlükler page lists them.
             'LOG_STACK' => 'daily',
             'LOG_DAILY_DAYS' => '14',
