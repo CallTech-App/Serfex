@@ -88,6 +88,11 @@ type Spec struct {
 	// are used.
 	NginxDirectives  string `json:"nginx_directives"`
 	ApacheDirectives string `json:"apache_directives"`
+	// Cache holds the page cache, browser cache and compression (see
+	// cache.go); nil leaves Nginx's defaults.
+	Cache *CacheSpec `json:"cache"`
+	// NoIndex sends X-Robots-Tag: noindex, for staging copies.
+	NoIndex bool `json:"noindex"`
 	// PanelURL is the panel's address (https://name:port/) for the
 	// sign-in button on the default page of a new document root; empty
 	// leaves the button out.
@@ -319,6 +324,8 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 		return Result{}, err
 	}
 	webData(&data, spec)
+	fillCache(&data, spec)
+	data.NoIndex = spec.NoIndex
 	domainData(&data, spec, p.siteDir, certNames)
 	poolData(&data, spec.PHP, m.tempLimit(spec.Domain))
 	if newDocroot {
@@ -361,6 +368,23 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	// site): a name this site does not serve yet must not reach another.
 	if err := m.writeDefaultSite(t); err != nil {
 		return Result{}, err
+	}
+
+	// The page cache belongs to the web server; switching it off drops
+	// what it kept, so switching it on again starts empty.
+	if data.Cache != nil && data.Cache.Page {
+		for _, d := range []string{"/var/cache/serfex", CacheRoot} {
+			if err := t.RootDir(d, 0o755, 0, 0); err != nil {
+				return Result{}, err
+			}
+		}
+		if err := t.RootDir(CacheDir(spec.Domain), 0o700, web.UID, web.GID); err != nil {
+			return Result{}, err
+		}
+	} else if m.exists(CacheDir(spec.Domain)) {
+		if err := os.RemoveAll(m.h.Path(CacheDir(spec.Domain))); err != nil {
+			return Result{}, err
+		}
 	}
 
 	// Server-wide Nginx limits (Hizmetler) every vhost inherits.
@@ -551,6 +575,9 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		return res, &OperationError{err}
 	}
 	if err := os.RemoveAll(m.h.Path(ErrorPagesRoot + "/" + spec.Domain)); err != nil {
+		return res, &OperationError{err}
+	}
+	if err := os.RemoveAll(m.h.Path(CacheDir(spec.Domain))); err != nil {
 		return res, &OperationError{err}
 	}
 

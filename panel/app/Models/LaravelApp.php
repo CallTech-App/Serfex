@@ -282,21 +282,17 @@ class LaravelApp extends Model
     /**
      * Parameters naming the site for the agent's laravel.* methods.
      *
-     * @return array{domain: string, user: string, php_version: string}
+     * @return array{domain: string, user: string, php_version: string, node?: string}
      */
     public function target(): array
     {
-        return [
-            'domain' => $this->site->domain,
-            'user' => $this->site->systemUser->name,
-            'php_version' => $this->site->php_version,
-        ];
+        return $this->site->toolTarget();
     }
 
     /**
      * target() plus the application's directory.
      *
-     * @return array{domain: string, user: string, php_version: string, path: string}
+     * @return array{domain: string, user: string, php_version: string, node?: string, path: string}
      */
     public function agentApp(): array
     {

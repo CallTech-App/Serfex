@@ -152,6 +152,16 @@ func registerMethods(srv *rpc.Server, svc services) {
 		return res, nil
 	})
 	handle(srv, "site.logs", func(_ context.Context, p site.LogsSpec) (any, error) { return svc.sites.Logs(p) })
+	handle(srv, "site.cache.status", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+	}) (any, error) {
+		return svc.sites.CacheStatus(q.Domain)
+	})
+	handle(srv, "site.cache.purge", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+	}) (any, error) {
+		return svc.sites.PurgeCache(q.Domain)
+	})
 	handle(srv, "usage.disk", func(ctx context.Context, p site.DiskSpec) (any, error) { return svc.sites.DiskUsage(ctx, p) })
 	srv.Handle("dns.status", func(ctx context.Context, _ json.RawMessage) (any, error) {
 		return svc.dns.Status(ctx), nil
@@ -565,6 +575,8 @@ func registerLaravel(srv *rpc.Server, svc services) {
 	handle(srv, "laravel.deploy", func(ctx context.Context, p laravel.DeploySpec) (any, error) { return l.Deploy(ctx, p) })
 	handle(srv, "laravel.rollback", func(ctx context.Context, p laravel.RollbackSpec) (any, error) { return l.Rollback(ctx, p) })
 	handle(srv, "laravel.run", func(ctx context.Context, p laravel.RunSpec) (any, error) { return l.Run(ctx, p) })
+	handle(srv, "site.tool.run", func(ctx context.Context, p laravel.SiteRunSpec) (any, error) { return l.SiteRun(ctx, p) })
+	handle(srv, "site.tool.scan", func(ctx context.Context, p laravel.Target) (any, error) { return l.SiteScan(ctx, p) })
 	handle(srv, "laravel.run.read", func(_ context.Context, q struct {
 		Domain string `json:"domain"`
 		Run    string `json:"run"`
@@ -855,6 +867,7 @@ func registerBackups(srv *rpc.Server, svc services) {
 	handle(srv, "migrate.plesk.pull", func(ctx context.Context, p backup.PleskPullSpec) (any, error) {
 		return b.MigratePleskPull(context.WithoutCancel(ctx), p)
 	})
+	handle(srv, "site.copy", func(ctx context.Context, p backup.CopySpec) (any, error) { return b.Copy(ctx, p) })
 	handle(srv, "backup.run.read", func(_ context.Context, q struct {
 		Run    string `json:"run"`
 		Offset int64  `json:"offset"`

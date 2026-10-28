@@ -111,6 +111,9 @@ func (s Spec) validate() error {
 	if err := s.PHP.validate(); err != nil {
 		return err
 	}
+	if err := s.Cache.validate(); err != nil {
+		return err
+	}
 	if len(s.Aliases) > maxAlias {
 		return invalid("at most %d aliases are allowed", maxAlias)
 	}
