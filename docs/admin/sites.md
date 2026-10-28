@@ -62,6 +62,8 @@ its accounts carry the comment `Serfex site user` and its files start with
   come from the regional Internet registries' lists, refreshed monthly.
 - **Disk usage**: files, email, databases and application backups.
 - **Backups**: the site's last backup, see [Backups](backups.md).
+- **Copy site**: a staging copy on an address of its own, see
+  [Copying a site](#copying-a-site) below.
 
 ### Development
 
@@ -72,6 +74,30 @@ its accounts carry the comment `Serfex site user` and its files start with
   workers, renewal, request timeout). On customer sites `exec`,
   `shell_exec`, `proc_open` and similar functions are off; an administrator
   can allow them per site.
+- **Cache & speed**: three switches, all off until you turn them on.
+  - *Page cache*: Nginx keeps the pages PHP makes and sends them again
+    without running PHP, for 1 minute to 1 day (10 minutes by default).
+    Only GET and HEAD requests of visitors without a session are cached;
+    a response that sets a cookie or that the application marks private or
+    no-cache is never kept, nor sign-in, admin, cart, checkout and API paths
+    (`/wp-admin/`, `/login`, `/cart`, `/checkout`, `/api/`, …) or paths you
+    add. Analytics and consent cookies do not stop a page from being cached.
+    Each site has its own cache of at most 256 MB in
+    `/var/cache/serfex/nginx/<domain>`; **Clear cache** empties it. The
+    `X-Serfex-Cache` response header says HIT, MISS or BYPASS. Not used for
+    Octane applications.
+  - *Browser cache*: images, CSS, JavaScript, fonts and video are kept by
+    browsers for 1 to 365 days (30 by default).
+  - *Compression*: gzip for HTML, CSS, JavaScript, JSON, SVG and fonts.
+- **Composer** and **Node.js**: run Composer and npm, pnpm, Yarn or Bun in
+  any folder of the site as the site's user, with live output. Folders with
+  a `composer.json` or `package.json` (three levels deep) are listed with
+  their lock file and whether `vendor/` or `node_modules/` is installed;
+  common commands and the scripts of `package.json` are one click away.
+  The site can pin the Node.js line its commands (and its Laravel
+  application's builds) use, among the lines installed under Software.
+  Composer and Node.js 24 are downloaded on first use. Customers need the
+  plan's "Commands and Tinker" feature.
 - **Scheduled tasks**: cron jobs run as the site's user, with a time limit
   (1 hour by default), no overlapping runs and the last 20 runs' output
   kept. Laravel's own scheduler is under Laravel → Scheduler instead.
@@ -119,6 +145,38 @@ site's own user:
   removes only Serfex's sign-in plugin, web server rules and restore points.
 
 Customers manage the WordPress on their own sites the same way.
+
+### Copying a site
+
+**Copy site** makes a staging copy of a site on a new address
+(`staging.example.com` by default) under the same system user, PHP version
+and web server, for trying plugins, updates and changes away from visitors.
+
+- The whole site folder is copied except its logs. Addresses and database
+  names in settings files (`wp-config.php`, `.env`, PHP configuration
+  arrays) are changed to the copy's, symbolic links into the site point into
+  the copy, and Laravel's cached configuration is removed. A database name
+  not found in any settings file is listed, to be set by hand.
+- With **Databases** each of the site's databases is copied into a new one
+  named `<name>_copy`, and the same database users get the same access.
+- A WordPress gets its new address in its own database (WP-CLI
+  search-replace, serialized data included) and is managed on the copy too.
+- **Hide from search engines** (on by default) adds `X-Robots-Tag: noindex`
+  to every response and turns on WordPress's "Discourage search engines".
+- Mail, scheduled tasks, FTP accounts and Laravel queue workers are not
+  copied. If the domain's DNS is on this server the copy's record is added;
+  otherwise add an A record for it. A certificate is requested as for any new
+  site.
+- **Refresh from source** writes the live site's files and/or databases
+  over the copy again.
+- **Publish to the live site** writes the copy's files and/or databases over
+  the live site. The live site is backed up first; if the publish fails it is
+  restored at once, and **Undo** restores it from that backup for 7 days.
+  Not offered on sites with a Laravel application, which go live through Git
+  deploys and preview environments.
+
+A copy counts against the plan's sites and databases. Customers copy their
+own sites the same way.
 
 ### Domain & DNS
 
