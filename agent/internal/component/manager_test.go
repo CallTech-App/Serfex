@@ -403,12 +403,12 @@ func TestModSecuritySettings(t *testing.T) {
 
 func TestFail2banJails(t *testing.T) {
 	m, sim, _ := newTest(t)
-	m.Addresses = func() []string { return []string{"185.98.142.21"} }
+	m.Addresses = func() []string { return []string{"203.0.113.21"} }
 	if _, err := m.Install(context.Background(), OpSpec{ID: "fail2ban", Run: "f"}); err != nil {
 		t.Fatal(err)
 	}
 	jails := read(t, sim, jailConf)
-	for _, want := range []string{"[sshd]\nenabled = true", "banaction = nftables-multiport", "ignoreip = 127.0.0.1/8 ::1 185.98.142.21", "[recidive]"} {
+	for _, want := range []string{"[sshd]\nenabled = true", "banaction = nftables-multiport", "ignoreip = 127.0.0.1/8 ::1 203.0.113.21", "[recidive]"} {
 		if !strings.Contains(jails, want) {
 			t.Errorf("jails lack %q:\n%s", want, jails)
 		}

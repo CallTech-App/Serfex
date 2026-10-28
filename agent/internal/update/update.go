@@ -303,7 +303,6 @@ func (m *Manager) fetchReleases(ctx context.Context, cfg panel.Config, channel s
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "serfex-agent/"+m.Agent)
-	authorize(req, cfg.Token)
 	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	resp, err := m.HTTP.Do(req.WithContext(cctx))
@@ -326,7 +325,6 @@ func (m *Manager) fetchReleases(ctx context.Context, cfg panel.Config, channel s
 		Assets      []struct {
 			Name string `json:"name"`
 			URL  string `json:"browser_download_url"`
-			API  string `json:"url"`
 			Size int64  `json:"size"`
 		} `json:"assets"`
 	}
@@ -341,10 +339,6 @@ func (m *Manager) fetchReleases(ctx context.Context, cfg panel.Config, channel s
 		}
 		rel := Release{Version: v, Tag: r.Tag, Name: r.Name, Notes: r.Body, PublishedAt: r.PublishedAt, Prerelease: r.Prerelease, URL: r.URL}
 		for _, a := range r.Assets {
-			// A private repository's files are only served through the API.
-			if cfg.Token != "" && a.API != "" {
-				a.URL = a.API
-			}
 			switch a.Name {
 			case ArchiveName(v, m.Arch):
 				rel.Archive, rel.Size = a.URL, a.Size
@@ -357,14 +351,6 @@ func (m *Manager) fetchReleases(ctx context.Context, cfg panel.Config, channel s
 		}
 	}
 	return out, nil
-}
-
-// authorize adds token, when there is one, for a private repository.
-// net/http drops it when GitHub redirects a download to its storage.
-func authorize(req *http.Request, token string) {
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
 }
 
 // ArchiveName is the release archive for arch.
