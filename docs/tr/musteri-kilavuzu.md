@@ -60,6 +60,10 @@ Bir sitenin sayfasında:
   `sftp <kullanıcı>@<alan adınız>` ile bağlanın. Ana klasörünüze düşersiniz ve
   yalnızca kendi dosyalarınızı görürsünüz. Parola isteğe bağlıdır ve bir kez
   gösterilir. Kabuk erişimini sunucu yöneticiniz açar.
+- **Bağlantı bilgileri:** sunucu adresi, SFTP portu ve hesapları, sitenin
+  veritabanları ve kullanıcıları, SSH komutları tek sayfada, kopyalanmaya
+  hazır. Parolalar saklanmaz; her bölümün yanındaki bağlantıdan yenisi
+  belirlenir.
 - **PHP ve web sunucusu:** PHP sürümü ve `memory_limit`,
   `upload_max_filesize` gibi ayarlar.
 - **Zamanlanmış görevler:** bir komutu her gece, her saat ya da birkaç

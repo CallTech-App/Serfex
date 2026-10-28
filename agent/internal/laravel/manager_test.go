@@ -388,6 +388,36 @@ func TestScheduler(t *testing.T) {
 	if got := status.Schedule.Tasks[1]; got.Command != "shipments:sync-carriers --force" || got.OK {
 		t.Errorf("task 1 = %+v", got)
 	}
+
+	// Turned-off tasks: the runner stands in for artisan and is told which.
+	if _, err := m.ApplySchedule(ctx, ScheduleSpec{App: app, Enabled: true, Skip: []string{"0123456789abcdef", "fedcba9876543210"}}); err != nil {
+		t.Fatal(err)
+	}
+	svc := read(t, sim, "/etc/systemd/system/serfex-schedule-api.hizlikargo.app.service")
+	if !strings.Contains(svc, "ExecStart=/usr/bin/php8.4 /opt/serfex/laravel/schedule-run.php\nEnvironment=SERFEX_SCHEDULE_SKIP=0123456789abcdef,fedcba9876543210\n") || strings.Contains(svc, "artisan schedule:run") {
+		t.Errorf("service with skipped tasks:\n%s", svc)
+	}
+	// Applying again finds the runner its own.
+	if _, err := m.ApplySchedule(ctx, ScheduleSpec{App: app, Enabled: true, Skip: []string{"0123456789abcdef"}}); err != nil {
+		t.Fatalf("second apply: %v", err)
+	}
+	if runner := read(t, sim, scheduleRunnerPath()); !strings.Contains(runner, "SERFEX_SCHEDULE_SKIP") || !strings.Contains(runner, "$taskKey") {
+		t.Errorf("runner:\n%s", runner)
+	}
+	var v *ValidationError
+	for _, skip := range [][]string{{"inspire"}, {"0123456789ABCDEF"}, {"0123456789abcdef\nExecStart=/bin/sh"}} {
+		if _, err := m.ApplySchedule(ctx, ScheduleSpec{App: app, Enabled: true, Skip: skip}); !errors.As(err, &v) {
+			t.Errorf("skip %q: %v", skip, err)
+		}
+	}
+	// None left: back to plain artisan.
+	if _, err := m.ApplySchedule(ctx, ScheduleSpec{App: app, Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if svc := read(t, sim, "/etc/systemd/system/serfex-schedule-api.hizlikargo.app.service"); !strings.Contains(svc, "ExecStart=/usr/bin/php8.4 artisan schedule:run\n") || strings.Contains(svc, "SERFEX_SCHEDULE_SKIP") {
+		t.Errorf("service:\n%s", svc)
+	}
+
 	st, err = m.ApplySchedule(ctx, ScheduleSpec{App: app})
 	if err != nil || st.Enabled {
 		t.Fatalf("off: %+v %v", st, err)

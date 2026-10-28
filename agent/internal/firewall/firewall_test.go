@@ -17,7 +17,7 @@ func newTest(t *testing.T) (*Manager, *host.Simulator, *time.Time) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	now := time.Now().UTC().Truncate(time.Second)
 	m := NewManager(sim)
 	m.Now = func() time.Time { return now }
 	m.Protected = func() []netip.Addr { return []netip.Addr{netip.MustParseAddr("203.0.113.10")} }

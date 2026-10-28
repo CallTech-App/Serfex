@@ -123,7 +123,10 @@ deployment.
 
 Turns Laravel's `schedule:run` on every minute (a systemd timer), lists the
 application's scheduled commands with their next and last run, and runs one
-now.
+now. Each task has its own switch: a task turned off is skipped when it is
+due, without changing the application's code (Serfex then starts
+`schedule:run` through a small runner that marks those tasks as skipped).
+**Run now** still runs a task that is off.
 
 ## Processes
 

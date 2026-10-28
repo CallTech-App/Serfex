@@ -186,12 +186,13 @@ func TestDatabasesUsersAndRemoteAccess(t *testing.T) {
 	}
 
 	// Deleting with a backup keeps a dump and takes the grant away.
-	m.now = func() time.Time { return time.Date(2026, 10, 19, 9, 30, 0, 0, time.UTC) }
+	at := time.Now().UTC().Truncate(time.Second)
+	m.now = func() time.Time { return at }
 	res, err := m.DeleteDatabase(ctx, DeleteSpec{Server: MySQL, Name: "acme_shop", Backup: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Backup != BackupDir+"/mysql-acme_shop-20261019-093000.sql.gz" || res.Size == 0 {
+	if res.Backup != BackupDir+"/mysql-acme_shop-"+at.Format("20060102-150405")+".sql.gz" || res.Size == 0 {
 		t.Errorf("backup %+v", res)
 	}
 	f, err := os.Open(sim.Path(res.Backup))

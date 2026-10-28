@@ -24,7 +24,7 @@
             ['chart-column', __('İstatistikler'), $monthStats['visitors'] ? __('Bu ay :visitors ziyaretçi', ['visitors' => \App\Support\Num::format($monthStats['visitors'], 0)]) : __('Bu ay ziyaret yok'), route('sites.stats', $site)],
             ['hard-drive', __('Disk kullanımı'), $site->disk_bytes === null ? __('Ölçülmedi') : \App\Support\Bytes::format($diskTotal), route('sites.disk', $site)],
             $missing('backups') ? ['archive-restore', __('Yedekler'), $missing('backups')] : ['archive-restore', __('Yedekler'), $lastBackup ? __('Son: :text', ['text' => $backupText]) : __('Henüz yok'), route('backups.index', ['site' => $site->id])],
-            ['key-round', __('Bağlantı bilgileri'), null],
+            ['key-round', __('Bağlantı bilgileri'), __('SFTP, veritabanı, SSH'), route('sites.connection', $site)],
         ]],
         [__('Geliştirme'), 'code', [
             ['code', __('PHP ve web sunucusu'), 'PHP '.$site->php_version.' · '.($site->web_server === \App\Models\Site::APACHE ? 'Apache' : 'Nginx'), route('sites.php', $site)],

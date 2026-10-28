@@ -35,7 +35,7 @@ var notForPeople = map[string]bool{
 	"ModSecurity is not installed; install it from Yazılım Yönetimi first":         true,
 	"Kapalı": true, "Yalnızca izle": true, "sunucu ayarı": true, "WAF of ": true, ": Kapalı": true,
 	"Korumalı alan": true, " nobody may fetch (Güvenlik taraması).": true, "Otomatik yanıt": true, " (geri yüklendi)": true,
-	`{"command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`: true,
+	`{"key":"5a4b3c2d1e0f9a8b","command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`: true,
 }
 
 type found struct {

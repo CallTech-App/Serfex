@@ -56,7 +56,7 @@ func TestGeoLookupAndFile(t *testing.T) {
 }
 
 func TestParseRequest(t *testing.T) {
-	line := `88.230.1.2 - - [20/Oct/2026:09:12:01 +0300] "GET /urunler/kahve?renk=kirmizi HTTP/2.0" 200 5120 "https://www.google.com/search?q=kahve" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0 Safari/537.36"`
+	line := `88.230.1.2 - - [` + logDate + `:09:12:01 +0300] "GET /urunler/kahve?renk=kirmizi HTTP/2.0" 200 5120 "https://www.google.com/search?q=kahve" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0 Safari/537.36"`
 	r, ok := ParseRequest(line)
 	if !ok {
 		t.Fatal("not parsed")
@@ -71,7 +71,7 @@ func TestParseRequest(t *testing.T) {
 		t.Fatalf("page %v bot %q ref %q", r.IsPage(), r.Bot(), r.ReferrerHost(nil))
 	}
 	// A request line Nginx could not read still counts.
-	if r, ok := ParseRequest(`1.2.3.4 - - [20/Oct/2026:09:12:01 +0300] "\x16\x03\x01" 400 157 "-" "-"`); !ok || r.Status != 400 || r.Bot() != NoAgent {
+	if r, ok := ParseRequest(`1.2.3.4 - - [` + logDate + `:09:12:01 +0300] "\x16\x03\x01" 400 157 "-" "-"`); !ok || r.Status != 400 || r.Bot() != NoAgent {
 		t.Fatalf("bad request line: %+v %v", r, ok)
 	}
 	if _, ok := ParseRequest("garbage"); ok {
@@ -113,8 +113,15 @@ func TestBotsPagesAndReferrers(t *testing.T) {
 }
 
 func accessLine(ip, path string, status int, bytes int, ref, agent string) string {
-	return ip + ` - - [20/Oct/2026:09:12:01 +0300] "GET ` + path + ` HTTP/1.1" ` + itoa(status) + " " + itoa(bytes) + ` "` + ref + `" "` + agent + `"`
+	return ip + ` - - [` + logDate + `:09:12:01 +0300] "GET ` + path + ` HTTP/1.1" ` + itoa(status) + " " + itoa(bytes) + ` "` + ref + `" "` + agent + `"`
 }
+
+// testDay is today at midnight UTC: dated lines stay inside the week the
+// aggregator keeps by the real clock.
+var testDay = time.Now().UTC().Truncate(24 * time.Hour)
+
+// logDate is testDay as an access log line writes it, "20/Oct/2026".
+var logDate = testDay.Format("02/Jan/2006")
 
 const browser = "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0"
 
@@ -122,7 +129,7 @@ func TestAggregateAndCollect(t *testing.T) {
 	g, _ := BuildGeo(strings.NewReader(registry))
 	a := New()
 	a.SetGeo(g)
-	at := time.Date(2026, 10, 20, 9, 30, 0, 0, time.UTC)
+	at := testDay.Add(9*time.Hour + 30*time.Minute)
 	a.now = func() time.Time { return at }
 	site := "kahveatolyesi.com.tr"
 	names := []string{site, "www." + site}
@@ -202,22 +209,23 @@ func TestItemCap(t *testing.T) {
 func TestMail(t *testing.T) {
 	a := New()
 	a.MailDomains = func() map[string]bool { return map[string]bool{"kahveatolyesi.com.tr": true} }
-	at := time.Date(2026, 10, 20, 9, 30, 0, 0, time.UTC)
-	// The lines are dated; a week later the real clock would age them out.
+	at := testDay.Add(9*time.Hour + 30*time.Minute)
+	// The lines are dated today; the clock is fixed at their time.
 	a.SetClock(func() time.Time { return at })
+	mailTime := testDay.Format("2006-01-02T")
 	a.AddMail([]string{
 		// Outgoing: sent and bounced.
-		"2026-10-20T09:30:01 mail postfix/qmgr[2210]: 4QAB1: from=<siparis@kahveatolyesi.com.tr>, size=4210, nrcpt=2 (queue active)",
-		"2026-10-20T09:30:02 mail postfix/smtp[2301]: 4QAB1: to=<ali@gmail.com>, relay=gmail-smtp-in.l.google.com[142.250.1.27]:25, delay=1, dsn=2.0.0, status=sent (250 2.0.0 OK)",
-		"2026-10-20T09:30:02 mail postfix/smtp[2301]: 4QAB1: to=<yok@ornek.net>, relay=mx.ornek.net[198.51.100.4]:25, delay=1, dsn=5.1.1, status=bounced (host said: 550 5.1.1 User unknown)",
+		mailTime + "09:30:01 mail postfix/qmgr[2210]: 4QAB1: from=<siparis@kahveatolyesi.com.tr>, size=4210, nrcpt=2 (queue active)",
+		mailTime + "09:30:02 mail postfix/smtp[2301]: 4QAB1: to=<ali@gmail.com>, relay=gmail-smtp-in.l.google.com[142.250.1.27]:25, delay=1, dsn=2.0.0, status=sent (250 2.0.0 OK)",
+		mailTime + "09:30:02 mail postfix/smtp[2301]: 4QAB1: to=<yok@ornek.net>, relay=mx.ornek.net[198.51.100.4]:25, delay=1, dsn=5.1.1, status=bounced (host said: 550 5.1.1 User unknown)",
 		// Incoming: delivered to a mailbox, and a mail for another domain.
-		"2026-10-20T09:30:03 mail postfix/qmgr[2210]: 4QAB2: from=<ayse@gmail.com>, size=8000, nrcpt=1 (queue active)",
-		"2026-10-20T09:30:03 mail postfix/lmtp[2302]: 4QAB2: to=<bilgi@kahveatolyesi.com.tr>, relay=mail.serfex.test[private/dovecot-lmtp], delay=0.2, dsn=2.0.0, status=sent (250 2.0.0 <bilgi@kahveatolyesi.com.tr> Saved)",
-		"2026-10-20T09:30:03 mail postfix/smtp[2301]: 4QAB2: to=<x@baska.com>, relay=mx.baska.com[198.51.100.5]:25, status=sent (250 ok)",
+		mailTime + "09:30:03 mail postfix/qmgr[2210]: 4QAB2: from=<ayse@gmail.com>, size=8000, nrcpt=1 (queue active)",
+		mailTime + "09:30:03 mail postfix/lmtp[2302]: 4QAB2: to=<bilgi@kahveatolyesi.com.tr>, relay=mail.serfex.test[private/dovecot-lmtp], delay=0.2, dsn=2.0.0, status=sent (250 2.0.0 <bilgi@kahveatolyesi.com.tr> Saved)",
+		mailTime + "09:30:03 mail postfix/smtp[2301]: 4QAB2: to=<x@baska.com>, relay=mx.baska.com[198.51.100.5]:25, status=sent (250 ok)",
 		// Refused on the way in.
-		"2026-10-20T09:30:04 mail postfix/smtpd[2400]: NOQUEUE: reject: RCPT from unknown[203.0.113.9]: 550 5.1.1 <yok@kahveatolyesi.com.tr>: Recipient address rejected: User unknown in virtual mailbox table; from=<spam@kotu.example> to=<yok@kahveatolyesi.com.tr> proto=ESMTP helo=<x>",
-		"2026-10-20T09:30:05 mail postfix/cleanup[2401]: 4QAB3: milter-reject: END-OF-MESSAGE from unknown[203.0.113.9]: 5.7.1 Spam message rejected; from=<spam@kotu.example> to=<bilgi@kahveatolyesi.com.tr> proto=ESMTP helo=<x>",
-		"2026-10-20T09:30:06 mail postfix/smtpd[2400]: NOQUEUE: reject: RCPT from unknown[203.0.113.9]: 554 5.7.1 <a@baska.org>: Relay access denied; from=<spam@kotu.example> to=<a@baska.org> proto=ESMTP helo=<x>",
+		mailTime + "09:30:04 mail postfix/smtpd[2400]: NOQUEUE: reject: RCPT from unknown[203.0.113.9]: 550 5.1.1 <yok@kahveatolyesi.com.tr>: Recipient address rejected: User unknown in virtual mailbox table; from=<spam@kotu.example> to=<yok@kahveatolyesi.com.tr> proto=ESMTP helo=<x>",
+		mailTime + "09:30:05 mail postfix/cleanup[2401]: 4QAB3: milter-reject: END-OF-MESSAGE from unknown[203.0.113.9]: 5.7.1 Spam message rejected; from=<spam@kotu.example> to=<bilgi@kahveatolyesi.com.tr> proto=ESMTP helo=<x>",
+		mailTime + "09:30:06 mail postfix/smtpd[2400]: NOQUEUE: reject: RCPT from unknown[203.0.113.9]: 554 5.7.1 <a@baska.org>: Relay access denied; from=<spam@kotu.example> to=<a@baska.org> proto=ESMTP helo=<x>",
 	}, at)
 	b := a.Collect(CollectSpec{})
 	if len(b.Mail) != 1 || b.Mail[0].Domain != "kahveatolyesi.com.tr" {

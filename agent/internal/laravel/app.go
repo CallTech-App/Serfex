@@ -296,11 +296,12 @@ if ($kind === 'about') {
     }
 } elseif ($kind === 'schedule') {
     $out = [];
+    // Starting the console runs withSchedule() of bootstrap/app.php.
+    $app->make(Illuminate\Contracts\Console\Kernel::class)->all();
     $schedule = $app->make(Illuminate\Console\Scheduling\Schedule::class);
+    ` + taskKeyPHP + `
     foreach ($schedule->events() as $event) {
-        $command = $event->command ?? '';
-        $command = $command === '' ? $event->getSummaryForDisplay() : trim(preg_replace("/^.*?'artisan'\s*/", '', str_replace(PHP_BINARY, '', $command)));
-        $out[] = ['command' => $command, 'description' => (string) $event->description, 'expression' => $event->expression,
+        $out[] = ['key' => $taskKey($event), 'command' => $taskName($event), 'description' => (string) $event->description, 'expression' => $event->expression,
             'next' => $event->nextRunDate()->format(DATE_ATOM), 'timezone' => (string) ($event->timezone ?: config('app.timezone'))];
     }
 }

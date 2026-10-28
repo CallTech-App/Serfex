@@ -498,9 +498,9 @@ func (s *Simulator) writeLaravelApp(dir string) error {
 		".serfex-sim/queues.json":            `{"sizes":[{"connection":"","queue":"default","size":3}],"failed":2,"default":"database","connections":["sync","database","beanstalkd","sqs","redis","deferred","background","failover"]}`,
 		".serfex-sim/failed.json": `[{"id":"9b2f1c3e-6a1d-4f5e-8a7b-0c9d8e7f6a5b","connection":"database","queue":"default","job":"App\\Jobs\\SyncCarrierStatus","error":"Illuminate\\Http\\Client\\ConnectionException: Connection timed out","failed_at":"2026-10-18 23:12:04"},` +
 			`{"id":"1e4a7b0c-3d6f-4a2b-9c8d-7e6f5a4b3c2d","connection":"database","queue":"default","job":"App\\Jobs\\GenerateManifestPdf","error":"Allowed memory size of 268435456 bytes exhausted","failed_at":"2026-10-18 22:47:55"}]`,
-		".serfex-sim/schedule.json": fmt.Sprintf(`[{"command":"inspire","description":"","expression":"0 * * * *","next":%q,"timezone":"UTC"},`+
-			`{"command":"shipments:sync-carriers","description":"","expression":"*/5 * * * *","next":%q,"timezone":"UTC"},`+
-			`{"command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`,
+		".serfex-sim/schedule.json": fmt.Sprintf(`[{"key":"3f1b2c4d5e6f7a80","command":"inspire","description":"","expression":"0 * * * *","next":%q,"timezone":"UTC"},`+
+			`{"key":"9c8b7a6f5e4d3c21","command":"shipments:sync-carriers","description":"","expression":"*/5 * * * *","next":%q,"timezone":"UTC"},`+
+			`{"key":"5a4b3c2d1e0f9a8b","command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`,
 			now.Truncate(time.Hour).Add(time.Hour).Format(time.RFC3339), now.Truncate(5*time.Minute).Add(5*time.Minute).Format(time.RFC3339),
 			time.Date(now.Year(), now.Month(), now.Day()+1, 2, 0, 0, 0, time.UTC).Format(time.RFC3339)),
 	}

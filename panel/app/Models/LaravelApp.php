@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  */
 #[Fillable(['site_id', 'path', 'status', 'source', 'package', 'repository', 'branch', 'frontend', 'package_manager', 'migrate', 'hooks',
     'health_path', 'auto_rollback', 'keep_releases', 'auto_deploy', 'deploy_key', 'laravel_version', 'php_requirement', 'current_release',
-    'scheduler', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at',
+    'scheduler', 'skipped_tasks', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at',
     'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
     'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
     'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id', 'redis_port', 'redis_password'])]
@@ -41,6 +41,7 @@ class LaravelApp extends Model
         'status' => 'installing',
         'hooks' => '{}',
         'saved_commands' => '{}',
+        'skipped_tasks' => '[]',
         'health_path' => '/up',
         'frontend' => true,
         'migrate' => true,
@@ -81,6 +82,7 @@ class LaravelApp extends Model
             'auto_rollback' => 'boolean',
             'auto_deploy' => 'boolean',
             'scheduler' => 'boolean',
+            'skipped_tasks' => 'array',
             'installed_at' => 'datetime',
             'install_env' => 'encrypted:array',
             'previews_enabled' => 'boolean',

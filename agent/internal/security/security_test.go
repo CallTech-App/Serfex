@@ -28,7 +28,8 @@ func newTest(t *testing.T) (*Manager, *host.Simulator) {
 		t.Fatal(err)
 	}
 	m := NewManager(sim, files.NewManager(sim, "serfex-agent"))
-	m.Now = func() time.Time { return time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC) }
+	now := time.Now().UTC().Truncate(time.Second)
+	m.Now = func() time.Time { return now }
 	return m, sim
 }
 

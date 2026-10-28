@@ -58,6 +58,10 @@ On a site's page:
   `sftp <user>@<your domain>`. You land in your home folder and see only
   your own files. A password is optional and shown once. Shell access is
   turned on by your server administrator.
+- **Connection details**: the server address, the SFTP port and accounts,
+  the site's databases with their users and the SSH commands on one page,
+  ready to copy. Passwords are not kept; set a new one on the page linked
+  next to each part.
 - **PHP & web server**: the PHP version and settings such as
   `memory_limit` and `upload_max_filesize`.
 - **Scheduled tasks**: run a command every night, every hour or every few
