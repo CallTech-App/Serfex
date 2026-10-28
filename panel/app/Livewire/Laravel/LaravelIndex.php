@@ -3,6 +3,7 @@
 namespace App\Livewire\Laravel;
 
 use App\Enums\SiteStatus;
+use App\Livewire\Concerns\PicksGitRepository;
 use App\Models\Customer;
 use App\Models\Database;
 use App\Models\DatabaseUser;
@@ -13,6 +14,9 @@ use App\Services\Agent\AgentException;
 use App\Services\Customers\Quotas;
 use App\Services\Databases\Databases;
 use App\Services\Databases\DatabaseServers;
+use App\Services\Git\GitAccounts;
+use App\Services\Git\GitProviderException;
+use App\Services\Git\GitProviders;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\PhpConstraint;
 use Illuminate\Contracts\View\View;
@@ -20,6 +24,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -33,6 +38,7 @@ use Livewire\WithPagination;
 #[Title('Laravel · Serfex')]
 class LaravelIndex extends Component
 {
+    use PicksGitRepository;
     use WithPagination;
 
     /** Git hosts offered in the wizard: label and host name. */
@@ -97,6 +103,16 @@ class LaravelIndex extends Component
 
     public ?string $deployKey = null;
 
+    /** Type the repository address although the host's list could be used. */
+    public bool $typeAddress = false;
+
+    /** The deploy key added to the picked repository through the account. */
+    #[Locked]
+    public ?string $remoteKeyId = null;
+
+    /** Why the deploy key could not be added to the picked repository. */
+    public ?string $keyError = null;
+
     /** @var list<string> */
     public array $phpVersions = [];
 
@@ -116,6 +132,31 @@ class LaravelIndex extends Component
         if ($site !== null && $site->laravelApp()->doesntExist()) {
             $this->openInstall(app(AgentClient::class), app(Quotas::class), $site->id);
         }
+        // Back from connecting a Git account: the form as it was left.
+        $provider = request()->query('provider');
+        if (request()->query('source') === 'git' && is_string($provider) && isset(self::PROVIDERS[$provider])) {
+            if (! $this->installing) {
+                $this->openInstall(app(AgentClient::class), app(Quotas::class));
+            }
+            $this->source = 'git';
+            $this->provider = $provider;
+        }
+    }
+
+    protected function pickingFrom(): ?string
+    {
+        return $this->source === 'git' && ! $this->typeAddress && isset($this->gitHosts()[$this->provider]) ? $this->provider : null;
+    }
+
+    protected function pickerReturnPath(string $provider): string
+    {
+        return route('laravel.index', array_filter(['site' => $this->siteId, 'source' => 'git', 'provider' => $provider]), false);
+    }
+
+    public function updatedProvider(): void
+    {
+        $this->resetPicker();
+        $this->typeAddress = false;
     }
 
     public function updatedSearch(): void
@@ -131,7 +172,8 @@ class LaravelIndex extends Component
             return;
         }
         $this->reset('step', 'siteId', 'source', 'kit', 'provider', 'repository', 'private', 'branch', 'phpVersion', 'database', 'dbDriver', 'dbHost',
-            'dbPort', 'dbName', 'dbUser', 'dbPassword', 'newDbSuffix', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError');
+            'dbPort', 'dbName', 'dbUser', 'dbPassword', 'newDbSuffix', 'frontend', 'packageManager', 'worker', 'scheduler', 'deployKey', 'agentError', 'typeAddress', 'remoteKeyId', 'keyError');
+        $this->resetPicker();
         $this->resetValidation();
         $this->installing = true;
         // A database of its own when the server has a database server.
@@ -169,8 +211,18 @@ class LaravelIndex extends Component
     /**
      * Checks the form; for a private repository shows the deploy key first.
      */
-    public function install(AgentClient $agent, LaravelApps $apps, Quotas $quotas): void
+    public function install(AgentClient $agent, LaravelApps $apps, Quotas $quotas, GitAccounts $accounts, GitProviders $providers): void
     {
+        $picked = null;
+        if ($this->pickingFrom() !== null) {
+            $picked = $this->pickedRepository();
+            if ($picked === null) {
+                return;
+            }
+            // Picked repositories are always fetched with the deploy key.
+            $this->repository = $picked['repo']['ssh_url'];
+            $this->private = true;
+        }
         $this->repository = trim($this->repository);
         $this->branch = trim($this->branch);
         $this->validate($this->rules(), [
@@ -217,9 +269,19 @@ class LaravelIndex extends Component
 
                 return;
             }
-            $this->step = 'key';
+            $this->remoteKeyId = $this->keyError = null;
+            if ($picked !== null && $this->deployKey !== null) {
+                try {
+                    $this->remoteKeyId = $accounts->addDeployKey($picked['account'], $picked['repo']['name'], $accounts->keyTitle($site->domain), $this->deployKey);
+                } catch (GitProviderException $e) {
+                    $this->keyError = __('Dağıtım anahtarı eklenemedi: :reason', ['reason' => $e->getMessage()]);
+                }
+            }
+            if ($this->remoteKeyId === null) {
+                $this->step = 'key';
 
-            return;
+                return;
+            }
         }
 
         $database = null;
@@ -258,8 +320,15 @@ class LaravelIndex extends Component
         if ($database !== null) {
             $app->update(['database_id' => $database->id]);
         }
+        $hookError = null;
+        if ($picked !== null) {
+            $app->update(['git_account_id' => $picked['account']->id, 'remote_repository' => $picked['repo']['name'], 'remote_key_id' => $this->remoteKeyId]);
+            $hookError = $accounts->linkWebhook($app, $providers->webhookUrl($app->webhook_token), pullRequests: true);
+        }
 
-        session()->flash('toast', __('Kurulum başladı. Adımları bu sayfada canlı izleyebilirsiniz.'));
+        session()->flash('toast', $hookError === null
+            ? __('Kurulum başladı. Adımları bu sayfada canlı izleyebilirsiniz.')
+            : __('Kurulum başladı. :reason', ['reason' => $hookError]));
         $this->redirectRoute('laravel.show', $app, navigate: true);
     }
 
@@ -371,6 +440,8 @@ class LaravelIndex extends Component
             'dbServers' => $this->installing ? collect(app(DatabaseServers::class)->installed())->mapWithKeys(fn ($s) => [$s => app(DatabaseServers::class)->label($s)])->all() : [],
             'dbPrefix' => $this->installing && ($site = $this->freeSites()->firstWhere('id', $this->siteId)) ? Databases::prefix($site->systemUser) : '',
             'canInstall' => auth()->user()->is_admin || auth()->user()->isCustomer(),
+            'picker' => $this->installing ? $this->picker() : null,
+            'hosts' => $this->installing ? $this->gitHosts() : [],
         ]);
     }
 

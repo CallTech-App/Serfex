@@ -6,6 +6,7 @@ use App\Enums\LaravelAppStatus;
 use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Git\GitAccounts;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -14,7 +15,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * scheduler and Redis instance stop, the site serves public_html again,
  * and with $removeFiles the releases, shared .env and storage under
  * laravel/ are deleted. An application found on the site keeps its files
- * where they are.
+ * where they are. A deploy key and webhook Serfex added to the
+ * repository through a connected account are removed from it.
  */
 class RemoveLaravelApp implements ShouldQueue
 {
@@ -56,6 +58,7 @@ class RemoveLaravelApp implements ShouldQueue
 
             return;
         }
+        app(GitAccounts::class)->unlink($app);
         $app->delete();
     }
 }

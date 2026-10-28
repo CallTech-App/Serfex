@@ -7,6 +7,7 @@
         ['settings.notifications', 'bell', __('Bildirimler')],
         ['settings.admins', 'user-cog', __('Yöneticiler')],
         ['settings.api', 'key-round', __('API anahtarları')],
+        ['settings.git', 'git-branch', __('Git sağlayıcıları')],
         ['settings.audit', 'history', __('İşlem günlüğü')],
         ['settings.updates', 'refresh-cw', __('Güncellemeler')],
         ['setup', 'list-checks', __('Kurulum sihirbazı')],

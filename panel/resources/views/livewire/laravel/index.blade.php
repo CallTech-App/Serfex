@@ -143,6 +143,9 @@
                             <span x-show="! copied">{{ __('Anahtarı kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span>
                         </button>
                     </div>
+                    @if ($keyError)
+                        <p class="flex items-start gap-2 rounded-md bg-warn-soft px-3 py-2"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $keyError }}</p>
+                    @endif
                     @if ($agentError)
                         <p class="text-[13px] text-crit">{{ $agentError }}</p>
                     @endif
@@ -192,6 +195,10 @@
                                     <label class="{{ $chip }} h-8 text-[13px]"><input type="radio" wire:model.live="provider" value="{{ $key }}" class="{{ $check }}">{{ $label }}</label>
                                 @endforeach
                             </div>
+                            @if ($picker)
+                                @include('livewire.partials.git-picker')
+                                <button type="button" wire:click="$set('typeAddress', true)" class="text-[13px] text-accent hover:underline">{{ __('Depo adresini elle yaz') }}</button>
+                            @else
                             <input wire:model="repository" aria-label="{{ __('Depo') }}" autocomplete="off" spellcheck="false"
                                    placeholder="{{ $provider === 'other' ? 'https://git.ornek.com/ekip/uygulama.git' : __('kullanıcı/depo veya depo adresi') }}"
                                    class="{{ $field }} font-mono {{ $errors->has('repository') ? 'border-crit' : 'border-line' }}">
@@ -201,6 +208,10 @@
                                 <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="private" class="{{ $check }}">{{ __('Özel depo') }}</label>
                             </div>
                             @error('branch')<p class="text-[13px] text-crit">{{ $message }}</p>@else<p class="text-2xs text-muted">{{ __('Özel depolar bir dağıtım anahtarıyla çekilir; anahtar bir sonraki adımda gösterilir. Dal boş kalırsa deponun varsayılan dalı kullanılır.') }}</p>@enderror
+                            @if ($typeAddress && isset($hosts[$provider]))
+                                <button type="button" wire:click="$set('typeAddress', false)" class="text-[13px] text-accent hover:underline">{{ __(':provider listesinden seç', ['provider' => $hosts[$provider]]) }}</button>
+                            @endif
+                            @endif
                         </div>
                     @endif
 
@@ -280,7 +291,7 @@
                 </div>
                 <div class="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">
                     <button type="button" wire:click="$set('installing', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
-                    <button type="submit" @disabled($sites->isEmpty()) wire:loading.attr="disabled" wire:target="install" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ $source === 'git' && $private ? __('Devam') : __('Kur') }}</button>
+                    <button type="submit" @disabled($sites->isEmpty()) wire:loading.attr="disabled" wire:target="install" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ $source === 'git' && $private && ! $picker ? __('Devam') : __('Kur') }}</button>
                 </div>
             @endif
         </form>

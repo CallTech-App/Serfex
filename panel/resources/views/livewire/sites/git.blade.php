@@ -35,7 +35,7 @@
             <form wire:submit="connect">
                 <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Depo bağla') }}</h2>
                 <div class="p-5 text-[13.5px]">
-                    @include('livewire.sites.partials.git-form')
+                    @include('livewire.sites.partials.git-form', ['picker' => $picker, 'hosts' => $hosts])
                 </div>
                 <div class="flex justify-end border-t border-line px-5 py-3">
                     <button type="submit" class="{{ $primary }}"><x-icon name="git-branch" />{{ __('Bağla') }}</button>
@@ -72,7 +72,7 @@
                         <x-icon :name="$providerIcon" />
                         <span class="font-mono break-all">{{ $repo->repositoryName() }}</span>
                         <span class="text-muted">· <x-t text="dal :branch → :path"><x-slot:branch><span class="font-mono text-fg">{{ $repo->branch }}</span></x-slot:branch><x-slot:path><span class="font-mono text-fg">{{ $repo->path }}</span></x-slot:path></x-t></span>
-                        <span class="text-2xs text-muted">{{ $repo->usesKey() ? __('SSH, dağıtım anahtarıyla') : ($repo->token ? __('https, erişim anahtarıyla') : __('https, herkese açık')) }}</span>
+                        <span class="text-2xs text-muted">{{ $repo->usesKey() ? __('SSH, dağıtım anahtarıyla') : ($repo->token ? __('https, erişim anahtarıyla') : __('https, herkese açık')) }}@if ($repo->remote_repository) · {{ __(':provider hesabından seçildi', ['provider' => $repo->providerLabel()]) }}@endif</span>
                     </dd>
                 </div>
                 <div class="{{ $dl }}">
@@ -98,7 +98,11 @@
                             <x-t text="Webhook: :url"><x-slot:url><span class="font-mono break-all">{{ $repo->webhookUrl() }}</span></x-slot:url></x-t>
                             <button type="button" @click="navigator.clipboard.writeText(@js($repo->webhookUrl())); copied = true; setTimeout(() => copied = false, 2000)" class="text-accent hover:underline"><span x-show="! copied">{{ __('Kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span></button>
                         </p>
-                        <p class="text-2xs text-muted"><x-t text="Adresi deponun webhook ayarlarına (push olayı) ekleyin. CI'dan dağıtmak için aynı adrese boş bir :part gönderin."><x-slot:part><span class="font-mono">POST</span></x-slot:part></x-t></p>
+                        @if ($repo->remote_hook_id)
+                            <p class="text-2xs text-muted"><x-t text="Webhook :provider deposuna eklendi. CI'dan dağıtmak için aynı adrese boş bir :part gönderin."><x-slot:provider>{{ $repo->providerLabel() }}</x-slot:provider><x-slot:part><span class="font-mono">POST</span></x-slot:part></x-t></p>
+                        @else
+                            <p class="text-2xs text-muted"><x-t text="Adresi deponun webhook ayarlarına (push olayı) ekleyin. CI'dan dağıtmak için aynı adrese boş bir :part gönderin."><x-slot:part><span class="font-mono">POST</span></x-slot:part></x-t></p>
+                        @endif
                     </dd>
                 </div>
                 <div class="{{ $dl }}">
@@ -187,7 +191,7 @@
             <form wire:submit="saveSettings">
                 <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Git dağıtımı ayarları') }}</h2>
                 <div class="p-5 text-[13.5px]">
-                    @include('livewire.sites.partials.git-form', ['hasToken' => $repo->token !== null])
+                    @include('livewire.sites.partials.git-form', ['hasToken' => $repo->token !== null, 'hosts' => [], 'picker' => null])
                 </div>
                 <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
                     <button type="button" wire:click="$set('editing', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
@@ -262,6 +266,9 @@
     <x-modal :title="__('Dağıtım anahtarı')" show="showingKey">
         <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Dağıtım anahtarı') }}</h2>
         <div class="space-y-2 p-5 text-[13.5px]" x-data="{ copied: false }">
+            @foreach ($linkErrors as $error)
+                <p class="flex items-start gap-2 rounded-md bg-warn-soft px-3 py-2"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $error }}</p>
+            @endforeach
             <p class="text-muted"><x-t text="Özel depo bu anahtarla çekilir. Açık anahtarı deponun :part bölümüne :part2 olarak ekleyin, sonra &quot;Dağıt&quot;a basın."><x-slot:part><span class="font-medium text-fg">{{ __('Deploy keys') }}</span></x-slot:part><x-slot:part2><span class="font-medium text-fg">{{ __('salt okunur') }}</span></x-slot:part2></x-t>@if ($repo?->deployKeysUrl()) <a href="{{ $repo->deployKeysUrl() }}" target="_blank" rel="noopener" class="text-accent hover:underline">{{ __(':app\'da aç', ['app' => $repo->providerLabel()]) }}</a>@endif</p>
             <pre class="rounded-md border border-line bg-surface-2 p-3 font-mono text-[12px] break-all whitespace-pre-wrap">{{ $publicKey }}</pre>
             <button type="button" @click="navigator.clipboard.writeText(@js($publicKey)); copied = true; setTimeout(() => copied = false, 2000)" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2"><span x-show="! copied">{{ __('Kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span></button>

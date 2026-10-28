@@ -72,8 +72,11 @@ Bir sitenin sayfasında:
   deposundan gelir. Herkese açık bir `https://` adresi, erişim anahtarıyla
   açılan bir depo ya da Serfex'in oluşturduğu dağıtım anahtarıyla bir SSH
   adresi bağlayın; sonra **Dağıt**'a basın ya da webhook adresini depoya
-  ekleyip her push'ta dağıtın. Depoda olmayan dosyalarınız silinmez; önceki
-  her dağıtıma dönülebilir, ilk dağıtım geri alınabilir.
+  ekleyip her push'ta dağıtın. GitHub, GitLab veya Bitbucket hesabınızı
+  bağladıysanız (adınız → Git hesapları, sunucu sunuyorsa) depoyu ve dalı
+  listeden seçersiniz; Serfex dağıtım anahtarını ve webhook'u depoya kendisi
+  ekler. Depoda olmayan dosyalarınız silinmez; önceki her dağıtıma
+  dönülebilir, ilk dağıtım geri alınabilir.
 - **İstatistikler:** ziyaretçiler, sayfalar, bant genişliği, yönlendirenler,
   ülkeler ve botlar.
 - **Günlükler:** sitenin erişim ve hata günlükleri.
