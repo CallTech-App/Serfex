@@ -53,7 +53,11 @@ class SiteIndex extends Component
 
     public string $phpVersion = '';
 
-    public bool $wwwAlias = true;
+    /**
+     * The address visitors end up on: a Site::PREFER_* value, or "only"
+     * for a site without the www. name.
+     */
+    public string $address = Site::PREFER_BARE;
 
     /** @var list<string> */
     public array $phpVersions = [];
@@ -81,7 +85,7 @@ class SiteIndex extends Component
 
     public function openCreate(AgentClient $agent, Quotas $quotas): void
     {
-        $this->reset('domain', 'systemUser', 'phpVersion', 'wwwAlias', 'agentError', 'userEdited');
+        $this->reset('domain', 'systemUser', 'phpVersion', 'address', 'agentError', 'userEdited');
         $this->resetValidation();
         $this->creating = true;
         $this->updatedCustomerId();
@@ -162,6 +166,7 @@ class SiteIndex extends Component
                 Rule::notIn(Hostnames::RESERVED_USERS),
             ],
             'phpVersion' => ['required', Rule::in($this->phpVersions)],
+            'address' => ['required', Rule::in([...Site::PREFERRED, 'only'])],
         ], [
             'domain.unique' => __('Bu alan adı zaten bir siteye ait.'),
             'systemUser.regex' => __('Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).'),
@@ -198,7 +203,8 @@ class SiteIndex extends Component
             return;
         }
 
-        $site = $creator->create($this->domain, $this->systemUser, $this->phpVersion, $this->wwwAlias, $customer, $owner);
+        $only = $this->address === 'only';
+        $site = $creator->create($this->domain, $this->systemUser, $this->phpVersion, ! $only, $customer, $owner, $only ? Site::PREFER_BARE : $this->address);
 
         $this->creating = false;
         $this->dispatch('toast',

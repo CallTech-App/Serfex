@@ -42,7 +42,7 @@ class SitesController extends ApiController
     }
 
     /**
-     * POST /api/v1/sites {domain, php_version?, www?, customer_id?, account?}
+     * POST /api/v1/sites {domain, php_version?, www?, preferred_host?, customer_id?, account?}
      */
     public function store(Request $request, AgentClient $agent, Quotas $quotas, PhpVersions $php, SiteCreator $creator): JsonResponse
     {
@@ -52,6 +52,7 @@ class SitesController extends ApiController
             'domain' => ['required', 'string', fn ($attr, $value, $fail) => Hostnames::isValidDomain($value) ? null : $fail(__('Geçerli bir alan adı girin, örneğin ornek.com.tr.')), Rule::unique('sites', 'domain')],
             'php_version' => ['nullable', 'string', 'regex:/^\d\.\d$/'],
             'www' => ['nullable', 'boolean'],
+            'preferred_host' => ['nullable', Rule::in(Site::PREFERRED)],
             'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')->whereNull('deleted_at')],
             'account' => ['nullable', 'string', 'regex:'.Hostnames::SYSTEM_USER_PATTERN, Rule::notIn(Hostnames::RESERVED_USERS)],
         ], ['domain.unique' => __('Bu alan adı zaten bir siteye ait.')]);
@@ -84,7 +85,7 @@ class SitesController extends ApiController
             return $this->refuse(__('PHP :version kullanılamıyor; kurulu ve izin verilenler: :allowed.', ['version' => $data['php_version'] ?? '', 'allowed' => implode(', ', $allowed) ?: '—']));
         }
 
-        $site = $creator->create($data['domain'], $account, $version, (bool) ($data['www'] ?? true), $customer, $owner);
+        $site = $creator->create($data['domain'], $account, $version, (bool) ($data['www'] ?? true), $customer, $owner, $data['preferred_host'] ?? Site::PREFER_BARE);
         $this->audit($request, __('Siteler'), __(':domain oluşturuluyor.', ['domain' => $site->domain]), route('sites.show', $site, false));
 
         return response()->json(['data' => $this->site($site->fresh(['systemUser.customer', 'certificate']))], 202);
@@ -122,6 +123,7 @@ class SitesController extends ApiController
             'id' => $site->id,
             'domain' => $site->domain,
             'aliases' => $site->aliases ?? [],
+            'preferred_host' => $site->preferred_host,
             'status' => $site->status->value,
             'php_version' => $site->php_version,
             'web_server' => $site->web_server,

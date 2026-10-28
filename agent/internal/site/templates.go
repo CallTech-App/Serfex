@@ -278,7 +278,9 @@ server {
 {{- end}}
 {{- range .HostRedirects}}
 
-# Redirect (Yönlendirmeler): {{.Names}}
+{{if .Preferred}}# Preferred address (Tercih edilen adres): {{.Names}} goes to {{.Preferred}}
+{{- else}}# Redirect (Yönlendirmeler): {{.Names}}
+{{- end}}
 server {
     listen 80;
 {{- if $.IPv6}}

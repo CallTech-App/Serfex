@@ -6,6 +6,7 @@ use App\Enums\CertificateStatus;
 use App\Enums\SiteStatus;
 use App\Services\Php\PhpVersions;
 use App\Services\Settings\Notifications;
+use App\Services\Sites\SiteDomains;
 use App\Support\CertificateState;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -27,6 +28,7 @@ class Site extends Model
         'status' => 'provisioning',
         'https_redirect' => true,
         'web_server' => self::NGINX,
+        'preferred_host' => self::PREFER_NONE,
     ];
 
     /** Web server stacks: Nginx alone, or Nginx in front of Apache (.htaccess). */
@@ -41,6 +43,18 @@ class Site extends Model
         self::NGINX => 'Nginx + PHP-FPM',
         self::APACHE => 'Nginx + Apache + PHP-FPM',
     ];
+
+    /**
+     * Preferred address: visitors end up on the bare domain or on its www.
+     * name, the other one answering with a 301; or both open the site.
+     */
+    public const PREFER_BARE = 'bare';
+
+    public const PREFER_WWW = 'www';
+
+    public const PREFER_NONE = 'none';
+
+    public const PREFERRED = [self::PREFER_BARE, self::PREFER_WWW, self::PREFER_NONE];
 
     protected function casts(): array
     {
@@ -69,6 +83,60 @@ class Site extends Model
     public function customer(): ?Customer
     {
         return $this->systemUser?->customer;
+    }
+
+    /**
+     * The other name of the domain's www. pair (www.<domain>, or the
+     * domain without www.) when the site answers to it.
+     */
+    public function wwwPair(): ?string
+    {
+        $other = str_starts_with($this->domain, 'www.') ? substr($this->domain, 4) : 'www.'.$this->domain;
+
+        return in_array($other, $this->aliases ?? [], true) ? $other : null;
+    }
+
+    /**
+     * The name of the pair visitors should end up on, or null when both
+     * open the site (no www. name, or no preference).
+     */
+    public function preferredName(): ?string
+    {
+        $other = $this->wwwPair();
+        if ($other === null || ! in_array($this->preferred_host, [self::PREFER_BARE, self::PREFER_WWW], true)) {
+            return null;
+        }
+        $www = str_starts_with($this->domain, 'www.') ? $this->domain : $other;
+
+        return $this->preferred_host === self::PREFER_WWW ? $www : ($www === $this->domain ? $other : $this->domain);
+    }
+
+    /**
+     * The address the site is known by: its preferred name, or its domain.
+     */
+    public function primaryHost(): string
+    {
+        return $this->preferredName() ?? $this->domain;
+    }
+
+    /**
+     * True when the other name is sent to the preferred one now. Over
+     * HTTPS the preferred name must be in the certificate; without one,
+     * only the domain itself is trusted to point here.
+     */
+    public function redirectsToPreferred(): bool
+    {
+        $name = $this->preferredName();
+        if ($name === null || $this->isSuspended()) {
+            return false;
+        }
+        if ($this->hasHttps()) {
+            $names = $this->certificate->domains ?? [];
+
+            return $names === [] || SiteDomains::covers($names, $name);
+        }
+
+        return $name === $this->domain;
     }
 
     /**
@@ -334,6 +402,9 @@ class Site extends Model
             // Subdomains show the suspension page too; redirects and the
             // administrator's directives wait for the account to return.
             return $spec + ['suspended' => true];
+        }
+        if ($this->redirectsToPreferred()) {
+            $spec['preferred_host'] = $this->preferredName();
         }
         if ($this->redirects->isNotEmpty()) {
             $spec['redirects'] = $this->redirects->map(fn (SiteRedirect $r) => $r->agentSpec())->all();

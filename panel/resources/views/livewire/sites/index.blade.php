@@ -117,10 +117,34 @@
                     <input id="domain" wire:model.live.debounce.400ms="domain" required placeholder="{{ __('ornek.com.tr') }}" autocomplete="off" spellcheck="false"
                            class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('domain') ? 'border-crit' : 'border-line' }}">
                     @error('domain') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
-                    <label class="mt-2 flex items-center gap-2 text-[13px] text-muted">
-                        <input type="checkbox" wire:model="wwwAlias" class="size-4 accent-accent">
-                        <span><x-t text=":www ile de açılsın"><x-slot:www><span class="font-mono">www.</span></x-slot:www></x-t></span>
-                    </label>
+                </div>
+                @php
+                    $typed = \App\Support\Hostnames::normalize($domain);
+                    $bare = \App\Support\Hostnames::isValidDomain($typed) ? preg_replace('/^www\./', '', $typed) : __('ornek.com.tr');
+                @endphp
+                <div>
+                    <label for="address" class="mb-1.5 block">{{ __('Tercih edilen adres') }}</label>
+                    <select id="address" wire:model.live="address" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 font-mono text-[13px]">
+                        <option value="bare">{{ $bare }}</option>
+                        <option value="www">www.{{ $bare }}</option>
+                        <option value="none">{{ __('İkisi de açılsın (yönlendirme yok)') }}</option>
+                        <option value="only">{{ __('Yalnızca :domain (www. olmadan)', ['domain' => $bare]) }}</option>
+                    </select>
+                    <p class="mt-1.5 text-[12.5px] text-muted">
+                        @switch($address)
+                            @case('www')
+                                <x-t text=":from adresi :to adresine kalıcı (301) yönlenir; arama motorları tek adres görür."><x-slot:from><span class="font-mono">{{ $bare }}</span></x-slot:from><x-slot:to><span class="font-mono">www.{{ $bare }}</span></x-slot:to></x-t>
+                                @break
+                            @case('none')
+                                <x-t text=":domain ve :www aynı siteyi ayrı ayrı açar."><x-slot:domain><span class="font-mono">{{ $bare }}</span></x-slot:domain><x-slot:www><span class="font-mono">www.{{ $bare }}</span></x-slot:www></x-t>
+                                @break
+                            @case('only')
+                                <x-t text=":www adı eklenmez; DNS kaydı da yazılmaz."><x-slot:www><span class="font-mono">www.{{ $bare }}</span></x-slot:www></x-t>
+                                @break
+                            @default
+                                <x-t text=":from adresi :to adresine kalıcı (301) yönlenir; arama motorları tek adres görür."><x-slot:from><span class="font-mono">www.{{ $bare }}</span></x-slot:from><x-slot:to><span class="font-mono">{{ $bare }}</span></x-slot:to></x-t>
+                        @endswitch
+                    </p>
                 </div>
                 @if ($admin && $customers->isNotEmpty())
                     <div>

@@ -69,6 +69,7 @@ class SiteSnapshot
                 'web_server' => $site->web_server,
                 'web_root' => $site->web_root,
                 'https_redirect' => (bool) $site->https_redirect,
+                'preferred_host' => $site->preferred_host,
                 'subdomains' => $site->subdomains->map(fn ($d) => $d->only(['name', 'web_root']))->values()->all(),
                 'redirects' => $site->redirects->map(fn ($r) => $r->only(['kind', 'source', 'with_www', 'target', 'code', 'keep_path']))->values()->all(),
                 'error_pages' => $site->error_pages,

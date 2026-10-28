@@ -3,6 +3,7 @@ package site
 import (
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -104,6 +105,15 @@ func (s Spec) validateDomains() error {
 		}
 		if sub.WebRoot == "logs" || strings.HasPrefix(sub.WebRoot, "logs/") {
 			return invalid("subdomain %s: the logs folder cannot be a document root", sub.Name)
+		}
+	}
+	if p := s.PreferredHost; p != "" {
+		other := wwwPair(p)
+		if p != s.Domain && other != s.Domain {
+			return invalid("preferred_host %q must be the domain or its www. name", p)
+		}
+		if !slices.Contains(s.Aliases, p) && !slices.Contains(s.Aliases, other) {
+			return invalid("preferred_host %q needs both %s and %s among the site's names", p, p, other)
 		}
 	}
 	paths := map[string]bool{}
@@ -267,6 +277,9 @@ type hostRedirect struct {
 	TLS    bool
 	Code   int
 	Target string
+	// Preferred is the site's preferred host when this sends the other
+	// name of its www. pair there.
+	Preferred string
 }
 
 // pathRedirect is a pair of locations inside the site's server block:
@@ -305,12 +318,55 @@ func (d *tmplData) splitTLS(certNames, hosts []string) {
 	}
 }
 
+// wwwPair is the other half of a domain and its www. name.
+func wwwPair(host string) string {
+	if bare, ok := strings.CutPrefix(host, "www."); ok {
+		return bare
+	}
+	return "www." + host
+}
+
+// served reports whether a certificate for names serves host; one without
+// names (only a common name) serves them all, as in splitNames.
+func served(names []string, host string) bool {
+	return len(names) == 0 || covers(names, host)
+}
+
+// preferredRedirect takes the other name of the preferred host's www. pair
+// out of main and answers it with a redirect to the preferred one. On a
+// site with a certificate the preferred name must be in it, or a visitor
+// would be sent to an address that fails; both names are then served as
+// they are until the certificate covers it.
+func preferredRedirect(s Spec, main []string, tls bool, certNames []string) ([]string, *hostRedirect) {
+	p := s.PreferredHost
+	if p == "" || (tls && !served(certNames, p)) {
+		return main, nil
+	}
+	other := wwwPair(p)
+	scheme := "http"
+	if tls {
+		scheme = "https"
+	}
+	kept := slices.DeleteFunc(slices.Clone(main), func(n string) bool { return n == other })
+	return kept, &hostRedirect{
+		Names:     other,
+		TLS:       tls && served(certNames, other),
+		Code:      301,
+		Target:    scheme + "://" + p + "$request_uri",
+		Preferred: p,
+	}
+}
+
 // domainData fills in subdomains, redirects, error pages and directives.
 // base must already carry the main site's TLS settings.
 func domainData(d *tmplData, s Spec, siteDir string, certNames []string) {
 	main := append([]string{s.Domain}, s.Aliases...)
 	tls, redirect := d.TLS, d.Redirect
+	main, preferred := preferredRedirect(s, main, tls, certNames)
 	d.splitTLS(certNames, main)
+	if preferred != nil {
+		d.HostRedirects = append(d.HostRedirects, *preferred)
+	}
 
 	keys := make([]string, 0, len(s.ErrorPages))
 	for k := range s.ErrorPages {
