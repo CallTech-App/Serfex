@@ -439,6 +439,12 @@ func TestDeletingWithoutATerminalNeedsYes(t *testing.T) {
 	if q := p.last("DELETE", "/api/v1/sites/ornek.com.tr").Query; q != "keep_dns=1" {
 		t.Fatalf("query %q", q)
 	}
+	if r := run(t, v, "ornek.com.tr\n", "sites", "delete", "ornek.com.tr", "--keep-dns", "--no-backup"); r.code != 0 {
+		t.Fatalf("%+v", r)
+	}
+	if q := p.last("DELETE", "/api/v1/sites/ornek.com.tr").Query; q != "backup=0&keep_dns=1" {
+		t.Fatalf("query %q", q)
+	}
 }
 
 func TestAMailboxPasswordIsShownOnce(t *testing.T) {

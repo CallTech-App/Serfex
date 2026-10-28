@@ -130,10 +130,14 @@ class PanelApiTest extends TestCase
         $this->getJson('/api/v1/sites/yok.com.tr', $headers)->assertNotFound();
 
         $this->deleteJson('/api/v1/sites/kahve.com.tr', [], $headers)->assertStatus(202)->assertJsonPath('data.status', 'deleting');
-        Queue::assertPushed(DeleteSite::class);
+        // Backed up first, after any backup in progress.
+        Queue::assertPushed(DeleteSite::class, fn ($job) => $job->backup && $job->connection === 'backups' && $job->userId === $this->admin->id);
+        $this->postJson('/api/v1/sites', ['domain' => 'cay.com.tr'], $headers)->assertStatus(202);
+        $this->deleteJson('/api/v1/sites/cay.com.tr?backup=0', [], $headers)->assertStatus(202);
+        Queue::assertPushed(DeleteSite::class, fn ($job) => $job->site->domain === 'cay.com.tr' && ! $job->backup && $job->connection === null);
 
         $entries = AuditEntry::orderBy('id')->get();
-        $this->assertSame(['kahve.com.tr oluşturuluyor.', 'kahve.com.tr siliniyor.'], $entries->pluck('message')->all());
+        $this->assertSame(['kahve.com.tr oluşturuluyor.', 'kahve.com.tr siliniyor.', 'cay.com.tr oluşturuluyor.', 'cay.com.tr siliniyor.'], $entries->pluck('message')->all());
         $this->assertSame('API: Faturalama (Aylin)', $entries[0]->actor);
         $this->assertSame('api', $entries[0]->via);
     }

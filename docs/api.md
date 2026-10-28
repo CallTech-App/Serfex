@@ -131,7 +131,7 @@ plan. DNS, mail and backups need the plan's feature.
 | `GET /sites` | `?customer=<id>` |
 | `POST /sites` | `domain`, `php_version`, `www` (default true), `customer_id`, `account` (system user). `202`: the site is being prepared. |
 | `GET /sites/{domain}` | |
-| `DELETE /sites/{domain}` | Removes the site with its email, databases (after a dump) and system user. `?keep_dns=1` keeps the DNS zone. |
+| `DELETE /sites/{domain}` | Removes the site with its email, databases (after a dump) and system user, after a backup of the whole site kept in Backups. `?keep_dns=1` keeps the DNS zone; `?backup=0` (administrators) skips the backup. |
 | `GET /sites/{domain}/domains` | Subdomains, aliases and redirects |
 | `POST /sites/{domain}/subdomains` | `name`, `root` (folder in the site) |
 | `POST /sites/{domain}/aliases` | `name`, `dns` (create a zone) |

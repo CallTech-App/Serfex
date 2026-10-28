@@ -133,7 +133,7 @@
                                 </td>
                                 <td class="hidden px-3 py-3 sm:table-cell">
                                     <span @class(['rounded-full px-2 py-0.5 text-2xs font-medium', 'bg-info-soft text-info' => $b->type === 'full', 'bg-surface-2 text-muted' => $b->type !== 'full'])>{{ $b->typeLabel() }}</span>
-                                    <span class="mt-1 block text-2xs text-muted">{{ $b->triggerLabel() }}{{ $b->source_host ? ' · '.$b->source_host : '' }}</span>
+                                    <span class="mt-1 block text-2xs text-muted">{{ $b->triggerLabel() }}{{ $b->source_host ? ' · '.$b->source_host : '' }}@if ($b->trigger === 'delete' && $b->isUsable()) · {{ __(':date tarihine kadar', ['date' => \App\Support\When::dayMonth(app(\App\Services\Backups\Backups::class)->expiresAt($b))]) }}@endif</span>
                                 </td>
                                 <td class="px-3 py-3">
                                     @if (! $itemRows && $b->scope === 'panel')
@@ -314,6 +314,12 @@
                             @error($f) <p class="text-[13px] text-crit sm:col-start-2">{{ $message }}</p> @enderror
                         @endforeach
                         <p class="text-[12.5px] text-muted sm:col-start-2">{{ __('Elle alınan yedekler siz silene kadar kalır.') }}</p>
+                    </div>
+                    <div class="grid items-center gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                        <label for="s-delete-days">{{ __('Silme öncesi yedekler') }}</label>
+                        <label class="flex items-center gap-2"><input id="s-delete-days" wire:model="sDeleteDays" inputmode="numeric" class="{{ $field }} num w-16">{{ __('gün saklanır') }}</label>
+                        @error('sDeleteDays') <p class="text-[13px] text-crit sm:col-start-2">{{ $message }}</p> @enderror
+                        <p class="text-[12.5px] text-muted sm:col-start-2">{{ __('Bir site silinmeden önce alınan yedek, bu sunucuda bu kadar gün kalır ve Yedekler\'den geri yüklenebilir.') }}</p>
                     </div>
                     <div class="grid items-center gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                         <label for="s-target">{{ __('Hedef') }}</label>

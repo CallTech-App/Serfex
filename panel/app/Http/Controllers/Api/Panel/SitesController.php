@@ -91,8 +91,10 @@ class SitesController extends ApiController
     }
 
     /**
-     * DELETE /api/v1/sites/{domain}[?keep_dns=1]: the site with its DNS zone,
-     * mail and databases, and its account when no other site uses it.
+     * DELETE /api/v1/sites/{domain}[?keep_dns=1][&backup=0]: the site with
+     * its DNS zone, mail and databases, and its account when no other site
+     * uses it. A backup is taken first unless an administrator's key says
+     * backup=0; without room for it the site is not deleted.
      */
     public function destroy(Request $request, string $domain): JsonResponse
     {
@@ -102,7 +104,8 @@ class SitesController extends ApiController
         }
         $keep = $request->boolean('keep_dns');
         $site->update(['status' => SiteStatus::Deleting]);
-        DeleteSite::dispatch($site, removeUser: true, removeZone: ! $keep, removeMail: true, removeDatabases: true);
+        $backup = $request->boolean('backup', true) || ! $request->user()->is_admin;
+        DeleteSite::dispatch($site, removeUser: true, removeZone: ! $keep, removeMail: true, removeDatabases: true, backup: $backup, userId: $request->user()->id);
         $this->audit($request, __('Siteler'), __(':domain siliniyor.', ['domain' => $site->domain]));
 
         return response()->json(['data' => $this->site($site)], 202);

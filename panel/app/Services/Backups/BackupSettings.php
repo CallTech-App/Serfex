@@ -39,6 +39,8 @@ class BackupSettings
         'exclude' => ['*/storage/framework/cache/*', '*/node_modules/*'],
         // Domains left out of the server backup.
         'skip_sites' => [],
+        // Days the backup taken before a site is deleted is kept.
+        'delete_days' => 30,
     ];
 
     /**
