@@ -112,7 +112,7 @@ class GitLab extends GitProvider
         return $repos;
     }
 
-    public function branches(string $token, string $repository): array
+    public function branches(?string $token, string $repository): array
     {
         $branches = $this->send(fn () => $this->http($token)->get($this->api($this->project($repository).'/repository/branches'), ['per_page' => 100]));
 
@@ -148,5 +148,19 @@ class GitLab extends GitProvider
     public function removeWebhook(string $token, string $repository, string $id): void
     {
         $this->send(fn () => $this->http($token)->delete($this->api($this->project($repository).'/hooks/'.rawurlencode($id))));
+    }
+
+    public function commit(?string $token, string $repository, string $ref): array
+    {
+        $commit = $this->send(fn () => $this->http($token)->get($this->api($this->project($repository).'/repository/commits/'.rawurlencode($ref))));
+
+        return ['sha' => (string) ($commit['id'] ?? ''), 'message' => (string) ($commit['title'] ?? '')];
+    }
+
+    public function tags(?string $token, string $repository): array
+    {
+        $tags = $this->send(fn () => $this->http($token)->get($this->api($this->project($repository).'/repository/tags'), ['per_page' => 100, 'order_by' => 'updated']));
+
+        return array_values(array_filter(array_map(fn ($t) => is_array($t) && is_string($t['name'] ?? null) ? $t['name'] : null, $tags)));
     }
 }

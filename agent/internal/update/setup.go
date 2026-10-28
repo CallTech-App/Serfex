@@ -67,6 +67,15 @@ func (m *Manager) Setup(ctx context.Context) (SetupResult, error) {
 		}
 	}
 	res := SetupResult{Units: panel.Units, Changed: changed}
+	if m.DefaultSite != nil {
+		// Not fatal: the sites keep working as before, and the next site
+		// change reports the same problem where it can be fixed.
+		written, err := m.DefaultSite(ctx)
+		res.DefaultSite = written
+		if err != nil {
+			res.DefaultSiteError = err.Error()
+		}
+	}
 	if m.Web != nil {
 		web, err := m.Web(ctx)
 		if err != nil {
@@ -82,6 +91,9 @@ type SetupResult struct {
 	Units   []string `json:"units"`
 	Changed []string `json:"changed"`
 	Web     any      `json:"web,omitempty"`
+	// DefaultSite says whether the Nginx default server was (re)written.
+	DefaultSite      bool   `json:"default_site,omitempty"`
+	DefaultSiteError string `json:"default_site_error,omitempty"`
 }
 
 // needrestartConf keeps Ubuntu's needrestart from restarting Serfex's

@@ -174,6 +174,80 @@ pg_dump or the SQLite file). Take one now or on a plan (daily or weekly, with
 a number kept), download and restore in part, with a safety backup of the
 current state first.
 
+## Application templates
+
+Tools & Settings → **Application templates** (full administrators) describes
+your own Laravel application once, so that it can be installed on any site in
+one step and new versions rolled out to every site that runs it. Templates are
+data in the panel's database on this server; nothing about them is in the
+Serfex repository. Each install is separate: its own code, database and `.env`.
+
+A template takes its code from one of two sources:
+
+| Source | |
+|--------|---|
+| **Git repository** (Serfex installs and updates) | A repository picked from a connected Git account, or a public address, at a **tag** or a **branch**. Each install is an ordinary Laravel deployment (releases, rollback, workers). For a private repository Serfex creates a read-only deploy key per site and adds it through the template's account. |
+| **Release package** (the application updates itself) | A ready zip (with `vendor/` and the built front end): the newest GitHub release's asset matching a name pattern (`*.zip`), or a fixed https address. It is unpacked into the site's `app/` folder, the site root becomes `app/public`, and Serfex never deploys it again: the application updates itself from its own panel. The **Sites** tab shows the version each site reports from its `VERSION` file. |
+
+The template's page has four tabs:
+
+- **General**: name and description, source and version, PHP version, database
+  (a new MySQL or PostgreSQL database named `<prefix>_<template>`, SQLite, or
+  none), front-end build, queue worker, scheduler, update behaviour and who may
+  install it. **Customers can install it on their own sites too** is off by
+  default; customers only ever see the name and description.
+- **Environment (.env)**: lines written on top of `.env.example` at install
+  (empty: the application's own installer writes `.env`), and up to 10
+  **install questions**: text, secret text or a file (at most 256 KB, written to
+  `storage/app/serfex/`, a licence file for example). Updates never touch `.env`.
+- **Setup steps**: one-time commands after the first install, one per line,
+  starting with `php artisan`, `composer`, `npm`, `pnpm`, `yarn` or `bun` (at
+  most 20). They run in order as the site's user and stop at the first failure.
+  **Create the first administrator** asks for a name and e-mail on the install
+  form; Serfex generates the password, shows it once to whoever started the
+  install, hides it in the log and forgets it when setup finishes. Git
+  templates also have their deploy hooks and migrations here.
+- **Sites**: the sites running the template with their version, **Update** for
+  one site, **Update all to …** for every site behind (one after the other,
+  optionally stopping at the first failure) and **Install on a site**.
+
+Placeholders work in the `.env` lines and the commands:
+
+| Placeholder | |
+|-------------|---|
+| `{site.domain}`, `{site.url}`, `{site.path}` | The site's name, address (https once it has a certificate) and the application's folder. |
+| `{customer.name}`, `{customer.email}` | The site's customer. |
+| `{db.connection}`, `{db.host}`, `{db.port}`, `{db.name}`, `{db.user}`, `{db.password}` | The install's database. |
+| `{admin.name}`, `{admin.email}`, `{admin.password}` | The first administrator. |
+| `{ask.KEY}`, `{file.KEY}` | An answer, or the full path of an uploaded file. |
+| `{random:N}` | N random letters and digits (8 to 64). |
+
+Database passwords, the administrator's password and secret answers are
+replaced with `••••••` in the install log. Answers are stored encrypted until
+setup has run.
+
+**Installing.** Sites → **Add site** → **Application** creates the site, gets
+its certificate and then installs the template; Laravel → **Install Laravel
+application** → **From a template** installs on an existing site. Progress is
+shown live on the application's page; a failed install keeps its answers so
+**Try again** can repeat it.
+
+**Updating** a Git template: change its tag (or push to its branch), then
+update from the Sites tab. Each site gets a database backup, a maintenance page
+(the health check is let through), the new release with migrations, and goes
+back to the previous release when it does not come up.
+
+**Export / Import** moves a template between panels as JSON. The Git account
+and linked sites are left out; the `.env` lines are included. An imported
+template is never open to customers until you say so.
+
+Example, a self-updating application installed from its release package
+(setup command on one line):
+
+```
+php artisan app:install --no-interaction --url={site.url} --db-database={db.name} --db-username={db.user} --db-password={db.password} --admin-email={admin.email} --admin-password={admin.password} --license={file.LICENSE}
+```
+
 ## Access & API
 
 Give people access to one application without a server account or a hosting

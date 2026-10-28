@@ -22,7 +22,8 @@ use Illuminate\Support\Carbon;
  * the domain itself does not, nothing is sent to Let's Encrypt and the
  * certificate waits for DNS, retried by serfex:ssl-renew. That keeps a
  * domain whose DNS lives elsewhere from using up Let's Encrypt's limit on
- * failed validations.
+ * failed validations. A name behind Cloudflare's proxy counts as pointing
+ * here (DnsCheck).
  */
 class IssueCertificate implements ShouldBeUnique, ShouldQueue
 {

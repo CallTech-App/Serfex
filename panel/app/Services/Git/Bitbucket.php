@@ -86,7 +86,7 @@ class Bitbucket extends GitProvider
         return $repos;
     }
 
-    public function branches(string $token, string $repository): array
+    public function branches(?string $token, string $repository): array
     {
         $branches = $this->send(fn () => $this->http($token)->get(self::API."/repositories/{$repository}/refs/branches", ['pagelen' => 100]));
 
@@ -127,5 +127,19 @@ class Bitbucket extends GitProvider
     public function removeWebhook(string $token, string $repository, string $id): void
     {
         $this->send(fn () => $this->http($token)->delete(self::API."/repositories/{$repository}/hooks/".rawurlencode($id)));
+    }
+
+    public function commit(?string $token, string $repository, string $ref): array
+    {
+        $commit = $this->send(fn () => $this->http($token)->get(self::API."/repositories/{$repository}/commit/".rawurlencode($ref)));
+
+        return ['sha' => (string) ($commit['hash'] ?? ''), 'message' => strtok((string) ($commit['message'] ?? ''), "\n") ?: ''];
+    }
+
+    public function tags(?string $token, string $repository): array
+    {
+        $tags = $this->send(fn () => $this->http($token)->get(self::API."/repositories/{$repository}/refs/tags", ['pagelen' => 100, 'sort' => '-target.date']));
+
+        return array_values(array_filter(array_map(fn ($t) => is_array($t) && is_string($t['name'] ?? null) ? $t['name'] : null, (array) ($tags['values'] ?? []))));
     }
 }

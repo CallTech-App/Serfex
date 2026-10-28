@@ -212,6 +212,12 @@ class Deployments extends Section
      */
     public function connect(GitAccounts $accounts, GitProviders $providers): void
     {
+        // A package install updates itself; a second updater would fight it.
+        if ($this->app()->isPackage()) {
+            $this->connecting = false;
+
+            return;
+        }
         if ($this->pickingFrom() !== null) {
             $this->connectPicked($accounts, $providers);
 
