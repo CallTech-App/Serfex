@@ -1,0 +1,538 @@
+{
+  "connect": {
+    "host_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpKbGPinFIKvvVQexMuxfmVR3auvr57kkIe6mkURtIs",
+    "fingerprint": "SHA256:z/fSv0Z0RZS+Lccbc6ZoOWwt/fbj1VFJGSBKQbo4icE",
+    "hostname": "plesk.eskisunucu.com",
+    "version": "18.0.63 · Ubuntu 22.04",
+    "subscriptions": [
+      {
+        "id": 4,
+        "domain": "atolye.net",
+        "user": "atolye",
+        "owner": "admin",
+        "size": 18874368,
+        "domains": 0
+      },
+      {
+        "id": 1,
+        "domain": "kafe.com.tr",
+        "user": "kafeweb",
+        "owner": "mehmet",
+        "size": 268435456,
+        "domains": 1
+      }
+    ]
+  },
+  "convert": {
+    "key": "mig-p",
+    "items": [
+      {
+        "name": "kafe.com.tr",
+        "size": 14848,
+        "parts": {
+          "certificates": 1529,
+          "databases": 184,
+          "files": 796,
+          "home": 510,
+          "mail": 279
+        },
+        "skipped": {},
+        "incremental": [],
+        "warnings": []
+      },
+      {
+        "name": "kafemenu.net",
+        "size": 8704,
+        "parts": {
+          "databases": 187,
+          "files": 487,
+          "mail": 193
+        },
+        "skipped": {},
+        "incremental": [],
+        "warnings": []
+      }
+    ],
+    "size": 23552,
+    "passwords": [
+      {
+        "name": "kafe_wpu",
+        "password": "mZeANJaLrCXNvLpdMbhxQLqM",
+        "files": [
+          "/home/kafeweb/web/kafe.com.tr/public_html/wp-config.php"
+        ]
+      }
+    ],
+    "notes": null
+  },
+  "inspect": {
+    "source": "pl-1",
+    "plan": {
+      "source": "plesk",
+      "user": "kafeweb",
+      "contact": "mehmet@kafe.com.tr",
+      "package": "Kurumsal",
+      "main_domain": "kafe.com.tr",
+      "old_ips": [
+        "192.0.2.10",
+        "10.0.0.12",
+        "2001:db8::10"
+      ],
+      "sites": [
+        {
+          "domain": "kafe.com.tr",
+          "kind": "main",
+          "docroot": "httpdocs",
+          "php": "8.2",
+          "aliases": [
+            "kafe.net"
+          ],
+          "subdomains": [
+            {
+              "name": "blog.kafe.com.tr",
+              "docroot": "blog.kafe.com.tr",
+              "web_root": "subdomains/blog"
+            }
+          ],
+          "certificate": {
+            "names": [
+              "kafe.com.tr",
+              "www.kafe.com.tr"
+            ],
+            "issuer": "Let's Encrypt",
+            "not_after": "2036-01-01T00:00:00Z"
+          }
+        },
+        {
+          "domain": "kafemenu.net",
+          "kind": "addon",
+          "docroot": "kafemenu.net",
+          "php": "7.4",
+          "aliases": [
+            "kafemenu.com"
+          ],
+          "subdomains": []
+        }
+      ],
+      "databases": [
+        {
+          "name": "kafe_wp",
+          "size": 182,
+          "site": "kafe.com.tr"
+        },
+        {
+          "name": "kafemenu_db",
+          "size": 186,
+          "site": "kafemenu.net"
+        }
+      ],
+      "database_users": [
+        {
+          "name": "kafe_wpu",
+          "databases": [
+            "kafe_wp"
+          ],
+          "keeps_password": false
+        },
+        {
+          "name": "kafemenu_u",
+          "databases": [
+            "kafemenu_db"
+          ],
+          "keeps_password": true,
+          "remote_hosts": [
+            "%"
+          ]
+        }
+      ],
+      "mail": [
+        {
+          "domain": "kafe.com.tr",
+          "site": "kafe.com.tr",
+          "mailboxes": [
+            {
+              "name": "info",
+              "quota_mb": 1024,
+              "size": 69,
+              "keeps_password": true
+            }
+          ],
+          "forwarders": 2
+        },
+        {
+          "domain": "kafemenu.net",
+          "site": "kafemenu.net",
+          "mailboxes": [
+            {
+              "name": "menu",
+              "quota_mb": 0,
+              "size": 23,
+              "keeps_password": true
+            }
+          ],
+          "forwarders": 0
+        }
+      ],
+      "zones": [
+        {
+          "name": "kafe.com.tr",
+          "site": "kafe.com.tr",
+          "records": 16
+        },
+        {
+          "name": "kafe.net",
+          "site": "kafe.com.tr",
+          "records": 2
+        },
+        {
+          "name": "kafemenu.net",
+          "site": "kafemenu.net",
+          "records": 4
+        }
+      ],
+      "cron": [
+        "*/10 * * * * /opt/plesk/php/8.2/bin/php -f /var/www/vhosts/kafe.com.tr/httpdocs/wp-cron.php"
+      ],
+      "ftp": [
+        "kafe_tasarim"
+      ],
+      "size": 69120,
+      "unpacked": 5413,
+      "files_size": 489,
+      "mail_size": 92,
+      "databases_size": 368,
+      "notes": [
+        {
+          "code": "plesk-no-hosting",
+          "subject": "eskikafe.com"
+        },
+        {
+          "code": "alias-mail",
+          "subject": "kafe.net"
+        },
+        {
+          "code": "old-path",
+          "subject": "httpdocs/wp-config.php"
+        },
+        {
+          "code": "remote-database",
+          "subject": "kafe_rapor"
+        },
+        {
+          "code": "postgresql",
+          "subject": "kafe_analytics"
+        }
+      ]
+    },
+    "free_backups": 17622765568,
+    "free_home": 17622765568
+  },
+  "meta": {
+    "kafe.com.tr": {
+      "version": 1,
+      "site": {
+        "aliases": [
+          "www.kafe.com.tr",
+          "kafe.net",
+          "www.kafe.net"
+        ],
+        "apache_directives": null,
+        "domain": "kafe.com.tr",
+        "error_pages": null,
+        "https_redirect": true,
+        "nginx_directives": null,
+        "php_version": "8.2",
+        "redirects": [],
+        "subdomains": [
+          {
+            "name": "blog.kafe.com.tr",
+            "web_root": "subdomains/blog"
+          }
+        ],
+        "web_root": "public_html",
+        "web_server": "nginx"
+      },
+      "account": {
+        "customer_id": null,
+        "name": "kafeweb"
+      },
+      "databases": [
+        {
+          "server": "mysql",
+          "name": "kafe_wp"
+        }
+      ],
+      "database_users": [
+        {
+          "server": "mysql",
+          "name": "kafe_wpu",
+          "hosts": [],
+          "grants": [
+            {
+              "database": "kafe_wp",
+              "access": "all"
+            }
+          ]
+        }
+      ],
+      "mail": {
+        "forwarders": [
+          {
+            "destinations": [
+              "info@kafe.com.tr"
+            ],
+            "name": "iletisim"
+          },
+          {
+            "destinations": [
+              "info@kafe.com.tr",
+              "mehmet@gmail.com"
+            ],
+            "name": "siparis"
+          }
+        ],
+        "mailboxes": [
+          {
+            "autoreply": null,
+            "forward_to": [],
+            "keep_copy": true,
+            "name": "info",
+            "password_hash": "{SHA512-CRYPT}$6$z8Z3u6YgmbWpSkDN$rhURFvVZKCLml.LdE/K3wthLesXfwXrkyCZmiumol/3diIdEVqSkl8fzlYv/vsgcnq7zgSetypHAbNdHs2TeH1",
+            "quota_mb": 1024
+          }
+        ],
+        "manage_dns": true,
+        "spam_filter": true
+      },
+      "dns": {
+        "records": [
+          {
+            "content": "203.0.113.50",
+            "name": "@",
+            "priority": null,
+            "ttl": 3600,
+            "type": "A"
+          },
+          {
+            "content": "203.0.113.50",
+            "name": "ns1",
+            "priority": null,
+            "ttl": 3600,
+            "type": "A"
+          },
+          {
+            "content": "kafe.com.tr.",
+            "name": "www",
+            "priority": null,
+            "ttl": 3600,
+            "type": "CNAME"
+          },
+          {
+            "content": "203.0.113.50",
+            "name": "mail",
+            "priority": null,
+            "ttl": 3600,
+            "type": "A"
+          },
+          {
+            "content": "kafe.com.tr.",
+            "name": "ftp",
+            "priority": null,
+            "ttl": 3600,
+            "type": "CNAME"
+          },
+          {
+            "content": "203.0.113.50",
+            "name": "blog",
+            "priority": null,
+            "ttl": 3600,
+            "type": "A"
+          },
+          {
+            "content": "v=spf1 +a +mx +a:plesk.eskisunucu.com +ip4:203.0.113.50 -all",
+            "name": "@",
+            "priority": null,
+            "ttl": 3600,
+            "type": "TXT"
+          },
+          {
+            "content": "v=DMARC1; p=none",
+            "name": "_dmarc",
+            "priority": null,
+            "ttl": 3600,
+            "type": "TXT"
+          },
+          {
+            "content": "kafe.myshopify.com.",
+            "name": "siparis",
+            "priority": null,
+            "ttl": 3600,
+            "type": "CNAME"
+          },
+          {
+            "content": "5 5060 sip.kafe.com.tr.",
+            "name": "_sip._tcp",
+            "priority": 10,
+            "ttl": 3600,
+            "type": "SRV"
+          },
+          {
+            "content": "0 issue \"letsencrypt.org\"",
+            "name": "@",
+            "priority": null,
+            "ttl": 3600,
+            "type": "CAA"
+          }
+        ],
+        "zone": {
+          "name": "kafe.com.tr"
+        }
+      },
+      "certificates": [
+        {
+          "auto_renew": false,
+          "challenge": null,
+          "domains": [
+            "kafe.com.tr",
+            "www.kafe.com.tr"
+          ],
+          "fingerprint": "3D9B83488AC75AD8B804BCD41E9293996B6EB9577B16B2BE4EA7D8B1A580F392",
+          "in_use": true,
+          "issuer": "Let's Encrypt",
+          "kind": "site",
+          "name": "kafe.com.tr",
+          "not_after": "2036-01-01T00:00:00Z",
+          "not_before": "2036-01-01T00:00:00Z",
+          "serial": "2",
+          "source": "custom"
+        }
+      ],
+      "laravel": null,
+      "migration": {
+        "source": "plesk",
+        "user": "kafeweb",
+        "zones": [
+          {
+            "name": "kafe.net",
+            "records": [
+              {
+                "content": "203.0.113.50",
+                "name": "@",
+                "priority": null,
+                "ttl": 3600,
+                "type": "A"
+              },
+              {
+                "content": "kafe.net.",
+                "name": "www",
+                "priority": null,
+                "ttl": 3600,
+                "type": "CNAME"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "kafemenu.net": {
+      "version": 1,
+      "site": {
+        "aliases": [
+          "www.kafemenu.net",
+          "kafemenu.com",
+          "www.kafemenu.com"
+        ],
+        "apache_directives": null,
+        "domain": "kafemenu.net",
+        "error_pages": null,
+        "https_redirect": true,
+        "nginx_directives": null,
+        "php_version": "7.4",
+        "redirects": [],
+        "subdomains": [],
+        "web_root": "public_html",
+        "web_server": "nginx"
+      },
+      "account": {
+        "customer_id": null,
+        "name": "kafeweb"
+      },
+      "databases": [
+        {
+          "server": "mysql",
+          "name": "kafemenu_db"
+        }
+      ],
+      "database_users": [
+        {
+          "server": "mysql",
+          "name": "kafemenu_u",
+          "hosts": [],
+          "grants": [
+            {
+              "database": "kafemenu_db",
+              "access": "readwrite"
+            }
+          ]
+        }
+      ],
+      "mail": {
+        "forwarders": [],
+        "mailboxes": [
+          {
+            "autoreply": null,
+            "forward_to": [],
+            "keep_copy": true,
+            "name": "menu",
+            "password_hash": "{SHA512-CRYPT}$6$0ih6wH7XzRKvxHlf$Gk4hFtKpWpufxgrsayUdEcnZpJdSw6htseuaxY.jbQM2v5MM5Xpji8u9yUxnEUqjG.o0Qt8jWcsXvK5oyxSmF0",
+            "quota_mb": 0
+          }
+        ],
+        "manage_dns": true,
+        "spam_filter": true
+      },
+      "dns": {
+        "records": [
+          {
+            "content": "203.0.113.50",
+            "name": "@",
+            "priority": null,
+            "ttl": 3600,
+            "type": "A"
+          },
+          {
+            "content": "kafemenu.net.",
+            "name": "www",
+            "priority": null,
+            "ttl": 3600,
+            "type": "CNAME"
+          },
+          {
+            "content": "mx.yandex.net.",
+            "name": "@",
+            "priority": 10,
+            "ttl": 3600,
+            "type": "MX"
+          },
+          {
+            "content": "google-site-verification=abc123",
+            "name": "@",
+            "priority": null,
+            "ttl": 3600,
+            "type": "TXT"
+          }
+        ],
+        "zone": {
+          "name": "kafemenu.net"
+        }
+      },
+      "certificates": [],
+      "laravel": null,
+      "migration": {
+        "source": "plesk",
+        "user": "kafeweb",
+        "zones": []
+      }
+    }
+  }
+}

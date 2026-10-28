@@ -170,6 +170,10 @@ type cpAccount struct {
 	cron     []string
 	ftp      []string
 	configs  []cpConfig
+	// notes are what an archive made by the agent (a Plesk subscription
+	// read over SSH) says about itself: serfex-notes, a code and a
+	// subject per line.
+	notes    []MigrationNote
 	size     int64
 	unpacked int64
 	homeSize int64
@@ -331,6 +335,12 @@ func readCPanel(file string) (*cpAccount, error) {
 					a.cron = append(a.cron, line)
 				}
 			}
+		case name == "serfex-notes":
+			for _, line := range strings.Split(string(small(r, 1<<20)), "\n") {
+				if code, subject, _ := strings.Cut(line, "\t"); code != "" {
+					a.notes = append(a.notes, MigrationNote{Code: code, Subject: subject})
+				}
+			}
 		case name == "proftpdpasswd":
 			for _, line := range strings.Split(string(small(r, 1<<20)), "\n") {
 				if n, _, ok := strings.Cut(line, ":"); ok && n != "" {
@@ -417,6 +427,15 @@ func (a *cpAccount) readHome(rel string, hdr *tar.Header, r io.Reader) {
 	}
 }
 
+// source is the panel the account comes from: "cpanel", or "plesk" for
+// an archive the agent made from a Plesk subscription.
+func (a *cpAccount) source() string {
+	if s := a.cp["SERFEX_SOURCE"]; s == "plesk" {
+		return s
+	}
+	return "cpanel"
+}
+
 func (a *cpAccount) mainDomain() string {
 	if d := a.main.str("main_domain"); d != "" {
 		return strings.ToLower(d)
@@ -458,11 +477,14 @@ func phpVersion(v string) string {
 // plan describes the account as it would land here.
 func (a *cpAccount) plan(now time.Time) MigrationPlan {
 	p := MigrationPlan{
-		Source: "cpanel", User: a.user, Contact: a.cp["CONTACTEMAIL"], Package: a.cp["PLAN"],
+		Source: a.source(), User: a.user, Contact: a.cp["CONTACTEMAIL"], Package: a.cp["PLAN"],
 		MainDomain: a.mainDomain(), Size: a.size, Unpacked: a.unpacked, FilesSize: a.homeSize, MailSize: a.mailSize,
 		DatabasesSize: a.dbSize, OldIPs: a.oldIPs(), Cron: a.cron, FTP: a.ftp,
 		Sites: []MigrationSite{}, Databases: []MigrationDatabase{}, DatabaseUsers: []MigrationDBUser{},
-		Mail: []MigrationMailDomain{}, Zones: []MigrationZone{}, Notes: []MigrationNote{},
+		Mail: []MigrationMailDomain{}, Zones: []MigrationZone{}, Notes: slices.Clone(a.notes),
+	}
+	if p.Notes == nil {
+		p.Notes = []MigrationNote{}
 	}
 	if p.Cron == nil {
 		p.Cron = []string{}
@@ -516,6 +538,12 @@ func (a *cpAccount) plan(now time.Time) MigrationPlan {
 				if parked = strings.ToLower(parked); hostname.Validate(parked) == nil {
 					s.Aliases = append(s.Aliases, parked)
 				}
+			}
+		}
+		// Plesk gives every domain its own aliases.
+		for _, alias := range u.list("serfex_aliases") {
+			if alias = strings.ToLower(alias); hostname.Validate(alias) == nil && !slices.Contains(s.Aliases, alias) {
+				s.Aliases = append(s.Aliases, alias)
 			}
 		}
 		if c := a.certFor(d, now); c != nil {
@@ -696,6 +724,9 @@ func (a *cpAccount) oldIPs() []string {
 		}
 	}
 	add(a.cp["IP"])
+	for _, ip := range strings.Fields(a.cp["SERFEX_IPS"]) {
+		add(ip)
+	}
 	ds := make([]string, 0, len(a.userdata))
 	for d := range a.userdata {
 		ds = append(ds, d)
