@@ -113,14 +113,14 @@ class CliApiTest extends TestCase
         $start = $this->postJson('/api/v1/cli/login', ['client' => 'aylin-mbp'])->assertCreated();
         $code = $start->json('code');
         $this->assertMatchesRegularExpression('/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/', $code);
-        $this->assertStringContainsString('/cli/onay?kod='.$code, $start->json('url'));
+        $this->assertStringContainsString('/cli/approve?code='.$code, $start->json('url'));
         $device = $start->json('device');
 
         $this->postJson('/api/v1/cli/login/token', ['device' => $device])->assertStatus(202)->assertJsonPath('status', 'pending');
         $this->postJson('/api/v1/cli/login/token', ['device' => 'yanlış'])->assertStatus(410);
 
         $this->actingAs($this->admin);
-        $this->get('/cli/onay?kod='.$code)->assertOk()->assertSee('aylin-mbp')->assertSee($code);
+        $this->get('/cli/approve?code='.$code)->assertOk()->assertSee('aylin-mbp')->assertSee($code);
         Livewire::test(CliApprove::class)
             ->set('typed', strtolower(str_replace('-', '', $code)))
             ->call('lookup')
@@ -465,7 +465,7 @@ class CliApiTest extends TestCase
         $key = ApiKey::where('kind', ApiKey::CLI)->sole();
 
         $this->actingAs($this->admin);
-        $this->get('/hesap/guvenlik')->assertOk()->assertSee('dizüstü')->assertSee('Komut satırı');
+        $this->get('/account/security')->assertOk()->assertSee('dizüstü')->assertSee('Komut satırı');
         Livewire::test(AccountSecurity::class)
             ->call('closeCli', $key->id)
             ->assertDispatched('toast', undo: ['method' => 'reopenCli', 'args' => [$key->id]]);
@@ -499,15 +499,15 @@ class CliApiTest extends TestCase
         config(['serfex.cli_downloads' => $dir]);
 
         $script = $this->get('/cli/install.sh')->assertOk();
-        $this->assertStringContainsString("SOURCE='".url('/cli/indir')."'", $script->getContent());
-        $this->get('/cli/indir/serfex-cli-linux-amd64')->assertOk();
-        $this->get('/cli/indir/serfex-cli-darwin-arm64')->assertNotFound();
-        $this->get('/cli/indir/..%2Fpanel.json')->assertNotFound();
+        $this->assertStringContainsString("SOURCE='".url('/cli/download')."'", $script->getContent());
+        $this->get('/cli/download/serfex-cli-linux-amd64')->assertOk();
+        $this->get('/cli/download/serfex-cli-darwin-arm64')->assertNotFound();
+        $this->get('/cli/download/..%2Fpanel.json')->assertNotFound();
 
         // A checkout from git serves the repository's script.
         config(['serfex.cli_downloads' => $dir.'/yok']);
         $script = $this->get('/cli/install.sh')->assertOk()->getContent();
-        $this->assertStringContainsString("SOURCE='".url('/cli/indir')."'", $script);
+        $this->assertStringContainsString("SOURCE='".url('/cli/download')."'", $script);
         $this->assertStringNotContainsString('github.com/CallTech-App/Serfex/releases', explode("\n", explode('SOURCE=', $script, 2)[1])[0]);
     }
 

@@ -28,7 +28,7 @@ class SiteFileController extends Controller
     public function download(Request $request, int $site): StreamedResponse
     {
         $model = $this->site($site);
-        $path = (string) $request->query('yol', '');
+        $path = (string) $request->query('path', '');
         $files = $this->files;
         // The first chunk answers missing or forbidden files before the
         // download starts.
@@ -64,7 +64,7 @@ class SiteFileController extends Controller
     {
         $model = $this->site($site);
         try {
-            $res = $this->files->call($model, 'text', ['path' => (string) $request->query('yol', '')]);
+            $res = $this->files->call($model, 'text', ['path' => (string) $request->query('path', '')]);
         } catch (AgentException $e) {
             return response()->json(['error' => FileManager::message($e), 'code' => explode(':', $e->reason)[0]], 422);
         }
@@ -117,13 +117,13 @@ class SiteFileController extends Controller
         }
         try {
             $res = $this->files->call($model, 'upload', [
-                'path' => (string) $request->query('yol', ''),
-                'name' => (string) $request->query('ad', ''),
-                'upload' => (string) $request->query('parca', ''),
+                'path' => (string) $request->query('path', ''),
+                'name' => (string) $request->query('name', ''),
+                'upload' => (string) $request->query('upload', ''),
                 'offset' => $offset,
                 'data' => base64_encode($data),
-                'final' => $request->boolean('son'),
-                'overwrite' => $request->boolean('uzerine'),
+                'final' => $request->boolean('final'),
+                'overwrite' => $request->boolean('overwrite'),
             ]);
         } catch (AgentException $e) {
             return response()->json(['error' => FileManager::message($e), 'code' => explode(':', $e->reason)[0]], 422);

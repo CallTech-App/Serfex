@@ -8,7 +8,7 @@
     $laravel = $site->laravelApp;
     $lastBackup = \App\Models\BackupItem::with('backup')->where('site_id', $site->id)->where('status', 'succeeded')
         ->whereHas('backup', fn ($q) => $q->usable())->latest('id')->first();
-    $monthStats = app(\App\Services\Stats\SiteStats::class)->totals([$site->id], 'bu-ay');
+    $monthStats = app(\App\Services\Stats\SiteStats::class)->totals([$site->id], 'this-month');
     $diskTotal = app(\App\Services\Stats\DiskBreakdown::class)->site($site)['total'];
     $backupText = $lastBackup ? \App\Support\When::dateTime($lastBackup->backup->created_at) : __('Henüz yok');
     $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
@@ -31,7 +31,7 @@
             $laravelTool,
             ['terminal', __('SSH terminali'), null],
             ['clock', __('Zamanlanmış görevler'), $cronJobs ? __(':cron_jobs görev', ['cron_jobs' => $cronJobs]) : __('Yok'), route('sites.cron', $site)],
-            $laravel ? ['git-branch', __('Git dağıtımı'), $laravel->repository ? $laravel->repositoryName() : __('Bağlı değil'), route('laravel.show', [$laravel, 'bolum' => 'dagitimlar'])]
+            $laravel ? ['git-branch', __('Git dağıtımı'), $laravel->repository ? $laravel->repositoryName() : __('Bağlı değil'), route('laravel.show', [$laravel, 'section' => 'deployments'])]
                 : ['git-branch', __('Git dağıtımı'), $site->gitRepository ? $site->gitRepository->repositoryName() : __('Bağlı değil'), route('sites.git', $site)],
             ['file-text', __('Günlükler'), __('Erişim ve hata'), route('sites.logs', $site)],
             ['file-warning', __('Hata sayfaları'), $site->error_pages ? __(':error_pages özel sayfa', ['error_pages' => count($site->error_pages)]) : __('Varsayılan'), route('sites.errors', $site)],
@@ -45,8 +45,8 @@
         [__('Alan adı ve DNS'), 'network', [
             $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns')] : ['network', __('DNS kayıtları'), $zone ? __(':records_count kayıt', ['records_count' => $zone->records_count]) : null, $zone ? route('dns.show', $zone) : null],
             ['globe', __('Alt alan adları'), $subdomainCount ? __(':subdomain_count alt alan adı', ['subdomain_count' => $subdomainCount]) : __('Yok'), route('sites.domains', $site)],
-            ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'sekme' => 'ek'])],
-            ['corner-up-right', __('Yönlendirmeler'), $redirectCount ? __(':redirect_count yönlendirme', ['redirect_count' => $redirectCount]) : __('Yok'), route('sites.domains', ['site' => $site, 'sekme' => 'yonlendirmeler'])],
+            ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
+            ['corner-up-right', __('Yönlendirmeler'), $redirectCount ? __(':redirect_count yönlendirme', ['redirect_count' => $redirectCount]) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'redirects'])],
         ]],
         [__('E-posta'), 'mail', $missing('mail') ? [
             ['mail', __('Posta kutuları'), $missing('mail')],
@@ -57,9 +57,9 @@
             ['forward', __('Yönlendiriciler'), $mail->forwarders_count ?: __('Yok'), route('mail.show', [$mail, 'tab' => 'yonlendiriciler'])],
             ['inbox', 'Webmail', $webmail ? 'Roundcube' : __('Kapalı'), $webmail, true],
         ] : [
-            ['mail', __('Posta kutuları'), __('E-posta kapalı'), route('mail.index', ['ac' => $site->domain])],
-            ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('mail.index', ['ac' => $site->domain])],
-            ['inbox', 'Webmail', __('E-posta kapalı'), route('mail.index', ['ac' => $site->domain])],
+            ['mail', __('Posta kutuları'), __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
+            ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
+            ['inbox', 'Webmail', __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
         ])],
         [__('Güvenlik'), 'shield', [
             ['shield-check', __('SSL sertifikası'), $ssl->label(), route('sites.ssl', $site)],

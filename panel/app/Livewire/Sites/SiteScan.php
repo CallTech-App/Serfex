@@ -28,14 +28,14 @@ class SiteScan extends Component
 {
     use HandlesFindings, WithPagination;
 
-    public const TABS = ['bulgular' => 'Bulgular', 'engelli' => 'Engellenen yollar'];
+    public const TABS = ['findings' => 'Bulgular', 'blocked' => 'Engellenen yollar'];
 
     public int $siteId;
 
-    #[Url(as: 'sekme', except: 'bulgular')]
-    public string $tab = 'bulgular';
+    #[Url(except: 'findings')]
+    public string $tab = 'findings';
 
-    #[Url(as: 'durum', except: 'open')]
+    #[Url(as: 'status', except: 'open')]
     public string $findingStatus = 'open';
 
     public bool $denying = false;

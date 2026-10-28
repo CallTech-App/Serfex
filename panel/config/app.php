@@ -78,7 +78,7 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'tr'),
+    'locale' => env('APP_LOCALE', 'en'),
 
     // Turkish is the source language: a string missing from lang/en.json
     // shows in Turkish, never as a key.

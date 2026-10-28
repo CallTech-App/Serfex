@@ -26,7 +26,7 @@ class CliDownloadController extends Controller
         }
         abort_unless(is_file($path), 404);
         $script = (string) file_get_contents($path);
-        $script = preg_replace('/^SOURCE=.*$/m', 'SOURCE='.escapeshellarg(url('/cli/indir')), $script, 1);
+        $script = preg_replace('/^SOURCE=.*$/m', 'SOURCE='.escapeshellarg(url('/cli/download')), $script, 1);
 
         return response($script, 200, ['Content-Type' => 'text/x-shellscript; charset=utf-8', 'Cache-Control' => 'no-cache']);
     }

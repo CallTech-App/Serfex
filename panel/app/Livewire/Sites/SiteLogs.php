@@ -23,7 +23,7 @@ class SiteLogs extends Component
 
     public int $siteId;
 
-    #[Url(as: 'tur', except: 'access')]
+    #[Url(as: 'type', except: 'access')]
     public string $kind = 'access';
 
     public string $filter = '';

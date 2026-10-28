@@ -29,7 +29,7 @@ class SiteFiles extends Component
     public int $siteId;
 
     /** The folder shown, relative to the site's folder. */
-    #[Url(as: 'yol', except: '')]
+    #[Url(as: 'path', except: '')]
     public string $path = '';
 
     /** Filters the folder by name; Enter searches below it too. */

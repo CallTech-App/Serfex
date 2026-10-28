@@ -30,7 +30,7 @@ class SslIndex extends Component
     public string $search = '';
 
     /** "" for all sites, "problem" for the ones that need attention. */
-    #[Url(as: 'durum', except: '')]
+    #[Url(as: 'status', except: '')]
     public string $filter = '';
 
     /** @var list<int> */

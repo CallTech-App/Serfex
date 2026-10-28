@@ -94,10 +94,33 @@ class SetupTest extends TestCase
 
         // The link works once.
         auth()->logout();
-        $this->get('/install/'.$token)->assertStatus(410)->assertSee('Bu panel zaten kuruldu');
+        $this->get('/install/'.$token)->assertStatus(410)->assertSee('This panel is already set up');
         $this->post('/install/'.$token, ['name' => 'X', 'email' => 'x@example.test', 'password' => 'another-long-password', 'password_confirmation' => 'another-long-password', 'locale' => 'tr'])->assertStatus(410);
         $this->assertSame(1, User::count());
         $this->get('/login')->assertDontSee('sudo serfex setup-url');
+    }
+
+    public function test_a_new_server_s_setup_page_is_english_until_turkish_is_picked(): void
+    {
+        config(['serfex.locale' => null]);
+        $token = $this->link();
+
+        $this->get('/install/'.$token, ['Accept-Language' => 'tr-TR,tr;q=0.9'])->assertOk()
+            ->assertSee('Create the administrator account')
+            ->assertSee('<option value="en" selected>', false)
+            ->assertSee('?lang=__LANG__', false);
+
+        // Picking Türkçe reloads the page in Turkish, and the account
+        // makes Turkish the server's language.
+        $this->get('/install/'.$token.'?lang=tr')->assertOk()
+            ->assertSee('Yönetici hesabını oluşturun')
+            ->assertSee('<option value="tr" selected>', false);
+        $this->post('/install/'.$token, [
+            'name' => 'Aylin', 'email' => 'aylin@example.test', 'password' => 'correct-horse-battery',
+            'password_confirmation' => 'correct-horse-battery', 'locale' => 'tr',
+        ])->assertRedirect('/install');
+        $this->assertSame('tr', Setting::get('panel.locale'));
+        $this->get('/install')->assertOk()->assertSee('Sunucu');
     }
 
     public function test_a_wrong_old_or_expired_link_says_how_to_get_a_new_one(): void
@@ -141,7 +164,7 @@ class SetupTest extends TestCase
         $this->actingAs($admin);
 
         $wizard = Livewire::test(SetupWizard::class)
-            ->assertSet('step', 'sunucu')
+            ->assertSet('step', 'server')
             ->assertSet('ipv4', '203.0.113.10')
             ->assertSet('ns1', 'ns1.serfex.test')
             ->set('hostname', 'srv1')
@@ -151,7 +174,7 @@ class SetupTest extends TestCase
             ->set('timezone', 'Europe/Istanbul')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertSet('step', 'ad-sunuculari');
+            ->assertSet('step', 'nameservers');
         $this->assertSame([['hostname' => 'srv1.ornek.com.tr']], $this->agent->called('system.hostname.set'));
         $this->assertSame([['timezone' => 'Europe/Istanbul']], $this->agent->called('system.timezone.set'));
         $this->assertSame('203.0.113.10', app(DnsSettings::class)->ipv4());
@@ -186,7 +209,7 @@ class SetupTest extends TestCase
         $wizard->assertSet('panelMode', 'hostname')
             ->assertSee('https://srv1.ornek.com.tr:8443')
             ->call('save')
-            ->assertSet('step', 'bildirimler');
+            ->assertSet('step', 'notifications');
         $this->assertSame('srv1.ornek.com.tr', Setting::get('panel.hostname'));
         Queue::assertPushed(IssuePanelCertificate::class);
 
@@ -196,26 +219,26 @@ class SetupTest extends TestCase
             ->assertHasErrors('emails')
             ->set('emails', 'aylin@ornek.com.tr, ops@ornek.com.tr')
             ->call('save')
-            ->assertSet('step', 'guvenlik');
+            ->assertSet('step', 'firewall');
         $this->assertSame(['aylin@ornek.com.tr', 'ops@ornek.com.tr'], app(Notifications::class)->settings()['emails']);
 
-        $wizard->call('save')->assertHasNoErrors()->assertSet('step', 'varsayilanlar');
+        $wizard->call('save')->assertHasNoErrors()->assertSet('step', 'defaults');
         $this->assertTrue(app(Firewall::class)->enabled());
         $apply = $this->agent->called('firewall.rules.apply')[0];
         $this->assertTrue($apply['enabled']);
         $this->assertContains('2222', array_column($apply['rules'], 'ports'), 'SSH stays open on its real port');
         $this->assertArrayHasKey('protect', $apply);
 
-        $wizard->set('channel', 'beta')->call('save')->assertSet('step', 'yedekler');
+        $wizard->set('channel', 'beta')->call('save')->assertSet('step', 'backups');
         $this->assertSame('beta', Setting::get('updates.channel'));
 
         $wizard->set('backupTime', '25:00')->call('save')->assertHasErrors('backupTime')
-            ->set('backupTime', '02:30')->call('save')->assertSet('step', 'ozet')
+            ->set('backupTime', '02:30')->call('save')->assertSet('step', 'summary')
             ->assertSee('Kurulumu bitir');
         $this->assertSame('02:30', app(BackupSettings::class)->schedule()['time']);
 
         $states = collect(app(FirstRun::class)->checklist())->pluck('state', 'step')->all();
-        $this->assertSame(['sunucu' => 'done', 'ad-sunuculari' => 'done', 'panel' => 'done', 'bildirimler' => 'done', 'guvenlik' => 'done', 'varsayilanlar' => 'done', 'yedekler' => 'done'], $states);
+        $this->assertSame(['server' => 'done', 'nameservers' => 'done', 'panel' => 'done', 'notifications' => 'done', 'firewall' => 'done', 'defaults' => 'done', 'backups' => 'done'], $states);
 
         $this->get('/')->assertSee('İlk kurulum');
         $wizard->call('finish')->assertRedirect(route('dashboard'));
@@ -229,14 +252,14 @@ class SetupTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(SetupWizard::class)
-            ->call('skip')->assertSet('step', 'ad-sunuculari')
+            ->call('skip')->assertSet('step', 'nameservers')
             ->call('skip')->assertSet('step', 'panel')
-            ->call('back')->assertSet('step', 'ad-sunuculari')
-            ->call('go', 'ozet')->assertSet('step', 'ozet')
-            ->call('go', 'nowhere')->assertSet('step', 'ozet');
+            ->call('back')->assertSet('step', 'nameservers')
+            ->call('go', 'summary')->assertSet('step', 'summary')
+            ->call('go', 'nowhere')->assertSet('step', 'summary');
 
         $states = collect(app(FirstRun::class)->checklist())->pluck('state', 'step');
-        $this->assertSame('skipped', $states['sunucu']);
+        $this->assertSame('skipped', $states['server']);
         $this->assertSame('open', $states['panel']);
         $this->assertSame(7, app(FirstRun::class)->openCount() + 2);
         $this->get('/')->assertOk()->assertSee('İlk kurulum')->assertSee('Sihirbaza devam et')->assertSee('Sonraya bırakıldı');
@@ -251,10 +274,10 @@ class SetupTest extends TestCase
         Certificate::create(['kind' => 'panel', 'name' => 'panel', 'domains' => ['panel.kahve.com.tr'], 'source' => Certificate::LETS_ENCRYPT, 'status' => 'active', 'not_after' => now()->addMonths(2)]);
 
         $states = collect(app(FirstRun::class)->checklist())->keyBy('step');
-        $this->assertSame('done', $states['ad-sunuculari']['state']);
-        $this->assertSame('ns1.kahve.com.tr, ns2.kahve.com.tr', $states['ad-sunuculari']['detail']);
+        $this->assertSame('done', $states['nameservers']['state']);
+        $this->assertSame('ns1.kahve.com.tr, ns2.kahve.com.tr', $states['nameservers']['detail']);
         $this->assertSame('done', $states['panel']['state']);
-        $this->assertSame('open', $states['guvenlik']['state']);
+        $this->assertSame('open', $states['firewall']['state']);
     }
 
     public function test_the_panel_can_open_on_another_name_or_only_on_its_ip_address(): void
@@ -271,7 +294,7 @@ class SetupTest extends TestCase
             ->set('panelHostname', 'mail.ornek.com.tr')
             ->call('save')->assertHasErrors('panelHostname')
             ->set('panelHostname', 'Serfex.Ornek.com.tr')
-            ->call('save')->assertHasNoErrors()->assertSet('step', 'bildirimler');
+            ->call('save')->assertHasNoErrors()->assertSet('step', 'notifications');
         $this->assertSame('serfex.ornek.com.tr', Setting::get('panel.hostname'));
         Queue::assertPushed(IssuePanelCertificate::class);
 
@@ -281,7 +304,7 @@ class SetupTest extends TestCase
             ->assertSet('panelMode', 'custom')
             ->set('panelMode', 'ip')
             ->assertSee('https://203.0.113.10:8443')
-            ->call('save')->assertHasNoErrors()->assertSet('step', 'bildirimler');
+            ->call('save')->assertHasNoErrors()->assertSet('step', 'notifications');
         $this->assertNull(Setting::get('panel.hostname'));
         Queue::assertNotPushed(IssuePanelCertificate::class);
         Livewire::test(SetupWizard::class)->assertSet('panelMode', 'ip');
@@ -293,7 +316,7 @@ class SetupTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'full']));
         Setting::put('server.hostname', 'srv1.kahve.com.tr');
 
-        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+        Livewire::test(SetupWizard::class)->call('go', 'nameservers')
             ->assertSet('domain', 'kahve.com.tr')
             ->assertSet('createSite', true)
             ->assertSee('için site oluştur')
@@ -304,7 +327,7 @@ class SetupTest extends TestCase
 
         // A site that is already there is left as it is.
         Site::factory()->create(['domain' => 'kahve.com.tr']);
-        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+        Livewire::test(SetupWizard::class)->call('go', 'nameservers')
             ->assertSet('createSite', false)
             ->assertSee('Siteler\'de var.')
             ->call('save')->assertHasNoErrors();
@@ -313,9 +336,9 @@ class SetupTest extends TestCase
         // Without PHP on the server the step says so instead of failing later.
         Site::query()->delete();
         $this->agent->answers['php.versions'] = [];
-        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+        Livewire::test(SetupWizard::class)->call('go', 'nameservers')
             ->set('createSite', true)
-            ->call('save')->assertHasErrors('createSite')->assertSet('step', 'ad-sunuculari');
+            ->call('save')->assertHasErrors('createSite')->assertSet('step', 'nameservers');
     }
 
     public function test_each_name_server_can_have_its_own_address(): void
@@ -325,7 +348,7 @@ class SetupTest extends TestCase
         $records = fn () => DnsZone::where('name', 'kahve.com.tr')->sole()->records()->where('name', 'like', 'ns%')
             ->orderBy('name')->orderBy('type')->get()->map(fn ($r) => $r->name.' '.$r->type.' '.$r->content)->all();
 
-        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+        Livewire::test(SetupWizard::class)->call('go', 'nameservers')
             ->assertSeeHtml('id="ns1-ip"')
             ->assertSeeHtml('id="ns2-ip"')
             ->set('createSite', false)
@@ -340,7 +363,7 @@ class SetupTest extends TestCase
 
         // Coming back to the step shows the addresses and moves the records
         // of the zone made the first time.
-        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')
+        Livewire::test(SetupWizard::class)->call('go', 'nameservers')
             ->assertSet('ns1Ip', '')
             ->assertSet('ns2Ip', '198.51.100.20')
             ->assertSee('198.51.100.20')
@@ -358,7 +381,7 @@ class SetupTest extends TestCase
         $this->assertSame(['ns2.kahve.com.tr' => '198.51.100.20'], app(DnsSettings::class)->nameserverIps());
         $this->assertSame('198.51.100.20', app(DnsSettings::class)->nameserverIp('NS2.kahve.com.tr.'));
         $this->assertSame('203.0.113.10', app(DnsSettings::class)->nameserverIp('ns1.kahve.com.tr'));
-        Livewire::test(SetupWizard::class)->call('go', 'ad-sunuculari')->assertSet('ns2Ip', '198.51.100.20');
+        Livewire::test(SetupWizard::class)->call('go', 'nameservers')->assertSet('ns2Ip', '198.51.100.20');
     }
 
     public function test_only_full_administrators_open_the_wizard(): void
@@ -377,10 +400,10 @@ class SetupTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'full']));
         $this->agent->answers['firewall.rules.apply'] = AgentException::rpcError('firewall.rules.apply', AgentException::INVALID_PARAMS, 'these rules would cut your own connection to the panel');
 
-        Livewire::test(SetupWizard::class, ['step' => 'guvenlik'])
+        Livewire::test(SetupWizard::class, ['step' => 'firewall'])
             ->call('save')
             ->assertHasErrors('firewall')
-            ->assertSet('step', 'guvenlik');
+            ->assertSet('step', 'firewall');
         $this->assertFalse(app(Firewall::class)->enabled());
     }
 

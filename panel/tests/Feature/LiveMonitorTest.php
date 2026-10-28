@@ -123,7 +123,7 @@ class LiveMonitorTest extends TestCase
         IpBlock::create(['address' => '198.51.100.0/24', 'reason' => 'Tarama', 'source' => 'panel', 'expires_at' => now()->addMinutes(30)]);
 
         Livewire::test(LiveMonitor::class)
-            ->call('setTab', 'saldirilar')
+            ->call('setTab', 'attacks')
             ->assertSee('İstek seli, Giriş denemesi · /wp-login.php')
             ->assertSee('Posta girişi denemesi · IMAP')
             ->assertSee('88')
@@ -260,7 +260,7 @@ class LiveMonitorTest extends TestCase
     public function test_mail_queue_by_sender_domain_with_hold_and_release(): void
     {
         Livewire::test(LiveMonitor::class)
-            ->call('setTab', 'posta')
+            ->call('setTab', 'mail')
             ->assertSee('gunluk.net')
             ->assertSee('Connection timed out')
             ->call('hold', 'gunluk.net')
@@ -277,12 +277,12 @@ class LiveMonitorTest extends TestCase
     {
         $this->agent->answers['mail.queue'] = ['installed' => false, 'active' => 0, 'deferred' => 0, 'hold' => 0, 'domains' => [], 'messages' => []];
 
-        Livewire::test(LiveMonitor::class)->call('setTab', 'posta')->assertSee('Posta sunucusu kurulu değil');
+        Livewire::test(LiveMonitor::class)->call('setTab', 'mail')->assertSee('Posta sunucusu kurulu değil');
     }
 
     public function test_system_tab_separates_serfex_from_shared_services(): void
     {
-        $this->get('/monitor?sekme=sistem')
+        $this->get('/monitor?tab=system')
             ->assertSeeInOrder(['kendi hizmetleri', 'serfex-web.service', 'Paylaşılan hizmetler', 'nginx.service'])
             ->assertSee('4 çekirdek')
             ->assertSee('1 gün 1 sa');
@@ -296,7 +296,7 @@ class LiveMonitorTest extends TestCase
             ['recorded_at' => now()->subHours(3), 'site_id' => $this->blog->id, 'cpu' => 90, 'memory' => 0, 'io' => 0, 'requests' => 0, 'server_errors' => 0, 'php_busy' => 1, 'php_max' => 10, 'db_active' => 0, 'mail_per_hour' => 0],
         ]);
 
-        Livewire::withQueryParams(['aralik' => '1h'])->test(LiveMonitor::class)
+        Livewire::withQueryParams(['range' => '1h'])->test(LiveMonitor::class)
             ->assertSee('Son 1 saat ortalaması.')
             ->assertSee('%15');
     }

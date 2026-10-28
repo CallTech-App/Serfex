@@ -26,7 +26,7 @@
             <p class="font-medium">{{ __('ModSecurity kurulu değil') }}</p>
             @if ($admin)
                 <p class="mt-1 text-muted">{{ __('WAF\'ı kullanmak için önce sunucuya kurun.') }}</p>
-                <a href="{{ route('components.index', ['sekme' => 'diger']) }}" wire:navigate class="{{ $primary }} mx-auto mt-4 w-fit"><x-icon name="package-plus" />{{ __('Yazılım Yönetimi\'nden kur') }}</a>
+                <a href="{{ route('components.index', ['tab' => 'other']) }}" wire:navigate class="{{ $primary }} mx-auto mt-4 w-fit"><x-icon name="package-plus" />{{ __('Yazılım Yönetimi\'nden kur') }}</a>
             @else
                 <p class="mt-1 text-muted">{{ __('Sunucu yöneticiniz WAF\'ı kurduğunda bu sayfadan yönetebilirsiniz.') }}</p>
             @endif
@@ -50,12 +50,12 @@
                 @foreach ($this::TABS as $key => $label)
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"
                             @class(['-mb-px h-11 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
-                        {{ $label }}{{ $key === 'istisnalar' && $exclusions->isNotEmpty() ? ' ('.$exclusions->count().')' : '' }}
+                        {{ $label }}{{ $key === 'exceptions' && $exclusions->isNotEmpty() ? ' ('.$exclusions->count().')' : '' }}
                     </button>
                 @endforeach
             </div>
 
-            @if ($tab === 'istisnalar')
+            @if ($tab === 'exceptions')
                 <div class="relative overflow-x-auto">
                     <table class="w-full text-[13.5px] sm:min-w-[600px]">
                         <thead>

@@ -16,7 +16,7 @@
                 <span class="text-[19px] font-semibold tracking-tight">serfex</span>
             </div>
 
-            <form method="POST" action="{{ url('/davet/'.$token) }}" class="rounded-xl border border-line bg-surface">
+            <form method="POST" action="{{ url('/invite/'.$token) }}" class="rounded-xl border border-line bg-surface">
                 @csrf
                 <h1 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Hesabınızı açın') }}</h1>
                 <div class="space-y-4 p-5 text-[13.5px]">

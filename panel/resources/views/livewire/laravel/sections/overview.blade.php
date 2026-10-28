@@ -44,7 +44,7 @@
                 <p class="mt-1 font-medium">{{ __(':pending bekleyen · :processes işçi', ['pending' => $pending ?? '—', 'processes' => $processes]) }}</p>
             @endif
             @if ($failed)
-                <button type="button" wire:click="$parent.show('kuyruklar')" class="text-2xs text-crit hover:underline">{{ __(':failed başarısız iş', ['failed' => $failed]) }}</button>
+                <button type="button" wire:click="$parent.show('queues')" class="text-2xs text-crit hover:underline">{{ __(':failed başarısız iş', ['failed' => $failed]) }}</button>
             @elseif ($processes > 0 && $running < $workers->where('processes', '>', 0)->count())
                 <span class="text-2xs text-warn">{{ __('Bazı işçiler çalışmıyor') }}</span>
             @endif
@@ -53,7 +53,7 @@
             <p class="text-2xs text-muted">{{ __('Durum') }}</p>
             @if ($maintenance)
                 <p class="mt-1 font-medium text-warn">{{ __('Bakım modunda') }}</p>
-                <button type="button" wire:click="$parent.show('bakim')" class="text-2xs text-accent hover:underline">{{ __('Bakım modu') }}</button>
+                <button type="button" wire:click="$parent.show('maintenance')" class="text-2xs text-accent hover:underline">{{ __('Bakım modu') }}</button>
             @else
                 <p class="mt-1 font-medium">{{ __('Açık (uygulama)') }}</p>
                 <span class="text-2xs text-muted">{{ __('Zamanlayıcı :enabled', ['enabled' => ($schedule['enabled'] ?? false) ? __('açık') : __('kapalı')]) }}@if ($schedule['last_run'] ?? null) {{ __('· son çalışma :last_run', ['last_run' => When::withTime(\Illuminate\Support\Carbon::parse($schedule['last_run']))]) }}@endif</span>
@@ -88,9 +88,9 @@
                     <div class="{{ $row }}"><dt class="text-muted">{{ __('Önbellek / oturum') }}</dt><dd class="font-mono">{{ $about['cache'] ?? '—' }} / {{ $about['session'] ?? '—' }}</dd></div>
                     <div class="{{ $row }}"><dt class="text-muted">{{ __('Kuyruk bağlantısı') }}</dt><dd class="font-mono">{{ $about['queue'] ?? '—' }}</dd></div>
                 </dl>
-                <button type="button" wire:click="$parent.show('ortam')" class="mt-2 text-[13px] text-accent hover:underline">{{ __('.env dosyasını düzenle') }}</button>
+                <button type="button" wire:click="$parent.show('environment')" class="mt-2 text-[13px] text-accent hover:underline">{{ __('.env dosyasını düzenle') }}</button>
             @else
-                <p class="text-[13px] text-muted"><x-t text="Uygulama şu an ayarlarını bildiremedi. Hatayı görmek için :logs bakın."><x-slot:logs><button type="button" wire:click="$parent.show('gunlukler')" class="text-accent hover:underline">{{ __('günlüklere') }}</button></x-slot:logs></x-t></p>
+                <p class="text-[13px] text-muted"><x-t text="Uygulama şu an ayarlarını bildiremedi. Hatayı görmek için :logs bakın."><x-slot:logs><button type="button" wire:click="$parent.show('logs')" class="text-accent hover:underline">{{ __('günlüklere') }}</button></x-slot:logs></x-t></p>
             @endif
         </div>
     </div>

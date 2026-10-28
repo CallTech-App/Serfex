@@ -44,7 +44,7 @@
                 </select>
                 @error('phpVersion') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                 @if (auth()->user()->is_admin)
-                    <p class="mt-1.5 text-[13px] text-muted"><x-t text="Başka bir sürüm için :link'nden kurun."><x-slot:link><a href="{{ route('services.index', ['sekme' => 'php']) }}" wire:navigate class="text-accent hover:underline">{{ __('Hizmetler → PHP sürümleri') }}</a></x-slot:link></x-t></p>
+                    <p class="mt-1.5 text-[13px] text-muted"><x-t text="Başka bir sürüm için :link'nden kurun."><x-slot:link><a href="{{ route('services.index', ['tab' => 'php']) }}" wire:navigate class="text-accent hover:underline">{{ __('Hizmetler → PHP sürümleri') }}</a></x-slot:link></x-t></p>
                 @endif
             </div>
 

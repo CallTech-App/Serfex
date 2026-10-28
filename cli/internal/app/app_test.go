@@ -170,7 +170,7 @@ func TestLoginThroughTheBrowser(t *testing.T) {
 	srv := httptest.NewServer(p)
 	defer srv.Close()
 	asked := 0
-	p.on("POST /api/v1/cli/login", reply(201, map[string]any{"code": "ABCD-EFGH", "device": "secret", "url": srv.URL + "/cli/onay?kod=ABCD-EFGH", "interval": 1, "expires_in": 600}))
+	p.on("POST /api/v1/cli/login", reply(201, map[string]any{"code": "ABCD-EFGH", "device": "secret", "url": srv.URL + "/cli/approve?code=ABCD-EFGH", "interval": 1, "expires_in": 600}))
 	p.on("POST /api/v1/cli/login/token", func(w http.ResponseWriter, r *http.Request) {
 		asked++
 		if asked < 3 {
@@ -186,7 +186,7 @@ func TestLoginThroughTheBrowser(t *testing.T) {
 	if r.code != 0 {
 		t.Fatalf("%+v", r)
 	}
-	if v["opened"] != srv.URL+"/cli/onay?kod=ABCD-EFGH" || !strings.Contains(r.err, "ABCD-EFGH") {
+	if v["opened"] != srv.URL+"/cli/approve?code=ABCD-EFGH" || !strings.Contains(r.err, "ABCD-EFGH") {
 		t.Fatalf("browser %q, stderr %s", v["opened"], r.err)
 	}
 	if got := p.last("POST", "/api/v1/cli/login").Body["client"]; got != "dizustu · "+map[string]string{"linux": "Linux", "darwin": "macOS"}[runtime.GOOS] {

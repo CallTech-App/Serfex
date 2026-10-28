@@ -40,7 +40,7 @@
         </div>
 
         {{-- Güvenlik duvarı --}}
-        @if ($tab === 'guvenlik-duvari')
+        @if ($tab === 'firewall')
             <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3 text-[13.5px]">
                 @if ($firewall['enabled'])
                     <x-status-badge :status="$active ? new Badge(__('Açık'), 'ok') : new Badge(__('Açık, uygulanmayı bekliyor'), 'warn')" />
@@ -119,7 +119,7 @@
                 </p>
             @endif
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">
-                <x-t text="Sizin adresiniz :my_ip. Panelin portunu (:panel_port) bu adrese kapatacak bir değişiklik kabul edilmez. Tek tek adresleri engellemek için :link." :with="['panel_port' => $panelPort]"><x-slot:my_ip><span class="font-mono">{{ $myIp }}</span></x-slot:my_ip><x-slot:link><a href="{{ route('monitor.index', ['sekme' => 'saldirilar']) }}" wire:navigate class="text-accent hover:underline">{{ __('Canlı İzleme → Saldırılar') }}</a></x-slot:link></x-t>
+                <x-t text="Sizin adresiniz :my_ip. Panelin portunu (:panel_port) bu adrese kapatacak bir değişiklik kabul edilmez. Tek tek adresleri engellemek için :link." :with="['panel_port' => $panelPort]"><x-slot:my_ip><span class="font-mono">{{ $myIp }}</span></x-slot:my_ip><x-slot:link><a href="{{ route('monitor.index', ['tab' => 'attacks']) }}" wire:navigate class="text-accent hover:underline">{{ __('Canlı İzleme → Saldırılar') }}</a></x-slot:link></x-t>
             </p>
 
         {{-- WAF --}}
@@ -128,7 +128,7 @@
                 <div class="px-5 py-12 text-center text-[13.5px]">
                     <p class="font-medium">{{ __('Web uygulaması güvenlik duvarı kurulu değil') }}</p>
                     <p class="mx-auto mt-1 max-w-lg text-muted">{{ __('ModSecurity ve OWASP Core Rule Set, sitelere gelen SQL enjeksiyonu, XSS ve benzeri saldırıları yakalar. Nginx ve Apache kullanan bütün sitelerin önünde çalışır.') }}</p>
-                    <a href="{{ route('components.index', ['sekme' => 'diger']) }}" wire:navigate class="{{ $primary }} mx-auto mt-4 w-fit"><x-icon name="package-plus" />{{ __('Yazılım Yönetimi\'nden kur') }}</a>
+                    <a href="{{ route('components.index', ['tab' => 'other']) }}" wire:navigate class="{{ $primary }} mx-auto mt-4 w-fit"><x-icon name="package-plus" />{{ __('Yazılım Yönetimi\'nden kur') }}</a>
                 </div>
             @else
                 <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3 text-[13.5px]">
@@ -190,7 +190,7 @@
                                                 <button type="button" wire:click="openBlock(@js($e['ip']), {{ $e['site']?->id ?? 'null' }}, @js('WAF: '.($hit ? $hit['id'].' '.$hit['message'] : $e['uri'])))" class="{{ $link }}">{{ __('IP\'yi engelle') }}</button>
                                             @endif
                                             @if ($e['site'] && $hit)
-                                                <a href="{{ route('sites.waf', ['site' => $e['site']->id, 'kural' => $hit['id'], 'yol' => $path]) }}" wire:navigate class="{{ $link }}" title="{{ __('Bu kural sitenin meşru isteklerini engelliyorsa') }}">{{ __('İstisna ekle') }}</a>
+                                                <a href="{{ route('sites.waf', ['site' => $e['site']->id, 'rule' => $hit['id'], 'path' => $path]) }}" wire:navigate class="{{ $link }}" title="{{ __('Bu kural sitenin meşru isteklerini engelliyorsa') }}">{{ __('İstisna ekle') }}</a>
                                             @endif
                                             </div>
                                         </td>
@@ -211,7 +211,7 @@
             @endif
 
         {{-- Tarama --}}
-        @elseif ($tab === 'tarama')
+        @elseif ($tab === 'scan')
             @if ($running)
                 <div wire:poll.3s hidden></div>
             @endif
@@ -248,9 +248,9 @@
                                 <x-status-badge :status="($fail2ban['running'] ?? false) ? new Badge(__('Fail2ban çalışıyor'), 'ok') : new Badge(__('Fail2ban çalışmıyor'), 'warn')" />
                                 <span class="ml-1 text-muted">{{ __('15 dakikada 10 hatalı giriş yapan adres panele bir saat ulaşamaz. SSH ve e-posta girişleri de korunuyor.') }}</span>
                             </p>
-                            <p class="text-muted"><x-t text="Şu an :bans Fail2ban tarafından engelli."><x-slot:bans><a href="{{ route('monitor.index', ['sekme' => 'saldirilar']) }}" wire:navigate class="text-accent hover:underline">{{ __(':bans adres', ['bans' => $bans]) }}</a></x-slot:bans></x-t></p>
+                            <p class="text-muted"><x-t text="Şu an :bans Fail2ban tarafından engelli."><x-slot:bans><a href="{{ route('monitor.index', ['tab' => 'attacks']) }}" wire:navigate class="text-accent hover:underline">{{ __(':bans adres', ['bans' => $bans]) }}</a></x-slot:bans></x-t></p>
                         @else
-                            <p class="text-muted"><x-t text="Fail2ban kurulu değil; kurarsanız panel, SSH ve e-posta girişlerine kaba kuvvet saldırısı yapan adresler kendiliğinden engellenir. :link"><x-slot:link><a href="{{ route('components.index', ['sekme' => 'diger']) }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi\'nden kur') }}</a></x-slot:link></x-t></p>
+                            <p class="text-muted"><x-t text="Fail2ban kurulu değil; kurarsanız panel, SSH ve e-posta girişlerine kaba kuvvet saldırısı yapan adresler kendiliğinden engellenir. :link"><x-slot:link><a href="{{ route('components.index', ['tab' => 'other']) }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi\'nden kur') }}</a></x-slot:link></x-t></p>
                         @endif
                     </div>
                 </div>

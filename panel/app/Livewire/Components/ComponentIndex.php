@@ -32,7 +32,7 @@ class ComponentIndex extends Component
 {
     use ShowsComponentOperations;
 
-    #[Url(as: 'sekme', except: 'web')]
+    #[Url(except: 'web')]
     public string $tab = 'web';
 
     /** @var array{id: string, action: string}|null asked to confirm */
@@ -182,7 +182,7 @@ class ComponentIndex extends Component
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $blocker = $components->blocker();
         $manager = null;
-        if ($this->tab === 'veritabani' && $groups !== null) {
+        if ($this->tab === 'databases' && $groups !== null) {
             $manager = $databases->status()['manager'] ?? null;
         }
 

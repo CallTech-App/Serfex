@@ -20,7 +20,7 @@
         <p class="mt-1 text-[13px] text-muted">
             <x-t text="Komutlar belirlediğiniz zamanlarda sitenin klasöründe, :name kullanıcısıyla ve sitenin PHP :php_version sürümüyle çalışır. Bir görev, önceki çalışması bitmeden yeniden başlamaz. Saatler sunucunun saat dilimine (:config) göredir." :with="['php_version' => $site->php_version, 'config' => config('serfex.timezone')]"><x-slot:name><span class="font-mono text-fg">{{ $site->systemUser->name }}</span></x-slot:name></x-t>
             @if ($site->laravelApp)
-                <x-t text="Laravel'in zamanlayıcısı için görev eklemeniz gerekmez: :link."><x-slot:link><a href="{{ route('laravel.show', ['app' => $site->laravelApp->id, 'bolum' => 'zamanlayici']) }}" wire:navigate class="text-accent hover:underline">{{ __('Laravel → Zamanlayıcı') }}</a></x-slot:link></x-t>
+                <x-t text="Laravel'in zamanlayıcısı için görev eklemeniz gerekmez: :link."><x-slot:link><a href="{{ route('laravel.show', ['app' => $site->laravelApp->id, 'section' => 'scheduler']) }}" wire:navigate class="text-accent hover:underline">{{ __('Laravel → Zamanlayıcı') }}</a></x-slot:link></x-t>
             @endif
         </p>
     </div>

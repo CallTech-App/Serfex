@@ -38,14 +38,14 @@ class SecurityIndex extends Component
     use BlocksAddresses, HandlesFindings, WithPagination;
 
     public const TABS = [
-        'guvenlik-duvari' => 'Güvenlik duvarı',
+        'firewall' => 'Güvenlik duvarı',
         'waf' => 'WAF',
-        'tarama' => 'Tarama',
-        'giris' => 'Giriş güvenliği',
+        'scan' => 'Tarama',
+        'login' => 'Giriş güvenliği',
     ];
 
-    #[Url(as: 'sekme', except: 'guvenlik-duvari')]
-    public string $tab = 'guvenlik-duvari';
+    #[Url(except: 'firewall')]
+    public string $tab = 'firewall';
 
     /** Why the last action could not be done. */
     public ?string $refused = null;
@@ -74,7 +74,7 @@ class SecurityIndex extends Component
 
     // --- Tarama ---
 
-    #[Url(as: 'durum', except: 'open')]
+    #[Url(as: 'status', except: 'open')]
     public string $findingStatus = 'open';
 
     // --- Giriş güvenliği ---
@@ -95,7 +95,7 @@ class SecurityIndex extends Component
     public function mount(TwoFactor $twoFactor): void
     {
         if (! array_key_exists($this->tab, self::TABS)) {
-            $this->tab = 'guvenlik-duvari';
+            $this->tab = 'firewall';
         }
         $this->require2fa = $twoFactor->required();
     }
@@ -377,8 +377,8 @@ class SecurityIndex extends Component
 
         match ($this->tab) {
             'waf' => $data += $this->wafData($components),
-            'tarama' => $data += $this->scanData(),
-            'giris' => $data += $this->loginData($components),
+            'scan' => $data += $this->scanData(),
+            'login' => $data += $this->loginData($components),
             default => $data += $this->firewallData($error),
         };
 

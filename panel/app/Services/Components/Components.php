@@ -34,8 +34,8 @@ class Components
 {
     public const TABS = [
         'web' => 'Web sunucusu',
-        'veritabani' => 'Veritabanı sunucuları',
-        'diger' => 'Diğer bileşenler',
+        'databases' => 'Veritabanı sunucuları',
+        'other' => 'Diğer bileşenler',
     ];
 
     /** PHP versions and Node.js lines the agent offers. */
@@ -50,19 +50,19 @@ class Components
     private const CATALOG = [
         'nginx' => ['Nginx', 'Tüm sitelerin önünde durur, statik dosyaları sunar', 'web', 'Web sunucusu'],
         'apache' => ['Apache', '.htaccess kullanan siteler için, Nginx arkasında çalışır', 'web', 'Web sunucusu'],
-        'mysql' => ['MySQL', 'Varsayılan veritabanı sunucusu', 'veritabani', null],
-        'mariadb' => ['MariaDB', 'MySQL ile uyumlu alternatif', 'veritabani', null],
-        'postgresql' => ['PostgreSQL', 'MySQL ile birlikte kurulabilir; Laravel ve Django için', 'veritabani', null],
-        'redis' => ['Redis', 'Laravel önbelleği, oturumları ve kuyrukları; her uygulamaya ayrı örnek', 'diger', 'Önbellek ve kuyruk'],
-        'memcached' => ['Memcached', 'Basit nesne önbelleği, PHP eklentisiyle', 'diger', 'Önbellek ve kuyruk'],
-        'supervisor' => ['Supervisor', 'Kendi süreçlerinizi çalışır tutar (Laravel işçileri systemd ile çalışır)', 'diger', 'Önbellek ve kuyruk'],
-        'composer' => ['Composer', 'PHP paket yöneticisi', 'diger', 'Çalışma ortamları'],
-        'python' => ['Python 3', 'pip, venv ve derleme başlıkları', 'diger', 'Çalışma ortamları'],
-        'roundcube' => ['Roundcube', 'Webmail, posta sunucusuyla birlikte', 'diger', 'E-posta'],
-        'snappymail' => ['SnappyMail', 'Hafif webmail alternatifi', 'diger', 'E-posta'],
-        'fail2ban' => ['Fail2ban', 'SSH ve posta girişlerine kaba kuvvet saldırılarını engeller', 'diger', 'Güvenlik'],
-        'modsecurity' => ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP CRS kuralları)', 'diger', 'Güvenlik'],
-        'clamav' => ['ClamAV', 'Gelen ve giden postada virüs taraması', 'diger', 'Güvenlik'],
+        'mysql' => ['MySQL', 'Varsayılan veritabanı sunucusu', 'databases', null],
+        'mariadb' => ['MariaDB', 'MySQL ile uyumlu alternatif', 'databases', null],
+        'postgresql' => ['PostgreSQL', 'MySQL ile birlikte kurulabilir; Laravel ve Django için', 'databases', null],
+        'redis' => ['Redis', 'Laravel önbelleği, oturumları ve kuyrukları; her uygulamaya ayrı örnek', 'other', 'Önbellek ve kuyruk'],
+        'memcached' => ['Memcached', 'Basit nesne önbelleği, PHP eklentisiyle', 'other', 'Önbellek ve kuyruk'],
+        'supervisor' => ['Supervisor', 'Kendi süreçlerinizi çalışır tutar (Laravel işçileri systemd ile çalışır)', 'other', 'Önbellek ve kuyruk'],
+        'composer' => ['Composer', 'PHP paket yöneticisi', 'other', 'Çalışma ortamları'],
+        'python' => ['Python 3', 'pip, venv ve derleme başlıkları', 'other', 'Çalışma ortamları'],
+        'roundcube' => ['Roundcube', 'Webmail, posta sunucusuyla birlikte', 'other', 'E-posta'],
+        'snappymail' => ['SnappyMail', 'Hafif webmail alternatifi', 'other', 'E-posta'],
+        'fail2ban' => ['Fail2ban', 'SSH ve posta girişlerine kaba kuvvet saldırılarını engeller', 'other', 'Güvenlik'],
+        'modsecurity' => ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP CRS kuralları)', 'other', 'Güvenlik'],
+        'clamav' => ['ClamAV', 'Gelen ve giden postada virüs taraması', 'other', 'Güvenlik'],
     ];
 
     /** @var array<string, array<string, mixed>>|null component.list by id */
@@ -267,10 +267,10 @@ class Components
         if (preg_match('/^node(\d+)$/', $id, $m)) {
             $lts = in_array($m[1], self::NODE_LTS, true);
 
-            return ['Node.js '.$m[1].($lts ? ' LTS' : ''), $lts ? __('Vite derlemeleri ve Node uygulamaları') : __('En yeni sürüm hattı'), 'diger', __('Çalışma ortamları')];
+            return ['Node.js '.$m[1].($lts ? ' LTS' : ''), $lts ? __('Vite derlemeleri ve Node uygulamaları') : __('En yeni sürüm hattı'), 'other', __('Çalışma ortamları')];
         }
 
-        return self::CATALOG[$id] ?? [$id, '', 'diger', null];
+        return self::CATALOG[$id] ?? [$id, '', 'other', null];
     }
 
     public function name(string $id): string

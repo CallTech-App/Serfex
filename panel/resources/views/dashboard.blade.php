@@ -48,7 +48,7 @@
             $monthBytes = array_sum(array_column($month, 'bytes'));
             $monthVisitors = array_sum(array_column($month, 'visitors'));
         @endphp
-        <a href="{{ route('sites.index', $monthBytes ? ['sirala' => 'trafik'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+        <a href="{{ route('sites.index', $monthBytes ? ['sort' => 'traffic'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="globe" class="text-muted" />
             <span>{{ __('Siteler') }}</span>
             <span class="ml-auto truncate text-right text-muted num">
@@ -57,12 +57,12 @@
             <x-icon name="chevron-right" class="text-muted" />
         </a>
         @php
-            $week = app(\App\Services\Stats\ServerHistory::class)->series('7g');
+            $week = app(\App\Services\Stats\ServerHistory::class)->series('7d');
             $weekSum = \App\Services\Stats\ServerHistory::summary($week);
             $diskRatio = $weekSum['disk_total'] ? $weekSum['disk_used'] / $weekSum['disk_total'] : null;
         @endphp
         @if (count($week) > 1)
-            <a href="{{ route('monitor.index', ['sekme' => 'sistem', 'gecmis' => '7g']) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+            <a href="{{ route('monitor.index', ['tab' => 'system', 'history' => '7d']) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
                 <x-icon name="gauge" @class(['text-muted' => $diskRatio < 0.9, 'text-warn' => $diskRatio >= 0.9]) />
                 <span>{{ __('Sunucu kaynakları') }}</span>
                 <span @class(['ml-auto truncate text-right num', 'text-muted' => $diskRatio < 0.9, 'font-medium text-warn' => $diskRatio >= 0.9])>
@@ -82,7 +82,7 @@
         </a>
         @php $sslAttention = \App\Models\Certificate::attentionCount(); @endphp
         <div class="flex items-center gap-2 hover:bg-surface-2/60">
-            <a href="{{ route('ssl.index', $sslAttention ? ['durum' => 'problem'] : []) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $sslAttention ? '' : 'pr-5' }}">
+            <a href="{{ route('ssl.index', $sslAttention ? ['status' => 'problem'] : []) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $sslAttention ? '' : 'pr-5' }}">
                 <x-icon name="shield-check" @class(['text-muted' => ! $sslAttention, 'text-warn' => $sslAttention]) />
                 <span>{{ __('SSL sertifikaları') }}</span>
                 <span @class(['ml-auto num text-right', 'text-muted' => ! $sslAttention, 'font-medium text-warn' => $sslAttention])>
@@ -99,7 +99,7 @@
             $lastScan = \App\Models\SecurityScan::where('scope', 'server')->whereNotNull('finished_at')->latest('id')->value('finished_at');
         @endphp
         <div class="flex items-center gap-2 hover:bg-surface-2/60">
-            <a href="{{ route('security.index', ['sekme' => 'tarama']) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $securityAttention ? '' : 'pr-5' }}">
+            <a href="{{ route('security.index', ['tab' => 'scan']) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 {{ $securityAttention ? '' : 'pr-5' }}">
                 <x-icon name="shield-alert" @class(['text-muted' => ! $securityAttention, 'text-crit' => $securityAttention]) />
                 <span>{{ __('Güvenlik') }}</span>
                 <span @class(['ml-auto num truncate text-right', 'text-muted' => ! $securityAttention, 'font-medium text-crit' => $securityAttention])>

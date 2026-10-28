@@ -68,13 +68,13 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
-            @foreach (['kutular' => __('Posta kutuları'), 'yonlendiriciler' => __('Yönlendiriciler'), 'trafik' => __('Posta trafiği'), 'ayarlar' => __('Posta ayarları')] as $key => $label)
+            @foreach (['mailboxes' => __('Posta kutuları'), 'forwarders' => __('Yönlendiriciler'), 'traffic' => __('Posta trafiği'), 'settings' => __('Posta ayarları')] as $key => $label)
                 <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="-mb-px h-12 border-b-2 whitespace-nowrap {{ $tab === $key ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg' }}">{{ $label }}</button>
             @endforeach
         </div>
 
-        @if ($tab === 'kutular')
+        @if ($tab === 'mailboxes')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openCreate" @disabled($closed) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                     <x-icon name="plus" />{{ __('Posta kutusu oluştur') }}
@@ -159,7 +159,7 @@
                 </table>
             </div>
             <p class="num border-t border-line px-5 py-3 text-2xs text-muted">{{ __(':mailbox_count posta kutusu', ['mailbox_count' => $mailboxCount]) }}</p>
-        @elseif ($tab === 'yonlendiriciler')
+        @elseif ($tab === 'forwarders')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openForwarder" @disabled($closed) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                     <x-icon name="plus" />{{ __('Yönlendirici ekle') }}
@@ -202,7 +202,7 @@
                 </table>
             </div>
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Bir posta kutusunun postasını da iletmek için posta kutusunu açıp "Yönlendirme" alanını doldurun.') }}</p>
-        @elseif ($tab === 'trafik')
+        @elseif ($tab === 'traffic')
             @php $num = fn (int $n) => \App\Support\Num::format($n, 0); @endphp
             <div class="border-b border-line px-5 py-3 text-[13.5px]">
                 <p class="num text-muted">

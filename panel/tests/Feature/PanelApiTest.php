@@ -159,7 +159,7 @@ class PanelApiTest extends TestCase
             ->assertJsonPath('data.email', 'ada@pansiyon.com')
             ->assertJsonPath('data.package.name', Package::default()->name);
         $id = $created->json('data.id');
-        $this->assertStringContainsString('/davet/', $created->json('data.invitation_url'));
+        $this->assertStringContainsString('/invite/', $created->json('data.invitation_url'));
         $this->getJson('/api/v1/customers', $headers)->assertOk()->assertJsonPath('data.0.username', 'ada');
         $this->postJson('/api/v1/customers', ['name' => 'Ada', 'email' => 'ada@pansiyon.com', 'username' => 'ada'], $headers)->assertUnprocessable();
 

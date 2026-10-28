@@ -60,16 +60,16 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
-            @foreach (['kullanim' => __('Kullanım'), 'siteler' => __('Siteler (:site_count)', ['site_count' => $siteCount]), 'bilgiler' => __('Bilgiler ve paket')] as $key => $label)
+            @foreach (['usage' => __('Kullanım'), 'sites' => __('Siteler (:site_count)', ['site_count' => $siteCount]), 'details' => __('Bilgiler ve paket')] as $key => $label)
                 <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="-mb-px flex h-12 items-center gap-1.5 border-b-2 whitespace-nowrap {{ $tab === $key ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg' }}">
                     {{ $label }}
-                    @if ($key === 'kullanim' && $worst !== 'ok')<i @class(['size-1.5 rounded-full', 'bg-warn' => $worst === 'warn', 'bg-crit' => $worst === 'crit'])></i>@endif
+                    @if ($key === 'usage' && $worst !== 'ok')<i @class(['size-1.5 rounded-full', 'bg-warn' => $worst === 'warn', 'bg-crit' => $worst === 'crit'])></i>@endif
                 </button>
             @endforeach
         </div>
 
-        @if ($tab === 'kullanim')
+        @if ($tab === 'usage')
             @if ($agentError)
                 <p class="border-b border-line px-5 py-3 text-[13px] text-crit">{{ $agentError }}</p>
             @endif
@@ -83,9 +83,9 @@
                     <x-icon name="refresh-cw" class="size-3.5" wire:loading.class="animate-spin" wire:target="measure" />{{ __('Şimdi ölç') }}
                 </button>
             </div>
-        @elseif ($tab === 'siteler')
+        @elseif ($tab === 'sites')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-                <a href="{{ route('sites.index', ['musteri' => $customer->id]) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
+                <a href="{{ route('sites.index', ['customer' => $customer->id]) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                     <x-icon name="plus" />{{ __('Site ekle') }}
                 </a>
                 <button type="button" wire:click="openAttach" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2">

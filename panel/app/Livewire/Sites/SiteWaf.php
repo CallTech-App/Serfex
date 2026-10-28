@@ -30,10 +30,10 @@ class SiteWaf extends Component
 
     public int $siteId;
 
-    public const TABS = ['olaylar' => 'Olaylar', 'istisnalar' => 'Kural istisnaları'];
+    public const TABS = ['events' => 'Olaylar', 'exceptions' => 'Kural istisnaları'];
 
-    #[Url(as: 'sekme', except: 'olaylar')]
-    public string $tab = 'olaylar';
+    #[Url(except: 'events')]
+    public string $tab = 'events';
 
     /** '' follows the server. */
     public string $mode = '';
@@ -47,10 +47,10 @@ class SiteWaf extends Component
     public string $note = '';
 
     /** Opened from Güvenlik → WAF's "İstisna ekle". */
-    #[Url(as: 'kural', except: '')]
+    #[Url(as: 'rule', except: '')]
     public string $prefillRule = '';
 
-    #[Url(as: 'yol', except: '')]
+    #[Url(as: 'path', except: '')]
     public string $prefillPath = '';
 
     public function mount(int $site): void
@@ -62,7 +62,7 @@ class SiteWaf extends Component
             $this->ruleId = preg_replace('/\D/', '', $this->prefillRule);
             $this->path = $this->prefillPath;
             $this->excluding = true;
-            $this->tab = 'istisnalar';
+            $this->tab = 'exceptions';
             $this->prefillRule = $this->prefillPath = '';
         }
     }

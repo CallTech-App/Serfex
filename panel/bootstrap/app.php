@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: ['hooks/*']);
         // The Güncellemeler page follows an update through the maintenance
         // it puts the panel in.
-        $middleware->preventRequestsDuringMaintenance(except: ['ayarlar/guncellemeler/ilerleme/*']);
+        $middleware->preventRequestsDuringMaintenance(except: ['settings/updates/progress/*', 'ayarlar/guncellemeler/ilerleme/*']);
         // The person's language, the server's, or the browser's (SetLocale).
         $middleware->web(append: [SetLocale::class]);
     })

@@ -26,10 +26,10 @@ class ZoneShow extends Component
 
     public int $zoneId;
 
-    #[Url(except: 'kayitlar')]
-    public string $tab = 'kayitlar';
+    #[Url(except: 'records')]
+    public string $tab = 'records';
 
-    #[Url(as: 'tur', except: '')]
+    #[Url(as: 'type', except: '')]
     public string $type = '';
 
     #[Url(as: 'q', except: '')]

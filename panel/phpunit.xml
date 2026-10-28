@@ -34,6 +34,7 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SERFEX_LOCALE" value="tr"/>
         <env name="SERFEX_MAIL_CHECK_DNS" value="false"/>
         <env name="SERFEX_TIMEZONE" value="UTC"/>
         <env name="SESSION_DRIVER" value="array"/>

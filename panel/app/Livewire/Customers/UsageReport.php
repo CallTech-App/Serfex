@@ -18,19 +18,19 @@ use Livewire\Component;
 /**
  * Kullanım: a customer's usage against their package (the quota rows),
  * what their disk space is made of, and their traffic month by month and
- * site by site. Customers open their own at /kullanim; administrators
+ * site by site. Customers open their own at /usage; administrators
  * open any customer's from the customer page.
  */
 #[Layout('components.layouts.app')]
 #[ForCustomers]
 class UsageReport extends Component
 {
-    public const TABS = ['kota' => 'Paket sınırları', 'disk' => 'Disk', 'trafik' => 'Trafik'];
+    public const TABS = ['limits' => 'Paket sınırları', 'disk' => 'Disk', 'traffic' => 'Trafik'];
 
     public int $customerId;
 
-    #[Url(as: 'sekme', except: 'kota')]
-    public string $tab = 'kota';
+    #[Url(except: 'limits')]
+    public string $tab = 'limits';
 
     public function mount(?int $customer = null): void
     {
@@ -54,13 +54,13 @@ class UsageReport extends Component
     {
         $customer = Customer::with('package')->findOrFail($this->customerId);
         if (! isset(self::TABS[$this->tab])) {
-            $this->tab = 'kota';
+            $this->tab = 'limits';
         }
         $data = ['customer' => $customer, 'report' => $quotas->report($customer)];
         if ($this->tab === 'disk') {
             $data['disk'] = $disk->customer($customer);
         }
-        if ($this->tab === 'trafik') {
+        if ($this->tab === 'traffic') {
             $siteIds = Site::whereIn('system_user_id', $customer->systemUsers()->select('id'))->pluck('id')->all();
             $tz = config('serfex.timezone');
             $from = CarbonImmutable::now($tz)->startOfMonth()->subMonthsNoOverflow(11);

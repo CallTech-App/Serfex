@@ -11,7 +11,7 @@
 # An archive unpacks into /opt/serfex/releases/VERSION (see install.sh):
 # VERSION, bin/serfex-agent, bin/serfex (the command line), panel/ with
 # its production dependencies and built assets, and downloads/ with the
-# command line for every system, which the panel serves at /cli/indir/
+# command line for every system, which the panel serves at /cli/download/
 # for developers' computers. Needs Go, PHP with Composer, and Node.js.
 #
 #   scripts/build-release.sh 0.2.0 dist

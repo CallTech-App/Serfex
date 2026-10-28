@@ -133,7 +133,7 @@ class ServicesTest extends TestCase
     {
         $this->site();
 
-        $this->get('/hizmetler')->assertOk()
+        $this->get('/services')->assertOk()
             ->assertSee('Hizmetler')
             ->assertSee('Barındırma hizmetleri')
             ->assertSee('Serfex&#039;in kendi hizmetleri', false)
@@ -187,7 +187,7 @@ class ServicesTest extends TestCase
             ->assertSee('Yeniden yükle')
             ->call('act', 'disable')
             ->assertDispatched('toast', fn ($name, $p) => $p['undo']['args'] === ['enable'])
-            ->set('tab', 'ayarlar')
+            ->set('tab', 'settings')
             ->assertSee('En büyük istek gövdesi')
             ->set('settings.client_max_body_mb', '0')
             ->call('saveSettings')
@@ -206,7 +206,7 @@ class ServicesTest extends TestCase
         $this->assertSame(['worker_processes' => '4', 'worker_connections' => 768, 'client_max_body_mb' => 256, 'keepalive_timeout' => 65], $applied[0]['nginx']);
         $this->assertSame(64, $applied[1]['nginx']['client_max_body_mb']);
 
-        $this->get('/hizmetler/yok')->assertNotFound();
+        $this->get('/services/yok')->assertNotFound();
     }
 
     public function test_apache_and_powerdns_settings(): void
@@ -220,7 +220,7 @@ class ServicesTest extends TestCase
         $this->agent->answers['service.settings'] = fn ($p) => ['unit' => $p['unit'], $p['unit'] === 'apache2' ? 'apache' : 'powerdns' => $settings[$p['unit']]];
         $this->agent->answers['service.settings.apply'] = fn ($p) => ['unit' => $p['unit'], ...array_diff_key($p, ['unit' => 1])];
 
-        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
+        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'settings'])
             ->assertSee('Eşzamanlı istek sınırı')
             ->assertSet('settings.max_request_workers', '150')
             ->set('settings.timeout', '600')
@@ -233,7 +233,7 @@ class ServicesTest extends TestCase
             ->assertDispatched('toast', fn ($name, $p) => $p['undo']['args'][0] === ['max_request_workers' => 150, 'timeout' => 300]);
         $this->assertSame(['max_request_workers' => 400, 'timeout' => 120], $this->agent->called('service.settings.apply')[0]['apache']);
 
-        Livewire::test(ServiceShow::class, ['unit' => 'pdns@serfex', 'tab' => 'ayarlar'])
+        Livewire::test(ServiceShow::class, ['unit' => 'pdns@serfex', 'tab' => 'settings'])
             ->assertSee('Bölge aktarımı izni')
             ->assertSet('settings.log_queries', false)
             ->assertSet('settings.axfr_allow', '')
@@ -253,14 +253,14 @@ class ServicesTest extends TestCase
 
         // Without Serfex's Apache configuration there is no settings tab.
         $this->services['apache2']['settings'] = null;
-        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'ayarlar'])
-            ->assertSet('tab', 'gunluk')
+        Livewire::test(ServiceShow::class, ['unit' => 'apache2', 'tab' => 'settings'])
+            ->assertSet('tab', 'log')
             ->assertDontSee('Eşzamanlı istek sınırı');
     }
 
     public function test_protected_services_cannot_be_stopped_from_the_page(): void
     {
-        $this->get('/hizmetler/serfex-agent')->assertOk()
+        $this->get('/services/serfex-agent')->assertOk()
             ->assertSee('Panel sunucuyu onunla yönetir; durdurulamaz.')
             ->assertDontSee('wire:click="act(&#039;stop&#039;)"', false);
     }
@@ -364,7 +364,7 @@ class ServicesTest extends TestCase
         $this->assertSame(['512M', '128M', '128M'], [$applied['values']['memory_limit'], $applied['values']['upload_max_filesize'], $applied['values']['post_max_size']]);
         $this->assertSame('512M', Setting::get('php.memory.8.4'));
 
-        $this->get('/hizmetler/php/7.4')->assertNotFound();
+        $this->get('/services/php/7.4')->assertNotFound();
     }
 
     public function test_php_version_settings_with_a_dot_in_their_name_are_editable(): void
@@ -390,7 +390,7 @@ class ServicesTest extends TestCase
         $this->site();
 
         Livewire::test(PhpVersionShow::class, ['version' => '8.4'])
-            ->set('tab', 'eklentiler')
+            ->set('tab', 'extensions')
             ->assertSee('intl')
             ->call('toggle', 'intl')
             ->assertSee('intl kapatılsın mı?')
@@ -513,7 +513,7 @@ class ServicesTest extends TestCase
 
         $this->assertSame(['fail2ban'], array_column(SystemServices::problems(), 'unit'));
         Queue::assertPushed(ApplySitePhp::class, 1);
-        $this->get('/hizmetler')->assertSee('1 durmuş hizmet');
+        $this->get('/services')->assertSee('1 durmuş hizmet');
     }
 
     public function test_ai_reads_services_and_a_log(): void
@@ -539,8 +539,8 @@ class ServicesTest extends TestCase
         $customer = Customer::factory()->withLogin()->create();
         $this->actingAs($customer->user);
 
-        $this->get('/hizmetler')->assertForbidden();
-        $this->get('/hizmetler/nginx')->assertForbidden();
-        $this->get('/hizmetler/php/8.4')->assertForbidden();
+        $this->get('/services')->assertForbidden();
+        $this->get('/services/nginx')->assertForbidden();
+        $this->get('/services/php/8.4')->assertForbidden();
     }
 }

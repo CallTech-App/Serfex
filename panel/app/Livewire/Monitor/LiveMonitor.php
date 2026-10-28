@@ -33,7 +33,7 @@ use Livewire\Component;
 #[Title('Canlı İzleme · Serfex')]
 class LiveMonitor extends Component
 {
-    public const TABS = ['siteler' => 'Siteler', 'saldirilar' => 'Saldırılar', 'posta' => 'Posta kuyruğu', 'sistem' => 'Sistem'];
+    public const TABS = ['sites' => 'Siteler', 'attacks' => 'Saldırılar', 'mail' => 'Posta kuyruğu', 'system' => 'Sistem'];
 
     /** Range => [label, seconds the agent averages over]. */
     public const RANGES = ['now' => ['Şu an', 10], '5m' => ['Son 5 dk', 300], '1h' => ['Son 1 saat', 3600], '24h' => ['Son 24 saat', 86400]];
@@ -45,18 +45,18 @@ class LiveMonitor extends Component
 
     public const PHP_CHOICES = [0 => 'Sınırsız', 2 => '2 işçi', 4 => '4 işçi', 6 => '6 işçi'];
 
-    #[Url(as: 'sekme', except: 'siteler')]
-    public string $tab = 'siteler';
+    #[Url(except: 'sites')]
+    public string $tab = 'sites';
 
-    #[Url(as: 'aralik', except: 'now')]
+    #[Url(as: 'range', except: 'now')]
     public string $range = 'now';
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
     /** The Sistem tab's history range (ServerHistory::RANGES). */
-    #[Url(as: 'gecmis', except: '24s')]
-    public string $span = '24s';
+    #[Url(as: 'history', except: '24h')]
+    public string $span = '24h';
 
     /** The site whose intervention dialog is open. */
     public ?int $siteId = null;
@@ -78,7 +78,7 @@ class LiveMonitor extends Component
     public function mount(): void
     {
         if (! isset(self::TABS[$this->tab])) {
-            $this->tab = 'siteler';
+            $this->tab = 'sites';
         }
         if (! isset(self::RANGES[$this->range])) {
             $this->range = 'now';
@@ -487,9 +487,9 @@ class LiveMonitor extends Component
         }
 
         $server = null;
-        if ($this->tab === 'sistem') {
+        if ($this->tab === 'system') {
             if (! isset(ServerHistory::RANGES[$this->span])) {
-                $this->span = '24s';
+                $this->span = '24h';
             }
             // Cached as plain values: the cache does not unserialize objects.
             $cached = Cache::remember('serfex.server-history.'.$this->span, 60, fn () => array_map(
@@ -502,7 +502,7 @@ class LiveMonitor extends Component
 
         $mail = null;
         $mailError = null;
-        if ($this->tab === 'posta') {
+        if ($this->tab === 'mail') {
             try {
                 $mail = $queue->get();
             } catch (AgentException $e) {
@@ -530,7 +530,7 @@ class LiveMonitor extends Component
             'server' => $server,
             'poll' => match (true) {
                 $this->blocking => null,
-                $this->acting, $this->tab === 'posta' => '5s',
+                $this->acting, $this->tab === 'mail' => '5s',
                 $long => '60s',
                 default => '2s',
             },

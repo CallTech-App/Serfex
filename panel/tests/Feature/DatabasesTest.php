@@ -189,7 +189,7 @@ class DatabasesTest extends TestCase
         $user = app(Databases::class)->createUser($this->site->systemUser, 'mysql', 'kahve_app', 'Ilk-parola-uzun-1', [], [$shop->id => 'all']);
         $this->agent->calls = [];
 
-        $page = Livewire::test(DatabaseIndex::class, ['tab' => 'kullanicilar'])
+        $page = Livewire::test(DatabaseIndex::class, ['tab' => 'users'])
             ->assertSee('kahve_app')
             ->call('openUser', $user->id)
             ->assertSet('editGrants', [$blog->id => '', $shop->id => 'all'])
@@ -302,7 +302,7 @@ class DatabasesTest extends TestCase
         $user = app(Databases::class)->createUser($this->site->systemUser, 'mysql', 'kahve_app', 'Ilk-parola-uzun-1', ['10.8.0.%'], [$shop->id => 'all']);
         $this->agent->calls = [];
 
-        $page = Livewire::test(DatabaseIndex::class, ['tab' => 'kullanicilar'])
+        $page = Livewire::test(DatabaseIndex::class, ['tab' => 'users'])
             ->call('deleteUser', $user->id)
             ->assertDispatched('toast', fn ($name, $p) => ($p['undo']['method'] ?? null) === 'undoDeleteUser');
         $this->assertSame(['hosts' => [], 'grants' => []], array_intersect_key($this->agent->called('db.user.apply')[0], ['hosts' => 1, 'grants' => 1]));
@@ -322,12 +322,12 @@ class DatabasesTest extends TestCase
     {
         $shop = $this->database('shop');
 
-        $this->get('http://panel.serfex.test/databases/'.$shop->id.'/yonetici')
+        $this->get('http://panel.serfex.test/databases/'.$shop->id.'/manager')
             ->assertRedirect('https://panel.serfex.test:8443/phpmyadmin/serfex-sso.php?token=abc');
         $this->assertSame([['server' => 'mysql', 'database' => 'kahve_shop']], $this->agent->called('db.manager.login'));
 
         $this->agent->answers['db.manager.login'] = AgentException::rpcError('db.manager.login', -32602, 'the database manager is not set up');
-        $this->get('/databases/'.$shop->id.'/yonetici')->assertRedirect(route('databases.show', $shop))->assertSessionHas('toast');
+        $this->get('/databases/'.$shop->id.'/manager')->assertRedirect(route('databases.show', $shop))->assertSessionHas('toast');
     }
 
     public function test_customers_see_and_manage_only_their_own_databases_within_the_package(): void
@@ -340,7 +340,7 @@ class DatabasesTest extends TestCase
 
         $this->get('/databases')->assertOk()->assertDontSee('kahve_shop')->assertDontSee('Veritabanı sunucuları');
         $this->get('/databases/'.$theirs->id)->assertNotFound();
-        $this->get('/databases/'.$theirs->id.'/yonetici')->assertNotFound();
+        $this->get('/databases/'.$theirs->id.'/manager')->assertNotFound();
         $this->get('/databases/settings')->assertForbidden();
         Livewire::test(DatabaseIndex::class)->call('setupServer')->assertForbidden();
 

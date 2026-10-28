@@ -26,6 +26,15 @@
                 </div>
                 <div class="space-y-4 p-5 text-[13.5px]">
                     <div>
+                        <label for="locale" class="mb-1.5 block">{{ __('Panelin dili') }}</label>
+                        <select id="locale" name="locale" data-url="{{ request()->fullUrlWithQuery(['lang' => '__LANG__']) }}" onchange="location.href = this.dataset.url.replace('__LANG__', this.value)" class="h-9 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-accent">
+                            @foreach (\App\Support\Locales::all() as $code => $name)
+                                <option value="{{ $code }}" @selected(old('locale', app()->getLocale()) === $code)>{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-2xs text-muted">{{ __('Sunucunun varsayılan dili olur; her yönetici ve müşteri kendi dilini ayrıca seçebilir.') }}</p>
+                    </div>
+                    <div>
                         <label for="name" class="mb-1.5 block">{{ __('Ad soyad') }}</label>
                         <input id="name" name="name" value="{{ old('name') }}" required autofocus autocomplete="name"
                                class="h-9 w-full rounded-md border bg-surface px-3 outline-none focus:border-accent {{ $errors->has('name') ? 'border-crit' : 'border-line' }}">
@@ -47,15 +56,6 @@
                         <label for="password_confirmation" class="mb-1.5 block">{{ __('Parola (tekrar)') }}</label>
                         <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password"
                                class="h-9 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-accent">
-                    </div>
-                    <div>
-                        <label for="locale" class="mb-1.5 block">{{ __('Panelin dili') }}</label>
-                        <select id="locale" name="locale" class="h-9 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-accent">
-                            @foreach (\App\Support\Locales::all() as $code => $name)
-                                <option value="{{ $code }}" @selected(old('locale', app()->getLocale()) === $code)>{{ $name }}</option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-2xs text-muted">{{ __('Sunucunun varsayılan dili olur; her yönetici ve müşteri kendi dilini ayrıca seçebilir.') }}</p>
                     </div>
                 </div>
                 <div class="border-t border-line px-5 py-3">

@@ -97,7 +97,7 @@ class ComponentsTest extends TestCase
     {
         $this->site();
 
-        $this->get('/yazilim')->assertOk()
+        $this->get('/software')->assertOk()
             ->assertSee('Yazılım Yönetimi')
             ->assertSee('Nginx')
             ->assertSee('Güncelleme var')
@@ -109,7 +109,7 @@ class ComponentsTest extends TestCase
             ->assertSee('Yeni siteler için varsayılan')
             ->assertSee('Nginx + Apache + PHP-FPM (Apache kurulu değil)');
 
-        Livewire::test(ComponentIndex::class)->set('tab', 'diger')
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
             ->assertSee('Redis')
             ->assertSee('Node.js 24 LTS')
             ->assertSee('Derlemelerde kullanılıyor')
@@ -120,7 +120,7 @@ class ComponentsTest extends TestCase
             // Not known to this agent version.
             ->assertSee('Ajan bu bileşeni tanımıyor');
 
-        Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
+        Livewire::test(ComponentIndex::class)->set('tab', 'databases')
             ->assertSee('MySQL')
             ->assertSee('MySQL kurulu; MariaDB onunla aynı anda kurulamaz.')
             ->assertSee('phpMyAdmin ve Adminer');
@@ -172,7 +172,7 @@ class ComponentsTest extends TestCase
 
         // Node.js is looked up by the update check; until then it is unknown.
         $this->components['node22'] = ['id' => 'node22', 'installed' => false, 'running' => false];
-        Livewire::test(ComponentIndex::class)->set('tab', 'diger')
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
             ->call('ask', 'node22', 'install')
             ->assertSee('Henüz bilinmiyor; "Güncellemeleri denetle" ile öğrenilir.')
             ->assertSee('nodejs.org');
@@ -193,7 +193,7 @@ class ComponentsTest extends TestCase
             ['major' => '18', 'default' => true, 'version' => '18.1-1.pgdg24.04+2', 'from' => 'apt.postgresql.org/pub/repos/apt'],
         ]];
 
-        $page = Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
             ->assertSee('9.7.0-1ubuntu24.04')
             ->assertSee('kurulacak · MySQL deposu (repo.mysql.com)')
             ->assertSee('Kurarken 8.4 de seçilebilir')
@@ -218,7 +218,7 @@ class ComponentsTest extends TestCase
         // A version Serfex does not offer is refused.
         $this->assertSame('MySQL için bu sürüm sunulmuyor.', app(Components::class)->start('mysql', 'install', null, '8.0'));
 
-        Livewire::test(ComponentIndex::class)->set('tab', 'veritabani')
+        Livewire::test(ComponentIndex::class)->set('tab', 'databases')
             ->call('ask', 'mariadb', 'install')
             ->assertSee('Paket sürümü henüz bilinmiyor; "Güncellemeleri denetle" ile öğrenilir.')
             ->assertSee('MariaDB deposu (dlm.mariadb.com)');
@@ -372,7 +372,7 @@ class ComponentsTest extends TestCase
         Livewire::test(ComponentIndex::class)
             ->call('check')
             ->assertDispatched('toast')
-            ->set('tab', 'diger')
+            ->set('tab', 'other')
             ->call('openSettings')
             ->assertSet('modsecMode', 'detect')
             ->set('modsecMode', 'block')

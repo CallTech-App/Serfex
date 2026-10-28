@@ -20,7 +20,7 @@ class AiAudit extends Component
 {
     use WithPagination;
 
-    #[Url(as: 'tur', except: '')]
+    #[Url(as: 'type', except: '')]
     public string $type = '';
 
     #[Url(as: 'q', except: '')]

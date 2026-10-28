@@ -90,7 +90,7 @@ class FilesTest extends TestCase
 
     public function test_lists_the_site_folder_as_the_sites_user_and_opens_folders(): void
     {
-        $this->get('/sites/'.$this->site->id.'/dosyalar')->assertOk()
+        $this->get('/sites/'.$this->site->id.'/files')->assertOk()
             ->assertSee('Dosya Yöneticisi')
             ->assertSee('/home/kahve/web/')
             ->assertSee('public_html')
@@ -187,11 +187,11 @@ class FilesTest extends TestCase
 
     public function test_the_editor_reads_and_saves_text_with_its_version_in_the_trash(): void
     {
-        $base = '/sites/'.$this->site->id.'/dosyalar';
-        $this->getJson($base.'/metin?yol=public_html/index.php')->assertOk()
+        $base = '/sites/'.$this->site->id.'/files';
+        $this->getJson($base.'/text?path=public_html/index.php')->assertOk()
             ->assertJson(['content' => "<?php echo 'merhaba';\n", 'mtime' => 1760860800123456]);
 
-        $this->postJson($base.'/kaydet', ['path' => 'public_html/index.php', 'content' => "<?php echo 'selam';\n", 'mtime' => 1760860800123456])
+        $this->postJson($base.'/save', ['path' => 'public_html/index.php', 'content' => "<?php echo 'selam';\n", 'mtime' => 1760860800123456])
             ->assertOk()->assertJson(['trash' => 'v1']);
         $save = $this->agent->called('files.save')[0];
         $this->assertSame("<?php echo 'selam';\n", base64_decode($save['data']));
@@ -199,10 +199,10 @@ class FilesTest extends TestCase
 
         // Someone changed the file meanwhile.
         $this->agent->answers['files.save'] = AgentException::rpcError('files.save', FileManager::ERROR, 'conflict: public_html/index.php: changed since it was opened');
-        $this->postJson($base.'/kaydet', ['path' => 'public_html/index.php', 'content' => 'x', 'mtime' => 1])
+        $this->postJson($base.'/save', ['path' => 'public_html/index.php', 'content' => 'x', 'mtime' => 1])
             ->assertStatus(422)->assertJson(['code' => 'conflict', 'error' => 'Dosya siz düzenlerken değişti. Kaydetmeden önce yeniden açın.']);
 
-        $this->postJson($base.'/kaydet', ['path' => 'a.txt', 'content' => str_repeat('a', FileManager::MAX_EDIT + 1), 'mtime' => 0])->assertStatus(422);
+        $this->postJson($base.'/save', ['path' => 'a.txt', 'content' => str_repeat('a', FileManager::MAX_EDIT + 1), 'mtime' => 0])->assertStatus(422);
 
         Livewire::test(SiteFiles::class, ['site' => $this->site->id])
             ->call('saved', 'public_html/index.php', 'v1')
@@ -211,25 +211,25 @@ class FilesTest extends TestCase
 
     public function test_uploads_in_chunks_and_downloads(): void
     {
-        $base = '/sites/'.$this->site->id.'/dosyalar';
-        $this->call('POST', $base.'/yukle?yol=public_html&ad=logo.png&parca=up-1&offset=0', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'abc')
+        $base = '/sites/'.$this->site->id.'/files';
+        $this->call('POST', $base.'/upload?path=public_html&name=logo.png&upload=up-1&offset=0', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'abc')
             ->assertOk()->assertJson(['size' => 3, 'path' => '']);
-        $this->call('POST', $base.'/yukle?yol=public_html&ad=logo.png&parca=up-1&offset=3&son=1', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'def')
+        $this->call('POST', $base.'/upload?path=public_html&name=logo.png&upload=up-1&offset=3&final=1', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'def')
             ->assertOk()->assertJson(['path' => 'public_html/logo.png']);
         $calls = $this->agent->called('files.upload');
         $this->assertSame([0, 3], array_column($calls, 'offset'));
         $this->assertSame([false, true], array_column($calls, 'final'));
         $this->assertSame('def', base64_decode($calls[1]['data']));
 
-        $this->call('POST', $base.'/yukle?yol=&ad=buyuk.iso&parca=up-2&offset='.(FileManager::MAX_UPLOAD - 1), [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'ab')
+        $this->call('POST', $base.'/upload?path=&name=buyuk.iso&upload=up-2&offset='.(FileManager::MAX_UPLOAD - 1), [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'ab')
             ->assertStatus(422)->assertJson(['error' => 'Dosyalar en fazla 2 GB olabilir. Daha büyükleri SFTP ile yükleyin.']);
 
-        $response = $this->get($base.'/indir?yol=public_html/index.php')->assertOk();
+        $response = $this->get($base.'/download?path=public_html/index.php')->assertOk();
         $this->assertSame('merhaba', $response->streamedContent());
         $this->assertStringContainsString('index.php', $response->headers->get('Content-Disposition'));
 
         $this->agent->answers['files.read'] = AgentException::rpcError('files.read', FileManager::ERROR, 'outside: ../../etc/passwd: leaves the site');
-        $this->get($base.'/indir?yol=../../etc/passwd')->assertNotFound();
+        $this->get($base.'/download?path=../../etc/passwd')->assertNotFound();
     }
 
     public function test_a_full_disk_refuses_uploads_but_not_ftp_accounts(): void
@@ -237,7 +237,7 @@ class FilesTest extends TestCase
         $customer = Customer::factory()->create(['username' => 'kahve2']);
         $this->site->systemUser->update(['customer_id' => $customer->id, 'disk_bytes' => 30 * 1024 ** 3]);
 
-        $this->call('POST', '/sites/'.$this->site->id.'/dosyalar/yukle?yol=&ad=a.txt&parca=up-3&offset=0', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'a')
+        $this->call('POST', '/sites/'.$this->site->id.'/files/upload?path=&name=a.txt&upload=up-3&offset=0', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'a')
             ->assertStatus(422)->assertJsonFragment(['error' => 'Disk kotası doldu (30 GB / 20 GB). Yer açın ya da paketi yükseltin.']);
         $this->assertSame([], $this->agent->called('files.upload'));
         $this->assertNull(app(FtpAccounts::class)->refusal($this->site->systemUser->fresh()));
@@ -391,12 +391,12 @@ class FilesTest extends TestCase
         $mine = Site::factory()->for(app(Customers::class)->account($customer))->create(['domain' => 'adapansiyon.com']);
         $this->actingAs($customer->user);
 
-        $this->get('/sites/'.$mine->id.'/dosyalar')->assertOk()->assertSee('adapansiyon.com');
+        $this->get('/sites/'.$mine->id.'/files')->assertOk()->assertSee('adapansiyon.com');
         $this->get('/sites/'.$mine->id.'/ftp')->assertOk()->assertSee('ada_');
-        $this->get('/sites/'.$this->site->id.'/dosyalar')->assertNotFound();
+        $this->get('/sites/'.$this->site->id.'/files')->assertNotFound();
         $this->get('/sites/'.$this->site->id.'/ftp')->assertNotFound();
-        $this->getJson('/sites/'.$this->site->id.'/dosyalar/metin?yol=public_html/index.php')->assertNotFound();
-        $this->get('/sites/'.$this->site->id.'/dosyalar/indir?yol=public_html/index.php')->assertNotFound();
+        $this->getJson('/sites/'.$this->site->id.'/files/text?path=public_html/index.php')->assertNotFound();
+        $this->get('/sites/'.$this->site->id.'/files/download?path=public_html/index.php')->assertNotFound();
         $this->assertSame([], array_filter($this->agent->called('files.text'), fn ($p) => $p['domain'] === 'kahveatolyesi.com.tr'));
 
         $page = Livewire::test(SiteFtp::class, ['site' => $mine->id])

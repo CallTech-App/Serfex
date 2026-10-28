@@ -27,7 +27,7 @@
         <section class="rounded-xl border border-line bg-surface p-5 text-[13.5px]">
             <p class="font-medium">{{ __('Bu sitede bir Laravel uygulaması var.') }}</p>
             <p class="mt-1 text-muted">{{ __('Laravel uygulamaları sıfır kesintili sürümlerle dağıtılır; depo, webhook ve geçmiş orada.') }}</p>
-            <a href="{{ route('laravel.show', [$site->laravelApp, 'bolum' => 'dagitimlar']) }}" wire:navigate class="{{ $btn }} mt-3 w-fit">{{ __('Laravel → Dağıtımlar') }}</a>
+            <a href="{{ route('laravel.show', [$site->laravelApp, 'section' => 'deployments']) }}" wire:navigate class="{{ $btn }} mt-3 w-fit">{{ __('Laravel → Dağıtımlar') }}</a>
         </section>
     @elseif ($repo === null)
         {{-- Depo bağla --}}

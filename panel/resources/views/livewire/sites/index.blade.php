@@ -32,8 +32,8 @@
                         @if ($admin)<th class="px-3 py-2.5 font-medium">{{ __('Müşteri') }}</th>@endif
                         <th class="px-3 py-2.5 font-medium">PHP</th>
                         <th class="px-3 py-2.5 text-right font-medium">
-                            <button type="button" wire:click="$set('sort', '{{ $sort === 'trafik' ? '' : 'trafik' }}')" class="inline-flex items-center gap-1 uppercase hover:text-fg" title="{{ __('Bu ayın trafiğine göre sırala') }}">
-                                {{ __('Trafik (bu ay)') }}@if ($sort === 'trafik')<x-icon name="arrow-down" class="size-3" />@endif
+                            <button type="button" wire:click="$set('sort', '{{ $sort === 'traffic' ? '' : 'traffic' }}')" class="inline-flex items-center gap-1 uppercase hover:text-fg" title="{{ __('Bu ayın trafiğine göre sırala') }}">
+                                {{ __('Trafik (bu ay)') }}@if ($sort === 'traffic')<x-icon name="arrow-down" class="size-3" />@endif
                             </button>
                         </th>
                         <th class="py-2.5 pr-5 pl-3 font-medium">{{ __('Durum') }}</th>
