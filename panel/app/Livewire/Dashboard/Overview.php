@@ -62,7 +62,7 @@ class Overview extends Component
             }
         }
 
-        $day = $this->history('24s');
+        $day = $this->history('24h');
         $daySum = ServerHistory::summary($day);
         $checks = $this->checks($snap, $user);
         $problems = array_values(array_filter($checks, fn ($c) => $c['problem'] !== null));
@@ -185,7 +185,7 @@ class Overview extends Component
 
         // SSL
         $ssl = Certificate::attentionCount();
-        $sslUrl = route('ssl.index', $ssl ? ['durum' => 'problem'] : []);
+        $sslUrl = route('ssl.index', $ssl ? ['status' => 'problem'] : []);
         $add('shield-check', __('SSL sertifikaları'), $ssl ? 'warn' : 'ok', $ssl ? trans_choice(':count sertifika ilgilenmenizi bekliyor', $ssl) : __('Sorun yok'), $sslUrl, $ssl ? [
             'title' => trans_choice(':count sertifika ilgilenmenizi bekliyor', $ssl),
             'text' => __('Süresi dolmak üzere olan ya da yenilenemeyen sertifikalar var. Süre dolarsa ziyaretçiler güvenlik uyarısı görür.'),
@@ -210,7 +210,7 @@ class Overview extends Component
 
         // Güvenlik taraması
         $findings = Scans::attentionCount();
-        $scanUrl = route('security.index', ['sekme' => 'tarama']);
+        $scanUrl = route('security.index', ['tab' => 'scan']);
         if ($findings) {
             $add('shield-alert', __('Güvenlik taraması'), 'crit', trans_choice(':count ciddi güvenlik bulgusu var', $findings), $scanUrl, [
                 'title' => trans_choice(':count ciddi güvenlik bulgusu var', $findings),
@@ -225,7 +225,7 @@ class Overview extends Component
 
         // Disk alanı
         $disk = ServerHistory::disk();
-        $diskUrl = route('monitor.index', ['sekme' => 'sistem']);
+        $diskUrl = route('monitor.index', ['tab' => 'system']);
         if ($disk === null) {
             $add('hard-drive', __('Disk alanı'), 'muted', __('Ölçülmedi'), $diskUrl);
         } else {
@@ -305,7 +305,7 @@ class Overview extends Component
         $disk = ServerHistory::disk();
         $daysLeft = null;
         if ($disk !== null) {
-            $month = array_values(array_filter($this->history('30g'), fn ($p) => $p['disk_used'] !== null));
+            $month = array_values(array_filter($this->history('30d'), fn ($p) => $p['disk_used'] !== null));
             if (count($month) > 1) {
                 $first = $month[0];
                 $last = end($month);
@@ -349,7 +349,7 @@ class Overview extends Component
         $quota = app(Quotas::class)->attentionCount();
 
         return [
-            ['icon' => 'globe', 'name' => __('Siteler'), 'count' => Site::count(), 'url' => route('sites.index', $monthBytes ? ['sirala' => 'trafik'] : []),
+            ['icon' => 'globe', 'name' => __('Siteler'), 'count' => Site::count(), 'url' => route('sites.index', $monthBytes ? ['sort' => 'traffic'] : []),
                 'note' => $monthBytes ? __('bu ay :bytes trafik', ['bytes' => Bytes::format($monthBytes)]) : __('Bu ay trafik yok'), 'tone' => null],
             ['icon' => 'layers', 'name' => 'Laravel', 'count' => $apps, 'url' => route('laravel.index'),
                 'note' => $appAttention ? trans_choice(':count sorunlu uygulama', $appAttention) : ($apps ? __('Sorun yok') : __('Henüz uygulama yok')), 'tone' => $appAttention ? 'warn' : null],

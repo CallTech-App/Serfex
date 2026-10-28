@@ -119,7 +119,7 @@
                     @endif
                 </p>
                 @if ($ai['count'] && ! $readOnly)
-                    <a href="{{ route('monitor.index', ['sekme' => 'saldirilar']) }}" wire:navigate class="font-medium text-accent hover:underline">{{ __('Engellere bak') }}</a>
+                    <a href="{{ route('monitor.index', ['tab' => 'attacks']) }}" wire:navigate class="font-medium text-accent hover:underline">{{ __('Engellere bak') }}</a>
                 @else
                     <x-ask-ai :question="__('Sunucumun şu anki durumunu kısaca özetler misin? Dikkat etmem gereken bir şey var mı?')" :label="__('Durumu özetlet')" class="bg-transparent px-0 hover:bg-transparent hover:underline" />
                 @endif
@@ -134,7 +134,7 @@
             <div class="flex items-center gap-3">
                 <h2 id="resources-title" class="text-[14.5px] font-semibold">{{ __('Sunucu kaynakları') }}</h2>
                 <span class="hidden text-2xs text-muted sm:inline">{{ __('şu an · grafikler son 24 saat') }}</span>
-                <a href="{{ route('monitor.index', ['sekme' => 'sistem']) }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">{{ __('Canlı izlemede aç') }}</a>
+                <a href="{{ route('monitor.index', ['tab' => 'system']) }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">{{ __('Canlı izlemede aç') }}</a>
             </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div class="min-w-0 rounded-xl border border-line bg-surface p-4">

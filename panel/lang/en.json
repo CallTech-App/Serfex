@@ -4303,6 +4303,6 @@
     "İki adımlı doğrulama kapalı": "Two-step verification is off",
     "şu an · grafikler son 24 saat": "now · charts show the last 24 hours",
     "son 1 dakika": "last minute",
-    ":count sorunlu uygulama": ":count application with a problem|:count applications with problems",
+    ":count sorunlu uygulama": ":count with a problem|:count with problems",
     "giden · :rate gelen": "out · :rate in"
 }
