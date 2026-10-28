@@ -157,6 +157,25 @@ class PanelSettings
     }
 
     /**
+     * How many days the rotated logs of the sites, the panel and the
+     * webmail are kept (the agent rotates them every day).
+     *
+     * @throws AgentException
+     */
+    public function logKeepDays(): int
+    {
+        return (int) (((array) $this->agent->call('logs.rotation.get'))['keep_days'] ?? 14);
+    }
+
+    /**
+     * @throws AgentException
+     */
+    public function setLogKeepDays(int $days): void
+    {
+        $this->agent->call('logs.rotation.set', ['keep_days' => $days], config('serfex.agent.job_timeout'));
+    }
+
+    /**
      * The port the panel (and phpMyAdmin, Adminer) answers on.
      */
     public function port(): int

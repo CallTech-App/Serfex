@@ -18,6 +18,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/logrotate"
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/rpc"
 	"github.com/calltech-app/serfex/agent/internal/site"
@@ -154,8 +155,11 @@ func TestSettingsAndCronMethods(t *testing.T) {
 	c.Exe = "/opt/serfex/current/bin/serfex-agent"
 	registerMethods(srv, services{
 		sites: site.NewManager(sim, "www-data"), dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
-		databases: database.NewSimulated(sim), cron: c, system: system.NewManager(sim), dryRun: true,
+		databases: database.NewSimulated(sim), cron: c, system: system.NewManager(sim), logs: logrotate.NewManager(sim), dryRun: true,
 	})
+	if err := os.MkdirAll(sim.Path(logrotate.Dir), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	sock := filepath.Join(t.TempDir(), "agent.sock")
 	ln, err := net.Listen("unix", sock)
 	if err != nil {
@@ -241,6 +245,15 @@ func TestSettingsAndCronMethods(t *testing.T) {
 	info = call("system.info", `{}`, 0)
 	want("hostname after set", info["hostname"], "panel.example.com")
 	want("timezone after set", info["timezone"], "Europe/Berlin")
+
+	// Log rotation: site.apply added a.com's logs to the rules.
+	if b, err := os.ReadFile(sim.Path(logrotate.PHPRules)); err != nil || !strings.Contains(string(b), "/home/a/web/a.com/logs/php-error.log") {
+		t.Errorf("site.apply did not add the site's PHP log to the rules: %v %s", err, b)
+	}
+	want("logs.rotation.get", call("logs.rotation.get", `{}`, 0), map[string]any{"keep_days": 14})
+	want("logs.rotation.set", call("logs.rotation.set", `{"keep_days":30}`, 0), map[string]any{"keep_days": 30})
+	call("logs.rotation.set", `{"keep_days":0}`, rpc.CodeInvalidParams)
+	want("logs.rotation after set", call("logs.rotation.get", `{}`, 0), map[string]any{"keep_days": 30})
 	if zones := call("system.timezones", `{}`, 0)["list"].([]any); len(zones) < 6 {
 		t.Fatalf("zones %v", zones)
 	}

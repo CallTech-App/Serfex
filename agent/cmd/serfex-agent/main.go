@@ -39,6 +39,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/ftp"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/logrotate"
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/monitor"
 	"github.com/calltech-app/serfex/agent/internal/php"
@@ -173,6 +174,8 @@ func main() {
 	svc.cron = cron.NewManager(h)
 	svc.cron.Demo = *dryRun
 	svc.system = system.NewManager(h)
+	svc.logs = logrotate.NewManager(h)
+	svc.log = log
 	svc.security = security.NewManager(h, svc.files)
 	svc.security.WebUser = *webUser
 	svc.firewall = firewall.NewManager(h)
@@ -313,6 +316,9 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	if err := svc.php.SyncCLI(ctx); err != nil {
 		log.Error("copying PHP defaults to the command line", "err", err)
 	}
+	// Rotation rules are rebuilt at once: sites set up by older agents
+	// had none.
+	go svc.logs.Run(ctx, log)
 	go svc.monitor.Run(ctx)
 	go svc.databases.Run(ctx)
 	if svc.geoFile != "" {

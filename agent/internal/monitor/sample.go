@@ -344,7 +344,8 @@ func lastUnit(path string) string {
 
 // tail returns the lines appended to a log file since the last read. The
 // first read starts at the end: only new events count. A rotated or
-// truncated file is read from its start.
+// truncated file is read from its start; a rotated one after the rest of
+// the old file.
 type tail struct {
 	file   string
 	ino    uint64
@@ -354,6 +355,30 @@ type tail struct {
 	// new and read from its start.
 	missing bool
 	part    []byte
+}
+
+// rotated returns what was appended to the followed file after the last
+// read, if it is now <file>.1. The partial line read before is kept only
+// when the rest follows it.
+func (t *tail) rotated() []byte {
+	part := t.part
+	t.part = nil
+	f, err := os.Open(t.file + ".1")
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil || inode(fi) != t.ino || fi.Size() <= t.offset {
+		return nil
+	}
+	start := max(t.offset, fi.Size()-maxRead)
+	buf := make([]byte, fi.Size()-start)
+	n, _ := f.ReadAt(buf, start)
+	if start == t.offset {
+		t.part = part
+	}
+	return buf[:n]
 }
 
 // maxRead bounds the work per sample when a log grows very fast.
@@ -373,27 +398,36 @@ func (t *tail) read() []string {
 	ino := inode(fi)
 	size := fi.Size()
 	if !t.opened {
-		t.opened, t.ino, t.offset, t.part = true, ino, size, nil
+		t.opened = true
 		if !t.missing {
+			t.ino, t.offset, t.part = ino, size, nil
 			return nil
 		}
-		t.offset = 0
+		if t.ino == 0 {
+			t.ino, t.offset = ino, 0
+		}
 	}
-	if ino != t.ino || size < t.offset {
-		t.ino, t.offset, t.part = ino, 0, nil
+	var rest []byte
+	if ino != t.ino {
+		// The lines written since the last read are at the end of the
+		// renamed file (logrotate keeps it uncompressed a day).
+		rest = t.rotated()
+		t.ino, t.offset = ino, 0
+	} else if size < t.offset {
+		t.offset, t.part = 0, nil
 	}
-	if size == t.offset {
+	if size == t.offset && len(rest) == 0 {
 		return nil
 	}
 	if size-t.offset > maxRead {
 		// Too far behind: skip to the last maxRead bytes.
-		t.offset, t.part = size-maxRead, nil
+		t.offset, t.part, rest = size-maxRead, nil, nil
 	}
 	buf := make([]byte, size-t.offset)
 	n, _ := f.ReadAt(buf, t.offset)
 	buf = buf[:n]
 	t.offset += int64(n)
-	data := append(t.part, buf...)
+	data := append(append(t.part, rest...), buf...)
 	last := bytes.LastIndexByte(data, '\n')
 	if last < 0 {
 		t.part = data

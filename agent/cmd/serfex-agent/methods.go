@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net"
 	"net/netip"
 	"runtime"
@@ -20,6 +21,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/firewall"
 	"github.com/calltech-app/serfex/agent/internal/ftp"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/logrotate"
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/monitor"
 	"github.com/calltech-app/serfex/agent/internal/php"
@@ -91,6 +93,8 @@ type services struct {
 	php        *php.Manager
 	cron       *cron.Manager
 	system     *system.Manager
+	logs       *logrotate.Manager
+	log        *slog.Logger
 	stats      *stats.Aggregator
 	statsFile  string
 	geoFile    string
@@ -126,6 +130,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 		if err != nil {
 			return nil, mapError(err)
 		}
+		syncLogRotation(ctx, svc)
 		return res, nil
 	})
 	srv.Handle("site.delete", func(ctx context.Context, p json.RawMessage) (any, error) {
@@ -137,6 +142,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 		if err != nil {
 			return nil, mapError(err)
 		}
+		syncLogRotation(ctx, svc)
 		return res, nil
 	})
 	handle(srv, "site.logs", func(_ context.Context, p site.LogsSpec) (any, error) { return svc.sites.Logs(p) })
@@ -485,7 +491,8 @@ func mapError(err error) error {
 	var phpv *php.ValidationError
 	var cronv *cron.ValidationError
 	var sysv *system.ValidationError
-	if errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var logv *logrotate.ValidationError
+	if errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -505,10 +512,19 @@ func mapError(err error) error {
 	var phpop *php.OperationError
 	var cronop *cron.OperationError
 	var sysop *system.OperationError
-	if errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var logop *logrotate.OperationError
+	if errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
+}
+
+// syncLogRotation adds a new site's logs to the rotation rules, or takes a
+// removed site's out. The site's own change stands even if this fails.
+func syncLogRotation(ctx context.Context, svc services) {
+	if err := svc.logs.Sync(context.WithoutCancel(ctx)); err != nil && svc.log != nil {
+		svc.log.Error("writing log rotation rules", "err", err)
+	}
 }
 
 // handle registers a method whose params decode into P.
@@ -911,6 +927,8 @@ func registerSettings(srv *rpc.Server, svc services) {
 	handle(srv, "system.hostname.set", func(ctx context.Context, p system.HostnameSpec) (any, error) { return s.SetHostname(ctx, p) })
 	handle(srv, "system.timezone.set", func(ctx context.Context, p system.TimezoneSpec) (any, error) { return s.SetTimezone(ctx, p) })
 	handle(srv, "system.timezones", func(context.Context, struct{}) (any, error) { return s.Timezones() })
+	handle(srv, "logs.rotation.get", func(context.Context, struct{}) (any, error) { return svc.logs.Settings(), nil })
+	handle(srv, "logs.rotation.set", func(ctx context.Context, p logrotate.Settings) (any, error) { return svc.logs.Set(ctx, p) })
 
 	handle(srv, "panel.web.status", func(context.Context, struct{}) (any, error) { return db.WebPortsStatus() })
 	// Reconfiguring serfex-web (maybe installing packages) outlives a

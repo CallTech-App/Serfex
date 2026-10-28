@@ -11,7 +11,7 @@
         return $d > 0 ? __(':d gün :h saat', ['d' => $d, 'h' => $h]) : __(':h saat :s dakika', ['h' => $h, 's' => intdiv($s % 3600, 60)]);
     };
 @endphp
-<x-settings-page current="settings.server" :title="__('Sunucu')" :description="__('Sunucunun adı, adresleri ve donanımı.')">
+<x-settings-page current="settings.server" :title="__('Sunucu')" :description="__('Sunucunun adı, günlükleri, adresleri ve donanımı.')">
     @if ($agentError)
         <div class="rounded-xl border border-line bg-crit-soft px-5 py-4 text-[13.5px]"><p class="font-medium text-crit">{{ $agentError }}</p></div>
     @endif
@@ -28,6 +28,21 @@
                             <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
                         @else
                             <p class="mt-1.5 text-2xs text-muted">{{ __('Sunucunun kendi adı (hostname). Panelin ve posta sunucusunun adreslerinden ayrıdır; onlar Genel ve E-posta ayarlarında.') }}</p>
+                        @enderror
+                    </div>
+                </div>
+                <div class="{{ $row }}">
+                    <label for="server-log-days" class="sm:pt-2">{{ __('Günlükleri sakla') }}</label>
+                    <div>
+                        <select id="server-log-days" wire:model.number="logDays" class="{{ str_replace('font-mono', '', $field) }} sm:w-48 {{ $errors->has('logDays') ? 'border-crit' : 'border-line' }}">
+                            @foreach ($logDayOptions as $days)
+                                <option value="{{ $days }}">{{ trans_choice(':count gün', $days) }}</option>
+                            @endforeach
+                        </select>
+                        @error('logDays')
+                            <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
+                        @else
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Sitelerin erişim, hata ve PHP günlükleri ile panelin ve web postanın günlükleri her gece döndürülür ve sıkıştırılır. Bu süreden eski günlükler silinir.') }}</p>
                         @enderror
                     </div>
                 </div>
