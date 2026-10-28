@@ -115,7 +115,8 @@ func TestPageCache(t *testing.T) {
 }
 
 // nginxCheck runs nginx -t on the vhost when Nginx is installed, with the
-// server's paths moved into a scratch directory.
+// server's paths moved into a scratch directory and port 80 moved to a high
+// port (nginx -t binds the ports, which needs root below 1024).
 func nginxCheck(t *testing.T, sim interface{ Path(string) string }, vhost string) {
 	t.Helper()
 	bin, err := exec.LookPath("nginx")
@@ -130,6 +131,8 @@ func nginxCheck(t *testing.T, sim interface{ Path(string) string }, vhost string
 		"/var/lib/serfex/", dir+"/lib/",
 		"/home/", dir+"/home/",
 		"include fastcgi_params;", "include /etc/nginx/fastcgi_params;",
+		"listen 80;", "listen 127.0.0.1:18080;",
+		"listen [::]:80;", "",
 	).Replace(vhost)
 	for _, d := range []string{"cache/nginx", "log/sites/kahveatolyesi.com.tr", "etc"} {
 		if err := os.MkdirAll(filepath.Join(dir, d), 0o755); err != nil {
