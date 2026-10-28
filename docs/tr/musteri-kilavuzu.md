@@ -112,6 +112,10 @@ Bir site için kullanıcısıyla birlikte **veritabanı oluşturun** (adlar hesa
 **phpMyAdmin** ya da **Adminer** veritabanını tarayıcıda parolasız açar. Bir
 kullanıcıya kendi bilgisayarınızın adresinden bağlanma izni verilebilir.
 
+PostgreSQL veritabanında **Eklentiler** → **Eklentiyi aç** pgvector'ü açar
+(vektör kolonları ve benzerlik araması, Laravel'in `vector` kolonları).
+Uygulamanızın `CREATE EXTENSION` çalıştırması gerekmez.
+
 ## Laravel
 
 Paketiniz Laravel içeriyorsa: Git deposundan uygulama kurun ya da yeni proje

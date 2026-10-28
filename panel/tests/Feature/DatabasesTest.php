@@ -296,6 +296,56 @@ class DatabasesTest extends TestCase
         $this->assertSame('readwrite', $shop->users()->whereKey($other->id)->first()->pivot->access);
     }
 
+    public function test_pgvector_is_turned_on_and_off_on_a_postgresql_database(): void
+    {
+        $this->agent->answers['db.status'] = self::dbStatus(postgres: true);
+        $vector = ['name' => 'vector', 'enabled' => false, 'available' => '0.8.1'];
+        $this->agent->answers['db.extension.list'] = function () use (&$vector) {
+            return [$vector];
+        };
+        $this->agent->answers['db.extension.set'] = function ($p) use (&$vector) {
+            $vector = ['name' => 'vector', 'enabled' => $p['enabled'], 'available' => '0.8.1'] + ($p['enabled'] ? ['version' => '0.8.1'] : []);
+
+            return $vector;
+        };
+        $pg = Database::factory()->forSite($this->site, 'vektor')->create(['server' => 'postgresql']);
+
+        $page = Livewire::test(DatabaseShow::class, ['database' => $pg->id])
+            ->assertSee('Eklentiler')->assertSee('pgvector')->assertSee('Kapalı')
+            ->call('setExtension', 'vector', true)
+            ->assertDispatched('toast', fn ($name, $p) => ($p['undo']['args'] ?? null) === ['vector', false])
+            ->assertSee('0.8.1');
+        $this->assertSame([['server' => 'postgresql', 'database' => 'kahve_vektor', 'name' => 'vector', 'enabled' => true]], $this->agent->called('db.extension.set'));
+
+        // Columns that use it keep it on.
+        $this->agent->answers['db.extension.set'] = AgentException::rpcError('db.extension.set', -32602, 'vector is used by columns or indexes in kahve_vektor; remove them first');
+        $page->call('setExtension', 'vector', false)
+            ->assertDispatched('toast', fn ($name, $p) => str_contains($p['message'], 'kullanan kolonlar'));
+
+        // Only offered extensions, and none on MySQL.
+        $page->call('setExtension', 'plpython3u', true)->assertStatus(422);
+        $shop = $this->database('shop');
+        Livewire::test(DatabaseShow::class, ['database' => $shop->id])->assertDontSee('Eklentiler')
+            ->call('setExtension', 'vector', true)->assertForbidden();
+        $this->assertSame([['server' => 'postgresql', 'database' => 'kahve_vektor']], array_values(array_unique($this->agent->called('db.extension.list'), SORT_REGULAR)));
+    }
+
+    public function test_customers_turn_extensions_on_only_in_their_own_databases(): void
+    {
+        $this->agent->answers['db.status'] = self::dbStatus(postgres: true);
+        $this->agent->answers['db.extension.list'] = [['name' => 'vector', 'enabled' => false, 'available' => '0.8.1']];
+        $this->agent->answers['db.extension.set'] = ['name' => 'vector', 'enabled' => true, 'version' => '0.8.1'];
+        $customer = Customer::factory()->withLogin()->create(['username' => 'klinik']);
+        $site = Site::factory()->for(app(Customers::class)->account($customer))->create(['domain' => 'klinikmavi.com']);
+        $mine = Database::factory()->forSite($site, 'ai')->create(['server' => 'postgresql']);
+        $theirs = Database::factory()->forSite($this->site, 'ai')->create(['server' => 'postgresql']);
+        $this->actingAs($customer->user);
+
+        Livewire::test(DatabaseShow::class, ['database' => $mine->id])->assertSee('pgvector')->call('setExtension', 'vector', true)->assertHasNoErrors();
+        $this->assertSame('klinik_ai', $this->agent->called('db.extension.set')[0]['database']);
+        $this->get('/databases/'.$theirs->id)->assertNotFound();
+    }
+
     public function test_deleting_a_user_closes_it_and_purges_after_undo(): void
     {
         $shop = $this->database('shop');

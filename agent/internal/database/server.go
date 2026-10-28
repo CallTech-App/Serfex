@@ -242,6 +242,9 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 				return err
 			})
 		}
+		// Servers installed before Serfex offered extensions get their
+		// packages on the next repair or update.
+		m.ensureExtensionPackages(ctx, v, log)
 	} else {
 		if !m.exists(p.marker) {
 			major, err := pickRelease(p.name, spec.Version)

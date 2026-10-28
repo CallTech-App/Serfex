@@ -333,7 +333,7 @@ func databaseComponent(product string) *component {
 		c.update = func(o *op) error {
 			v := o.m.db.PGVersion()
 			o.t = txn.New(o.m.h)
-			pkgs := []string{"postgresql-" + v, "postgresql-client-" + v}
+			pkgs := append([]string{"postgresql-" + v, "postgresql-client-" + v}, o.m.db.ExtensionPackages()...)
 			o.step("Yeni sürüm kuruluyor: %s", strings.Join(pkgs, " "))
 			args := append(append([]string{"install", "--only-upgrade"}, aptOpts...), pkgs...)
 			if _, err := o.run(host.Command{Name: "apt-get", Args: args, Env: aptEnv}); err != nil {

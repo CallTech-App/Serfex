@@ -17,8 +17,8 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * One database: what it is, how to connect, who may use it, and deleting
- * it with Undo.
+ * One database: what it is, how to connect, who may use it, its
+ * PostgreSQL extensions, and deleting it with Undo.
  */
 #[Layout('components.layouts.app')]
 #[ForCustomers(except: ['setupServer'])]
@@ -50,10 +50,53 @@ class DatabaseShow extends Component
 
     public bool $backup = true;
 
-    public function mount(int $database, DatabaseServers $servers): void
+    /**
+     * The offered PostgreSQL extensions' state; null when the server could
+     * not say (extensionsError tells why).
+     *
+     * @var list<array{name: string, enabled: bool, version?: string, available?: string}>|null
+     */
+    #[Locked]
+    public ?array $extensions = null;
+
+    #[Locked]
+    public ?string $extensionsError = null;
+
+    public function mount(int $database, DatabaseServers $servers, Databases $databases): void
     {
         $this->databaseId = Database::withTrashed()->visibleTo(auth()->user())->findOrFail($database)->id;
         $this->refreshServer($servers);
+        $this->loadExtensions($databases);
+    }
+
+    /**
+     * Turns an offered extension on or off (PostgreSQL); Undo does the
+     * opposite.
+     */
+    public function setExtension(string $name, bool $enabled, Databases $databases): void
+    {
+        abort_unless(isset(Databases::extensionInfo()[$name]), 422);
+        $database = $this->database();
+        abort_if($database->trashed() || $database->server !== 'postgresql', 403);
+        $label = Databases::extensionInfo()[$name][0];
+        try {
+            $databases->setExtension($database, $name, $enabled);
+        } catch (AgentException $e) {
+            $this->dispatch('toast', message: str_contains($e->reason, 'remove them first')
+                ? __(':name kapatılamadı: bu veritabanında onu kullanan kolonlar veya indeksler var. Önce onları kaldırın.', ['name' => $label])
+                : __(':name değiştirilemedi: :reason', ['name' => $label, 'reason' => $e->reason]));
+            $this->loadExtensions($databases);
+
+            return;
+        }
+        $this->loadExtensions($databases);
+        $this->dispatch('toast',
+            message: $enabled
+                ? __(':name açıldı. Bu veritabanının kullanıcıları artık vector kolonları kullanabilir.', ['name' => $label])
+                : __(':name kapatıldı.', ['name' => $label]),
+            source: $this->getId(),
+            undo: ['method' => 'setExtension', 'args' => [$name, ! $enabled]],
+        );
     }
 
     public function openAdd(): void
@@ -199,6 +242,20 @@ class DatabaseShow extends Component
             'prefix' => $database->systemUser ? Databases::prefix($database->systemUser) : '',
             ...$this->userDialogData(),
         ])->title(__(':name · Veritabanları · Serfex', ['name' => $database->name]));
+    }
+
+    private function loadExtensions(Databases $databases): void
+    {
+        $database = $this->database();
+        $this->extensions = $this->extensionsError = null;
+        if ($database->server !== 'postgresql' || $database->trashed() || in_array($this->server['state'], ['offline', 'installing', 'upgrading', 'missing'], true)) {
+            return;
+        }
+        try {
+            $this->extensions = $databases->extensions($database);
+        } catch (AgentException $e) {
+            $this->extensionsError = $e->reason;
+        }
     }
 
     private function database(): Database

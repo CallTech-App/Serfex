@@ -112,6 +112,8 @@ func TestPostgreSQLUpgrade(t *testing.T) {
 	for _, want := range []string{
 		"systemctl reload postgresql@16-main",
 		"apt-get install -y -q --no-install-recommends postgresql-18 postgresql-client-18",
+		// The old version had pgvector, so the new one gets it first.
+		"apt-get install -y -q --no-install-recommends postgresql-18-pgvector",
 		"pg_upgradecluster -v 18 --method=upgrade --no-start 16 main",
 		"systemctl start postgresql@18-main",
 		"vacuumdb --all --analyze-only --quiet",
