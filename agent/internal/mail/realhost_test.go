@@ -270,6 +270,141 @@ func TestRealHost(t *testing.T) {
 	}
 }
 
+// TestRealHostSnappyMail serves SnappyMail as the webmail: it downloads
+// the release, signs in with a one-click token and reads the inbox
+// through SnappyMail, then goes back to Roundcube.
+func TestRealHostSnappyMail(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("needs root")
+	}
+	h := serviceHost{t: t}
+	m := NewManager(h, "www-data")
+	ctx := context.Background()
+	for _, unit := range []string{"nginx", "php8.3-fpm"} {
+		if _, err := h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"start", unit}}); err != nil {
+			t.Fatalf("starting %s: %v", unit, err)
+		}
+	}
+	res, err := m.Setup(ctx, SetupSpec{Hostname: testHost, Webmail: true, WebmailApp: SnappyMail})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("setup: %+v", res)
+	if res.WebmailVersion != SnappyMailRelease.Version {
+		t.Fatalf("setup = %+v", res)
+	}
+	if os.Getenv("SERFEX_KEEP") == "" {
+		t.Cleanup(func() {
+			_, _ = m.DeleteDomain(context.Background(), testDomain, true)
+			_, _ = m.Setup(context.Background(), SetupSpec{Hostname: testHost, Webmail: true})
+		})
+	}
+	out, err := exec.Command("doveadm", "pw", "-s", "SHA512-CRYPT", "-p", password).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := DomainSpec{Domain: testDomain, Mailboxes: []Mailbox{{Name: "ali", PasswordHash: strings.TrimSpace(string(out))}}}
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	waitPort(t, "127.0.0.1:587")
+	waitPort(t, "127.0.0.1:143")
+	ali := "ali@" + testDomain
+	_, _ = h.sh(ctx, "redis-cli -s "+redisSocket+" FLUSHALL")
+	if err := submit(ali, password, ali, []string{ali}, "SnappyMail", "SnappyMail testi."); err != nil {
+		t.Fatal(err)
+	}
+	waitMessages(t, ali, password, 1)
+
+	client := webClient()
+	get := func(path string) (int, string) {
+		t.Helper()
+		resp, err := client.Get("https://" + testHost + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return resp.StatusCode, string(body)
+	}
+	// The login page, its static files; not its code or data.
+	if code, body := get("/"); code != http.StatusOK || !strings.Contains(body, "Webmail") {
+		t.Fatalf("login page: %d\n%.1500s", code, body)
+	}
+	v := SnappyMailRelease.Version
+	if code, _ := get("/snappymail/v/" + v + "/static/js/min/app.min.js"); code != http.StatusOK {
+		t.Errorf("static file: %d", code)
+	}
+	for _, p := range []string{"/snappymail/v/" + v + "/include.php", "/snappymail/v/" + v + "/app/domains/default.json", "/data/VERSION", "/include.php", "/serfex-sso.php.bak"} {
+		if code, _ := get(p); code != http.StatusNotFound && code != http.StatusForbidden {
+			t.Errorf("%s answered %d", p, code)
+		}
+	}
+
+	login, err := m.WebmailLogin(ali)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := strings.TrimPrefix(login.URL, "https://"+testHost)
+	if code, body := get(path); code != http.StatusOK || !strings.Contains(body, `http-equiv="refresh"`) {
+		t.Fatalf("one-click login: %d\n%.1500s", code, body)
+	}
+	// Signed in: the app data carries the address and the inbox lists
+	// the message (read through Dovecot's master user).
+	code, body := get("/?/AppData/0/" + strconv.FormatInt(time.Now().Unix(), 10) + "/")
+	if code != http.StatusOK || !strings.Contains(body, ali) {
+		t.Fatalf("app data after one-click login: %d\n%.3000s", code, body)
+	}
+	token := regexp.MustCompile(`"token":"([^"]+)"`).FindStringSubmatch(body)
+	if token == nil {
+		t.Fatalf("no token in app data:\n%.3000s", body)
+	}
+	req, _ := http.NewRequest(http.MethodPost, "https://"+testHost+"/?/Json/&q[]=/0/", strings.NewReader(`{"Action":"MessageList","folder":"INBOX","offset":0,"limit":20,"uidNext":0}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-SM-Token", token[1])
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(list), `"subject":"SnappyMail"`) {
+		t.Fatalf("message list: %d\n%.3000s", resp.StatusCode, list)
+	}
+	// The token works once.
+	fresh := webClient()
+	resp, err = fresh.Get(login.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	resp, err = fresh.Get("https://" + testHost + "/?/AppData/0/1/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if strings.Contains(string(again), ali) {
+		t.Fatal("a used token signed in again")
+	}
+}
+
+// webClient talks HTTPS to the local Nginx, keeping cookies.
+func webClient() *http.Client {
+	jar, _ := cookiejar.New(nil)
+	return &http.Client{
+		Jar:     jar,
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			Proxy:           nil,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, "127.0.0.1:443")
+			},
+		},
+	}
+}
+
 func waitPort(t *testing.T, addr string) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)

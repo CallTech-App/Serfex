@@ -76,7 +76,7 @@
         ] : ($mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting ? [
             ['mail', __('Posta kutuları'), trans_choice(':count kutu', $mail->mailboxes_count), route('mail.show', $mail)],
             ['forward', __('Yönlendiriciler'), $mail->forwarders_count ?: __('Yok'), route('mail.show', [$mail, 'tab' => 'yonlendiriciler'])],
-            ['inbox', 'Webmail', $webmail ? 'Roundcube' : __('Kapalı'), $webmail, true],
+            ['inbox', 'Webmail', $webmail ? $webmailApp : __('Kapalı'), $webmail, true],
         ] : [
             ['mail', __('Posta kutuları'), __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
             ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],

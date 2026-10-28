@@ -74,9 +74,9 @@ func roundcubeJobDropIn(unit string) string {
 }
 
 // writeWebmail writes the mail vhost (always, for certificate validation
-// and mail client settings) and, with webmail on, Roundcube's account,
-// configuration, database and PHP-FPM pool on s.PHPVersion. It reports
-// whether Nginx or PHP-FPM need a reload.
+// and mail client settings) and, with webmail on, the webmail's account,
+// configuration (Roundcube's database too) and PHP-FPM pool on
+// s.PHPVersion. It reports whether Nginx or PHP-FPM need a reload.
 func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data tmplData) (bool, error) {
 	return changes(t, func() error {
 		data.Webmail = s.Webmail
@@ -87,6 +87,11 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		data.LogDir, data.ConfigDir, data.DataDir = webmailLogs, webmailConfig, webmailData
 		data.PHPSocket = webmailSocket
 		data.MasterPass, data.DESKey = s.MasterPassword, s.DESKey
+		data.WebmailApp = s.webmailApp()
+		data.SnappyData, data.SSODir, data.SSOFile = snappyMailData, webmailSSO, snappyMailSSO
+		if data.WebmailApp == SnappyMail {
+			data.WebmailRoot = snappyMailRoot(s.SnappyMailVersion)
+		}
 
 		for _, d := range []string{"/var/lib/serfex", "/var/lib/serfex/mail", autoconfigDir, cert.Webroot} {
 			if err := t.RootDir(d, 0o755, 0, 0); err != nil {
@@ -103,8 +108,15 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		if err != nil {
 			return err
 		}
-		if s.Webmail {
+		roundcube := s.Webmail && data.WebmailApp == Roundcube
+		snappy := s.Webmail && data.WebmailApp == SnappyMail
+		switch {
+		case roundcube:
 			if err := m.writeRoundcube(ctx, t, s, data); err != nil {
+				return err
+			}
+		case snappy:
+			if err := m.writeSnappyMail(ctx, t, s, data); err != nil {
 				return err
 			}
 		}
@@ -115,7 +127,12 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 				}
 			}
 		}
-		if !s.Webmail {
+		if !snappy {
+			if err := t.RemoveFile(snappyMailSSO); err != nil {
+				return err
+			}
+		}
+		if !roundcube {
 			if err := t.Unlink(roundcubeRoot + "/plugins/serfex_sso"); err != nil {
 				return err
 			}
@@ -239,7 +256,8 @@ func (m *Manager) phpVersions() ([]string, error) {
 }
 
 // webmailPHP picks the PHP version webmail runs on: the newest one up to
-// webmailMaxPHP that has everything Roundcube needs. Without one, the
+// webmailMaxPHP that has everything Roundcube needs (SnappyMail needs
+// less). Without one, the
 // newest version up to webmailMaxPHP on the server (or webmailMaxPHP
 // itself) gets the missing parts installed.
 func (m *Manager) webmailPHP(ctx context.Context) (string, error) {
@@ -375,6 +393,9 @@ func (m *Manager) WebmailLogin(address string) (Login, error) {
 	if err := m.h.Chown(p, acct.UID, acct.GID); err != nil {
 		_ = os.Remove(p)
 		return Login{}, opError(err)
+	}
+	if s.webmailApp() == SnappyMail {
+		return Login{URL: "https://" + s.Hostname + "/serfex-sso.php?token=" + token, Expires: expires.UTC()}, nil
 	}
 	return Login{URL: "https://" + s.Hostname + "/?_task=login&_action=serfex-sso&_token=" + token, Expires: expires.UTC()}, nil
 }

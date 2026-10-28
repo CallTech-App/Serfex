@@ -354,6 +354,39 @@ class MailPagesTest extends TestCase
         Queue::assertPushed(SetupMailServer::class);
     }
 
+    public function test_settings_page_chooses_the_webmail(): void
+    {
+        $this->get('/mail/settings')->assertOk()->assertSee('Roundcube')->assertSee('SnappyMail');
+        Livewire::test(MailSettingsPage::class)->assertSet('webmail', 'roundcube')
+            ->set('webmail', 'snappymail')
+            ->call('save')
+            ->assertHasNoErrors();
+        $settings = app(MailSettings::class);
+        $this->assertTrue($settings->webmail());
+        $this->assertSame('snappymail', $settings->webmailApp());
+        Queue::assertPushed(SetupMailServer::class, 1);
+
+        // Turned off, the choice is kept for turning it on again. (The job
+        // is unique: a fresh fake lets it be queued again.)
+        Queue::fake();
+        $settings->saveServer(['state' => 'ready', 'webmail_app' => 'snappymail']);
+        Livewire::test(MailSettingsPage::class)->assertSet('webmail', 'snappymail')
+            ->set('webmail', 'off')
+            ->call('save');
+        $this->assertFalse($settings->webmail());
+        $this->assertSame('snappymail', $settings->webmailApp());
+        Queue::assertPushed(SetupMailServer::class, 1);
+        Livewire::test(MailSettingsPage::class)->assertSet('webmail', 'off');
+
+        // Saving the same choice again does not set the server up again.
+        Queue::fake();
+        $settings->saveServer(['state' => 'ready']);
+        Livewire::test(MailSettingsPage::class)->call('save');
+        Queue::assertNotPushed(SetupMailServer::class);
+
+        Livewire::test(MailSettingsPage::class)->set('webmail', 'horde')->call('save')->assertHasErrors('webmail');
+    }
+
     public function test_settings_page_rejects_names_in_use(): void
     {
         Setting::put('panel.hostname', 'panel.example.net');

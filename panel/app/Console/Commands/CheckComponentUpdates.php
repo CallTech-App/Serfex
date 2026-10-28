@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
+use App\Services\Mail\MailSettings;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -17,10 +18,11 @@ use Illuminate\Console\Command;
 #[Description('Check installed software for available updates')]
 class CheckComponentUpdates extends Command
 {
-    public function handle(AgentClient $agent, Components $components): int
+    public function handle(AgentClient $agent, Components $components, MailSettings $mail): int
     {
         try {
             $agent->call('component.check', [], 300);
+            $mail->checkWebmailUpdate($agent);
         } catch (AgentException $e) {
             $this->warn('Agent: '.$e->getMessage());
 

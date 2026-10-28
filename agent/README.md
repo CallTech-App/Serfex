@@ -240,7 +240,14 @@ sudo SERFEX_ACME_DIRECTORY=https://localhost:14000/dir SERFEX_ACME_CA=pebble.min
 
 `mail.setup` installs Postfix (SMTP), Dovecot (IMAP, POP3, LMTP, Sieve),
 Rspamd (spam filter, DKIM signing, sending limits) with its own Redis, and
-Roundcube for webmail, from Ubuntu's packages.
+webmail, from Ubuntu's packages. The webmail is Roundcube (Ubuntu's
+package) or SnappyMail (`webmail_app: "snappymail"`): the release pinned in
+`mail.SnappyMailRelease` is downloaded from GitHub and checked against its
+SHA-256 before use; `mail.status` reports `webmail_latest` when a newer
+agent pins a newer one, and `mail.setup` installs it (the release before
+stays for a rollback). Both run on the same PHP-FPM pool, as
+`serfex-webmail`, and sign a mailbox in with a one-time token through
+Dovecot's master user.
 
 ```
 /etc/serfex/mail/server.json             hostname, limits, webmail secrets (root 0600)
@@ -253,7 +260,10 @@ Roundcube for webmail, from Ubuntu's packages.
 /etc/rspamd/local.d/                     DKIM signing, limits, actions, Redis
 /var/vmail/<domain>/<name>/Maildir/      the mail, owned by the vmail user
 /etc/serfex/webmail/                     Roundcube's configuration (only this one is read)
-/var/lib/serfex/webmail/data/            Roundcube's SQLite database
+/var/lib/serfex/webmail/data/            Roundcube's SQLite database, one-click login tokens
+/opt/serfex/snappymail/<version>/        SnappyMail releases (root-owned; include.php is Serfex's)
+/var/lib/serfex/webmail/snappymail/      SnappyMail's data: application.ini and default.json are Serfex's
+/var/lib/serfex/webmail/snappymail-sso.php   SnappyMail's one-click login
 /etc/nginx/sites-available/serfex-mail.conf   webmail, autoconfig and autodiscover
 ```
 

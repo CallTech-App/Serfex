@@ -59,8 +59,8 @@ class Components
         'supervisor' => ['Supervisor', 'Kendi süreçlerinizi çalışır tutar (Laravel işçileri systemd ile çalışır)', 'other', 'Önbellek ve kuyruk'],
         'composer' => ['Composer', 'PHP paket yöneticisi', 'other', 'Çalışma ortamları'],
         'python' => ['Python 3', 'pip, venv ve derleme başlıkları', 'other', 'Çalışma ortamları'],
-        'roundcube' => ['Roundcube', 'Webmail, posta sunucusuyla birlikte', 'other', 'E-posta'],
-        'snappymail' => ['SnappyMail', 'Hafif webmail alternatifi', 'other', 'E-posta'],
+        'roundcube' => ['Roundcube', 'Varsayılan webmail, Ubuntu paketi', 'other', 'E-posta'],
+        'snappymail' => ['SnappyMail', 'Hafif ve hızlı webmail, GitHub sürümü', 'other', 'E-posta'],
         'fail2ban' => ['Fail2ban', 'SSH ve posta girişlerine kaba kuvvet saldırılarını engeller', 'other', 'Güvenlik'],
         'modsecurity' => ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP CRS kuralları)', 'other', 'Güvenlik'],
         'clamav' => ['ClamAV', 'Gelen ve giden postada virüs taraması', 'other', 'Güvenlik'],
@@ -691,24 +691,35 @@ class Components
     }
 
     /**
-     * Roundcube comes with the mail server; SnappyMail is not offered yet.
+     * Roundcube and SnappyMail are the mail server's webmail: one of them
+     * is served, chosen in E-posta ayarları or here.
      *
      * @return array<string, mixed>
      */
     private function webmailRow(string $id, string $name, string $description): array
     {
-        $base = ['id' => $id, 'name' => $name, 'description' => $description, 'known' => true, 'version' => null, 'latest' => null, 'candidate' => null, 'source' => null, 'choices' => [],
-            'running' => true, 'units' => [], 'operation' => null, 'default' => false, 'settings' => null];
-        if ($id === 'snappymail') {
-            return $base + ['installed' => false, 'busy' => null, 'usage' => '—', 'refusal' => __('Sonraki sürümde.'), 'later' => true];
-        }
         $server = $this->mail->server();
-        $installed = $this->mail->isSetUp() && $this->mail->webmailUrl() !== null;
+        $served = $this->mail->servedWebmailApp();
+        $installed = $this->mail->isSetUp() && $served === $id;
         $mailboxes = $installed ? Mailbox::count() : 0;
+        $busy = null;
+        if (($server['state'] ?? null) === 'installing') {
+            $busy = match (true) {
+                $this->mail->webmail() && $this->mail->webmailApp() === $id => $installed ? 'update' : 'install',
+                $installed => 'remove',
+                default => null,
+            };
+        }
+        $snappy = $id === 'snappymail' && $installed;
 
-        return $base + [
+        return [
+            'id' => $id, 'name' => $name, 'description' => $description, 'known' => true,
+            'version' => $snappy ? self::shortVersion($server['webmail_version'] ?? null) : null,
+            'latest' => $snappy ? self::shortVersion($server['webmail_latest'] ?? null) : null,
+            'candidate' => null, 'source' => null, 'choices' => [],
+            'running' => true, 'units' => [], 'operation' => null, 'default' => false, 'settings' => null,
             'installed' => $installed,
-            'busy' => ($server['state'] ?? null) === 'installing' ? ($this->mail->webmail() ? 'install' : 'remove') : null,
+            'busy' => $busy,
             'usage' => $installed ? ($mailboxes ? __(':mailboxes posta kutusu', ['mailboxes' => $mailboxes]) : __('Henüz posta kutusu yok')) : '—',
             'refusal' => $this->mail->isSetUp() ? null : __('E-posta sunucusu kurulunca gelir.'),
             'mail' => true,

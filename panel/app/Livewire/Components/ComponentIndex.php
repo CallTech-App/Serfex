@@ -73,7 +73,7 @@ class ComponentIndex extends Component
      */
     public function ask(string $id, string $action, Components $components): void
     {
-        if ((! $components->operable($id) && $id !== 'roundcube') || ! in_array($action, ['install', 'update', 'remove', 'upgrade', 'remove-old'], true)) {
+        if ((! $components->operable($id) && ! array_key_exists($id, MailSettings::WEBMAIL_APPS)) || ! in_array($action, ['install', 'update', 'remove', 'upgrade', 'remove-old'], true)) {
             return;
         }
         $this->confirming = ['id' => $id, 'action' => $action];
@@ -94,8 +94,8 @@ class ComponentIndex extends Component
         if ($ask === null) {
             return;
         }
-        if ($ask['id'] === 'roundcube') {
-            $this->webmail($ask['action'] === 'install', $mail);
+        if (array_key_exists($ask['id'], MailSettings::WEBMAIL_APPS)) {
+            $this->webmail($ask['id'], $ask['action'], $mail);
 
             return;
         }
@@ -116,11 +116,12 @@ class ComponentIndex extends Component
     /**
      * Refreshes the package lists to show which updates are available.
      */
-    public function check(AgentClient $agent): void
+    public function check(AgentClient $agent, MailSettings $mail): void
     {
         $this->refused = null;
         try {
             $agent->call('component.check', [], 300);
+            $mail->checkWebmailUpdate($agent);
         } catch (AgentException $e) {
             $this->refused = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Güncellemeler denetlenemedi: :reason', ['reason' => $e->reason]);
 
@@ -261,17 +262,31 @@ class ComponentIndex extends Component
     }
 
     /**
-     * Turns the webmail on or off; the mail server is set up again.
+     * Serves a webmail application (install), turns webmail off (remove) or
+     * brings SnappyMail to the agent's release (update); the mail server is
+     * set up again.
      */
-    private function webmail(bool $on, MailSettings $mail): void
+    private function webmail(string $id, string $action, MailSettings $mail): void
     {
-        if (! $mail->isSetUp() || ($mail->server()['state'] ?? null) === 'installing') {
+        if (! $mail->isSetUp() || ($mail->server()['state'] ?? null) === 'installing' || ! in_array($action, ['install', 'update', 'remove'], true)) {
             return;
         }
-        $mail->save(['webmail' => $on]);
+        if ($action === 'install') {
+            $mail->save(['webmail' => true, 'webmail_app' => $id]);
+        } elseif ($action === 'remove') {
+            if ($mail->servedWebmailApp() !== $id) {
+                return;
+            }
+            $mail->save(['webmail' => false]);
+        }
         $mail->saveServer(['state' => 'installing', 'error' => null]);
         SetupMailServer::dispatch();
-        $this->dispatch('toast', message: $on ? __('Roundcube açılıyor.') : __('Roundcube kapatılıyor.'));
+        $name = MailSettings::WEBMAIL_APPS[$id];
+        $this->dispatch('toast', message: match ($action) {
+            'install' => __(':name açılıyor.', ['name' => $name]),
+            'update' => __(':name güncelleniyor.', ['name' => $name]),
+            default => __(':name kapatılıyor.', ['name' => $name]),
+        });
     }
 
     /**
@@ -299,7 +314,7 @@ class ComponentIndex extends Component
             'install' => [
                 'title' => __(':name kurulsun mu?', ['name' => $name]),
                 'text' => match (true) {
-                    $id === 'roundcube' => __('Posta sunucusu yeniden ayarlanır ve webmail adresi açılır.'),
+                    $id === 'roundcube' || $id === 'snappymail' => $this->webmailInstallText($id, $components),
                     $id === 'clamav' => __('Serfex Agent paketleri Ubuntu depolarından kurar (yaklaşık 1 GB bellek kullanır), virüs imzalarını indirir ve posta taramasına bağlar. Siteler bu sırada çalışmaya devam eder.'),
                     str_starts_with($id, 'node') => __('Serfex Agent Node.js\'i nodejs.org\'dan indirir ve imzasını denetler. Siteler bu sırada çalışmaya devam eder.'),
                     $id === 'composer' => __('Serfex Agent Composer\'ı getcomposer.org\'dan indirir ve imzasını denetler.'),
@@ -311,14 +326,16 @@ class ComponentIndex extends Component
             ],
             'update' => [
                 'title' => __(':name güncellensin mi?', ['name' => $name]),
-                'text' => __('Yeni sürüm:version kurulur ve hizmet yeniden başlatılır; birkaç saniyelik kesinti olabilir. Yeni sürüm çalışmazsa ayarlar geri alınır.', ['version' => ($version ? " ({$version})" : '')]),
+                'text' => $id === 'snappymail'
+                    ? __('Serfex Agent SnappyMail :version sürümünü GitHub\'dan indirir, imzasını denetler ve webmail adresinde açar. Kişiler ve ayarlar korunur; bir adım başarısız olursa önceki sürüm çalışmaya devam eder.', ['version' => $version ?? ''])
+                    : __('Yeni sürüm:version kurulur ve hizmet yeniden başlatılır; birkaç saniyelik kesinti olabilir. Yeni sürüm çalışmazsa ayarlar geri alınır.', ['version' => ($version ? " ({$version})" : '')]),
                 'button' => __('Güncelle'),
                 'danger' => false,
             ],
             default => [
                 'title' => __(':name kaldırılsın mı?', ['name' => $name]),
                 'text' => match (true) {
-                    $id === 'roundcube' => __('Kullanıcılar postalarına tarayıcıdan ulaşamaz; posta programları çalışmaya devam eder.'),
+                    $id === 'roundcube' || $id === 'snappymail' => __('Kullanıcılar postalarına tarayıcıdan ulaşamaz; posta programları çalışmaya devam eder.'),
                     $id === 'modsecurity' => __('Siteler güvenlik duvarı olmadan çalışır.'),
                     $id === 'fail2ban' => __('Kaba kuvvet saldırıları otomatik engellenmez. Canlı İzleme engellemeleri çalışmaya devam eder.'),
                     $id === 'clamav' => __('Posta virüs taraması kapanır.'),
@@ -330,5 +347,23 @@ class ComponentIndex extends Component
                 'danger' => true,
             ],
         };
+    }
+
+    /**
+     * What turning on a webmail application does, also when it replaces
+     * the other one.
+     */
+    private function webmailInstallText(string $id, Components $components): string
+    {
+        $mail = app(MailSettings::class);
+        $served = $mail->servedWebmailApp();
+        $text = $id === 'snappymail'
+            ? __('Serfex Agent SnappyMail\'i GitHub\'dan indirir, imzasını denetler ve webmail adresinde açar. Posta sunucusu yeniden ayarlanır.')
+            : __('Posta sunucusu yeniden ayarlanır ve webmail adresi açılır.');
+        if ($served !== null && $served !== $id) {
+            $text .= ' '.__(':other kapanır. Kişiler ve ayarlar taşınmaz; :other uygulamasınınkiler sunucuda kalır ve geri dönünce yerinde olur.', ['other' => MailSettings::WEBMAIL_APPS[$served]]);
+        }
+
+        return $text;
     }
 }

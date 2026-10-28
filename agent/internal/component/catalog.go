@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -205,7 +206,7 @@ func phpComponent(v string) *component {
 				switch name {
 				case "www":
 				case "serfex-webmail":
-					used = append(used, "webmail (Roundcube)")
+					used = append(used, "webmail ("+m.webmailName()+")")
 				default:
 					used = append(used, name)
 				}
@@ -218,6 +219,17 @@ func phpComponent(v string) *component {
 			return used
 		},
 	}
+}
+
+// webmailName names the webmail the mail server serves.
+func (m *Manager) webmailName() string {
+	var st struct {
+		App string `json:"webmail_app"`
+	}
+	if data, err := os.ReadFile(m.h.Path(mailState)); err == nil && json.Unmarshal(data, &st) == nil && st.App == "snappymail" {
+		return "SnappyMail"
+	}
+	return "Roundcube"
 }
 
 func nodeComponent(line string) *component {

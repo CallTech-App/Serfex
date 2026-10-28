@@ -97,7 +97,7 @@ the workers pick up new PHP binaries on their hourly restart.
 |-----|------------|
 | Web server | Nginx (always in front), Apache (behind Nginx on 127.0.0.1:7080 for sites that choose it), and the default stack for new sites |
 | Database servers | MySQL or MariaDB, PostgreSQL, phpMyAdmin and Adminer |
-| Other components | Redis, Memcached, Supervisor, Node.js (22, 24, 26 from nodejs.org in `/opt/serfex/node`), Composer, Python, Fail2ban, ModSecurity, ClamAV; Roundcube is turned on under Email settings |
+| Other components | Redis, Memcached, Supervisor, Node.js (22, 24, 26 from nodejs.org in `/opt/serfex/node`), Composer, Python, Fail2ban, ModSecurity, ClamAV; Roundcube or SnappyMail is chosen under Email settings |
 
 Notes:
 
