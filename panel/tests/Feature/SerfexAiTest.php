@@ -396,7 +396,7 @@ class SerfexAiTest extends TestCase
         AiEvent::record('auto', '45.155.205.233 adresini 1 saat engelle', $conversation, tool: 'block_ip');
         AiEvent::record('applied', 'mail A kaydı ekle', $conversation, $this->admin, 'dns_add_record');
 
-        $this->get('/ai/kayit')->assertOk()->assertSee('Saldırıları ve engelleri okudu')->assertSee('Kendisi yaptı')->assertSee('Aylin');
+        $this->get('/ai/audit')->assertOk()->assertSee('Saldırıları ve engelleri okudu')->assertSee('Kendisi yaptı')->assertSee('Aylin');
 
         Livewire::test(AiAudit::class)
             ->set('type', 'changes')
@@ -411,7 +411,7 @@ class SerfexAiTest extends TestCase
 
     public function test_ask_ai_buttons_open_the_drawer_with_a_new_question(): void
     {
-        Livewire::test(LiveMonitor::class)->call('setTab', 'saldirilar')->assertSee("Bunu AI'ya sor");
+        Livewire::test(LiveMonitor::class)->call('setTab', 'attacks')->assertSee("Bunu AI'ya sor");
 
         $this->answer([['type' => 'text', 'text' => 'Saldırı engellenmeli.']]);
         Livewire::test(AiDrawer::class)
@@ -445,7 +445,7 @@ class SerfexAiTest extends TestCase
 
         $this->get('/ai')->assertForbidden();
         $this->get('/ai/settings')->assertForbidden();
-        $this->get('/ai/kayit')->assertForbidden();
+        $this->get('/ai/audit')->assertForbidden();
     }
 
     public function test_pages_render(): void

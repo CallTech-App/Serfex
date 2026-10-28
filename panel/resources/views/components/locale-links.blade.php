@@ -5,7 +5,7 @@
         @if ($code === app()->getLocale())
             <span class="font-medium text-fg" aria-current="true" lang="{{ $code }}">{{ $name }}</span>
         @else
-            <a href="{{ request()->fullUrlWithQuery(['dil' => $code]) }}" class="hover:text-fg hover:underline" lang="{{ $code }}">{{ $name }}</a>
+            <a href="{{ request()->fullUrlWithQuery(['lang' => $code]) }}" class="hover:text-fg hover:underline" lang="{{ $code }}">{{ $name }}</a>
         @endif
     @endforeach
 </nav>

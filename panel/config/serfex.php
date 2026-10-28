@@ -13,15 +13,16 @@ return [
 
     // The panel's languages, each in its own name. Turkish is the source:
     // views and code are written in it, lang/en.json translates. The
-    // server's default (Araçlar ve Ayarlar → Genel) starts as SERFEX_LOCALE,
-    // which install.sh sets from the language it was run in.
+    // server's default (Araçlar ve Ayarlar → Genel) starts as SERFEX_LOCALE:
+    // English, or Turkish when install.sh ran with --lang tr. The setup
+    // page's language choice replaces it.
     'locales' => ['tr' => 'Türkçe', 'en' => 'English'],
-    'locale' => env('SERFEX_LOCALE', 'tr'),
+    'locale' => env('SERFEX_LOCALE', 'en'),
 
     // The serfex command line's binaries for developers' computers
     // (linux and darwin, amd64 and arm64), with SHA256SUMS and
     // install-cli.sh: the release's downloads/ folder. The panel serves
-    // them at /cli/install.sh and /cli/indir/<file>.
+    // them at /cli/install.sh and /cli/download/<file>.
     'cli_downloads' => env('SERFEX_CLI_DOWNLOADS', dirname(base_path()).'/downloads'),
 
     // File systems watched for free space (Bildirimler).

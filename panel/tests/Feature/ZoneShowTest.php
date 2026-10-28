@@ -171,7 +171,7 @@ class ZoneShowTest extends TestCase
     public function test_saves_zone_settings(): void
     {
         $this->show()
-            ->set('tab', 'ayarlar')
+            ->set('tab', 'settings')
             ->assertSee('Gelişmiş (SOA)')
             ->set('defaultTtl', 300)
             ->set('hostmaster', 'dns@kahve.com.tr')
@@ -190,7 +190,7 @@ class ZoneShowTest extends TestCase
     public function test_exports_a_zone_file(): void
     {
         $this->show()
-            ->set('tab', 'ayarlar')
+            ->set('tab', 'settings')
             ->call('export')
             ->assertFileDownloaded('kahve.com.tr.zone');
 

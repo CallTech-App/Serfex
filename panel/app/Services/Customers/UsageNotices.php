@@ -100,7 +100,7 @@ class UsageNotices
     public function message(Customer $customer, string $kind, string $level, array $row): array
     {
         $pct = $row['limit'] ? (int) floor(($row['used'] ?? 0) / $row['limit'] * 100) : 0;
-        $url = app(Notifications::class)->panelUrl().route('usage', ['sekme' => $kind === 'disk' ? 'disk' : 'trafik'], false);
+        $url = app(Notifications::class)->panelUrl().route('usage', ['tab' => $kind === 'disk' ? 'disk' : 'traffic'], false);
         $package = $customer->package->name;
         [$subject, $lines] = match ([$kind, $level]) {
             ['disk', 'warn'] => [__('Disk alanınız dolmak üzere (%:pct)', ['pct' => $pct]), [

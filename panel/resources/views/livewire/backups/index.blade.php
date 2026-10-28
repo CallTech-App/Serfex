@@ -44,7 +44,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
             @if ($admin)
-                <button type="button" wire:click="$set('tab', 'zamanlama')" class="{{ $btn }}"><x-icon name="calendar-clock" />{{ __('Zamanlama') }}</button>
+                <button type="button" wire:click="$set('tab', 'schedule')" class="{{ $btn }}"><x-icon name="calendar-clock" />{{ __('Zamanlama') }}</button>
             @endif
             <button type="button" wire:click="openBackup" @disabled($busy || ($sites->isEmpty() && ! $admin)) class="{{ $primary }}">
                 <x-icon name="archive" />{{ $admin ? __('Şimdi yedekle') : __('Yedek al') }}
@@ -84,7 +84,7 @@
             </div>
         @endif
 
-        @if ($tab === 'yedekler')
+        @if ($tab === 'backups')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <select wire:model.live="scope" aria-label="{{ __('Kapsam') }}" class="{{ $field }} px-2.5">
                     <option value="">{{ __('Tüm yedekler') }}</option>
@@ -208,7 +208,7 @@
                     @endif
                 </div>
             @endif
-        @elseif ($tab === 'hedefler')
+        @elseif ($tab === 'destinations')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openTarget" class="{{ $primary }}"><x-icon name="plus" />{{ __('Hedef ekle') }}</button>
                 <span class="ml-auto text-2xs text-muted">{{ __('Bir hedef kaydedilmeden önce bağlantı ve yazma testi yapılır.') }}</span>
@@ -328,7 +328,7 @@
                                 <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="sKeepLocal" class="size-4 accent-accent">{{ __('En yeni yedeği bu sunucuda da sakla') }}</label>
                             @endif
                             @if ($targets->isEmpty())
-                                <p class="text-[12.5px] text-muted"><x-t text="Uzak bir hedef için :tab sekmesinden S3 ya da SFTP ekleyin."><x-slot:tab><button type="button" wire:click="$set('tab', 'hedefler')" class="text-accent hover:underline">{{ __('Hedefler') }}</button></x-slot:tab></x-t></p>
+                                <p class="text-[12.5px] text-muted"><x-t text="Uzak bir hedef için :tab sekmesinden S3 ya da SFTP ekleyin."><x-slot:tab><button type="button" wire:click="$set('tab', 'destinations')" class="text-accent hover:underline">{{ __('Hedefler') }}</button></x-slot:tab></x-t></p>
                             @endif
                         </div>
                     </div>
@@ -652,7 +652,7 @@
                                     const size = {{ \App\Services\Backups\BackupImports::UPLOAD_CHUNK }};
                                     while (this.sent < this.file.size || this.sent === 0) {
                                         const part = this.file.slice(this.sent, this.sent + size);
-                                        const r = await fetch(@js(url('/yedekler/yukle')) + '/' + id + '?offset=' + this.sent, { method: 'POST', body: part, headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Content-Type': 'application/octet-stream' } });
+                                        const r = await fetch(@js(url('/backups/upload')) + '/' + id + '?offset=' + this.sent, { method: 'POST', body: part, headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Content-Type': 'application/octet-stream' } });
                                         const j = await r.json().catch(() => ({}));
                                         if (! r.ok) { this.error = j.error || @js(__('Yükleme durdu.')); this.busy = false; return; }
                                         this.sent = j.size;
@@ -693,7 +693,7 @@
                         </div>
                     @else
                         @if ($importTargets->isEmpty())
-                            <p class="text-[13px] text-muted"><x-t text="Önce :tab sekmesinden yedeklerin bulunduğu S3 ya da SFTP hedefini ekleyin."><x-slot:tab><button type="button" wire:click="$set('importing', false); $set('tab', 'hedefler')" class="text-accent hover:underline">{{ __('Hedefler') }}</button></x-slot:tab></x-t></p>
+                            <p class="text-[13px] text-muted"><x-t text="Önce :tab sekmesinden yedeklerin bulunduğu S3 ya da SFTP hedefini ekleyin."><x-slot:tab><button type="button" wire:click="$set('importing', false); $set('tab', 'destinations')" class="text-accent hover:underline">{{ __('Hedefler') }}</button></x-slot:tab></x-t></p>
                         @else
                             <div class="flex gap-2">
                                 <select wire:model="scanTargetId" aria-label="{{ __('Hedef') }}" class="{{ $field }} min-w-0 flex-1 px-2.5">

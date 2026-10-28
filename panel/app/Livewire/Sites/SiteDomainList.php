@@ -27,15 +27,15 @@ use Livewire\Component;
 class SiteDomainList extends Component
 {
     public const TABS = [
-        'alt' => 'Alt alan adları',
-        'ek' => 'Ek alan adları',
-        'yonlendirmeler' => 'Yönlendirmeler',
+        'subdomains' => 'Alt alan adları',
+        'aliases' => 'Ek alan adları',
+        'redirects' => 'Yönlendirmeler',
     ];
 
     public int $siteId;
 
-    #[Url(as: 'sekme', except: 'alt')]
-    public string $tab = 'alt';
+    #[Url(except: 'subdomains')]
+    public string $tab = 'subdomains';
 
     /** The open form: subdomain, alias or redirect. */
     public ?string $adding = null;
@@ -72,7 +72,7 @@ class SiteDomainList extends Component
     {
         $this->siteId = Site::visibleTo(auth()->user())->findOrFail($site)->id;
         if (! isset(self::TABS[$this->tab])) {
-            $this->tab = 'alt';
+            $this->tab = 'subdomains';
         }
     }
 
@@ -83,7 +83,7 @@ class SiteDomainList extends Component
 
     public function switchTab(string $tab): void
     {
-        $this->tab = isset(self::TABS[$tab]) ? $tab : 'alt';
+        $this->tab = isset(self::TABS[$tab]) ? $tab : 'subdomains';
     }
 
     public function openSubdomain(SiteDomains $domains): void

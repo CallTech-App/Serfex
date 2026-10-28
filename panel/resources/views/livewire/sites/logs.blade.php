@@ -47,7 +47,7 @@
                     <x-icon :name="$live ? 'pause' : 'play'" class="size-3.5" />{{ $live ? __('Canlı izleniyor') : __('Canlı izle') }}
                 </button>
                 @if ($log && $log['exists'])
-                    <a href="{{ route('sites.logs.download', ['site' => $site, 'tur' => $kind]) }}" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2"><x-icon name="download" class="size-3.5" />{{ __('İndir') }}</a>
+                    <a href="{{ route('sites.logs.download', ['site' => $site, 'type' => $kind]) }}" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2"><x-icon name="download" class="size-3.5" />{{ __('İndir') }}</a>
                 @endif
             </div>
         </div>

@@ -21,10 +21,10 @@ class AuditLogPage extends Component
 {
     use WithPagination;
 
-    #[Url(as: 'ara', except: '')]
+    #[Url(as: 'q', except: '')]
     public string $search = '';
 
-    #[Url(as: 'kim', except: '')]
+    #[Url(as: 'who', except: '')]
     public string $who = '';
 
     public function updatedSearch(): void

@@ -42,11 +42,11 @@ class SiteIndex extends Component
     public string $systemUser = '';
 
     /** Administrators may create the site for a customer ("" for none). */
-    #[Url(as: 'musteri', except: '')]
+    #[Url(as: 'customer', except: '')]
     public string $customerId = '';
 
-    /** "" sorts by domain, "trafik" by this month's traffic. */
-    #[Url(as: 'sirala', except: '')]
+    /** "" sorts by domain, "traffic" by this month's traffic. */
+    #[Url(as: 'sort', except: '')]
     public string $sort = '';
 
     public string $phpVersion = '';
@@ -255,7 +255,7 @@ class SiteIndex extends Component
                 $q->where('domain', 'like', $term)
                     ->orWhereHas('systemUser', fn ($u) => $u->where('name', 'like', $term));
             }))
-            ->when($this->sort === 'trafik', fn ($q) => $q->orderByRaw('coalesce((select bytes from site_traffic where site_traffic.site_id = sites.id and month = ?), 0) desc',
+            ->when($this->sort === 'traffic', fn ($q) => $q->orderByRaw('coalesce((select bytes from site_traffic where site_traffic.site_id = sites.id and month = ?), 0) desc',
                 [now(config('serfex.timezone'))->startOfMonth()->toDateString()]))
             ->orderBy('domain')
             ->paginate(25);

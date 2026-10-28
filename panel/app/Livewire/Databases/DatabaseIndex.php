@@ -29,8 +29,8 @@ class DatabaseIndex extends Component
 {
     use ChecksDatabaseServers, EditsDatabaseUsers, WithPagination;
 
-    #[Url(as: 'sekme', except: 'veritabanlari')]
-    public string $tab = 'veritabanlari';
+    #[Url(except: 'databases')]
+    public string $tab = 'databases';
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -73,7 +73,7 @@ class DatabaseIndex extends Component
         if ($this->siteId !== 0 && Site::visibleTo(auth()->user())->whereKey($this->siteId)->doesntExist()) {
             $this->siteId = 0;
         }
-        if (request()->query('olustur') !== null && $this->server['state'] === 'ready') {
+        if (request()->query('create') !== null && $this->server['state'] === 'ready') {
             $this->openCreate($servers);
         }
     }

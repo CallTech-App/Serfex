@@ -30,8 +30,8 @@ class CustomerIndex extends Component
     use WithPagination;
 
     /** musteriler or paketler. */
-    #[Url(as: 'sekme', except: 'musteriler')]
-    public string $tab = 'musteriler';
+    #[Url(except: 'customers')]
+    public string $tab = 'customers';
 
     #[Url(as: 'q', except: '')]
     public string $search = '';

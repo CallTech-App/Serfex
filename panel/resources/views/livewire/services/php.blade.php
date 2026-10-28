@@ -8,7 +8,7 @@
         <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
             <a href="{{ route('services.index') }}" wire:navigate class="hover:text-accent">{{ __('Hizmetler') }}</a>
             <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('services.index', ['sekme' => 'php']) }}" wire:navigate class="hover:text-accent">{{ __('PHP sürümleri') }}</a>
+            <a href="{{ route('services.index', ['tab' => 'php']) }}" wire:navigate class="hover:text-accent">{{ __('PHP sürümleri') }}</a>
             <x-icon name="chevron-right" class="size-3.5" />
             <span class="text-fg">PHP {{ $version }}</span>
         </nav>
@@ -56,13 +56,13 @@
             @endforeach
         </div>
 
-        @if ($tab === 'ayarlar')
+        @if ($tab === 'settings')
             <form wire:submit="save">
                 @if (! $managed && ! $agentError)
                     <p class="mx-5 mt-4 rounded-lg bg-info-soft px-3 py-2 text-[13px]">{{ __('Bu sürüm Serfex\'ten önce kurulmuş; değerler sunucunun php.ini dosyasından okundu. Kaydedince Serfex\'in ayar dosyasına yazılır, php.ini\'ye dokunulmaz.') }}</p>
                 @endif
                 @if ($bodyLimit)
-                    <p class="mx-5 mt-4 rounded-lg bg-warn-soft px-3 py-2 text-[13px]"><x-t text="Nginx en fazla :body_limit MB'lık isteğe izin veriyor; daha büyük yüklemeler PHP'ye ulaşmadan reddedilir. Sınırı :link yükseltin." :with="['body_limit' => $bodyLimit]"><x-slot:link><a href="{{ route('services.show', ['unit' => 'nginx', 'sekme' => 'ayarlar']) }}" wire:navigate class="text-accent hover:underline">{{ __('Nginx ayarlarından') }}</a></x-slot:link></x-t></p>
+                    <p class="mx-5 mt-4 rounded-lg bg-warn-soft px-3 py-2 text-[13px]"><x-t text="Nginx en fazla :body_limit MB'lık isteğe izin veriyor; daha büyük yüklemeler PHP'ye ulaşmadan reddedilir. Sınırı :link yükseltin." :with="['body_limit' => $bodyLimit]"><x-slot:link><a href="{{ route('services.show', ['unit' => 'nginx', 'tab' => 'settings']) }}" wire:navigate class="text-accent hover:underline">{{ __('Nginx ayarlarından') }}</a></x-slot:link></x-t></p>
                 @endif
                 <div class="grid grid-cols-1 gap-x-6 gap-y-5 p-5 text-[13.5px] md:grid-cols-[220px_1fr]">
                     @foreach (PhpVersions::INI as $key => [$label, $type, $help])

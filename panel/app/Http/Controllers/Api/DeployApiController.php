@@ -162,7 +162,7 @@ class DeployApiController extends Controller
             'run' => $deployment->run,
             'live' => $deployment->number === $this->liveNumber($app),
             'done' => ! $deployment->status->isBusy(),
-            'url' => route('laravel.show', ['app' => $app->id, 'bolum' => 'dagitimlar']),
+            'url' => route('laravel.show', ['app' => $app->id, 'section' => 'deployments']),
         ];
     }
 

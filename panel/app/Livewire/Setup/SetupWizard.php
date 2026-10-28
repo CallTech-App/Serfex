@@ -48,8 +48,8 @@ use Livewire\Component;
 #[Title('Kurulum sihirbazı · Serfex')]
 class SetupWizard extends Component
 {
-    #[Url(as: 'adim', except: 'sunucu')]
-    public string $step = 'sunucu';
+    #[Url(as: 'step', except: 'server')]
+    public string $step = 'server';
 
     // Sunucu
     public string $hostname = '';
@@ -109,8 +109,8 @@ class SetupWizard extends Component
 
     public function mount(FirstRun $firstRun, PanelSettings $settings, DnsSettings $dns): void
     {
-        if (! array_key_exists($this->step, FirstRun::STEPS) && $this->step !== 'ozet') {
-            $this->step = 'sunucu';
+        if (! array_key_exists($this->step, FirstRun::STEPS) && $this->step !== 'summary') {
+            $this->step = 'server';
         }
         $firstRun->start();
 
@@ -160,7 +160,7 @@ class SetupWizard extends Component
 
     public function go(string $step): void
     {
-        if (array_key_exists($step, FirstRun::STEPS) || $step === 'ozet') {
+        if (array_key_exists($step, FirstRun::STEPS) || $step === 'summary') {
             $this->resetValidation();
             $this->step = $step;
         }
@@ -168,7 +168,7 @@ class SetupWizard extends Component
 
     public function back(): void
     {
-        $slugs = [...array_keys(FirstRun::STEPS), 'ozet'];
+        $slugs = [...array_keys(FirstRun::STEPS), 'summary'];
         $at = array_search($this->step, $slugs, true);
         $this->go($slugs[max(0, (int) $at - 1)]);
     }
@@ -185,13 +185,13 @@ class SetupWizard extends Component
     public function save(FirstRun $firstRun): void
     {
         $saved = match ($this->step) {
-            'sunucu' => $this->saveServer(),
-            'ad-sunuculari' => $this->saveNameservers(),
+            'server' => $this->saveServer(),
+            'nameservers' => $this->saveNameservers(),
             'panel' => $this->savePanel(),
-            'bildirimler' => $this->saveNotifications(),
-            'guvenlik' => $this->saveFirewall(),
-            'varsayilanlar' => $this->saveDefaults(),
-            'yedekler' => $this->saveBackups(),
+            'notifications' => $this->saveNotifications(),
+            'firewall' => $this->saveFirewall(),
+            'defaults' => $this->saveDefaults(),
+            'backups' => $this->saveBackups(),
             default => false,
         };
         if (! $saved) {
@@ -469,7 +469,7 @@ class SetupWizard extends Component
 
     private function next(): void
     {
-        $slugs = [...array_keys(FirstRun::STEPS), 'ozet'];
+        $slugs = [...array_keys(FirstRun::STEPS), 'summary'];
         $at = array_search($this->step, $slugs, true);
         $this->go($slugs[min(count($slugs) - 1, (int) $at + 1)]);
     }
@@ -557,16 +557,16 @@ class SetupWizard extends Component
             'checklist' => collect($firstRun->checklist())->keyBy('step'),
             'timezones' => $this->timezoneOptions($settings),
             'dnsServer' => Setting::get('dns.server', []),
-            'siteExists' => $this->step === 'ad-sunuculari' && $this->domain !== '' && Site::where('domain', $this->domain)->exists(),
+            'siteExists' => $this->step === 'nameservers' && $this->domain !== '' && Site::where('domain', $this->domain)->exists(),
             'glue' => [[$this->ns1, $this->ns1Ip ?: ($dns->ipv4() ?: $this->ipv4)], [$this->ns2, $this->ns2Ip ?: ($dns->ipv4() ?: $this->ipv4)]],
             'port' => $settings->port(),
             'serverName' => $this->step === 'panel' ? $this->serverName() : '',
             'panelIp' => $dns->ipv4() ?: $this->ipv4,
-            'mailProblem' => $this->step === 'bildirimler' ? app(OutgoingMail::class)->problem() : null,
+            'mailProblem' => $this->step === 'notifications' ? app(OutgoingMail::class)->problem() : null,
             'firewallOn' => $firewall->enabled(),
-            'firewallServices' => $this->step === 'guvenlik' ? array_filter($firewall->services(), fn ($s) => $s['enabled']) : [],
+            'firewallServices' => $this->step === 'firewall' ? array_filter($firewall->services(), fn ($s) => $s['enabled']) : [],
             'apacheInstalled' => app(Components::class)->isInstalled('apache'),
-            'phpVersions' => $this->step === 'varsayilanlar' ? (app(PhpVersions::class)->installed() ?? []) : [],
+            'phpVersions' => $this->step === 'defaults' ? (app(PhpVersions::class)->installed() ?? []) : [],
             'backupTarget' => app(BackupSettings::class)->target(),
         ]);
     }
@@ -576,7 +576,7 @@ class SetupWizard extends Component
      */
     private function timezoneOptions(PanelSettings $settings): array
     {
-        if ($this->step !== 'sunucu') {
+        if ($this->step !== 'server') {
             return [];
         }
         $zones = array_values(array_intersect($settings->timezones(), timezone_identifiers_list()));

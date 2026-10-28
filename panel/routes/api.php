@@ -28,7 +28,7 @@ $feature = fn (string $name) => EnsureApiFeature::class.':'.$name;
 
 Route::prefix('v1')->middleware(ApiLocale::class)->group(function () use ($domain, $key, $app, $feature) {
     // The serfex command line signs in through the browser: it asks for a
-    // sign-in, the person approves it at /cli/onay, the command line
+    // sign-in, the person approves it at /cli/approve, the command line
     // collects its key.
     Route::middleware('throttle:30,1')->group(function () {
         Route::post('/cli/login', [CliLoginController::class, 'start'])->name('api.cli.login');

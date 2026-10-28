@@ -17,7 +17,7 @@
             <a href="{{ route('laravel.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />Laravel</a>
             <x-icon name="chevron-right" class="size-3.5" />
             @if ($app->previewOf)
-                <a href="{{ route('laravel.show', ['app' => $app->previewOf->id, 'bolum' => 'onizleme']) }}" wire:navigate class="font-mono hover:text-accent">{{ $app->previewOf->site->domain }}</a>
+                <a href="{{ route('laravel.show', ['app' => $app->previewOf->id, 'section' => 'previews']) }}" wire:navigate class="font-mono hover:text-accent">{{ $app->previewOf->site->domain }}</a>
                 <x-icon name="chevron-right" class="size-3.5" />
             @endif
             <span class="font-mono text-fg">{{ $site->domain }}</span>
@@ -41,7 +41,7 @@
             <div class="flex flex-wrap items-center gap-2">
                 <a href="{{ route('laravel.index') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="arrow-left" />{{ __('Listeye dön') }}</a>
                 @if (! $installing && $operate)
-                    <button type="button" wire:click="show('komutlar')" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="terminal" />{{ __('Komut çalıştır') }}</button>
+                    <button type="button" wire:click="show('commands')" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="terminal" />{{ __('Komut çalıştır') }}</button>
                     <button type="button" wire:click="openDeploy" @disabled(! $app->canDeploy())
                             title="{{ $app->repository === null ? __('Dağıtmak için önce Dağıtımlar bölümünden bir Git deposu bağlayın.') : ($running ? __('Bir dağıtım sürüyor.') : '') }}"
                             class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">

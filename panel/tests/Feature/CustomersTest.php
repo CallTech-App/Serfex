@@ -55,12 +55,12 @@ class CustomersTest extends TestCase
         $customer = Customer::factory()->withLogin()->create(['company' => 'Kahve Atölyesi', 'username' => 'kahve']);
         $this->site($customer, 'kahveatolyesi.com.tr');
 
-        $this->get('/musteriler')->assertOk()
+        $this->get('/customers')->assertOk()
             ->assertSee('Kahve Atölyesi')
             ->assertSee('Profesyonel')
             ->assertSee('1 / 5')
             ->assertSee('Etkin');
-        $this->get('/musteriler?sekme=paketler')->assertOk()
+        $this->get('/customers?tab=packages')->assertOk()
             ->assertSee('Başlangıç')
             ->assertSee('Laravel Pro')
             ->assertSee('Kurumsal')
@@ -78,7 +78,7 @@ class CustomersTest extends TestCase
             ->call('create')
             ->assertHasNoErrors()
             ->assertSet('creating', false)
-            ->assertSee('/davet/');
+            ->assertSee('/invite/');
 
         $customer = Customer::sole();
         $this->assertSame('hizlikargo', $customer->username);
@@ -159,7 +159,7 @@ class CustomersTest extends TestCase
         $package = Package::factory()->create(['max_sites' => 1, 'php_versions' => ['8.4'], 'allow_mail' => false]);
         $customer = Customer::factory()->create(['username' => 'klinik', 'package_id' => $package->id]);
 
-        Livewire::withQueryParams(['musteri' => (string) $customer->id])->test(SiteIndex::class)
+        Livewire::withQueryParams(['customer' => (string) $customer->id])->test(SiteIndex::class)
             ->assertSet('creating', true)
             ->assertSet('systemUser', 'klinik')
             ->assertSet('phpVersions', ['8.4'])
@@ -171,7 +171,7 @@ class CustomersTest extends TestCase
         $this->assertSame($customer->id, $site->systemUser->customer_id);
         $this->assertSame(0, MailDomain::count(), 'the package has no mail');
 
-        Livewire::withQueryParams(['musteri' => (string) $customer->id])->test(SiteIndex::class)
+        Livewire::withQueryParams(['customer' => (string) $customer->id])->test(SiteIndex::class)
             ->assertSee('site sınırına ulaşıldı');
         // Typing the customer's account by hand counts against them too.
         Livewire::test(SiteIndex::class)->call('openCreate')
@@ -187,7 +187,7 @@ class CustomersTest extends TestCase
         Site::factory()->for($account)->create(['domain' => 'eski.com.tr']);
 
         Livewire::test(CustomerShow::class, ['customer' => $customer->id])
-            ->set('tab', 'siteler')
+            ->set('tab', 'sites')
             ->call('openAttach')
             ->assertSet('accountId', $account->id)
             ->assertSee('eski.com.tr')
@@ -195,7 +195,7 @@ class CustomersTest extends TestCase
         $this->assertSame($customer->id, $account->fresh()->customer_id);
 
         Livewire::test(CustomerShow::class, ['customer' => $customer->id])
-            ->set('tab', 'siteler')
+            ->set('tab', 'sites')
             ->assertSee('eski.com.tr')
             ->call('detach', $account->id);
         $this->assertNull($account->fresh()->customer_id);
@@ -223,7 +223,7 @@ class CustomersTest extends TestCase
         $this->assertTrue($site->fresh()->agentSpec()['suspended']);
         $this->assertTrue($mail->fresh()->agentSpec()['suspended']);
 
-        $this->get('/musteriler/'.$customer->id)->assertSee('askıya alındı')->assertSee('Ödeme gecikti');
+        $this->get('/customers/'.$customer->id)->assertSee('askıya alındı')->assertSee('Ödeme gecikti');
 
         // The customer cannot sign in meanwhile.
         auth()->logout();
@@ -270,7 +270,7 @@ class CustomersTest extends TestCase
         $this->assertSoftDeleted($customer);
         $this->assertTrue($site->fresh()->isSuspended(), 'sites show the suspension page meanwhile');
         Queue::assertPushed(PurgeCustomer::class);
-        $this->get('/musteriler')->assertSee('sularında silinecek')->assertSee('Geri al');
+        $this->get('/customers')->assertSee('sularında silinecek')->assertSee('Geri al');
 
         Livewire::test(CustomerIndex::class)->call('restore', $customer->id);
         $this->assertNotSoftDeleted($customer);
@@ -316,14 +316,14 @@ class CustomersTest extends TestCase
         $admin = auth()->user();
         $customer = Customer::factory()->withLogin()->create(['company' => 'Mağaza Online']);
 
-        $this->post('/musteriler/'.$customer->id.'/giris')->assertRedirect(route('dashboard'));
+        $this->post('/customers/'.$customer->id.'/impersonate')->assertRedirect(route('dashboard'));
         $this->assertTrue(auth()->user()->is($customer->user));
         $this->get('/')->assertOk()->assertSee('Mağaza Online')->assertSee('olarak bakıyorsunuz')->assertSee('Profesyonel paketi');
         $this->get('/monitor')->assertForbidden();
 
-        $this->post('/yoneticiye-don')->assertRedirect(route('customers.show', $customer));
+        $this->post('/impersonation/leave')->assertRedirect(route('customers.show', $customer));
         $this->assertTrue(auth()->user()->is($admin));
-        $this->post('/yoneticiye-don')->assertForbidden();
+        $this->post('/impersonation/leave')->assertForbidden();
     }
 
     public function test_admins_still_see_everything_and_customers_count_on_the_dashboard(): void

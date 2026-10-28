@@ -153,12 +153,12 @@ class StatisticsTest extends TestCase
             ->assertSee('Türkiye')->assertSee('Almanya')->assertSee('Bilinmiyor')
             ->call('switchTab', 'bot')
             ->assertSee('Googlebot')->assertSee('Diğer araçlar ve kütüphaneler')
-            ->set('period', '12a')
+            ->set('period', '12m')
             ->assertSee('480</span> ziyaretçi', false)
-            ->set('period', 'bugun')
+            ->set('period', 'today')
             ->assertSee('120</span> ziyaretçi', false)
             ->set('period', 'yok')
-            ->assertSet('period', '30g');
+            ->assertSet('period', '30d');
 
         $this->get(route('sites.show', $this->site))->assertOk()->assertSee('İstatistikler')->assertSee('Disk kullanımı');
     }
@@ -204,7 +204,7 @@ class StatisticsTest extends TestCase
         MailStatDay::create(['domain' => 'kahveatolyesi.com.tr', 'day' => now('Europe/Istanbul')->toDateString(), 'sent' => 12, 'received' => 34, 'rejected' => 5, 'bounced' => 1]);
         MailStatDay::create(['domain' => 'kahveatolyesi.com.tr', 'day' => now('Europe/Istanbul')->subDays(45)->toDateString(), 'sent' => 999]);
 
-        $this->get(route('mail.show', ['domain' => $domain, 'tab' => 'trafik']))->assertOk()
+        $this->get(route('mail.show', ['domain' => $domain, 'tab' => 'traffic']))->assertOk()
             ->assertSee('Posta trafiği')
             ->assertSee('34</span> gelen', false)
             ->assertSee('12</span> giden', false)
@@ -233,15 +233,15 @@ class StatisticsTest extends TestCase
         $this->agent->answers['monitor.live'] = ['at' => now()->toIso8601String(), 'window' => 10, 'interval' => 2,
             'server' => ['cpus' => 4, 'memory_total' => 16 << 30, 'load' => [1, 1, 1], 'uptime' => 9000, 'cpu' => 30, 'memory' => 4 << 30, 'net_rx' => 0, 'net_tx' => 0],
             'sites' => [], 'accounts' => [], 'services' => [], 'suspects' => [], 'databases' => []];
-        Livewire::test(LiveMonitor::class)->call('setTab', 'sistem')
+        Livewire::test(LiveMonitor::class)->call('setTab', 'system')
             ->assertSee('Kaynak geçmişi')
-            ->set('span', '7g')
+            ->set('span', '7d')
             ->assertSee('Saatlik ortalamalar')
             ->assertSee('40 GB / 100 GB (%40)');
         // The panel's real cache store refuses objects: the cached history must come back intact.
         config(['cache.default' => 'database']);
         foreach ([1, 2] as $ignored) {
-            Livewire::test(LiveMonitor::class)->call('setTab', 'sistem')->set('span', '30g')->assertSee('Kaynak geçmişi');
+            Livewire::test(LiveMonitor::class)->call('setTab', 'system')->set('span', '30d')->assertSee('Kaynak geçmişi');
         }
 
         $this->get('/')->assertSee('Sunucu kaynakları')->assertSee('disk %40 dolu');
@@ -286,7 +286,7 @@ class StatisticsTest extends TestCase
         SiteTraffic::create(['site_id' => $this->site->id, 'month' => now('Europe/Istanbul')->startOfMonth()->toDateString(), 'bytes' => 5 << 30]);
 
         $this->get(route('sites.index'))->assertOk()->assertSeeInOrder(['aaa-blog.com', 'kahveatolyesi.com.tr'])->assertSee('5 GB');
-        $this->get(route('sites.index', ['sirala' => 'trafik']))->assertOk()->assertSeeInOrder(['kahveatolyesi.com.tr', 'aaa-blog.com']);
+        $this->get(route('sites.index', ['sort' => 'traffic']))->assertOk()->assertSeeInOrder(['kahveatolyesi.com.tr', 'aaa-blog.com']);
         $this->assertNotNull($other);
     }
 
@@ -299,16 +299,16 @@ class StatisticsTest extends TestCase
         $site = Site::factory()->for($account)->create(['domain' => 'klinikmavi.com', 'disk_bytes' => 500 << 20]);
         SiteTraffic::create(['site_id' => $site->id, 'month' => now('Europe/Istanbul')->startOfMonth()->toDateString(), 'bytes' => 9 << 30]);
 
-        $this->get(route('customers.usage', ['customer' => $customer, 'sekme' => 'disk']))->assertOk()
+        $this->get(route('customers.usage', ['customer' => $customer, 'tab' => 'disk']))->assertOk()
             ->assertSee('klinikmavi.com')->assertSee('500 MB')->assertSee('Site klasörleri dışındaki dosyalar')->assertSee('600 MB');
-        $this->get(route('customers.usage', ['customer' => $customer, 'sekme' => 'trafik']))->assertOk()
+        $this->get(route('customers.usage', ['customer' => $customer, 'tab' => 'traffic']))->assertOk()
             ->assertSee('Bu ay 9 GB / 10 GB')->assertSee('İstatistikler');
         $this->get(route('customers.show', $customer))->assertOk()->assertSee('Disk ve trafik ayrıntısı');
         $this->get(route('usage'))->assertNotFound();
 
         $this->actingAs($customer->user);
         $this->get('/')->assertOk()->assertSee('Kullanım raporu');
-        $this->get(route('usage', ['sekme' => 'trafik']))->assertOk()->assertSee('Bu ay 9 GB / 10 GB');
+        $this->get(route('usage', ['tab' => 'traffic']))->assertOk()->assertSee('Bu ay 9 GB / 10 GB');
     }
 
     public function test_customers_are_mailed_once_per_level_and_admins_told_when_traffic_runs_out(): void

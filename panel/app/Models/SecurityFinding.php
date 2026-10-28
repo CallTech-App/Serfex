@@ -195,9 +195,9 @@ class SecurityFinding extends Model
     {
         return match ($this->code) {
             'no-2fa' => route('account.security'),
-            'firewall-off' => route('security.index', ['sekme' => 'guvenlik-duvari']),
-            'ssh-root-password', 'ssh-password' => route('security.index', ['sekme' => 'giris']),
-            'waf-missing', 'fail2ban-missing' => route('components.index', ['sekme' => 'diger']),
+            'firewall-off' => route('security.index', ['tab' => 'firewall']),
+            'ssh-root-password', 'ssh-password' => route('security.index', ['tab' => 'login']),
+            'waf-missing', 'fail2ban-missing' => route('components.index', ['tab' => 'other']),
             default => null,
         };
     }

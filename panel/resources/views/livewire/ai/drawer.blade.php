@@ -13,7 +13,7 @@
                 @if ($conversation)
                     <button type="button" wire:click="startNew" class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Yeni sohbet') }}" title="{{ __('Yeni sohbet') }}"><x-icon name="plus" /></button>
                 @endif
-                <a href="{{ route('ai.index', $conversation ? ['sohbet' => $conversation->id] : []) }}" wire:navigate class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Tam sayfada aç') }}" title="{{ __('Tam sayfada aç') }}"><x-icon name="maximize-2" /></a>
+                <a href="{{ route('ai.index', $conversation ? ['chat' => $conversation->id] : []) }}" wire:navigate class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Tam sayfada aç') }}" title="{{ __('Tam sayfada aç') }}"><x-icon name="maximize-2" /></a>
                 <button type="button" @click="$wire.open = false" class="rounded-md p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Kapat') }}"><x-icon name="x" /></button>
             </div>
         </div>

@@ -50,7 +50,7 @@ Yazdığı her şey `/var/log/serfex/install.log` dosyasına da gider.
 | `--admin-email E` | Kurulum bağlantısı yerine yöneticiyi şimdi bu e-postayla oluşturur ve parolasını sonda yazar. Otomatik kurulumlar için; kurulum sihirbazı yine ilk girişte açılır. |
 | `--admin-name N` | Yöneticinin adı. |
 | `--hostname H` | Panelin adresi. Varsayılan: sunucunun tam adı (FQDN). |
-| `--lang tr\|en` | Panelin varsayılan dili ve kurulumun dili. Varsayılan: sistemin `LANG` değeri Türkçeyse Türkçe, değilse İngilizce. |
+| `--lang tr\|en` | Panelin varsayılan dili ve kurulumun dili. Varsayılan: İngilizce. Kurulum sayfasında Türkçe seçilirse panel Türkçe olur. |
 | `--version V` | En yenisi yerine `V` sürümünü kurar. |
 | `--channel stable\|beta` | `beta` ön sürümleri de (`v0.2.0-beta.1`) dikkate alır. |
 | `--no-components` | Siteler için Nginx, PHP 8.4, Composer, Node.js ve Fail2ban'ı şimdi kurmaz. |
@@ -82,8 +82,8 @@ https://203.0.113.10:8443/install/Xk9…
 ```
 
 Bağlantıyı tarayıcıda açın (kendinden imzalı sertifika uyarısını kabul edin).
-Adınızı, e-postanızı, en az 12 karakterlik bir parolayı ve panelin dilini
-sorar; ilk yöneticiyi oluşturur ve kurulum sihirbazını açar. Bağlantı bir kez
+Panelin dilini (Türkçe seçilmezse İngilizce; seçince sayfa hemen o dile
+geçer), adınızı, e-postanızı ve en az 12 karakterlik bir parolayı sorar; ilk yöneticiyi oluşturur ve kurulum sihirbazını açar. Bağlantı bir kez
 ve 24 saat çalışır. Kullanılana kadar kimse giriş yapamaz; yenisini yalnızca
 sunucuda root olan oluşturabilir:
 

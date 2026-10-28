@@ -248,7 +248,7 @@ class SettingsTest extends TestCase
         $this->assertSame('support', $emre->role);
         $this->assertTrue($emre->isInvited());
         $this->assertTrue($page->get('invitation')['mailed']);
-        $this->assertStringContainsString('/davet/', $page->get('invitation')['link']);
+        $this->assertStringContainsString('/invite/', $page->get('invitation')['link']);
         Mail::assertSent(PanelMail::class, fn ($m) => $m->hasTo('emre@kahve.com.tr'));
 
         // The link works once.

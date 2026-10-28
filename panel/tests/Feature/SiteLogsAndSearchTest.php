@@ -77,12 +77,12 @@ class SiteLogsAndSearchTest extends TestCase
     public function test_a_log_downloads_whole_in_parts(): void
     {
         $this->actingAs(User::factory()->create());
-        $response = $this->get(route('sites.logs.download', ['site' => $this->site, 'tur' => 'access']));
+        $response = $this->get(route('sites.logs.download', ['site' => $this->site, 'type' => 'access']));
         $response->assertOk()->assertDownload('kahve.com.tr-access.log');
         $this->assertSame(self::ACCESS, $response->streamedContent());
         $this->assertSame([0, 100, 200], array_column($this->agent->called('site.logs'), 'offset'));
 
-        $this->get(route('sites.logs.download', ['site' => $this->site, 'tur' => 'apache']))->assertNotFound();
+        $this->get(route('sites.logs.download', ['site' => $this->site, 'type' => 'apache']))->assertNotFound();
     }
 
     public function test_quick_search_finds_every_kind_of_thing_for_an_administrator(): void

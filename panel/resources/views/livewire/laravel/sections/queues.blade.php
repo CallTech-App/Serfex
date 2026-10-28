@@ -29,7 +29,7 @@
     @if ($horizon)
         <div class="flex flex-wrap items-center gap-3 border-b border-line bg-info-soft/40 px-5 py-2.5 text-[13px]">
             <span>{{ __('Kuyrukları Horizon işliyor; aşağıdaki işçiler Horizon kapanana kadar çalışmaz.') }}</span>
-            <button type="button" wire:click="$dispatch('show-section', { section: 'surecler' })" class="ml-auto text-accent hover:underline">{{ __('Süreçler') }}</button>
+            <button type="button" wire:click="$dispatch('show-section', { section: 'processes' })" class="ml-auto text-accent hover:underline">{{ __('Süreçler') }}</button>
         </div>
     @endif
 

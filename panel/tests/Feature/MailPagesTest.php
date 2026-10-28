@@ -123,7 +123,7 @@ class MailPagesTest extends TestCase
     public function test_site_page_link_opens_the_form_prefilled(): void
     {
         $this->get('/mail?ac=kahve.com.tr')->assertOk();
-        Livewire::withQueryParams(['ac' => 'kahve.com.tr'])->test(MailIndex::class)
+        Livewire::withQueryParams(['enable' => 'kahve.com.tr'])->test(MailIndex::class)
             ->assertSet('enabling', true)
             ->assertSet('domain', 'kahve.com.tr');
     }
@@ -269,7 +269,7 @@ class MailPagesTest extends TestCase
         $component->call('undoForwarder', ...$args);
         $this->assertSame(['ali@kahve.com.tr', 'muhasebe@gmail.com'], $domain->forwarders()->where('name', 'satis')->first()->destinations);
 
-        $this->get('/mail/'.$domain->id.'?tab=yonlendiriciler')->assertOk()->assertSee('bilinmeyen tüm adresler')->assertSee('muhasebe@gmail.com');
+        $this->get('/mail/'.$domain->id.'?tab=forwarders')->assertOk()->assertSee('bilinmeyen tüm adresler')->assertSee('muhasebe@gmail.com');
     }
 
     public function test_settings_tab_shows_dns_records_and_writes_them(): void
@@ -277,18 +277,18 @@ class MailPagesTest extends TestCase
         $zone = DnsZone::factory()->withRecords()->create(['name' => 'kahve.com.tr']);
         $domain = $this->domain();
 
-        $this->get('/mail/'.$domain->id.'?tab=ayarlar')
+        $this->get('/mail/'.$domain->id.'?tab=settings')
             ->assertOk()
             ->assertSee('v=spf1 a mx ip4:203.0.113.10 ~all')
             ->assertSee('Eksik')
             ->assertSee('Önerilen kayıtları yaz')
             ->assertSee('mail.example.net · 993 · SSL/TLS');
 
-        $this->show($domain)->set('tab', 'ayarlar')->call('fixDns')->assertDispatched('toast');
+        $this->show($domain)->set('tab', 'settings')->call('fixDns')->assertDispatched('toast');
         $this->assertTrue($zone->records()->where('type', 'MX')->exists());
-        $this->get('/mail/'.$domain->id.'?tab=ayarlar')->assertSee('Yazıldı')->assertDontSee('Önerilen kayıtları yaz');
+        $this->get('/mail/'.$domain->id.'?tab=settings')->assertSee('Yazıldı')->assertDontSee('Önerilen kayıtları yaz');
 
-        $this->show($domain)->set('tab', 'ayarlar')->set('spamFilter', false)->call('saveSettings');
+        $this->show($domain)->set('tab', 'settings')->set('spamFilter', false)->call('saveSettings');
         $this->assertFalse($domain->fresh()->spam_filter);
     }
 
@@ -298,7 +298,7 @@ class MailPagesTest extends TestCase
         $domain = $this->domain();
         app(MailDns::class)->apply($domain);
 
-        $component = $this->show($domain)->set('tab', 'ayarlar')->call('disable');
+        $component = $this->show($domain)->set('tab', 'settings')->call('disable');
 
         $this->assertSame(MailDomainStatus::Deleting, $domain->fresh()->status);
         $this->assertFalse($zone->records()->where('type', 'MX')->exists());
@@ -369,7 +369,7 @@ class MailPagesTest extends TestCase
     public function test_site_page_links_to_its_mail(): void
     {
         $site = Site::factory()->create(['domain' => 'kahve.com.tr']);
-        $this->get('/sites/'.$site->id)->assertOk()->assertSee('E-posta kapalı')->assertSee(route('mail.index', ['ac' => 'kahve.com.tr']), false);
+        $this->get('/sites/'.$site->id)->assertOk()->assertSee('E-posta kapalı')->assertSee(route('mail.index', ['enable' => 'kahve.com.tr']), false);
 
         $domain = $this->domain();
         Mailbox::factory()->for($domain, 'domain')->create();

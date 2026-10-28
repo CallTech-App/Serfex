@@ -206,7 +206,7 @@
     {{-- Geçmiş ve ilke --}}
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
-            @foreach (['gecmis' => __('Güncelleme geçmişi'), 'ilke' => __('Güncelleme ilkesi')] as $key => $label)
+            @foreach (['history' => __('Güncelleme geçmişi'), 'policy' => __('Güncelleme ilkesi')] as $key => $label)
                 <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"
                         @class(['-mb-px h-12 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
                     {{ $label }}
@@ -214,7 +214,7 @@
             @endforeach
         </div>
 
-        @if ($tab === 'gecmis')
+        @if ($tab === 'history')
             <div class="overflow-x-auto">
                 <table class="w-full text-[13.5px]">
                     <thead>

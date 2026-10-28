@@ -73,7 +73,7 @@
                 <button type="button" role="tab" wire:click="setTab('{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="-mb-px flex h-12 items-center gap-2 border-b-2 whitespace-nowrap {{ $tab === $key ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg' }}">
                     {{ $label }}
-                    @if ($key === 'saldirilar' && $openCount > 0)
+                    @if ($key === 'attacks' && $openCount > 0)
                         <span class="num min-w-5 rounded-full bg-crit px-1.5 text-center text-2xs leading-5 font-semibold text-white">{{ $openCount }}</span>
                     @endif
                 </button>
@@ -81,7 +81,7 @@
         </div>
 
         {{-- Siteler --}}
-        @if ($tab === 'siteler')
+        @if ($tab === 'sites')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <p class="text-[13px] text-muted">
                     {{ __(':ranges Sorunlu siteler üstte. Müdahale etmek için bir siteye tıklayın.', ['ranges' => $long ? __(':ranges ortalaması.', ['ranges' => LiveMonitor::RANGES[$range][0]]) : __('Son 10 saniye.')]) }}
@@ -209,7 +209,7 @@
             @endif
 
         {{-- Saldırılar --}}
-        @elseif ($tab === 'saldirilar')
+        @elseif ($tab === 'attacks')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openBlock" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                     <x-icon name="ban" />{{ __('IP engelle') }}
@@ -324,7 +324,7 @@
             </div>
 
         {{-- Posta kuyruğu --}}
-        @elseif ($tab === 'posta')
+        @elseif ($tab === 'mail')
             @if ($mailError)
                 <p class="px-5 py-10 text-center text-[13.5px] text-muted">{{ $mailError }}</p>
             @elseif (! ($mail['installed'] ?? false))
@@ -401,7 +401,7 @@
                 @php
                     $pts = $server['points'];
                     $sum = $server['summary'];
-                    $fmtAt = fn ($at) => match ($span) { '24s' => \App\Support\When::time($at), '12a' => \App\Services\Stats\SiteStats::monthName($at), default => \App\Support\When::day($at) };
+                    $fmtAt = fn ($at) => match ($span) { '24h' => \App\Support\When::time($at), '12m' => \App\Services\Stats\SiteStats::monthName($at), default => \App\Support\When::day($at) };
                     $labels = count($pts) > 1 ? [$fmtAt($pts[0]['at']), $fmtAt($pts[intdiv(count($pts), 2)]['at']), $fmtAt(end($pts)['at'])] : [];
                     $diskPts = array_map(fn ($p) => $p['disk_used'] ?? 0, $pts);
                 @endphp
@@ -440,7 +440,7 @@
                                 <x-line-chart :series="[array_column($pts, 'net_tx'), array_column($pts, 'net_rx')]" :labels="$labels" class="mt-2" />
                             </div>
                         </div>
-                        <p class="mt-3 text-2xs text-muted">{{ __(':span Ağ grafiğinde düz çizgi giden, kesikli çizgi gelen trafik. Saatlik değerler 400 gün saklanır.', ['span' => $span === '24s' ? __('15 dakikalık ortalamalar.') : ($span === '7g' ? __('Saatlik ortalamalar.') : ($span === '30g' ? __('4 saatlik ortalamalar.') : __('Günlük ortalamalar.')))]) }}</p>
+                        <p class="mt-3 text-2xs text-muted">{{ __(':span Ağ grafiğinde düz çizgi giden, kesikli çizgi gelen trafik. Saatlik değerler 400 gün saklanır.', ['span' => $span === '24h' ? __('15 dakikalık ortalamalar.') : ($span === '7d' ? __('Saatlik ortalamalar.') : ($span === '30d' ? __('4 saatlik ortalamalar.') : __('Günlük ortalamalar.')))]) }}</p>
                     @endif
                 </div>
             @endif

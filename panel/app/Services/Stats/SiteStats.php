@@ -21,12 +21,12 @@ class SiteStats
 
     /** Periods: key => label. */
     public const PERIODS = [
-        'bugun' => 'Bugün',
-        '7g' => 'Son 7 gün',
-        '30g' => 'Son 30 gün',
-        'bu-ay' => 'Bu ay',
-        'gecen-ay' => 'Geçen ay',
-        '12a' => 'Son 12 ay',
+        'today' => 'Bugün',
+        '7d' => 'Son 7 gün',
+        '30d' => 'Son 30 gün',
+        'this-month' => 'Bu ay',
+        'last-month' => 'Geçen ay',
+        '12m' => 'Son 12 ay',
     ];
 
     /** Tabs of the item table: kind => [label, column heading]. */
@@ -50,11 +50,11 @@ class SiteStats
         $today = CarbonImmutable::now(config('serfex.timezone'))->startOfDay();
 
         return match ($period) {
-            'bugun' => ['from' => $today, 'to' => $today, 'step' => 'hour'],
-            '7g' => ['from' => $today->subDays(6), 'to' => $today, 'step' => 'day'],
-            'bu-ay' => ['from' => $today->startOfMonth(), 'to' => $today, 'step' => 'day'],
-            'gecen-ay' => ['from' => $today->subMonthNoOverflow()->startOfMonth(), 'to' => $today->subMonthNoOverflow()->endOfMonth()->startOfDay(), 'step' => 'day'],
-            '12a' => ['from' => $today->subMonthsNoOverflow(11)->startOfMonth(), 'to' => $today, 'step' => 'month'],
+            'today' => ['from' => $today, 'to' => $today, 'step' => 'hour'],
+            '7d' => ['from' => $today->subDays(6), 'to' => $today, 'step' => 'day'],
+            'this-month' => ['from' => $today->startOfMonth(), 'to' => $today, 'step' => 'day'],
+            'last-month' => ['from' => $today->subMonthNoOverflow()->startOfMonth(), 'to' => $today->subMonthNoOverflow()->endOfMonth()->startOfDay(), 'step' => 'day'],
+            '12m' => ['from' => $today->subMonthsNoOverflow(11)->startOfMonth(), 'to' => $today, 'step' => 'month'],
             default => ['from' => $today->subDays(29), 'to' => $today, 'step' => 'day'],
         };
     }
@@ -205,7 +205,7 @@ class SiteStats
      */
     public function thisMonth(): array
     {
-        ['from' => $from, 'to' => $to] = self::range('bu-ay');
+        ['from' => $from, 'to' => $to] = self::range('this-month');
 
         return DB::table('site_stats_daily')->whereBetween('day', [$from->toDateString(), $to->toDateString()])
             ->groupBy('site_id')->selectRaw('site_id, sum(bytes) as bytes, sum(visitors) as visitors')->get()

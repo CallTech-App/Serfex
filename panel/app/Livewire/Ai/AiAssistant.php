@@ -22,7 +22,7 @@ class AiAssistant extends Component
 {
     use TalksToAssistant;
 
-    #[Url(as: 'sohbet', except: null)]
+    #[Url(as: 'chat', except: null)]
     public ?int $conversationId = null;
 
     public function mount(): void

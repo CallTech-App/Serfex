@@ -36,10 +36,10 @@ class ServiceIndex extends Component
 {
     use ShowsComponentOperations;
 
-    public const TABS = ['hizmetler' => 'Hizmetler', 'php' => 'PHP sürümleri'];
+    public const TABS = ['services' => 'Hizmetler', 'php' => 'PHP sürümleri'];
 
-    #[Url(as: 'sekme', except: 'hizmetler')]
-    public string $tab = 'hizmetler';
+    #[Url(except: 'services')]
+    public string $tab = 'services';
 
     /** @var array{unit?: string, id?: string, action: string}|null asked to confirm */
     public ?array $confirming = null;
@@ -54,7 +54,7 @@ class ServiceIndex extends Component
     public function mount(PhpVersions $php): void
     {
         if (! array_key_exists($this->tab, self::TABS)) {
-            $this->tab = 'hizmetler';
+            $this->tab = 'services';
         }
         $this->defaultVersion = (string) $php->default();
         $this->disabledFunctions = implode(', ', $php->disabledFunctions());
@@ -195,13 +195,13 @@ class ServiceIndex extends Component
         $error = null;
         $groups = [];
         $phpRows = [];
-        if ($this->tab === 'hizmetler') {
+        if ($this->tab === 'services') {
             $list = $services->list($error);
             $groups = $list === null ? null : $services->grouped($list);
         } else {
             $phpRows = $php->rows($error);
         }
-        $failed = ($this->tab === 'hizmetler' ? $groups : $phpRows) === null;
+        $failed = ($this->tab === 'services' ? $groups : $phpRows) === null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $blocker = $components->blocker();
 

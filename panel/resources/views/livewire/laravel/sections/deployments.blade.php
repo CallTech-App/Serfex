@@ -71,7 +71,7 @@
                     <button type="submit" class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2">{{ __('Kaydet') }}</button>
                     @error('healthPath')<span class="text-[13px] text-crit">{{ $message }}</span>@enderror
                 </form>
-                <p class="text-2xs text-muted"><x-t text="Geçiş sonrası bu adres 3 kez istenir; 2xx dışında yanıt gelirse kod eski sürüme döner. Veritabanı geçişleri geri alınmaz; gerekirse dağıtım öncesi yedeği :backups bölümünden geri yükleyin. Yedek alınamazsa dağıtım başlamaz."><x-slot:backups><button type="button" wire:click="$dispatch('show-section', { section: 'yedekler' })" class="text-accent hover:underline">{{ __('Yedekler') }}</button></x-slot:backups></x-t></p>
+                <p class="text-2xs text-muted"><x-t text="Geçiş sonrası bu adres 3 kez istenir; 2xx dışında yanıt gelirse kod eski sürüme döner. Veritabanı geçişleri geri alınmaz; gerekirse dağıtım öncesi yedeği :backups bölümünden geri yükleyin. Yedek alınamazsa dağıtım başlamaz."><x-slot:backups><button type="button" wire:click="$dispatch('show-section', { section: 'backups' })" class="text-accent hover:underline">{{ __('Yedekler') }}</button></x-slot:backups></x-t></p>
             </dd>
         </div>
     </dl>

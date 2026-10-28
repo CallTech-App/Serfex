@@ -45,13 +45,13 @@ class BackupIndex extends Component
 {
     use WithPagination;
 
-    public const TABS = ['yedekler' => 'Yedekler', 'hedefler' => 'Hedefler', 'zamanlama' => 'Zamanlama'];
+    public const TABS = ['backups' => 'Yedekler', 'destinations' => 'Hedefler', 'schedule' => 'Zamanlama'];
 
-    #[Url(as: 'sekme', except: 'yedekler')]
-    public string $tab = 'yedekler';
+    #[Url(except: 'backups')]
+    public string $tab = 'backups';
 
     /** '' (all), server or site. */
-    #[Url(as: 'kapsam', except: '')]
+    #[Url(as: 'scope', except: '')]
     public string $scope = '';
 
     /** Only one site's backups (from the site's page). */
@@ -165,7 +165,7 @@ class BackupIndex extends Component
     public function mount(BackupSettings $settings): void
     {
         if (! array_key_exists($this->tab, self::TABS) || ! auth()->user()->is_admin) {
-            $this->tab = 'yedekler';
+            $this->tab = 'backups';
         }
         if ($this->siteId !== 0 && Site::visibleTo(auth()->user())->whereKey($this->siteId)->doesntExist()) {
             $this->siteId = 0;
@@ -673,7 +673,7 @@ class BackupIndex extends Component
     {
         $user = auth()->user();
         if (! $user->is_admin) {
-            $this->tab = 'yedekler';
+            $this->tab = 'backups';
         }
         $itemRows = ! $user->is_admin || $this->siteId !== 0;
         $data = [
@@ -687,7 +687,7 @@ class BackupIndex extends Component
             'editing' => null,
             'importTargets' => collect(),
         ];
-        if ($this->tab === 'yedekler') {
+        if ($this->tab === 'backups') {
             if ($itemRows) {
                 $data['rows'] = BackupItem::visibleTo($user)
                     ->with('backup.target', 'site')
@@ -714,12 +714,12 @@ class BackupIndex extends Component
                 $data['quota'] = $quotas->report($user->customer)['backups'];
             }
         }
-        if ($user->is_admin && $this->tab === 'hedefler') {
+        if ($user->is_admin && $this->tab === 'destinations') {
             $data['targets'] = BackupTarget::orderBy('name')->get();
             $data['usage'] = Backup::usable()->where('remote', true)->groupBy('target_id')->selectRaw('target_id, sum(size) as total')->pluck('total', 'target_id');
             $data['status'] = $backups->status();
         }
-        if ($user->is_admin && $this->tab === 'zamanlama') {
+        if ($user->is_admin && $this->tab === 'schedule') {
             $data['targets'] = BackupTarget::orderBy('name')->get();
             $data['passphrase'] = $this->showPassphrase ? $settings->passphrase() : null;
             $data['allSites'] = Site::whereDoesntHave('preview')->orderBy('domain')->pluck('domain');

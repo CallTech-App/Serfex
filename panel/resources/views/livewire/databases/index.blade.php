@@ -3,7 +3,7 @@
     use App\Support\Bytes;
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
     $ready = $server['state'] === 'ready' || ($server['state'] === 'nomanager' && $installed !== []);
-    $tabs = ['veritabanlari' => __('Veritabanları'), 'kullanicilar' => __('Kullanıcılar')];
+    $tabs = ['databases' => __('Veritabanları'), 'users' => __('Kullanıcılar')];
 @endphp
 <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-4">
@@ -46,7 +46,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-                @if ($tab === 'veritabanlari')
+                @if ($tab === 'databases')
                     <button type="button" wire:click="openCreate" @disabled(! $ready || $sites->isEmpty()) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                         <x-icon name="plus" />{{ __('Veritabanı oluştur') }}
                     </button>
@@ -58,12 +58,12 @@
                 <label class="relative ml-auto w-full sm:w-64">
                     <span class="sr-only">{{ __('Ara') }}</span>
                     <x-icon name="search" class="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $tab === 'veritabanlari' ? __('Veritabanı ya da site ara') : __('Kullanıcı ara') }}"
+                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $tab === 'databases' ? __('Veritabanı ya da site ara') : __('Kullanıcı ara') }}"
                            class="h-9 w-full rounded-md border border-transparent bg-surface-2 pr-3 pl-9 text-[13.5px] outline-none focus:border-accent focus:bg-surface">
                 </label>
             </div>
 
-            @if ($tab === 'veritabanlari')
+            @if ($tab === 'databases')
                 <div class="relative overflow-x-auto">
                     <table class="w-full text-[13.5px] sm:min-w-[720px]">
                         <thead>

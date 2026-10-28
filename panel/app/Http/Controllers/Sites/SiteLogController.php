@@ -18,7 +18,7 @@ class SiteLogController extends Controller
     public function __invoke(Request $request, int $site, SiteLogs $logs): StreamedResponse
     {
         $model = Site::visibleTo(auth()->user())->with('systemUser')->findOrFail($site);
-        $kind = (string) $request->query('tur', 'access');
+        $kind = (string) $request->query('type', 'access');
         $kinds = SiteLogs::kinds($model);
         abort_unless(isset($kinds[$kind]), 404);
         try {

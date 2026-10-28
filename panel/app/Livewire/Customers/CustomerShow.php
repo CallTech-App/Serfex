@@ -28,8 +28,8 @@ class CustomerShow extends Component
     public int $customerId;
 
     /** kullanim, siteler or bilgiler. */
-    #[Url(as: 'sekme', except: 'kullanim')]
-    public string $tab = 'kullanim';
+    #[Url(except: 'usage')]
+    public string $tab = 'usage';
 
     public string $company = '';
 

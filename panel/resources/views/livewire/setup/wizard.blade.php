@@ -25,8 +25,8 @@
                 <x-icon :name="$icon" class="size-4 {{ $on ? '' : $color }}" />{{ __($name) }}
             </button>
         @endforeach
-        <button type="button" wire:click="go('ozet')" @if ($step === 'ozet') aria-current="step" @endif
-                class="flex h-9 shrink-0 items-center gap-2.5 rounded-md px-3 text-left whitespace-nowrap {{ $step === 'ozet' ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:bg-surface-2 hover:text-fg' }}">
+        <button type="button" wire:click="go('summary')" @if ($step === 'summary') aria-current="step" @endif
+                class="flex h-9 shrink-0 items-center gap-2.5 rounded-md px-3 text-left whitespace-nowrap {{ $step === 'summary' ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:bg-surface-2 hover:text-fg' }}">
             <x-icon name="list-checks" class="size-4" />{{ __('Özet') }}
         </button>
     </nav>
@@ -34,29 +34,29 @@
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="border-b border-line px-5 py-4">
             <p class="text-2xs font-medium tracking-wide text-muted uppercase">
-                {{ $step === 'ozet' ? __('Kurulum · son adım') : __('Kurulum · :n. adım / :total', ['n' => $number + 2, 'total' => count($steps) + 2]) }}
+                {{ $step === 'summary' ? __('Kurulum · son adım') : __('Kurulum · :n. adım / :total', ['n' => $number + 2, 'total' => count($steps) + 2]) }}
             </p>
             <h1 class="mt-1 text-[18px] font-semibold tracking-tight">
                 @switch($step)
-                    @case('sunucu') {{ __('Sunucunun adı, adresi ve saati') }} @break
-                    @case('ad-sunuculari') {{ __('Ad sunucuları') }} @break
+                    @case('server') {{ __('Sunucunun adı, adresi ve saati') }} @break
+                    @case('nameservers') {{ __('Ad sunucuları') }} @break
                     @case('panel') {{ __('Panel adresi') }} @break
-                    @case('bildirimler') {{ __('Bildirimler') }} @break
-                    @case('guvenlik') {{ __('Güvenlik duvarı') }} @break
-                    @case('varsayilanlar') {{ __('Yeni sitelerin varsayılanları') }} @break
-                    @case('yedekler') {{ __('Yedekler') }} @break
+                    @case('notifications') {{ __('Bildirimler') }} @break
+                    @case('firewall') {{ __('Güvenlik duvarı') }} @break
+                    @case('defaults') {{ __('Yeni sitelerin varsayılanları') }} @break
+                    @case('backups') {{ __('Yedekler') }} @break
                     @default {{ __('Özet') }}
                 @endswitch
             </h1>
             <p class="mt-1 text-[13px] text-muted">
                 @switch($step)
-                    @case('sunucu') {{ __('Sunucunun kendi adı (hostname), DNS kayıtlarında kullanılacak IP adresleri, saat dilimi ve dil.') }} @break
-                    @case('ad-sunuculari') {{ __('Alan adlarınızın bu sunucuyu ad sunucusu olarak kullanması için kendi ad sunucularınız. Sonra da Alan Adları ve DNS → Ayarlar\'dan değiştirebilirsiniz.') }} @break
+                    @case('server') {{ __('Sunucunun kendi adı (hostname), DNS kayıtlarında kullanılacak IP adresleri, saat dilimi ve dil.') }} @break
+                    @case('nameservers') {{ __('Alan adlarınızın bu sunucuyu ad sunucusu olarak kullanması için kendi ad sunucularınız. Sonra da Alan Adları ve DNS → Ayarlar\'dan değiştirebilirsiniz.') }} @break
                     @case('panel') {{ __('Paneli sunucunun adıyla, ayrı bir adla ya da yalnızca IP adresi ve portla açabilirsiniz. Bir ad seçerseniz sertifikası Let\'s Encrypt\'ten alınır.') }} @break
-                    @case('bildirimler') {{ __('Sertifika, yedek, disk ya da duran bir hizmet sorunu olduğunda e-posta gidecek adresler.') }} @break
-                    @case('guvenlik') {{ __('Açıkken sunucu yalnızca Serfex\'in kullandığı portlarda yanıt verir. Panele şu anki bağlantınız hiçbir zaman kesilmez.') }} @break
-                    @case('varsayilanlar') {{ __('Yeni bir site eklendiğinde seçili gelecek web sunucusu ve PHP sürümü, ve Serfex\'in hangi sürümleri önereceği.') }} @break
-                    @case('yedekler') {{ __('Sunucu yedeği her gün tüm siteleri, veritabanlarını ve e-postaları alır.') }} @break
+                    @case('notifications') {{ __('Sertifika, yedek, disk ya da duran bir hizmet sorunu olduğunda e-posta gidecek adresler.') }} @break
+                    @case('firewall') {{ __('Açıkken sunucu yalnızca Serfex\'in kullandığı portlarda yanıt verir. Panele şu anki bağlantınız hiçbir zaman kesilmez.') }} @break
+                    @case('defaults') {{ __('Yeni bir site eklendiğinde seçili gelecek web sunucusu ve PHP sürümü, ve Serfex\'in hangi sürümleri önereceği.') }} @break
+                    @case('backups') {{ __('Sunucu yedeği her gün tüm siteleri, veritabanlarını ve e-postaları alır.') }} @break
                     @default {{ __('Neler yapıldı, neler sonraya kaldı. Açık kalanlar siz bitirene kadar Genel Bakış\'ta da görünür.') }}
                 @endswitch
             </p>
@@ -64,7 +64,7 @@
 
         <form wire:submit="save" class="px-5 py-2 text-[13.5px]">
             @switch($step)
-                @case('sunucu')
+                @case('server')
                     <div class="divide-y divide-line">
                         <div class="{{ $row }}">
                             <label for="hostname" class="sm:pt-2">{{ __('Sunucu adı') }}</label>
@@ -114,7 +114,7 @@
                     </div>
                     @break
 
-                @case('ad-sunuculari')
+                @case('nameservers')
                     <div class="divide-y divide-line">
                         <div class="{{ $row }}">
                             <label for="domain" class="sm:pt-2">{{ __('Kendi alan adınız') }}</label>
@@ -229,7 +229,7 @@
                     </div>
                     @break
 
-                @case('bildirimler')
+                @case('notifications')
                     <div class="divide-y divide-line">
                         <div class="{{ $row }}">
                             <label for="emails" class="sm:pt-2">{{ __('E-posta adresleri') }}</label>
@@ -247,7 +247,7 @@
                     @endif
                     @break
 
-                @case('guvenlik')
+                @case('firewall')
                     <div class="py-3">
                         @if ($firewallOn)
                             <p class="flex items-center gap-2"><x-icon name="circle-check" class="size-4 text-ok" />{{ __('Güvenlik duvarı açık.') }}</p>
@@ -268,7 +268,7 @@
                     </div>
                     @break
 
-                @case('varsayilanlar')
+                @case('defaults')
                     <div class="divide-y divide-line">
                         <div class="{{ $row }}">
                             <label for="web-stack" class="sm:pt-2">{{ __('Web sunucusu') }}</label>
@@ -308,7 +308,7 @@
                     </div>
                     @break
 
-                @case('yedekler')
+                @case('backups')
                     <div class="divide-y divide-line">
                         <div class="{{ $row }}">
                             <span>{{ __('Günlük sunucu yedeği') }}</span>
@@ -331,7 +331,7 @@
                                 @unless ($backupTarget)
                                     <p class="mt-1.5 text-2xs text-warn">{{ __('Sunucu bozulursa yedekler de gider. Bir S3 ya da SFTP hedefi eklemenizi öneririz.') }}</p>
                                 @endunless
-                                <a href="{{ route('backups.index', ['sekme' => 'hedefler']) }}" class="mt-1.5 inline-block text-[13px] text-accent hover:underline">{{ __('Yedek hedefi ekle') }}</a>
+                                <a href="{{ route('backups.index', ['tab' => 'destinations']) }}" class="mt-1.5 inline-block text-[13px] text-accent hover:underline">{{ __('Yedek hedefi ekle') }}</a>
                             </div>
                         </div>
                     </div>
@@ -370,16 +370,16 @@
             @endswitch
 
             <div class="flex flex-wrap items-center gap-2 border-t border-line py-4">
-                @if ($step === 'ozet')
+                @if ($step === 'summary')
                     <button type="button" wire:click="finish" class="{{ $primary }}">{{ __('Kurulumu bitir') }}</button>
                     <span class="text-2xs text-muted">{{ __('Açık kalan adımları sonra Genel Bakış\'tan ya da Araçlar ve Ayarlar → Kurulum sihirbazı\'ndan tamamlayabilirsiniz.') }}</span>
                 @else
                     <button type="submit" wire:loading.attr="disabled" wire:target="save" class="{{ $primary }}">
-                        {{ $step === 'guvenlik' ? ($firewallOn ? __('Devam et') : __('Güvenlik duvarını aç ve devam et')) : __('Kaydet ve devam et') }}
+                        {{ $step === 'firewall' ? ($firewallOn ? __('Devam et') : __('Güvenlik duvarını aç ve devam et')) : __('Kaydet ve devam et') }}
                     </button>
                     <button type="button" wire:click="skip" class="{{ $btn }}">{{ __('Sonra') }}</button>
                 @endif
-                @if ($step !== 'sunucu')
+                @if ($step !== 'server')
                     <button type="button" wire:click="back" class="ml-auto text-[13px] text-muted hover:text-fg">{{ __('Geri') }}</button>
                 @endif
             </div>

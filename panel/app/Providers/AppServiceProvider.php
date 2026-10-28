@@ -83,7 +83,7 @@ class AppServiceProvider extends ServiceProvider
         on('call', fn (Component $component, string $method, $params) => AuditLog::watch($component, $method, (array) $params));
         on('mount', fn (Component $component) => AuditLog::undoOnMount($component));
         Event::listen(Login::class, function (Login $event) {
-            if (request()->is('login', 'login/dogrulama', 'davet/*')) {
+            if (request()->is('login', 'login/two-factor', 'invite/*')) {
                 // The language picked on the sign-in page becomes the
                 // person's own when they have not chosen one.
                 $picked = $event->user->locale === null && request()->hasSession() ? request()->session()->get('locale') : null;

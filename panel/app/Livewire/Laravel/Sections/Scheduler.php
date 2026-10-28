@@ -35,7 +35,7 @@ class Scheduler extends Section
     public function runNow(string $command, LaravelApps $apps): void
     {
         $apps->runCommand($this->app(), 'artisan', $command, auth()->user());
-        $this->dispatch('show-section', section: 'komutlar');
+        $this->dispatch('show-section', section: 'commands');
     }
 
     public function render(): View

@@ -38,7 +38,7 @@
             @endforeach
         </div>
 
-        @if ($tab === 'alt')
+        @if ($tab === 'subdomains')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openSubdomain" @disabled($subdomainRefusal) title="{{ $subdomainRefusal }}" class="{{ $primary }}"><x-icon name="plus" />{{ __('Alt alan adı ekle') }}</button>
                 @if ($subdomainRefusal)
@@ -72,7 +72,7 @@
                                     <x-status-badge :status="$s['badge']" />
                                 </td>
                                 <td class="w-px py-3 pr-5 pl-3 text-right whitespace-nowrap">
-                                    <a href="{{ route('sites.files', ['site' => $site, 'yol' => $sub->web_root]) }}" wire:navigate class="hidden text-[13px] text-accent hover:underline sm:inline">{{ __('Dosyalar') }}</a>
+                                    <a href="{{ route('sites.files', ['site' => $site, 'path' => $sub->web_root]) }}" wire:navigate class="hidden text-[13px] text-accent hover:underline sm:inline">{{ __('Dosyalar') }}</a>
                                     <button type="button" wire:click="confirmRemove('subdomain', {{ $sub->id }})" class="text-[13px] sm:ml-3 text-crit hover:underline">{{ __('Kaldır') }}</button>
                                 </td>
                             </tr>
@@ -90,7 +90,7 @@
             <p class="num border-t border-line px-5 py-3 text-2xs text-muted">
                 {{ __(':text · Alt alan adları sitenin PHP sürümünü, kullanıcısını ve günlüklerini paylaşır.', ['text' => $subdomainUsage ? __(':text alt alan adı (paket)', ['text' => $subdomainUsage['text']]) : __(':count alt alan adı', ['count' => $subdomains->count()])]) }}
             </p>
-        @elseif ($tab === 'ek')
+        @elseif ($tab === 'aliases')
             @php $aliases = $site->aliases ?? []; @endphp
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openAlias" @disabled($aliasRefusal) title="{{ $aliasRefusal }}" class="{{ $primary }}"><x-icon name="plus" />{{ __('Ek alan adı ekle') }}</button>

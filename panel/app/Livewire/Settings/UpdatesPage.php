@@ -23,8 +23,8 @@ use Livewire\Component;
 #[Title('Güncellemeler · Serfex')]
 class UpdatesPage extends Component
 {
-    #[Url(as: 'sekme', except: 'gecmis')]
-    public string $tab = 'gecmis';
+    #[Url(except: 'history')]
+    public string $tab = 'history';
 
     /** upgrade or rollback, while asking to confirm. */
     public ?string $confirming = null;
@@ -35,8 +35,8 @@ class UpdatesPage extends Component
 
     public function mount(Updates $updates): void
     {
-        if (! in_array($this->tab, ['gecmis', 'ilke'], true)) {
-            $this->tab = 'gecmis';
+        if (! in_array($this->tab, ['history', 'policy'], true)) {
+            $this->tab = 'history';
         }
         $this->channel = $updates->channel();
         $updates->reconcile();
