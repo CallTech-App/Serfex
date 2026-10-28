@@ -75,6 +75,10 @@ http {
         server_name{{range .PanelNames}} {{.}}{{end}};
         ssl_certificate {{.PanelCert}};
         ssl_certificate_key {{.PanelKey}};
+        # HTTPS only from now on, for this name alone: browsers ignore it
+        # on an IP address and a self-signed certificate, and the name's
+        # parent domain may hold customers' sites still on plain HTTP.
+        add_header Strict-Transport-Security "max-age=31536000" always;
 {{- template "body" .}}
     }
 {{- end}}
@@ -82,6 +86,9 @@ http {
 {{define "body"}}
         include {{.TLSConf}};
 
+        # No other site may show the panel in a frame (clickjacking).
+        add_header X-Frame-Options DENY always;
+        add_header Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" always;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy same-origin always;
         # Plain HTTP on this port goes to HTTPS.

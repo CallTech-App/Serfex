@@ -56,6 +56,12 @@ setting. Findings can be ignored and reopen if they are seen again.
 - **Fail2ban** also watches SSH and, with the mail server, Dovecot and Postfix
   sign-ins (5 failures in 10 minutes ban for an hour, repeat offenders for a
   week). Its bans show under Live Monitor → Attacks and can be lifted there.
+- **Panel pages** cannot be shown in a frame on another site (clickjacking):
+  the panel sends `X-Frame-Options: DENY` and `frame-ancestors 'none'`.
+  Opened by its name with the panel certificate, it also sends HSTS for a
+  year, so browsers open that name only over HTTPS; HSTS leaves out
+  subdomains. If that certificate ever lapses, the panel stays reachable at
+  its IP address and port.
 - **SSH**: root sign-in and password sign-in. Password sign-in cannot be
   turned off until an administrator has an SSH key. SFTP accounts always
   sign in with a password.
