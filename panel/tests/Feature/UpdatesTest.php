@@ -255,7 +255,9 @@ class UpdatesTest extends TestCase
         app(Updates::class)->check();
         $this->agent->calls = [];
         $this->get(route('dashboard'))->assertOk()->assertSee('Serfex 0.2.0 hazır')->assertSee('güncelleme bildirimi');
-        $this->assertSame([], $this->agent->methods());
+        // Genel Bakış reads the live numbers; the update notice itself asks the agent nothing.
+        $this->assertSame([], array_values(array_diff($this->agent->methods(), ['monitor.live'])));
+        $this->agent->calls = [];
 
         PanelUpdate::create(['kind' => 'upgrade', 'from_version' => '0.1.0', 'to_version' => '0.2.0', 'run' => 'upd-eeeeeeeeeeeeeeeeeeee', 'status' => 'failed', 'error' => 'x', 'finished_at' => now()]);
         $notices = app(Updates::class)->notices();
