@@ -337,6 +337,7 @@ class Restores
                 'web_server' => $stack,
                 'web_root' => $s['web_root'] ?? null,
                 'https_redirect' => (bool) ($s['https_redirect'] ?? true),
+                'preferred_host' => in_array($s['preferred_host'] ?? null, Site::PREFERRED, true) ? $s['preferred_host'] : Site::PREFER_NONE,
                 'error_pages' => array_intersect_key((array) ($s['error_pages'] ?? []), ['403' => 1, '404' => 1, '50x' => 1]) ?: null,
                 'nginx_directives' => $s['nginx_directives'] ?? null,
                 'apache_directives' => $s['apache_directives'] ?? null,

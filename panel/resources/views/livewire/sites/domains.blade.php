@@ -91,11 +91,40 @@
                 {{ __(':text · Alt alan adları sitenin PHP sürümünü, kullanıcısını ve günlüklerini paylaşır.', ['text' => $subdomainUsage ? __(':text alt alan adı (paket)', ['text' => $subdomainUsage['text']]) : __(':count alt alan adı', ['count' => $subdomains->count()])]) }}
             </p>
         @elseif ($tab === 'aliases')
-            @php $aliases = $site->aliases ?? []; @endphp
+            @php
+                $aliases = $site->aliases ?? [];
+                $pair = $site->wwwPair();
+                $preferred = $site->preferredName();
+                $other = $preferred === null ? null : ($preferred === $site->domain ? $pair : $site->domain);
+                [$bareName, $wwwName] = str_starts_with($site->domain, 'www.') ? [$pair, $site->domain] : [$site->domain, $pair];
+            @endphp
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openAlias" @disabled($aliasRefusal) title="{{ $aliasRefusal }}" class="{{ $primary }}"><x-icon name="plus" />{{ __('Ek alan adı ekle') }}</button>
                 @if ($aliasRefusal)
                     <span class="text-[13px] text-muted">{{ $aliasRefusal }}</span>
+                @endif
+            </div>
+            <div class="flex flex-col gap-2 border-b border-line px-5 py-3 text-[13.5px] sm:flex-row sm:items-center sm:gap-4">
+                <label for="preferred" class="shrink-0 sm:w-44">{{ __('Tercih edilen adres') }}</label>
+                @if ($pair === null)
+                    <p class="text-[13px] text-muted"><x-t text=":www bu sitede yok; ekleyince ziyaretçilerin hangi adrese gideceğini buradan seçebilirsiniz."><x-slot:www><span class="font-mono">{{ str_starts_with($site->domain, 'www.') ? substr($site->domain, 4) : 'www.'.$site->domain }}</span></x-slot:www></x-t></p>
+                @else
+                    <select id="preferred" wire:change="setPreferred($event.target.value)" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 font-mono text-[13px] sm:w-64">
+                        <option value="bare" @selected($site->preferred_host === 'bare')>{{ $bareName }}</option>
+                        <option value="www" @selected($site->preferred_host === 'www')>{{ $wwwName }}</option>
+                        <option value="none" @selected($site->preferred_host === 'none')>{{ __('İkisi de açılsın (yönlendirme yok)') }}</option>
+                    </select>
+                    <p class="min-w-0 text-[13px] text-muted">
+                        @if ($preferred === null)
+                            {{ __('İki ad da siteyi açıyor.') }}
+                        @elseif ($site->redirectsToPreferred())
+                            <x-t text=":from adresi :to adresine kalıcı (301) yönleniyor."><x-slot:from><span class="font-mono text-fg">{{ $other }}</span></x-slot:from><x-slot:to><span class="font-mono text-fg">{{ $preferred }}</span></x-slot:to></x-t>
+                        @elseif ($site->isSuspended())
+                            {{ __('Site askıdayken yönlendirme yapılmaz.') }}
+                        @else
+                            <x-t text=":name sertifikaya girince yönlendirme başlar; o zamana kadar iki ad da siteyi açıyor."><x-slot:name><span class="font-mono text-fg">{{ $preferred }}</span></x-slot:name></x-t>
+                        @endif
+                    </p>
                 @endif
             </div>
             <div class="relative overflow-x-auto">
@@ -114,7 +143,9 @@
                             <tr wire:key="alias-{{ $alias }}" class="hover:bg-surface-2/60">
                                 <td class="max-w-0 py-3 pr-3 pl-5 sm:w-[34%]">
                                     <a href="{{ $scheme }}://{{ $alias }}" target="_blank" rel="noopener" class="block font-mono break-all sm:truncate sm:break-normal text-[13px] hover:text-accent">{{ $alias }}</a>
-                                    @if ($alias === 'www.'.$site->domain)
+                                    @if ($alias === $pair && $alias === $other && $site->redirectsToPreferred())
+                                        <span class="text-2xs text-muted">{{ __(':name adresine yönleniyor', ['name' => $preferred]) }}</span>
+                                    @elseif ($alias === 'www.'.$site->domain)
                                         <span class="text-2xs text-muted">{{ __('Paket sınırına sayılmaz') }}</span>
                                     @endif
                                     <span class="mt-1 block sm:hidden"><x-status-badge :status="$s['badge']" /></span>

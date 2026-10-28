@@ -30,16 +30,18 @@ class SiteCreator
     /**
      * @param  Customer|null  $customer  the customer the site is for; their account is used
      * @param  Customer|null  $owner  who the site ends up with (the customer, or the account's)
+     * @param  string  $preferred  Site::PREFER_*: which of the domain and its www. name visitors end up on
      */
-    public function create(string $domain, string $account, string $php, bool $www, ?Customer $customer, ?Customer $owner): Site
+    public function create(string $domain, string $account, string $php, bool $www, ?Customer $customer, ?Customer $owner, string $preferred = Site::PREFER_BARE): Site
     {
-        $site = DB::transaction(function () use ($domain, $account, $php, $www, $customer) {
+        $site = DB::transaction(function () use ($domain, $account, $php, $www, $customer, $preferred) {
             $user = $customer !== null ? $this->customers->account($customer) : SystemUser::firstOrCreate(['name' => $account]);
 
             return $user->sites()->create([
                 'domain' => $domain,
                 'aliases' => $www && ! str_starts_with($domain, 'www.') ? ['www.'.$domain] : [],
                 'php_version' => $php,
+                'preferred_host' => in_array($preferred, Site::PREFERRED, true) ? $preferred : Site::PREFER_BARE,
                 'web_server' => $this->components->defaultStack(),
                 'status' => SiteStatus::Provisioning,
             ]);

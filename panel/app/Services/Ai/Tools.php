@@ -243,6 +243,7 @@ class Tools
         return [
             'domain' => $site->domain,
             'aliases' => array_values($site->aliases ?? []),
+            'preferred_host' => $site->preferredName() ?? 'none (both names open the site)',
             'status' => $site->status->value,
             'last_error' => $site->last_error,
             'system_user' => $site->systemUser->name,

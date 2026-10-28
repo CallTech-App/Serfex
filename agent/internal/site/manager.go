@@ -50,6 +50,11 @@ type Spec struct {
 	User       string   `json:"user"`
 	PHPVersion string   `json:"php_version"`
 	Aliases    []string `json:"aliases"`
+	// PreferredHost is the one of the domain and its www. pair (www.<domain>,
+	// or the domain without www.) visitors should end up on. Requests for
+	// the other name get a 301 to it, path and query kept, before they
+	// reach the application. Empty serves both names as they are.
+	PreferredHost string `json:"preferred_host"`
 	// TLS serves the site over HTTPS too; nil means HTTP only.
 	TLS *TLSSpec `json:"tls"`
 	// WebRoot is the directory Nginx serves, relative to the site

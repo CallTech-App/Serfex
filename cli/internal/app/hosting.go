@@ -83,6 +83,7 @@ func siteCommands() *Command {
 				Flags: func(f *Flags) {
 					f.String("php", "", T("sürüm"), T("PHP sürümü (varsayılan: sunucunun varsayılanı)"))
 					f.Bool("www", "", T("www. adı da açılır (varsayılan: evet; kapatmak için --no-www)"))
+					f.String("prefer", "", "bare|www|none", T("Tercih edilen adres: bare (www'suz, varsayılan), www ya da none (ikisi de açılır)"))
 					f.String("customer", "", "id", T("Sitenin ait olacağı müşteri (yöneticiler)"))
 					f.String("account", "", T("ad"), T("Sistem kullanıcısının adı (varsayılan: alan adından)"))
 					f.Bool("wait", "", T("Site hazır olana kadar bekler"))
@@ -191,6 +192,12 @@ func sitesCreate(c *Ctx) error {
 	}
 	if c.Has("www") {
 		body["www"] = c.Bool("www")
+	}
+	if v := c.String("prefer"); v != "" {
+		if v != "bare" && v != "www" && v != "none" {
+			return usageErr(T("--prefer bare, www ya da none olabilir."))
+		}
+		body["preferred_host"] = v
 	}
 	if v := c.String("customer"); v != "" {
 		id, err := strconv.Atoi(v)

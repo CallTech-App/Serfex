@@ -87,6 +87,9 @@ class SiteIndexTest extends TestCase
         $site = Site::sole();
         $this->assertSame('kahveatolyesi.com.tr', $site->domain);
         $this->assertSame(['www.kahveatolyesi.com.tr'], $site->aliases);
+        // Visitors end up on the bare domain unless asked otherwise.
+        $this->assertSame(Site::PREFER_BARE, $site->preferred_host);
+        $this->assertSame('kahveatolyesi.com.tr', $site->preferredName());
         $this->assertSame('kahveatolyesi', $site->systemUser->name);
         $this->assertSame(SiteStatus::Provisioning, $site->status);
         Queue::assertPushed(ProvisionSite::class, fn ($job) => $job->site->is($site));
@@ -140,12 +143,45 @@ class SiteIndexTest extends TestCase
             ->call('openCreate')
             ->set('domain', 'eski.kahveatolyesi.com.tr')
             ->set('systemUser', 'kahve')
-            ->set('wwwAlias', false)
+            ->set('address', 'only')
             ->call('create')
             ->assertHasNoErrors();
 
         $this->assertTrue(Site::sole()->systemUser->is($user));
         $this->assertSame([], Site::sole()->aliases);
+    }
+
+    public function test_the_preferred_address_is_chosen_with_the_site(): void
+    {
+        $this->agent();
+
+        Livewire::test(SiteIndex::class)
+            ->call('openCreate')
+            ->set('domain', 'roifex.com')
+            ->assertSee('www.roifex.com')
+            ->set('address', 'www')
+            ->assertSee('kalıcı (301) yönlenir')
+            ->call('create')
+            ->assertHasNoErrors();
+        $site = Site::sole();
+        $this->assertSame(['www.roifex.com'], $site->aliases);
+        $this->assertSame('www.roifex.com', $site->preferredName());
+        $this->assertSame('www.roifex.com', $site->primaryHost());
+
+        Livewire::test(SiteIndex::class)
+            ->call('openCreate')
+            ->set('domain', 'ikisi.com')
+            ->set('address', 'none')
+            ->call('create')
+            ->assertHasNoErrors();
+        $this->assertNull(Site::where('domain', 'ikisi.com')->sole()->preferredName());
+
+        Livewire::test(SiteIndex::class)
+            ->call('openCreate')
+            ->set('domain', 'baska.com')
+            ->set('address', 'sometimes')
+            ->call('create')
+            ->assertHasErrors('address');
     }
 
     public function test_converts_international_domains(): void

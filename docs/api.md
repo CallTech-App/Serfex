@@ -44,7 +44,7 @@ Example response:
 ```json
 GET /api/v1/sites/example.com
 
-{"data": {"id": 1, "domain": "example.com", "aliases": ["www.example.com"],
+{"data": {"id": 1, "domain": "example.com", "aliases": ["www.example.com"], "preferred_host": "bare",
   "status": "active", "php_version": "8.4", "web_server": "nginx",
   "account": "example", "customer": {"id": 1, "name": "Example Ltd"},
   "https": true, "https_redirect": true,
@@ -129,7 +129,7 @@ plan. DNS, mail and backups need the plan's feature.
 | | Body / query |
 |-|--------------|
 | `GET /sites` | `?customer=<id>` |
-| `POST /sites` | `domain`, `php_version`, `www` (default true), `customer_id`, `account` (system user). `202`: the site is being prepared. |
+| `POST /sites` | `domain`, `php_version`, `www` (default true), `preferred_host` (`bare` = without www, the default; `www`; `none` = both open the site), `customer_id`, `account` (system user). `202`: the site is being prepared. |
 | `GET /sites/{domain}` | |
 | `DELETE /sites/{domain}` | Removes the site with its email, databases (after a dump) and system user, after a backup of the whole site kept in Backups. `?keep_dns=1` keeps the DNS zone; `?backup=0` (administrators) skips the backup. |
 | `GET /sites/{domain}/domains` | Subdomains, aliases and redirects |

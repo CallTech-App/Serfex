@@ -210,6 +210,7 @@ Also called: `add`
 | --- | --- |
 | `--php <version>` | PHP version (default: the server's) |
 | `--www` | The www. name opens too (default: yes; --no-www to turn it off) |
+| `--prefer <bare\|www\|none>` | Preferred address: bare (without www, the default), www, or none (both open the site) |
 | `--customer <id>` | The customer the site belongs to (administrators) |
 | `--account <name>` | The system user's name (default: from the domain) |
 | `--wait` | Waits until the site is ready |

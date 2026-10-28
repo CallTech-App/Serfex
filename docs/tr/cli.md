@@ -210,6 +210,7 @@ Diğer adları: `add`
 | --- | --- |
 | `--php <sürüm>` | PHP sürümü (varsayılan: sunucunun varsayılanı) |
 | `--www` | www. adı da açılır (varsayılan: evet; kapatmak için --no-www) |
+| `--prefer <bare\|www\|none>` | Tercih edilen adres: bare (www'suz, varsayılan), www ya da none (ikisi de açılır) |
 | `--customer <id>` | Sitenin ait olacağı müşteri (yöneticiler) |
 | `--account <ad>` | Sistem kullanıcısının adı (varsayılan: alan adından) |
 | `--wait` | Site hazır olana kadar bekler |

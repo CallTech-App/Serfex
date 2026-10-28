@@ -55,6 +55,7 @@
             $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns')] : ['network', __('DNS kayıtları'), $zone ? __(':records_count kayıt', ['records_count' => $zone->records_count]) : null, $zone ? route('dns.show', $zone) : null],
             ['globe', __('Alt alan adları'), $subdomainCount ? __(':subdomain_count alt alan adı', ['subdomain_count' => $subdomainCount]) : __('Yok'), route('sites.domains', $site)],
             ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
+            ['signpost', __('Tercih edilen adres'), $site->wwwPair() === null ? __('www. yok') : ($site->preferredName() ?? __('İkisi de açılıyor')), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
             ['corner-up-right', __('Yönlendirmeler'), $redirectCount ? __(':redirect_count yönlendirme', ['redirect_count' => $redirectCount]) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'redirects'])],
         ]],
         [__('E-posta'), 'mail', $missing('mail') ? [
@@ -112,7 +113,7 @@
                 </div>
             </div>
             @if ($site->status === \App\Enums\SiteStatus::Active)
-                <a href="{{ $site->hasHttps() ? 'https' : 'http' }}://{{ $site->domain }}" target="_blank" rel="noopener" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                <a href="{{ $site->hasHttps() ? 'https' : 'http' }}://{{ $site->primaryHost() }}" target="_blank" rel="noopener" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
                     <x-icon name="external-link" />{{ __('Siteyi aç') }}
                 </a>
             @endif
