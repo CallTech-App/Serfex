@@ -7,6 +7,10 @@ Serfex runs websites, DNS, mail, databases, certificates and backups for you
 and your customers from one panel, and deploys Laravel applications with
 zero-downtime releases, previews, queues and a command line built in.
 
+[![Latest release](https://img.shields.io/github/v/release/CallTech-App/Serfex)](https://github.com/CallTech-App/Serfex/releases/latest)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+![Ubuntu 24.04+](https://img.shields.io/badge/Ubuntu-24.04%2B-E95420?logo=ubuntu&logoColor=white)
+
 [Türkçe](README.tr.md) · [Documentation](docs/README.md) · [Install](docs/installation.md) · [Command line](docs/cli.md) · [API](docs/api.md)
 
 ![Serfex overview: problems first, then sites, resources and backups](docs/images/overview-en.png)
