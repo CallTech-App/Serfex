@@ -253,7 +253,9 @@ class Overview extends Component
                 'title' => $full->count() === 1
                     ? __(':name müşterisinin disk kotası doldu', ['name' => $full->first()->displayName()])
                     : trans_choice(':count müşterinin disk kotası doldu', $full->count()),
-                'text' => __('Bu müşterilerin dosyalarına yazılamıyor (yükleme, FTP, siteler) ve gelen postaları bekletiliyor. Yer açmalarını isteyebilir ya da disk sınırlarını yükseltebilirsiniz.'),
+                'text' => $full->count() === 1
+                    ? __('Müşterinin dosyalarına yazılamıyor (yükleme, FTP, siteler) ve gelen postası bekletiliyor. Yer açmasını isteyebilir ya da disk sınırını yükseltebilirsiniz.')
+                    : __('Bu müşterilerin dosyalarına yazılamıyor (yükleme, FTP, siteler) ve gelen postaları bekletiliyor. Yer açmalarını isteyebilir ya da disk sınırlarını yükseltebilirsiniz.'),
                 'ai' => null,
                 'action' => [__('Müşteriye git'), $url],
             ]);

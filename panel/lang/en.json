@@ -4415,5 +4415,6 @@
     "disk sınırı": "disk limit",
     "quota paketini, çekirdekte kota modülü yoksa çekirdeğin ek modüllerini (linux-modules-extra) kurar.": "Installs the quota package and, if the kernel lacks the quota module, the kernel's extra modules (linux-modules-extra).",
     "Çalışan çekirdekte kota modülü (quota_v2) yok ve kurulamadı. Çekirdek güncellenip sunucu yeniden başladıktan sonra yeniden deneyin. O zamana kadar disk sınırı yalnızca uyarıdır.": "The running kernel has no quota module (quota_v2) and it could not be installed. Try again after the kernel is updated and the server restarted. Until then the disk limit is only a warning.",
-    "Şimdi yeniden aç": "Turn on again now"
+    "Şimdi yeniden aç": "Turn on again now",
+    "Müşterinin dosyalarına yazılamıyor (yükleme, FTP, siteler) ve gelen postası bekletiliyor. Yer açmasını isteyebilir ya da disk sınırını yükseltebilirsiniz.": "Nothing can be written to the customer's files (uploads, FTP, sites) and their incoming mail is held back. You can ask them to free up space or raise their disk limit."
 }
