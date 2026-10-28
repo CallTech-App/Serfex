@@ -77,7 +77,8 @@ class LaravelPagesTest extends TestCase
                 'queues' => ['sizes' => [['connection' => '', 'queue' => 'default', 'size' => 15]], 'failed' => 3,
                     'default' => 'database', 'connections' => ['sync', 'database', 'beanstalkd', 'sqs', 'redis', 'deferred', 'background', 'failover']],
                 'failed' => [['id' => '5f0c', 'connection' => 'database', 'queue' => 'default', 'job' => 'App\Jobs\SendManifest', 'error' => 'ConnectionException: timeout', 'failed_at' => '2026-10-18 21:00:00']],
-                'schedule' => [['command' => 'inspire', 'description' => '', 'expression' => '0 * * * *', 'next' => now()->addHour()->toIso8601String(), 'timezone' => 'UTC']],
+                'schedule' => [['key' => '3f1b2c4d5e6f7a80', 'command' => 'inspire', 'description' => '', 'expression' => '0 * * * *', 'next' => now()->addHour()->toIso8601String(), 'timezone' => 'UTC'],
+                    ['key' => '9c8b7a6f5e4d3c21', 'command' => 'reports:daily', 'description' => 'Günlük rapor', 'expression' => '0 2 * * *', 'next' => now()->addDay()->toIso8601String(), 'timezone' => 'UTC']],
             },
             'laravel.env.get' => ['env' => $this->env, 'example' => "APP_NAME=\nAPP_URL=\n"],
             'laravel.env.set' => ['cached' => true, 'output' => '', 'restarted' => true],
@@ -380,6 +381,34 @@ class LaravelPagesTest extends TestCase
             ->andReturn(['exit_code' => 0]);
         Livewire::withoutLazyLoading()->test(Maintenance::class, ['appId' => $app->id])->set('mode', 'app')->set('secret', 'ekip-girisi-2026')->set('retry', 30)->call('down')->assertHasNoErrors();
         $this->assertSame('ekip-girisi-2026', $app->fresh()->maintenance_secret);
+    }
+
+    public function test_single_scheduled_tasks_turn_off_and_back_on(): void
+    {
+        // A key the application no longer has is dropped on the way.
+        $app = $this->laravelApp(['skipped_tasks' => ['00000000deadbeef']]);
+        $section = Livewire::withoutLazyLoading()->test(Scheduler::class, ['appId' => $app->id])
+            ->call('toggleTask', '9c8b7a6f5e4d3c21')
+            ->assertDispatched('toast', message: 'reports:daily artık çalışmayacak.');
+        $this->assertSame(['9c8b7a6f5e4d3c21'], $app->fresh()->skipped_tasks);
+        Queue::assertPushed(SyncLaravelProcesses::class);
+        $section->assertSee('Kapalı')->assertSee('reports:daily');
+
+        // Undo calls the same toggle and turns it back on.
+        $section->call('toggleTask', '9c8b7a6f5e4d3c21')->assertDispatched('toast', message: 'reports:daily yeniden zamanında çalışacak.');
+        $this->assertSame([], $app->fresh()->skipped_tasks);
+
+        // Unknown or malformed keys change nothing.
+        $section->call('toggleTask', 'ffffffffffffffff')->call('toggleTask', 'inspire');
+        $this->assertSame([], $app->fresh()->skipped_tasks);
+    }
+
+    public function test_the_scheduler_tells_the_agent_which_tasks_to_skip(): void
+    {
+        $app = $this->laravelApp(['scheduler' => true, 'skipped_tasks' => ['9c8b7a6f5e4d3c21']]);
+        $this->agent->shouldReceive('call')->once()->with('laravel.schedule.apply', Mockery::on(fn ($p) => $p['enabled'] === true && $p['skip'] === ['9c8b7a6f5e4d3c21']), Mockery::any())->andReturn([]);
+        $this->agent->shouldReceive('call')->with(Mockery::anyOf('laravel.queue.apply', 'laravel.process.apply'), Mockery::any(), Mockery::any())->andReturn([]);
+        app(\App\Services\Laravel\Processes::class)->apply($app);
     }
 
     public function test_removing_needs_the_domain_typed(): void

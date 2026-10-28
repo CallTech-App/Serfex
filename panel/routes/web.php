@@ -59,6 +59,7 @@ use App\Livewire\Settings\NotificationSettings;
 use App\Livewire\Settings\ServerSettings;
 use App\Livewire\Settings\UpdatesPage;
 use App\Livewire\Setup\SetupWizard;
+use App\Livewire\Sites\SiteConnection;
 use App\Livewire\Sites\SiteCron;
 use App\Livewire\Sites\SiteDirectives;
 use App\Livewire\Sites\SiteDisk;
@@ -141,6 +142,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::post('/sites/{site}/files/upload', [SiteFileController::class, 'upload'])->whereNumber('site')->name('sites.files.upload');
         Route::livewire('/sites/{site}/ftp', SiteFtp::class)->whereNumber('site')->name('sites.ftp');
         Route::livewire('/sites/{site}/ssh', SiteSsh::class)->whereNumber('site')->name('sites.ssh');
+        Route::livewire('/sites/{site}/connection-details', SiteConnection::class)->whereNumber('site')->name('sites.connection');
         Route::livewire('/sites/{site}/waf', SiteWaf::class)->whereNumber('site')->name('sites.waf');
         Route::livewire('/sites/{site}/scan', SiteScan::class)->whereNumber('site')->name('sites.scan');
         Route::livewire('/sites/{site}/protected-folders', SiteProtect::class)->whereNumber('site')->name('sites.protect');
@@ -200,9 +202,6 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
             Route::livewire('/settings/audit-log', AuditLogPage::class)->name('settings.audit');
             Route::livewire('/settings/updates', UpdatesPage::class)->name('settings.updates');
             Route::get('/settings/updates/progress/{run}', UpdateProgressController::class)->where('run', 'upd-[a-z0-9]{20}')->name('settings.updates.progress');
-            // The address before 0.1.20: an update page opened on an older
-            // release keeps asking it while the new release takes over.
-            Route::get('/ayarlar/guncellemeler/ilerleme/{run}', UpdateProgressController::class)->where('run', 'upd-[a-z0-9]{20}');
             Route::livewire('/ai/settings', AiSettingsPage::class)->name('ai.settings');
         });
     });

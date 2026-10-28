@@ -32,7 +32,7 @@ class Processes
         $this->agent->call('laravel.queue.apply', $app->agentApp() + [
             'workers' => $off || $this->horizon($app) ? [] : $app->workers->map->agentSpec()->values()->all(),
         ], $timeout);
-        $this->agent->call('laravel.schedule.apply', $app->agentApp() + ['enabled' => ! $off && $app->scheduler], $timeout);
+        $this->agent->call('laravel.schedule.apply', $app->agentApp() + ['enabled' => ! $off && $app->scheduler, 'skip' => array_values($app->skipped_tasks ?? [])], $timeout);
         $this->agent->call('laravel.process.apply', $app->agentApp() + [
             'processes' => $off ? [] : $app->processes->map->agentSpec()->values()->all(),
         ], $timeout);

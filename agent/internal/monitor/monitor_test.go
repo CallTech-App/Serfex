@@ -35,7 +35,7 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &fixture{t: t, sim: sim, sites: site.NewManager(sim, "www-data"), now: time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC), uptime: 1000, pools: map[string]poolStatus{}}
+	f := &fixture{t: t, sim: sim, sites: site.NewManager(sim, "www-data"), now: testNow, uptime: 1000, pools: map[string]poolStatus{}}
 	ctx := context.Background()
 	for _, s := range []site.Spec{
 		{Domain: "magaza.com.tr", User: "magaza", PHPVersion: "8.4", Aliases: []string{"www.magaza.com.tr"}},
@@ -186,8 +186,15 @@ func TestProcessesAreAttributedToSites(t *testing.T) {
 	}
 }
 
+// testNow is noon today, so dated log lines never age out of a window
+// kept by the real clock.
+var testNow = time.Now().UTC().Truncate(24 * time.Hour).Add(12 * time.Hour)
+
+// syslogTime is testNow as a syslog line starts, "Oct 19 12:00:00".
+var syslogTime = testNow.Format(time.Stamp)
+
 func accessLine(ip, method, path string, status int) string {
-	return fmt.Sprintf(`%s - - [19/Oct/2026:12:00:00 +0000] "%s %s HTTP/1.1" %d 512 "-" "curl/8"`, ip, method, path, status)
+	return fmt.Sprintf(`%s - - [%s] "%s %s HTTP/1.1" %d 512 "-" "curl/8"`, ip, testNow.Format("02/Jan/2006:15:04:05 -0700"), method, path, status)
 }
 
 func TestTrafficAndAttacks(t *testing.T) {
@@ -209,14 +216,14 @@ func TestTrafficAndAttacks(t *testing.T) {
 	lines = append(lines, accessLine("192.0.2.51", "GET", "/nope", 404))
 	f.append(log, lines...)
 	f.append(mailLog,
-		"Oct 19 12:00:00 mail postfix/submission/smtpd[1]: warning: unknown[198.51.100.99]: SASL LOGIN authentication failed: authentication failure",
-		"Oct 19 12:00:00 mail dovecot: imap-login: Disconnected: Connection closed (auth failed, 9 attempts in 30 secs): user=<a@b.com>, method=PLAIN, rip=198.51.100.99, lip=192.0.2.10",
-		"Oct 19 12:00:00 mail postfix/pickup[2]: AB12: uid="+fmt.Sprint(f.uid("magaza"))+" from=<magaza>",
-		"Oct 19 12:00:00 mail postfix/qmgr[3]: AB12: from=<bilgi@magaza.com.tr>, size=100, nrcpt=1 (queue active)",
-		"Oct 19 12:00:00 mail postfix/qmgr[3]: CD34: from=<satis@www.magaza.com.tr>, size=100, nrcpt=3 (queue active)",
-		"Oct 19 12:00:00 mail postfix/qmgr[3]: CD34: from=<satis@www.magaza.com.tr>, size=100, nrcpt=3 (queue active)",
+		syslogTime+" mail postfix/submission/smtpd[1]: warning: unknown[198.51.100.99]: SASL LOGIN authentication failed: authentication failure",
+		syslogTime+" mail dovecot: imap-login: Disconnected: Connection closed (auth failed, 9 attempts in 30 secs): user=<a@b.com>, method=PLAIN, rip=198.51.100.99, lip=192.0.2.10",
+		syslogTime+" mail postfix/pickup[2]: AB12: uid="+fmt.Sprint(f.uid("magaza"))+" from=<magaza>",
+		syslogTime+" mail postfix/qmgr[3]: AB12: from=<bilgi@magaza.com.tr>, size=100, nrcpt=1 (queue active)",
+		syslogTime+" mail postfix/qmgr[3]: CD34: from=<satis@www.magaza.com.tr>, size=100, nrcpt=3 (queue active)",
+		syslogTime+" mail postfix/qmgr[3]: CD34: from=<satis@www.magaza.com.tr>, size=100, nrcpt=3 (queue active)",
 	)
-	f.append(authLog, "Oct 19 12:00:00 host sshd[9]: Failed password for root from 192.0.2.200 port 22 ssh2")
+	f.append(authLog, syslogTime+" host sshd[9]: Failed password for root from 192.0.2.200 port 22 ssh2")
 	f.tick(2 * time.Second)
 
 	snap := f.m.Snapshot(SnapshotSpec{Window: 2})
@@ -437,7 +444,7 @@ func TestHistory(t *testing.T) {
 }
 
 func TestParsers(t *testing.T) {
-	a, ok := parseAccess(`2001:db8::5 - bob [19/Oct/2026:12:00:00 +0000] "POST /wp-login.php?redirect=1 HTTP/2.0" 302 0 "-" "Mozilla/5.0 (X11; Linux)"`)
+	a, ok := parseAccess(`2001:db8::5 - bob [` + testNow.Format("02/Jan/2006:15:04:05 -0700") + `] "POST /wp-login.php?redirect=1 HTTP/2.0" 302 0 "-" "Mozilla/5.0 (X11; Linux)"`)
 	if !ok || a != (access{IP: "2001:db8::5", Method: "POST", Path: "/wp-login.php", Status: 302}) {
 		t.Errorf("parseAccess = %+v %v", a, ok)
 	}
@@ -649,8 +656,8 @@ func TestStatisticsAndNetworkAreFed(t *testing.T) {
 	f.tick(0)
 	f.append(site.AccessLog("magaza.com.tr"),
 		accessLine("192.0.2.1", "GET", "/", 200),
-		`192.0.2.2 - - [19/Oct/2026:12:00:01 +0000] "GET /urun HTTP/1.1" 200 100 "https://www.google.com/" "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0"`)
-	f.append(mailLog, "Oct 19 12:00:00 mail postfix/lmtp[5]: EF56: to=<bilgi@magaza.com.tr>, relay=mail[private/dovecot-lmtp], delay=0.1, dsn=2.0.0, status=sent (250 2.0.0 Saved)")
+		`192.0.2.2 - - [`+testNow.Add(time.Second).Format("02/Jan/2006:15:04:05 -0700")+`] "GET /urun HTTP/1.1" 200 100 "https://www.google.com/" "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0"`)
+	f.append(mailLog, syslogTime+" mail postfix/lmtp[5]: EF56: to=<bilgi@magaza.com.tr>, relay=mail[private/dovecot-lmtp], delay=0.1, dsn=2.0.0, status=sent (250 2.0.0 Saved)")
 	f.write("/proc/net/dev", "Inter-|   Receive |  Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets\n    lo: 99999 1 0 0 0 0 0 0 99999 1 0 0 0 0 0 0\n  eth0: 3000 10 0 0 0 0 0 0 9000 20 0 0 0 0 0 0\n")
 	f.tick(2 * time.Second)
 

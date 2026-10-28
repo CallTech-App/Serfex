@@ -269,6 +269,9 @@ func writeRecord(t *testing.T, sim *host.Simulator, id int, name string, rec any
 	}
 }
 
+// testNoon is noon today, UTC.
+var testNoon = time.Now().UTC().Truncate(24 * time.Hour).Add(12 * time.Hour)
+
 func TestRunsReadsSafely(t *testing.T) {
 	m, sim := newServer(t)
 	ctx := context.Background()
@@ -278,7 +281,7 @@ func TestRunsReadsSafely(t *testing.T) {
 	if res, err := m.Runs(ctx, RunsSpec{Domain: domain, ID: 3}); err != nil || len(res.Runs) != 0 || res.Running || res.Runs == nil {
 		t.Fatalf("no runs yet: %+v %v", res, err)
 	}
-	base := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	base := testNoon
 	for i := 0; i < 25; i++ {
 		at := base.Add(time.Duration(i) * time.Minute)
 		writeRecord(t, sim, 3, strconv.FormatInt(at.UnixNano(), 10)+".json", Record{StartedAt: at, FinishedAt: at.Add(time.Second), DurationMS: 1000, ExitCode: i % 2, Trigger: TriggerSchedule})
@@ -288,9 +291,9 @@ func TestRunsReadsSafely(t *testing.T) {
 	// file that is too big, a name that is not a record.
 	writeRecord(t, sim, 3, strconv.FormatInt(newest.UnixNano(), 10)+".json", "{not json")
 	secret := sim.Path("/etc/shadow-test")
-	_ = os.WriteFile(secret, []byte(`{"started_at":"2026-10-19T13:00:00Z","output":"root:secret"}`), 0o600)
+	_ = os.WriteFile(secret, []byte(`{"started_at":"`+base.Add(time.Hour).Format(time.RFC3339)+`","output":"root:secret"}`), 0o600)
 	_ = os.Symlink(secret, sim.Path(TaskDir(user, domain, 3)+"/runs/"+strconv.FormatInt(newest.Add(time.Minute).UnixNano(), 10)+".json"))
-	writeRecord(t, sim, 3, strconv.FormatInt(newest.Add(2*time.Minute).UnixNano(), 10)+".json", `{"started_at":"2026-10-19T13:00:00Z","output":"`+strings.Repeat("a", maxRecord)+`"}`)
+	writeRecord(t, sim, 3, strconv.FormatInt(newest.Add(2*time.Minute).UnixNano(), 10)+".json", `{"started_at":"`+base.Add(time.Hour).Format(time.RFC3339)+`","output":"`+strings.Repeat("a", maxRecord)+`"}`)
 	writeRecord(t, sim, 3, "notes.json", Record{StartedAt: newest.Add(time.Hour)})
 
 	res, err := m.Runs(ctx, RunsSpec{Domain: domain, ID: 3, Limit: 5})
@@ -354,17 +357,17 @@ func TestRunInDryRun(t *testing.T) {
 	}
 
 	// While a run goes (its process is alive), no other starts.
-	marker := `{"pid":` + strconv.Itoa(os.Getpid()) + `,"started_at":"2026-10-19T12:00:00Z","trigger":"schedule"}`
+	marker := `{"pid":` + strconv.Itoa(os.Getpid()) + `,"started_at":"` + testNoon.Format(time.RFC3339) + `","trigger":"schedule"}`
 	_ = os.WriteFile(sim.Path(TaskDir(user, domain, 9)+"/running.json"), []byte(marker), 0o600)
 	if res, err := m.Run(ctx, RunSpec{Domain: domain, ID: 9}); err != nil || res.Started || !res.Running {
 		t.Fatalf("second run %+v %v", res, err)
 	}
 	runs, _ = m.Runs(ctx, RunsSpec{Domain: domain, ID: 9})
-	if !runs.Running || runs.RunningSince == nil || !runs.RunningSince.Equal(time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)) {
+	if !runs.Running || runs.RunningSince == nil || !runs.RunningSince.Equal(testNoon) {
 		t.Fatalf("running %+v", runs)
 	}
 	// A marker left by a killed run does not count.
-	_ = os.WriteFile(sim.Path(TaskDir(user, domain, 9)+"/running.json"), []byte(`{"pid":2147483000,"started_at":"2026-10-19T12:00:00Z"}`), 0o600)
+	_ = os.WriteFile(sim.Path(TaskDir(user, domain, 9)+"/running.json"), []byte(`{"pid":2147483000,"started_at":"`+testNoon.Format(time.RFC3339)+`"}`), 0o600)
 	if res, err := m.Run(ctx, RunSpec{Domain: domain, ID: 9}); err != nil || !res.Started {
 		t.Fatalf("stale marker %+v %v", res, err)
 	}
@@ -376,7 +379,7 @@ func TestRunInDryRun(t *testing.T) {
 func TestDemoSeedsHistory(t *testing.T) {
 	m, _ := newServer(t)
 	m.Demo = true
-	now := time.Date(2026, 10, 19, 12, 30, 0, 0, time.UTC)
+	now := testNoon.Add(30 * time.Minute)
 	m.now = func() time.Time { return now }
 	ctx := context.Background()
 	if _, err := m.Apply(ctx, Spec{Domain: domain, User: user, Tasks: tasks()}); err != nil {

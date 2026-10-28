@@ -33,7 +33,8 @@
         <table class="w-full min-w-[760px] text-[13.5px]">
             <thead>
                 <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                    <th class="py-2.5 pr-3 pl-5 font-medium">{{ __('Komut') }}</th>
+                    <th class="w-10 py-2.5 pr-0 pl-5 font-medium"><span class="sr-only">{{ __('Açık') }}</span></th>
+                    <th class="py-2.5 pr-3 pl-3 font-medium">{{ __('Komut') }}</th>
                     <th class="px-3 py-2.5 font-medium">{{ __('Zamanlama') }}</th>
                     <th class="px-3 py-2.5 font-medium">{{ __('Sonraki') }}</th>
                     <th class="px-3 py-2.5 font-medium">{{ __('Son çalışma') }}</th>
@@ -43,13 +44,19 @@
             </thead>
             <tbody class="divide-y divide-line">
                 @forelse ($tasks as $i => $t)
-                    <tr wire:key="task-{{ $i }}" class="hover:bg-surface-2/60">
-                        <td class="py-3 pr-3 pl-5"><span class="font-mono text-[13px]">{{ $t['command'] }}</span>@if ($t['description'])<div class="text-2xs text-muted">{{ $t['description'] }}</div>@endif</td>
-                        <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap">{{ $t['expression'] }}</td>
-                        <td class="px-3 py-3 whitespace-nowrap text-muted">{{ When::withTime(Carbon::parse($t['next'])) }}</td>
+                    <tr wire:key="task-{{ $t['key'] ?? $i }}" class="hover:bg-surface-2/60">
+                        <td class="py-3 pr-0 pl-5">
+                            <input type="checkbox" @checked(! $t['off']) @if (isset($t['key'])) wire:click="toggleTask(@js($t['key']))" @else disabled @endif @disabled($syncing)
+                                   aria-label="{{ __(':command açık', ['command' => $t['command']]) }}" class="size-4 align-middle accent-[rgb(var(--accent))]">
+                        </td>
+                        <td class="py-3 pr-3 pl-3 {{ $t['off'] ? 'text-muted' : '' }}"><span class="font-mono text-[13px]">{{ $t['command'] }}</span>@if ($t['description'])<div class="text-2xs text-muted">{{ $t['description'] }}</div>@endif</td>
+                        <td class="px-3 py-3 font-mono text-[13px] whitespace-nowrap {{ $t['off'] ? 'text-muted' : '' }}">{{ $t['expression'] }}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-muted">{{ $t['off'] ? '—' : When::withTime(Carbon::parse($t['next'])) }}</td>
                         <td class="px-3 py-3 whitespace-nowrap text-muted">@if ($t['run']){{ When::withTime(Carbon::parse($t['run']['at'], config('serfex.timezone'))) }}@if ($t['run']['duration']) · {{ $t['run']['duration'] }}@endif @else—@endif</td>
                         <td class="px-3 py-3">
-                            @if ($t['run'])
+                            @if ($t['off'])
+                                <x-status-badge :status="new Badge(__('Kapalı'), 'muted')" />
+                            @elseif ($t['run'])
                                 <x-status-badge :status="$t['run']['ok'] ? new Badge(__('Başarılı'), 'ok') : new Badge(__('Başarısız'), 'crit')" />
                             @else
                                 <span class="text-muted">—</span>
@@ -62,10 +69,10 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-5 py-10 text-center text-muted"><x-t text="Uygulamada zamanlanmış görev yok. Görevler :part içinde tanımlanır."><x-slot:part><span class="font-mono">routes/console.php</span></x-slot:part></x-t></td></tr>
+                    <tr><td colspan="7" class="px-5 py-10 text-center text-muted"><x-t text="Uygulamada zamanlanmış görev yok. Görevler :part içinde tanımlanır."><x-slot:part><span class="font-mono">routes/console.php</span></x-slot:part></x-t></td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Görevler uygulamanın kendisinden okunur. Serfex :part komutunu her dakika bir systemd zamanlayıcısıyla, sitenin kullanıcısıyla çalıştırır; çıktısı :part2 dosyasına yazılır. Görev başına aç/kapat sonraki sürümde."><x-slot:part><span class="font-mono">schedule:run</span></x-slot:part><x-slot:part2><span class="font-mono">schedule.log</span></x-slot:part2></x-t></p>
+    <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="Görevler uygulamanın kendisinden okunur. Serfex :part komutunu her dakika bir systemd zamanlayıcısıyla, sitenin kullanıcısıyla çalıştırır; çıktısı :part2 dosyasına yazılır. Kapattığınız görev zamanı gelince atlanır, kodunuz değişmez; Şimdi çalıştır ile elle çalıştırılabilir."><x-slot:part><span class="font-mono">schedule:run</span></x-slot:part><x-slot:part2><span class="font-mono">schedule.log</span></x-slot:part2></x-t></p>
 </div>
