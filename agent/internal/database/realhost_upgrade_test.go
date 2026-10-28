@@ -147,7 +147,7 @@ INSERT INTO cache VALUES ('a');`); err != nil {
 	if err := m.RemoveOld(ctx, PostgreSQL, nil); err != nil {
 		t.Fatal(err)
 	}
-	if m.exists("/etc/postgresql/" + old + "/main") || !m.exists("/usr/lib/postgresql/"+old+"/bin/postgres") {
+	if m.exists("/etc/postgresql/"+old+"/main") || !m.exists("/usr/lib/postgresql/"+old+"/bin/postgres") {
 		t.Error("old cluster left, or the packages Serfex's own cluster needs removed")
 	}
 	if got := panelSQL("SELECT count(*) FROM canary"); got != "3" {

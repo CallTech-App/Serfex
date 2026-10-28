@@ -94,7 +94,7 @@ func TestPostgreSQLUpgrade(t *testing.T) {
 			contains(t, "maintenance pg_hba.conf", read(t, sim, pgHBA), "only the postgres account may connect")
 			_, err := m.CreateDatabase(ctx, DatabaseSpec{Server: PostgreSQL, Name: "acme_new"})
 			during = append(during, err)
-			if st := m.Status(ctx).Servers[PostgreSQL]; st.Error != ErrUpgrading.Error() {
+			if st := m.Status(ctx).Servers[PostgreSQL]; !st.Upgrading || st.Error != ErrUpgrading.Error() {
 				t.Errorf("status while upgrading: %+v", st)
 			}
 		}

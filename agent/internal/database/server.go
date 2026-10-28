@@ -94,8 +94,11 @@ type ServerStatus struct {
 	Running bool   `json:"running"`
 	Version string `json:"version,omitempty"`
 	// Remote is true while it accepts connections from other machines.
-	Remote bool   `json:"remote"`
-	Error  string `json:"error,omitempty"`
+	Remote bool `json:"remote"`
+	// Upgrading is true while it is being upgraded to a new major
+	// version (component.upgrade); its databases cannot be used.
+	Upgrading bool   `json:"upgrading,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // Status describes the database servers and the web manager.
@@ -116,7 +119,7 @@ func (m *Manager) Status(ctx context.Context) Status {
 		}
 		s := ServerStatus{Installed: true, Product: p.name}
 		if m.Upgrading() == server {
-			s.Error = ErrUpgrading.Error()
+			s.Upgrading, s.Error = true, ErrUpgrading.Error()
 			st.Servers[server] = s
 			continue
 		}

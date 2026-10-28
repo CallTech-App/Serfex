@@ -401,3 +401,24 @@ func TestPowerDNSSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestOldClusterKeptByAnUpgradeIsNotListed(t *testing.T) {
+	m, sim := newTest(t, "/etc/postgresql/16/main/postgresql.conf", "/etc/postgresql/18/main/postgresql.conf", "/etc/postgresql/16/serfex/postgresql.conf")
+	if err := os.WriteFile(sim.Path("/etc/postgresql/16/main/start.conf"), []byte("# Automatic startup configuration\nmanual\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sim.Path("/etc/postgresql/18/main/start.conf"), []byte("auto\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	units := map[string]bool{}
+	list, err := m.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range list {
+		units[s.Unit] = true
+	}
+	if !units["postgresql@18-main"] || units["postgresql@16-main"] || !units["postgresql@16-serfex"] {
+		t.Errorf("units %v", units)
+	}
+}
