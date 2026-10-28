@@ -24,6 +24,8 @@
                     <span class="text-muted">· {{ $app->providerLabel() }}@if ($app->branch) <x-t text="· dal :branch"><x-slot:branch><span class="font-mono">{{ $app->branch }}</span></x-slot:branch></x-t>@endif</span>
                     <button type="button" wire:click="showKey" class="text-[13px] text-accent hover:underline">{{ __('Dağıtım anahtarı') }}</button>
                     <button type="button" wire:click="openConnect" class="text-[13px] text-accent hover:underline">{{ __('Değiştir') }}</button>
+                @elseif ($app->isPackage())
+                    <span class="text-muted">{{ __('Sürüm paketiyle kuruldu; uygulama kendini kendi panelinden günceller. Serfex bu uygulamayı dağıtmaz.') }}</span>
                 @else
                     <span class="text-muted">{{ $app->source === 'create' ? __('Git deposu bağlı değil; uygulama yeni proje olarak kuruldu.') : __('Git deposu bağlı değil.') }}</span>
                     <button type="button" wire:click="openConnect" class="text-[13px] text-accent hover:underline">{{ __('Depo bağla') }}</button>

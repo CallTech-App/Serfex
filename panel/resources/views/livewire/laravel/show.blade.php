@@ -42,16 +42,23 @@
                 <a href="{{ route('laravel.index') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="arrow-left" />{{ __('Listeye dön') }}</a>
                 @if (! $installing && $operate)
                     <button type="button" wire:click="show('commands')" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="terminal" />{{ __('Komut çalıştır') }}</button>
+                    @unless ($app->isPackage())
                     <button type="button" wire:click="openDeploy" @disabled(! $app->canDeploy())
                             title="{{ $app->repository === null ? __('Dağıtmak için önce Dağıtımlar bölümünden bir Git deposu bağlayın.') : ($running ? __('Bir dağıtım sürüyor.') : '') }}"
                             class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                         @if ($running)<x-icon name="loader-circle" class="animate-spin" />{{ __('Dağıtılıyor') }} @else<x-icon name="rocket" />{{ __('Dağıt') }} @endif
                     </button>
+                    @endunless
                 @endif
             </div>
         </div>
         <p class="mt-1 text-[13px] text-muted">
-            @if ($app->previewOf)
+            @if ($app->template)
+                <x-t text="Şablon :template"><x-slot:template>@if (auth()->user()->isFullAdmin())<a href="{{ route('settings.templates.show', $app->template) }}" wire:navigate class="text-accent hover:underline">{{ $app->template->name }}</a>@else{{ $app->template->name }}@endif</x-slot:template></x-t>@if ($app->template_version) <span class="font-mono text-fg">{{ $app->template_version }}</span>@endif ·
+            @endif
+            @if ($app->isPackage())
+                <x-t text="Sürüm paketi, kendini günceller · :path"><x-slot:path><span class="font-mono">{{ $app->path }}</span></x-slot:path></x-t>
+            @elseif ($app->previewOf)
                 <x-t text=":domain uygulamasının önizlemesi · dal :branch"><x-slot:domain><span class="font-mono">{{ $app->previewOf->site->domain }}</span></x-slot:domain><x-slot:branch><span class="font-mono">{{ $app->branch }}</span></x-slot:branch></x-t>
             @elseif ($app->repository)
                 <x-t text="Depo :app · dal :branch"><x-slot:app><span class="font-mono">{{ $app->repositoryName() }}</span></x-slot:app><x-slot:branch><span class="font-mono">{{ $app->branch ?? __('varsayılan') }}</span></x-slot:branch></x-t>
@@ -171,4 +178,26 @@
             </div>
         </form>
     </x-modal>
+
+    {{-- The first administrator of an application template, once --}}
+    @if ($adminShown)
+        <x-modal :title="__(':template yönetici hesabı', ['template' => $adminShown['template']])" show="adminShown" close="null">
+            <div>
+                <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __(':template yönetici hesabı', ['template' => $adminShown['template']]) }}</h2>
+                <div class="space-y-3 p-5 text-[13.5px]">
+                    <p><x-t text="Kurulum bitince bu hesap oluşturulur. Parola :now gösterilir; Serfex onu kurulumdan sonra saklamaz. Müşterinize iletin ya da bir yere not edin."><x-slot:now><b class="font-medium">{{ __('yalnızca şimdi') }}</b></x-slot:now></x-t></p>
+                    <dl class="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-md border border-line bg-surface-2 p-3">
+                        <dt class="text-muted">{{ __('Ad') }}</dt><dd class="break-words">{{ $adminShown['name'] }}</dd>
+                        <dt class="text-muted">{{ __('E-posta') }}</dt><dd class="font-mono break-all">{{ $adminShown['email'] }}</dd>
+                        <dt class="text-muted">{{ __('Parola') }}</dt><dd class="font-mono break-all">{{ $adminShown['password'] }}</dd>
+                    </dl>
+                    <button type="button" x-data="{ copied: false }" @click="navigator.clipboard.writeText(@js(__('Ad').': '.$adminShown['name']."\n".__('E-posta').': '.$adminShown['email']."\n".__('Parola').': '.$adminShown['password'])); copied = true; setTimeout(() => copied = false, 2000)"
+                            class="h-8 rounded-md border border-line px-3 text-[13px] hover:bg-surface-2"><span x-show="! copied">{{ __('Bilgileri kopyala') }}</span><span x-show="copied" x-cloak>{{ __('Kopyalandı') }}</span></button>
+                </div>
+                <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+                    <button type="button" wire:click="dismissAdmin" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">{{ __('Not ettim, kapat') }}</button>
+                </div>
+            </div>
+        </x-modal>
+    @endif
 </div>

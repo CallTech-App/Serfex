@@ -145,6 +145,9 @@ type Manager struct {
 	Health func(ctx context.Context, domain, path string) HealthResult
 	// Download fetches a URL; tests replace it.
 	Download func(ctx context.Context, url string) ([]byte, error)
+	// Fetch downloads a release package with headers, up to max bytes;
+	// tests replace it.
+	Fetch func(ctx context.Context, url string, headers map[string]string, max int64) ([]byte, error)
 	// Snippet writes one of a site's Nginx snippets (nil data removes
 	// it), checks Nginx and reloads it: the WordPress hardening rules.
 	Snippet func(ctx context.Context, domain, name string, data []byte) error
@@ -166,7 +169,11 @@ func NewManager(h host.Host) *Manager {
 	m := &Manager{h: h, sim: sim, locks: map[string]*sync.Mutex{}, tinkers: map[string]*tinkerSession{}}
 	m.Health = checkHealth
 	m.Download = download
+	m.Fetch = fetch
 	if sim {
+		m.Fetch = func(context.Context, string, map[string]string, int64) ([]byte, error) {
+			return demoPackage(), nil
+		}
 		m.Health = func(context.Context, string, string) HealthResult {
 			return HealthResult{OK: true, Status: 200, Millis: 38}
 		}

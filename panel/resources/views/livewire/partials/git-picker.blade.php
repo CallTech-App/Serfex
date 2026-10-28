@@ -1,4 +1,5 @@
-{{-- The repository picker (PicksGitRepository): $picker from picker(), $pickedRepo, $pickedBranches, $branchError and $branch of the component. --}}
+{{-- The repository picker (PicksGitRepository): $picker from picker(), $pickedRepo, $pickedBranches, $branchError and $branch of the component.
+     $pickerBranch false leaves out the branch; $pickerNote replaces the note on what Serfex adds to the repository. --}}
 @php
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
     $link = 'text-accent hover:underline';
@@ -54,7 +55,7 @@
         </div>
         @error('pickedRepo')<p class="text-[13px] text-crit">{{ $message }}</p>@enderror
 
-        @if ($pickedRepo !== '')
+        @if ($pickedRepo !== '' && ($pickerBranch ?? true))
             <div class="flex flex-wrap items-center gap-2">
                 <label for="picker-branch" class="text-muted">{{ __('Dal') }}</label>
                 @if ($pickedBranches)
@@ -75,7 +76,7 @@
         <p class="text-2xs text-muted">
             <x-t text=":provider hesabı :name ile listeleniyor."><x-slot:provider>{{ $picker['label'] }}</x-slot:provider><x-slot:name><span class="font-mono">{{ $picker['account']->username }}</span></x-slot:name></x-t>
             <button type="button" wire:click="refreshRepositories" class="{{ $link }}">{{ __('Listeyi yenile') }}</button>
-            · {{ __('Serfex depoya salt okunur bir dağıtım anahtarı ve bir webhook ekler.') }}
+            · {{ $pickerNote ?? __('Serfex depoya salt okunur bir dağıtım anahtarı ve bir webhook ekler.') }}
         </p>
     </div>
 @endif
