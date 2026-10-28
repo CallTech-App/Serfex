@@ -19,6 +19,19 @@ var nginxTmpl = template.Must(template.New("nginx").Parse(`# {{.Marker}}. Manual
         proxy_set_header X-Forwarded-Host $host;
         proxy_read_timeout 300s;
 {{- end}}
+{{- define "proxyCache"}}
+{{- with .Cache}}{{if .Page}}
+        proxy_cache serfex_{{.Var}};
+        proxy_cache_key $scheme$request_method$host$request_uri;
+        proxy_cache_valid 200 301 302 {{.Minutes}}m;
+        proxy_cache_valid 404 1m;
+        proxy_cache_use_stale error timeout updating http_500 http_503;
+        proxy_cache_background_update on;
+        proxy_cache_lock on;
+        proxy_cache_bypass $serfex_cache_skip_{{.Var}};
+        proxy_no_cache $serfex_cache_skip_{{.Var}};
+{{- end}}{{end}}
+{{- end}}
 {{- define "acme"}}
     # Let's Encrypt validation, answered by Serfex whatever the site does.
     location ^~ /.well-known/acme-challenge/ {
@@ -49,6 +62,42 @@ map $uri $serfex_maint_{{.MaintVar}} {
     "~^/\.well-known/acme-challenge/" 0;
     default $serfex_maint_c_{{.MaintVar}};
 }
+{{- end}}
+{{- with .Cache}}
+{{- if .Page}}
+# Page cache (Önbellek ve hız): pages are kept for {{.Minutes}} minutes.
+{{if $.Apache}}proxy_cache_path{{else}}fastcgi_cache_path{{end}} {{.Dir}} levels=1:2 keys_zone=serfex_{{.Var}}:10m max_size={{.MaxSize}} inactive=1d use_temp_path=off;
+# Requests with a cookie other than an analytics one, with an
+# Authorization header, or for sign-in, administration and cart pages are
+# sent to the application.
+map $http_cookie $serfex_cache_cookie_{{.Var}} {
+    "" 0;
+    "~^(\s*({{.CookieOK}})[^=]*=[^;]*;?)*$" 0;
+    default 1;
+}
+map $http_authorization $serfex_cache_auth_{{.Var}} {
+    "" $serfex_cache_cookie_{{.Var}};
+    default 1;
+}
+map $request_uri $serfex_cache_skip_{{.Var}} {
+{{- range .Bypass}}
+    "~{{.}}" 1;
+{{- end}}
+    default $serfex_cache_auth_{{.Var}};
+}
+{{- end}}
+{{- if .Browser}}
+# Browser cache (Önbellek ve hız): static files for {{.Days}} days.
+map $sent_http_content_type $serfex_expires_{{.Var}} {
+    default off;
+    "~^image/" {{.Days}}d;
+    "~^font/" {{.Days}}d;
+    "~^(video|audio)/" {{.Days}}d;
+    "~^text/css" {{.Days}}d;
+    "~javascript" {{.Days}}d;
+    "~^application/(x-font|font|vnd\.ms-fontobject)" {{.Days}}d;
+}
+{{- end}}
 {{- end}}
 {{- define "listen"}}
 {{- if not .Redirect}}
@@ -89,6 +138,29 @@ map $uri $serfex_maint_{{.MaintVar}} {
     # Serfex's additions for this site (Güvenlik): WAF mode, password
     # protected folders, blocked paths. Missing files are fine.
     include {{.ExtraConf}};
+{{- with .Cache}}
+{{- if .Gzip}}
+
+    # Compression (Önbellek ve hız).
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/json application/xml application/rss+xml application/atom+xml application/manifest+json image/svg+xml font/ttf font/otf application/vnd.ms-fontobject;
+{{- end}}
+{{- if .Browser}}
+    expires $serfex_expires_{{.Var}};
+{{- end}}
+{{- if .Page}}
+    add_header X-Serfex-Cache $upstream_cache_status;
+{{- end}}
+{{- end}}
+{{- if .NoIndex}}
+
+    # A staging copy (Siteyi kopyala): search engines are asked to stay out.
+    add_header X-Robots-Tag "noindex, nofollow" always;
+{{- end}}
 {{- if .Directives}}
 
     # The administrator's own directives (Web sunucusu yönergeleri).
@@ -203,6 +275,7 @@ map $uri $serfex_maint_{{.MaintVar}} {
     location / {
         proxy_pass http://127.0.0.1:{{.ApachePort}};
 {{- template "apacheHeaders"}}
+{{- template "proxyCache" .}}
     }
 
     location ~* \.(?:css|js|mjs|map|jpe?g|png|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3|pdf|txt|xml|zip|gz)$ {
@@ -212,6 +285,7 @@ map $uri $serfex_maint_{{.MaintVar}} {
     location @apache {
         proxy_pass http://127.0.0.1:{{.ApachePort}};
 {{- template "apacheHeaders"}}
+{{- template "proxyCache" .}}
     }
 {{- else}}
 
@@ -225,6 +299,17 @@ map $uri $serfex_maint_{{.MaintVar}} {
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         fastcgi_param DOCUMENT_ROOT $realpath_root;
         fastcgi_pass unix:{{.PHPSocket}};
+{{- with .Cache}}{{if .Page}}
+        fastcgi_cache serfex_{{.Var}};
+        fastcgi_cache_key $scheme$request_method$host$request_uri;
+        fastcgi_cache_valid 200 301 302 {{.Minutes}}m;
+        fastcgi_cache_valid 404 1m;
+        fastcgi_cache_use_stale error timeout updating http_500 http_503;
+        fastcgi_cache_background_update on;
+        fastcgi_cache_lock on;
+        fastcgi_cache_bypass $serfex_cache_skip_{{.Var}};
+        fastcgi_no_cache $serfex_cache_skip_{{.Var}};
+{{- end}}{{end}}
     }
 {{- end}}
 
@@ -434,6 +519,12 @@ type tmplData struct {
 
 	// Pool holds the site's PHP-FPM pool settings (see php.go).
 	Pool pool
+
+	// Cache is the site's page cache, browser cache and compression (see
+	// cache.go); nil leaves Nginx's defaults.
+	Cache *cacheData
+	// NoIndex asks search engines to leave a staging copy out.
+	NoIndex bool
 }
 
 func render(t *template.Template, d tmplData) []byte {
