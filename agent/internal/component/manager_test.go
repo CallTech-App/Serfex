@@ -699,3 +699,42 @@ func TestRemovingPHPKeepsRoundcube(t *testing.T) {
 		t.Error("PHP 8.4 was not checked and purged")
 	}
 }
+
+func TestDatabaseServerUpgrade(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if _, err := m.Install(ctx, OpSpec{ID: "mysql", Run: "i", Version: "8.4", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(sim.Path("/var/lib/mysql/mysql"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	s := status(t, m, "mysql")
+	if s.Upgrade == nil || s.Upgrade.From != "8.4" || s.Upgrade.To != "9.7" || s.Kept != nil {
+		t.Fatalf("before: upgrade %+v kept %+v (version %s)", s.Upgrade, s.Kept, s.Version)
+	}
+	// Only database servers have major versions to move between.
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "redis", Run: "r"}); err == nil {
+		t.Error("upgraded redis")
+	}
+	res, err := m.Upgrade(ctx, OpSpec{ID: "mysql", Run: "u", Version: "9.7"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if res.Action != "upgrade" || !strings.HasPrefix(res.Status.Version, "9.7.") || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "8.4" {
+		t.Errorf("after: %+v", res.Status)
+	}
+	chunk, _ := m.ReadRun("u", 0)
+	if !chunk.Done || !strings.Contains(chunk.Data, "▸ Ön denetimler yapılıyor") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "mysql", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "mysql"); s.Kept != nil || s.Upgrade != nil {
+		t.Errorf("after removing the old version: %+v", s)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "mysql", Run: "o2"}); err == nil {
+		t.Error("removed an old version twice")
+	}
+}

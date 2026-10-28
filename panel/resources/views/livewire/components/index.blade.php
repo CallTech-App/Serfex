@@ -2,7 +2,7 @@
     use App\Models\Site;
     use App\Services\Components\Components;
     use App\Support\Badge;
-    $busyLabels = ['install' => __('Kuruluyor'), 'update' => __('Güncelleniyor'), 'remove' => __('Kaldırılıyor')];
+    $busyLabels = ['install' => __('Kuruluyor'), 'update' => __('Güncelleniyor'), 'remove' => __('Kaldırılıyor'), 'upgrade' => __('Yükseltiliyor'), 'remove-old' => __('Kaldırılıyor')];
     $badge = fn (array $r) => match (true) {
         $r['busy'] !== null => new Badge($busyLabels[$r['busy']] ?? __('Çalışıyor'), 'info', true),
         ! $r['installed'] => new Badge(__('Kurulu değil'), 'muted'),
@@ -140,6 +140,7 @@
                 <p class="font-semibold">{{ $confirm['title'] }}</p>
                 <p class="mt-1 text-[13px] text-muted">{{ $confirm['text'] }}</p>
                 @include('livewire.components.candidate')
+                @include('livewire.components.upgrade')
                 <div class="mt-4 flex justify-end gap-2">
                     <button type="button" wire:click="$set('confirming', null)" class="h-9 rounded-md border border-line px-3.5 hover:bg-surface-2">{{ __('Vazgeç') }}</button>
                     <button type="button" wire:click="confirm" wire:loading.attr="disabled" @class(['h-9 rounded-md px-3.5 font-medium disabled:opacity-40', 'bg-crit text-on-crit' => $confirm['danger'], 'bg-accent text-accent-fg hover:brightness-110' => ! $confirm['danger']])>{{ $confirm['button'] }}</button>

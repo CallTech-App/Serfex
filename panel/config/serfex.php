@@ -57,6 +57,9 @@ return [
         // Seconds to wait for software installed from Yazılım Yönetimi;
         // ClamAV's first signature download alone can take minutes.
         'component_timeout' => (float) env('SERFEX_AGENT_COMPONENT_TIMEOUT', 1750),
+        // Seconds to wait for a database server's major version upgrade:
+        // every database is dumped, copied and counted.
+        'upgrade_timeout' => (float) env('SERFEX_AGENT_UPGRADE_TIMEOUT', 43300),
     ],
 
     /*

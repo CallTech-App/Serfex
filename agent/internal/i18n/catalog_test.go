@@ -16,7 +16,7 @@ import (
 // translating names the calls whose first string argument (or second,
 // after a context) is a Turkish message: i18n.T, i18n.Translate, i18n.In
 // and the progress-log helpers that translate their format.
-var translating = map[string]int{"T": 1, "Translate": 1, "In": 1, "step": 0}
+var translating = map[string]int{"T": 1, "Translate": 1, "In": 1, "step": 0, "note": 0}
 
 // turkish finds Turkish letters, the sign of a message for people.
 var turkish = regexp.MustCompile(`[çğıöşüÇĞİÖŞÜ]`)
@@ -63,7 +63,7 @@ func scan(t *testing.T) found {
 				switch fn := n.Fun.(type) {
 				case *ast.SelectorExpr:
 					name = fn.Sel.Name
-					if x, ok := fn.X.(*ast.Ident); ok && x.Name != "i18n" && name != "step" {
+					if x, ok := fn.X.(*ast.Ident); ok && x.Name != "i18n" && name != "step" && name != "note" {
 						name = ""
 					}
 				case *ast.Ident:

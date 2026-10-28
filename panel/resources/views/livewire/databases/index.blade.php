@@ -2,7 +2,9 @@
     use App\Models\DatabaseUser;
     use App\Support\Bytes;
     $field = 'h-9 w-full rounded-md border bg-surface px-3 text-[13px] outline-none focus:border-accent';
-    $ready = $server['state'] === 'ready' || ($server['state'] === 'nomanager' && $installed !== []);
+    // While one server is upgraded the other still takes new databases.
+    $ready = $server['state'] === 'ready' || ($server['state'] === 'nomanager' && $installed !== [])
+        || ($server['state'] === 'upgrading' && count($installed) > count($server['upgrading'] ?? []));
     $tabs = ['databases' => __('Veritabanları'), 'users' => __('Kullanıcılar')];
 @endphp
 <div class="space-y-6">

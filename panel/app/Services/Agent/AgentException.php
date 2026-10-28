@@ -18,6 +18,9 @@ class AgentException extends RuntimeException
     /** Serfex: the certificate authority could not be reached; nothing was asked of it. */
     public const CA_UNREACHABLE = -32011;
 
+    /** Serfex: the database server is being upgraded to a new major version. */
+    public const DATABASE_UPGRADING = -32012;
+
     /**
      * The agent's own explanation, without the panel's prefix.
      */
@@ -53,7 +56,8 @@ class AgentException extends RuntimeException
     public static function rpcError(string $method, int $code, string $message): self
     {
         $e = new self("Agent call [{$method}] failed: {$message}", $code);
-        $e->reason = $message;
+        // Every database page shows the reason as it is.
+        $e->reason = $code === self::DATABASE_UPGRADING ? __('Veritabanı sunucusu yeni sürüme yükseltiliyor; bitince yeniden deneyin.') : $message;
 
         return $e;
     }

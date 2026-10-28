@@ -12,6 +12,7 @@ use App\Livewire\Databases\DatabaseIndex;
 use App\Livewire\Laravel\Sections\Environment;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SitePhp;
+use App\Models\Backup;
 use App\Models\ComponentOperation;
 use App\Models\Customer;
 use App\Models\Database;
@@ -222,6 +223,90 @@ class ComponentsTest extends TestCase
             ->call('ask', 'mariadb', 'install')
             ->assertSee('Paket sürümü henüz bilinmiyor; "Güncellemeleri denetle" ile öğrenilir.')
             ->assertSee('MariaDB deposu (dlm.mariadb.com)');
+    }
+
+    public function test_database_server_upgrades_to_the_offered_major_version(): void
+    {
+        $this->components['postgresql'] = ['id' => 'postgresql', 'installed' => true, 'version' => '16.10-0ubuntu0.24.04.1', 'running' => true, 'units' => ['postgresql@16-main'], 'upgrade' => ['from' => '16', 'to' => '18']];
+        $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => true, 'product' => 'mysql', 'running' => true], 'postgresql' => ['installed' => true, 'product' => 'postgresql', 'running' => true]], 'manager' => ['configured' => true]];
+        Database::factory()->create(['server' => DatabaseServers::POSTGRESQL, 'name' => 'kahve_app']);
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
+            ->assertSee('PostgreSQL 18 sürümüne yükseltilebilir')
+            ->assertSee('Sürümü yükselt')
+            ->call('ask', 'postgresql', 'upgrade')
+            ->assertSee('PostgreSQL 18 sürümüne yükseltilsin mi?')
+            ->assertSee('1 veritabanı yedeklenip denetlenecek')
+            ->assertSee('Eski küme durdurulmuş olarak 7 gün saklanır');
+        // Only the version the agent offers.
+        $this->assertSame('PostgreSQL için bu sürüme yükseltme sunulmuyor.', app(Components::class)->start('postgresql', 'upgrade', null, '17'));
+        $this->assertSame('Bu bileşen buradan yönetilemiyor.', app(Components::class)->start('nginx', 'upgrade', null, '18'));
+
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['postgresql', 'upgrade', '18'], [$op->component, $op->action, $op->detail]);
+        $page->assertSee('PostgreSQL 18 sürümüne yükseltiliyor');
+        // Long: it runs on the backups worker, never next to a backup.
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->connection === 'backups' && $job->queue === 'backups' && $job->timeout === 43400);
+        $this->assertStringContainsString('PostgreSQL 18 sürümüne yükseltiliyor.', app(Components::class)->blocker()['text']);
+
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'postgresql', 'run' => $op->run, 'port' => 8443, 'version' => '18']], $this->agent->called('component.upgrade'));
+        $this->assertSame('succeeded', $op->fresh()->status);
+        $op->delete();
+
+        // Afterwards the old version is kept; it goes before anything else.
+        $this->components['postgresql'] = ['id' => 'postgresql', 'installed' => true, 'version' => '18.1-1.pgdg24.04+2', 'running' => true, 'units' => ['postgresql@18-main'],
+            'kept' => ['product' => 'postgresql', 'from' => '16', 'to' => '18', 'old' => '16/main', 'dump' => '/var/lib/serfex/backups/databases/upgrade-postgresql-16-to-18-20261028-120000', 'upgraded' => '2026-10-28T12:00:00Z', 'until' => '2026-11-04T12:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
+            ->assertSee('PostgreSQL 16 04.11.2026 tarihine kadar saklanıyor')
+            ->assertDontSee('Sürümü yükselt')
+            ->assertSee('Yükseltmeden kalan PostgreSQL 16 önce kaldırılmalı.')
+            ->call('ask', 'postgresql', 'remove-old')
+            ->assertSee('PostgreSQL 16 silinsin mi?')
+            ->assertSee('Panelin kendi PostgreSQL');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['postgresql', 'remove-old', '16'], [$op->component, $op->action, $op->detail]);
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'postgresql', 'run' => $op->run, 'port' => 8443]], $this->agent->called('component.remove-old'));
+    }
+
+    public function test_upgrade_waits_for_backups_and_a_running_server(): void
+    {
+        $this->components['mysql'] += ['upgrade' => ['from' => '8.4', 'to' => '9.7']];
+        $components = fn () => app()->make(Components::class);
+
+        $this->components['mysql']['running'] = false;
+        $this->assertSame('MySQL çalışmıyor. Önce Hizmetler sayfasından başlatın; yükseltme yalnızca çalışan bir sunucuda yapılır.', $components()->start('mysql', 'upgrade', null, '9.7'));
+        $this->components['mysql']['running'] = true;
+
+        Backup::create(['key' => 'b1', 'scope' => 'server', 'type' => 'full', 'trigger' => 'manual', 'status' => 'running', 'run' => 'bk-1']);
+        $this->assertSame('Bir yedekleme ya da geri yükleme sürüyor. Bitince yeniden deneyin.', $components()->start('mysql', 'upgrade', null, '9.7'));
+        Backup::query()->delete();
+
+        // A step that fails puts the old version back; the page says so.
+        $this->agent->answers['component.upgrade'] = AgentException::rpcError('component.upgrade', -32000, 'verify: acme.orders has 9 rows, the dump had 10');
+        $op = $components()->start('mysql', 'upgrade', null, '9.7');
+        $this->assertInstanceOf(ComponentOperation::class, $op);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame(['failed', 'verify: acme.orders has 9 rows, the dump had 10'], [$op->fresh()->status, $op->fresh()->error]);
+    }
+
+    public function test_customers_see_the_upgrade_on_their_database_pages(): void
+    {
+        $this->agent->answers['db.status'] = ['servers' => ['mysql' => ['installed' => true, 'product' => 'mysql', 'upgrading' => true, 'error' => 'the database server is being upgraded']], 'manager' => ['configured' => true]];
+        $this->actingAs(Customer::factory()->withLogin()->create(['username' => 'klinik'])->user);
+
+        $this->get(route('databases.index'))->assertOk()
+            ->assertSee('MySQL bakımda: yeni sürüme yükseltiliyor')
+            ->assertSee('Yükseltme bitince her şey kendiliğinden açılır')
+            ->assertDontSee('Veritabanı sunucusu çalışmıyor');
+
+        // What the agent refuses meanwhile reads as such.
+        $e = AgentException::rpcError('db.create', AgentException::DATABASE_UPGRADING, 'the database server is being upgraded to a new major version; try again when it has finished');
+        $this->assertSame('Veritabanı sunucusu yeni sürüme yükseltiliyor; bitince yeniden deneyin.', $e->reason);
     }
 
     public function test_database_setup_card_offers_the_versions(): void

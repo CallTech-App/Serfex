@@ -233,3 +233,34 @@ func (e *mysqlEngine) dropSession(ctx context.Context, user, _ string) error {
 	_, err := e.exec(ctx, "DROP USER IF EXISTS "+mysqlUser(user, "127.0.0.1")+";")
 	return err
 }
+
+// rowCounts counts the rows of the database's tables: one query writes
+// a COUNT(*) per table, which the second call runs.
+func (e *mysqlEngine) rowCounts(ctx context.Context, db string) (map[string]int64, error) {
+	q := "SELECT CONCAT('SELECT ', QUOTE(TABLE_NAME), ', COUNT(*) FROM `', REPLACE(TABLE_SCHEMA, '`', '``'), '`.`', REPLACE(TABLE_NAME, '`', '``'), '`;') " +
+		"FROM information_schema.TABLES WHERE TABLE_SCHEMA = " + sqlString(db) + " AND TABLE_TYPE IN ('BASE TABLE', 'SYSTEM VERSIONED') ORDER BY TABLE_NAME;"
+	// --raw: the statements come back exactly as written.
+	script, err := run(ctx, e.h, host.Command{Name: "mysql", Args: []string{"--batch", "--raw", "--skip-column-names"}, Stdin: []byte(mysqlPrelude + q)})
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(script) == "" {
+		return map[string]int64{}, nil
+	}
+	out, err := e.h.Run(ctx, host.Command{Name: "mysql", Args: []string{"--batch", "--skip-column-names"}, Stdin: []byte(mysqlPrelude + script)})
+	if err != nil {
+		return nil, err
+	}
+	return parseCounts(out)
+}
+
+// maintenance makes the server read-only for customers (root keeps
+// writing); a transaction that holds locks for a minute makes it fail.
+func (e *mysqlEngine) maintenance(ctx context.Context, on bool) error {
+	q := "SET GLOBAL read_only = OFF;"
+	if on {
+		q = "SET SESSION lock_wait_timeout = 60;\nSET GLOBAL read_only = ON;"
+	}
+	_, err := e.exec(ctx, q)
+	return err
+}

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Backups\Backups;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Mail\MailSettings;
 use Illuminate\Database\Eloquent\Builder;
@@ -286,7 +287,8 @@ class Components
         $name = $this->name($operation->component);
 
         if ($operation->detail && ! str_starts_with($operation->action, 'ext-')) {
-            // A database server's chosen version.
+            // A database server's chosen version, the version it is
+            // upgraded to, or the old version an upgrade kept.
             return self::releaseName($operation->component, $operation->detail);
         }
 
@@ -308,7 +310,8 @@ class Components
             $name = $this->operationName($running);
             $doing = match ($running->action) {
                 'update' => __(':name güncelleniyor.', ['name' => $name]),
-                'remove', 'ext-remove' => __(':name kaldırılıyor.', ['name' => $name]),
+                'upgrade' => __(':name sürümüne yükseltiliyor.', ['name' => $name]),
+                'remove', 'ext-remove', 'remove-old' => __(':name kaldırılıyor.', ['name' => $name]),
                 default => __(':name kuruluyor.', ['name' => $name]),
             };
 
@@ -376,6 +379,9 @@ class Components
         if ($status['required'] ?? null) {
             return __('Gerekli. Serfex tüm sitelerde Nginx kullanır.');
         }
+        if ($kept = $status['kept'] ?? null) {
+            return __('Yükseltmeden kalan :name önce kaldırılmalı.', ['name' => self::releaseName($id, (string) $kept['from'])]);
+        }
         $used = array_values(array_unique([...$this->users($id), ...($status['used_by'] ?? [])]));
         if ($used === []) {
             return null;
@@ -397,11 +403,15 @@ class Components
 
     /**
      * Starts installing, updating or removing a component in the
-     * background. Returns the operation, or the reason it cannot start.
+     * background; for a database server also upgrading it to a newer
+     * major version ($version, the one offered) and removing the old
+     * version an upgrade kept. Returns the operation, or the reason it
+     * cannot start.
      */
     public function start(string $id, string $action, ?User $user, ?string $version = null): ComponentOperation|string
     {
-        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove'], true)) {
+        $database = in_array($id, ['mysql', 'mariadb', 'postgresql'], true);
+        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove', ...($database ? ['upgrade', 'remove-old'] : [])], true)) {
             return __('Bu bileşen buradan yönetilemiyor.');
         }
         // Read first: it also closes operations whose job is gone.
@@ -428,7 +438,17 @@ class Components
         if ($action !== 'install' && ! ($status['installed'] ?? false)) {
             return __(':name kurulu değil.', ['name' => $this->name($id)]);
         }
-        if ($version !== null && ($action !== 'install' || ! in_array($version, array_column($status['choices'] ?? [], 'major'), true))) {
+        if ($action === 'upgrade' && ($refusal = $this->upgradeRefusal($id, $status, $version)) !== null) {
+            return $refusal;
+        }
+        if ($action === 'remove-old') {
+            if (! isset($status['kept']['from'])) {
+                return __('Yükseltmeden kalan eski sürüm yok.');
+            }
+            $version = (string) $status['kept']['from'];
+        } elseif ($version !== null && ! in_array($action, ['install', 'upgrade'], true)) {
+            return __(':name için bu sürüm sunulmuyor.', ['name' => $this->name($id)]);
+        } elseif ($version !== null && $action === 'install' && ! in_array($version, array_column($status['choices'] ?? [], 'major'), true)) {
             return __(':name için bu sürüm sunulmuyor.', ['name' => $this->name($id)]);
         }
 
@@ -442,6 +462,32 @@ class Components
         RunComponentOperation::dispatch($operation);
 
         return $operation;
+    }
+
+    /**
+     * Why a database server cannot be upgraded to $version now, or null.
+     * Only the version the agent offers (the next allowed major) is
+     * taken; a backup or restore must not run at the same time.
+     *
+     * @param  array<string, mixed>  $status
+     */
+    public function upgradeRefusal(string $id, array $status, ?string $version): ?string
+    {
+        $offer = $status['upgrade'] ?? null;
+        if (isset($status['kept']['from'])) {
+            return __('Önceki yükseltmeden kalan :name duruyor; yeniden yükseltmeden önce onu kaldırın.', ['name' => self::releaseName($id, (string) $status['kept']['from'])]);
+        }
+        if (! isset($offer['to']) || $version !== (string) $offer['to']) {
+            return __(':name için bu sürüme yükseltme sunulmuyor.', ['name' => $this->name($id)]);
+        }
+        if (! ($status['running'] ?? false)) {
+            return __(':name çalışmıyor. Önce Hizmetler sayfasından başlatın; yükseltme yalnızca çalışan bir sunucuda yapılır.', ['name' => $this->name($id)]);
+        }
+        if (app(Backups::class)->busy()) {
+            return __('Bir yedekleme ya da geri yükleme sürüyor. Bitince yeniden deneyin.');
+        }
+
+        return null;
     }
 
     /**
@@ -591,6 +637,8 @@ class Components
             'candidate' => $installed ? null : self::shortVersion($status['candidate'] ?? null),
             'source' => $installed ? null : self::source($id, $status['candidate_from'] ?? null),
             'choices' => $installed ? [] : self::choices($id, $status['choices'] ?? []),
+            'upgrade' => $installed && isset($status['upgrade']['to']) ? ['from' => (string) $status['upgrade']['from'], 'to' => (string) $status['upgrade']['to'], 'name' => self::releaseName($id, (string) $status['upgrade']['to'])] : null,
+            'kept' => $installed && isset($status['kept']['from']) ? ['from' => (string) $status['kept']['from'], 'name' => self::releaseName($id, (string) $status['kept']['from']), 'until' => $status['kept']['until'] ?? null] : null,
             'running' => (bool) ($status['running'] ?? false),
             'units' => $status['units'] ?? [],
             'busy' => $busy,
