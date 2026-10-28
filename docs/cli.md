@@ -217,6 +217,7 @@ Also called: `rm`
 | Option | |
 | --- | --- |
 | `--keep-dns` | Keeps the DNS zone |
+| `--no-backup` | Skips the backup taken before deleting (administrators only) |
 
 ### serfex domains
 

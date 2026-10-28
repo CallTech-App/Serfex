@@ -13,7 +13,7 @@ use Illuminate\Foundation\Queue\Queueable;
 /**
  * Finishes deleting a customer once the undo window has passed: their
  * sites go too when that was asked (with mail, DNS and Laravel
- * applications), otherwise the sites stay and serve again without an
+ * applications, each backed up first), otherwise the sites stay and serve again without an
  * owner. The login goes with the customer.
  */
 class PurgeCustomer implements ShouldQueue
@@ -43,7 +43,7 @@ class PurgeCustomer implements ShouldQueue
             if ($customer->delete_sites) {
                 foreach (Site::where('system_user_id', $account->id)->where('status', '!=', SiteStatus::Deleting)->get() as $site) {
                     $site->update(['status' => SiteStatus::Deleting]);
-                    DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true, removeDatabases: true);
+                    DeleteSite::dispatch($site, removeUser: true, removeZone: true, removeMail: true, removeDatabases: true, backup: true);
                 }
             }
             $account->update(['customer_id' => null]);

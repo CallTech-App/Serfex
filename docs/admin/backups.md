@@ -55,6 +55,12 @@ email, DNS, certificates. By default the current state is backed up first,
 so the restore itself can be undone (safety backups are kept 7 days). A
 deleted site is created again from the backup.
 
+Every site is backed up on this server just before it is deleted (from the
+site page, the API or with its customer). These *Before deletion* backups
+are kept for 30 days by default, set under Schedule → *Backups before
+deletion*, and restore like any other: everything is ticked when the site no
+longer exists.
+
 A backup that is only on a remote destination is fetched to the server first
 (and kept 24 hours). Archives can be downloaded too.
 

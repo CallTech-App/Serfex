@@ -7,8 +7,10 @@ use App\Models\DnsZone;
 use App\Models\LaravelPreview;
 use App\Models\MailDomain;
 use App\Models\Site;
+use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Backups\Backups;
 use App\Services\Databases\Databases;
 use App\Services\Dns\Zones;
 use App\Services\Files\FtpAccounts;
@@ -26,6 +28,11 @@ use Illuminate\Support\Facades\DB;
  * the domain keeps receiving mail without the site. Its databases go when
  * asked (each after a backup), otherwise they stay with the account. Its
  * SFTP accounts always go.
+ *
+ * With $backup the whole site (files, databases, mail, DNS, certificates)
+ * is backed up on this server first, so Yedekler can bring it back; when
+ * that backup cannot be taken nothing is deleted. Such a deletion runs on
+ * the "backups" queue, after the backup or restore in progress.
  */
 class DeleteSite implements ShouldQueue
 {
@@ -33,12 +40,24 @@ class DeleteSite implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(public Site $site, public bool $removeUser = true, public bool $removeZone = false, public bool $removeMail = false, public bool $removeDatabases = false) {}
+    public int $timeout = 43400;
+
+    public function __construct(public Site $site, public bool $removeUser = true, public bool $removeZone = false, public bool $removeMail = false, public bool $removeDatabases = false, public bool $backup = false, public ?int $userId = null)
+    {
+        if ($backup) {
+            $this->onConnection('backups')->onQueue('backups');
+        }
+    }
 
     public function handle(AgentClient $agent, Zones $zones): void
     {
         $site = $this->site->fresh(['systemUser']);
         if ($site === null) {
+            return;
+        }
+        if ($this->backup && ($why = $this->backUp($site)) !== null) {
+            $site->update(['status' => SiteStatus::Failed, 'last_error' => __('Silmeden önce yedek alınamadı, site silinmedi: :error', ['error' => $why])]);
+
             return;
         }
         // Preview environments of the site's application are sites of
@@ -119,5 +138,26 @@ class DeleteSite implements ShouldQueue
         if ($this->removeZone && $siteZones->isNotEmpty()) {
             $zones->delete(...$siteZones->map->fresh()->filter()->all());
         }
+    }
+
+    /**
+     * Backs the site up before it goes. Returns why not, or null.
+     */
+    private function backUp(Site $site): ?string
+    {
+        $backups = app(Backups::class);
+        if (($why = $backups->noRoomBeforeDelete($site)) !== null) {
+            return $why;
+        }
+        $backup = $backups->takeBeforeDelete($site, $this->userId ? User::find($this->userId) : null);
+        if ($backup->status !== 'succeeded') {
+            // A half-taken backup is no way back; it goes with the failure.
+            $error = $backup->error ?: $backup->items()->where('status', 'failed')->value('error') ?: __('Yedek tamamlanamadı.');
+            $backups->purge($backup);
+
+            return $error;
+        }
+
+        return null;
     }
 }
