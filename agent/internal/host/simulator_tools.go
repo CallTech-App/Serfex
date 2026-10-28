@@ -500,7 +500,7 @@ func (s *Simulator) writeLaravelApp(dir string) error {
 			"[2026-10-18 23:48:03] production.WARNING: Slow query (1840 ms): select * from shipments where carrier_id = ?\n",
 		"storage/framework/views/.gitignore": "*\n",
 		".serfex-sim/about.json":             `{"laravel":"13.6.0","php":"8.4.0","environment":"production","debug":false,"queue":"database","cache":"database","database":"sqlite","session":"database"}`,
-		".serfex-sim/queues.json":            `{"sizes":[{"connection":"","queue":"default","size":3}],"failed":2}`,
+		".serfex-sim/queues.json":            `{"sizes":[{"connection":"","queue":"default","size":3}],"failed":2,"default":"database","connections":["sync","database","beanstalkd","sqs","redis","deferred","background","failover"]}`,
 		".serfex-sim/failed.json": `[{"id":"9b2f1c3e-6a1d-4f5e-8a7b-0c9d8e7f6a5b","connection":"database","queue":"default","job":"App\\Jobs\\SyncCarrierStatus","error":"Illuminate\\Http\\Client\\ConnectionException: Connection timed out","failed_at":"2026-10-18 23:12:04"},` +
 			`{"id":"1e4a7b0c-3d6f-4a2b-9c8d-7e6f5a4b3c2d","connection":"database","queue":"default","job":"App\\Jobs\\GenerateManifestPdf","error":"Allowed memory size of 268435456 bytes exhausted","failed_at":"2026-10-18 22:47:55"}]`,
 		".serfex-sim/schedule.json": fmt.Sprintf(`[{"command":"inspire","description":"","expression":"0 * * * *","next":%q,"timezone":"UTC"},`+

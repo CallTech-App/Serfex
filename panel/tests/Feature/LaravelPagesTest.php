@@ -74,7 +74,8 @@ class LaravelPagesTest extends TestCase
             ],
             'laravel.probe' => match ($params['kind']) {
                 'about' => ['laravel' => '13.6.0', 'environment' => 'production', 'debug' => false, 'queue' => 'database', 'cache' => 'database', 'database' => 'sqlite', 'session' => 'database'],
-                'queues' => ['sizes' => [['connection' => '', 'queue' => 'default', 'size' => 15]], 'failed' => 3],
+                'queues' => ['sizes' => [['connection' => '', 'queue' => 'default', 'size' => 15]], 'failed' => 3,
+                    'default' => 'database', 'connections' => ['sync', 'database', 'beanstalkd', 'sqs', 'redis', 'deferred', 'background', 'failover']],
                 'failed' => [['id' => '5f0c', 'connection' => 'database', 'queue' => 'default', 'job' => 'App\Jobs\SendManifest', 'error' => 'ConnectionException: timeout', 'failed_at' => '2026-10-18 21:00:00']],
                 'schedule' => [['command' => 'inspire', 'description' => '', 'expression' => '0 * * * *', 'next' => now()->addHour()->toIso8601String(), 'timezone' => 'UTC']],
             },
@@ -293,6 +294,76 @@ class LaravelPagesTest extends TestCase
 
         $this->agent->shouldReceive('call')->once()->with('laravel.run', Mockery::on(fn ($p) => $p['args'] === ['queue:retry', '5f0c'] && ! isset($p['run'])), Mockery::any())->andReturn(['exit_code' => 0]);
         Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])->call('openFailed')->assertSee('App\Jobs\SendManifest')->call('failedAction', 'retry', '5f0c');
+    }
+
+    public function test_a_worker_cannot_use_a_queue_connection_the_application_does_not_have(): void
+    {
+        $app = $this->laravelApp();
+        $worker = $app->workers()->sole();
+
+        // A database connection name in the queue connection field is refused.
+        Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])->call('openWorker', $worker->id)
+            ->assertSet('connections', ['sync', 'database', 'beanstalkd', 'sqs', 'redis', 'deferred', 'background', 'failover'])
+            ->assertSee('Varsayılan (database)')
+            ->set('form.connection', 'pgsql')->call('saveWorker')
+            ->assertHasErrors('form.connection')
+            ->assertSee('Uygulamada pgsql adlı bir kuyruk bağlantısı yok')
+            ->assertSee('pgsql bir veritabanı bağlantısının adı');
+        $this->assertNull($worker->fresh()->connection);
+        Queue::assertNotPushed(SyncLaravelProcesses::class);
+
+        Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])->call('openWorker', $worker->id)
+            ->set('form.connection', 'redis')->call('saveWorker')->assertHasNoErrors();
+        $this->assertSame('redis', $worker->fresh()->connection);
+
+        // A worker saved before the check shows why it cannot start, and one
+        // click puts it back on the default connection, with Undo.
+        $worker->update(['connection' => 'pgsql']);
+        $app->refresh()->update(['processes_state' => 'ok']);
+        Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])
+            ->assertSee('Bağlantı yok')
+            ->assertSee('İşçi başlayamıyor:')
+            ->assertSee('Varsayılan bağlantıyı kullan')
+            ->call('useDefaultConnection', $worker->id)
+            ->assertDispatched('toast')
+            ->call('restoreConnection', $worker->id, 'pgsql');
+        $this->assertSame('pgsql', $worker->fresh()->connection);
+
+        Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])->call('useDefaultConnection', $worker->id);
+        $this->assertNull($worker->fresh()->connection);
+        Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])->assertDontSee('İşçi başlayamıyor:');
+    }
+
+    public function test_workers_reach_the_server_with_their_own_queue_connection(): void
+    {
+        $app = $this->laravelApp();
+        $app->workers()->create(['name' => 'mail', 'connection' => 'redis', 'queue' => 'mail']);
+        $sent = null;
+        $this->agent->shouldReceive('call')->with('laravel.queue.apply', Mockery::any(), Mockery::any())
+            ->andReturnUsing(function (string $method, array $params) use (&$sent) {
+                $sent = $params['workers'];
+
+                return [];
+            });
+        $this->agent->shouldReceive('call')->with(Mockery::anyOf('laravel.schedule.apply', 'laravel.process.apply'), Mockery::any(), Mockery::any())->andReturn([]);
+
+        // Loaded from the database, where Eloquent's own $connection is the
+        // panel's database connection; it must never reach queue:work.
+        (new SyncLaravelProcesses($app))->handle(app(\App\Services\Laravel\Processes::class));
+
+        $this->assertSame(['default' => '', 'mail' => 'redis'], collect($sent)->pluck('connection', 'name')->all());
+        $this->assertSame('ok', $app->fresh()->processes_state);
+    }
+
+    public function test_a_default_queue_connection_missing_from_the_application_is_shown(): void
+    {
+        $app = $this->laravelApp();
+        $this->agent->shouldReceive('call')->with('laravel.probe', Mockery::on(fn ($p) => $p['kind'] === 'queues'), Mockery::any())
+            ->andReturn(['sizes' => [], 'failed' => 0, 'default' => 'rabbitmq', 'connections' => ['sync', 'database']]);
+
+        Livewire::withoutLazyLoading()->test(Queues::class, ['appId' => $app->id])
+            ->assertSee('QUEUE_CONNECTION=rabbitmq uygulamanın config/queue.php dosyasında tanımlı değil.')
+            ->assertDontSee('Varsayılan bağlantıyı kullan');
     }
 
     public function test_scheduler_and_maintenance(): void

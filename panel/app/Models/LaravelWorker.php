@@ -41,7 +41,9 @@ class LaravelWorker extends Model
     {
         return [
             'name' => $this->name,
-            'connection' => (string) $this->connection,
+            // Not $this->connection: inside the model that is Eloquent's own
+            // database connection name (pgsql), not this column.
+            'connection' => (string) $this->getAttribute('connection'),
             'queue' => $this->queue,
             'processes' => $this->processes,
             'timeout' => $this->timeout,
