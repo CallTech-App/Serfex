@@ -175,9 +175,12 @@
                     </div>
 
                     <p class="font-medium sm:pt-1">{{ __('Kaynak') }}</p>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-2 {{ $templates->isNotEmpty() ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }}">
                         <label class="{{ $radio }}"><input type="radio" wire:model.live="source" value="create" class="mt-0.5 {{ $check }}"><span><span class="font-medium">{{ __('Yeni proje') }}</span><span class="block text-2xs text-muted">{{ __("Laravel'in son sürümüyle boş uygulama") }}</span></span></label>
                         <label class="{{ $radio }}"><input type="radio" wire:model.live="source" value="git" class="mt-0.5 {{ $check }}"><span><span class="font-medium">{{ __('Git deposundan') }}</span><span class="block text-2xs text-muted">{{ __('GitHub, GitLab, Bitbucket veya başka bir adres') }}</span></span></label>
+                        @if ($templates->isNotEmpty())
+                            <label class="{{ $radio }}"><input type="radio" wire:model.live="source" value="template" class="mt-0.5 {{ $check }}"><span><span class="font-medium">{{ __('Şablondan') }}</span><span class="block text-2xs text-muted">{{ __('Kendi uygulamalarınız') }}</span></span></label>
+                        @endif
                     </div>
 
                     @if ($source === 'create')
@@ -187,7 +190,7 @@
                                 <label class="{{ $chip }}"><input type="radio" wire:model="kit" value="{{ $key }}" class="{{ $check }}">{{ $label }}</label>
                             @endforeach
                         </div>
-                    @else
+                    @elseif ($source === 'git')
                         <p class="font-medium sm:pt-2">{{ __('Depo') }}</p>
                         <div class="space-y-2">
                             <div class="flex flex-wrap gap-2">
@@ -213,8 +216,22 @@
                             @endif
                             @endif
                         </div>
+                    @else
+                        <label for="lv-template" class="font-medium sm:pt-2">{{ __('Şablon') }}</label>
+                        <div class="space-y-3">
+                            <select id="lv-template" wire:model.live="templateId" class="{{ $field }} {{ $errors->has('templateId') ? 'border-crit' : 'border-line' }}">
+                                @foreach ($templates as $t)
+                                    <option value="{{ $t->id }}">{{ $t->name }}@if ($t->versionLabel()) · {{ $t->versionLabel() }}@endif</option>
+                                @endforeach
+                            </select>
+                            @error('templateId')<p class="text-[13px] text-crit">{{ $message }}</p>@enderror
+                            @if ($picked)
+                                @include('livewire.partials.template-form', ['template' => $picked, 'summary' => $summary])
+                            @endif
+                        </div>
                     @endif
 
+                    @if ($source !== 'template')
                     <label for="lv-php" class="font-medium sm:pt-2">{{ __('PHP sürümü') }}</label>
                     <div>
                         <select id="lv-php" wire:model="phpVersion" class="h-9 w-48 rounded-md border bg-surface px-2.5 {{ $errors->has('phpVersion') ? 'border-crit' : 'border-line' }}">
@@ -288,6 +305,7 @@
                         <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="worker" class="{{ $check }}"><span><x-t text="Kuyruk işçisi (:queue kuyruğu)"><x-slot:queue><span class="font-mono text-[13px]">default</span></x-slot:queue></x-t></span></label>
                         <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="scheduler" class="{{ $check }}"><span><x-t text="Zamanlayıcı (her dakika :command)"><x-slot:command><span class="font-mono text-[13px]">schedule:run</span></x-slot:command></x-t></span></label>
                     </div>
+                    @endif
                 </div>
                 <div class="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">
                     <button type="button" wire:click="$set('installing', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>

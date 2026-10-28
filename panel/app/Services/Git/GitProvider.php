@@ -66,7 +66,7 @@ abstract class GitProvider
     /**
      * @return list<string>
      */
-    abstract public function branches(string $token, string $repository): array;
+    abstract public function branches(?string $token, string $repository): array;
 
     /** Adds a read-only deploy key; returns its id. */
     abstract public function addDeployKey(string $token, string $repository, string $title, string $publicKey): string;
@@ -80,6 +80,32 @@ abstract class GitProvider
     abstract public function addWebhook(string $token, string $repository, string $url, bool $pullRequests, bool $verifySsl): string;
 
     abstract public function removeWebhook(string $token, string $repository, string $id): void;
+
+    /**
+     * The commit a branch or tag points at. Without a token only public
+     * repositories can be read.
+     *
+     * @return array{sha: string, message: string}
+     */
+    abstract public function commit(?string $token, string $repository, string $ref): array;
+
+    /**
+     * The repository's tags, newest first.
+     *
+     * @return list<string>
+     */
+    abstract public function tags(?string $token, string $repository): array;
+
+    /**
+     * The newest published release: its tag and the files attached to it
+     * (url downloads one with the token and Accept: application/octet-stream).
+     *
+     * @return array{tag: string, assets: list<array{name: string, url: string, size: int, sha256: ?string}>}
+     */
+    public function latestRelease(?string $token, string $repository): array
+    {
+        throw new GitProviderException(__(':provider sürüm paketlerini listelemiyor; paketin adresini yazın.', ['provider' => $this->label()]));
+    }
 
     public function clientId(): string
     {

@@ -95,7 +95,7 @@ class GitHub extends GitProvider
         return $repos;
     }
 
-    public function branches(string $token, string $repository): array
+    public function branches(?string $token, string $repository): array
     {
         $branches = $this->send(fn () => $this->http($token)->get(self::API."/repos/{$repository}/branches", ['per_page' => 100]));
 
@@ -131,5 +131,34 @@ class GitHub extends GitProvider
     public function removeWebhook(string $token, string $repository, string $id): void
     {
         $this->send(fn () => $this->http($token)->delete(self::API."/repos/{$repository}/hooks/".rawurlencode($id)));
+    }
+
+    public function commit(?string $token, string $repository, string $ref): array
+    {
+        $commit = $this->send(fn () => $this->http($token)->get(self::API."/repos/{$repository}/commits/".rawurlencode($ref)));
+
+        return ['sha' => (string) ($commit['sha'] ?? ''), 'message' => strtok((string) ($commit['commit']['message'] ?? ''), "\n") ?: ''];
+    }
+
+    public function tags(?string $token, string $repository): array
+    {
+        $tags = $this->send(fn () => $this->http($token)->get(self::API."/repos/{$repository}/tags", ['per_page' => 100]));
+
+        return array_values(array_filter(array_map(fn ($t) => is_array($t) && is_string($t['name'] ?? null) ? $t['name'] : null, $tags)));
+    }
+
+    public function latestRelease(?string $token, string $repository): array
+    {
+        $release = $this->send(fn () => $this->http($token)->get(self::API."/repos/{$repository}/releases/latest"));
+        $assets = [];
+        foreach ((array) ($release['assets'] ?? []) as $a) {
+            if (! is_array($a) || ! is_string($a['name'] ?? null) || ! is_string($a['url'] ?? null)) {
+                continue;
+            }
+            $digest = is_string($a['digest'] ?? null) && str_starts_with($a['digest'], 'sha256:') ? substr($a['digest'], 7) : null;
+            $assets[] = ['name' => $a['name'], 'url' => $a['url'], 'size' => (int) ($a['size'] ?? 0), 'sha256' => $digest];
+        }
+
+        return ['tag' => (string) ($release['tag_name'] ?? ''), 'assets' => $assets];
     }
 }

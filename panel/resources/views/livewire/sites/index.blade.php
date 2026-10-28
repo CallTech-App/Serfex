@@ -104,9 +104,9 @@
 
     {{-- Site ekle --}}
     <x-modal :title="__('Site ekle')" show="creating">
-        <form wire:submit="create">
-            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Site ekle') }}</h2>
-            <div class="space-y-4 p-5 text-[13.5px]">
+        <form wire:submit="create" class="flex max-h-[calc(100vh-2rem)] flex-col">
+            <h2 class="flex h-12 shrink-0 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Site ekle') }}</h2>
+            <div class="space-y-4 overflow-y-auto p-5 text-[13.5px]">
                 @if ($agentError)
                     <p class="relative overflow-hidden rounded-md bg-crit-soft py-2.5 pr-3 pl-4 text-[13px] text-crit">
                         <span class="absolute inset-y-0 left-0 w-1 bg-crit"></span>{{ $agentError }}
@@ -179,11 +179,27 @@
                         @error('phpVersion') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     </div>
                 </div>
+                @if ($templates->isNotEmpty())
+                    <div>
+                        <label for="templateId" class="mb-1.5 block">{{ __('Uygulama') }}</label>
+                        <select id="templateId" wire:model.live="templateId" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 text-[13.5px]">
+                            <option value="">{{ __('Yok (boş site)') }}</option>
+                            @foreach ($templates as $t)
+                                <option value="{{ $t->id }}">{{ $t->name }}@if ($t->versionLabel()) · {{ $t->versionLabel() }}@endif</option>
+                            @endforeach
+                        </select>
+                        @if (! $picked)<p class="mt-1.5 text-2xs text-muted">{{ __('Bir uygulama şablonu seçerseniz site oluşturulunca o uygulama kurulur.') }}</p>@endif
+                    </div>
+                    @if ($picked)
+                        @include('livewire.partials.template-form', ['template' => $picked, 'summary' => $summary])
+                        <p class="text-2xs text-muted">{{ __('Site oluşturulur, sertifika alınır, ardından uygulama kurulur. Kurulumu Laravel sayfasında canlı izleyebilirsiniz.') }}</p>
+                    @endif
+                @endif
             </div>
-            <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+            <div class="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('creating', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
                 <button type="submit" @disabled($phpVersions === []) wire:loading.attr="disabled" wire:target="create"
-                        class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Siteyi oluştur') }}</button>
+                        class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ $picked ? __('Siteyi oluştur ve kur') : __('Siteyi oluştur') }}</button>
             </div>
         </form>
     </x-modal>

@@ -8,6 +8,7 @@ use App\Models\LaravelApp;
 use App\Models\LaravelDeployment;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Laravel\AppTemplates;
 use App\Services\Laravel\Backups;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\Processes;
@@ -83,6 +84,14 @@ class DeployLaravelApp implements ShouldQueue
 
         if ($first) {
             $problem = $this->goLive($agent, $processes, $app, $health);
+        }
+        // An application template's one-time setup commands, into the same
+        // log, once its first release is live.
+        if ($first && $problem === '' && ! ($result['rolled_back'] ?? false) && $app->template_setup !== null) {
+            $problem = (string) app(AppTemplates::class)->runSetup($app, $deployment->run);
+        }
+        if ($app->app_template_id !== null && ! ($result['rolled_back'] ?? false)) {
+            $app->template_version = $app->template?->ref_type === 'tag' ? $deployment->ref : ($deployment->commit ? substr($deployment->commit, 0, 7) : $app->template_version);
         }
 
         $deployment->fill([
