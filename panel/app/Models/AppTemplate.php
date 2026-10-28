@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -105,7 +106,7 @@ class AppTemplate extends Model
      * The templates a user may install: administrators all of them,
      * customers those opened to customers.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<AppTemplate>  $query
+     * @param  Builder<AppTemplate>  $query
      */
     public function scopeInstallableBy($query, User $user): void
     {

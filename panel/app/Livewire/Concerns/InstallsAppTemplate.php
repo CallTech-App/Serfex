@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Services\Customers\Quotas;
 use App\Services\Databases\Databases;
 use App\Services\Laravel\AppTemplates;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -38,7 +39,7 @@ trait InstallsAppTemplate
     /**
      * The templates the signed-in user may install, by name.
      *
-     * @return \Illuminate\Support\Collection<int, AppTemplate>
+     * @return Collection<int, AppTemplate>
      */
     protected function installableTemplates()
     {
