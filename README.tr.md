@@ -16,9 +16,10 @@ komut satırıyla dağıtır.
 
 ![Serfex genel bakış: önce sorunlar, sonra siteler, kaynaklar ve yedekler](docs/images/overview-tr.png)
 
-> **Durum:** Serfex 0.1 ilk herkese açık sürümdür. Aşağıdaki her özellik
-> çalışıyor ve CI'da gerçek sunucu testleri var, ama henüz uzun süre canlı
-> hosting yapmadı. Önce boş bir sunucuda deneyin; bkz. [Durum ve yol haritası](#durum-ve-yol-haritası).
+> **Durum:** Serfex yeni (0.1 serisi) ve hızla değişiyor. Aşağıdaki
+> özelliklerin çoğunun CI'da gerçek sunucu testleri var, ama Serfex henüz uzun
+> süre canlı hosting yapmadı. Önce boş bir sunucuda deneyin; bkz.
+> [Durum ve yol haritası](#durum-ve-yol-haritası).
 
 ## Öne çıkanlar
 
@@ -28,13 +29,22 @@ sürümü kendi klasöründe kurar; Composer'ı, ön yüz derlemesini ve migrati
 çalıştırır, tek adımda yeni sürüme geçer ve `/up` adresini denetler. Sağlık
 denetimi başarısız olursa kendiliğinden geri döner. Her uygulamada:
 
-- GitHub, GitLab, Bitbucket push webhook'u ya da tek tıkla dağıtım; derleme
-  kancaları ve geri dönmek için son beş sürüm;
+- bağlı GitHub, GitLab ya da Bitbucket hesabınızdan seçilen depo ve dal;
+  dağıtım anahtarını ve webhook'u Serfex kendisi ekler;
+- push webhook'u ya da tek tıkla dağıtım; derleme kancaları ve geri dönmek için
+  son beş sürüm;
 - pull request'ler için `pr-<n>.<alan adı>` önizleme ortamları;
 - `.env` düzenleme, canlı çıktılı Artisan / Composer / npm komutları, Tinker;
-- yönetilen süreçler olarak kuyruk işçileri, zamanlayıcı, Horizon, Octane ve Reverb;
+- yönetilen süreçler olarak kuyruk işçileri, zamanlayıcı (her görev ayrı ayrı
+  durdurulabilir), Horizon, Octane ve Reverb;
 - günlükler, IP izin listeli bakım modu, kendi yedekleri ve kendi Redis'i;
 - geliştiriciler için uygulama bazında erişim ve CI için dağıtım anahtarları.
+
+**Uygulama şablonları.** Kendi Laravel uygulamanızı bir Git deposundan ya da
+sonradan kendini güncelleyen bir sürüm zip'inden bir kez tanımlayın:
+veritabanı, `.env` satırları, kurulumda sorulan sorular ve ilk komutlar. Sonra
+herhangi bir siteye tek adımda kurun. Şablonlar bu depoda değil, panelinizin
+veritabanında durur.
 
 ![Bir Laravel uygulamasının dağıtımları](docs/images/laravel-tr.png)
 
@@ -54,26 +64,42 @@ serfex deploy -a api.ornek.com --wait
 
 - **Siteler:** her sitenin kendi sistem kullanıcısı ve PHP-FPM havuzu; site
   bazında Nginx ya da Nginx arkasında Apache; yan yana PHP 8.1–8.5; alt alan
-  adları, ek alan adları, yönlendirmeler, hata sayfaları, dosya yöneticisi,
-  SFTP hesapları, zamanlanmış görevler, trafik istatistikleri ve günlükler.
+  adları, ek alan adları, tercih edilen adres (`www.` ile ya da `www.`
+  olmadan), yönlendirmeler, hata sayfaları, dosya yöneticisi, FTP hesapları,
+  SSH erişimi (sitenin ana klasörüne kilitli SFTP ya da kabuk), zamanlanmış
+  görevler, site bazında Composer ve Node.js sürümü, önbellek ve hız ayarları,
+  trafik istatistikleri ve günlükler. Sunucuda olmayan bir adres "Bu adreste
+  bir site yok" sayfasını görür, hiçbir zaman başka bir siteyi değil.
+- **Hazırlık ortamı (staging):** bir siteyi veritabanlarıyla birlikte
+  `staging.<alan adı>` adresine kopyalama, arama motorlarından gizli; canlı
+  siteden yenileme ve önce yedek alıp geri alınabilir şekilde canlıya aktarma.
+- **Taşıma:** cPanel'den (tam hesap yedeği) ya da Plesk'ten (SSH ile)
+  hesapları getirme: siteler, veritabanları, eski parolalarıyla posta
+  kutuları, DNS bölgeleri ve sertifikalar; hiçbir şey değişmeden önce önizleme.
 - **WordPress:** kendi veritabanıyla tek tıkla kurulum ya da sitede olanı
   yönetme; geri dönüş noktası ve kendiliğinden geri alma ile WordPress, eklenti
   ve tema güncellemeleri, tek tıkla giriş, bakım modu ve güvenlik kuralları.
 - **DNS:** kendi yetkili DNS sunucusu (PowerDNS). Site eklemek bölgesini yazar;
-  e-posta ve sertifikalar kendi kayıtlarını ekler.
+  e-posta ve sertifikalar kendi kayıtlarını ekler. Tek tıkla DNSSEC ve yeni
+  bölgeleri kendiliğinden alan ikincil DNS sunucuları (katalog bölgeleri).
 - **SSL:** her site ve ek alan adı için Let's Encrypt, DNS yerelse joker
-  sertifika, bitişten 30 gün önce yenileme, başka sertifikalar için yükleme.
+  sertifika, Cloudflare vekili arkasındaki adlar için de; bitişten 30 gün önce
+  yenileme, başka sertifikalar için yükleme.
 - **E-posta:** Postfix, Dovecot ve Rspamd tek adımda; SPF, DKIM ve DMARC
-  kendiliğinden yazılır; kota, yönlendirici, tümünü yakala ve webmail.
-- **Veritabanları:** MySQL ya da MariaDB, yanında PostgreSQL; kullanıcılar,
-  yetkiler, uzaktan erişim ve tek tıkla phpMyAdmin ya da Adminer.
-- **Müşteriler ve paketler:** paket bazında sınırlar ve özellikler, kotalar,
-  askıya alma ve müşterinin yalnızca kendi hostingini gördüğü müşteri paneli.
+  kendiliğinden yazılır; kota, yönlendirici, tümünü yakala ve Roundcube ya da
+  SnappyMail ile webmail.
+- **Veritabanları:** MySQL ya da MariaDB, yanında PostgreSQL (pgvector ile);
+  kullanıcılar, yetkiler, uzaktan erişim, tek tıkla phpMyAdmin ya da Adminer
+  ve kendiliğinden geri dönen ana sürüm yükseltmesi.
+- **Müşteriler ve paketler:** paket bazında sınırlar ve özellikler, dosya
+  sisteminin uyguladığı disk kotaları, askıya alma ve müşterinin yalnızca kendi
+  hostingini gördüğü müşteri paneli.
 - **Canlı izleme:** şu anda hangi sitenin CPU, bellek, PHP işçisi ya da
   veritabanı kullandığı ve kimin saldırdığı; tek tıkla IP engeli ve geçici
   kaynak sınırı.
 - **Güvenlik:** güvenlik duvarı, ModSecurity WAF, zararlı yazılım ve eski
-  yazılım taraması, Fail2ban, iki adımlı giriş, SSH ayarları.
+  yazılım taraması, Fail2ban, iki adımlı giriş, e-postayla parola sıfırlama,
+  panelde güvenlik başlıkları, SSH ayarları.
 - **Yedekler:** tüm sunucu ya da tek site, tam ve artımlı; yerel disk,
   S3 uyumlu depolama ya da SFTP; seçerek geri yükleme.
 - **Serfex AI:** sunucunun durumunu okuyan, sorunu açıklayan ve sizin
@@ -98,7 +124,8 @@ sudo bash install.sh --lang tr
 ```
 
 Birkaç dakika sürer ve tek kullanımlık bir kurulum bağlantısıyla biter.
-Bağlantıyı açıp yönetici hesabını oluşturursunuz; ardından bir kurulum
+Bağlantıyı açıp yönetici hesabını oluşturursunuz (kaybettiyseniz
+`sudo serfex setup-url` yenisini verir); ardından bir kurulum
 sihirbazı sunucu adı, ad sunucuları, saat dilimi, panelin adresi ve
 sertifikası, bildirimler, güvenlik duvarı, varsayılanlar ve yedekler için
 adım adım yol gösterir. Geri kalan her şey (DNS, e-posta,
@@ -142,11 +169,8 @@ ayrıdır. Ayrıntılar: [Mimari](docs/architecture.md) (İngilizce).
 uygulaması barındırması için gereken her şeyi kapsar. Bilinen eksikler,
 sonraki sürümler için planlı:
 
-- tarayıcıda SSH terminali ve başka sunucudan site taşıma (panelde "Yakında"
-  olarak görünür);
-- DNSSEC ve ikincil DNS sunucuları;
-- cPanel ve Plesk yedeklerini içe aktarma, posta kutularının ayrı yedeği,
-  CalDAV ve CardDAV;
+- tarayıcıda SSH terminali (panelde "Yakında" olarak görünür);
+- posta kutularının ayrı yedeği, CalDAV ve CardDAV;
 - Slack ve Telegram bildirimleri;
 - imzalı sürümler (sürümler bugün SHA-256 ile denetleniyor);
 - bir panelden birden fazla sunucu ve Ubuntu dışındaki dağıtımlar.
