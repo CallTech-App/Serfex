@@ -137,7 +137,7 @@
         @endif
     </section>
 
-    <x-modal title="{{ $confirm['title'] ?? __('Onay') }}" show="confirming" size="max-w-md">
+    <x-modal title="{{ $confirm['title'] ?? __('Onay') }}" show="confirming" size="max-w-xl">
         @if ($confirm)
             <div class="p-5 text-[13.5px]">
                 <p class="font-semibold">{{ $confirm['title'] }}</p>

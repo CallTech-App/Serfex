@@ -286,7 +286,7 @@
     </section>
 
     {{-- Onay --}}
-    <x-modal :title="__('Onay')" show="confirming" size="max-w-md">
+    <x-modal :title="__('Onay')" show="confirming" size="max-w-xl">
         <div class="p-5 text-[13.5px]">
             @if ($confirming === 'rollback')
                 <p class="font-semibold">{{ __('Serfex :previous sürümüne dönülsün mü?', ['previous' => $previous]) }}</p>
