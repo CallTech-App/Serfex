@@ -215,7 +215,7 @@ class LaravelPagesTest extends TestCase
             ->call('openDeploy')->assertSet('deploying', true)->assertSet('ref', 'main')
             ->set('ref', 'release/2.8')->set('migrate', false)
             ->call('deploy')
-            ->assertSet('section', 'dagitimlar')
+            ->assertSet('section', 'deployments')
             ->assertDispatched('show-deploy-log');
 
         $deployment = $app->deployments()->sole();
@@ -302,7 +302,7 @@ class LaravelPagesTest extends TestCase
         $this->assertTrue($app->fresh()->scheduler);
         Queue::assertPushed(SyncLaravelProcesses::class);
 
-        Livewire::withoutLazyLoading()->test(Scheduler::class, ['appId' => $app->id])->call('runNow', 'inspire')->assertDispatched('show-section', section: 'komutlar');
+        Livewire::withoutLazyLoading()->test(Scheduler::class, ['appId' => $app->id])->call('runNow', 'inspire')->assertDispatched('show-section', section: 'commands');
         $this->assertSame('inspire', $app->commands()->sole()->command);
 
         $this->agent->shouldReceive('call')->once()->with('laravel.maintenance', Mockery::on(fn ($p) => $p['down'] === true && $p['secret'] === 'ekip-girisi-2026' && $p['retry'] === 30), Mockery::any())
@@ -329,7 +329,7 @@ class LaravelPagesTest extends TestCase
         $other = Site::factory()->create(['domain' => 'kahve.com.tr']);
 
         $this->get(route('sites.show', $app->site))->assertOk()->assertSee(route('laravel.show', $app), false)->assertSee('Laravel 13.6')
-            ->assertSee(route('laravel.show', [$app, 'bolum' => 'dagitimlar']), false);
+            ->assertSee(route('laravel.show', [$app, 'section' => 'deployments']), false);
         $this->get(route('sites.show', $other))->assertOk()->assertSee(route('laravel.index', ['site' => $other->id]), false);
     }
 }

@@ -31,7 +31,7 @@ class ZoneIndex extends Component
     public string $search = '';
 
     /** "" for all zones, "problem" for the ones that need attention. */
-    #[Url(as: 'durum', except: '')]
+    #[Url(as: 'status', except: '')]
     public string $filter = '';
 
     /** @var list<int> */

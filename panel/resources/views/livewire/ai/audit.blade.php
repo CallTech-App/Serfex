@@ -50,7 +50,7 @@
                             <td class="px-5 py-2.5 whitespace-nowrap text-muted">{{ in_array($e->type, ['applied', 'rejected', 'undone'], true) ? ($e->user->name ?? '—') : 'Serfex AI' }}</td>
                             <td class="px-5 py-2.5 text-right whitespace-nowrap">
                                 @if ($e->conversation && ! $e->conversation->trashed() && $e->conversation->user_id === auth()->id())
-                                    <a href="{{ route('ai.index', ['sohbet' => $e->ai_conversation_id]) }}" wire:navigate class="text-accent hover:underline">{{ __('Sohbet') }}</a>
+                                    <a href="{{ route('ai.index', ['chat' => $e->ai_conversation_id]) }}" wire:navigate class="text-accent hover:underline">{{ __('Sohbet') }}</a>
                                 @endif
                             </td>
                         </tr>

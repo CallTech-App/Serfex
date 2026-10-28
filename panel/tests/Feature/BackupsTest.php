@@ -116,9 +116,9 @@ class BackupsTest extends TestCase
     {
         $this->serverBackup();
 
-        $this->get('/yedekler')->assertOk()->assertSee('Tüm sunucu')->assertSee('Şimdi yedekle')->assertSee('1 site + panel');
-        $this->get('/yedekler?sekme=hedefler')->assertOk()->assertSee('Yerel disk')->assertSee('Hedef ekle');
-        $this->get('/yedekler?sekme=zamanlama')->assertOk()->assertSee('Her gün')->assertSee('Saklama');
+        $this->get('/backups')->assertOk()->assertSee('Tüm sunucu')->assertSee('Şimdi yedekle')->assertSee('1 site + panel');
+        $this->get('/backups?tab=destinations')->assertOk()->assertSee('Yerel disk')->assertSee('Hedef ekle');
+        $this->get('/backups?tab=schedule')->assertOk()->assertSee('Her gün')->assertSee('Saklama');
         $this->get('/')->assertOk()->assertSee('Son sunucu yedeği');
     }
 
@@ -177,7 +177,7 @@ class BackupsTest extends TestCase
         $problems = app(Backups::class)->problems();
         $this->assertStringContainsString('1 arşiv alınamadı: kahveatolyesi.com.tr', $problems[0]['text']);
         $this->get('/')->assertSee('1 arşiv alınamadı');
-        $this->get('/yedekler')->assertSee('Kısmen alındı');
+        $this->get('/backups')->assertSee('Kısmen alındı');
     }
 
     public function test_a_failed_agent_call_fails_the_backup(): void
@@ -403,8 +403,8 @@ class BackupsTest extends TestCase
         $server = $this->serverBackup();
         $this->actingAs($customer->user);
 
-        $this->get('/yedekler')->assertOk()->assertSee('klinikmavi.com')->assertDontSee('kahveatolyesi.com.tr')->assertDontSee('Hedefler');
-        $this->get('/yedekler?sekme=hedefler')->assertOk()->assertDontSee('Hedef ekle');
+        $this->get('/backups')->assertOk()->assertSee('klinikmavi.com')->assertDontSee('kahveatolyesi.com.tr')->assertDontSee('Hedefler');
+        $this->get('/backups?tab=destinations')->assertOk()->assertDontSee('Hedef ekle');
         Livewire::test(BackupIndex::class)->call('openTarget')->assertForbidden();
         Livewire::test(BackupIndex::class)->call('openImport')->assertForbidden();
 
@@ -444,7 +444,7 @@ class BackupsTest extends TestCase
         $this->assertSame(['kahveatolyesi.com.tr', 'panel'], array_column($this->agent->called('backup.create')[0]['items'], 'name'));
 
         $this->actingAs($customer->user);
-        $this->get('/yedekler')->assertForbidden();
+        $this->get('/backups')->assertForbidden();
         $this->get('/')->assertDontSee('Yedekler');
     }
 
@@ -531,6 +531,6 @@ class BackupsTest extends TestCase
         $this->serverBackup();
 
         $this->get('/sites/'.$this->site->id)->assertOk()->assertSee('Son yedek')->assertSee(route('backups.index', ['site' => $this->site->id]), false);
-        $this->get('/yedekler?site='.$this->site->id)->assertOk()->assertSee('sitesinin yedekleri')->assertSee('İndir');
+        $this->get('/backups?site='.$this->site->id)->assertOk()->assertSee('sitesinin yedekleri')->assertSee('İndir');
     }
 }

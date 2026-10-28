@@ -48,7 +48,7 @@ Everything it prints is also written to `/var/log/serfex/install.log`.
 | `--admin-email E` | Create the administrator now with this email and print its password at the end, instead of the setup link. For automated installs; the setup wizard still opens at the first sign-in. |
 | `--admin-name N` | The administrator's name. |
 | `--hostname H` | The panel's address. Default: the server's fully qualified host name. |
-| `--lang tr\|en` | The panel's default language and the installer's. Default: Turkish when the system `LANG` is Turkish, otherwise English. |
+| `--lang tr\|en` | The panel's default language and the installer's. Default: English. The setup page can still switch the panel to Turkish. |
 | `--version V` | Install release `V` instead of the newest. |
 | `--channel stable\|beta` | `beta` also considers pre-releases (`v0.2.0-beta.1`). |
 | `--no-components` | Do not install Nginx, PHP 8.4, Composer, Node.js and Fail2ban for sites now. |
@@ -79,8 +79,9 @@ https://203.0.113.10:8443/install/Xk9…
 ```
 
 Open it in a browser (accept the self-signed certificate warning). It asks
-for your name, email, a password of at least 12 characters and the panel's
-language, creates the first administrator and opens the setup wizard. The
+for the panel's language (English unless you pick Türkçe; the page switches
+as soon as you pick), your name, email and a password of at least 12
+characters, creates the first administrator and opens the setup wizard. The
 link works once and for 24 hours. Nobody can sign in before it is used, and
 only root on the server can make a new one:
 

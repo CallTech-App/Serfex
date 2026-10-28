@@ -29,7 +29,7 @@
             @endforeach
         </div>
 
-        @if ($tab === 'kota')
+        @if ($tab === 'limits')
             @include('livewire.customers.usage', ['report' => $report])
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">
                 {{ __('Disk ve trafik %85\'te turuncu olur ve e-postayla haber verilir; sınıra gelince yeni site, posta kutusu ya da uygulama açılmaz. Trafik sınırı aşılsa da siteler çalışmaya devam eder; trafik her ayın başında sıfırlanır.') }}

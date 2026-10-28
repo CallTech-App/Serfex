@@ -58,7 +58,7 @@ class QuickSearch extends Component
             [__('Güvenlik'), 'security.index', [], 'shield-alert', __('güvenlik duvarı waf tarama fail2ban ssh 2fa'), 'admin'],
             [__('Yedekler'), 'backups.index', [], 'archive', __('yedek geri yükleme backup s3 sftp'), 'backups'],
             [__('Hizmetler'), 'services.index', [], 'server-cog', __('servis nginx mysql postfix yeniden başlat'), 'admin'],
-            [__('PHP sürümleri'), 'services.index', ['sekme' => 'php'], 'code', __('php ini eklenti'), 'admin'],
+            [__('PHP sürümleri'), 'services.index', ['tab' => 'php'], 'code', __('php ini eklenti'), 'admin'],
             [__('Yazılım Yönetimi'), 'components.index', [], 'package-plus', __('bileşen apache redis node composer kurulum'), 'admin'],
             [__('Araçlar ve Ayarlar'), 'settings.general', [], 'settings', __('genel ayarlar panel adresi port saat dilimi'), 'full'],
             [__('Sunucu ayarları'), 'settings.server', [], 'settings', __('sunucu adı hostname ip'), 'full'],
@@ -141,7 +141,7 @@ class QuickSearch extends Component
                     return ['label' => $s->domain, 'detail' => $detail, 'url' => route('sites.show', $s), 'icon' => 'globe', 'mono' => true];
                 }),
                 ...$subdomains->map(fn (Subdomain $s) => ['label' => $s->name, 'detail' => __('Alt alan adı · :domain', ['domain' => $s->site->domain]), 'url' => route('sites.domains', $s->site), 'icon' => 'globe', 'mono' => true]),
-                ...$redirects->map(fn (SiteRedirect $r) => ['label' => $r->source, 'detail' => __('Yönlendirme · :domain', ['domain' => $r->site->domain]), 'url' => route('sites.domains', ['site' => $r->site, 'sekme' => 'yonlendirmeler']), 'icon' => 'corner-up-right', 'mono' => true]),
+                ...$redirects->map(fn (SiteRedirect $r) => ['label' => $r->source, 'detail' => __('Yönlendirme · :domain', ['domain' => $r->site->domain]), 'url' => route('sites.domains', ['site' => $r->site, 'tab' => 'redirects']), 'icon' => 'corner-up-right', 'mono' => true]),
             ]);
 
             if ($user->allows('dns')) {

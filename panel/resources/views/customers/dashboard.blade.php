@@ -51,7 +51,7 @@
                 <x-icon name="chevron-right" class="text-muted" />
             </a>
         @endforeach
-        <a href="{{ route('ssl.index', $sslAttention ? ['durum' => 'problem'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
+        <a href="{{ route('ssl.index', $sslAttention ? ['status' => 'problem'] : []) }}" wire:navigate class="flex items-center gap-3 px-5 py-4 hover:bg-surface-2/60">
             <x-icon name="shield-check" @class(['text-muted' => ! $sslAttention, 'text-warn' => $sslAttention]) />
             <span>{{ __('SSL sertifikaları') }}</span>
             <span @class(['num ml-auto text-right', 'text-muted' => ! $sslAttention, 'font-medium text-warn' => $sslAttention])>

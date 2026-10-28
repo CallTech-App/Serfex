@@ -28,27 +28,27 @@ class LaravelShow extends Component
      */
     public const SECTIONS = [
         'Uygulama' => [
-            'genel' => ['Genel bakış', 'laravel.sections.overview', 'view'],
-            'dagitimlar' => ['Dağıtımlar', 'laravel.sections.deployments', 'view'],
-            'onizleme' => ['Önizleme ortamları', 'laravel.sections.previews', 'view'],
-            'ortam' => ['Ortam (.env)', 'laravel.sections.environment', 'operate'],
+            'overview' => ['Genel bakış', 'laravel.sections.overview', 'view'],
+            'deployments' => ['Dağıtımlar', 'laravel.sections.deployments', 'view'],
+            'previews' => ['Önizleme ortamları', 'laravel.sections.previews', 'view'],
+            'environment' => ['Ortam (.env)', 'laravel.sections.environment', 'operate'],
         ],
         'Çalıştırma' => [
-            'komutlar' => ['Komutlar', 'laravel.sections.commands', 'view'],
-            'kuyruklar' => ['Kuyruklar', 'laravel.sections.queues', 'view'],
-            'zamanlayici' => ['Zamanlayıcı', 'laravel.sections.scheduler', 'view'],
-            'surecler' => ['Süreçler', 'laravel.sections.processes', 'view'],
+            'commands' => ['Komutlar', 'laravel.sections.commands', 'view'],
+            'queues' => ['Kuyruklar', 'laravel.sections.queues', 'view'],
+            'scheduler' => ['Zamanlayıcı', 'laravel.sections.scheduler', 'view'],
+            'processes' => ['Süreçler', 'laravel.sections.processes', 'view'],
         ],
         'Bakım' => [
-            'gunlukler' => ['Günlükler', 'laravel.sections.logs', 'view'],
-            'bakim' => ['Bakım modu', 'laravel.sections.maintenance', 'view'],
-            'yedekler' => ['Yedekler', 'laravel.sections.backups', 'operate'],
-            'erisim' => ['Erişim ve API', 'laravel.sections.access', 'view'],
+            'logs' => ['Günlükler', 'laravel.sections.logs', 'view'],
+            'maintenance' => ['Bakım modu', 'laravel.sections.maintenance', 'view'],
+            'backups' => ['Yedekler', 'laravel.sections.backups', 'operate'],
+            'access' => ['Erişim ve API', 'laravel.sections.access', 'view'],
         ],
     ];
 
     /** Sections a preview environment does not have. */
-    public const NOT_IN_PREVIEWS = ['onizleme', 'yedekler', 'erisim'];
+    public const NOT_IN_PREVIEWS = ['previews', 'backups', 'access'];
 
     protected const VIEW_METHODS = ['show', 'refreshStatus'];
 
@@ -56,8 +56,8 @@ class LaravelShow extends Component
 
     public int $appId;
 
-    #[Url(as: 'bolum', except: 'genel')]
-    public string $section = 'genel';
+    #[Url(as: 'section', except: 'overview')]
+    public string $section = 'overview';
 
     public bool $deploying = false;
 
@@ -83,7 +83,7 @@ class LaravelShow extends Component
         abort_unless(auth()->user()->canOnApp($model, 'view'), 403);
         $this->appId = $model->id;
         if ($this->component($this->section) === null) {
-            $this->section = 'genel';
+            $this->section = 'overview';
         }
     }
 
@@ -134,7 +134,7 @@ class LaravelShow extends Component
         ], ['ref.regex' => __('Dal veya etiket adı geçersiz.'), 'ref.not_regex' => __('Dal veya etiket adı geçersiz.')]);
         $deployment = $apps->deploy($app, $this->ref, auth()->user(), $this->migrate, $this->frontend);
         $this->deploying = false;
-        $this->section = 'dagitimlar';
+        $this->section = 'deployments';
         $this->dispatch('show-deploy-log', id: $deployment->id);
     }
 
@@ -168,7 +168,7 @@ class LaravelShow extends Component
         if ($preview !== null) {
             app(Previews::class)->delete($preview);
             session()->flash('toast', __(':domain siliniyor.', ['domain' => $app->site->domain]));
-            $this->redirectRoute('laravel.show', ['app' => $app->preview_of_id, 'bolum' => 'onizleme'], navigate: true);
+            $this->redirectRoute('laravel.show', ['app' => $app->preview_of_id, 'section' => 'previews'], navigate: true);
 
             return;
         }
@@ -183,7 +183,7 @@ class LaravelShow extends Component
             return view('livewire.sites.gone');
         }
         if ($this->component($this->section) === null) {
-            $this->section = 'genel';
+            $this->section = 'overview';
         }
         $install = $app->status === LaravelAppStatus::Active ? null : $app->deployments()->where('kind', 'install')->first();
 
@@ -214,7 +214,7 @@ class LaravelShow extends Component
         foreach (self::SECTIONS as $group => $items) {
             foreach ($items as $key => $item) {
                 if ($user->canOnApp($app, $item[2]) && ! ($app->isPreview() && in_array($key, self::NOT_IN_PREVIEWS, true))
-                    && ! ($key === 'komutlar' && ! $user->mayUseOnApp($app, 'shell'))) {
+                    && ! ($key === 'commands' && ! $user->mayUseOnApp($app, 'shell'))) {
                     $menu[$group][$key] = $item;
                 }
             }

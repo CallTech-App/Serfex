@@ -25,12 +25,12 @@ class PhpVersionShow extends Component
 {
     use ShowsComponentOperations;
 
-    public const TABS = ['ayarlar' => 'php.ini varsayılanları', 'eklentiler' => 'Eklentiler'];
+    public const TABS = ['settings' => 'php.ini varsayılanları', 'extensions' => 'Eklentiler'];
 
     public string $version;
 
-    #[Url(as: 'sekme', except: 'ayarlar')]
-    public string $tab = 'ayarlar';
+    #[Url(except: 'settings')]
+    public string $tab = 'settings';
 
     /** @var array<string, string> the form, by field() */
     public array $values = [];
@@ -57,7 +57,7 @@ class PhpVersionShow extends Component
     {
         $this->version = $version;
         if (! array_key_exists($this->tab, self::TABS)) {
-            $this->tab = 'ayarlar';
+            $this->tab = 'settings';
         }
         $installed = $php->installed();
         if ($installed !== null && ! in_array($version, $installed, true)) {
@@ -202,7 +202,7 @@ class PhpVersionShow extends Component
     public function render(Components $components, SystemServices $services): View
     {
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
-        $nginx = $this->tab === 'ayarlar' ? $services->settings('nginx', 'nginx') : null;
+        $nginx = $this->tab === 'settings' ? $services->settings('nginx', 'nginx') : null;
         $bodyLimit = is_array($nginx) ? ($nginx['client_max_body_mb'] ?? null) : null;
         $post = PhpVersions::megabytes($this->current['post_max_size'] ?? null);
 

@@ -22,14 +22,14 @@ class SiteStatistics extends Component
 {
     public int $siteId;
 
-    #[Url(as: 'donem', except: '30g')]
-    public string $period = '30g';
+    #[Url(as: 'period', except: '30d')]
+    public string $period = '30d';
 
-    #[Url(as: 'sekme', except: 'page')]
+    #[Url(except: 'page')]
     public string $tab = 'page';
 
     /** What the chart shows: visitors, pages, requests or bytes. */
-    #[Url(as: 'grafik', except: 'visitors')]
+    #[Url(as: 'chart', except: 'visitors')]
     public string $metric = 'visitors';
 
     public const METRICS = ['visitors' => 'Ziyaretçi', 'pages' => 'Sayfa görüntüleme', 'requests' => 'İstek', 'bytes' => 'Bant genişliği'];
@@ -48,7 +48,7 @@ class SiteStatistics extends Component
     {
         $site = Site::visibleTo(auth()->user())->findOrFail($this->siteId);
         if (! isset(SiteStats::PERIODS[$this->period])) {
-            $this->period = '30g';
+            $this->period = '30d';
         }
         if (! isset(SiteStats::TABS[$this->tab])) {
             $this->tab = 'page';

@@ -12,13 +12,13 @@
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
-            @foreach (['musteriler' => __('Müşteriler'), 'paketler' => __('Paketler')] as $key => $label)
+            @foreach (['customers' => __('Müşteriler'), 'packages' => __('Paketler')] as $key => $label)
                 <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="-mb-px h-12 border-b-2 whitespace-nowrap {{ $tab === $key ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg' }}">{{ $label }}</button>
             @endforeach
         </div>
 
-        @if ($tab === 'musteriler')
+        @if ($tab === 'customers')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openCreate" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                     <x-icon name="plus" />{{ __('Müşteri ekle') }}

@@ -21,7 +21,7 @@
 
     @if ($busy && ! $operation)
         <div wire:poll.3s hidden></div>
-    @elseif ($tab === 'hizmetler' && ! $agentError)
+    @elseif ($tab === 'services' && ! $agentError)
         <div wire:poll.10s hidden></div>
     @endif
 
@@ -51,7 +51,7 @@
             @endforeach
         </div>
 
-        @if ($tab === 'hizmetler')
+        @if ($tab === 'services')
             <div class="relative overflow-x-auto">
                 <table class="w-full text-[13.5px] sm:min-w-[760px]">
                     <thead>

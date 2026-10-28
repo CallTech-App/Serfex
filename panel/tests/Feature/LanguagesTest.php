@@ -74,18 +74,26 @@ class LanguagesTest extends TestCase
         $this->app->instance(AgentClient::class, $this->agent);
     }
 
-    public function test_the_sign_in_page_follows_the_browser_until_a_language_is_picked(): void
+    public function test_the_sign_in_page_reads_the_server_default_until_a_language_is_picked(): void
     {
-        $this->get('/login', ['Accept-Language' => 'en-US,en;q=0.9'])->assertOk()
-            ->assertSee('Sign in to the panel')->assertSee('<html lang="en"', false);
-        $this->get('/login', ['Accept-Language' => 'tr-TR,tr;q=0.9,en;q=0.5'])->assertOk()->assertSee('Panele giriş yapın');
-        // A language nobody speaks here: the server's default.
-        $this->get('/login', ['Accept-Language' => 'de-DE'])->assertOk()->assertSee('Panele giriş yapın');
+        // The browser's language does not decide.
+        $this->get('/login', ['Accept-Language' => 'en-US,en;q=0.9'])->assertOk()->assertSee('Panele giriş yapın');
 
-        // Picked on the page, it stays for the session whatever the browser says.
-        $this->get('/login?dil=tr', ['Accept-Language' => 'en'])->assertOk()->assertSee('Panele giriş yapın');
-        $this->get('/login', ['Accept-Language' => 'en'])->assertOk()->assertSee('Panele giriş yapın');
-        $this->get('/login?dil=xx', ['Accept-Language' => 'en'])->assertOk()->assertSee('Panele giriş yapın');
+        app(PanelSettings::class)->setLocale('en');
+        $this->get('/login', ['Accept-Language' => 'tr-TR,tr;q=0.9'])->assertOk()
+            ->assertSee('Sign in to the panel')->assertSee('<html lang="en"', false);
+
+        // Picked on the page, it stays for the session.
+        $this->get('/login?lang=tr')->assertOk()->assertSee('Panele giriş yapın');
+        $this->get('/login')->assertOk()->assertSee('Panele giriş yapın');
+        $this->get('/login?lang=xx')->assertOk()->assertSee('Panele giriş yapın');
+    }
+
+    public function test_a_new_server_reads_english(): void
+    {
+        config(['serfex.locale' => null]);
+        $this->assertSame('en', Locales::serverDefault());
+        $this->get('/login', ['Accept-Language' => 'tr-TR,tr;q=0.9'])->assertOk()->assertSee('Sign in to the panel');
     }
 
     public function test_after_sign_in_the_person_s_own_language_wins_then_the_server_default(): void
@@ -104,8 +112,8 @@ class LanguagesTest extends TestCase
 
     public function test_error_pages_are_in_the_reader_s_language(): void
     {
-        $this->get('/no-such-page', ['Accept-Language' => 'en'])->assertNotFound()->assertSee('Page not found');
         $this->get('/no-such-page')->assertNotFound()->assertSee('Sayfa bulunamadı');
+        $this->get('/no-such-page?lang=en')->assertNotFound()->assertSee('Page not found');
 
         $this->actingAs(User::factory()->create(['role' => 'full', 'locale' => 'en']));
         $this->get('/no-such-page')->assertNotFound()->assertSee('Page not found');
@@ -269,7 +277,7 @@ class LanguagesTest extends TestCase
 
     public function test_english_sign_in_and_customer_pages_have_no_turkish_left(): void
     {
-        $this->checkEnglish('/login', ['Accept-Language' => 'en']);
+        $this->checkEnglish('/login?lang=en');
 
         $customer = Customer::factory()->withLogin()->create(['company' => 'Acme Ltd', 'name' => 'Sam Lee', 'username' => 'acme']);
         $customer->package->update(['name' => 'Standard']);

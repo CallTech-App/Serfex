@@ -101,7 +101,7 @@
                 <h2 class="flex h-12 items-center border-t border-line px-5 text-[14.5px] font-semibold">{{ __('Günlük') }}</h2>
             @endif
 
-            @if ($tab === 'ayarlar' && $fields !== [])
+            @if ($tab === 'settings' && $fields !== [])
                 <form wire:submit="saveSettings">
                     @if ($settingsError)
                         <p class="mx-5 mt-4 rounded-lg bg-crit-soft px-3 py-2 text-[13px] text-crit" role="alert">{{ $settingsError }}</p>

@@ -17,12 +17,12 @@ use Livewire\Component;
 #[Layout('components.layouts.app')]
 class ServiceShow extends Component
 {
-    public const TABS = ['gunluk' => 'Günlük', 'ayarlar' => 'Ayarlar'];
+    public const TABS = ['log' => 'Günlük', 'settings' => 'Ayarlar'];
 
     public string $unit;
 
-    #[Url(as: 'sekme', except: 'gunluk')]
-    public string $tab = 'gunluk';
+    #[Url(except: 'log')]
+    public string $tab = 'log';
 
     public int $lines = 100;
 
@@ -46,8 +46,8 @@ class ServiceShow extends Component
         if ($service === null && $services->list() !== null) {
             abort(404);
         }
-        if (! array_key_exists($this->tab, self::TABS) || ($this->tab === 'ayarlar' && empty($service['settings']))) {
-            $this->tab = 'gunluk';
+        if (! array_key_exists($this->tab, self::TABS) || ($this->tab === 'settings' && empty($service['settings']))) {
+            $this->tab = 'log';
         }
         if (! empty($service['settings'])) {
             $this->loadSettings($services, $service['settings']);
@@ -179,7 +179,7 @@ class ServiceShow extends Component
         $error = null;
         $service = $services->find($this->unit, $error);
         $logs = null;
-        if ($service !== null && $this->tab === 'gunluk') {
+        if ($service !== null && $this->tab === 'log') {
             $logs = $services->logs($this->unit, $this->lines);
         }
 

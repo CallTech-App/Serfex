@@ -32,7 +32,7 @@
                 <span class="text-muted">{{ __('Bu site henüz taranmadı. Sunucu her pazar 03:20\'de taranır.') }}</span>
             @endif
             <span class="ml-auto"></span>
-            @if ($tab === 'bulgular')
+            @if ($tab === 'findings')
                 <select wire:model.live="findingStatus" class="{{ $field }} border-line" aria-label="{{ __('Durum') }}">
                     <option value="open">{{ __('Açık (:open)', ['open' => $statusCounts['open'] ?? 0]) }}</option>
                     <option value="fixed">{{ __('Düzeltilen (:fixed)', ['fixed' => $statusCounts['fixed'] ?? 0]) }}</option>
@@ -47,12 +47,12 @@
             @foreach ($this::TABS as $key => $label)
                 <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"
                         @class(['-mb-px h-11 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
-                    {{ $label }}{{ $key === 'engelli' && $denied ? ' ('.count($denied).')' : '' }}
+                    {{ $label }}{{ $key === 'blocked' && $denied ? ' ('.count($denied).')' : '' }}
                 </button>
             @endforeach
         </div>
 
-        @if ($tab === 'bulgular')
+        @if ($tab === 'findings')
             @include('livewire.security.findings', ['findings' => $findings, 'showSite' => false])
         @else
             <ul class="divide-y divide-line text-[13.5px]">

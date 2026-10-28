@@ -15,8 +15,8 @@ use Illuminate\Support\HtmlString;
  *
  * Turkish is the source language. Views and code call __() with the
  * Turkish text; lang/en.json holds the English. A person's own choice
- * wins, then the server's default; before signing in, the browser's
- * Accept-Language picks.
+ * wins, then the server's default, which is English unless Turkish was
+ * chosen at installation. The API follows Accept-Language.
  */
 final class Locales
 {
@@ -42,7 +42,7 @@ final class Locales
     {
         $locale = (string) config('serfex.locale');
 
-        return self::supports($locale) ? $locale : 'tr';
+        return self::supports($locale) ? $locale : 'en';
     }
 
     /**

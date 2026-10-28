@@ -15,7 +15,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * /cli/onay: the person approves a `serfex login` from the browser they
+ * /cli/approve: the person approves a `serfex login` from the browser they
  * are signed in with. The page shows the code the command line printed,
  * the computer's name and where it asked from; approving makes a key that
  * acts as this person (read-only if they choose so).
@@ -25,7 +25,7 @@ use Livewire\Component;
 #[ForEveryAccount]
 class CliApprove extends Component
 {
-    #[Url(as: 'kod')]
+    #[Url(as: 'code')]
     public string $code = '';
 
     /** The code typed when the link had none. */

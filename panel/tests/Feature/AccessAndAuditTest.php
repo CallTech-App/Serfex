@@ -93,7 +93,7 @@ class AccessAndAuditTest extends TestCase
     {
         $admin = User::factory()->create(['name' => 'Aylin']);
         $this->actingAs($admin);
-        $page = '/sites/'.$this->site->id.'/zamanlanmis-gorevler';
+        $page = '/sites/'.$this->site->id.'/cron-jobs';
 
         Livewire::test(SiteCron::class, ['site' => $this->site->id])
             ->call('openCreate')
@@ -149,7 +149,7 @@ class AccessAndAuditTest extends TestCase
         $other = User::factory()->create(['name' => 'Ayşe', 'role' => 'support']);
         $task = CronJob::create(['site_id' => $this->site->id, 'schedule' => '0 3 * * *', 'command' => 'php yedek.php']);
         $task->delete();
-        $page = '/sites/'.$this->site->id.'/zamanlanmis-gorevler';
+        $page = '/sites/'.$this->site->id.'/cron-jobs';
         $entry = AuditLog::record('Zamanlanmış görev silindi.', $support, extra: ['url' => $page, 'component' => SiteCron::class, 'undo' => ['method' => 'restore', 'args' => [$task->id]]]);
 
         $this->actingAs($other)->get($page.'?'.AuditLog::UNDO_PARAM.'='.$entry->id)->assertRedirect($page);

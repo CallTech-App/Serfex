@@ -60,7 +60,7 @@
             <table class="w-full text-[13.5px] sm:min-w-[720px]">
                 <thead>
                     <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                        <th class="py-2.5 pr-3 pl-5 font-medium">{{ $tab === 'diger' ? __('Bileşen') : __('Yazılım') }}</th>
+                        <th class="py-2.5 pr-3 pl-5 font-medium">{{ $tab === 'other' ? __('Bileşen') : __('Yazılım') }}</th>
                         <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('Sürüm') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('Durum') }}</th>
                         <th class="hidden px-3 py-2.5 font-medium md:table-cell">{{ __('Kullanım') }}</th>
@@ -94,7 +94,7 @@
                             </tr>
                         @endforeach
                     @endforeach
-                    @if ($tab === 'veritabani' && $manager !== null)
+                    @if ($tab === 'databases' && $manager !== null)
                         <tr class="hover:bg-surface-2/60">
                             <td class="py-3 pr-3 pl-5"><span class="font-medium">{{ __('phpMyAdmin ve Adminer') }}</span><span class="mt-0.5 block text-2xs text-muted">{{ __('Tarayıcıdan yönetim, veritabanı sunucusuyla birlikte kurulur') }}</span></td>
                             <td class="hidden px-3 py-3 font-mono text-[13px] text-muted sm:table-cell">{{ __('port :manager_port', ['manager_port' => $managerPort]) }}</td>
@@ -121,12 +121,12 @@
                     <p class="w-full text-[13px] text-muted"><x-t text="Her site kendi PHP-FPM havuzunda çalışır. Var olan bir sitenin web sunucusu, site sayfasındaki :part aracından değiştirilir."><x-slot:part><span class="text-fg">{{ __('PHP ve Web Sunucusu') }}</span></x-slot:part></x-t></p>
                 </div>
             </form>
-            <a href="{{ route('services.index', ['sekme' => 'php']) }}" wire:navigate class="flex items-center gap-3 border-t border-line px-5 py-3 text-[13.5px] hover:bg-surface-2/60">
+            <a href="{{ route('services.index', ['tab' => 'php']) }}" wire:navigate class="flex items-center gap-3 border-t border-line px-5 py-3 text-[13.5px] hover:bg-surface-2/60">
                 <x-icon name="code" class="text-muted" />
                 <span><span class="font-medium">{{ __('PHP sürümleri') }}</span> <span class="text-muted">{{ __('artık Hizmetler sayfasında: kurma, kaldırma, eklentiler ve php.ini varsayılanları.') }}</span></span>
                 <x-icon name="chevron-right" class="ml-auto text-muted" />
             </a>
-        @elseif ($tab === 'veritabani')
+        @elseif ($tab === 'databases')
             <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="MySQL ve MariaDB aynı anda kurulamaz; PostgreSQL ikisinin yanında çalışır. Panelin kendi PostgreSQL'i ayrı çalışır, buradaki işlemler onu etkilemez. Veritabanları ve kullanıcılar :link sayfasından yönetilir."><x-slot:link><a href="{{ route('databases.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Veritabanları') }}</a></x-slot:link></x-t></p>
         @else
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Redis her Laravel uygulamasına kendi parolalı örneğini verir; uygulamanın Ortam bölümünden bağlanır. Node.js ve Composer, Laravel derlemelerinde kullanılır.') }}</p>

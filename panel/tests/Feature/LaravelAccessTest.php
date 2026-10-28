@@ -79,8 +79,8 @@ class LaravelAccessTest extends TestCase
 
         $this->get(route('laravel.show', $app))->assertOk()->assertDontSee('Ortam (.env)')->assertDontSee('Yedekler')->assertDontSee('Komut çalıştır');
         $page = Livewire::test(LaravelShow::class, ['app' => $app->id]);
-        $page->call('show', 'gunlukler')->assertSet('section', 'gunlukler');
-        $page->call('show', 'ortam')->assertSet('section', 'gunlukler');
+        $page->call('show', 'logs')->assertSet('section', 'logs');
+        $page->call('show', 'environment')->assertSet('section', 'logs');
         $page->call('openDeploy')->assertForbidden();
         Livewire::withoutLazyLoading()->test(Environment::class, ['appId' => $app->id])->assertForbidden();
         Queue::assertNotPushed(DeployLaravelApp::class);
@@ -105,7 +105,7 @@ class LaravelAccessTest extends TestCase
         $page = Livewire::withoutLazyLoading()->test(Access::class, ['appId' => $app->id])
             ->call('openAdd')->set('email', 'Emre@HizliKargo.app')->set('role', 'developer')->call('add')->assertHasNoErrors();
         $link = $page->get('secret');
-        $this->assertStringContainsString('/davet/', $link);
+        $this->assertStringContainsString('/invite/', $link);
         $invited = User::where('email', 'emre@hizlikargo.app')->sole();
         $this->assertFalse($invited->is_admin);
         $this->assertTrue($invited->isInvited());

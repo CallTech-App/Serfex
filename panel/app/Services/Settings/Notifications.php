@@ -157,7 +157,7 @@ class Notifications
             $traffic = $report['traffic'];
             if ($traffic['level'] === 'crit') {
                 $out['traffic:customer:'.$customer->id] = ['traffic', __(':name aylık trafik sınırını aştı (:text)', ['name' => $customer->displayName(), 'text' => $traffic['text']]),
-                    __('Siteler çalışmaya devam ediyor; trafik ay başında sıfırlanır. Paketi yükseltmeyi düşünebilirsiniz.'), route('customers.usage', ['customer' => $customer, 'sekme' => 'trafik'], false)];
+                    __('Siteler çalışmaya devam ediyor; trafik ay başında sıfırlanır. Paketi yükseltmeyi düşünebilirsiniz.'), route('customers.usage', ['customer' => $customer, 'tab' => 'traffic'], false)];
             }
         }
         foreach (SystemServices::problems() as $s) {

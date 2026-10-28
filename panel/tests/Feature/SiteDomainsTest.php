@@ -78,7 +78,7 @@ class SiteDomainsTest extends TestCase
             ->assertSee(route('sites.directives', $this->site));
         $this->get(route('sites.domains', $this->site))->assertOk()
             ->assertSee('Alt alan adları')->assertSee('blog.kahve.com.tr')->assertSee('subdomains/blog');
-        $this->get(route('sites.domains', ['site' => $this->site, 'sekme' => 'ek']))->assertOk()->assertSee('www.kahve.com.tr')->assertSee('HTTPS');
+        $this->get(route('sites.domains', ['site' => $this->site, 'tab' => 'aliases']))->assertOk()->assertSee('www.kahve.com.tr')->assertSee('HTTPS');
     }
 
     public function test_a_subdomain_goes_live_with_dns_and_joins_the_certificate(): void
@@ -133,7 +133,7 @@ class SiteDomainsTest extends TestCase
 
     public function test_an_additional_domain_gets_a_zone_of_its_own_and_comes_back_after_undo(): void
     {
-        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id, 'sekme' => 'ek'])
+        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id, 'tab' => 'aliases'])
             ->call('openAlias')
             ->set('aliasName', 'Kahve.NET')
             ->assertSee('Bu alan adı için DNS bölgesi oluştur')
@@ -171,7 +171,7 @@ class SiteDomainsTest extends TestCase
 
     public function test_redirects_send_a_domain_or_a_path_elsewhere(): void
     {
-        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id, 'sekme' => 'yonlendirmeler'])
+        $page = Livewire::test(SiteDomainList::class, ['site' => $this->site->id, 'tab' => 'redirects'])
             ->call('openRedirect', 'domain')
             ->assertSet('target', 'https://kahve.com.tr')
             ->set('source', 'www.eskikahve.com')

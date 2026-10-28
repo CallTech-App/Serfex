@@ -6,7 +6,7 @@
         'web' => route('sites.files', $site),
         'mail' => $site->mailDomain ? route('mail.show', $site->mailDomain) : null,
         'databases' => route('databases.index', ['site' => $site->id]),
-        'backups' => $site->laravelApp ? route('laravel.show', [$site->laravelApp, 'bolum' => 'yedekler']) : null,
+        'backups' => $site->laravelApp ? route('laravel.show', [$site->laravelApp, 'section' => 'backups']) : null,
     ];
 @endphp
 <div class="space-y-6">

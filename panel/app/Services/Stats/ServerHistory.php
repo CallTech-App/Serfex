@@ -16,10 +16,10 @@ class ServerHistory
 {
     /** Ranges of the Sistem tab: key => [label, bucket seconds]. */
     public const RANGES = [
-        '24s' => ['24 saat', 900],
-        '7g' => ['7 gün', 3600],
-        '30g' => ['30 gün', 4 * 3600],
-        '12a' => ['12 ay', 86400],
+        '24h' => ['24 saat', 900],
+        '7d' => ['7 gün', 3600],
+        '30d' => ['30 gün', 4 * 3600],
+        '12m' => ['12 ay', 86400],
     ];
 
     /** How long hourly rows are kept. */
@@ -88,16 +88,16 @@ class ServerHistory
      */
     public function series(string $range): array
     {
-        [, $bucket] = self::RANGES[$range] ?? self::RANGES['24s'];
+        [, $bucket] = self::RANGES[$range] ?? self::RANGES['24h'];
         $tz = config('serfex.timezone');
-        if ($range === '24s') {
+        if ($range === '24h') {
             $since = now()->utc()->subDay();
             $rows = DB::table('monitor_samples')->whereNull('site_id')->where('recorded_at', '>=', $since)
                 ->groupByRaw('b')
                 ->selectRaw("floor(extract(epoch from recorded_at) / {$bucket}) as b, avg(cpu) as cpu, max(cpu) as cpu_max, avg(memory) as memory, max(memory_total) as memory_total,
                     avg(disk_used) as disk_used, max(disk_total) as disk_total, coalesce(avg(net_rx), 0) * {$bucket} as net_rx, coalesce(avg(net_tx), 0) * {$bucket} as net_tx")
                 ->orderBy('b')->get();
-        } elseif ($range === '12a') {
+        } elseif ($range === '12m') {
             // Whole days of the panel's time zone.
             $rows = DB::table('server_stats')->where('hour', '>=', now($tz)->subYear()->startOfDay()->utc())
                 ->groupByRaw('b')
@@ -105,7 +105,7 @@ class ServerHistory
                     max(memory_total) as memory_total, avg(disk_used) as disk_used, max(disk_total) as disk_total, sum(net_rx) as net_rx, sum(net_tx) as net_tx", [$tz])
                 ->orderBy('b')->get();
         } else {
-            $days = $range === '7g' ? 7 : 30;
+            $days = $range === '7d' ? 7 : 30;
             $rows = DB::table('server_stats')->where('hour', '>=', now()->utc()->subDays($days))
                 ->groupByRaw('b')
                 ->selectRaw("floor(extract(epoch from hour) / {$bucket}) as b, avg(cpu) as cpu, max(cpu_max) as cpu_max, avg(memory) as memory, max(memory_total) as memory_total,
@@ -114,7 +114,7 @@ class ServerHistory
         }
 
         return $rows->map(fn ($r) => [
-            'at' => $range === '12a' ? CarbonImmutable::parse($r->b, $tz) : CarbonImmutable::createFromTimestampUTC((int) $r->b * $bucket)->timezone($tz),
+            'at' => $range === '12m' ? CarbonImmutable::parse($r->b, $tz) : CarbonImmutable::createFromTimestampUTC((int) $r->b * $bucket)->timezone($tz),
             'cpu' => round((float) $r->cpu, 1), 'cpu_max' => round((float) $r->cpu_max, 1),
             'memory' => (int) $r->memory, 'memory_total' => (int) $r->memory_total,
             'disk_used' => $r->disk_used === null ? null : (int) $r->disk_used, 'disk_total' => $r->disk_total === null ? null : (int) $r->disk_total,

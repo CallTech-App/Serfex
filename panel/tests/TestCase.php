@@ -9,8 +9,9 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // The test client says "en-us" by default; the tests read the
-        // panel in Turkish unless they ask for another language.
+        // The tests read the panel in Turkish (phpunit.xml sets the server
+        // default to tr) unless they ask for another language. The API
+        // follows Accept-Language, and the test client says "en-us".
         $this->withHeader('Accept-Language', 'tr-TR,tr;q=0.9');
     }
 }

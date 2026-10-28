@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
  * Signing the serfex command line in through the browser:
  *
  *   1. `serfex login` asks for a sign-in (start) and shows its code and a
- *      link to /cli/onay.
+ *      link to /cli/approve.
  *   2. The person, signed in to the panel, checks the code and approves
  *      it (approve) or refuses it (deny).
  *   3. The command line, asking every few seconds with its own secret,

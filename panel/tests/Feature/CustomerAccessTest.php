@@ -94,10 +94,10 @@ class CustomerAccessTest extends TestCase
             ->assertDontSee('Serfex AI')
             ->assertDontSee('Müşteriler ve Paketler')
             ->assertDontSee('Yazılım Yönetimi');
-        foreach (['/monitor', '/ai', '/ai/settings', '/musteriler', '/musteriler/'.$this->customer->id, '/dns/settings', '/mail/settings', '/ssl/settings', '/yazilim'] as $url) {
+        foreach (['/monitor', '/ai', '/ai/settings', '/customers', '/customers/'.$this->customer->id, '/dns/settings', '/mail/settings', '/ssl/settings', '/software'] as $url) {
             $this->get($url)->assertForbidden();
         }
-        $this->post('/musteriler/'.$this->customer->id.'/giris')->assertForbidden();
+        $this->post('/customers/'.$this->customer->id.'/impersonate')->assertForbidden();
     }
 
     public function test_creates_sites_under_their_own_account_within_the_package(): void
@@ -207,7 +207,7 @@ class CustomerAccessTest extends TestCase
 
         $this->get('/')->assertRedirect(route('laravel.index'));
         $this->get('/sites')->assertForbidden();
-        $this->get('/musteriler')->assertForbidden();
+        $this->get('/customers')->assertForbidden();
         $this->assertFalse(SystemUser::where('name', 'x')->exists());
     }
 }

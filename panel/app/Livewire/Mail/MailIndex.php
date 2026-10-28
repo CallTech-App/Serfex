@@ -36,7 +36,7 @@ class MailIndex extends Component
     public string $search = '';
 
     /** "" for all domains, "problem" for the ones that need attention. */
-    #[Url(as: 'durum', except: '')]
+    #[Url(as: 'status', except: '')]
     public string $filter = '';
 
     public bool $enabling = false;
@@ -47,7 +47,7 @@ class MailIndex extends Component
     {
         $this->refreshServer($agent, $settings);
         // "E-postayı aç" from a site's page.
-        $open = Hostnames::normalize((string) request()->query('ac', ''));
+        $open = Hostnames::normalize((string) request()->query('enable', ''));
         if ($open !== '' && MailDomain::where('name', $open)->doesntExist() && (auth()->user()->is_admin || $this->candidates()->contains($open))) {
             $this->domain = $open;
             $this->enabling = true;

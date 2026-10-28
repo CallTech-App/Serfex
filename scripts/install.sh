@@ -23,7 +23,8 @@
 #                      end, instead of the one-time setup link (for automation)
 #   --admin-name N     the administrator's name (default: Yönetici / Administrator)
 #   --lang L           tr or en: the panel's default language and this
-#                      installer's (default: tr when LANG is Turkish, else en)
+#                      installer's (default: en; the setup page can still
+#                      switch the panel to Turkish)
 #   --source URL       where releases are listed (GitHub API URL of the repository)
 #   --no-components    skip the customers' software (PHP 8.4, Composer, Node.js 24, Fail2ban)
 #   -y, --yes          do not ask before starting
@@ -60,7 +61,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-[ -n "$LANG_CODE" ] || case ${LANG:-} in tr_* | tr) LANG_CODE=tr ;; *) LANG_CODE=en ;; esac
+[ -n "$LANG_CODE" ] || LANG_CODE=en
 case $LANG_CODE in tr | en) ;; *) echo "--lang must be tr or en." >&2; exit 2 ;; esac
 [ -n "$ADMIN_NAME" ] || ADMIN_NAME=$([ "$LANG_CODE" = tr ] && echo Yönetici || echo Administrator)
 # t "Türkçe" "English": the message in the installer's language.
@@ -230,8 +231,7 @@ if [ ! -f /etc/serfex/panel.env ]; then
 	APP_URL=https://$PANEL_HOST:$WEB_PORT
 	APP_LOCALE=$LANG_CODE
 	SERFEX_LOCALE=$LANG_CODE
-	APP_FAKER_LOCALE=tr_TR
-	APP_MAINTENANCE_DRIVER=file
+		APP_MAINTENANCE_DRIVER=file
 
 	LOG_CHANNEL=daily
 	LOG_LEVEL=info

@@ -25,7 +25,7 @@ class CliLoginController extends Controller
         return response()->json([
             'code' => $login->code,
             'device' => $device,
-            'url' => route('cli.approve', ['kod' => $login->code]),
+            'url' => route('cli.approve', ['code' => $login->code]),
             'interval' => CliLogins::INTERVAL,
             'expires_in' => CliLogins::MINUTES * 60,
         ], 201);

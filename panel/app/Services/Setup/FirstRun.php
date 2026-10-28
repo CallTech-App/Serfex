@@ -38,13 +38,13 @@ class FirstRun
 
     /** The wizard's steps after the administrator account: slug => name. */
     public const STEPS = [
-        'sunucu' => 'Sunucu',
-        'ad-sunuculari' => 'Ad sunucuları',
+        'server' => 'Sunucu',
+        'nameservers' => 'Ad sunucuları',
         'panel' => 'Panel adresi',
-        'bildirimler' => 'Bildirimler',
-        'guvenlik' => 'Güvenlik duvarı',
-        'varsayilanlar' => 'Varsayılanlar',
-        'yedekler' => 'Yedekler',
+        'notifications' => 'Bildirimler',
+        'firewall' => 'Güvenlik duvarı',
+        'defaults' => 'Varsayılanlar',
+        'backups' => 'Yedekler',
     ];
 
     private const TOKEN = 'setup.token';
@@ -234,13 +234,13 @@ class FirstRun
     private function configured(string $step): array
     {
         return match ($step) {
-            'ad-sunuculari' => ($ns = app(DnsSettings::class)->nameservers()) !== [] ? [true, implode(', ', $ns)] : [false, null],
+            'nameservers' => ($ns = app(DnsSettings::class)->nameservers()) !== [] ? [true, implode(', ', $ns)] : [false, null],
             'panel' => ($host = Setting::get('panel.hostname')) && Certificate::where('kind', 'panel')->whereNotNull('not_after')->exists() ? [true, $host] : [false, $host ?: __('IP adresi ve port')],
-            'bildirimler' => ($emails = app(Notifications::class)->settings()['emails']) !== [] ? [true, implode(', ', $emails)] : [false, null],
-            'guvenlik' => app(Firewall::class)->enabled() ? [true, __('Açık')] : [false, null],
-            'yedekler' => BackupTarget::exists() ? [true, BackupTarget::orderBy('id')->value('name')] : [false, null],
-            'sunucu' => [false, Setting::get('server.hostname')],
-            'varsayilanlar' => [false, implode(' · ', array_filter([
+            'notifications' => ($emails = app(Notifications::class)->settings()['emails']) !== [] ? [true, implode(', ', $emails)] : [false, null],
+            'firewall' => app(Firewall::class)->enabled() ? [true, __('Açık')] : [false, null],
+            'backups' => BackupTarget::exists() ? [true, BackupTarget::orderBy('id')->value('name')] : [false, null],
+            'server' => [false, Setting::get('server.hostname')],
+            'defaults' => [false, implode(' · ', array_filter([
                 Setting::get('web.default_stack') === 'apache' ? 'Apache' : 'Nginx',
                 ($php = Setting::get('php.default_version')) ? 'PHP '.$php : null,
                 __(Updates::CHANNELS[app(Updates::class)->channel()]),

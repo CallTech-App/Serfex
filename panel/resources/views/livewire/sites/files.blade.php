@@ -21,11 +21,11 @@
             default => 'file',
         };
     };
-    $download = fn (string $p) => route('sites.files.download', ['site' => $site->id, 'yol' => $p]);
+    $download = fn (string $p) => route('sites.files.download', ['site' => $site->id, 'path' => $p]);
 @endphp
 <div class="space-y-6"
      x-data="{
-        base: @js(url('/sites/'.$site->id.'/dosyalar')),
+        base: @js(url('/sites/'.$site->id.'/files')),
         csrf: @js(csrf_token()),
         chunk: {{ FileManager::CHUNK }},
         maxUpload: {{ FileManager::MAX_UPLOAD }},
@@ -51,10 +51,10 @@
                 while (true) {
                     const part = file.slice(offset, offset + this.chunk);
                     const last = offset + part.size >= file.size;
-                    const q = new URLSearchParams({ yol: folder, ad: file.name, parca: id, offset, son: last ? 1 : 0, uzerine: overwrite ? 1 : 0 });
+                    const q = new URLSearchParams({ path: folder, name: file.name, upload: id, offset, final: last ? 1 : 0, overwrite: overwrite ? 1 : 0 });
                     let r, j = {};
                     try {
-                        r = await fetch(this.base + '/yukle?' + q, { method: 'POST', body: part, headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/octet-stream', 'Accept': 'application/json' } });
+                        r = await fetch(this.base + '/upload?' + q, { method: 'POST', body: part, headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/octet-stream', 'Accept': 'application/json' } });
                         j = await r.json().catch(() => ({}));
                     } catch (e) { r = { ok: false }; }
                     if (! r.ok) {
@@ -80,7 +80,7 @@
             if (this.uploads.every(u => u.state === 'done')) setTimeout(() => { if (this.uploads.every(u => u.state === 'done')) this.uploads = []; }, 2500);
         },
         async edit(path) {
-            const r = await fetch(this.base + '/metin?' + new URLSearchParams({ yol: path }), { headers: { 'Accept': 'application/json' } });
+            const r = await fetch(this.base + '/text?' + new URLSearchParams({ path }), { headers: { 'Accept': 'application/json' } });
             const j = await r.json().catch(() => ({}));
             if (! r.ok) { this.toast(j.error || @js(__('Dosya açılamadı.'))); return; }
             this.editor = { open: true, path, content: j.content, mtime: j.mtime, busy: false, error: '', dirty: false };
@@ -89,7 +89,7 @@
         async save() {
             if (this.editor.busy) return;
             this.editor.busy = true; this.editor.error = '';
-            const r = await fetch(this.base + '/kaydet', { method: 'POST', body: JSON.stringify({ path: this.editor.path, content: this.editor.content, mtime: this.editor.mtime }), headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' } });
+            const r = await fetch(this.base + '/save', { method: 'POST', body: JSON.stringify({ path: this.editor.path, content: this.editor.content, mtime: this.editor.mtime }), headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' } });
             const j = await r.json().catch(() => ({}));
             this.editor.busy = false;
             if (! r.ok) { this.editor.error = j.error || @js(__('Kaydedilemedi.')); return; }

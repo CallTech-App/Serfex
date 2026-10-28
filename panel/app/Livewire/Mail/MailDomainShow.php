@@ -36,8 +36,8 @@ class MailDomainShow extends Component
 
     public int $domainId;
 
-    #[Url(except: 'kutular')]
-    public string $tab = 'kutular';
+    #[Url(except: 'mailboxes')]
+    public string $tab = 'mailboxes';
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -482,12 +482,12 @@ class MailDomainShow extends Component
             'mailboxes' => $mailboxes,
             'mailboxCount' => $domain->mailboxes()->count(),
             'forwarders' => $domain->forwarders()->get(),
-            'records' => $this->tab === 'ayarlar' ? $dns->check($domain) : [],
-            'zone' => $this->tab === 'ayarlar' ? $dns->zoneFor($domain) : null,
+            'records' => $this->tab === 'settings' ? $dns->check($domain) : [],
+            'zone' => $this->tab === 'settings' ? $dns->zoneFor($domain) : null,
             'hostname' => $settings->hostname(),
             'webmail' => $settings->webmailUrl(),
             'quotas' => MailSettings::QUOTAS,
-            'traffic' => $this->tab === 'trafik' ? $traffic->days([$domain->name]) : null,
+            'traffic' => $this->tab === 'traffic' ? $traffic->days([$domain->name]) : null,
         ])->title(__(':name · E-posta · Serfex', ['name' => $domain->name]));
     }
 

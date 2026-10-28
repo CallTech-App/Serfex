@@ -96,7 +96,7 @@ class SecurityTest extends TestCase
 
     public function test_the_firewall_turns_on_with_the_ready_rules_and_never_locks_the_admin_out(): void
     {
-        $this->get('/guvenlik')->assertOk()
+        $this->get('/security')->assertOk()
             ->assertSee('Güvenlik duvarı')
             ->assertSee('Serfex paneli')
             ->assertSee('6379');
@@ -213,7 +213,7 @@ class SecurityTest extends TestCase
 
     public function test_the_server_waf_mode_and_blocking_an_attacker(): void
     {
-        $this->get('/guvenlik?sekme=waf')->assertOk()->assertSee('203.0.113.9')->assertSee('942100');
+        $this->get('/security?tab=waf')->assertOk()->assertSee('203.0.113.9')->assertSee('942100');
 
         $this->agent->answers['firewall.block'] = fn ($p) => ['address' => $p['address']];
         Livewire::test(SecurityIndex::class, ['tab' => 'waf'])
@@ -262,8 +262,8 @@ class SecurityTest extends TestCase
         $this->assertSame('ignored', $ignored->fresh()->status);
         $this->assertSame(2, SecurityFinding::where('site_id', $this->site->id)->count());
 
-        $this->get('/guvenlik?sekme=tarama')->assertOk()->assertSee('root kullanıcısı SSH ile parolayla girebiliyor');
-        $this->get('/guvenlik?sekme=tarama&durum=ignored')->assertOk()->assertSee('public_html/.env');
+        $this->get('/security?tab=scan')->assertOk()->assertSee('root kullanıcısı SSH ile parolayla girebiliyor');
+        $this->get('/security?tab=scan&status=ignored')->assertOk()->assertSee('public_html/.env');
         $this->get('/')->assertOk()->assertSee('ciddi güvenlik bulgusu', false);
     }
 
@@ -304,7 +304,7 @@ class SecurityTest extends TestCase
 
     public function test_blocked_paths_on_the_site_scan_page(): void
     {
-        Livewire::test(SiteScan::class, ['site' => $this->site->id, 'tab' => 'engelli'])
+        Livewire::test(SiteScan::class, ['site' => $this->site->id, 'tab' => 'blocked'])
             ->call('openDeny')
             ->set('denyPath', '/')
             ->call('saveDeny')
@@ -366,7 +366,7 @@ class SecurityTest extends TestCase
     public function test_ssh_settings_apply_with_undo(): void
     {
         $this->agent->answers['ssh.apply'] = fn ($p) => $p;
-        Livewire::test(SecurityIndex::class, ['tab' => 'giris'])
+        Livewire::test(SecurityIndex::class, ['tab' => 'login'])
             ->assertSet('rootLogin', 'yes')
             ->set('rootLogin', 'prohibit-password')
             ->set('passwordAuth', false)
@@ -376,7 +376,7 @@ class SecurityTest extends TestCase
         $this->assertSame([['root_login' => 'prohibit-password', 'password_auth' => false], ['root_login' => 'yes', 'password_auth' => true]], $this->agent->called('ssh.apply'));
 
         $this->agent->answers['ssh.apply'] = AgentException::rpcError('ssh.apply', AgentException::INVALID_PARAMS, 'no administrator account has an ssh key');
-        Livewire::test(SecurityIndex::class, ['tab' => 'giris'])
+        Livewire::test(SecurityIndex::class, ['tab' => 'login'])
             ->set('passwordAuth', false)
             ->call('saveSsh')
             ->assertHasErrors('rootLogin')
@@ -405,29 +405,29 @@ class SecurityTest extends TestCase
         auth()->logout();
         $this->post('/login', ['email' => $this->admin->email, 'password' => 'password'])->assertRedirect(route('login.two-factor'));
         $this->assertGuest();
-        $this->get('/login/dogrulama')->assertOk();
-        $this->post('/login/dogrulama', ['code' => '123456'])->assertSessionHasErrors('code');
+        $this->get('/login/two-factor')->assertOk();
+        $this->post('/login/two-factor', ['code' => '123456'])->assertSessionHasErrors('code');
         $this->assertGuest();
-        $this->post('/login/dogrulama', ['code' => $codes[0]])->assertRedirect(route('dashboard'));
+        $this->post('/login/two-factor', ['code' => $codes[0]])->assertRedirect(route('dashboard'));
         $this->assertAuthenticatedAs($this->admin);
         $this->assertSame(9, app(TwoFactor::class)->recoveryCodesLeft($this->admin->fresh()));
 
         // A recovery code works once.
         auth()->logout();
         $this->post('/login', ['email' => $this->admin->email, 'password' => 'password']);
-        $this->post('/login/dogrulama', ['code' => $codes[0]])->assertSessionHasErrors('code');
+        $this->post('/login/two-factor', ['code' => $codes[0]])->assertSessionHasErrors('code');
         $this->assertGuest();
     }
 
     public function test_required_two_factor_sends_accounts_to_set_it_up(): void
     {
-        Livewire::test(SecurityIndex::class, ['tab' => 'giris'])
+        Livewire::test(SecurityIndex::class, ['tab' => 'login'])
             ->set('require2fa', 'admins')
             ->call('saveTwoFactor')
             ->assertDispatched('toast', fn ($n, $p) => $p['undo'] === ['method' => 'undoTwoFactor', 'args' => ['none']]);
 
         $this->get('/sites')->assertRedirect(route('account.security'));
-        $this->get('/hesap/guvenlik')->assertOk()->assertSee('zorunlu tuttu');
+        $this->get('/account/security')->assertOk()->assertSee('zorunlu tuttu');
 
         // A customer is not an administrator: not asked.
         $customer = Customer::factory()->withLogin()->create();
@@ -462,7 +462,7 @@ class SecurityTest extends TestCase
         $block = IpBlock::sole();
         $this->assertSame(['fail2ban', 'sshd'], [$block->source, $block->kind]);
 
-        Livewire::test(LiveMonitor::class, ['tab' => 'saldirilar'])
+        Livewire::test(LiveMonitor::class, ['tab' => 'attacks'])
             ->call('unblockMany', [$block->id])
             ->assertDispatched('toast', fn ($n, $p) => $p['undo'] === ['method' => 'reblockMany', 'args' => [[$block->id]]])
             ->call('reblockMany', [$block->id]);
@@ -516,12 +516,12 @@ class SecurityTest extends TestCase
         $this->actingAs($customer->user);
 
         $this->get('/sites/'.$mine->id.'/waf')->assertOk();
-        $this->get('/sites/'.$mine->id.'/tarama')->assertOk()->assertSee('shell.php')->assertDontSee('x.php');
-        $this->get('/sites/'.$mine->id.'/korumali-klasorler')->assertOk();
+        $this->get('/sites/'.$mine->id.'/scan')->assertOk()->assertSee('shell.php')->assertDontSee('x.php');
+        $this->get('/sites/'.$mine->id.'/protected-folders')->assertOk();
         $this->get('/sites/'.$this->site->id.'/waf')->assertNotFound();
-        $this->get('/sites/'.$this->site->id.'/tarama')->assertNotFound();
-        $this->get('/guvenlik')->assertForbidden();
-        $this->get('/hesap/guvenlik')->assertOk();
+        $this->get('/sites/'.$this->site->id.'/scan')->assertNotFound();
+        $this->get('/security')->assertForbidden();
+        $this->get('/account/security')->assertOk();
         $this->assertSame(1, Scans::attentionCount($customer->user));
 
         // Blocking an address for the whole server stays with administrators.
