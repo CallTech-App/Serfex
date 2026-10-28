@@ -5,7 +5,7 @@
         $doneText = ['install' => 'kuruldu', 'update' => __('güncellendi'), 'remove' => __('kaldırıldı'), 'ext-install' => 'kuruldu', 'ext-remove' => __('kaldırıldı')][$operation->action] ?? '';
     @endphp
     <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" wire:key="op-{{ $operation->id }}">
-        <div class="w-full max-w-lg rounded-xl border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-label="{{ $operationName }} {{ $verb }}"
+        <div class="max-h-full w-full max-w-3xl overflow-y-auto rounded-xl border border-line bg-surface shadow-xl" wire:ignore role="dialog" aria-modal="true" aria-label="{{ $operationName }} {{ $verb }}"
              x-data="{
                 offset: 0, steps: [], log: '', rollback: false, status: @js($operation->status), error: @js($operation->error), timer: null, final: false,
                 parse(text) {
@@ -65,7 +65,7 @@
                 </div>
                 <details class="text-[13px]" @if ($operation->status === 'failed') open @endif>
                     <summary class="cursor-pointer text-muted hover:text-fg">{{ __('Ayrıntılı günlük') }}</summary>
-                    <pre x-ref="log" x-text="log" class="scroll-thin mt-2 h-56 overflow-auto rounded-md bg-[#0f1a1c] p-3 font-mono text-[12px] whitespace-pre-wrap text-[#d7e4e4]"></pre>
+                    <pre x-ref="log" x-text="log" class="scroll-thin mt-2 h-80 max-h-[50vh] overflow-auto rounded-md bg-[#0f1a1c] p-3 font-mono text-[12px] whitespace-pre-wrap text-[#d7e4e4]"></pre>
                 </details>
             </div>
             <div class="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
