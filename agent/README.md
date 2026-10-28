@@ -84,6 +84,8 @@ lists every method by area.
 | `db.database.delete` | `server`, `name`, `backup` | with `backup` dumps it to a gzip file first (nothing is deleted if that fails); returns `deleted`, `backup`, `backup_size` |
 | `db.user.apply` | `server`, `name`, `password`, `hosts`, `grants` | creates or changes a user: `password` (empty keeps it), remote `hosts` besides this server (`%`, an IPv4 address, `10.8.0.%`, a CIDR or an IPv6 address), `grants` (`database`, `access`: `all`, `readwrite`, `readonly`) replace the previous ones |
 | `db.user.delete` | `server`, `name` | removes a user |
+| `db.extension.list` | `server` (`postgresql`), `database` | the offered PostgreSQL extensions (`vector`) with `enabled`, the created `version` and the packaged `available` version |
+| `db.extension.set` | `server` (`postgresql`), `database`, `name`, `enabled` | creates the extension in the database as the superuser, installing its package (`postgresql-<v>-pgvector`) when missing, or drops it; dropping one that columns or indexes use is refused |
 | `db.list` | `server` | the customer databases with `size` and `tables`, and the users with their remote `hosts` |
 | `component.list` | | every optional component (`id`, `installed`, `version`, `latest` when an update is available, `running`, `units`, `busy`, `used_by`, `required`, `settings`, `default`; database servers also `choices`, `upgrade` (`from`, `to`) and `kept` (`from`, `to`, `old`, `dump`, `until`)) and `checked_at` |
 | `component.check` | | refreshes the package lists and the newest Node.js and Composer versions, then lists like `component.list` |

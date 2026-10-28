@@ -34,6 +34,10 @@ type simData struct {
 	ReadOnly bool `json:"read_only,omitempty"`
 	// Rows overrides the made-up row counts of a database's tables.
 	Rows map[string]map[string]int64 `json:"rows,omitempty"`
+	// Extensions lists the extensions created in each database; InUse
+	// ("<database>/<extension>") are the ones columns depend on.
+	Extensions map[string][]string `json:"extensions,omitempty"`
+	InUse      []string            `json:"in_use,omitempty"`
 }
 
 func (e *simEngine) file() string {
@@ -225,5 +229,55 @@ func (e *simEngine) dropSession(_ context.Context, user, _ string) error {
 		return err
 	}
 	d.Sessions = slices.DeleteFunc(d.Sessions, func(n string) bool { return n == user })
+	return e.save(d)
+}
+
+func (e *simEngine) hasDatabase(_ context.Context, db string) (bool, error) {
+	d, err := e.load()
+	return err == nil && slices.Contains(d.Databases, db), err
+}
+
+func (e *simEngine) extensions(_ context.Context, db string) (map[string]string, error) {
+	d, err := e.load()
+	if err != nil {
+		return nil, err
+	}
+	exts := map[string]string{"plpgsql": "1.0"}
+	for _, name := range d.Extensions[db] {
+		exts[name] = simExtensionVersion
+	}
+	return exts, nil
+}
+
+// simExtensionVersion is the version simulated extensions are created in.
+const simExtensionVersion = "0.8.1"
+
+func (e *simEngine) createExtension(_ context.Context, db, name string) error {
+	d, err := e.load()
+	if err != nil {
+		return err
+	}
+	if d.Extensions == nil {
+		d.Extensions = map[string][]string{}
+	}
+	if !slices.Contains(d.Extensions[db], name) {
+		d.Extensions[db] = append(d.Extensions[db], name)
+	}
+	return e.save(d)
+}
+
+// dropExtension refuses while the database is listed in InUse.
+func (e *simEngine) dropExtension(_ context.Context, db, name string) error {
+	d, err := e.load()
+	if err != nil {
+		return err
+	}
+	if slices.Contains(d.InUse, db+"/"+name) {
+		return errInUse
+	}
+	if d.Extensions == nil {
+		return nil
+	}
+	d.Extensions[db] = slices.DeleteFunc(d.Extensions[db], func(n string) bool { return n == name })
 	return e.save(d)
 }

@@ -312,3 +312,36 @@ func parseCounts(out string) (map[string]int64, error) {
 	}
 	return counts, nil
 }
+
+func (e *pgEngine) hasDatabase(ctx context.Context, db string) (bool, error) {
+	return e.exists(ctx, "SELECT 1 FROM pg_database WHERE datname = "+pgString(db)+";")
+}
+
+func (e *pgEngine) extensions(ctx context.Context, db string) (map[string]string, error) {
+	out, err := e.exec(ctx, db, "SELECT extname, extversion FROM pg_extension;")
+	if err != nil {
+		return nil, err
+	}
+	exts := map[string]string{}
+	for _, line := range strings.Split(out, "\n") {
+		if name, v, ok := strings.Cut(strings.TrimSpace(line), "\t"); ok {
+			exts[name] = v
+		}
+	}
+	return exts, nil
+}
+
+// createExtension creates it as the superuser, in the public schema
+// every user of the database may use.
+func (e *pgEngine) createExtension(ctx context.Context, db, name string) error {
+	_, err := e.exec(ctx, db, fmt.Sprintf("CREATE EXTENSION IF NOT EXISTS %s SCHEMA public;\n", pgIdent(name)))
+	return err
+}
+
+func (e *pgEngine) dropExtension(ctx context.Context, db, name string) error {
+	_, err := e.exec(ctx, db, fmt.Sprintf("DROP EXTENSION IF EXISTS %s RESTRICT;\n", pgIdent(name)))
+	if err != nil && strings.Contains(err.Error(), "other objects depend on it") {
+		return errInUse
+	}
+	return err
+}

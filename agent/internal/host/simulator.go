@@ -510,6 +510,11 @@ func (s *Simulator) aptGet(args []string) error {
 			}
 			if m := simPGServer.FindStringSubmatch(a); m != nil {
 				_ = os.Remove(s.Path("/usr/lib/postgresql/" + m[1] + "/bin/postgres"))
+				_ = os.Remove(s.Path("/usr/share/postgresql/" + m[1] + "/extension/vector.control"))
+				continue
+			}
+			if m := simPGVector.FindStringSubmatch(a); m != nil {
+				_ = os.Remove(s.Path("/usr/share/postgresql/" + m[1] + "/extension/vector.control"))
 				continue
 			}
 			if v, ok := strings.CutSuffix(a, "-*"); ok && phpBinary.MatchString(v) {
@@ -544,6 +549,16 @@ func (s *Simulator) aptGet(args []string) error {
 			if err := s.addAccounts(simAccounts["postgresql"]); err != nil {
 				return err
 			}
+		}
+		if m := simPGVector.FindStringSubmatch(a); m != nil {
+			files = []string{"/usr/share/postgresql/" + m[1] + "/extension/vector.control"}
+			if err := os.MkdirAll(filepath.Dir(s.Path(files[0])), 0o755); err != nil {
+				return err
+			}
+			if err := os.WriteFile(s.Path(files[0]), []byte("default_version = '0.8.1'\n"), 0o644); err != nil {
+				return err
+			}
+			continue
 		}
 		if v, ok := strings.CutSuffix(a, "-cli"); ok && phpBinary.MatchString(v) {
 			files = []string{"/usr/bin/" + v}

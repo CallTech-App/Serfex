@@ -64,6 +64,28 @@ users are `kahve_<name>`.
   lose access at once and the data is deleted after 10 minutes, so it can be
   undone until then.
 
+## PostgreSQL extensions
+
+PostgreSQL is installed with the [pgvector](https://github.com/pgvector/pgvector)
+package (`postgresql-<version>-pgvector`), which adds vector columns, HNSW and
+IVFFlat indexes and similarity search (AI embeddings, semantic search,
+Laravel's `vector` columns). pgvector is not a trusted extension: only a
+superuser may run `CREATE EXTENSION vector`, so the database's own users cannot
+turn it on themselves.
+
+On a PostgreSQL database's page, **Extensions** → **Turn on** creates it in
+that database; from then on its users create vector columns and indexes with
+their own privileges, and `CREATE EXTENSION IF NOT EXISTS vector` (Laravel's
+`Schema::ensureVectorExtensionExists()`) just notes that it is there.
+Customers can turn it on in their own databases. **Turn off** drops it only
+while no column or index uses it; nothing is dropped with it. Both can be
+undone.
+
+Servers installed before Serfex 0.1.45 get the package with the next
+**Update** of PostgreSQL, or when the extension is first turned on. Updates
+upgrade pgvector too, and a major-version upgrade installs the new version's
+pgvector package first, so databases that use it upgrade like any other.
+
 Database sizes are measured every 30 minutes and count toward the customer's
 disk quota.
 

@@ -754,6 +754,12 @@ func registerDatabases(srv *rpc.Server, svc services) {
 	handle(srv, "db.database.delete", func(ctx context.Context, p database.DeleteSpec) (any, error) { return db.DeleteDatabase(ctx, p) })
 	handle(srv, "db.user.apply", func(ctx context.Context, p database.UserSpec) (any, error) { return db.ApplyUser(ctx, p) })
 	handle(srv, "db.user.delete", func(ctx context.Context, p database.UserRef) (any, error) { return db.DeleteUser(ctx, p) })
+	handle(srv, "db.extension.list", func(ctx context.Context, p database.ExtensionRef) (any, error) { return db.Extensions(ctx, p) })
+	// Installing an extension's package outlives a panel request that
+	// gives up.
+	handle(srv, "db.extension.set", func(ctx context.Context, p database.ExtensionSpec) (any, error) {
+		return db.SetExtension(context.WithoutCancel(ctx), p)
+	})
 	handle(srv, "db.list", func(ctx context.Context, p struct {
 		Server string `json:"server"`
 	}) (any, error) {
