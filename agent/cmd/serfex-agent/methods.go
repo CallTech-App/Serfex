@@ -613,6 +613,40 @@ func registerLaravel(srv *rpc.Server, svc services) {
 		return l.ReadGitRun(q.Domain, q.Run, q.Offset)
 	})
 
+	// WordPress sites share the Laravel toolkit's helpers too.
+	handle(srv, "wordpress.scan", func(ctx context.Context, q struct {
+		laravel.Target
+		Root string `json:"root"`
+	}) (any, error) {
+		return l.ScanWordPress(ctx, q.Target, q.Root)
+	})
+	handle(srv, "wordpress.install", func(ctx context.Context, p laravel.WPInstallSpec) (any, error) { return l.InstallWordPress(ctx, p) })
+	handle(srv, "wordpress.status", func(ctx context.Context, p laravel.App) (any, error) { return l.WordPressStatus(ctx, p) })
+	handle(srv, "wordpress.update", func(ctx context.Context, p laravel.WPUpdateSpec) (any, error) { return l.UpdateWordPress(ctx, p) })
+	handle(srv, "wordpress.restore", func(ctx context.Context, p laravel.WPRestoreSpec) (any, error) {
+		return map[string]bool{"restored": true}, l.RestoreWordPress(ctx, p)
+	})
+	handle(srv, "wordpress.points", func(_ context.Context, p domainParam) (any, error) { return l.WordPressPoints(p.Domain) })
+	handle(srv, "wordpress.login", func(ctx context.Context, p laravel.WPLoginSpec) (any, error) { return l.WordPressLogin(ctx, p) })
+	handle(srv, "wordpress.maintenance", func(ctx context.Context, p laravel.WPMaintenanceSpec) (any, error) {
+		return l.WordPressMaintenance(ctx, p)
+	})
+	handle(srv, "wordpress.item", func(ctx context.Context, p laravel.WPItemSpec) (any, error) { return l.WordPressItem(ctx, p) })
+	handle(srv, "wordpress.autoupdate", func(ctx context.Context, p laravel.WPAutoUpdateSpec) (any, error) {
+		return l.WordPressAutoUpdate(ctx, p)
+	})
+	handle(srv, "wordpress.harden", func(ctx context.Context, p laravel.WPHardenSpec) (any, error) { return l.WordPressHarden(ctx, p) })
+	handle(srv, "wordpress.detach", func(ctx context.Context, p laravel.App) (any, error) {
+		return map[string]bool{"detached": true}, l.WordPressDetach(ctx, p)
+	})
+	handle(srv, "wordpress.read", func(_ context.Context, q struct {
+		Domain string `json:"domain"`
+		Run    string `json:"run"`
+		Offset int64  `json:"offset"`
+	}) (any, error) {
+		return l.ReadWordPressRun(q.Domain, q.Run, q.Offset)
+	})
+
 	handle(srv, "laravel.process.apply", func(ctx context.Context, p laravel.ProcessSpec) (any, error) { return l.ApplyProcesses(ctx, p) })
 	handle(srv, "laravel.process.restart", func(ctx context.Context, p laravel.ProcessAction) (any, error) { return l.RestartProcess(ctx, p) })
 	handle(srv, "laravel.process.log", func(_ context.Context, q struct {
