@@ -56,6 +56,9 @@ serfex deploy -a api.ornek.com --wait
   bazında Nginx ya da Nginx arkasında Apache; yan yana PHP 8.1–8.5; alt alan
   adları, ek alan adları, yönlendirmeler, hata sayfaları, dosya yöneticisi,
   SFTP hesapları, zamanlanmış görevler, trafik istatistikleri ve günlükler.
+- **WordPress:** kendi veritabanıyla tek tıkla kurulum ya da sitede olanı
+  yönetme; geri dönüş noktası ve kendiliğinden geri alma ile WordPress, eklenti
+  ve tema güncellemeleri, tek tıkla giriş, bakım modu ve güvenlik kuralları.
 - **DNS:** kendi yetkili DNS sunucusu (PowerDNS). Site eklemek bölgesini yazar;
   e-posta ve sertifikalar kendi kayıtlarını ekler.
 - **SSL:** her site ve ek alan adı için Let's Encrypt, DNS yerelse joker
@@ -139,8 +142,8 @@ ayrıdır. Ayrıntılar: [Mimari](docs/architecture.md) (İngilizce).
 uygulaması barındırması için gereken her şeyi kapsar. Bilinen eksikler,
 sonraki sürümler için planlı:
 
-- WordPress araç seti, tarayıcıda SSH terminali ve başka sunucudan site taşıma
-  (panelde "Yakında" olarak görünür);
+- tarayıcıda SSH terminali ve başka sunucudan site taşıma (panelde "Yakında"
+  olarak görünür);
 - DNSSEC ve ikincil DNS sunucuları;
 - cPanel ve Plesk yedeklerini içe aktarma, posta kutularının ayrı yedeği,
   CalDAV ve CardDAV;

@@ -87,6 +87,39 @@ its accounts carry the comment `Serfex site user` and its files start with
 
 Install or link a Laravel application on the site, see [Laravel](../laravel.md).
 
+**WordPress** manages one WordPress per site, through WP-CLI running as the
+site's own user:
+
+- **Install WordPress** puts it in the site's web root (which must be empty
+  apart from the "site is ready" page) with a new MySQL/MariaDB database
+  (`<prefix>wp`), the site title, an administrator account and language
+  (Turkish or English). The administrator password is shown once; Serfex does
+  not keep it. `admin` and `administrator` are refused as usernames. A failed
+  install removes its files and its database. Not offered on a site with a
+  Laravel application.
+- A WordPress that is already on the site (in the web root or a folder up to
+  two levels down) is found and can be managed with **Manage**; its files are
+  not touched.
+- **Update** WordPress itself, one plugin or theme, or everything with an
+  update. A restore point (the database and the files being updated) is taken
+  first; if the site answers with an error after the update, the update is
+  rolled back by itself. **Undo** in History puts the last update's restore
+  point back for 7 days. The panel checks every managed WordPress for updates
+  once a day.
+- **Sign in to WordPress** opens the dashboard as the first administrator with
+  a link that works once, for two minutes. It is written to the audit log.
+- **Maintenance mode**, plugin activate/deactivate, theme switch and the core
+  automatic update policy (security and maintenance releases by default, all
+  releases, or off) change at once and can be undone.
+- **Security** rules: turn off the file editor, protect `wp-config.php`, no PHP
+  in `wp-content/uploads`, hide `readme.html`, `license.txt`, `debug.log` and
+  `wp-config.php` (the first four are recommended and applied on install), and
+  turn off XML-RPC. The web server rules live in the site's own Nginx snippet.
+- **Stop managing** leaves WordPress, its files and database on the site and
+  removes only Serfex's sign-in plugin, web server rules and restore points.
+
+Customers manage the WordPress on their own sites the same way.
+
 ### Domain & DNS
 
 - **Domains** has three tabs:
