@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * trashed database waits out its undo window: its users already lost
  * access, the data is still there.
  */
-#[Fillable(['server', 'name', 'system_user_id', 'site_id', 'size_bytes', 'tables', 'measured_at', 'backup_on_delete'])]
+#[Fillable(['server', 'name', 'system_user_id', 'site_id', 'size_bytes', 'tables', 'measured_at', 'backup_on_delete', 'copy_of_id'])]
 class Database extends Model
 {
     use HasFactory, OwnedThroughAccount, SoftDeletes;

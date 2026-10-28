@@ -45,7 +45,10 @@ type SimWPItem struct {
 	AutoUpdate string `json:"auto_update"`
 }
 
-var simWPVersion = regexp.MustCompile(`\$wp_version\s*=\s*'([^']+)'`)
+var (
+	simWPVersion = regexp.MustCompile(`\$wp_version\s*=\s*'([^']+)'`)
+	simWPDefine  = regexp.MustCompile(`define\( '([A-Z0-9_]+)', (.+) \);`)
+)
 
 // NewSimWP is what "core download" gives: WordPress 6.8.3, with 6.9 and
 // an Akismet update on offer.
@@ -146,6 +149,13 @@ func (s *Simulator) loadSimWP(dir string) (SimWP, error) {
 	}
 	if wp.Options == nil {
 		wp.Options = map[string]string{}
+	}
+	// wp-config.php is the truth for constants: a file changed by hand
+	// (or by a copy) wins over the saved state.
+	if b, err := os.ReadFile(s.Path(dir + "/wp-config.php")); err == nil {
+		for _, m := range simWPDefine.FindAllSubmatch(b, -1) {
+			wp.Constants[string(m[1])] = string(m[2])
+		}
 	}
 	if v, err := os.ReadFile(s.Path(dir + "/wp-includes/version.php")); err == nil {
 		if m := simWPVersion.FindSubmatch(v); m != nil {
@@ -281,6 +291,19 @@ func (s *Simulator) wpCLI(c Command, cwd string, args []string) (string, error) 
 			}
 		}
 		return "Success: done.\n", s.saveSimWP(dir, wp)
+	case len(rest) >= 3 && rest[0] == "search-replace":
+		n := 0
+		for _, m := range []map[string]string{wp.Options, wp.Constants} {
+			for k, v := range m {
+				if strings.Contains(v, rest[1]) {
+					m[k] = strings.ReplaceAll(v, rest[1], rest[2])
+					n++
+				}
+			}
+		}
+		return fmt.Sprintf("Success: Made %d replacements.\n", n), s.saveSimWP(dir, wp)
+	case cmd == "cache flush":
+		return "Success: The cache was flushed.\n", nil
 	case cmd == "maintenance-mode activate":
 		return "Success: Activated Maintenance mode.\n", os.WriteFile(s.Path(dir+"/.maintenance"), []byte("<?php $upgrading = time(); ?>"), 0o644)
 	case cmd == "maintenance-mode deactivate":

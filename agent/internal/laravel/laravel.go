@@ -75,6 +75,9 @@ type Target struct {
 	Domain     string `json:"domain"`
 	User       string `json:"user"`
 	PHPVersion string `json:"php_version"`
+	// Node is the Node.js release line ("22") the site's commands and
+	// builds use; empty is the server's default line.
+	Node string `json:"node,omitempty"`
 }
 
 // App is an application on a site. Path is its directory relative to the
@@ -91,6 +94,9 @@ func (t Target) validate() error {
 	}
 	if err := site.ValidateUser(t.User); err != nil {
 		return err
+	}
+	if t.Node != "" && !nodeMajorRe.MatchString(t.Node) {
+		return invalid("node line %q must be a major version such as 24", t.Node)
 	}
 	if t.PHPVersion != "" {
 		return site.ValidatePHPVersion(t.PHPVersion)
@@ -191,6 +197,19 @@ func composerPhar() string        { return toolsDir + "/composer/composer.phar" 
 func nodeBin() string             { return toolsDir + "/node/current/bin" }
 func runDir(domain string) string { return stateDir + "/" + domain + "/runs" }
 
+// nodeBinFor is the bin directory of the Node.js line a site asked for,
+// or of the server's default line when it asked for none or that line is
+// no longer installed. Long-running processes keep the default line,
+// whose path survives updates of the line.
+func (m *Manager) nodeBinFor(t Target) string {
+	if t.Node != "" {
+		if v, ok := m.NodeVersions()[t.Node]; ok {
+			return toolsDir + "/node/" + v + "/bin"
+		}
+	}
+	return nodeBin()
+}
+
 // proxyEnv are passed on to customer commands: a server that reaches the
 // internet through a proxy (one that inspects TLS too) needs them to fetch
 // packages.
@@ -207,7 +226,7 @@ func (m *Manager) cmdEnv(t Target, dir string, stream io.Writer, extra []string,
 	home := "/home/" + t.User
 	path := "/usr/local/bin:/usr/bin:/bin"
 	if t.PHPVersion != "" {
-		path = shimDir(t.PHPVersion) + ":" + nodeBin() + ":" + path
+		path = shimDir(t.PHPVersion) + ":" + m.nodeBinFor(t) + ":" + path
 	}
 	env := []string{"-C", dir,
 		"HOME=" + home, "USER=" + t.User, "LOGNAME=" + t.User, "PATH=" + path,

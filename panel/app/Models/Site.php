@@ -6,6 +6,7 @@ use App\Enums\CertificateStatus;
 use App\Enums\SiteStatus;
 use App\Services\Php\PhpVersions;
 use App\Services\Settings\Notifications;
+use App\Services\Sites\SiteCache;
 use App\Services\Sites\SiteDomains;
 use App\Support\CertificateState;
 use Database\Factories\SiteFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'cache', 'node_version'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -66,7 +67,69 @@ class Site extends Model
             'https_redirect' => 'boolean',
             'denied_paths' => 'array',
             'error_pages' => 'array',
+            'noindex' => 'boolean',
+            'cache' => 'array',
         ];
+    }
+
+    /**
+     * The site this one is a staging copy of (Siteyi kopyala).
+     *
+     * @return BelongsTo<Site, $this>
+     */
+    public function copyOf(): BelongsTo
+    {
+        return $this->belongsTo(Site::class, 'copy_of_id');
+    }
+
+    /**
+     * The staging copies made of this site.
+     *
+     * @return HasMany<Site, $this>
+     */
+    public function copies(): HasMany
+    {
+        return $this->hasMany(Site::class, 'copy_of_id');
+    }
+
+    /**
+     * The copies, refreshes and publishes of this site's staging copies.
+     *
+     * @return HasMany<SiteCopy, $this>
+     */
+    public function copyRuns(): HasMany
+    {
+        return $this->hasMany(SiteCopy::class, 'source_id')->latest('id');
+    }
+
+    /**
+     * Composer and Node.js commands run on the site.
+     *
+     * @return HasMany<SiteCommand, $this>
+     */
+    public function commands(): HasMany
+    {
+        return $this->hasMany(SiteCommand::class)->latest('id');
+    }
+
+    /**
+     * Parameters naming the site for the agent's laravel.* and site.tool.*
+     * methods, with the Node.js line its commands use.
+     *
+     * @return array{domain: string, user: string, php_version: string, node?: string}
+     */
+    public function toolTarget(): array
+    {
+        $target = [
+            'domain' => $this->domain,
+            'user' => $this->systemUser->name,
+            'php_version' => $this->php_version,
+        ];
+        if (filled($this->node_version)) {
+            $target['node'] = $this->node_version;
+        }
+
+        return $target;
     }
 
     /**
@@ -408,6 +471,9 @@ class Site extends Model
         if ($this->subdomains->isNotEmpty()) {
             $spec['subdomains'] = $this->subdomains->map(fn (Subdomain $s) => ['name' => $s->name, 'web_root' => $s->web_root])->all();
         }
+        if ($this->noindex) {
+            $spec['noindex'] = true;
+        }
         if ($this->isSuspended()) {
             // Subdomains show the suspension page too; redirects and the
             // administrator's directives wait for the account to return.
@@ -427,6 +493,9 @@ class Site extends Model
         }
         if ($this->web_server === self::APACHE && filled($this->apache_directives)) {
             $spec['apache_directives'] = $this->apache_directives;
+        }
+        if (($cache = SiteCache::spec($this)) !== null) {
+            $spec['cache'] = $cache;
         }
 
         return $spec + $this->laravelWeb();

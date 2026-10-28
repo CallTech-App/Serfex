@@ -127,6 +127,20 @@ last update for 7 days. **Sign in to WordPress** opens the dashboard without a
 password. Maintenance mode and the recommended security settings are one
 click each.
 
+## Copying a site, cache and Composer
+
+Site → **Copy site** makes a staging copy on an address such as
+`staging.example.com`, with copies of the site's databases, hidden from
+search engines. Try changes there, then **Publish to the live site**: the
+live site is backed up first and the publish can be undone for 7 days. A copy
+counts against your plan's sites and databases.
+
+Site → **Cache & speed** turns on the page cache, browser cache and
+compression. Signed-in visitors, carts and admin pages always get fresh pages.
+
+Site → **Composer** and **Node.js** run Composer and npm commands in a folder
+of your site, when your plan includes commands.
+
 ## Backups
 
 Your sites are included in the server's scheduled backups. **Take a backup**

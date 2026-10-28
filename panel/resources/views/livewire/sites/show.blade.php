@@ -12,6 +12,8 @@
     $diskTotal = app(\App\Services\Stats\DiskBreakdown::class)->site($site)['total'];
     $backupText = $lastBackup ? \App\Support\When::dateTime($lastBackup->backup->created_at) : __('Henüz yok');
     $wordpress = $site->wordpress;
+    $cache = \App\Services\Sites\SiteCache::settings($site);
+    $copyCount = $site->copies()->count();
     $wordpressTool = ['blocks', 'WordPress', match (true) {
         $wordpress === null => __('Kurulu değil'),
         $wordpress->status === \App\Models\WordPressInstall::INSTALLING => __('Kuruluyor'),
@@ -33,9 +35,18 @@
             ['hard-drive', __('Disk kullanımı'), $site->disk_bytes === null ? __('Ölçülmedi') : \App\Support\Bytes::format($diskTotal), route('sites.disk', $site)],
             $missing('backups') ? ['archive-restore', __('Yedekler'), $missing('backups')] : ['archive-restore', __('Yedekler'), $lastBackup ? __('Son: :text', ['text' => $backupText]) : __('Henüz yok'), route('backups.index', ['site' => $site->id])],
             ['key-round', __('Bağlantı bilgileri'), __('SFTP, veritabanı, SSH'), route('sites.connection', $site)],
+            ['copy', __('Siteyi kopyala'), $site->copy_of_id ? __('Bir sitenin kopyası') : ($copyCount ? trans_choice(':count kopya', $copyCount) : __('Kopya yok')), route('sites.copy', $site)],
         ]],
         [__('Geliştirme'), 'code', [
             ['code', __('PHP ve web sunucusu'), 'PHP '.$site->php_version.' · '.($site->web_server === \App\Models\Site::APACHE ? 'Apache' : 'Nginx'), route('sites.php', $site)],
+            ['gauge', __('Önbellek ve hız'), $cache['page'] ? __('Sayfa önbelleği açık') : ($cache['browser'] || $cache['gzip'] ? __('Tarayıcı önbelleği') : __('Kapalı')), route('sites.cache', $site)],
+            ...($missing('shell') ? [
+                ['package', 'Composer', $missing('shell')],
+                ['hexagon', 'Node.js', $missing('shell')],
+            ] : [
+                ['package', 'Composer', __('Paketler ve komutlar'), route('sites.packages', ['site' => $site, 'tool' => 'composer'])],
+                ['hexagon', 'Node.js', $site->node_version ? 'Node.js '.$site->node_version : __('Sunucunun varsayılanı'), route('sites.packages', ['site' => $site, 'tool' => 'node'])],
+            ]),
             $laravelTool,
             $missing('ssh') ? ['square-terminal', __('SSH erişimi'), $missing('ssh')] : ['square-terminal', __('SSH erişimi'), __(\App\Services\Files\SshAccess::LABELS[$site->systemUser->ssh_access] ?? 'Kapalı'), route('sites.ssh', $site)],
             ['terminal', __('SSH terminali'), null],

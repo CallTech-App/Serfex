@@ -129,6 +129,21 @@ güncellemeyi 7 gün içinde geri alabilirsiniz. **WordPress'e giriş yap**
 yönetim panelini parolasız açar. Bakım modu ve önerilen güvenlik ayarları
 birer tıklık.
 
+## Siteyi kopyala, önbellek ve Composer
+
+Site → **Siteyi kopyala**, siteyi `staging.ornek.com` gibi ayrı bir adrese,
+veritabanlarının kopyalarıyla ve arama motorlarından gizli olarak kopyalar.
+Değişiklikleri orada deneyin, sonra **Canlı siteye aktar**: önce canlı sitenin
+yedeği alınır ve aktarma 7 gün içinde geri alınabilir. Kopya, paketinizin site
+ve veritabanı sınırına sayılır.
+
+Site → **Önbellek ve hız**, sayfa önbelleğini, tarayıcı önbelleğini ve
+sıkıştırmayı açar. Oturum açmış ziyaretçiler, sepet ve yönetim sayfaları her
+zaman güncel sayfayı görür.
+
+Site → **Composer** ve **Node.js**, paketiniz komutları içeriyorsa sitenizin
+bir klasöründe Composer ve npm komutları çalıştırır.
+
 ## Yedekler
 
 Siteleriniz sunucunun zamanlanmış yedeklerine dahildir. **Yedek al** ile
