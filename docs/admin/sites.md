@@ -148,6 +148,47 @@ The site's mailboxes and forwarders, see [Email](mail.md).
 - **Web application firewall**: the site's own ModSecurity mode and rule
   exceptions.
 
+## Moving an account from cPanel
+
+Sites → **Move from another server** (administrators) brings a whole cPanel
+account here. Use the account's full backup: in cPanel, Files → Backup →
+*Download a Full Account Backup* (`backup-…_user.tar.gz`), or as root on the
+old server `/scripts/pkgacct user` (`/home/cpmove-user.tar.gz`). Upload it on
+the page, or copy large archives to `/var/lib/serfex/backups/import/` and pick
+them there.
+
+The page reads the archive and shows what it holds before anything changes:
+the sites (the main domain and each addon domain become a site, parked
+domains become aliases, subdomains come with their folders), databases,
+mailboxes, DNS zones and valid certificates, and what will not come. Choose
+the sites, the parts and the customer (a new one from the account's contact
+address, an existing one, or none), then **Start the move**.
+
+- The account keeps its cPanel user name, so database names and paths stay
+  the same. Each site's files go to `~/web/<domain>/public_html`; the old
+  paths (`~/public_html`, `~/<addon>`) are linked to the new place, and the
+  rest of the home folder comes along.
+- Database users keep their passwords when this MySQL can use the stored
+  hash. Otherwise they get a new one, written into `wp-config.php`, `.env`
+  or a similar settings file, and listed in the report.
+- Mailboxes keep their passwords (SHA-512/256, MD5 and bcrypt crypt hashes)
+  and messages (Maildir). Others get a new password; mdbox mailboxes are
+  created without their messages.
+- DNS zones start from Serfex's records (its name servers, this server's
+  addresses); the old records that do not clash are added, with the old
+  server's address replaced by this one's. cPanel's own service records and
+  DKIM are left out (Serfex signs mail with its own key).
+- Certificates that are trusted and still valid are used until they expire.
+- A domain that already exists here is skipped, and databases or users that
+  exist are not overwritten.
+- Cron jobs, FTP accounts, PostgreSQL databases and remote MySQL access are
+  listed in the report but not moved.
+
+The old server is not touched. Visitors keep going there until you point the
+domains' DNS here; the report lists the next steps and any new passwords
+(kept encrypted until you press **Forget passwords**). Plesk accounts are not
+supported yet.
+
 ## Deleting a site
 
 More actions → **Delete site**, then type the domain. The web server

@@ -837,6 +837,17 @@ func registerBackups(srv *rpc.Server, svc services) {
 	}) (any, error) {
 		return b.UploadWrite(q.Upload, q.Offset, q.Data)
 	})
+	// Accounts moved from other panels (cPanel).
+	handle(srv, "migrate.scan", func(context.Context, struct{}) (any, error) { return b.MigrateScan() })
+	handle(srv, "migrate.inspect", func(ctx context.Context, p backup.MigrateSource) (any, error) {
+		return b.MigrateInspect(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "migrate.convert", func(ctx context.Context, p backup.MigrateSpec) (any, error) {
+		return b.MigrateConvert(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "migrate.discard", func(_ context.Context, p backup.MigrateSource) (any, error) {
+		return map[string]bool{"discarded": true}, b.MigrateDiscard(p)
+	})
 	handle(srv, "backup.run.read", func(_ context.Context, q struct {
 		Run    string `json:"run"`
 		Offset int64  `json:"offset"`

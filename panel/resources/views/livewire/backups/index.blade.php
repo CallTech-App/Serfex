@@ -638,7 +638,7 @@
             <div>
                 <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Yedek içe aktar') }}</h2>
                 <div class="space-y-4 p-5 text-[13.5px]">
-                    <p class="text-[13px] text-muted">{{ __('Başka bir Serfex sunucusunun yedeğini buraya taşıyın ya da bu sunucuyu yeniden kurun. cPanel ve Plesk yedekleri içe aktarılamaz.') }}</p>
+                    <p class="text-[13px] text-muted">{{ __('Başka bir Serfex sunucusunun yedeğini buraya taşıyın ya da bu sunucuyu yeniden kurun.') }} <a href="{{ route('sites.migrate') }}" wire:navigate class="text-accent hover:underline">{{ __('cPanel yedeği mi? Başka sunucudan taşı sayfasını kullanın.') }}</a></p>
                     <div class="flex gap-4 border-b border-line text-[13.5px]" role="tablist">
                         @foreach (['upload' => __('Dosya yükle'), 'folder' => __('İçe aktarma klasörü'), 'target' => __('Hedeften')] as $k => $l)
                             <button type="button" role="tab" wire:click="$set('importFrom', '{{ $k }}')" @class(['-mb-px h-9 border-b-2 whitespace-nowrap', 'border-accent font-medium' => $importFrom === $k, 'border-transparent text-muted hover:text-fg' => $importFrom !== $k])>{{ $l }}</button>

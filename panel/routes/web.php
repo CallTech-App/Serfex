@@ -69,6 +69,7 @@ use App\Livewire\Sites\SiteFtp;
 use App\Livewire\Sites\SiteGit;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SiteLogs;
+use App\Livewire\Sites\SiteMigrate;
 use App\Livewire\Sites\SitePhp;
 use App\Livewire\Sites\SiteProtect;
 use App\Livewire\Sites\SiteScan;
@@ -170,6 +171,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
     Route::middleware(EnsureAdmin::class)->group(function () {
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
         Route::livewire('/sites/{site}/directives', SiteDirectives::class)->whereNumber('site')->name('sites.directives');
+        Route::livewire('/sites/migrate', SiteMigrate::class)->name('sites.migrate');
         Route::livewire('/security', SecurityIndex::class)->name('security.index');
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
         Route::livewire('/ai/audit', AiAudit::class)->name('ai.audit');

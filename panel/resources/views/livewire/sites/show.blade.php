@@ -49,7 +49,7 @@
         [__('Uygulamalar'), 'blocks', [
             $wordpressTool,
             $laravelTool,
-            ['download', __('Başka sunucudan taşı'), null],
+            ...($user->is_admin ? [['download', __('Başka sunucudan taşı'), __('cPanel yedeği'), route('sites.migrate')]] : []),
         ]],
         [__('Alan adı ve DNS'), 'network', [
             $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns')] : ['network', __('DNS kayıtları'), $zone ? __(':records_count kayıt', ['records_count' => $zone->records_count]) : null, $zone ? route('dns.show', $zone) : null],

@@ -13,6 +13,7 @@ use App\Models\Database;
 use App\Models\MailDomain;
 use App\Models\PanelUpdate;
 use App\Models\Site;
+use App\Models\SiteMigration;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
@@ -71,13 +72,14 @@ class Backups
     ) {}
 
     /**
-     * True while a backup or restore is queued or running; the agent takes
-     * one at a time.
+     * True while a backup, a restore or a move from another panel is
+     * queued or running; the agent takes one at a time.
      */
     public function busy(): bool
     {
         return Backup::whereIn('status', ['queued', 'running'])->exists()
-            || BackupRestore::whereIn('status', ['queued', 'running'])->exists();
+            || BackupRestore::whereIn('status', ['queued', 'running'])->exists()
+            || SiteMigration::whereIn('status', SiteMigration::RUNNING)->exists();
     }
 
     /**

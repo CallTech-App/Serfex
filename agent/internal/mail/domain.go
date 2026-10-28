@@ -72,7 +72,7 @@ type Alias struct {
 
 var (
 	localRe = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$`)
-	hashRe  = regexp.MustCompile(`^\{(SHA512-CRYPT|BLF-CRYPT|ARGON2ID)\}\$[^\s:]{10,200}$`)
+	hashRe  = regexp.MustCompile(`^\{(SHA512-CRYPT|SHA256-CRYPT|MD5-CRYPT|BLF-CRYPT|ARGON2ID)\}\$[^\s:]{10,200}$`)
 	dateRe  = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 )
 

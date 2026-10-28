@@ -1,0 +1,490 @@
+{
+    "convert": {
+        "key": "mig-1",
+        "items": [
+            {
+                "name": "magaza.com.tr",
+                "size": 17920,
+                "parts": {
+                    "certificates": 1521,
+                    "databases": 158,
+                    "files": 682,
+                    "home": 652,
+                    "mail": 177
+                },
+                "skipped": {},
+                "incremental": [],
+                "warnings": []
+            },
+            {
+                "name": "blogum.net",
+                "size": 6144,
+                "parts": {
+                    "files": 409,
+                    "mail": 137
+                },
+                "skipped": {},
+                "incremental": [],
+                "warnings": []
+            }
+        ],
+        "size": 24064,
+        "passwords": [
+            {
+                "name": "magaza_wpu",
+                "password": "Y3NTTG6Vk4QNXtE8uNxWURGm",
+                "files": [
+                    "/home/magaza/web/magaza.com.tr/public_html/wp-config.php"
+                ]
+            }
+        ],
+        "notes": null
+    },
+    "inspect": {
+        "plan": {
+            "source": "cpanel",
+            "user": "magaza",
+            "contact": "ayse@magaza.com.tr",
+            "package": "gold",
+            "main_domain": "magaza.com.tr",
+            "old_ips": [
+                "198.51.100.7"
+            ],
+            "sites": [
+                {
+                    "domain": "magaza.com.tr",
+                    "kind": "main",
+                    "docroot": "public_html",
+                    "php": "8.1",
+                    "aliases": [
+                        "magaza.net"
+                    ],
+                    "subdomains": [
+                        {
+                            "name": "api.magaza.com.tr",
+                            "docroot": "api",
+                            "web_root": "subdomains/api"
+                        },
+                        {
+                            "name": "shop.magaza.com.tr",
+                            "docroot": "public_html/shop",
+                            "web_root": "public_html/shop"
+                        }
+                    ],
+                    "certificate": {
+                        "names": [
+                            "magaza.com.tr",
+                            "www.magaza.com.tr"
+                        ],
+                        "issuer": "Sectigo Limited",
+                        "not_after": "2036-12-27T14:05:35Z"
+                    }
+                },
+                {
+                    "domain": "blogum.net",
+                    "kind": "addon",
+                    "docroot": "blogum.net",
+                    "php": "7.4",
+                    "aliases": [],
+                    "subdomains": []
+                }
+            ],
+            "databases": [
+                {
+                    "name": "magaza_blog",
+                    "size": 29,
+                    "site": ""
+                },
+                {
+                    "name": "magaza_eski",
+                    "size": 25,
+                    "site": ""
+                },
+                {
+                    "name": "magaza_wp",
+                    "size": 32,
+                    "site": "magaza.com.tr"
+                }
+            ],
+            "database_users": [
+                {
+                    "name": "magaza_wpu",
+                    "databases": [
+                        "magaza_wp"
+                    ],
+                    "keeps_password": false
+                },
+                {
+                    "name": "magaza_blog",
+                    "databases": [
+                        "magaza_blog"
+                    ],
+                    "keeps_password": true,
+                    "remote_hosts": [
+                        "203.0.113.9"
+                    ]
+                }
+            ],
+            "mail": [
+                {
+                    "domain": "blogum.net",
+                    "site": "blogum.net",
+                    "mailboxes": [
+                        {
+                            "name": "yazar",
+                            "quota_mb": 0,
+                            "size": 13,
+                            "keeps_password": false
+                        }
+                    ],
+                    "forwarders": 0
+                },
+                {
+                    "domain": "magaza.com.tr",
+                    "site": "magaza.com.tr",
+                    "mailboxes": [
+                        {
+                            "name": "info",
+                            "quota_mb": 1024,
+                            "size": 39,
+                            "keeps_password": true
+                        },
+                        {
+                            "name": "satis",
+                            "quota_mb": 0,
+                            "size": 5,
+                            "keeps_password": true,
+                            "mdbox": true
+                        }
+                    ],
+                    "forwarders": 2
+                }
+            ],
+            "zones": [
+                {
+                    "name": "magaza.com.tr",
+                    "site": "magaza.com.tr",
+                    "records": 19
+                },
+                {
+                    "name": "magaza.net",
+                    "site": "magaza.com.tr",
+                    "records": 4
+                },
+                {
+                    "name": "blogum.net",
+                    "site": "blogum.net",
+                    "records": 4
+                }
+            ],
+            "cron": [
+                "*/5 * * * * /usr/local/bin/php /home/magaza/laravel/artisan schedule:run"
+            ],
+            "ftp": [
+                "tasarimci@magaza.com.tr"
+            ],
+            "size": 3948,
+            "unpacked": 5719,
+            "files_size": 492,
+            "mail_size": 57,
+            "databases_size": 86,
+            "notes": []
+        },
+        "free_backups": 17662410752,
+        "free_home": 17662410752
+    },
+    "meta": {
+        "blogum.net": {
+            "version": 1,
+            "site": {
+                "aliases": [
+                    "www.blogum.net"
+                ],
+                "apache_directives": null,
+                "domain": "blogum.net",
+                "error_pages": null,
+                "https_redirect": true,
+                "nginx_directives": null,
+                "php_version": "7.4",
+                "redirects": [],
+                "subdomains": [],
+                "web_root": "public_html",
+                "web_server": "nginx"
+            },
+            "account": {
+                "customer_id": null,
+                "name": "magaza"
+            },
+            "databases": [],
+            "database_users": [],
+            "mail": {
+                "forwarders": [],
+                "mailboxes": [
+                    {
+                        "autoreply": null,
+                        "forward_to": [],
+                        "keep_copy": true,
+                        "name": "yazar",
+                        "password_hash": "",
+                        "quota_mb": 0
+                    }
+                ],
+                "manage_dns": true,
+                "spam_filter": true
+            },
+            "dns": {
+                "records": [
+                    {
+                        "content": "203.0.113.50",
+                        "name": "@",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "A"
+                    },
+                    {
+                        "content": "aspmx.l.google.com.",
+                        "name": "@",
+                        "priority": 10,
+                        "ttl": 14400,
+                        "type": "MX"
+                    }
+                ],
+                "zone": {
+                    "name": "blogum.net"
+                }
+            },
+            "certificates": [],
+            "laravel": null,
+            "migration": {
+                "source": "cpanel",
+                "user": "magaza",
+                "zones": []
+            }
+        },
+        "magaza.com.tr": {
+            "version": 1,
+            "site": {
+                "aliases": [
+                    "www.magaza.com.tr",
+                    "magaza.net",
+                    "www.magaza.net"
+                ],
+                "apache_directives": null,
+                "domain": "magaza.com.tr",
+                "error_pages": null,
+                "https_redirect": true,
+                "nginx_directives": null,
+                "php_version": "8.1",
+                "redirects": [],
+                "subdomains": [
+                    {
+                        "name": "api.magaza.com.tr",
+                        "web_root": "subdomains/api"
+                    },
+                    {
+                        "name": "shop.magaza.com.tr",
+                        "web_root": "public_html/shop"
+                    }
+                ],
+                "web_root": "public_html",
+                "web_server": "nginx"
+            },
+            "account": {
+                "customer_id": null,
+                "name": "magaza"
+            },
+            "databases": [
+                {
+                    "server": "mysql",
+                    "name": "magaza_blog"
+                },
+                {
+                    "server": "mysql",
+                    "name": "magaza_eski"
+                },
+                {
+                    "server": "mysql",
+                    "name": "magaza_wp"
+                }
+            ],
+            "database_users": [
+                {
+                    "server": "mysql",
+                    "name": "magaza_wpu",
+                    "hosts": [],
+                    "grants": [
+                        {
+                            "database": "magaza_wp",
+                            "access": "all"
+                        }
+                    ]
+                },
+                {
+                    "server": "mysql",
+                    "name": "magaza_blog",
+                    "hosts": [],
+                    "grants": [
+                        {
+                            "database": "magaza_blog",
+                            "access": "readwrite"
+                        }
+                    ]
+                }
+            ],
+            "mail": {
+                "forwarders": [
+                    {
+                        "destinations": [
+                            "info@magaza.com.tr"
+                        ],
+                        "name": "webmaster"
+                    }
+                ],
+                "mailboxes": [
+                    {
+                        "autoreply": null,
+                        "forward_to": [
+                            "ayse@gmail.com"
+                        ],
+                        "keep_copy": true,
+                        "name": "info",
+                        "password_hash": "{SHA512-CRYPT}$6$abcdefgh$WkzUUN9e4Xr3l6sQ7I8J2h6ZqU2pN1y8m7k3l1t0v5w4x3y2z1a0b9c8d7e6f5g4h3i2j1k0l9m8n7o6p5q4r3",
+                        "quota_mb": 1024
+                    },
+                    {
+                        "autoreply": null,
+                        "forward_to": [],
+                        "keep_copy": true,
+                        "name": "satis",
+                        "password_hash": "{MD5-CRYPT}$1$abcdefgh$q2w3e4r5t6y7u8i9o0p1a2",
+                        "quota_mb": 0
+                    }
+                ],
+                "manage_dns": true,
+                "spam_filter": true
+            },
+            "dns": {
+                "records": [
+                    {
+                        "content": "203.0.113.50",
+                        "name": "@",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "A"
+                    },
+                    {
+                        "content": "magaza.com.tr.",
+                        "name": "www",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "CNAME"
+                    },
+                    {
+                        "content": "magaza.com.tr.",
+                        "name": "ftp",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "CNAME"
+                    },
+                    {
+                        "content": "v=spf1 +a +mx +ip4:203.0.113.50 ~all",
+                        "name": "@",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "TXT"
+                    },
+                    {
+                        "content": "203.0.113.50",
+                        "name": "shop",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "A"
+                    },
+                    {
+                        "content": "203.0.113.50",
+                        "name": "api",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "A"
+                    },
+                    {
+                        "content": "magaza.shopify.com.",
+                        "name": "kampanya",
+                        "priority": null,
+                        "ttl": 3600,
+                        "type": "CNAME"
+                    },
+                    {
+                        "content": "v=DMARC1; p=quarantine",
+                        "name": "_dmarc",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "TXT"
+                    },
+                    {
+                        "content": "0 issue \"letsencrypt.org\"",
+                        "name": "@",
+                        "priority": null,
+                        "ttl": 14400,
+                        "type": "CAA"
+                    },
+                    {
+                        "content": "5 5060 sip.magaza.com.tr.",
+                        "name": "_sip._tcp",
+                        "priority": 10,
+                        "ttl": 14400,
+                        "type": "SRV"
+                    }
+                ],
+                "zone": {
+                    "name": "magaza.com.tr"
+                }
+            },
+            "certificates": [
+                {
+                    "auto_renew": false,
+                    "challenge": null,
+                    "domains": [
+                        "magaza.com.tr",
+                        "www.magaza.com.tr"
+                    ],
+                    "fingerprint": "C8BAC6D88CF85F9F9D804F0984C2681E9639529D2E43C768E2D2C61A80BB072D",
+                    "in_use": true,
+                    "issuer": "Sectigo Limited",
+                    "kind": "site",
+                    "name": "magaza.com.tr",
+                    "not_after": "2036-12-27T14:05:35Z",
+                    "not_before": "2026-10-28T13:05:35Z",
+                    "serial": "2",
+                    "source": "custom"
+                }
+            ],
+            "laravel": null,
+            "migration": {
+                "source": "cpanel",
+                "user": "magaza",
+                "zones": [
+                    {
+                        "name": "magaza.net",
+                        "records": [
+                            {
+                                "content": "203.0.113.50",
+                                "name": "@",
+                                "priority": null,
+                                "ttl": 14400,
+                                "type": "A"
+                            },
+                            {
+                                "content": "magaza.net.",
+                                "name": "www",
+                                "priority": null,
+                                "ttl": 14400,
+                                "type": "CNAME"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Hidden(['passphrase'])]
 class Backup extends Model
 {
-    public const TRIGGERS = ['scheduled' => 'Zamanlanmış', 'manual' => 'Elle', 'safety' => 'Geri yükleme öncesi', 'update' => 'Güncelleme öncesi', 'delete' => 'Silme öncesi', 'import' => 'İçe aktarılan'];
+    public const TRIGGERS = ['scheduled' => 'Zamanlanmış', 'manual' => 'Elle', 'safety' => 'Geri yükleme öncesi', 'update' => 'Güncelleme öncesi', 'delete' => 'Silme öncesi', 'import' => 'İçe aktarılan', 'migration' => 'Taşıma'];
 
     /** What a site restore can put back, in the order they are applied. */
     public const RESTORE_PARTS = ['files' => 'Dosyalar', 'databases' => 'Veritabanları', 'mail' => 'E-posta', 'dns' => 'DNS', 'certificates' => 'SSL sertifikaları'];
