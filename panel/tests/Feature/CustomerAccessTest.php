@@ -55,8 +55,8 @@ class CustomerAccessTest extends TestCase
             'dns.status' => ['installed' => true, 'running' => true],
             'laravel.status' => ['exists' => true, 'processes' => [], 'info' => ['packages' => []]],
         ]));
-        Setting::put('mail.hostname', 'mail.serfex.net.tr');
-        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.serfex.net.tr/', 'certificate' => '']);
+        Setting::put('mail.hostname', 'mail.example.net');
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String(), 'webmail_url' => 'https://mail.example.net/', 'certificate' => '']);
 
         $this->customer = Customer::factory()->withLogin()->create(['company' => 'Kahve Atölyesi', 'username' => 'kahve']);
         $this->mine = Site::factory()->for(app(Customers::class)->account($this->customer))->create(['domain' => 'kahveatolyesi.com.tr']);

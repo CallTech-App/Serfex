@@ -50,22 +50,22 @@ class DnsSettingsPageTest extends TestCase
         $custom->records()->create(['name' => '@', 'type' => 'NS', 'content' => 'ns.cloudflare.com.', 'ttl' => 3600]);
 
         Livewire::test(DnsSettingsPage::class)
-            ->set('nameservers', 'NS1.serfex.net.tr., ns2.serfex.net.tr')
+            ->set('nameservers', 'NS1.example.net., ns2.example.net')
             ->set('applyToZones', true)
             ->call('save')
             ->assertHasNoErrors()
-            ->assertSet('nameservers', 'ns1.serfex.net.tr, ns2.serfex.net.tr')
+            ->assertSet('nameservers', 'ns1.example.net, ns2.example.net')
             ->assertDispatched('toast', fn ($n, $p) => str_contains($p['message'], '1 bölgenin'));
 
-        $this->assertSame(['ns1.serfex.net.tr', 'ns2.serfex.net.tr'], app(DnsSettings::class)->nameservers());
-        $this->assertSame(['ns1.serfex.net.tr.', 'ns2.serfex.net.tr.'], $old->fresh()->nameservers());
+        $this->assertSame(['ns1.example.net', 'ns2.example.net'], app(DnsSettings::class)->nameservers());
+        $this->assertSame(['ns1.example.net.', 'ns2.example.net.'], $old->fresh()->nameservers());
         $this->assertSame(['ns.cloudflare.com.'], $custom->fresh()->nameservers());
         Queue::assertPushed(SyncDnsZone::class, 1);
     }
 
     public function test_a_name_server_on_another_address_moves_its_a_record(): void
     {
-        $zone = DnsZone::factory()->create(['name' => 'serfex.net.tr']);
+        $zone = DnsZone::factory()->create(['name' => 'example.net']);
         $zone->records()->createMany([
             ['name' => 'ns1', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600],
             ['name' => 'ns2', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600],
@@ -74,8 +74,8 @@ class DnsSettingsPageTest extends TestCase
         $records = fn () => $zone->records()->where('name', 'like', 'ns%')->orderBy('name')->orderBy('type')->get()->map(fn ($r) => $r->name.' '.$r->type.' '.$r->content)->all();
 
         $page = Livewire::test(DnsSettingsPage::class)
-            ->set('nameservers', 'ns1.serfex.net.tr, ns2.serfex.net.tr')
-            ->assertSet('nameserverIps', [['host' => 'ns1.serfex.net.tr', 'ip' => ''], ['host' => 'ns2.serfex.net.tr', 'ip' => '']])
+            ->set('nameservers', 'ns1.example.net, ns2.example.net')
+            ->assertSet('nameserverIps', [['host' => 'ns1.example.net', 'ip' => ''], ['host' => 'ns2.example.net', 'ip' => '']])
             ->assertSee('Ad sunucularının IP adresleri')
             ->set('nameserverIps.1.ip', '198.51.100')
             ->call('save')
@@ -85,17 +85,17 @@ class DnsSettingsPageTest extends TestCase
             ->assertHasNoErrors()
             ->assertDispatched('toast', fn ($n, $p) => str_contains($p['message'], '1 bölgede'));
 
-        $this->assertSame(['ns2.serfex.net.tr' => '198.51.100.20'], app(DnsSettings::class)->nameserverIps());
+        $this->assertSame(['ns2.example.net' => '198.51.100.20'], app(DnsSettings::class)->nameserverIps());
         $this->assertSame(['ns1 A 203.0.113.10', 'ns2 A 198.51.100.20'], $records());
 
         // New zones under the same name get it too.
-        $template = app(ZoneTemplate::class)->records('serfex.net.tr', true);
+        $template = app(ZoneTemplate::class)->records('example.net', true);
         $this->assertContains(['name' => 'ns2', 'type' => 'A', 'content' => '198.51.100.20', 'priority' => null, 'ttl' => 3600], $template);
         $this->assertEmpty(array_filter($template, fn ($r) => $r['name'] === 'ns2' && $r['type'] === 'AAAA'));
 
         // The names follow the field; emptying the address points it back here.
-        $page->set('nameservers', 'ns2.serfex.net.tr, ns1.serfex.net.tr')
-            ->assertSet('nameserverIps', [['host' => 'ns2.serfex.net.tr', 'ip' => '198.51.100.20'], ['host' => 'ns1.serfex.net.tr', 'ip' => '']])
+        $page->set('nameservers', 'ns2.example.net, ns1.example.net')
+            ->assertSet('nameserverIps', [['host' => 'ns2.example.net', 'ip' => '198.51.100.20'], ['host' => 'ns1.example.net', 'ip' => '']])
             ->set('nameserverIps.0.ip', '')
             ->call('save')
             ->assertHasNoErrors();
@@ -106,7 +106,7 @@ class DnsSettingsPageTest extends TestCase
     public function test_validates_settings(): void
     {
         Livewire::test(DnsSettingsPage::class)
-            ->set('nameservers', 'ns1.serfex.net.tr')
+            ->set('nameservers', 'ns1.example.net')
             ->call('save')
             ->assertHasErrors('nameservers')
             ->set('nameservers', 'ns1, ns2')
@@ -141,7 +141,7 @@ class DnsSettingsPageTest extends TestCase
             ->assertHasErrors('recordValue')
             ->set('recordType', 'NS')
             ->set('recordName', '')
-            ->set('recordValue', 'ns3.serfex.net.tr')
+            ->set('recordValue', 'ns3.example.net')
             ->call('saveRecord')
             ->assertHasErrors('recordName');
 

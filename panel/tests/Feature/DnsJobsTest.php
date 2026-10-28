@@ -28,7 +28,7 @@ class DnsJobsTest extends TestCase
         $agent = Mockery::mock(AgentClient::class);
         $agent->shouldReceive('call')->once()->with('dns.zone.apply', Mockery::on(function ($spec) {
             $this->assertSame('kahve.com.tr', $spec['zone']);
-            $this->assertSame(['primary' => 'ns1.serfex.net.tr.', 'hostmaster' => 'hostmaster@kahve.com.tr', 'refresh' => 10800, 'retry' => 3600, 'expire' => 604800, 'minimum' => 3600, 'ttl' => 3600], $spec['soa']);
+            $this->assertSame(['primary' => 'ns1.example.net.', 'hostmaster' => 'hostmaster@kahve.com.tr', 'refresh' => 10800, 'retry' => 3600, 'expire' => 604800, 'minimum' => 3600, 'ttl' => 3600], $spec['soa']);
             $this->assertContains(['name' => '@', 'type' => 'MX', 'ttl' => 3600, 'content' => '10 mail.kahve.com.tr.'], $spec['records']);
             $this->assertContains(['name' => '@', 'type' => 'TXT', 'ttl' => 3600, 'content' => 'v=spf1 a mx ~all'], $spec['records']);
             $this->assertCount(6, $spec['records']);

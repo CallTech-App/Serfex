@@ -47,7 +47,7 @@ class LaravelPagesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->actingAs(User::factory()->create(['name' => 'Sercan']));
+        $this->actingAs(User::factory()->create(['name' => 'Aylin']));
         Queue::fake();
         // Sections are lazy; tests ask for them without lazy loading each time (the flag resets after every request).
         $this->agent = Mockery::mock(AgentClient::class);
@@ -194,7 +194,7 @@ class LaravelPagesTest extends TestCase
         Livewire::withoutLazyLoading()->test(Previews::class, ['appId' => $app->id])->assertSee('pr-{numara}.api.hizlikargo.app')->assertSee('Önizleme ortamı yok');
         Livewire::withoutLazyLoading()->test(Processes::class, ['appId' => $app->id])->assertSee('Horizon')->assertSee('Octane')->assertSee('composer require laravel/octane');
         Livewire::withoutLazyLoading()->test(Backups::class, ['appId' => $app->id])->assertSee('Henüz yedek yok')->assertSee('Şimdi yedekle');
-        Livewire::withoutLazyLoading()->test(Access::class, ['appId' => $app->id])->assertSee('Sercan')->assertSee('Sunucu yöneticisi')->assertSee(route('api.deploy', 'api.hizlikargo.app'));
+        Livewire::withoutLazyLoading()->test(Access::class, ['appId' => $app->id])->assertSee('Aylin')->assertSee('Sunucu yöneticisi')->assertSee(route('api.deploy', 'api.hizlikargo.app'));
     }
 
     public function test_install_progress_streams_the_log(): void
@@ -221,7 +221,7 @@ class LaravelPagesTest extends TestCase
         $deployment = $app->deployments()->sole();
         $this->assertSame('release/2.8', $deployment->ref);
         $this->assertFalse($deployment->migrate);
-        $this->assertSame('Sercan', $deployment->triggered_by);
+        $this->assertSame('Aylin', $deployment->triggered_by);
         Queue::assertPushed(DeployLaravelApp::class);
 
         // Without a repository there is nothing to deploy.

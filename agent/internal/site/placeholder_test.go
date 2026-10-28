@@ -42,7 +42,7 @@ func TestDefaultPageWithoutPanelAddress(t *testing.T) {
 }
 
 func TestPanelURLIsChecked(t *testing.T) {
-	for _, ok := range []string{"https://server.example.com:8443/", "https://server.example.com:8443", "https://185.98.142.21:8443/", "https://[2a0e:1c80:4:2a::21]:8443/"} {
+	for _, ok := range []string{"https://server.example.com:8443/", "https://server.example.com:8443", "https://203.0.113.21:8443/", "https://[2001:db8:4:2a::21]:8443/"} {
 		if err := validatePanelURL(ok); err != nil {
 			t.Errorf("%s refused: %v", ok, err)
 		}

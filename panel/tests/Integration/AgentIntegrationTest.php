@@ -202,9 +202,9 @@ class AgentIntegrationTest extends TestCase
             $this->assertSame(-32002, $e->getCode());
         }
 
-        $setup = $client->call('mail.setup', ['hostname' => 'mail.serfex.net.tr', 'certificate' => '', 'hourly_limit' => 500, 'webmail' => true], 60);
+        $setup = $client->call('mail.setup', ['hostname' => 'mail.example.net', 'certificate' => '', 'hourly_limit' => 500, 'webmail' => true], 60);
         $this->assertTrue($setup['installed']);
-        $this->assertSame('https://mail.serfex.net.tr/', $setup['webmail_url']);
+        $this->assertSame('https://mail.example.net/', $setup['webmail_url']);
         $status = $client->call('mail.status');
         $this->assertTrue($status['configured']);
 
@@ -227,7 +227,7 @@ class AgentIntegrationTest extends TestCase
 
         $this->assertSame(['siparis' => 0], $client->call('mail.usage', ['domain' => 'kahveatolyesi.com.tr'])['mailboxes']);
         $login = $client->call('mail.webmail.login', ['address' => 'siparis@kahveatolyesi.com.tr']);
-        $this->assertStringStartsWith('https://mail.serfex.net.tr/?_task=login&_action=serfex-sso&_token=', $login['url']);
+        $this->assertStringStartsWith('https://mail.example.net/?_task=login&_action=serfex-sso&_token=', $login['url']);
 
         try {
             $client->call('mail.domain.apply', [...$spec, 'mailboxes' => [[...$spec['mailboxes'][0], 'password_hash' => 'plain']]], 30);

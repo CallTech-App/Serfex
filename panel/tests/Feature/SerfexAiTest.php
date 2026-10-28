@@ -58,7 +58,7 @@ class SerfexAiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['name' => 'Sercan']);
+        $this->admin = User::factory()->create(['name' => 'Aylin']);
         $this->actingAs($this->admin);
         $this->shop = Site::factory()->for(SystemUser::factory()->create(['name' => 'magaza']), 'systemUser')->create(['domain' => 'magazaonline.com.tr']);
 
@@ -167,7 +167,7 @@ class SerfexAiTest extends TestCase
         $this->assertSame('medium', $first['output_config']['effort']);
         $this->assertStringContainsString('Turkish', $first['system'][0]['text']);
         $this->assertContains('propose_action', array_column($first['tools'], 'name'));
-        $this->assertStringContainsString('administrator Sercan, connected from 127.0.0.1', $first['messages'][0]['content'][0]['text']);
+        $this->assertStringContainsString('administrator Aylin, connected from 127.0.0.1', $first['messages'][0]['content'][0]['text']);
         $this->assertSame('magazaonline.com.tr neden yavaş?', $first['messages'][0]['content'][1]['text']);
         $this->assertStringNotContainsString(self::KEY, json_encode($first));
 
@@ -396,7 +396,7 @@ class SerfexAiTest extends TestCase
         AiEvent::record('auto', '45.155.205.233 adresini 1 saat engelle', $conversation, tool: 'block_ip');
         AiEvent::record('applied', 'mail A kaydı ekle', $conversation, $this->admin, 'dns_add_record');
 
-        $this->get('/ai/kayit')->assertOk()->assertSee('Saldırıları ve engelleri okudu')->assertSee('Kendisi yaptı')->assertSee('Sercan');
+        $this->get('/ai/kayit')->assertOk()->assertSee('Saldırıları ve engelleri okudu')->assertSee('Kendisi yaptı')->assertSee('Aylin');
 
         Livewire::test(AiAudit::class)
             ->set('type', 'changes')

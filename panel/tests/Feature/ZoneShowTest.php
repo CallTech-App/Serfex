@@ -49,7 +49,7 @@ class ZoneShowTest extends TestCase
         $this->get('/dns/'.$this->zone->id)
             ->assertOk()
             ->assertSee('kahve.com.tr')
-            ->assertSee('ns1.serfex.net.tr.')
+            ->assertSee('ns1.example.net.')
             ->assertSee('203.0.113.10')
             ->assertSee('4 / 4 kayıt');
     }
@@ -196,7 +196,7 @@ class ZoneShowTest extends TestCase
 
         $file = $this->zone->fresh()->zoneFile();
         $this->assertStringContainsString('$ORIGIN kahve.com.tr.', $file);
-        $this->assertStringContainsString('@ 3600 IN SOA ns1.serfex.net.tr. hostmaster.kahve.com.tr. 2026101801 10800 3600 604800 3600', $file);
+        $this->assertStringContainsString('@ 3600 IN SOA ns1.example.net. hostmaster.kahve.com.tr. 2026101801 10800 3600 604800 3600', $file);
         $this->assertStringContainsString('www 3600 IN CNAME kahve.com.tr.', $file);
     }
 

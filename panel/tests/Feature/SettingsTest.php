@@ -55,7 +55,7 @@ class SettingsTest extends TestCase
             'ssl.panel.install' => ['domains' => ['panel.kahve.com.tr'], 'not_before' => '2026-10-01T00:00:00Z', 'not_after' => '2027-10-01T00:00:00Z', 'changed' => true, 'reloaded' => true],
         ]);
         $this->app->instance(AgentClient::class, $this->agent);
-        $this->admin = User::factory()->create(['name' => 'Sercan', 'role' => 'full']);
+        $this->admin = User::factory()->create(['name' => 'Aylin', 'role' => 'full']);
         $this->actingAs($this->admin);
     }
 
@@ -328,15 +328,15 @@ class SettingsTest extends TestCase
             ->set('emails', 'ops@kahve.com.tr, yanlis')
             ->call('save')
             ->assertHasErrors('emails')
-            ->set('emails', 'OPS@kahve.com.tr; sercan@kahve.com.tr')
+            ->set('emails', 'OPS@kahve.com.tr; aylin@kahve.com.tr')
             ->set('webhookUrl', 'https://hooks.kahve.com.tr/serfex')
             ->set('events.update', false)
             ->call('save')
             ->assertHasNoErrors()
-            ->assertSet('emails', 'ops@kahve.com.tr, sercan@kahve.com.tr');
+            ->assertSet('emails', 'ops@kahve.com.tr, aylin@kahve.com.tr');
 
         $saved = app(Notifications::class)->settings();
-        $this->assertSame(['ops@kahve.com.tr', 'sercan@kahve.com.tr'], $saved['emails']);
+        $this->assertSame(['ops@kahve.com.tr', 'aylin@kahve.com.tr'], $saved['emails']);
         $this->assertFalse($saved['events']['update']);
         $this->assertTrue($saved['events']['disk']);
 

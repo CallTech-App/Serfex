@@ -23,7 +23,7 @@ class MailDnsTest extends TestCase
         parent::setUp();
         Queue::fake();
         Setting::put('dns.ipv4', '203.0.113.10');
-        Setting::put('mail.hostname', 'mail.serfex.net.tr');
+        Setting::put('mail.hostname', 'mail.example.net');
     }
 
     private function dns(): MailDns
@@ -53,11 +53,11 @@ class MailDnsTest extends TestCase
             '@ TXT v=spf1 a mx ip4:203.0.113.10 ~all',
             'serfex._domainkey TXT '.self::DKIM,
             '_dmarc TXT v=DMARC1; p=none',
-            'autoconfig CNAME mail.serfex.net.tr.',
-            'autodiscover CNAME mail.serfex.net.tr.',
-            '_autodiscover._tcp SRV 0 1 443 mail.serfex.net.tr.',
-            '_submissions._tcp SRV 0 1 465 mail.serfex.net.tr.',
-            '_imaps._tcp SRV 0 1 993 mail.serfex.net.tr.',
+            'autoconfig CNAME mail.example.net.',
+            'autodiscover CNAME mail.example.net.',
+            '_autodiscover._tcp SRV 0 1 443 mail.example.net.',
+            '_submissions._tcp SRV 0 1 465 mail.example.net.',
+            '_imaps._tcp SRV 0 1 993 mail.example.net.',
         ] as $want) {
             $this->assertContains($want, $records);
         }
@@ -119,8 +119,8 @@ class MailDnsTest extends TestCase
         $this->dns()->remove($domain);
 
         $this->assertSame([
-            '@ NS ns1.serfex.net.tr.',
-            '@ NS ns2.serfex.net.tr.',
+            '@ NS ns1.example.net.',
+            '@ NS ns2.example.net.',
             '@ A 203.0.113.10',
             'www CNAME kahve.com.tr.',
             '_dmarc TXT v=DMARC1; p=reject',

@@ -31,8 +31,8 @@ class DnsRecords
     public static function valueField(string $type): array
     {
         return match ($type) {
-            'A' => [__('IPv4 adresi'), '185.98.142.21'],
-            'AAAA' => [__('IPv6 adresi'), '2a0e:1c80:4:2a::21'],
+            'A' => [__('IPv4 adresi'), '203.0.113.21'],
+            'AAAA' => [__('IPv6 adresi'), '2001:db8:4:2a::21'],
             'CNAME' => [__('Hedef alan adı'), 'ornek.com.tr.'],
             'MX' => [__('Posta sunucusu'), 'mail.ornek.com.tr.'],
             'TXT' => [__('Değer'), 'v=spf1 a mx ~all'],
@@ -107,13 +107,13 @@ class DnsRecords
             case 'A':
                 return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
                     ? [$value, null]
-                    : [null, __('Geçerli bir IPv4 adresi girin, örneğin 185.98.142.21.')];
+                    : [null, __('Geçerli bir IPv4 adresi girin, örneğin 203.0.113.21.')];
             case 'AAAA':
                 $packed = filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? inet_pton($value) : false;
 
                 return $packed !== false && ! str_starts_with($packed, str_repeat("\0", 10)."\xff\xff")
                     ? [inet_ntop($packed), null]
-                    : [null, __('Geçerli bir IPv6 adresi girin, örneğin 2a0e:1c80:4:2a::21.')];
+                    : [null, __('Geçerli bir IPv6 adresi girin, örneğin 2001:db8:4:2a::21.')];
             case 'CNAME':
             case 'NS':
             case 'MX':

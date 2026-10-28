@@ -26,12 +26,12 @@ class DnsRecordsTest extends TestCase
     {
         $zone = 'kahve.com.tr';
         $ok = [
-            ['A', '185.98.142.21', '185.98.142.21'],
-            ['AAAA', '2a0e:1c80:0004:002a:0:0:0:21', '2a0e:1c80:4:2a::21'],
+            ['A', '203.0.113.21', '203.0.113.21'],
+            ['AAAA', '2001:db8:0004:002a:0:0:0:21', '2001:db8:4:2a::21'],
             ['CNAME', 'Kahve.com.tr', 'kahve.com.tr.'],
             ['CNAME', 'shop', 'shop.kahve.com.tr.'],
             ['MX', 'mail.kahve.com.tr.', 'mail.kahve.com.tr.'],
-            ['NS', 'ns1.serfex.net.tr', 'ns1.serfex.net.tr.'],
+            ['NS', 'ns1.example.net', 'ns1.example.net.'],
             ['SRV', '5 5060 sip', '5 5060 sip.kahve.com.tr.'],
             ['TXT', 'v=spf1 a mx ~all', 'v=spf1 a mx ~all'],
             ['CAA', '0 issue letsencrypt.org', '0 issue "letsencrypt.org"'],

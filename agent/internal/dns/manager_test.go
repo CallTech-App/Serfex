@@ -187,7 +187,7 @@ func TestApplyZoneCreatesUpdatesAndIsIdempotent(t *testing.T) {
 	ctx := context.Background()
 
 	spec := zoneSpec(
-		Record{Name: "@", Type: "A", TTL: 3600, Content: "185.98.142.21"},
+		Record{Name: "@", Type: "A", TTL: 3600, Content: "203.0.113.21"},
 		Record{Name: "www", Type: "CNAME", TTL: 3600, Content: "kahveatolyesi.com.tr."},
 	)
 	res, err := m.ApplyZone(ctx, spec)
@@ -209,7 +209,7 @@ func TestApplyZoneCreatesUpdatesAndIsIdempotent(t *testing.T) {
 
 	// Change the A record, drop www, add TXT; raise refresh.
 	spec.Records = append(spec.Records[:2],
-		Record{Name: "@", Type: "A", TTL: 3600, Content: "185.98.142.30"},
+		Record{Name: "@", Type: "A", TTL: 3600, Content: "203.0.113.31"},
 		Record{Name: "@", Type: "TXT", TTL: 3600, Content: "v=spf1 a mx ~all"},
 	)
 	spec.SOA.Refresh = 7200
@@ -230,8 +230,8 @@ func TestApplyZoneCreatesUpdatesAndIsIdempotent(t *testing.T) {
 		got[r.Name+" "+r.Type] += r.Content + ";"
 	}
 	want := map[string]string{
-		"@ NS":  "ns1.serfex.net.tr.;ns2.serfex.net.tr.;",
-		"@ A":   "185.98.142.30;",
+		"@ NS":  "ns1.example.net.;ns2.example.net.;",
+		"@ A":   "203.0.113.31;",
 		"@ TXT": "v=spf1 a mx ~all;",
 	}
 	if len(got) != len(want) {

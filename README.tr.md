@@ -8,6 +8,10 @@ yedekleri sizin ve müşterileriniz için tek panelden yönetir; Laravel
 uygulamalarını kesintisiz sürümler, önizleme ortamları, kuyruklar ve hazır bir
 komut satırıyla dağıtır.
 
+[![Latest release](https://img.shields.io/github/v/release/CallTech-App/Serfex)](https://github.com/CallTech-App/Serfex/releases/latest)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+![Ubuntu 24.04+](https://img.shields.io/badge/Ubuntu-24.04%2B-E95420?logo=ubuntu&logoColor=white)
+
 [English](README.md) · [Belgeler](docs/README.md) · [Kurulum](docs/tr/kurulum.md) · [Komut satırı](docs/tr/cli.md) · [API](docs/api.md)
 
 ![Serfex genel bakış: önce sorunlar, sonra siteler, kaynaklar ve yedekler](docs/images/overview-tr.png)

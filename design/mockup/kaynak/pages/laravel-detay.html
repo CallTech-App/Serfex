@@ -326,11 +326,11 @@
 
   // ---- Dağıtımlar ----
   const deps = [
-    ['#148', '8f3c2a1', 'Kargo takip uç noktasına önbellek eklendi', 'Sercan Yılmaz', 'Bugün 23:38', '1 dk 12 sn', 'ok'],
+    ['#148', '8f3c2a1', 'Kargo takip uç noktasına önbellek eklendi', 'Aylin Yılmaz', 'Bugün 23:38', '1 dk 12 sn', 'ok'],
     ['#147', 'a19d07e', 'Sipariş özetinde N+1 düzeltmesi', 'GitHub webhook', 'Bugün 18:12', '58 sn', 'ok'],
     ['#146', '3d0b8c4', 'Laravel 12.33 yükseltmesi', 'GitHub Actions', 'Dün 16:05', '2 dk 03 sn', 'ok'],
     ['#145', '77e1f2a', 'Manifest PDF üretimi kuyruğa taşındı', 'GitHub webhook', '15 Eki 11:47', '1 dk 20 sn', 'ok'],
-    ['#144', 'b5c9e03', 'Reverb ile canlı kargo takibi', 'Sercan Yılmaz', '14 Eki 22:30', '1 dk 41 sn', 'rb'],
+    ['#144', 'b5c9e03', 'Reverb ile canlı kargo takibi', 'Aylin Yılmaz', '14 Eki 22:30', '1 dk 41 sn', 'rb'],
   ];
   const drawDeps = () => $('depRows').innerHTML = deps.map(([v, c, msg, who, t, d, s], i) => `<tr class="hover:bg-surface-2/60">
     <td class="pl-5 pr-3 py-3 font-mono text-[13px] whitespace-nowrap">${v}${i === 0 ? ' <span class="ml-1 font-sans text-2xs text-accent">yayında</span>' : ''}<div class="font-sans text-2xs text-muted">${t}</div></td>
@@ -371,9 +371,9 @@
   $('depForm').addEventListener('submit', e => {
     e.preventDefault(); $('depModal').hidden = true; show('s-dep');
     const ref = $('depRef').value.trim() || 'main';
-    deps.unshift(['#149', '—', `${ref} dalının son hâli`, 'Sercan Yılmaz', 'Şimdi', '…', 'run']); drawDeps();
+    deps.unshift(['#149', '—', `${ref} dalının son hâli`, 'Aylin Yılmaz', 'Şimdi', '…', 'run']); drawDeps();
     $('lmTitle').textContent = 'Dağıtım #149 · canlı'; $('logModal').hidden = false;
-    stream($('lmOut'), DEPLOG('#149', ref), () => { deps[0] = ['#149', 'c7d1e90', `${ref} dalının son hâli`, 'Sercan Yılmaz', 'Şimdi', '1 dk 09 sn', 'ok']; drawDeps(); toast('#149 yayında.'); });
+    stream($('lmOut'), DEPLOG('#149', ref), () => { deps[0] = ['#149', 'c7d1e90', `${ref} dalının son hâli`, 'Aylin Yılmaz', 'Şimdi', '1 dk 09 sn', 'ok']; drawDeps(); toast('#149 yayında.'); });
   });
   $('keyOpen').onclick = () => info('Dağıtım anahtarı', '<p class="text-muted mb-2">Depo GitHub bağlantısıyla eklendi, anahtar otomatik yüklendi. Elle eklemek isterseniz bu açık anahtarı deponun Deploy keys bölümüne salt okunur olarak ekleyin.</p><pre class="p-3 rounded-md bg-surface-2 border border-line font-mono text-[12px] whitespace-pre-wrap break-all">ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK7q2mXv9pQ1sLr4Tz8NcYw0eJb3hGd5fU6aRkP2xVt serfex@api.hizlikargo.app</pre>', `${closeBtn}<button data-toast="Açık anahtar kopyalandı." class="h-9 px-3.5 rounded-md bg-accent text-accent-fg text-[13.5px] font-medium">Kopyala</button>`);
   const hooks = [
@@ -425,9 +425,9 @@
   $('diffBtn').onclick = () => $('diffBox').hidden = !$('diffBox').hidden;
   $('diffAdd').onclick = () => { env.push(['SENTRY_LARAVEL_DSN', '', 1], ['REVERB_SCALING_ENABLED', 'false']); drawEnv(); $('diffBox').hidden = true; toast('2 değişken eklendi; değerlerini girip kaydedin.'); };
   $('histBtn').onclick = () => info('.env geçmişi', `<ul class="divide-y divide-line text-[13px] -my-2">${[
-      ['Bugün 22:10', 'Sercan Yılmaz', 'CARRIER_GATEWAY_TOKEN değişti'],
+      ['Bugün 22:10', 'Aylin Yılmaz', 'CARRIER_GATEWAY_TOKEN değişti'],
       ['14 Eki 21:58', 'Emre Kaya', 'REVERB_APP_KEY eklendi, BROADCAST_CONNECTION değişti'],
-      ['2 Eki 10:15', 'Sercan Yılmaz', 'MAIL_MAILER değişti'],
+      ['2 Eki 10:15', 'Aylin Yılmaz', 'MAIL_MAILER değişti'],
     ].map(([t, w, c], i) => `<li class="py-2.5 flex items-center gap-3"><div class="min-w-0"><p>${c}</p><p class="text-2xs text-muted">${t} · ${w}</p></div>${i ? `<button data-close data-toast=".env, ${t} öncesindeki hâline döndürüldü." data-undo="1" class="ml-auto ${lnk}">Bu hâline dön</button>` : '<span class="ml-auto text-2xs text-muted">Şu anki</span>'}</li>`).join('')}</ul><p class="mt-3 text-2xs text-muted">Gizli değerler geçmişte de maskeli tutulur.</p>`);
   $('s-env').addEventListener('submit', e => { e.preventDefault(); env.forEach(r => { if (!r[0] && r[3]) r[0] = r[3]; }); env = env.filter(r => r[0]); drawEnv(); toast('.env kaydedildi, yapılandırma önbelleği yenilendi.', true); });
   drawEnv();
@@ -607,7 +607,7 @@
 
   // ---- Erişim ----
   $('accRows').innerHTML = [
-    ['Sercan Yılmaz', 'sercan@hizlikargo.app', 'Sahip', 'Her şey, kişi ekleme ve silme dahil'],
+    ['Aylin Yılmaz', 'aylin@hizlikargo.app', 'Sahip', 'Her şey, kişi ekleme ve silme dahil'],
     ['Emre Kaya', 'emre@hizlikargo.app', 'Geliştirici', 'Dağıtım, komutlar, .env, kuyruklar, günlükler'],
     ['Ayşe Demir', 'ayse@hizlikargo.app', 'Salt okunur', 'Durumu ve günlükleri görür; gizli değerleri göremez'],
   ].map(([n, m, r, d], i) => `<tr><td class="pl-5 pr-3 py-3">${n}<div class="text-2xs text-muted">${m}</div></td>
