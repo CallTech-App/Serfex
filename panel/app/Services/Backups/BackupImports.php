@@ -17,7 +17,8 @@ use Illuminate\Support\Str;
  * server or to rebuild this one: an archive uploaded from the browser, an
  * archive copied to /var/lib/serfex/backups/import, or the backups found on
  * a remote target (the other server's folder in the same bucket).
- * Administrators only. cPanel and Plesk archives are not read.
+ * Administrators only. cPanel archives go through Başka sunucudan taşı
+ * (SiteMigrations) instead.
  */
 class BackupImports
 {
@@ -222,7 +223,7 @@ class BackupImports
         return match (true) {
             str_contains($why, 'passphrase is wrong') || str_contains($why, 'wrong passphrase') => __('Şifreleme parolası yanlış.'),
             str_contains($why, 'enter its passphrase') => __('Arşiv şifreli; şifreleme parolasını girin.'),
-            str_contains($why, 'not a Serfex backup') => __('Bu dosya bir Serfex yedeği değil. cPanel ve Plesk yedekleri içe aktarılamaz.'),
+            str_contains($why, 'not a Serfex backup') => __('Bu dosya bir Serfex yedeği değil. cPanel yedekleri için Siteler → Başka sunucudan taşı sayfasını kullanın.'),
             $e->getCode() === -32006 => __(Backups::BUSY),
             default => $why,
         };
