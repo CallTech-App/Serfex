@@ -3357,7 +3357,7 @@
     "Webhook adresi": "Webhook address",
     "Webhook imza anahtarı yenilendi.": "Webhook signing key renewed.",
     "Webhook: :app": "Webhook: :app",
-    "Webmail, posta sunucusuyla birlikte": "Webmail, with the mail server",
+    "Varsayılan webmail, Ubuntu paketi": "Default webmail, Ubuntu's package",
     "WordPress sürümü güvenlik desteği dışında": "The WordPress version is out of security support",
     "Yeni bağlantı iste": "Ask for a new link",
     "Yeni bir parola belirlemek için bu bağlantıyı açın. Bağlantı :minutes dakika geçerlidir ve bir kez kullanılır:": "Open this link to set a new password. It works for :minutes minutes and only once:",
@@ -5104,7 +5104,8 @@
     "Webmail adresi aynı kalır ve panelden tek tıkla posta kutusuna girilir. Uygulama değişince kişiler ve ayarlar taşınmaz; öncekinin verileri sunucuda kalır. Web posta, sitelerin web sunucusunda kendi PHP havuzuyla çalışır; panelden ayrıdır.": "The webmail address stays the same, and the panel opens a mailbox with one click. Switching apps does not carry contacts and settings over; the previous app's data stays on the server. Webmail runs on the sites' web server with its own PHP pool, apart from the panel.",
     ":name açılıyor.": "Turning on :name.",
     ":name kapatılıyor.": "Turning :name off.",
-    "Serfex Agent SnappyMail :version sürümünü GitHub'dan indirir, imzasını denetler ve webmail adresinde açar. Kişiler ve ayarlar korunur; yeni sürüm çalışmazsa önceki sürüme dönülür.": "Serfex Agent downloads SnappyMail :version from GitHub, checks its signature and serves it at the webmail address. Contacts and settings are kept; if the new version does not work, the previous one comes back.",
+    "Serfex Agent SnappyMail :version sürümünü GitHub'dan indirir, imzasını denetler ve webmail adresinde açar. Kişiler ve ayarlar korunur; bir adım başarısız olursa önceki sürüm çalışmaya devam eder.": "Serfex Agent downloads SnappyMail :version from GitHub, checks its signature and serves it at the webmail address. Contacts and settings are kept; if a step fails, the previous version keeps running.",
     "Serfex Agent SnappyMail'i GitHub'dan indirir, imzasını denetler ve webmail adresinde açar. Posta sunucusu yeniden ayarlanır.": "Serfex Agent downloads SnappyMail from GitHub, checks its signature and serves it at the webmail address. The mail server is set up again.",
-    ":other kapanır. Kişiler ve ayarlar taşınmaz; :other uygulamasınınkiler sunucuda kalır ve geri dönünce yerinde olur.": ":other is turned off. Contacts and settings are not carried over; :other's stay on the server and are there again if you switch back."
+    ":other kapanır. Kişiler ve ayarlar taşınmaz; :other uygulamasınınkiler sunucuda kalır ve geri dönünce yerinde olur.": ":other is turned off. Contacts and settings are not carried over; :other's stay on the server and are there again if you switch back.",
+    "Hafif ve hızlı webmail, GitHub sürümü": "Light and fast webmail, GitHub release"
 }

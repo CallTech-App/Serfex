@@ -327,7 +327,7 @@ class ComponentIndex extends Component
             'update' => [
                 'title' => __(':name güncellensin mi?', ['name' => $name]),
                 'text' => $id === 'snappymail'
-                    ? __('Serfex Agent SnappyMail :version sürümünü GitHub\'dan indirir, imzasını denetler ve webmail adresinde açar. Kişiler ve ayarlar korunur; yeni sürüm çalışmazsa önceki sürüme dönülür.', ['version' => $version ?? ''])
+                    ? __('Serfex Agent SnappyMail :version sürümünü GitHub\'dan indirir, imzasını denetler ve webmail adresinde açar. Kişiler ve ayarlar korunur; bir adım başarısız olursa önceki sürüm çalışmaya devam eder.', ['version' => $version ?? ''])
                     : __('Yeni sürüm:version kurulur ve hizmet yeniden başlatılır; birkaç saniyelik kesinti olabilir. Yeni sürüm çalışmazsa ayarlar geri alınır.', ['version' => ($version ? " ({$version})" : '')]),
                 'button' => __('Güncelle'),
                 'danger' => false,

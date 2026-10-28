@@ -473,6 +473,7 @@ class ComponentsTest extends TestCase
         $this->assertSame('remove', $rows['roundcube']['busy']);
 
         // Set up: SnappyMail is served; a newer agent brings a newer release.
+        Queue::fake();
         $mail->saveServer(['state' => 'ready', 'webmail_app' => 'snappymail', 'webmail_version' => '2.38.2']);
         $this->agent->answers['mail.status'] = ['webmail_app' => 'snappymail', 'webmail_version' => '2.38.2', 'webmail_latest' => '2.39.0'];
         $page->call('check');
@@ -486,16 +487,17 @@ class ComponentsTest extends TestCase
             ->assertSee('SnappyMail 2.39.0 sürümünü GitHub')
             ->call('confirm');
         $this->assertSame('snappymail', $mail->webmailApp());
-        Queue::assertPushed(SetupMailServer::class, 2);
+        Queue::assertPushed(SetupMailServer::class, 1);
 
         // Roundcube cannot be "removed" while it is not served; SnappyMail
         // removed turns webmail off.
+        Queue::fake();
         $mail->saveServer(['state' => 'ready']);
         Livewire::test(ComponentIndex::class)->call('ask', 'roundcube', 'remove')->call('confirm');
-        Queue::assertPushed(SetupMailServer::class, 2);
+        Queue::assertNotPushed(SetupMailServer::class);
         Livewire::test(ComponentIndex::class)->call('ask', 'snappymail', 'remove')->call('confirm');
         $this->assertFalse($mail->webmail());
-        Queue::assertPushed(SetupMailServer::class, 3);
+        Queue::assertPushed(SetupMailServer::class, 1);
     }
 
     public function test_checks_for_updates_and_configures_modsecurity(): void
