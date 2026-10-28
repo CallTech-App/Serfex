@@ -244,7 +244,8 @@ class StatisticsTest extends TestCase
             Livewire::test(LiveMonitor::class)->call('setTab', 'system')->set('span', '30d')->assertSee('Kaynak geçmişi');
         }
 
-        $this->get('/')->assertSee('Sunucu kaynakları')->assertSee('disk %40 dolu');
+        // Genel Bakış charts the last 24 hours from the same cached history.
+        $this->get('/')->assertSee('Sunucu kaynakları')->assertSee('en yüksek %90');
     }
 
     public function test_the_monitor_records_the_servers_network_memory_and_disk(): void
