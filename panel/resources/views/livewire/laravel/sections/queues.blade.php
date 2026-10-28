@@ -64,8 +64,10 @@
                     @php
                         $active = collect($states[$w->name] ?? [])->where('state', 'active')->count();
                         $waiting = collect($w->queues())->sum(fn ($q) => (int) ($pending[(string) $w->connection.'|'.$q] ?? 0));
+                        $problem = $problems[$w->id] ?? null;
                         $badge = match (true) {
                             $w->processes === 0 => new Badge(__('Durduruldu'), 'muted'),
+                            $problem !== null && ! $horizon && ! $syncing => new Badge(__('Bağlantı yok'), 'crit'),
                             $horizon => new Badge(__('Horizon işliyor'), 'muted'),
                             $syncing => new Badge(__('Uygulanıyor'), 'info', true),
                             $active >= $w->processes => new Badge(__('Çalışıyor'), 'ok'),
@@ -74,7 +76,7 @@
                         };
                     @endphp
                     <tr wire:key="w-{{ $w->id }}" class="hover:bg-surface-2/60">
-                        <td class="py-3 pr-3 pl-5 font-mono text-[13px]">{{ $w->name }}<div class="font-sans text-2xs text-muted">{{ $w->connection ?: __('varsayılan bağlantı') }}</div></td>
+                        <td class="py-3 pr-3 pl-5 font-mono text-[13px]">{{ $w->name }}<div class="font-sans text-2xs {{ $problem ? 'text-crit' : 'text-muted' }}">{{ $w->connection ?: __('varsayılan bağlantı') }}</div></td>
                         <td class="px-3 py-3 font-mono text-[13px]">{{ implode(', ', $w->queues()) }}</td>
                         <td class="px-3 py-3">
                             <span class="inline-flex items-center rounded-md border border-line">
@@ -91,6 +93,20 @@
                             <button type="button" wire:click="deleteWorker({{ $w->id }})" class="text-[13px] text-muted hover:text-crit">{{ __('Sil') }}</button>
                         </td>
                     </tr>
+                    @if ($problem !== null && $w->processes > 0 && ! $horizon)
+                        <tr wire:key="wp-{{ $w->id }}" class="bg-crit-soft/40">
+                            <td colspan="7" class="px-5 py-2.5 text-[13px]">
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <span class="text-crit">{{ __('İşçi başlayamıyor:') }} {{ $problem }}</span>
+                                    @if ($operate && $w->connection && $defaultWorks)
+                                        <button type="button" wire:click="useDefaultConnection({{ $w->id }})" class="ml-auto text-accent hover:underline">{{ __('Varsayılan bağlantıyı kullan') }}</button>
+                                    @elseif ($operate)
+                                        <button type="button" wire:click="openWorker({{ $w->id }})" class="ml-auto text-accent hover:underline">{{ __('Ayarlar') }}</button>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
                 @empty
                     <tr><td colspan="7" class="px-5 py-10 text-center"><p class="font-medium">{{ __('Kuyruk işçisi yok') }}</p><p class="mt-1 text-[13px] text-muted">{{ __('Uygulama işleri kuyruğa atıyorsa onları çalıştıracak bir işçi ekleyin.') }}</p></td></tr>
                 @endforelse
@@ -114,11 +130,11 @@
                     <input id="w-queue" wire:model="form.queue" placeholder="{{ __('high,default') }}" class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('form.queue') ? 'border-crit' : 'border-line' }}">
                     @error('form.queue')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">{{ __('Virgülle ayırın; öndeki kuyruk önce işlenir.') }}</p>@enderror
                 </div>
-                <label for="w-conn" class="sm:pt-2">{{ __('Bağlantı') }}</label>
+                <label for="w-conn" class="sm:pt-2">{{ __('Kuyruk bağlantısı') }}</label>
                 <div>
-                    <input id="w-conn" wire:model="form.connection" list="w-conns" placeholder="{{ __('QUEUE_CONNECTION değeri') }}" class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('form.connection') ? 'border-crit' : 'border-line' }}">
-                    <datalist id="w-conns"><option value="database"></option><option value="redis"></option><option value="sqs"></option><option value="beanstalkd"></option></datalist>
-                    @error('form.connection')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@enderror
+                    <input id="w-conn" wire:model="form.connection" list="w-conns" placeholder="{{ $defaultConnection !== '' ? __('Varsayılan (:name)', ['name' => $defaultConnection]) : __('Varsayılan') }}" class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('form.connection') ? 'border-crit' : 'border-line' }}">
+                    <datalist id="w-conns">@foreach ($connections ?? ['database', 'redis', 'sqs', 'beanstalkd'] as $c)<option value="{{ $c }}"></option>@endforeach</datalist>
+                    @error('form.connection')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted">{{ __('config/queue.php dosyasındaki bağlantı; veritabanı bağlantısı değildir. Boş bırakın: .env dosyasındaki QUEUE_CONNECTION kullanılır.') }}</p>@enderror
                 </div>
                 <label for="w-proc" class="sm:pt-2">{{ __('Süreç sayısı') }}</label>
                 <div><input id="w-proc" type="number" min="0" max="{{ \App\Livewire\Laravel\Sections\Queues::MAX_PROCESSES }}" wire:model="form.processes" class="{{ $num }} w-28 {{ $errors->has('form.processes') ? 'border-crit' : 'border-line' }}"></div>
