@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\WordPressOperationStatus;
 use App\Livewire\Account\AccountProfile;
 use App\Livewire\Settings\GeneralSettings;
 use App\Mail\PanelMail;
@@ -14,6 +15,8 @@ use App\Models\MailDomain;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\User;
+use App\Models\WordPressInstall;
+use App\Models\WordPressOperation;
 use App\Services\Agent\AgentClient;
 use App\Services\Audit\AuditLog;
 use App\Services\Customers\Customers;
@@ -259,11 +262,23 @@ class LanguagesTest extends TestCase
             'ai.settings', 'ai.audit', 'dns.settings', 'mail.settings', 'ssl.settings', 'databases.settings'];
         $urls = array_map(fn ($route) => route($route), $routes);
         foreach (['sites.show', 'sites.ssl', 'sites.domains', 'sites.php', 'sites.cron', 'sites.errors', 'sites.stats', 'sites.files', 'sites.ftp',
-            'sites.logs', 'sites.disk', 'sites.protect', 'sites.waf', 'sites.scan', 'sites.directives'] as $route) {
+            'sites.logs', 'sites.disk', 'sites.protect', 'sites.waf', 'sites.scan', 'sites.directives', 'sites.wordpress'] as $route) {
             $urls[] = route($route, $site);
         }
         array_push($urls, route('dns.show', $zone), route('mail.show', $mail), route('databases.show', $database), route('laravel.show', $app),
             route('customers.show', $customer), route('customers.usage', $customer));
+        $blog = Site::factory()->create(['domain' => 'blog.example']);
+        $wordpress = WordPressInstall::create(['site_id' => $blog->id, 'path' => 'public_html', 'version' => '6.8.3', 'core_update' => '6.9', 'update_count' => 2,
+            'problem' => 'PHP Fatal error', 'checked_at' => now(), 'state' => [
+                'home_url' => 'https://blog.example', 'database' => 'blog_wp', 'admins' => ['admin'], 'auto_update_core' => 'minor', 'hardening' => ['file_edit' => true],
+                'plugins' => [['name' => 'akismet', 'title' => 'Akismet', 'version' => '5.5', 'update' => '5.6', 'status' => 'inactive', 'auto_update' => false]],
+                'themes' => [['name' => 'twentytwentyfive', 'title' => 'Twenty Twenty-Five', 'version' => '1.3', 'update' => '', 'status' => 'active', 'auto_update' => false]],
+            ]]);
+        WordPressOperation::create(['wordpress_install_id' => $wordpress->id, 'kind' => 'update', 'run' => 'wp-update-a', 'status' => WordPressOperationStatus::RolledBack,
+            'request' => ['core' => true], 'changes' => [['kind' => 'core', 'name' => 'wordpress', 'from' => '6.8.3', 'to' => '6.9']], 'started_at' => now(), 'finished_at' => now()]);
+        foreach (['plugins', 'themes', 'security', 'history'] as $tab) {
+            $urls[] = route('sites.wordpress', ['site' => $blog, 'tab' => $tab]);
+        }
         foreach ($urls as $url) {
             $this->checkEnglish($url);
         }

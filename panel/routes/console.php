@@ -27,3 +27,4 @@ Schedule::command('serfex:cron-history')->everyFiveMinutes()->withoutOverlapping
 Schedule::command('serfex:stats-collect')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:stats-rollup')->hourlyAt(3)->withoutOverlapping();
 Schedule::command('serfex:stats-prune')->dailyAt('04:10')->withoutOverlapping();
+Schedule::command('serfex:wordpress-check')->dailyAt('05:20')->withoutOverlapping();

@@ -11,6 +11,14 @@
     $monthStats = app(\App\Services\Stats\SiteStats::class)->totals([$site->id], 'this-month');
     $diskTotal = app(\App\Services\Stats\DiskBreakdown::class)->site($site)['total'];
     $backupText = $lastBackup ? \App\Support\When::dateTime($lastBackup->backup->created_at) : __('Henüz yok');
+    $wordpress = $site->wordpress;
+    $wordpressTool = ['blocks', 'WordPress', match (true) {
+        $wordpress === null => __('Kurulu değil'),
+        $wordpress->status === \App\Models\WordPressInstall::INSTALLING => __('Kuruluyor'),
+        $wordpress->status === \App\Models\WordPressInstall::FAILED => __('Kurulum başarısız'),
+        $wordpress->update_count > 0 => trans_choice(':count güncelleme', $wordpress->update_count),
+        default => 'WordPress '.($wordpress->version ?? ''),
+    }, route('sites.wordpress', $site)];
     $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
         ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
         : ['layers', 'Laravel', __('Kurulu değil'), route('laravel.index', ['site' => $site->id])]);
@@ -39,7 +47,7 @@
             ...($user->is_admin ? [['file-cog', __('Web sunucusu yönergeleri'), filled($site->nginx_directives) || filled($site->apache_directives) ? __('Özel satırlar var') : __('Yok'), route('sites.directives', $site)]] : []),
         ]],
         [__('Uygulamalar'), 'blocks', [
-            ['blocks', 'WordPress', null],
+            $wordpressTool,
             $laravelTool,
             ['download', __('Başka sunucudan taşı'), null],
         ]],
