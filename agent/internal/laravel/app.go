@@ -282,7 +282,10 @@ if ($kind === 'about') {
         }
     }
     try { $failed = count($app['queue.failer']->all()); } catch (Throwable $e) { $failed = null; }
-    $out = ['sizes' => $sizes, 'failed' => $failed];
+    // The connections config/queue.php defines, so a worker's connection
+    // can be checked before it runs and crashes.
+    $out = ['sizes' => $sizes, 'failed' => $failed, 'default' => (string) config('queue.default'),
+        'connections' => array_keys((array) config('queue.connections'))];
 } elseif ($kind === 'failed') {
     $out = [];
     foreach (array_slice($app['queue.failer']->all(), 0, 200) as $job) {
