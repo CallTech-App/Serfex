@@ -68,6 +68,7 @@ class QuickSearch extends Component
             [__('İşlem günlüğü'), 'settings.audit', [], 'file-text', __('kayıt denetim log geçmiş'), 'full'],
             [__('Güncellemeler'), 'settings.updates', [], 'refresh-cw', __('sürüm güncelle yükselt'), 'full'],
             [__('Serfex AI ayarları'), 'ai.settings', [], 'sparkles', __('api anahtarı model bütçe'), 'full'],
+            [__('Hesap bilgileri'), 'account.profile', [], 'user', __('profil ad e-posta adres telefon dil'), 'everyone'],
             [__('Hesap güvenliği'), 'account.security', [], 'lock', __('parola iki adımlı 2fa oturum'), 'everyone'],
         ];
     }

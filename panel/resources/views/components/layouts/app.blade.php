@@ -123,7 +123,7 @@
 
                 @if ($user)
                     <div class="flex items-center gap-3 border-t border-nav-line p-4">
-                        <a href="{{ route('account.security') }}" wire:navigate class="flex min-w-0 items-center gap-3 hover:text-white" title="{{ __('Hesap güvenliği') }}">
+                        <a href="{{ route('account.profile') }}" wire:navigate class="flex min-w-0 items-center gap-3 hover:text-white" title="{{ __('Hesap bilgileri') }}">
                             <div class="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
                             <div class="min-w-0 leading-tight">
                                 <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>

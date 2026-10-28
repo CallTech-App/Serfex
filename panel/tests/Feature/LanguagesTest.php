@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Account\AccountSecurity;
+use App\Livewire\Account\AccountProfile;
 use App\Livewire\Settings\GeneralSettings;
 use App\Mail\PanelMail;
 use App\Models\Certificate;
@@ -154,19 +154,19 @@ class LanguagesTest extends TestCase
         $admin = User::factory()->create(['role' => 'full']);
         $this->actingAs($admin);
 
-        Livewire::test(AccountSecurity::class)
+        Livewire::test(AccountProfile::class)
             ->set('locale', 'en')
             ->call('saveLocale')
             ->assertHasNoErrors()
-            ->assertRedirect(route('account.security'));
+            ->assertRedirect(route('account.profile'));
         $this->assertSame('en', $admin->fresh()->locale);
         $this->assertSame('Language saved.', session('toast')['message']);
         $this->assertSame(['undoLocale', [null]], [session('toast')['undo']['method'], session('toast')['undo']['args']]);
 
-        Livewire::test(AccountSecurity::class)->call('undoLocale', null);
+        Livewire::test(AccountProfile::class)->call('undoLocale', null);
         $this->assertNull($admin->fresh()->locale);
 
-        Livewire::test(AccountSecurity::class)->set('locale', 'xx')->call('saveLocale')->assertHasErrors('locale');
+        Livewire::test(AccountProfile::class)->set('locale', 'xx')->call('saveLocale')->assertHasErrors('locale');
     }
 
     public function test_a_customer_has_their_own_language(): void
@@ -254,7 +254,7 @@ class LanguagesTest extends TestCase
         $this->actingAs($admin);
 
         $routes = ['dashboard', 'sites.index', 'dns.index', 'mail.index', 'databases.index', 'ssl.index', 'laravel.index', 'customers.index',
-            'monitor.index', 'security.index', 'backups.index', 'services.index', 'components.index', 'ai.index', 'account.security',
+            'monitor.index', 'security.index', 'backups.index', 'services.index', 'components.index', 'ai.index', 'account.profile', 'account.security',
             'settings.general', 'settings.server', 'settings.notifications', 'settings.admins', 'settings.api', 'settings.audit', 'settings.updates',
             'ai.settings', 'ai.audit', 'dns.settings', 'mail.settings', 'ssl.settings', 'databases.settings'];
         $urls = array_map(fn ($route) => route($route), $routes);
@@ -285,7 +285,7 @@ class LanguagesTest extends TestCase
         $customer->user->forceFill(['locale' => 'en'])->save();
         $this->actingAs($customer->user);
 
-        foreach (['/', '/sites', route('sites.show', $site), route('usage'), route('account.security')] as $url) {
+        foreach (['/', '/sites', route('sites.show', $site), route('usage'), route('account.profile'), route('account.security')] as $url) {
             $this->checkEnglish($url);
         }
         $this->assertSame([], $this->turkish);

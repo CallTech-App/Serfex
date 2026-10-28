@@ -4,64 +4,92 @@ namespace App\Livewire\Account;
 
 use App\Livewire\Attributes\ForEveryAccount;
 use App\Models\ApiKey;
+use App\Services\Security\PasswordReset;
 use App\Services\Security\Sessions;
 use App\Services\Security\TwoFactor;
 use App\Services\Settings\ApiKeys;
+use App\Services\Settings\OutgoingMail;
+use App\Support\Impersonation;
 use App\Support\Locales;
+use App\Support\When;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Hesap güvenliği: the signed-in account's own language, two-step login,
- * the browsers it is signed in on and the command lines (serfex login). Every account has it, administrators,
- * customers and Laravel team members alike.
+ * Hesap güvenliği: the signed-in account's own password, two-step login,
+ * the browsers it is signed in on and the command lines (serfex login).
+ * Every account has it, administrators, customers and Laravel team
+ * members alike. Name, e-mail and language are on Hesap bilgileri.
  */
 #[Layout('components.layouts.app')]
 #[Title('Hesap güvenliği · Serfex')]
 #[ForEveryAccount]
 class AccountSecurity extends Component
 {
-    /** This person's language; '' follows the server's default. */
-    public string $locale = '';
-
     public bool $settingUp = false;
 
-    public function mount(): void
-    {
-        $this->locale = (string) auth()->user()->locale;
-    }
+    public bool $changingPassword = false;
 
-    public function saveLocale(): void
-    {
-        $this->validate(['locale' => ['nullable', 'in:'.implode(',', array_keys(Locales::all()))]], [], ['locale' => __('dil')]);
-        $this->switchLocale($this->locale ?: null);
-    }
+    public string $currentPassword = '';
 
-    public function undoLocale(?string $previous): void
+    public string $newPassword = '';
+
+    public string $newPassword_confirmation = '';
+
+    public function openPassword(): void
     {
-        $this->switchLocale(Locales::supports($previous) ? $previous : null, undo: false);
+        $this->currentPassword = $this->newPassword = $this->newPassword_confirmation = '';
+        $this->resetValidation();
+        $this->changingPassword = true;
     }
 
     /**
-     * Saves the choice and reloads the page in that language; the toast
-     * after the reload still offers Undo.
+     * Sets a new password and closes the account's other browser sessions;
+     * this one stays signed in. The person is told by mail.
      */
-    private function switchLocale(?string $locale, bool $undo = true): void
+    public function changePassword(PasswordReset $resets, Sessions $sessions, OutgoingMail $mail): void
     {
         $user = auth()->user();
-        $previous = $user->locale;
-        $user->forceFill(['locale' => $locale])->save();
-        Locales::apply(Locales::forUser($user));
-        session()->flash('toast', [
-            'message' => $undo ? __('Dil kaydedildi.') : __('Dil geri alındı.'),
-            'undo' => $undo ? ['name' => $this->getName(), 'method' => 'undoLocale', 'args' => [$previous]] : null,
-        ]);
-        $this->redirect(route('account.security'));
+        $this->resetValidation();
+        if (Impersonation::active()) {
+            $this->addError('currentPassword', __('Müşteri olarak çalışırken parola değiştirilemez.'));
+
+            return;
+        }
+        if (! Hash::check($this->currentPassword, $user->password)) {
+            $this->addError('currentPassword', __('Parola yanlış.'));
+
+            return;
+        }
+        $this->validate([
+            'newPassword' => ['required', 'string', 'confirmed', 'max:128', Password::min($resets->minLength($user)), 'different:currentPassword'],
+        ], ['newPassword.different' => __('Yeni parola şimdikinden farklı olmalı.')], ['newPassword' => __('yeni parola')]);
+
+        $user->forceFill(['password' => $this->newPassword, 'remember_token' => Str::random(60)])->save();
+        $closed = $sessions->revokeOthers($user, session()->getId());
+        $this->changingPassword = false;
+        $this->currentPassword = $this->newPassword = $this->newPassword_confirmation = '';
+        if ($mail->problem() === null) {
+            $ip = request()->ip();
+            Locales::using($user->preferredLocale(), fn () => $mail->send([$user->email], __('Serfex parolanız değiştirildi'), implode("\n", [
+                __('Merhaba :name,', ['name' => $user->name]),
+                '',
+                __(':email hesabınızın parolası :when tarihinde Hesap güvenliği sayfasından değiştirildi (:ip). Diğer oturumlarınız kapatıldı.', ['email' => $user->email, 'when' => When::dateTime(now()), 'ip' => $ip ?? '-']),
+                '',
+                __('Bunu siz yapmadıysanız hemen sunucu yöneticinize haber verin.'),
+                '',
+            ])));
+        }
+        $this->dispatch('toast', message: $closed
+            ? trans_choice('Parolanız değiştirildi; diğer :count oturum kapatıldı.', $closed)
+            : __('Parolanız değiştirildi.'));
     }
 
     /** The new secret while setting up; it is saved only once confirmed. */
@@ -190,7 +218,7 @@ class AccountSecurity extends Component
         $this->dispatch('toast', message: $n ? __(':n oturum kapatıldı.', ['n' => $n]) : __('Başka oturum yok.'));
     }
 
-    public function render(TwoFactor $twoFactor, Sessions $sessions): View
+    public function render(TwoFactor $twoFactor, Sessions $sessions, PasswordReset $resets): View
     {
         $user = auth()->user();
 
@@ -202,6 +230,7 @@ class AccountSecurity extends Component
             'sessions' => $sessions->of($user, session()->getId()),
             'sessionsAvailable' => $sessions->available(),
             'cliKeys' => $this->cliKeys()->latest('id')->get(),
+            'minLength' => $resets->minLength($user),
         ]);
     }
 }

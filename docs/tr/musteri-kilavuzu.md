@@ -12,9 +12,16 @@ belirleyin. Sonra panelin adresinden e-postanız ve parolanızla giriş yapın.
 Parolanızı unutursanız giriş sayfasındaki **Parolamı unuttum** bağlantısı
 size yenisini belirlemeniz için bir bağlantı gönderir (60 dakika geçerlidir).
 
-Sağ üstte adınız → **Hesap güvenliği** sayfasında:
+Menüde adınıza tıklayınca açılan **Hesap bilgileri** sayfasında:
 
-- panelin dilini (Türkçe ya da İngilizce) seçebilir;
+- adınızı, telefonunuzu ve panelin dilini (Türkçe ya da İngilizce) değiştirebilir;
+- e-posta adresinizi değiştirebilirsiniz: şimdiki parolanızı yazın, sonra yeni
+  adrese gelen bağlantıyı açın (24 saat geçerlidir). Açana kadar eski adresle
+  giriş yapmaya devam edersiniz.
+
+Yanındaki **Hesap güvenliği** sayfasında:
+
+- parolanızı değiştirebilir (diğer oturumlarınız kapanır);
 - bir doğrulama uygulamasıyla (Google Authenticator, Microsoft Authenticator,
   1Password, Bitwarden…) **iki adımlı doğrulamayı** açıp kurtarma kodlarını
   güvenli bir yere kaydedebilir;

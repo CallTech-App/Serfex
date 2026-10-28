@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\EmailChangeController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -22,6 +23,7 @@ use App\Http\Middleware\EnsureFullAdmin;
 use App\Http\Middleware\EnsureHostingAccess;
 use App\Http\Middleware\EnsureTwoFactor;
 use App\Http\Middleware\RefuseReadOnlyChanges;
+use App\Livewire\Account\AccountProfile;
 use App\Livewire\Account\AccountSecurity;
 use App\Livewire\Account\CliApprove;
 use App\Livewire\Ai\AiAssistant;
@@ -84,6 +86,10 @@ Route::post('/hooks/deploy/{token}', DeployWebhookController::class)
 Route::get('/invite/{token}', [InvitationController::class, 'show'])->where('token', '[A-Za-z0-9]{40,80}')->middleware('throttle:30,1')->name('invitation');
 Route::post('/invite/{token}', [InvitationController::class, 'store'])->where('token', '[A-Za-z0-9]{40,80}')->middleware('throttle:10,1');
 
+// The link mailed to a new sign-in address; it works signed in or not.
+Route::get('/account/email/confirm/{token}', [EmailChangeController::class, 'show'])->where('token', '[A-Za-z0-9]{40,100}')->middleware('throttle:30,1')->name('account.email.confirm');
+Route::post('/account/email/confirm/{token}', [EmailChangeController::class, 'store'])->where('token', '[A-Za-z0-9]{40,100}')->middleware('throttle:10,1');
+
 // The serfex command line, for developers' own computers: the install
 // script and the binaries of this server's release.
 Route::get('/cli/install.sh', [CliDownloadController::class, 'script'])->middleware('throttle:30,1')->name('cli.install');
@@ -108,6 +114,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, RefuseReadOnlyChanges::class])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::post('/impersonation/leave', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
+    Route::livewire('/account', AccountProfile::class)->name('account.profile');
     Route::livewire('/account/security', AccountSecurity::class)->name('account.security');
     Route::livewire('/cli/approve', CliApprove::class)->name('cli.approve');
 

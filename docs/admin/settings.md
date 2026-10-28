@@ -13,7 +13,7 @@
 - **Time zone** (default Europe/Istanbul): set on the server too. Scheduled
   tasks, backups and the update check follow it; dates are stored in UTC.
 - **Language**: the default for the panel and notifications. Everyone can
-  choose their own under Account security.
+  choose their own under Account details.
 - **Session length**: 120 minutes without activity.
 
 ## Server
@@ -86,8 +86,17 @@ installation. Run it again at any time; each step saves through the same
 settings as its own page. Overview lists the open steps until the wizard is
 finished. See [Installation](../installation.md#the-setup-wizard).
 
-## Account security (everyone)
+## Account details and Account security (everyone)
 
-From the name at the top right: language, two-step verification with
-recovery codes, open sessions, and the command line sign-ins of this account
-(each can be signed out).
+Click your name in the menu. **Account details** has your name, email
+address and language (and a customer's phone). A new email address asks for
+the current password and takes effect once the link mailed to it is opened
+(24 hours); the old address stays in use until then. The notification
+recipients, the Let's Encrypt contact and a customer's own record move to the
+new address with it. When the panel can't send mail at all, the address
+changes at once without confirmation, and the dialog says so.
+
+**Account security** has the password change (the other sessions are signed
+out and a notice is mailed), two-step verification with recovery codes, open
+sessions, and the command line sign-ins of this account (each can be signed
+out).

@@ -21,8 +21,8 @@ use Illuminate\Notifications\Notifiable;
  * Laravel applications they were added to, with the role they were given
  * there.
  */
-#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'role', 'last_login_at', 'last_login_ip', 'removed_at', 'locale'])]
-#[Hidden(['password', 'remember_token', 'invite_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'customer_id', 'invite_token', 'invited_at', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'role', 'last_login_at', 'last_login_ip', 'removed_at', 'locale', 'pending_email', 'pending_email_token', 'pending_email_at'])]
+#[Hidden(['password', 'remember_token', 'invite_token', 'two_factor_secret', 'two_factor_recovery_codes', 'pending_email_token'])]
 class User extends Authenticatable implements HasLocalePreference
 {
     /** @use HasFactory<UserFactory> */
@@ -69,6 +69,7 @@ class User extends Authenticatable implements HasLocalePreference
             'two_factor_confirmed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'removed_at' => 'datetime',
+            'pending_email_at' => 'datetime',
         ];
     }
 
