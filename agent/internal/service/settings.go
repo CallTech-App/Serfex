@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -196,11 +195,9 @@ func (m *Manager) ApplySettings(ctx context.Context, spec SettingsSpec) (Setting
 		case p.NegativeTTL < 0 || p.NegativeTTL > 86400:
 			return SettingsSpec{}, invalid("negquery-cache-ttl must be between 0 and 86400 seconds")
 		}
-		allow, err := axfrAllow(p.AXFRAllow)
-		if err != nil {
-			return SettingsSpec{}, err
-		}
-		p.AXFRAllow = allow
+		// Secondary name servers are set with dns.secondaries.set, which
+		// also changes the zones; here they stay as they are.
+		p.AXFRAllow, p.Catalog = s.PowerDNS.AXFRAllow, s.PowerDNS.Catalog
 		s.PowerDNS = *p
 		apply = func() error { return m.applyPowerDNS(ctx, t, *p) }
 	default:
@@ -336,45 +333,6 @@ func (m *Manager) applyPostfix(ctx context.Context, t *txn.Tx, p tuning.Postfix)
 	}
 	_, err = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "postfix.service"}})
 	return err
-}
-
-// maxAXFR is how many addresses may transfer zones.
-const maxAXFR = 32
-
-// axfrAllow checks the addresses allowed to transfer zones and writes
-// them the same way every time: an address or a network in CIDR form,
-// each once.
-func axfrAllow(list []string) ([]string, error) {
-	out := []string{}
-	seen := map[string]bool{}
-	for _, v := range list {
-		v = strings.TrimSpace(v)
-		if v == "" {
-			continue
-		}
-		var norm string
-		if strings.Contains(v, "/") {
-			p, err := netip.ParsePrefix(v)
-			if err != nil {
-				return nil, invalid("%q is not an IP address or network", v)
-			}
-			norm = p.Masked().String()
-		} else {
-			a, err := netip.ParseAddr(v)
-			if err != nil || a.Zone() != "" {
-				return nil, invalid("%q is not an IP address or network", v)
-			}
-			norm = a.Unmap().String()
-		}
-		if !seen[norm] {
-			seen[norm] = true
-			out = append(out, norm)
-		}
-	}
-	if len(out) > maxAXFR {
-		return nil, invalid("at most %d addresses may transfer zones", maxAXFR)
-	}
-	return out, nil
 }
 
 func (m *Manager) applyApache(ctx context.Context, t *txn.Tx, a tuning.Apache, restart bool) error {
