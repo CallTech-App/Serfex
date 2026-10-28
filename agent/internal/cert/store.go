@@ -207,6 +207,15 @@ func publicKeyEqual(c *x509.Certificate, key crypto.Signer) bool {
 	return ok && pub.Equal(key.Public())
 }
 
+// KeyMatches reports whether the PEM private key belongs to c.
+func KeyMatches(c *x509.Certificate, keyPEM []byte) bool {
+	key, err := parseKey(keyPEM)
+	return err == nil && publicKeyEqual(c, key)
+}
+
+// Describe summarises a leaf certificate as installed ones are.
+func Describe(name string, leaf *x509.Certificate) Info { return describe(name, leaf) }
+
 // encodeChain renders certificates as PEM.
 func encodeChain(chain []*x509.Certificate) []byte {
 	var b strings.Builder
