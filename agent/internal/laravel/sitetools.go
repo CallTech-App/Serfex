@@ -161,16 +161,18 @@ type SiteTools struct {
 
 const (
 	maxProjects  = 20
-	projectDepth = 3
+	projectDepth = 4
 )
 
 // skipDirs are never looked into for projects.
 var skipDirs = map[string]bool{
 	"node_modules": true, "vendor": true, ".git": true, "logs": true, "storage": true, "cache": true,
 	"releases": true, "shared": true, "uploads": true, "tmp": true, ".ssh": true,
+	"wp-admin": true, "wp-includes": true,
 }
 
-// SiteScan lists the folders of a site (three levels deep) that hold a
+// SiteScan lists the folders of a site (four levels deep, so a
+// WordPress theme's public_html/wp-content/themes/<theme> is found) that hold a
 // composer.json or a package.json, with the scripts package.json offers,
 // and the installed Composer and Node.js versions. A Laravel application
 // Serfex deploys is listed as laravel/current.

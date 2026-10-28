@@ -91,7 +91,7 @@ its accounts carry the comment `Serfex site user` and its files start with
   - *Compression*: gzip for HTML, CSS, JavaScript, JSON, SVG and fonts.
 - **Composer** and **Node.js**: run Composer and npm, pnpm, Yarn or Bun in
   any folder of the site as the site's user, with live output. Folders with
-  a `composer.json` or `package.json` (three levels deep) are listed with
+  a `composer.json` or `package.json` (four levels deep, so a WordPress theme is found) are listed with
   their lock file and whether `vendor/` or `node_modules/` is installed;
   common commands and the scripts of `package.json` are one click away.
   The site can pin the Node.js line its commands (and its Laravel

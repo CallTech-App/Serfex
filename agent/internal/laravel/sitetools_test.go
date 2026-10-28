@@ -26,10 +26,12 @@ func TestSiteScanFindsComposerAndNodeProjects(t *testing.T) {
 	m, sim := newTest(t)
 	writeFile(t, sim.Path(siteRoot+"/public_html/composer.json"), `{"require":{}}`)
 	writeFile(t, sim.Path(siteRoot+"/public_html/composer.lock"), `{}`)
+	writeFile(t, sim.Path(siteRoot+"/public_html/wp-content/themes/kahve/package.json"), `{}`)
+	writeFile(t, sim.Path(siteRoot+"/public_html/wp-includes/js/package.json"), `{}`)
 	writeFile(t, sim.Path(siteRoot+"/app/package.json"), `{"scripts":{"build":"vite build","dev":"vite","bad name":"x"}}`)
 	writeFile(t, sim.Path(siteRoot+"/app/pnpm-lock.yaml"), "lockfileVersion: 9\n")
 	writeFile(t, sim.Path(siteRoot+"/app/node_modules/vite/package.json"), `{"scripts":{"x":"y"}}`)
-	writeFile(t, sim.Path(siteRoot+"/a/b/c/d/package.json"), `{}`)
+	writeFile(t, sim.Path(siteRoot+"/a/b/c/d/e/package.json"), `{}`)
 	if err := os.MkdirAll(sim.Path(toolsDir+"/node/v22.21.1/bin"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +47,7 @@ func TestSiteScanFindsComposerAndNodeProjects(t *testing.T) {
 	for _, p := range tools.Projects {
 		paths = append(paths, p.Path)
 	}
-	if !slices.Equal(paths, []string{"app", "public_html"}) {
+	if !slices.Equal(paths, []string{"app", "public_html", "public_html/wp-content/themes/kahve"}) {
 		t.Fatalf("projects %v", paths)
 	}
 	app := tools.Projects[0]
