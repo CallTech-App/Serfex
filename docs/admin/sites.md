@@ -48,6 +48,13 @@ its accounts carry the comment `Serfex site user` and its files start with
 - **FTP accounts**: SFTP accounts locked into one folder of the site, for a
   designer or an agency. They connect to port 22 with a password; plain FTP is
   not offered. The password is generated, shown once and never stored.
+- **SSH access**: lets the site's own system user sign in with an SSH key or
+  an optional password. Off by default. **SFTP only** locks the user in its
+  home folder (`/home/<user>`): no commands, no tunnels. **SFTP and shell**,
+  which only an administrator can turn on, gives bash in the real home and
+  local port forwarding (for a tunnel to the database). The setting belongs
+  to the system user, so it reaches every site that user owns. Keys are kept
+  in the panel and only those keys sign in; the password is shown once.
 - **Databases**: the site's databases, see [Databases](databases.md).
 - **Statistics**: visitors, page views, requests and bandwidth by hour, day
   or month, with top pages, referrers, countries and bots. Counted from the

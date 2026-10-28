@@ -31,8 +31,10 @@ never deletes anything that is already over a new limit.
 | PHP memory limit at most | 256 MB | 512 MB | 1,024 MB | unlimited |
 
 Plans also choose which PHP versions new sites may use and the
-**features**: DNS, email, Laravel, backups, security tools and PHP settings
-(all on, except Laravel on Starter).
+**features**: DNS, email, Laravel, backups, security tools, PHP settings and
+SSH access (all on, except Laravel and SSH access on Starter). SSH access lets
+customers turn on SFTP for their sites' users; a shell is only ever given by
+an administrator.
 
 ## Customers
 
@@ -52,7 +54,7 @@ A customer's page shows their sites, usage, details and plan, with:
   customer only, or unlimited.
 - **Suspend**: their sites show an "out of service" page (Let's Encrypt
   renewals still work), incoming mail is deferred and mailboxes cannot sign
-  in, SFTP accounts and scheduled tasks are locked, Laravel queues and
+  in, SFTP accounts, SSH access and scheduled tasks are locked, Laravel queues and
   processes stop, and the customer cannot sign in to the panel. Their DNS
   keeps answering. Nothing is deleted; **Activate** brings everything back.
 - **Sign in as customer**: open the panel exactly as they see it, with a

@@ -48,6 +48,11 @@ Bir sitenin sayfasında:
 - **FTP hesapları:** sitenin bir klasörüne SFTP hesapları. Bir SFTP
   programıyla (FileZilla, WinSCP, Cyberduck) 22 numaralı porta bağlanın;
   klasik FTP desteklenmez. Parola bir kez gösterilir.
+- **SSH erişimi** (paketinizde varsa): sitenin kendi kullanıcısı için SFTP'yi
+  açın, açık anahtarınızı (`~/.ssh/id_ed25519.pub`) ekleyin ve
+  `sftp <kullanıcı>@<alan adınız>` ile bağlanın. Ana klasörünüze düşersiniz ve
+  yalnızca kendi dosyalarınızı görürsünüz. Parola isteğe bağlıdır ve bir kez
+  gösterilir. Kabuk erişimini sunucu yöneticiniz açar.
 - **PHP ve web sunucusu:** PHP sürümü ve `memory_limit`,
   `upload_max_filesize` gibi ayarlar.
 - **Zamanlanmış görevler:** bir komutu her gece, her saat ya da birkaç

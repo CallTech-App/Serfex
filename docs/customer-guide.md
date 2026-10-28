@@ -46,6 +46,11 @@ On a site's page:
 - **FTP accounts**: SFTP accounts for one folder of the site. Connect with
   an SFTP program (FileZilla, WinSCP, Cyberduck) on port 22; plain FTP is not
   supported. The password is shown once.
+- **SSH access** (if your plan has it): turn on SFTP for the site's own user,
+  add your public key (`~/.ssh/id_ed25519.pub`) and connect with
+  `sftp <user>@<your domain>`. You land in your home folder and see only
+  your own files. A password is optional and shown once. Shell access is
+  turned on by your server administrator.
 - **PHP & web server**: the PHP version and settings such as
   `memory_limit` and `upload_max_filesize`.
 - **Scheduled tasks**: run a command every night, every hour or every few

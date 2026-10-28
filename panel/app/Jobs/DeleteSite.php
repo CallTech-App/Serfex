@@ -14,6 +14,7 @@ use App\Services\Backups\Backups;
 use App\Services\Databases\Databases;
 use App\Services\Dns\Zones;
 use App\Services\Files\FtpAccounts;
+use App\Services\Files\SshAccess;
 use App\Services\Mail\MailDomains;
 use App\Services\Sites\CronJobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -75,6 +76,10 @@ class DeleteSite implements ShouldQueue
         try {
             // SFTP accounts mount the site's folders; they go first.
             app(FtpAccounts::class)->deleteForSite($site);
+            // So does the account's own SSH chroot, when the account goes.
+            if ($this->removeUser && $lastSite) {
+                app(SshAccess::class)->removeForAccount($user);
+            }
             // Scheduled tasks run as the account in the site folder.
             app(CronJobs::class)->removeForSite($site);
             // Queue workers and the scheduler run as the site's account

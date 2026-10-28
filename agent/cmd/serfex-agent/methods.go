@@ -837,6 +837,7 @@ func registerFiles(srv *rpc.Server, svc services) {
 		l, err := f.List()
 		return l, mapError(err)
 	})
+	handle(srv, "ssh.user.apply", func(ctx context.Context, p ftp.UserSpec) (any, error) { return f.ApplyUser(ctx, p) })
 }
 
 func registerSecurity(srv *rpc.Server, svc services) {

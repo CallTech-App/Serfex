@@ -64,7 +64,8 @@ setting. Findings can be ignored and reopen if they are seen again.
   its IP address and port.
 - **SSH**: root sign-in and password sign-in. Password sign-in cannot be
   turned off until an administrator has an SSH key. SFTP accounts always
-  sign in with a password.
+  sign in with a password, and so do site users with SSH access that were
+  given one (Sites → SSH access); Fail2ban's sshd jail covers them all.
 
 ## Per site
 
