@@ -109,7 +109,7 @@
                                 </div>
                             </div>
                             <div class="{{ $row }}">
-                                <span class="sm:pt-1.5">{{ __('Sürüm') }}</span>
+                                <span class="sm:pt-1.5">{{ $package && $template->package_url ? __('Paket adresi') : __('Sürüm') }}</span>
                                 <div class="space-y-2">
                                     @if ($package)
                                         @if ($template->package_url)

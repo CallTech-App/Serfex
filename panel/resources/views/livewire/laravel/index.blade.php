@@ -7,6 +7,7 @@
     $radio = 'flex cursor-pointer items-start gap-2.5 rounded-lg border border-line p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40';
     $chip = 'flex h-9 cursor-pointer items-center gap-2 rounded-md border border-line px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40';
     $check = 'size-4 accent-[rgb(var(--accent))]';
+    $packageInstall = $source === 'template' && ($picked?->isPackage() ?? false);
 @endphp
 <div class="space-y-6">
     {{-- Refresh while an install, removal or deploy runs. --}}
@@ -170,7 +171,7 @@
                                     <option value="{{ $s->id }}">{{ $s->domain }}</option>
                                 @endforeach
                             </select>
-                            @error('siteId')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted"><x-t text="Uygulama :part altına kurulur, site kökü :part2 yapılır. Sitedeki mevcut dosyalara dokunulmaz."><x-slot:part><span class="font-mono">laravel/</span></x-slot:part><x-slot:part2><span class="font-mono">laravel/current/public</span></x-slot:part2></x-t></p>@enderror
+                            @error('siteId')<p class="mt-1 text-[13px] text-crit">{{ $message }}</p>@else<p class="mt-1 text-2xs text-muted"><x-t text="Uygulama :part altına kurulur, site kökü :part2 yapılır. Sitedeki mevcut dosyalara dokunulmaz."><x-slot:part><span class="font-mono">{{ $packageInstall ? 'app/' : 'laravel/' }}</span></x-slot:part><x-slot:part2><span class="font-mono">{{ $packageInstall ? 'app/public' : 'laravel/current/public' }}</span></x-slot:part2></x-t></p>@enderror
                         @endif
                     </div>
 
