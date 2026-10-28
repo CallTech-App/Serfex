@@ -70,21 +70,23 @@ func fail(code, p, format string, a ...any) error {
 
 // Error codes.
 const (
-	CodeExists    = "exists"
-	CodeNotFound  = "not_found"
-	CodeNotDir    = "not_dir"
-	CodeIsDir     = "is_dir"
-	CodeOutside   = "outside"
-	CodeName      = "invalid_name"
-	CodeBinary    = "binary"
-	CodeTooBig    = "too_big"
-	CodeConflict  = "conflict"
-	CodeDenied    = "denied"
-	CodeArchive   = "archive"
-	CodeInvalid   = "invalid"
-	CodeTooMany   = "too_many"
-	CodeIntoSelf  = "into_itself"
-	CodeNoSpace   = "no_space"
+	CodeExists   = "exists"
+	CodeNotFound = "not_found"
+	CodeNotDir   = "not_dir"
+	CodeIsDir    = "is_dir"
+	CodeOutside  = "outside"
+	CodeName     = "invalid_name"
+	CodeBinary   = "binary"
+	CodeTooBig   = "too_big"
+	CodeConflict = "conflict"
+	CodeDenied   = "denied"
+	CodeArchive  = "archive"
+	CodeInvalid  = "invalid"
+	CodeTooMany  = "too_many"
+	CodeIntoSelf = "into_itself"
+	CodeNoSpace  = "no_space"
+	// CodeQuota: the account's disk quota is full.
+	CodeQuota     = "quota"
 	CodeOperation = "failed"
 )
 
@@ -179,7 +181,9 @@ func asError(err error) *Error {
 		return &Error{Code: CodeExists, Msg: err.Error()}
 	case errors.Is(err, fs.ErrPermission):
 		return &Error{Code: CodeDenied, Msg: err.Error()}
-	case errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EDQUOT):
+	case errors.Is(err, syscall.EDQUOT):
+		return &Error{Code: CodeQuota, Msg: err.Error()}
+	case errors.Is(err, syscall.ENOSPC):
 		return &Error{Code: CodeNoSpace, Msg: err.Error()}
 	case errors.Is(err, syscall.ENOTEMPTY):
 		return &Error{Code: CodeExists, Msg: err.Error()}

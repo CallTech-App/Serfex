@@ -33,6 +33,10 @@ type DomainSpec struct {
 	// mail is deferred (senders retry for days) and mailboxes cannot sign
 	// in, so they can neither read nor send.
 	Suspended bool `json:"suspended"`
+	// DiskFull refuses incoming mail with a temporary "mailbox full"
+	// while the owner's disk quota is used up; senders retry for days, so
+	// nothing is lost if room is made in time. Mailboxes keep working.
+	DiskFull bool `json:"disk_full"`
 }
 
 // Mailbox is one mailbox of a domain.

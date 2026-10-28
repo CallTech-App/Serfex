@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Customers\DiskQuotas;
 use App\Services\Ssl\Certificates;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,6 +57,17 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
         // suspension.
         if ($site->cronJobs()->exists()) {
             SyncCronJobs::dispatch($site->id);
+        }
+
+        // A customer's new account gets its disk limit at once rather than
+        // at the next serfex:disk-quota.
+        $customer = $site->systemUser->customer;
+        if ($firstTime && $customer !== null) {
+            try {
+                app(DiskQuotas::class)->sync($customer);
+            } catch (AgentException) {
+                // serfex:disk-quota tries again within five minutes.
+            }
         }
 
         if ($firstTime) {

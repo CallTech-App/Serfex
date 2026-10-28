@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Settings;
 
+use App\Jobs\EnableDiskQuotas;
+use App\Models\Setting;
 use App\Services\Agent\AgentException;
+use App\Services\Customers\DiskQuotas;
 use App\Services\Settings\PanelSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
@@ -12,7 +15,8 @@ use Livewire\Component;
 
 /**
  * Araçlar ve Ayarlar → Sunucu: the server's name (hostnamectl), how long
- * rotated logs are kept, its addresses, operating system and hardware.
+ * rotated logs are kept, whether customers' disk limits are enforced
+ * (DiskQuotas), its addresses, operating system and hardware.
  */
 #[Layout('components.layouts.app')]
 #[Title('Sunucu · Serfex')]
@@ -27,8 +31,15 @@ class ServerSettings extends Component
 
     public ?string $agentError = null;
 
-    public function mount(PanelSettings $settings): void
+    public bool $confirmingQuota = false;
+
+    public function mount(PanelSettings $settings, DiskQuotas $quotas): void
     {
+        try {
+            $quotas->refreshStatus();
+        } catch (AgentException) {
+            // The last known status is shown.
+        }
         try {
             $this->hostname = (string) ($settings->server()['hostname'] ?? '');
             $this->logDays = $settings->logKeepDays();
@@ -117,6 +128,50 @@ class ServerSettings extends Component
         $this->dispatch('toast', message: __('Günlükler yeniden :days gün saklanacak.', ['days' => $previous]));
     }
 
+    public function openQuota(): void
+    {
+        $this->confirmingQuota = true;
+    }
+
+    /**
+     * Turns disk quotas on, in the background (packages, fstab, counting).
+     */
+    public function enableQuota(DiskQuotas $quotas): void
+    {
+        $this->confirmingQuota = false;
+        if ($quotas->enabling()) {
+            return;
+        }
+        Setting::put(DiskQuotas::ENABLING, now()->toIso8601String());
+        Setting::put(DiskQuotas::ERROR, null);
+        EnableDiskQuotas::dispatch();
+    }
+
+    /**
+     * Enforces disk limits (true) or keeps them warnings only.
+     */
+    public function enforceQuota(DiskQuotas $quotas, bool $enforce): void
+    {
+        try {
+            $quotas->setWanted($enforce);
+        } catch (AgentException $e) {
+            $this->dispatch('toast', message: __('Disk sınırları değiştirilemedi: :reason', ['reason' => $e->reason]));
+
+            return;
+        }
+        $this->dispatch('toast', message: $enforce ? __('Disk sınırları artık uygulanıyor.') : __('Disk sınırı artık yalnızca uyarı.'), source: $this->getId(),
+            undo: ['method' => 'enforceQuota', 'args' => [! $enforce]]);
+    }
+
+    public function checkQuota(DiskQuotas $quotas): void
+    {
+        try {
+            $quotas->refreshStatus();
+        } catch (AgentException $e) {
+            $this->dispatch('toast', message: __('Sunucu ajanına ulaşılamadı: :reason', ['reason' => $e->reason]));
+        }
+    }
+
     public function render(PanelSettings $settings): View
     {
         try {
@@ -132,6 +187,14 @@ class ServerSettings extends Component
             sort($options);
         }
 
-        return view('livewire.settings.server', ['server' => $server, 'logDayOptions' => $options]);
+        $quotas = app(DiskQuotas::class);
+
+        return view('livewire.settings.server', ['server' => $server, 'logDayOptions' => $options, 'quota' => [
+            'status' => $quotas->status(),
+            'wanted' => $quotas->wanted(),
+            'enabling' => $quotas->enabling(),
+            'broken' => $quotas->broken(),
+            'error' => Setting::get(DiskQuotas::ERROR),
+        ]]);
     }
 }

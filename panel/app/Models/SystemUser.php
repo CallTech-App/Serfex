@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A Linux account on the server that owns sites, and the customer it
  * belongs to, if any.
  */
-#[Fillable(['customer_id', 'name', 'uid', 'home', 'disk_bytes', 'disk_measured_at'])]
+#[Fillable(['customer_id', 'name', 'uid', 'home', 'disk_bytes', 'disk_measured_at', 'quota_limit_bytes'])]
 class SystemUser extends Model
 {
     use HasFactory;

@@ -36,7 +36,7 @@ lists every method by area.
 | `ssl.panel.get` | | the panel's certificate, or `null` |
 | `mail.status` | | `installed`, `configured`, `running`, per-service `services`, `hostname`, `webmail_url` |
 | `mail.setup` | `hostname`, `certificate`, `hourly_limit`, `webmail` | installs the mail server if missing, configures and (re)starts it; returns `installed`, `changed`, `hostname`, `webmail_url` |
-| `mail.domain.apply` | `domain`, `spam_filter`, `mailboxes`, `aliases`, `catch_all`, `suspended` | serves exactly these mailboxes and forwarders (a suspended domain defers incoming mail and refuses logins); returns `changed` and the domain's `dkim` record |
+| `mail.domain.apply` | `domain`, `spam_filter`, `mailboxes`, `aliases`, `catch_all`, `suspended`, `disk_full` | serves exactly these mailboxes and forwarders (a suspended domain defers incoming mail and refuses logins; `disk_full` defers incoming mail with `452 4.2.2 Mailbox full` while logins keep working); returns `changed` and the domain's `dkim` record |
 | `mail.domain.delete` | `domain`, `remove_files` | stops serving the domain's mail; returns `deleted`, `files_removed` |
 | `mail.mailbox.purge` | `domain`, `name` | deletes the stored mail of a removed mailbox |
 | `mail.usage` | `domain` | bytes stored per mailbox |
@@ -101,6 +101,10 @@ lists every method by area.
 | `system.timezones` | | the time zones the server knows, sorted |
 | `logs.rotation.get` | | `keep_days`: how many days of rotated logs are kept (default 14) |
 | `logs.rotation.set` | `keep_days` (1-365) | saves the setting and rewrites the rotation rules (see Log rotation) |
+| `quota.status` | | `state` (`on`, `off` or `unsupported`), `reason` (`not_enabled`, `fstype`, `xfs_mount`, `no_fstab`, `kernel`), `detail`, `mount`, `device`, `fstype`, `enabled_at` for the file system holding `/home` (see Disk quotas) |
+| `quota.enable` | | turns user quotas on (see Disk quotas); returns the status, `unsupported` with the reason when the file system or kernel cannot have them |
+| `quota.report` | `users` | each existing account's `bytes` on the file system and its `limit` (0: none), from `repquota` |
+| `quota.set` | `limits` (user → bytes, 0 removes) | hard block limits through `setquota -b`, rounded up to KiB; returns `set` and the `missing` accounts |
 | `panel.web.status` | | serfex-web's `ports` and primary `port` |
 | `panel.web.ports` | `ports` | makes serfex-web listen on 1-3 ports (the first is the primary one), for moving the panel to a new port with the old one still open until the new one is confirmed |
 | `ssl.panel.install` | `certificate`, `private_key` | stores an uploaded certificate as the panel's own and reloads serfex-web |
@@ -443,6 +447,29 @@ reading a renamed access log (`access.log.1`) before it follows the new one,
 so statistics lose no lines to a rotation. Laravel's queue and scheduler
 logs (weekly, 4) and ModSecurity's audit log (daily, 14) keep their own
 rules.
+
+## Disk quotas
+
+Customers' disk limits are enforced with the file system's user quotas
+(package `quota`) on the file system holding `/home`. `quota.enable`, on
+ext4: installs the `quota` tools; loads the `quota_v2` module, installing
+`linux-modules-extra-$(uname -r)` when a cloud kernel lacks it, and lists it
+in `/etc/modules-load.d/serfex-quota.conf`; adds
+`usrjquota=aquota.user,jqfmt=vfsv1` to the file system's `/etc/fstab` line
+(the first original is kept as `/etc/fstab.before-serfex-quota`); remounts
+with those options; runs `quotacheck -cum` and `quotaon -u`. A failing step
+puts `/etc/fstab` back. systemd turns quotas on at boot from the options.
+XFS works only when it was mounted with `uquota`/`usrquota` (it cannot be
+switched on by a remount); other file systems are `unsupported`. A kernel
+that cannot load the module, and a file system with no fstab line, are
+remembered in `/etc/serfex/quota.json` (the kernel case until the kernel
+changes) so the panel stops offering it.
+
+Limits are hard block limits only (no soft limit, no grace), so a write
+past one fails at once with `EDQUOT`; the file manager reports it as
+`quota`. The panel sets each account to what its files use plus what is
+left of the customer's limit, every 5 minutes. Dry runs keep the switch and
+the limits in the state file and measure home directories.
 
 ## Statistics
 

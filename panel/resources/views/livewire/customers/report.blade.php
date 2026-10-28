@@ -21,6 +21,10 @@
         <p class="mt-1 text-[13px] text-muted">{{ __(':name paketinin sınırları, diskin neyle dolduğu ve aylık trafik.', ['name' => $customer->package->name]) }}</p>
     </div>
 
+    @if ($enforcing)
+        <x-disk-full-notice :customer="$customer" :admin="$admin" />
+    @endif
+
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
             @foreach (UsageReport::TABS as $key => $label)
@@ -32,7 +36,11 @@
         @if ($tab === 'limits')
             @include('livewire.customers.usage', ['report' => $report])
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">
-                {{ __('Disk ve trafik %85\'te turuncu olur ve e-postayla haber verilir; sınıra gelince yeni site, posta kutusu ya da uygulama açılmaz. Trafik sınırı aşılsa da siteler çalışmaya devam eder; trafik her ayın başında sıfırlanır.') }}
+                @if ($enforcing)
+                    {{ __('Disk ve trafik %85\'te turuncu olur ve e-postayla haber verilir. Disk sınıra gelince yeni site, posta kutusu ya da uygulama açılmaz, dosyalara yazılamaz ve gelen e-postalar yer açılana kadar bekletilir. Trafik sınırı aşılsa da siteler çalışmaya devam eder; trafik her ayın başında sıfırlanır.') }}
+                @else
+                    {{ __('Disk ve trafik %85\'te turuncu olur ve e-postayla haber verilir; sınıra gelince yeni site, posta kutusu ya da uygulama açılmaz. Trafik sınırı aşılsa da siteler çalışmaya devam eder; trafik her ayın başında sıfırlanır.') }}
+                @endif
             </p>
         @elseif ($tab === 'disk')
             @php $total = max($disk['total'], 1); @endphp

@@ -6,6 +6,7 @@ use App\Livewire\Attributes\ForCustomers;
 use App\Models\Customer;
 use App\Models\Site;
 use App\Models\SiteTraffic;
+use App\Services\Customers\DiskQuotas;
 use App\Services\Customers\Quotas;
 use App\Services\Stats\DiskBreakdown;
 use App\Services\Stats\SiteStats;
@@ -50,13 +51,13 @@ class UsageReport extends Component
         $this->tab = $tab;
     }
 
-    public function render(Quotas $quotas, DiskBreakdown $disk, SiteStats $stats): View
+    public function render(Quotas $quotas, DiskBreakdown $disk, SiteStats $stats, DiskQuotas $diskQuotas): View
     {
         $customer = Customer::with('package')->findOrFail($this->customerId);
         if (! isset(self::TABS[$this->tab])) {
             $this->tab = 'limits';
         }
-        $data = ['customer' => $customer, 'report' => $quotas->report($customer)];
+        $data = ['customer' => $customer, 'report' => $quotas->report($customer), 'enforcing' => $diskQuotas->enforcing()];
         if ($this->tab === 'disk') {
             $data['disk'] = $disk->customer($customer);
         }

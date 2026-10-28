@@ -43,6 +43,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/monitor"
 	"github.com/calltech-app/serfex/agent/internal/php"
+	"github.com/calltech-app/serfex/agent/internal/quota"
 	"github.com/calltech-app/serfex/agent/internal/rpc"
 	"github.com/calltech-app/serfex/agent/internal/security"
 	"github.com/calltech-app/serfex/agent/internal/service"
@@ -175,6 +176,7 @@ func main() {
 	svc.cron.Demo = *dryRun
 	svc.system = system.NewManager(h)
 	svc.logs = logrotate.NewManager(h)
+	svc.quotas = quota.NewManager(h)
 	svc.log = log
 	svc.security = security.NewManager(h, svc.files)
 	svc.security.WebUser = *webUser

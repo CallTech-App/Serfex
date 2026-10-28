@@ -13,14 +13,15 @@ use App\Support\Locales;
  * Mails customers when their disk or monthly traffic reaches 85 % of the
  * package (warn) and when it is full (crit). Each level is mailed once,
  * and again only after usage fell below it (for traffic: next month).
- * Nothing is cut off: a full disk refuses new sites, mailboxes and
- * applications (Quotas), and sites keep running past the traffic limit.
+ * A full disk refuses new sites, mailboxes and applications (Quotas) and,
+ * where disk limits are enforced (DiskQuotas), file writes and incoming
+ * mail; sites keep running past the traffic limit.
  */
 class UsageNotices
 {
     public const KINDS = ['disk', 'traffic'];
 
-    public function __construct(private readonly Quotas $quotas, private readonly OutgoingMail $mail) {}
+    public function __construct(private readonly Quotas $quotas, private readonly OutgoingMail $mail, private readonly DiskQuotas $diskQuotas) {}
 
     /**
      * Sends what is due. Returns how many messages went out.
@@ -102,15 +103,20 @@ class UsageNotices
         $pct = $row['limit'] ? (int) floor(($row['used'] ?? 0) / $row['limit'] * 100) : 0;
         $url = app(Notifications::class)->panelUrl().route('usage', ['tab' => $kind === 'disk' ? 'disk' : 'traffic'], false);
         $package = $customer->package->name;
+        $enforced = $kind === 'disk' && $this->diskQuotas->enforcing();
         [$subject, $lines] = match ([$kind, $level]) {
             ['disk', 'warn'] => [__('Disk alanınız dolmak üzere (%:pct)', ['pct' => $pct]), [
                 __(':package paketinizin disk alanı dolmak üzere: :text kullanılıyor (%:pct).', ['package' => $package, 'text' => $row['text'], 'pct' => $pct]),
-                __('Alan dolduğunda yeni site, posta kutusu ya da uygulama açılamaz; mevcutlar çalışmaya devam eder.'),
+                $enforced
+                    ? __('Alan dolduğunda dosyalarınıza yazılamaz (yükleme, FTP, siteleriniz), gelen e-postalar bekletilir ve yeni site, posta kutusu ya da uygulama açılamaz.')
+                    : __('Alan dolduğunda yeni site, posta kutusu ya da uygulama açılamaz; mevcutlar çalışmaya devam eder.'),
                 __('Eski yedekleri, günlükleri ya da kullanılmayan dosyaları silerek yer açabilirsiniz.'),
             ]],
             ['disk', 'crit'] => [__('Disk alanınız doldu'), [
                 __(':package paketinizin disk alanı doldu (:text).', ['package' => $package, 'text' => $row['text']]),
-                __('Yeni site, posta kutusu ya da uygulama açılamaz; siteleriniz ve postanız çalışmaya devam ediyor.'),
+                $enforced
+                    ? __('Dosyalarınıza yazılamıyor (yükleme, FTP ve sitelerinizin yazması reddediliyor) ve gelen e-postalar bekletiliyor; gönderen sunucular birkaç gün yeniden dener. Siteleriniz açık kalıyor.')
+                    : __('Yeni site, posta kutusu ya da uygulama açılamaz; siteleriniz ve postanız çalışmaya devam ediyor.'),
                 __('Yer açın ya da paketinizi yükseltmek için barındırma sağlayıcınıza yazın.'),
             ]],
             ['traffic', 'warn'] => [__('Aylık trafik sınırınıza yaklaştınız (%:pct)', ['pct' => $pct]), [

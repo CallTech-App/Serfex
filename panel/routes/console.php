@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('serfex:ssl-renew')->hourly()->withoutOverlapping();
 Schedule::command('serfex:mail-usage')->everyThirtyMinutes()->withoutOverlapping();
 Schedule::command('serfex:disk-usage')->everyThirtyMinutes()->withoutOverlapping();
+Schedule::command('serfex:disk-quota')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('serfex:laravel-backups')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('serfex:components-check')->dailyAt('04:30')->withoutOverlapping();
 Schedule::command('serfex:monitor-record')->everyMinute()->withoutOverlapping();

@@ -379,6 +379,40 @@ func TestSuspendedDomain(t *testing.T) {
 	}
 }
 
+func TestDiskFullDomain(t *testing.T) {
+	m, sim := newTest(t)
+	setUp(t, m)
+	ctx := context.Background()
+	spec := domainSpec()
+	spec.DiskFull = true
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	// Incoming mail is deferred with "mailbox full"; the mailboxes still
+	// sign in, so the customer can read and delete mail to make room.
+	contains(t, "suspended", read(t, sim, postfixMaps+"/suspended"), "example.com 452 4.2.2 Mailbox full: the account's disk quota is used up\n")
+	if got := read(t, sim, dovecotUsers); strings.Contains(got, "nologin") || strings.Contains(got, "{CRYPT}*") {
+		t.Fatalf("disk full locked the mailboxes:\n%s", got)
+	}
+
+	// Suspension wins over a full disk.
+	spec.Suspended = true
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, sim, postfixMaps+"/suspended"); !strings.Contains(got, "450 4.2.1") || strings.Contains(got, "452") {
+		t.Fatalf("suspended and full:\n%s", got)
+	}
+
+	spec.Suspended, spec.DiskFull = false, false
+	if _, err := m.ApplyDomain(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, sim, postfixMaps+"/suspended"); strings.Contains(got, "example.com") {
+		t.Fatalf("still refused:\n%s", got)
+	}
+}
+
 func TestAutoreply(t *testing.T) {
 	m, sim := newTest(t)
 	setUp(t, m)

@@ -25,9 +25,11 @@ use Illuminate\Support\Facades\Cache;
  *
  * Counts (sites, mailboxes, databases, Laravel applications, FTP accounts,
  * scheduled tasks, subdomains, additional domains) are refused at the
- * limit. Disk is measured, not capped
- * by the file system: once it is full nothing new is created (sites, mailboxes, applications, previews,
- * backups) but everything that exists keeps working. Traffic is reported
+ * limit. Disk (the package's, or the customer's own when an administrator
+ * set one) is measured: once it is full nothing new is created (sites,
+ * mailboxes, applications, previews, backups), and where the server
+ * enforces disk quotas (DiskQuotas) files can no longer be written and
+ * incoming mail waits. Traffic is reported
  * only. Preview environments are not counted as sites; they have their
  * own limit per application.
  */
@@ -104,7 +106,7 @@ class Quotas
         $out = [];
         foreach (Package::LIMITS as $key => [, $label]) {
             $used = $usage[$key];
-            $limit = $package->limit($key);
+            $limit = $key === 'disk' ? $customer->diskLimit() : $package->limit($key);
             $ratio = $limit === null || $used === null ? null : ($limit === 0 ? ($used > 0 ? INF : 0.0) : $used / $limit);
             $bytes = in_array($key, ['disk', 'traffic'], true);
             // A count at its limit is the package used as bought; only

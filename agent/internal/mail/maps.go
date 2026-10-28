@@ -47,14 +47,17 @@ func buildMaps(domains []DomainSpec) maps {
 	senders.WriteString(mapHeader("Which mailbox may send as which address (smtpd_sender_login_maps)."))
 	users.WriteString(mapHeader("Mailboxes for Dovecot: address:password hash::::::extra fields."))
 	dkim.WriteString(mapHeader("DKIM signing keys of the mail domains."))
-	suspended.WriteString(mapHeader("Suspended domains: their mail is deferred (check_recipient_access)."))
+	suspended.WriteString(mapHeader("Domains whose incoming mail is deferred: suspended, or their owner's disk quota is full (check_recipient_access)."))
 	dkim.WriteString("use_esld = false;\ntry_fallback = false;\nallow_username_mismatch = false;\ndomain {\n")
 
 	out := maps{postfix: map[string][]byte{}, sieve: map[string][]byte{}}
 	for _, d := range domains {
 		fmt.Fprintf(&doms, "%s OK\n", d.Domain)
-		if d.Suspended {
+		switch {
+		case d.Suspended:
 			fmt.Fprintf(&suspended, "%s 450 4.2.1 Mailbox temporarily unavailable\n", d.Domain)
+		case d.DiskFull:
+			fmt.Fprintf(&suspended, "%s 452 4.2.2 Mailbox full: the account's disk quota is used up\n", d.Domain)
 		}
 		fmt.Fprintf(&dkim, "  %q {\n    selector = %q;\n    path = %q;\n  }\n", d.Domain, DKIMSelector, dkimKey(d.Domain))
 

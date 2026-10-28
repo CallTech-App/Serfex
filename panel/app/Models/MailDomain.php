@@ -88,6 +88,8 @@ class MailDomain extends Model
                 ->values()->all(),
             'catch_all' => array_values($catchAll->destinations ?? []),
             'suspended' => (bool) $this->site?->isSuspended(),
+            // Set only while disk limits are enforced (DiskQuotas).
+            'disk_full' => $this->site?->customer()?->disk_full_at !== null,
         ];
     }
 }
