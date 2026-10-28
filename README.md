@@ -15,9 +15,10 @@ zero-downtime releases, previews, queues and a command line built in.
 
 ![Serfex overview: problems first, then sites, resources and backups](docs/images/overview-en.png)
 
-> **Status:** Serfex 0.1 is the first public release. Every feature below works
-> and has real-server tests in CI, but it has not yet run production
-> hosting for long. Try it on a fresh server first; see [Status](#status-and-roadmap).
+> **Status:** Serfex is young (the 0.1 series) and changes quickly. Most
+> features below have real-server tests in CI, but Serfex has not yet run
+> production hosting for long. Try it on a fresh server first; see
+> [Status](#status-and-roadmap).
 
 ## Highlights
 
@@ -27,13 +28,22 @@ builds each release in its own directory, runs Composer, your front-end build
 and migrations, switches over atomically and checks `/up`. A failed health
 check rolls back on its own. Each application gets:
 
-- deployments from a push webhook (GitHub, GitLab, Bitbucket) or one click, with
-  build hooks and the last five releases kept for rollback;
+- the repository and branch picked from your connected GitHub, GitLab or
+  Bitbucket account, with the deploy key and webhook added for you;
+- deployments from a push webhook or one click, with build hooks and the last
+  five releases kept for rollback;
 - preview environments for pull requests at `pr-<n>.<domain>`;
 - `.env` editing, Artisan / Composer / npm commands with live output, Tinker;
-- queue workers, the scheduler, Horizon, Octane and Reverb as managed processes;
+- queue workers, the scheduler (each task can be paused on its own), Horizon,
+  Octane and Reverb as managed processes;
 - logs, maintenance mode with an IP allowlist, its own backups and its own Redis;
 - per-application access for developers and deploy tokens for CI.
+
+**Application templates.** Describe your own Laravel application once, from a
+Git repository or from a release zip that later updates itself, with its
+database, `.env` lines, install questions and first commands. Then install it
+on any site in one step. Templates stay in your panel's database, not in this
+repository.
 
 ![A Laravel application's deployments](docs/images/laravel-en.png)
 
@@ -53,26 +63,42 @@ serfex deploy -a api.example.com --wait
 
 - **Sites**: each site has its own system user and PHP-FPM pool; Nginx, or
   Apache behind Nginx, per site; PHP 8.1 to 8.5 side by side; subdomains,
-  aliases, redirects, error pages, a file manager, SFTP accounts, cron jobs,
-  traffic statistics and logs.
+  aliases, a preferred address (with or without `www.`), redirects, error
+  pages, a file manager, FTP accounts, SSH access (SFTP locked to the site's
+  home folder, or a shell), cron jobs, Composer and a Node.js version per site,
+  cache and speed settings, traffic statistics and logs. An address the server
+  does not host gets a "No site at this address" page, never another site.
+- **Staging**: copy a site to `staging.<domain>` with its databases, hidden
+  from search engines; refresh it from the live site, and push it back to live
+  with a backup first and an undo.
+- **Moving in**: bring accounts over from cPanel (a full account backup) or
+  from Plesk (over SSH): sites, databases, mailboxes with their old passwords,
+  DNS zones and certificates, with a preview before anything changes.
 - **WordPress**: one-click install with its own database, or manage one already
   on the site; updates of WordPress, plugins and themes with a restore point and
   automatic rollback, one-click sign-in, maintenance mode and hardening rules.
 - **DNS**: its own authoritative DNS server (PowerDNS). Adding a site writes
-  its zone, and mail and certificates fill in their own records.
+  its zone, and mail and certificates fill in their own records. DNSSEC in
+  one click, and secondary DNS servers that pick up new zones on their own
+  (catalog zones).
 - **SSL**: Let's Encrypt for every site and alias, wildcards when the DNS is
-  local, renewal 30 days ahead, uploads for other certificates.
+  local, also for names behind Cloudflare's proxy, renewal 30 days ahead,
+  uploads for other certificates.
 - **Email**: Postfix, Dovecot and Rspamd set up in one step, with SPF, DKIM
-  and DMARC written for you, quotas, forwarders, catch-all and webmail.
-- **Databases**: MySQL or MariaDB, and PostgreSQL alongside, with users,
-  grants, remote access and one-click phpMyAdmin or Adminer.
-- **Customers and plans**: limits and features per plan, quotas, suspension,
-  and a customer panel that shows only their own hosting.
+  and DMARC written for you, quotas, forwarders, catch-all, and webmail with
+  Roundcube or SnappyMail.
+- **Databases**: MySQL or MariaDB, and PostgreSQL alongside (with pgvector),
+  with users, grants, remote access, one-click phpMyAdmin or Adminer, and
+  upgrades to a new major version with automatic rollback.
+- **Customers and plans**: limits and features per plan, disk quotas the file
+  system enforces, suspension, and a customer panel that shows only their own
+  hosting.
 - **Live monitoring**: which site is using the CPU, memory, PHP workers or
   database right now, and who is attacking it, with one-click IP blocks and
   temporary resource limits.
 - **Security**: firewall, ModSecurity WAF, malware and outdated-software
-  scans, Fail2ban, two-factor sign-in, SSH settings.
+  scans, Fail2ban, two-factor sign-in, password reset by email, security
+  headers on the panel, SSH settings.
 - **Backups**: whole server or one site, full and incremental, to local disk,
   S3-compatible storage or SFTP, with selective restore.
 - **Serfex AI**: an assistant that reads the server's state, explains what is
@@ -96,10 +122,11 @@ curl -fsSL https://github.com/CallTech-App/Serfex/releases/latest/download/insta
 sudo bash install.sh
 ```
 
-It takes a few minutes and ends with a one-time setup link. Open it to create
-the administrator account; a setup wizard then walks through the host name,
-name servers, time zone, the panel's address and certificate, notifications,
-the firewall, defaults and backups. Everything else
+Add `--lang tr` to the last line for a Turkish panel. It takes a few minutes
+and ends with a one-time setup link. Open it to create the administrator
+account (lost it? `sudo serfex setup-url` prints a new one); a setup wizard
+then walks through the host name, name servers, time zone, the panel's address
+and certificate, notifications, the firewall, defaults and backups. Everything else
 (DNS, mail, database servers, more PHP versions) is installed from the panel
 when you need it. See [Installation](docs/installation.md) for options,
 ports and first steps.
@@ -140,9 +167,7 @@ PostgreSQL are kept apart from the ones customer sites use. Read
 0.1 covers everything a single server needs to host sites, mail and Laravel
 applications for paying customers. Known gaps, planned for later releases:
 
-- an SSH terminal in the browser, and moving sites from another server
-  (shown as "Soon" in the panel);
-- DNSSEC and secondary DNS servers;
+- an SSH terminal in the browser (shown as "Soon" in the panel);
 - backing up mailboxes on their own, CalDAV and CardDAV;
 - Slack and Telegram notifications;
 - signed releases (releases are checked with SHA-256 today);
