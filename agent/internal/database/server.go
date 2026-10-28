@@ -115,6 +115,11 @@ func (m *Manager) Status(ctx context.Context) Status {
 			continue
 		}
 		s := ServerStatus{Installed: true, Product: p.name}
+		if m.Upgrading() == server {
+			s.Error = ErrUpgrading.Error()
+			st.Servers[server] = s
+			continue
+		}
 		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		v, err := m.engines[server].version(ctx)
 		cancel()
@@ -173,6 +178,9 @@ func (m *Manager) Install(ctx context.Context, spec InstallSpec) (res InstallRes
 
 	if have, ok := m.installedProduct(p.server); ok && have.name != p.name {
 		return InstallResult{}, invalid("%s is installed; MySQL and MariaDB cannot run on the same server", have.name)
+	}
+	if m.Upgrading() == p.server {
+		return InstallResult{}, ErrUpgrading
 	}
 	res = InstallResult{Server: p.server, Product: p.name}
 	dataExisted := m.exists(p.dataDir)

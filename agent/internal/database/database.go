@@ -20,7 +20,8 @@
 //	/etc/mysql/mysql.conf.d/zz-serfex.cnf     MySQL settings (bind address)
 //	/etc/mysql/mariadb.conf.d/90-serfex.cnf   MariaDB settings (bind address)
 //	/etc/postgresql/<v>/main/conf.d/serfex.conf  PostgreSQL settings (listen addresses, hba_file)
-//	/var/lib/serfex/backups/databases/        dumps taken before a database is deleted, root 0700
+//	/var/lib/serfex/backups/databases/        dumps taken before a database is deleted or a server upgraded, root 0700
+//	/etc/serfex/databases/upgrade.json        the old versions kept after major-version upgrades
 //	/etc/serfex/web/                          serfex-web (Nginx) and serfex-php (PHP-FPM): Serfex's own web stack
 //	/var/lib/serfex/dbadmin/                  the manager's sign-in pages, sessions and temporary files
 //
@@ -95,7 +96,7 @@ var ErrNotInstalled = errors.New("the database server is not installed")
 func opError(err error) error {
 	var v *ValidationError
 	var o *OperationError
-	if err == nil || errors.As(err, &v) || errors.As(err, &o) || errors.Is(err, ErrNotInstalled) {
+	if err == nil || errors.As(err, &v) || errors.As(err, &o) || errors.Is(err, ErrNotInstalled) || errors.Is(err, ErrUpgrading) {
 		return err
 	}
 	return &OperationError{err}
@@ -204,6 +205,14 @@ type Manager struct {
 	// Fetch, when set, replaces downloading apt archives' signing keys
 	// (nil for a missing one), for tests.
 	Fetch func(ctx context.Context, url string) ([]byte, error)
+	// FreeSpace, when set, replaces reading the device and the free bytes
+	// of the file system holding a directory, for tests.
+	FreeSpace func(dir string) (uint64, int64, error)
+
+	// umu guards upgrading, the server whose major version is being
+	// upgraded (Upgrade).
+	umu       sync.Mutex
+	upgrading string
 }
 
 // NewManager returns a Manager for the real servers.

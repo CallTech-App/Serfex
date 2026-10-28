@@ -41,6 +41,9 @@ func (m *Manager) engineFor(server string) (engine, error) {
 	if _, ok := m.installedProduct(server); !ok {
 		return nil, ErrNotInstalled
 	}
+	if m.Upgrading() == server {
+		return nil, ErrUpgrading
+	}
 	return m.engines[server], nil
 }
 

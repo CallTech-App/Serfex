@@ -74,6 +74,10 @@ const CodeConfigRejected = -32010
 // (lookup, connection or server error); trying again soon is safe.
 const CodeCAUnreachable = -32011
 
+// CodeDatabaseUpgrading says the database server is being upgraded to a
+// new major version; its databases cannot be used until it is done.
+const CodeDatabaseUpgrading = -32012
+
 // services are the managers the methods act on.
 type services struct {
 	sites      *site.Manager
@@ -448,6 +452,9 @@ func mapError(err error) error {
 	if errors.Is(err, database.ErrNotInstalled) {
 		return &rpc.Error{Code: CodeDatabaseNotInstalled, Message: err.Error()}
 	}
+	if errors.Is(err, database.ErrUpgrading) {
+		return &rpc.Error{Code: CodeDatabaseUpgrading, Message: err.Error()}
+	}
 	var inUse *component.InUseError
 	if errors.As(err, &inUse) {
 		return &rpc.Error{Code: CodeComponentInUse, Message: err.Error()}
@@ -718,6 +725,12 @@ func registerComponents(srv *rpc.Server, svc services) {
 	})
 	handle(srv, "component.update", func(ctx context.Context, p component.OpSpec) (any, error) {
 		return c.Update(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "component.upgrade", func(ctx context.Context, p component.OpSpec) (any, error) {
+		return c.Upgrade(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "component.remove-old", func(ctx context.Context, p component.OpSpec) (any, error) {
+		return c.RemoveOld(context.WithoutCancel(ctx), p)
 	})
 	handle(srv, "component.configure", func(ctx context.Context, p component.ConfigureSpec) (any, error) {
 		return c.Configure(context.WithoutCancel(ctx), p)

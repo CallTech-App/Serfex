@@ -265,3 +265,50 @@ func (e *pgEngine) dropSession(ctx context.Context, user, _ string) error {
 	_, err = e.exec(ctx, "postgres", fmt.Sprintf("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = %s;\nDROP ROLE %s;\n", pgString(user), pgIdent(user)))
 	return err
 }
+
+// rowCounts counts the rows of the database's tables (partitions count
+// on their own, the partitioned table not at all) as the superuser.
+func (e *pgEngine) rowCounts(ctx context.Context, db string) (map[string]int64, error) {
+	script := `SELECT format('SELECT %L, count(*) FROM %I.%I;', n.nspname || '.' || c.relname, n.nspname, c.relname)
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\_toast%' AND n.nspname NOT LIKE 'pg\_temp%'
+ORDER BY 1 \gexec
+`
+	out, err := e.h.Run(ctx, host.AsUser("postgres", host.Command{
+		Name:  "psql",
+		Args:  []string{"-X", "-q", "-A", "-t", "-F", "\t", "-v", "ON_ERROR_STOP=1", "-d", db},
+		Stdin: []byte("SET standard_conforming_strings = on;\n" + script),
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return parseCounts(out)
+}
+
+func (e *pgEngine) maintenance(ctx context.Context, on bool) error {
+	if !on {
+		return nil
+	}
+	_, err := e.exec(ctx, "postgres", "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE backend_type = 'client backend' AND usename IS DISTINCT FROM 'postgres' AND pid <> pg_backend_pid();")
+	return err
+}
+
+// parseCounts reads "table<TAB>rows" lines.
+func parseCounts(out string) (map[string]int64, error) {
+	counts := map[string]int64{}
+	for _, line := range strings.Split(out, "\n") {
+		if line == "" {
+			continue
+		}
+		i := strings.LastIndexByte(line, '\t')
+		if i < 0 {
+			return nil, fmt.Errorf("unexpected output: %q", line)
+		}
+		n, err := strconv.ParseInt(strings.TrimSpace(line[i+1:]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected output: %q", line)
+		}
+		counts[line[:i]] = n
+	}
+	return counts, nil
+}

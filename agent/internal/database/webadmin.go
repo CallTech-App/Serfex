@@ -750,8 +750,16 @@ func (m *Manager) sweepLocked(ctx context.Context, st *state) {
 	}{{adminTokens, 2 * tokenTTL}, {BackupDir, BackupRetention}} {
 		entries, _ := os.ReadDir(m.h.Path(dir.path))
 		for _, e := range entries {
-			if fi, err := e.Info(); err == nil && fi.Mode().IsRegular() && now.Sub(fi.ModTime()) > dir.age {
+			fi, err := e.Info()
+			if err != nil || now.Sub(fi.ModTime()) <= dir.age {
+				continue
+			}
+			switch {
+			case fi.Mode().IsRegular():
 				_ = os.Remove(filepath.Join(m.h.Path(dir.path), e.Name()))
+			case fi.IsDir() && dir.path == BackupDir && strings.HasPrefix(e.Name(), "upgrade-") && !m.keeps(dir.path+"/"+e.Name()):
+				// The dumps (and saved packages) of an upgrade.
+				_ = os.RemoveAll(filepath.Join(m.h.Path(dir.path), e.Name()))
 			}
 		}
 	}
