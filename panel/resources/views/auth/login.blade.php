@@ -20,6 +20,9 @@
                 @csrf
                 <h1 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Panele giriş yapın') }}</h1>
                 <div class="space-y-4 p-5 text-[13.5px]">
+                    @if (session('status'))
+                        <p class="rounded-md bg-ok-soft px-3 py-2 text-[13px]" role="status">{{ session('status') }}</p>
+                    @endif
                     <div>
                         <label for="email" class="mb-1.5 block">{{ __('E-posta') }}</label>
                         <input id="email" name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="username"
@@ -29,7 +32,12 @@
                         @enderror
                     </div>
                     <div>
-                        <label for="password" class="mb-1.5 block">{{ __('Parola') }}</label>
+                        <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                            <label for="password">{{ __('Parola') }}</label>
+                            @unless ($needsSetup)
+                                <a href="{{ route('password.request') }}" class="text-[13px] text-accent hover:underline">{{ __('Parolamı unuttum') }}</a>
+                            @endunless
+                        </div>
                         <input id="password" name="password" type="password" required autocomplete="current-password"
                                class="h-9 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-accent">
                         @error('password')

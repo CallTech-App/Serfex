@@ -601,3 +601,54 @@ func TestSetupURLAsksThePanelForANewLink(t *testing.T) {
 		t.Error("ran without root")
 	}
 }
+
+func TestResetPasswordPrintsTheLink(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "panel.json")
+	os.WriteFile(cfg, []byte(`{"php":"8.5"}`), 0o644)
+	var out, errOut bytes.Buffer
+	var ran []string
+	answer := `{"email":"ayse@ornek.com.tr","url":"https://203.0.113.10:8443/reset-password/abc?email=ayse%40ornek.com.tr","urls":["https://203.0.113.10:8443/reset-password/abc?email=ayse%40ornek.com.tr"],"expires_at":"2026-10-28T13:00:00+00:00"}`
+	env := &Env{
+		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
+		Getenv: func(k string) string {
+			return map[string]string{"SERFEX_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
+		},
+		Geteuid:  func() int { return 0 },
+		Hostname: func() (string, error) { return "srv1", nil },
+		ReadFile: func(p string) ([]byte, error) {
+			if p == panelConfig {
+				return os.ReadFile(cfg)
+			}
+			return os.ReadFile(p)
+		},
+		Command: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			ran = append([]string{name}, args...)
+			return []byte(answer + "\n"), nil
+		},
+	}
+	if code := Main([]string{"reset-password", "ayse@ornek.com.tr"}, env); code != 0 {
+		t.Fatalf("reset-password: %d %s", code, errOut.String())
+	}
+	// The address goes after "--", so artisan never reads it as an option.
+	if got := strings.Join(ran, " "); got != "runuser -u serfex -- env -C /opt/serfex/current/panel php8.5 artisan serfex:reset-link --json -- ayse@ornek.com.tr" {
+		t.Errorf("ran %q", got)
+	}
+	if !strings.Contains(out.String(), "https://203.0.113.10:8443/reset-password/abc?email=ayse%40ornek.com.tr\n") {
+		t.Errorf("stdout %q", out.String())
+	}
+
+	answer = `{"error":"nobody@ornek.com.tr adresiyle bir hesap yok."}`
+	errOut.Reset()
+	if code := Main([]string{"reset-password", "nobody@ornek.com.tr"}, env); code == 0 || !strings.Contains(errOut.String(), "bir hesap yok") {
+		t.Errorf("unknown address: %d %q", code, errOut.String())
+	}
+
+	if code := Main([]string{"reset-password"}, env); code == 0 {
+		t.Error("ran without an address")
+	}
+	env.Geteuid = func() int { return 1000 }
+	if code := Main([]string{"reset-password", "ayse@ornek.com.tr"}, env); code == 0 {
+		t.Error("ran without root")
+	}
+}

@@ -9,6 +9,8 @@ olmayanlar "Paketinizde yok" diye görünür.
 
 Size gönderilen giriş bağlantısını açın (7 gün geçerlidir) ve parolanızı
 belirleyin. Sonra panelin adresinden e-postanız ve parolanızla giriş yapın.
+Parolanızı unutursanız giriş sayfasındaki **Parolamı unuttum** bağlantısı
+size yenisini belirlemeniz için bir bağlantı gönderir (60 dakika geçerlidir).
 
 Sağ üstte adınız → **Hesap güvenliği** sayfasında:
 

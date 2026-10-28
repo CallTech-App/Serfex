@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SetupController;
 use App\Http\Controllers\Backups\BackupDownloadController as ServerBackupDownloadController;
 use App\Http\Controllers\Backups\BackupUploadController;
@@ -97,6 +98,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store']);
     Route::get('/login/two-factor', [LoginController::class, 'challenge'])->name('login.two-factor');
     Route::post('/login/two-factor', [LoginController::class, 'verify'])->middleware('throttle:20,1');
+    Route::get('/forgot-password', [PasswordResetController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'store'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'edit'])->where('token', '[A-Za-z0-9]{40,100}')->middleware('throttle:30,1')->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'update'])->middleware('throttle:10,1')->name('password.update');
 });
 
 Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, RefuseReadOnlyChanges::class])->group(function () {

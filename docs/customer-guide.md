@@ -9,6 +9,8 @@ marked "Not in your plan".
 
 Open the sign-in link you were sent (it is valid for 7 days) and choose your
 password. Then sign in at the panel's address with your email and password.
+If you forget the password, **Forgot password?** on the sign-in page mails
+you a link that sets a new one (it works for 60 minutes).
 
 Under your name at the top right → **Account security** you can:
 

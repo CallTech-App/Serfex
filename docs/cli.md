@@ -67,6 +67,22 @@ Examples:
 sudo serfex setup-url
 ```
 
+### serfex reset-password
+
+```
+serfex reset-password <email>
+```
+
+Makes a one-time password reset link for an administrator, customer or team member account. Whoever opens it sets a new password; two-step verification, when it is on, is still asked at sign-in. The link works for 60 minutes; a new one stops the old one.
+
+Use it when the panel cannot send mail or the mail does not arrive. Runs on the server itself as root.
+
+Examples:
+
+```sh
+sudo serfex reset-password ayse@ornek.com.tr
+```
+
 ### serfex logout
 
 ```
