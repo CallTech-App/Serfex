@@ -102,7 +102,7 @@ class BackupsTest extends TestCase
         $user->databases()->attach($db->id, ['access' => 'all']);
         $mail = MailDomain::factory()->create(['name' => $this->site->domain, 'site_id' => $this->site->id]);
         Mailbox::factory()->create(['mail_domain_id' => $mail->id, 'name' => 'info']);
-        $zone = DnsZone::factory()->create(['name' => $this->site->domain, 'site_id' => $this->site->id]);
+        $zone = DnsZone::factory()->create(['name' => $this->site->domain, 'site_id' => $this->site->id, 'dnssec' => true, 'dnssec_key' => 'Private-key-format: v1.2']);
         $zone->records()->create(['name' => '@', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600]);
         $zone->records()->create(['name' => 'www', 'type' => 'CNAME', 'content' => 'kahveatolyesi.com.tr.', 'ttl' => 3600]);
     }
@@ -158,6 +158,8 @@ class BackupsTest extends TestCase
         $this->assertSame('info', $kahve['meta']['mail']['mailboxes'][0]['name']);
         $this->assertSame([['database' => 'kahve_shop', 'access' => 'all']], $kahve['meta']['database_users'][0]['grants']);
         $this->assertCount(2, $kahve['meta']['dns']['records']);
+        // The DNSSEC key goes along, readable on another server.
+        $this->assertSame([true, 'Private-key-format: v1.2'], [$kahve['meta']['dns']['zone']['dnssec'], $kahve['meta']['dns']['zone']['dnssec_key']]);
         // The panel's database and .env were uploaded for its archive.
         $panel = collect($call['items'])->firstWhere('name', 'panel');
         $this->assertArrayHasKey('panel.sql.gz', (array) $panel['uploads']);
@@ -386,7 +388,10 @@ class BackupsTest extends TestCase
         $this->assertSame('kahve_app', DatabaseUser::where('system_user_id', $site->system_user_id)->value('name'));
         $this->assertSame('kahve_shop', Database::where('site_id', $site->id)->value('name'));
         $this->assertSame(['info'], MailDomain::where('name', $site->domain)->first()->mailboxes()->pluck('name')->all());
-        $this->assertSame(2, DnsZone::where('name', $site->domain)->first()->records()->count());
+        $zone = DnsZone::where('name', $site->domain)->first();
+        $this->assertSame(2, $zone->records()->count());
+        $this->assertTrue($zone->dnssec);
+        $this->assertSame('Private-key-format: v1.2', $zone->dnssec_key, 'the same key keeps the DS record valid');
         $this->assertSame('site.apply', $this->agent->methods()[array_search('backup.restore', $this->agent->methods(), true) - 1] ?? 'site.apply');
     }
 

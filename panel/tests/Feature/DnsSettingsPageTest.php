@@ -7,6 +7,7 @@ use App\Livewire\Dns\DnsSettingsPage;
 use App\Models\DnsZone;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
+use App\Services\Agent\AgentException;
 use App\Services\Dns\DnsSettings;
 use App\Services\Dns\ZoneTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,7 +27,57 @@ class DnsSettingsPageTest extends TestCase
         Queue::fake();
         $agent = Mockery::mock(AgentClient::class);
         $agent->shouldReceive('call')->with('system.addresses')->andReturn(['ipv4' => ['203.0.113.10'], 'ipv6' => ['2001:db8::10']]);
+        $agent->shouldReceive('call')->with('dns.secondaries.get')->andReturn(['addresses' => [], 'notify' => [], 'catalog' => '', 'zones' => 0])->byDefault();
         $this->app->instance(AgentClient::class, $agent);
+        $this->agent = $agent;
+    }
+
+    private Mockery\MockInterface $agent;
+
+    public function test_secondaries_are_set_through_the_agent_with_undo(): void
+    {
+        $sent = [];
+        $this->agent->shouldReceive('call')->with('dns.secondaries.set', Mockery::any(), 120)->andReturnUsing(function ($method, $p) use (&$sent) {
+            $sent[] = $p['addresses'];
+
+            return ['addresses' => $p['addresses'], 'notify' => array_values(array_filter($p['addresses'], fn ($a) => ! str_contains($a, '/'))),
+                'catalog' => $p['addresses'] ? 'catalog.server.example.net.invalid' : '', 'zones' => $p['addresses'] ? 3 : 0];
+        });
+
+        $page = Livewire::test(DnsSettingsPage::class)
+            ->assertSee('İkincil ad sunucuları')
+            ->assertDontSee('bölge aktarılabilir')
+            ->assertDontSee('catalog-zones')
+            ->set('secondaries', "192.0.2.53\nns2.example.net")
+            ->call('saveSecondaries')
+            ->assertHasErrors('secondaries')
+            ->set('secondaries', "192.0.2.53\n 2001:db8::53 ,198.51.100.0/24\n")
+            ->call('saveSecondaries')
+            ->assertHasNoErrors()
+            ->assertSet('secondaries', "192.0.2.53\n2001:db8::53\n198.51.100.0/24")
+            ->assertSee('catalog.server.example.net.invalid')
+            ->assertSee('3 bölge aktarılabilir')
+            ->assertSee('zone "catalog.server.example.net.invalid" default-primaries { 203.0.113.10; };', false)
+            ->assertDispatched('toast', fn ($name, $p) => $p['undo']['method'] === 'undoSecondaries' && $p['undo']['args'][0] === []);
+        $page->call('undoSecondaries', [])
+            ->assertSet('secondaries', '')
+            ->assertDontSee('catalog-zones');
+        $this->assertSame([['192.0.2.53', '2001:db8::53', '198.51.100.0/24'], []], $sent);
+
+        $page->set('secondaries', implode("\n", array_map(fn ($i) => '192.0.2.'.$i, range(1, 33))))
+            ->call('saveSecondaries')
+            ->assertHasErrors('secondaries');
+        $this->assertCount(2, $sent);
+    }
+
+    public function test_secondaries_wait_for_the_dns_server(): void
+    {
+        $this->agent->shouldReceive('call')->with('dns.secondaries.get')->andThrow(AgentException::rpcError('dns.secondaries.get', SyncDnsZone::NOT_SET_UP, 'the DNS server is not set up yet'));
+
+        Livewire::test(DnsSettingsPage::class)
+            ->assertSet('secondaryState', null)
+            ->assertSee('DNS sunucusu çalışmıyor ya da kurulmadı.')
+            ->assertDontSee('İkincil sunucuların adresleri');
     }
 
     public function test_page_shows_detected_addresses_and_the_template(): void

@@ -491,7 +491,7 @@ class Restores
         }
         $zone = DB::transaction(function () use ($dns, $site, $records) {
             $zone = DnsZone::create([
-                ...array_intersect_key($dns['zone'], array_flip(['name', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum'])),
+                ...array_intersect_key($dns['zone'], array_flip(['name', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec', 'dnssec_key'])),
                 'site_id' => $site->id,
                 'status' => ZoneStatus::Syncing,
             ]);

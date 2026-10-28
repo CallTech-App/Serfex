@@ -1,6 +1,8 @@
 @php
     use App\Support\DnsRecords;
     $nameservers = $zone->nameservers();
+    $ds = $zone->dsRecord();
+    $dnskey = $ds ? trim(implode(' ', array_slice(preg_split('/\s+/', (string) ($zone->dnssec_info['dnskey'] ?? '')), 3))) : null;
     $ttlChoices = DnsRecords::TTLS;
     if (! isset($ttlChoices[$defaultTtl])) {
         $ttlChoices = [$defaultTtl => DnsRecords::ttlLabel($defaultTtl)] + $ttlChoices;
@@ -153,9 +155,48 @@
                     </div>
                     <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
                         <span class="sm:pt-0.5">{{ __('DNSSEC') }}</span>
-                        <div>
-                            <label class="flex items-center gap-2.5 text-muted"><input type="checkbox" disabled class="size-4">{{ __('Bölgeyi imzala') }}</label>
-                            <p class="mt-1 text-2xs text-muted">{{ __('Sonraki sürümde gelecek.') }}</p>
+                        <div class="min-w-0">
+                            <label class="flex items-center gap-2.5"><input type="checkbox" wire:model="dnssec" class="size-4 accent-accent">{{ __('Bölgeyi imzala') }}</label>
+                            @if (! $zone->dnssec)
+                                <p class="mt-1 text-2xs text-muted">{{ __('Yanıtlar imzalanır; sahte DNS yanıtları doğrulayan çözümleyicilerde reddedilir. Açtıktan sonra DS kaydını alan adı kayıt firmanıza eklemeniz gerekir.') }}</p>
+                            @elseif ($ds === null)
+                                <p class="mt-1 flex items-center gap-1.5 text-2xs text-muted"><x-icon name="loader-circle" class="size-3.5 animate-spin" />{{ __('Anahtar oluşturuluyor; DS kaydı birazdan burada görünecek.') }}</p>
+                            @else
+                                <div class="mt-3 rounded-lg border border-line" x-data="{ copied: null }">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line px-3.5 py-2.5">
+                                        <p class="mr-auto font-medium">{{ __('Kayıt firmasına eklenecek DS kaydı') }}</p>
+                                        <button type="button" @click="navigator.clipboard.writeText(@js($ds['record'])); copied = 'ds'; setTimeout(() => copied = null, 2000)" class="text-[13px] text-accent hover:underline"><span x-show="copied !== 'ds'">{{ __('Kaydı kopyala') }}</span><span x-show="copied === 'ds'" x-cloak>{{ __('Kopyalandı') }}</span></button>
+                                    </div>
+                                    <dl class="divide-y divide-line text-[13px]">
+                                        <div class="grid gap-1 px-3.5 py-2 sm:grid-cols-[150px_1fr] sm:gap-3"><dt class="text-muted">{{ __('Anahtar etiketi') }}</dt><dd class="num font-mono">{{ $ds['key_tag'] }}</dd></div>
+                                        <div class="grid gap-1 px-3.5 py-2 sm:grid-cols-[150px_1fr] sm:gap-3"><dt class="text-muted">{{ __('Algoritma') }}</dt><dd><span class="font-mono">{{ $ds['algorithm'] }}</span> <span class="text-muted">(ECDSAP256SHA256)</span></dd></div>
+                                        <div class="grid gap-1 px-3.5 py-2 sm:grid-cols-[150px_1fr] sm:gap-3"><dt class="text-muted">{{ __('Özet türü') }}</dt><dd><span class="font-mono">2</span> <span class="text-muted">(SHA-256)</span></dd></div>
+                                        <div class="grid gap-1 px-3.5 py-2 sm:grid-cols-[150px_1fr] sm:gap-3">
+                                            <dt class="text-muted">{{ __('Özet') }}</dt>
+                                            <dd class="flex min-w-0 items-start gap-3">
+                                                <span class="min-w-0 font-mono break-all">{{ $ds['digest'] }}</span>
+                                                <button type="button" @click="navigator.clipboard.writeText(@js($ds['digest'])); copied = 'digest'; setTimeout(() => copied = null, 2000)" class="shrink-0 text-accent hover:underline"><span x-show="copied !== 'digest'">{{ __('Kopyala') }}</span><span x-show="copied === 'digest'" x-cloak>{{ __('Kopyalandı') }}</span></button>
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                    @if ($dnskey)
+                                        <details class="border-t border-line px-3.5 py-2 text-[13px]">
+                                            <summary class="cursor-pointer text-accent">{{ __('Kayıt firması açık anahtar (DNSKEY) istiyorsa') }}</summary>
+                                            <dl class="mt-2 space-y-1.5">
+                                                <div class="grid gap-1 sm:grid-cols-[150px_1fr] sm:gap-3"><dt class="text-muted">{{ __('Bayraklar / Protokol') }}</dt><dd class="font-mono">257 / 3</dd></div>
+                                                <div class="grid gap-1 sm:grid-cols-[150px_1fr] sm:gap-3">
+                                                    <dt class="text-muted">{{ __('Açık anahtar') }}</dt>
+                                                    <dd class="flex min-w-0 items-start gap-3">
+                                                        <span class="min-w-0 font-mono break-all">{{ $dnskey }}</span>
+                                                        <button type="button" @click="navigator.clipboard.writeText(@js($dnskey)); copied = 'key'; setTimeout(() => copied = null, 2000)" class="shrink-0 text-accent hover:underline"><span x-show="copied !== 'key'">{{ __('Kopyala') }}</span><span x-show="copied === 'key'" x-cloak>{{ __('Kopyalandı') }}</span></button>
+                                                    </dd>
+                                                </div>
+                                            </dl>
+                                        </details>
+                                    @endif
+                                </div>
+                                <p class="mt-2 text-2xs text-muted">{{ __('Kayıt firmanızın DNSSEC bölümüne bu değerleri girin; kayıt firması yayınlayınca alan adı doğrulanır. DNSSEC\'i kapatmadan önce DS kaydını kayıt firmasından silin.') }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -205,6 +246,18 @@
     </section>
 
     @include('livewire.dns.record-modal', ['suffix' => '.'.$zone->name])
+
+    {{-- DNSSEC'i kapat --}}
+    <x-modal :title="__('DNSSEC\'i kapat')" show="confirmingDnssecOff" size="max-w-md">
+        <div class="p-5 text-[13.5px]">
+            <p class="font-semibold">{{ __('Kayıt firmasındaki DS kaydını sildiniz mi?') }}</p>
+            <p class="mt-1 text-[13px] text-muted">{{ __('Kayıt firmasında DS kaydı dururken imza kalkarsa, imzayı denetleyen çözümleyiciler (Google, Cloudflare ve birçok internet sağlayıcısı) bu alan adını bulamaz. Önce DS kaydını silin ve bir gün bekleyin. Anahtar saklanır; yeniden açtığınızda aynı DS kaydı geçerli olur.') }}</p>
+            <div class="mt-4 flex justify-end gap-2">
+                <button type="button" wire:click="keepDnssec" class="h-9 rounded-md border border-line px-3.5 hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                <button type="button" wire:click="confirmDnssecOff" class="h-9 rounded-md bg-crit px-3.5 font-medium text-on-crit">{{ __('DNSSEC\'i kapat') }}</button>
+            </div>
+        </div>
+    </x-modal>
 
     {{-- Varsayılana dön --}}
     <x-modal :title="__('Varsayılana dön')" show="confirmingReset" size="max-w-md">

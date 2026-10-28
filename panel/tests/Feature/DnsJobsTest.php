@@ -44,6 +44,32 @@ class DnsJobsTest extends TestCase
         $this->assertNotNull($zone->synced_at);
     }
 
+    public function test_sync_keeps_the_key_the_agent_made_and_the_ds_records(): void
+    {
+        $zone = DnsZone::factory()->withRecords()->create(['status' => ZoneStatus::Syncing, 'dnssec' => true]);
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->once()->with('dns.zone.apply', Mockery::on(fn ($spec) => $spec['dnssec'] === ['enabled' => true]), 120.0)
+            ->andReturn(['serial' => 2026102802, 'changed' => true, 'dnssec' => ['enabled' => true, 'key_tag' => 4242, 'algorithm' => 13, 'ds' => ['4242 13 2 abcd', '4242 13 4 ef01'], 'dnskey' => '257 3 13 AAAA', 'key' => "Private-key-format: v1.2\n"]]);
+
+        (new SyncDnsZone($zone))->handle($agent);
+
+        $zone->refresh();
+        $this->assertSame("Private-key-format: v1.2\n", $zone->dnssec_key);
+        $this->assertSame(4242, $zone->dsRecord()['key_tag']);
+        $this->assertSame('ABCD', $zone->dsRecord()['digest']);
+        $this->assertNotSame("Private-key-format: v1.2\n", $zone->getRawOriginal('dnssec_key'), 'stored encrypted');
+
+        // Next time the panel sends the key; turned off, the info goes.
+        $zone->update(['dnssec' => false]);
+        $agent = Mockery::mock(AgentClient::class);
+        $agent->shouldReceive('call')->once()->with('dns.zone.apply', Mockery::on(fn ($spec) => $spec['dnssec'] === ['enabled' => false, 'key' => "Private-key-format: v1.2\n"]), 120.0)
+            ->andReturn(['serial' => 2026102803, 'changed' => true, 'dnssec' => ['enabled' => false]]);
+        (new SyncDnsZone($zone))->handle($agent);
+        $zone->refresh();
+        $this->assertNull($zone->dnssec_info);
+        $this->assertSame("Private-key-format: v1.2\n", $zone->dnssec_key);
+    }
+
     public function test_sync_failure_is_shown_on_the_zone(): void
     {
         $zone = DnsZone::factory()->withRecords()->create(['status' => ZoneStatus::Syncing]);

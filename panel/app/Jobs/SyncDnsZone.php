@@ -64,10 +64,23 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
             return;
         }
 
+        // What PowerDNS signs the zone with: the DS records to show, and
+        // the private key when the agent made one, kept for later applies.
+        $signing = [];
+        if (isset($result['dnssec'])) {
+            $d = $result['dnssec'];
+            $signing['dnssec_info'] = ($d['enabled'] ?? false)
+                ? ['key_tag' => $d['key_tag'] ?? null, 'algorithm' => $d['algorithm'] ?? null, 'ds' => $d['ds'] ?? [], 'dnskey' => $d['dnskey'] ?? null]
+                : null;
+            if (($d['key'] ?? '') !== '') {
+                $signing['dnssec_key'] = $d['key'];
+            }
+        }
+
         // A newer change queued its own sync; leave the status to it.
         $fresh = DnsZone::find($zone->id);
         if ($fresh === null || ! $fresh->updated_at->eq($updatedAt)) {
-            $fresh?->update(['serial' => $result['serial'] ?? $fresh->serial]);
+            $fresh?->update(['serial' => $result['serial'] ?? $fresh->serial, ...$signing]);
 
             return;
         }
@@ -76,6 +89,7 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
             'serial' => $result['serial'] ?? null,
             'last_error' => null,
             'synced_at' => now(),
+            ...$signing,
         ]);
     }
 }

@@ -87,6 +87,7 @@
                         <th class="px-3 py-2.5 font-medium">{{ __('Site') }}</th>
                         <th class="px-3 py-2.5 text-right font-medium">{{ __('Kayıt') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('DNS durumu') }}</th>
+                        <th class="px-3 py-2.5 font-medium">{{ __('DNSSEC') }}</th>
                         <th class="py-2.5 pr-5 pl-3 font-medium">{{ __('Son değişiklik') }}</th>
                     </tr>
                 </thead>
@@ -112,11 +113,12 @@
                             <td class="px-3 py-3">
                                 <x-status-badge :status="$zone->status" :title="$zone->last_error" />
                             </td>
+                            <td @class(['px-3 py-3', 'text-muted' => ! $zone->dnssec])>{{ $zone->dnssec ? __('Açık (DNSSEC)') : __('Kapalı (DNSSEC)') }}</td>
                             <td class="num py-3 pr-5 pl-3 whitespace-nowrap text-muted">{{ \App\Support\When::dateTime($zone->updated_at) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $admin ? 6 : 5 }}" class="px-5 py-12 text-center">
+                            <td colspan="{{ $admin ? 7 : 6 }}" class="px-5 py-12 text-center">
                                 @if ($search !== '' || $filter !== '')
                                     <p class="text-muted">{{ __('Aramanızla eşleşen alan adı yok.') }}</p>
                                 @else
