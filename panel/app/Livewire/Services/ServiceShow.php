@@ -105,22 +105,12 @@ class ServiceShow extends Component
         $names = [];
         foreach (SystemServices::SETTINGS[$section] as $key => $field) {
             [$label, , $min, $max] = $field;
+            if (($field[5] ?? null) === 'link') {
+                continue;
+            }
             $rules["settings.{$key}"] = match (true) {
                 $key === 'worker_processes' => ['required', 'regex:/^(auto|[1-9]\d{0,2})$/'],
                 ($field[5] ?? null) === 'switch' => ['boolean'],
-                ($field[5] ?? null) === 'list' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
-                    $list = self::lines((string) $value);
-                    if (count($list) > SystemServices::MAX_AXFR) {
-                        $fail(__('En fazla :max adres girilebilir.', ['max' => SystemServices::MAX_AXFR]));
-                    }
-                    foreach ($list as $address) {
-                        if (! self::isAddress($address)) {
-                            $fail(__(':address bir IP adresi ya da ağı değil.', ['address' => $address]));
-
-                            return;
-                        }
-                    }
-                }],
                 default => ['required', 'integer', "between:{$min},{$max}"],
             };
             $names["settings.{$key}"] = mb_strtolower($label);
@@ -130,7 +120,8 @@ class ServiceShow extends Component
             $values[$key] = match (true) {
                 $key === 'worker_processes' => trim($this->settings[$key]),
                 ($field[5] ?? null) === 'switch' => (bool) $this->settings[$key],
-                ($field[5] ?? null) === 'list' => self::lines((string) $this->settings[$key]),
+                // Changed on its own page; sent back as it is.
+                ($field[5] ?? null) === 'link' => $this->current[$key] ?? [],
                 default => (int) $this->settings[$key],
             };
         }
@@ -215,32 +206,6 @@ class ServiceShow extends Component
             is_array($v) => implode("\n", $v),
             default => (string) $v,
         }, $values);
-    }
-
-    /**
-     * The addresses of a list field: one per line (commas and spaces work
-     * too), blank ones left out.
-     *
-     * @return list<string>
-     */
-    private static function lines(string $text): array
-    {
-        return array_values(array_filter(preg_split('/[\s,]+/', trim($text)) ?: [], fn ($v) => $v !== ''));
-    }
-
-    /** An IPv4 or IPv6 address, or a network in CIDR form. */
-    private static function isAddress(string $value): bool
-    {
-        [$ip, $bits] = array_pad(explode('/', $value, 2), 2, null);
-        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
-            return false;
-        }
-        if ($bits === null) {
-            return true;
-        }
-        $max = str_contains($ip, ':') ? 128 : 32;
-
-        return ctype_digit($bits) && (int) $bits <= $max;
     }
 
     private function run(string $action, SystemServices $services, bool $offerUndo = true): void

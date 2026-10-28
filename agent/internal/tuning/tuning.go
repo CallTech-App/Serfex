@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/netip"
 	"os"
 	"regexp"
 	"strconv"
@@ -87,8 +88,68 @@ type PowerDNS struct {
 	// LogQueries writes every query to the service's log.
 	LogQueries bool `json:"log_queries"`
 	// AXFRAllow are the addresses and networks (secondary name servers)
-	// that may transfer zones; none refuses every transfer.
+	// that may transfer zones; none refuses every transfer. The addresses
+	// among them are also told (NOTIFY) when a zone changes.
 	AXFRAllow []string `json:"axfr_allow"`
+	// Catalog is the catalog zone listing every zone for the secondary
+	// servers, named once when the first secondary is added.
+	Catalog string `json:"catalog,omitempty"`
+}
+
+// MaxAXFR is how many addresses may transfer zones.
+const MaxAXFR = 32
+
+// ParseAXFRAllow checks the addresses allowed to transfer zones and writes
+// them the same way every time: an address, or a network in CIDR form,
+// each once.
+func ParseAXFRAllow(list []string) ([]string, error) {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, v := range list {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		var norm string
+		if strings.Contains(v, "/") {
+			p, err := netip.ParsePrefix(v)
+			if err != nil {
+				return nil, fmt.Errorf("%q is not an IP address or network", v)
+			}
+			p = p.Masked()
+			norm = p.String()
+			if p.IsSingleIP() {
+				norm = p.Addr().Unmap().String()
+			}
+		} else {
+			a, err := netip.ParseAddr(v)
+			if err != nil || a.Zone() != "" {
+				return nil, fmt.Errorf("%q is not an IP address or network", v)
+			}
+			norm = a.Unmap().String()
+		}
+		if !seen[norm] {
+			seen[norm] = true
+			out = append(out, norm)
+		}
+	}
+	if len(out) > MaxAXFR {
+		return nil, fmt.Errorf("at most %d addresses may transfer zones", MaxAXFR)
+	}
+	return out, nil
+}
+
+// NotifyAddresses are the single addresses in p.AXFRAllow: PowerDNS tells
+// them about every change. A network cannot be notified; its servers see
+// changes when the zone's SOA refresh time comes.
+func NotifyAddresses(p PowerDNS) []string {
+	out := []string{}
+	for _, a := range p.AXFRAllow {
+		if !strings.Contains(a, "/") {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // Defaults are the settings before anything was changed: Nginx, Apache,
@@ -199,9 +260,9 @@ Timeout %d
 // PowerDNSLines are the lines of Serfex's PowerDNS configuration that p
 // decides, as [name, value] in file order.
 func PowerDNSLines(p PowerDNS) [][2]string {
-	disable, allow := "yes", ""
+	disable, allow, primary := "yes", "", "no"
 	if len(p.AXFRAllow) > 0 {
-		disable, allow = "no", strings.Join(p.AXFRAllow, ",")
+		disable, allow, primary = "no", strings.Join(p.AXFRAllow, ","), "yes"
 	}
 	logQueries, level := "no", "4"
 	if p.LogQueries {
@@ -211,6 +272,9 @@ func PowerDNSLines(p PowerDNS) [][2]string {
 	return [][2]string{
 		{"disable-axfr", disable},
 		{"allow-axfr-ips", allow},
+		// Zones of kind Primary send NOTIFY to these and to their NS hosts.
+		{"primary", primary},
+		{"also-notify", strings.Join(NotifyAddresses(p), ",")},
 		{"cache-ttl", strconv.Itoa(p.CacheTTL)},
 		{"negquery-cache-ttl", strconv.Itoa(p.NegativeTTL)},
 		{"log-dns-queries", logQueries},
@@ -225,7 +289,7 @@ var legacyAXFR = []byte("# No secondary servers in this version: refuse zone tra
 // SetPowerDNS puts p's lines into a PowerDNS configuration, replacing the
 // ones it has and adding the others at the end.
 func SetPowerDNS(conf []byte, p PowerDNS) []byte {
-	conf = bytes.Replace(conf, legacyAXFR, []byte("# Zone transfers (to secondary name servers), caching and query logging\n# are changed on the panel's Hizmetler page.\n"), 1)
+	conf = bytes.Replace(conf, legacyAXFR, []byte("# Secondary name servers are set on the panel's Server DNS settings page;\n# caching and query logging on its Services page.\n"), 1)
 	for _, l := range PowerDNSLines(p) {
 		line := []byte(l[0] + "=" + l[1])
 		re := regexp.MustCompile(`(?m)^[ \t]*` + regexp.QuoteMeta(l[0]) + `[ \t]*=.*$`)

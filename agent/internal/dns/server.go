@@ -56,8 +56,8 @@ webserver-address={{.APIAddress}}
 webserver-port={{.APIPort}}
 webserver-allow-from=127.0.0.1,::1
 
-# Zone transfers (to secondary name servers), caching and query logging
-# are changed on the panel's Hizmetler page.
+# Secondary name servers are set on the panel's Server DNS settings page;
+# caching and query logging on its Services page.
 {{- range .Tuning}}
 {{index . 0}}={{index . 1}}
 {{- end}}

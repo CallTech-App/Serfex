@@ -196,6 +196,8 @@ func registerMethods(srv *rpc.Server, svc services) {
 		}
 		return res, nil
 	})
+	handle(srv, "dns.secondaries.get", func(ctx context.Context, _ struct{}) (any, error) { return svc.dns.GetSecondaries(ctx) })
+	handle(srv, "dns.secondaries.set", func(ctx context.Context, p dns.SecondariesSpec) (any, error) { return svc.dns.SetSecondaries(ctx, p) })
 	srv.Handle("ssl.issue", func(ctx context.Context, p json.RawMessage) (any, error) {
 		var spec cert.IssueSpec
 		if err := decode(p, &spec); err != nil {

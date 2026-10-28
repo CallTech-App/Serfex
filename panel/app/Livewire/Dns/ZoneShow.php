@@ -53,6 +53,11 @@ class ZoneShow extends Component
 
     public int $minimum = 3600;
 
+    public bool $dnssec = false;
+
+    /** Turning DNSSEC off waits for this confirmation. */
+    public bool $confirmingDnssecOff = false;
+
     /**
      * Takes the id rather than a bound model, like SiteShow: polling a zone
      * that was just deleted must not turn into a 404.
@@ -177,7 +182,7 @@ class ZoneShow extends Component
         $this->dispatch('toast', message: __('DNS bölgesi şablon kayıtlarına döndü.'), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
     }
 
-    public function saveSettings(Zones $zones): void
+    public function saveSettings(Zones $zones, bool $confirmed = false): void
     {
         $zone = $this->zone();
         if ($zone === null) {
@@ -199,7 +204,16 @@ class ZoneShow extends Component
             'expire' => __('sona erme'),
             'minimum' => __('negatif TTL'),
         ]);
+        // Resolvers that check signatures stop finding a domain whose
+        // registrar still lists a DS record for a key that is gone.
+        if ($zone->dnssec && ! $this->dnssec && ! $confirmed) {
+            $this->confirmingDnssecOff = true;
 
+            return;
+        }
+        $this->confirmingDnssecOff = false;
+
+        $signing = $this->dnssec !== $zone->dnssec;
         $token = $zones->change($zone, fn (DnsZone $zone) => $zone->update([
             'default_ttl' => $this->defaultTtl,
             'hostmaster' => $this->hostmaster === '' || $this->hostmaster === 'hostmaster@'.$zone->name ? null : $this->hostmaster,
@@ -207,8 +221,25 @@ class ZoneShow extends Component
             'retry' => $this->retry,
             'expire' => $this->expire,
             'minimum' => $this->minimum,
+            'dnssec' => $this->dnssec,
         ]));
-        $this->dispatch('toast', message: __('DNS ayarları kaydedildi.'), source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+        $message = match (true) {
+            $signing && $this->dnssec => __('DNSSEC açılıyor. DS kaydı birazdan aşağıda görünecek; alan adı kayıt firmanıza ekleyin.'),
+            $signing => __('DNSSEC kapatıldı. Bölge artık imzasız yayınlanıyor.'),
+            default => __('DNS ayarları kaydedildi.'),
+        };
+        $this->dispatch('toast', message: $message, source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+    }
+
+    public function confirmDnssecOff(Zones $zones): void
+    {
+        $this->saveSettings($zones, true);
+    }
+
+    public function keepDnssec(): void
+    {
+        $this->confirmingDnssecOff = false;
+        $this->dnssec = true;
     }
 
     public function undo(string $token, Zones $zones): void
@@ -268,6 +299,7 @@ class ZoneShow extends Component
         $this->retry = $zone->retry;
         $this->expire = $zone->expire;
         $this->minimum = $zone->minimum;
+        $this->dnssec = $zone->dnssec;
     }
 
     private function originalName(): ?string

@@ -34,7 +34,7 @@ class SystemServices
     /**
      * Settings the page offers: section => [key => [label, unit, min, max,
      * help, kind]]. kind is "number" when left out, "switch" for on/off,
-     * "list" for addresses one per line.
+     * "link" for a value shown here but changed on another page.
      */
     public const SETTINGS = [
         'nginx' => [
@@ -59,12 +59,9 @@ class SystemServices
             'cache_ttl' => ['Yanıt önbelleği', 'saniye', 0, 86400, 'Aynı sorunun yanıtı bu süre bellekte tutulur; 0 önbelleği kapatır. Panelden yapılan kayıt değişiklikleri önbelleği hemen temizler.'],
             'negquery_cache_ttl' => ['Olumsuz yanıt önbelleği', 'saniye', 0, 86400, '"Böyle bir kayıt yok" yanıtları bu süre bellekte tutulur.'],
             'log_queries' => ['Sorgu kaydı', '', null, null, 'Açıkken her DNS sorgusu bu hizmetin günlüğüne yazılır. Günlüğü hızla büyütür; sorun ararken açın.', 'switch'],
-            'axfr_allow' => ['Bölge aktarımı izni', '', null, null, 'Bölgelerinizi kopyalayabilecek ikincil ad sunucularının IP adresleri ya da ağları, her satıra bir tane. Boşsa kimse kopyalayamaz. Değişiklik bildirimi gönderilmez; ikincil sunucu SOA yenileme süresinde denetler.', 'list'],
+            'axfr_allow' => ['İkincil ad sunucuları', '', null, null, 'Bölgelerinizi kopyalayıp yayınlayan sunucular. Sunucu DNS ayarları sayfasında değiştirilir; orada bölgeler de buna göre ayarlanır.', 'link'],
         ],
     ];
-
-    /** How many addresses may transfer zones (the agent's limit). */
-    public const MAX_AXFR = 32;
 
     /** @var list<array<string, mixed>>|null */
     private ?array $list = null;

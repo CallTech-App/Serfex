@@ -9,6 +9,7 @@ use App\Models\DnsRecord;
 use App\Models\DnsZone;
 use App\Models\Site;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -227,6 +228,10 @@ class Zones
         if ($saved === null) {
             return null;
         }
+        // The signing key was remembered still encrypted.
+        if (($saved['dnssec_key'] ?? null) !== null) {
+            $saved['zone']['dnssec_key'] = Crypt::decryptString($saved['dnssec_key']);
+        }
         if ($saved['zone']['site_id'] !== null && ! Site::whereKey($saved['zone']['site_id'])->exists()) {
             $saved['zone']['site_id'] = null;
         }
@@ -288,7 +293,8 @@ class Zones
         $token = Str::random(24);
         Cache::put('dns-undo:'.$token, [
             'id' => $zone->id,
-            'zone' => $zone->only(['name', 'site_id', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum']),
+            'zone' => $zone->only(['name', 'site_id', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec']),
+            'dnssec_key' => $zone->getRawOriginal('dnssec_key'),
             'records' => $zone->records()->get()->map(fn (DnsRecord $r) => $r->toRecord())->all(),
         ], self::UNDO_SECONDS);
 

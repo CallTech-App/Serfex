@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/tuning"
 )
 
 // ValidationError reports a request that can never succeed as given.
@@ -76,10 +77,11 @@ func (m *Manager) backend() (Backend, error) {
 
 // ZoneResult describes an applied zone.
 type ZoneResult struct {
-	Zone    string `json:"zone"`
-	Serial  int64  `json:"serial"`
-	Created bool   `json:"created"`
-	Changed bool   `json:"changed"`
+	Zone    string      `json:"zone"`
+	Serial  int64       `json:"serial"`
+	Created bool        `json:"created"`
+	Changed bool        `json:"changed"`
+	DNSSEC  *DNSSECInfo `json:"dnssec,omitempty"`
 }
 
 // ApplyZone creates or updates a zone so that it serves exactly spec.
@@ -114,16 +116,67 @@ func (m *Manager) ApplyZone(ctx context.Context, spec ZoneSpec) (ZoneResult, err
 		res.Changed = true
 	}
 
-	if !res.Changed {
-		res.Serial = cur.Serial
-		return res, nil
+	z := cur
+	if res.Changed {
+		if z, err = b.Zone(ctx, name); err != nil || z == nil {
+			return ZoneResult{}, &OperationError{fmt.Errorf("zone %s missing after the change: %v", spec.Zone, err)}
+		}
 	}
-	z, err := b.Zone(ctx, name)
-	if err != nil || z == nil {
-		return ZoneResult{}, &OperationError{fmt.Errorf("zone %s missing after the change: %v", spec.Zone, err)}
+
+	// The zone's kind and catalog follow the secondary servers, its
+	// signing follows the panel.
+	p := tuning.Load(m.h).PowerDNS
+	if len(p.AXFRAllow) > 0 {
+		if err := m.ensureCatalog(ctx, b, p.Catalog); err != nil {
+			return ZoneResult{}, err
+		}
 	}
+	optsChanged, err := m.applySecondaryOptions(ctx, b, z, p)
+	if err != nil {
+		return ZoneResult{}, err
+	}
+	signChanged := false
+	if spec.DNSSEC != nil {
+		if res.DNSSEC, signChanged, err = m.applyDNSSEC(ctx, b, z, *spec.DNSSEC); err != nil {
+			return ZoneResult{}, err
+		}
+	}
+	if signChanged {
+		// A new serial makes secondaries fetch the zone with (or without)
+		// its signatures; cached answers would still carry the old state.
+		if !res.Changed {
+			if err := touch(ctx, b, z); err != nil {
+				return ZoneResult{}, &OperationError{err}
+			}
+		}
+		_ = b.FlushCache(ctx, name)
+		res.Changed = true
+	}
+	if z.Kind == kindPrimary && (res.Changed || optsChanged) {
+		// Secondaries would see the change at the next SOA refresh; tell
+		// them now. They are reached by UDP, so a failure is not the
+		// zone's.
+		_ = b.Notify(ctx, name)
+	}
+
 	res.Serial = z.Serial
+	if signChanged {
+		if z, err = b.Zone(ctx, name); err != nil || z == nil {
+			return ZoneResult{}, &OperationError{fmt.Errorf("zone %s missing after the change: %v", spec.Zone, err)}
+		}
+		res.Serial = z.Serial
+	}
 	return res, nil
+}
+
+// touch raises the zone's serial without changing its records.
+func touch(ctx context.Context, b Backend, z *Zone) error {
+	for _, s := range z.RRSets {
+		if s.Type == "SOA" {
+			return b.PatchZone(ctx, z.Name, []Change{{RRSet: s}})
+		}
+	}
+	return nil
 }
 
 // rejected turns a refusal by PowerDNS (bad content, conflicting records)

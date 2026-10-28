@@ -6,12 +6,14 @@ use App\Enums\ZoneStatus;
 use App\Models\Concerns\OwnedThroughSite;
 use Database\Factories\DnsZoneFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['site_id', 'name', 'status', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'serial', 'last_error', 'synced_at'])]
+#[Hidden(['dnssec_key'])]
+#[Fillable(['site_id', 'name', 'status', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec', 'dnssec_key', 'dnssec_info', 'serial', 'last_error', 'synced_at'])]
 class DnsZone extends Model
 {
     /** @use HasFactory<DnsZoneFactory> */
@@ -21,6 +23,7 @@ class DnsZone extends Model
 
     protected $attributes = [
         'status' => 'syncing',
+        'dnssec' => false,
     ];
 
     protected function casts(): array
@@ -29,6 +32,9 @@ class DnsZone extends Model
             'status' => ZoneStatus::class,
             'synced_at' => 'datetime',
             'serial' => 'integer',
+            'dnssec' => 'boolean',
+            'dnssec_key' => 'encrypted',
+            'dnssec_info' => 'array',
         ];
     }
 
@@ -92,7 +98,29 @@ class DnsZone extends Model
                 'ttl' => $r->ttl,
                 'content' => $r->agentContent(),
             ])->values()->all(),
+            'dnssec' => array_filter(['enabled' => (bool) $this->dnssec, 'key' => $this->dnssec_key], fn ($v) => $v !== null),
         ];
+    }
+
+    /**
+     * The DS record to give the registrar (SHA-256), once PowerDNS has
+     * signed the zone.
+     *
+     * @return array{key_tag: int, algorithm: int, digest_type: int, digest: string, record: string}|null
+     */
+    public function dsRecord(): ?array
+    {
+        if (! $this->dnssec) {
+            return null;
+        }
+        foreach ($this->dnssec_info['ds'] ?? [] as $ds) {
+            $f = preg_split('/\s+/', trim($ds));
+            if (count($f) === 4 && $f[2] === '2') {
+                return ['key_tag' => (int) $f[0], 'algorithm' => (int) $f[1], 'digest_type' => 2, 'digest' => strtoupper($f[3]), 'record' => $this->name.'. IN DS '.$ds];
+            }
+        }
+
+        return null;
     }
 
     /**
