@@ -34,14 +34,14 @@
             <h1 class="text-[22px] font-semibold tracking-tight">{{ $template->name }}</h1>
             <div class="flex gap-2">
                 <button type="button" wire:click="check" wire:loading.attr="disabled" wire:target="check" class="{{ $btn }}"><x-icon name="refresh-cw" />{{ __('Sürümü denetle') }}</button>
-                <button type="button" wire:click="export" class="{{ $btn }}"><x-icon name="download" />{{ __('Dışa aktar') }}</button>
+                <button type="button" wire:click="export" title="{{ __('Dosya .env şablonundaki değerleri içerir; Git hesabı ve bağlı siteler dahil edilmez.') }}" class="{{ $btn }}"><x-icon name="download" />{{ __('Dışa aktar') }}</button>
             </div>
         </div>
         <p class="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
             <span class="flex items-center gap-1.5"><x-icon :name="$icons[$template->provider] ?? 'link'" class="size-3.5" />@if ($template->webUrl())<a href="{{ $template->webUrl() }}" target="_blank" rel="noopener" class="font-mono hover:text-accent">{{ $template->repositoryLabel() }}</a>@else<span class="font-mono">{{ $template->repositoryLabel() }}</span>@endif</span>
             <span>·</span>
             @if ($package)
-                <span>{{ __('sürüm paketi') }} <span class="font-mono text-fg">{{ $template->latest_version ?? '—' }}</span></span>
+                <span>@if ($template->latest_version){{ __('sürüm paketi') }} <span class="font-mono text-fg">{{ $template->latest_version }}</span>@else{{ __('sürüm paketi, son sürüm') }}@endif</span>
             @elseif ($template->ref_type === 'tag')
                 <span>{{ __('etiket') }} <span class="font-mono text-fg">{{ $template->ref }}</span></span>
             @else
@@ -145,7 +145,7 @@
                             <div class="{{ $row }}">
                                 <label for="t-php" class="sm:pt-2">{{ __('PHP sürümü') }}</label>
                                 <div>
-                                    <select id="t-php" wire:model="phpVersion" class="{{ $sel }} w-40 font-mono">
+                                    <select id="t-php" wire:model="phpVersion" class="{{ $sel }} w-44">
                                         <option value="">{{ __('Sitenin sürümü') }}</option>
                                         @foreach (array_unique(array_filter([...$phpVersions, $phpVersion])) as $v)
                                             <option value="{{ $v }}">{{ $v }}</option>
@@ -471,7 +471,7 @@
     {{-- Toplu güncelleme --}}
     <x-modal :title="__('Siteleri güncelle')" show="confirmingAll">
         <div>
-            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __(':count siteyi :version sürümüne güncelle', ['count' => $behind->count(), 'version' => $template->versionLabel()]) }}</h2>
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ trans_choice(':count siteyi :version sürümüne güncelle', $behind->count(), ['version' => $template->versionLabel()]) }}</h2>
             <div class="space-y-3 p-5 text-[13.5px]">
                 <p><x-t text="Siteler :order, birer birer güncellenir. Her sitede:"><x-slot:order><b class="font-medium">{{ __('sırayla') }}</b></x-slot:order></x-t></p>
                 <ol class="list-decimal space-y-1 pl-5 text-[13px]">

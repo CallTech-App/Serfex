@@ -5,7 +5,7 @@
 <div class="space-y-3 rounded-lg border border-line p-4">
     <div>
         @if ($template->description)<p>{{ $template->description }}</p>@endif
-        <p class="mt-0.5 text-2xs text-muted">{{ $template->isPackage() ? __('Sürüm paketi :version, kendini günceller.', ['version' => $template->latest_version ?? '']) : __('Sürüm :version.', ['version' => $template->versionLabel() ?? $template->ref]) }} {{ ucfirst($summary) }}.</p>
+        <p class="mt-0.5 text-2xs text-muted">@if ($template->isPackage()){{ $template->latest_version ? __('Sürüm paketi :version, kendini günceller.', ['version' => $template->latest_version]) : __('Son sürüm paketi kurulur; uygulama kendini günceller.') }}@else{{ __('Sürüm :version.', ['version' => $template->versionLabel() ?? $template->ref]) }}@endif {{ ucfirst($summary) }}.</p>
     </div>
     @foreach ($template->questions() as $q)
         @php $name = ($q['type'] === 'file' ? 'uploads.' : 'answers.').$q['key']; @endphp

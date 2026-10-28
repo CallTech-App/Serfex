@@ -363,6 +363,11 @@ class AppTemplateShow extends Component
                 return;
             }
         }
+        if (! $this->createAdmin && str_contains($this->setupCommands, '{admin.')) {
+            $this->addError('setupCommands', __('Komutlar {admin.…} kullanıyor; önce "İlk yönetici hesabını oluştur"u açın.'));
+
+            return;
+        }
         if ($this->createAdmin && count(AppTemplates::parseCommands($this->adminCommand)) !== 1) {
             $this->addError('adminCommand', __('Tek satırlık bir komut yazın.'));
 
@@ -398,6 +403,9 @@ class AppTemplateShow extends Component
     {
         $t = $this->template();
         $json = json_encode($templates->export($t), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($t->env_template) {
+            $this->dispatch('toast', message: __('Dosya .env şablonundaki değerleri içerir; güvenli bir yerde saklayın.'), source: $this->getId());
+        }
 
         return response()->streamDownload(fn () => print ($json), Str::slug($t->name ?: 'sablon').'.serfex-template.json', ['Content-Type' => 'application/json']);
     }
