@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\SystemUser;
 use App\Services\Agent\AgentException;
 use App\Services\Customers\Customers;
+use App\Services\Customers\DiskQuotas;
 use App\Services\Customers\Quotas;
 use App\Services\Customers\Usage;
 use Illuminate\Contracts\View\View;
@@ -43,6 +44,12 @@ class CustomerShow extends Component
 
     public ?int $packageId = null;
 
+    /** The disk limit: package (the package's), custom or unlimited. */
+    public string $diskMode = 'package';
+
+    /** A custom disk limit, in GB. */
+    public ?string $diskGb = null;
+
     public bool $suspending = false;
 
     public string $reason = '';
@@ -70,11 +77,12 @@ class CustomerShow extends Component
         $this->fillInfo();
     }
 
-    public function measure(Usage $usage): void
+    public function measure(Usage $usage, DiskQuotas $quotas): void
     {
         $this->agentError = null;
         try {
             $usage->measureDisk($this->customer()->systemUsers()->get());
+            $quotas->sync($this->customer());
         } catch (AgentException $e) {
             $this->agentError = __('Disk ölçülemedi: :reason', ['reason' => ($e->reason ?: $e->getMessage())]);
 
@@ -83,11 +91,14 @@ class CustomerShow extends Component
         $this->dispatch('toast', message: __('Disk kullanımı ölçüldü.'));
     }
 
-    public function saveInfo(Customers $customers): void
+    public function saveInfo(Customers $customers, DiskQuotas $quotas): void
     {
         $customer = $this->customer();
         $this->email = mb_strtolower(trim($this->email));
+        $this->diskGb = $this->diskGb === null ? null : str_replace(',', '.', trim($this->diskGb));
         $this->validate([
+            'diskMode' => ['required', Rule::in(['package', 'custom', 'unlimited'])],
+            'diskGb' => ['exclude_unless:diskMode,custom', 'required', 'numeric', 'min:0.1', 'max:100000'],
             'company' => ['nullable', 'max:120'],
             'name' => ['required', 'max:100'],
             'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($customer->user?->id)],
@@ -97,9 +108,14 @@ class CustomerShow extends Component
         ], [
             'email.unique' => __('Bu e-posta adresiyle bir panel hesabı zaten var.'),
             'phone.regex' => __('Telefon numarası geçersiz.'),
-        ], ['company' => __('firma adı'), 'name' => __('yetkili kişi'), 'email' => 'e-posta', 'phone' => 'telefon', 'notes' => 'notlar', 'packageId' => 'paket']);
+        ], ['company' => __('firma adı'), 'name' => __('yetkili kişi'), 'email' => 'e-posta', 'phone' => 'telefon', 'notes' => 'notlar', 'packageId' => 'paket', 'diskGb' => __('disk sınırı')]);
 
         $packageChanged = $customer->package_id !== (int) $this->packageId;
+        $disk = [
+            'disk_override' => $this->diskMode !== 'package',
+            'disk_override_mb' => $this->diskMode === 'custom' ? (int) round((float) $this->diskGb * 1024) : null,
+        ];
+        $diskChanged = $packageChanged || $disk['disk_override'] !== $customer->disk_override || $disk['disk_override_mb'] !== $customer->disk_override_mb;
         $customer->update([
             'company' => trim($this->company) ?: null,
             'name' => trim($this->name),
@@ -107,6 +123,7 @@ class CustomerShow extends Component
             'phone' => trim($this->phone) ?: null,
             'notes' => trim($this->notes) ?: null,
             'package_id' => $this->packageId,
+            ...$disk,
         ]);
         // The login carries the same name and address.
         $customer->user?->update(['name' => $customer->name, 'email' => $customer->email]);
@@ -114,6 +131,13 @@ class CustomerShow extends Component
         if ($packageChanged) {
             // The new package's PHP memory limit applies to the sites.
             ApplySitePhp::forCustomer($customer);
+        }
+        if ($diskChanged) {
+            try {
+                $quotas->sync($customer->fresh());
+            } catch (AgentException) {
+                // serfex:disk-quota applies it within five minutes.
+            }
         }
         $this->dispatch('toast', message: __('Müşteri bilgileri kaydedildi.'));
     }
@@ -222,7 +246,7 @@ class CustomerShow extends Component
         }
     }
 
-    public function render(Quotas $quotas): View
+    public function render(Quotas $quotas, DiskQuotas $diskQuotas): View
     {
         $customer = $this->customer();
         if ($customer === null) {
@@ -236,6 +260,7 @@ class CustomerShow extends Component
             'accounts' => $customer->systemUsers()->with(['sites' => fn ($q) => $q->whereDoesntHave('preview')->with('certificate', 'laravelApp')->orderBy('domain')])->orderBy('name')->get(),
             'freeAccounts' => $this->attaching ? $this->freeAccounts() : collect(),
             'packages' => Package::orderBy('id')->get(),
+            'enforcing' => $diskQuotas->enforcing(),
         ])->title($customer->displayName().' · Serfex');
     }
 
@@ -262,6 +287,8 @@ class CustomerShow extends Component
         $this->phone = (string) $c->phone;
         $this->notes = (string) $c->notes;
         $this->packageId = $c->package_id;
+        $this->diskMode = ! $c->disk_override ? 'package' : ($c->disk_override_mb === null ? 'unlimited' : 'custom');
+        $this->diskGb = $c->disk_override_mb === null ? null : rtrim(rtrim(number_format($c->disk_override_mb / 1024, 1, '.', ''), '0'), '.');
     }
 
     private function customer(): ?Customer

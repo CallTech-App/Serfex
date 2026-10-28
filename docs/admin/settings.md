@@ -19,7 +19,9 @@
 ## Server
 
 The server's host name (separate from the panel's and the mail server's
-addresses), its IP addresses, operating system, hardware and uptime.
+addresses), how long logs are kept, whether customers' disk limits are
+enforced ([disk quotas](customers.md#disk-quotas)), its IP addresses,
+operating system, hardware and uptime.
 
 ## Notifications
 

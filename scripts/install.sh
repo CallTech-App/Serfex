@@ -294,6 +294,17 @@ artisan migrate --force --no-interaction
 artisan optimize
 systemctl start serfex-panel-queue serfex-panel-backups serfex-panel-scheduler
 
+# Customers' disk limits are enforced with user quotas on the file system
+# holding /home. Where that cannot work (btrfs, a kernel without quota
+# support) the limits stay warnings and the panel says why.
+step "$(t "Disk kotaları" "Disk quotas")"
+QUOTA=$(agent quota.enable 2> /dev/null | jq -r '.state // empty' 2> /dev/null || true)
+case $QUOTA in
+on) echo "  $(t "Açık: müşteriler paketlerindeki disk alanını aşamaz." "On: customers cannot use more disk space than their plan.")" ;;
+*) echo "  $(t "Bu sunucuda açılamadı; disk sınırları uyarı olarak kalır (Araçlar ve Ayarlar → Sunucu)." "Could not be turned on here; disk limits stay warnings (Tools & Settings → Server).")" ;;
+esac
+artisan serfex:disk-quota > /dev/null 2>&1 || true
+
 if [ "$COMPONENTS" -eq 1 ]; then
 	# The defaults of Yazılım Yönetimi, installed as from the panel.
 	for c in nginx php8.4 composer node24 fail2ban; do

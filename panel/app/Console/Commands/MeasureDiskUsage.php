@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Agent\AgentException;
+use App\Services\Customers\DiskQuotas;
 use App\Services\Customers\Usage;
 use App\Services\Databases\Databases;
 use Illuminate\Console\Attributes\Description;
@@ -17,11 +18,13 @@ use Illuminate\Console\Command;
 #[Description('Record the disk usage of every account and database')]
 class MeasureDiskUsage extends Command
 {
-    public function handle(Usage $usage, Databases $databases): int
+    public function handle(Usage $usage, Databases $databases, DiskQuotas $quotas): int
     {
         try {
             $count = $usage->measureDisk();
             $dbs = $databases->measure();
+            // Database sizes changed what is left for files.
+            $quotas->sync();
         } catch (AgentException $e) {
             $this->warn('Agent unavailable: '.$e->getMessage());
 

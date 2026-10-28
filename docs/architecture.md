@@ -77,7 +77,7 @@ in Turkish or English.
 
 | Area | Methods |
 |------|---------|
-| System | `system.ping`, `agent.info`, `system.info`, `system.addresses`, `system.hostname.set`, `system.timezone.set`, `system.timezones`, `usage.disk`, `logs.rotation.get`, `logs.rotation.set` |
+| System | `system.ping`, `agent.info`, `system.info`, `system.addresses`, `system.hostname.set`, `system.timezone.set`, `system.timezones`, `usage.disk`, `logs.rotation.get`, `logs.rotation.set`, `quota.status`, `quota.enable`, `quota.report`, `quota.set` |
 | Sites | `site.apply`, `site.delete`, `site.logs`, `web.protect.apply`, `web.deny.apply` |
 | PHP | `php.versions`, `php.info`, `php.settings.apply`, `php.extension.set`, `php.restart` |
 | Files and SFTP | `files.*` (list, read, save, upload, move, copy, delete, chmod, compress, extract, search, trash…), `ftp.status`, `ftp.account.apply`, `ftp.account.delete`, `ftp.account.list` |

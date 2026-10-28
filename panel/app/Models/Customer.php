@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * with their mail, DNS, certificates and Laravel applications, within
  * their package. They sign in with their own panel login.
  */
-#[Fillable(['package_id', 'company', 'name', 'email', 'phone', 'notes', 'username', 'suspended_at', 'suspend_reason', 'delete_sites'])]
+#[Fillable(['package_id', 'disk_override', 'disk_override_mb', 'company', 'name', 'email', 'phone', 'notes', 'username', 'suspended_at', 'suspend_reason', 'disk_full_at', 'delete_sites'])]
 class Customer extends Model
 {
     use HasFactory, SoftDeletes;
@@ -26,7 +26,10 @@ class Customer extends Model
     {
         return [
             'suspended_at' => 'datetime',
+            'disk_full_at' => 'datetime',
             'delete_sites' => 'boolean',
+            'disk_override' => 'boolean',
+            'disk_override_mb' => 'integer',
         ];
     }
 
@@ -62,6 +65,19 @@ class Customer extends Model
     public function user(): HasOne
     {
         return $this->hasOne(User::class);
+    }
+
+    /**
+     * The customer's disk limit in bytes: their own when an administrator
+     * set one, else the package's. Null is unlimited.
+     */
+    public function diskLimit(): ?int
+    {
+        if ($this->disk_override) {
+            return $this->disk_override_mb === null ? null : $this->disk_override_mb * 1024 * 1024;
+        }
+
+        return $this->package->limit('disk');
     }
 
     public function isSuspended(): bool

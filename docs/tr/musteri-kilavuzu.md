@@ -26,8 +26,11 @@ Sağ üstte adınız → **Hesap güvenliği** sayfasında:
 sitelerin, posta kutularının, veritabanlarının ve diğerlerinin paket
 sınırlarına göre sayısı. **Kullanım** sayfasında site bazında ayrıntılar ve
 son 12 ay var. Bir sınırın %85'ine ve %100'üne ulaştığınızda e-posta alırsınız.
-Trafik sınırı aşılsa da siteleriniz çalışmaya devam eder; dolan disk yalnızca
-yeni site, posta kutusu, yükleme ve yedeği durdurur.
+Trafik sınırı aşılsa da siteleriniz çalışmaya devam eder. Dolan disk yeni
+site, posta kutusu, yükleme ve yedeği durdurur; çoğu sunucuda dosyalara
+yazmak da durur: yükleme, SFTP ve sitelerinizin kendi yazmaları başarısız
+olur, gelen e-postalar siz yer açana kadar bekletilir (gönderen sunucular
+günlerce yeniden dener).
 
 ## Siteler
 

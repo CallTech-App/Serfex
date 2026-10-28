@@ -26,8 +26,10 @@ The first page shows your plan's use: disk space, this month's traffic, and
 how many sites, mailboxes, databases and other items you have against the
 plan's limits. **Usage** has the details by site and the last 12 months.
 You get an email when you reach 85% and 100% of a limit. Your sites keep
-running over the traffic limit; a full disk only stops new sites, mailboxes,
-uploads and backups.
+running over the traffic limit. A full disk stops new sites, mailboxes,
+uploads and backups and, on most servers, any file writes: uploads, SFTP
+and your sites' own writes fail and incoming mail waits (senders retry for
+days) until you make room.
 
 ## Sites
 

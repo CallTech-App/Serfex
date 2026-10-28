@@ -45,9 +45,11 @@ A customer's page shows their sites, usage, details and plan, with:
 - **Add site** / **Link an existing site**.
 - **Usage**: disk (home folder, mailboxes, databases, application backups,
   measured every 30 minutes) and monthly traffic, with a 12-month history.
-  Customers get an email at 85% and 100% of their quota. Nothing is cut off
-  when they go over; a full disk only refuses new sites, mailboxes,
-  applications and backups.
+  Customers get an email at 85% and 100% of their quota. A full disk
+  refuses new sites, mailboxes, applications and backups and, where disk
+  quotas are on (see below), anything more being written.
+- **Disk limit** (Details and plan): the plan's, a custom one for this
+  customer only, or unlimited.
 - **Suspend**: their sites show an "out of service" page (Let's Encrypt
   renewals still work), incoming mail is deferred and mailboxes cannot sign
   in, SFTP accounts and scheduled tasks are locked, Laravel queues and
@@ -58,6 +60,34 @@ A customer's page shows their sites, usage, details and plan, with:
 - **Delete customer**: type the username. Choose whether their sites are
   deleted or stay on the server without a customer. It can be undone for 10
   minutes.
+
+## Disk quotas
+
+Serfex enforces the disk limit with the file system's user quotas
+(**Tools & Settings → Server → Disk quota**; turned on by the installer).
+A customer's Linux user may fill what their files use now plus what is
+left of the limit after mail, databases and application backups; limits
+are recalculated every 5 minutes. When the limit is reached:
+
+- uploads in the file manager, SFTP and anything the sites write fail with
+  "Disk quota exceeded";
+- incoming mail to their domains is deferred with `452 4.2.2 Mailbox full`
+  (senders retry for days; mailboxes still work so mail can be deleted);
+- the customer page, their Usage page and the dashboard say so.
+
+It clears within 5 minutes once space is freed or the limit is raised.
+Sites without a customer and unlimited customers have no limit; database
+writes are never blocked (their size still counts).
+
+Turning quotas on installs the `quota` package (and `linux-modules-extra`
+for cloud kernels without the `quota_v2` module), adds
+`usrjquota=aquota.user,jqfmt=vfsv1` to the `/etc/fstab` line of the file
+system holding `/home` (the old file is kept as
+`/etc/fstab.before-serfex-quota`), remounts it and counts every file with
+`quotacheck`. No restart is needed. It works on ext4; XFS only if it was
+mounted with `uquota`; btrfs and ZFS have no user quotas. Where quotas
+cannot work the page says why and the limit stays a warning. **Warn only**
+keeps quotas on but lifts every limit.
 
 ## What a customer sees
 

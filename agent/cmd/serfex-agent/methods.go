@@ -25,6 +25,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/monitor"
 	"github.com/calltech-app/serfex/agent/internal/php"
+	"github.com/calltech-app/serfex/agent/internal/quota"
 	"github.com/calltech-app/serfex/agent/internal/rpc"
 	"github.com/calltech-app/serfex/agent/internal/security"
 	"github.com/calltech-app/serfex/agent/internal/service"
@@ -94,6 +95,7 @@ type services struct {
 	cron       *cron.Manager
 	system     *system.Manager
 	logs       *logrotate.Manager
+	quotas     *quota.Manager
 	log        *slog.Logger
 	stats      *stats.Aggregator
 	statsFile  string
@@ -492,7 +494,8 @@ func mapError(err error) error {
 	var cronv *cron.ValidationError
 	var sysv *system.ValidationError
 	var logv *logrotate.ValidationError
-	if errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var qv *quota.ValidationError
+	if errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -513,7 +516,8 @@ func mapError(err error) error {
 	var cronop *cron.OperationError
 	var sysop *system.OperationError
 	var logop *logrotate.OperationError
-	if errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var qop *quota.OperationError
+	if errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -929,6 +933,14 @@ func registerSettings(srv *rpc.Server, svc services) {
 	handle(srv, "system.timezones", func(context.Context, struct{}) (any, error) { return s.Timezones() })
 	handle(srv, "logs.rotation.get", func(context.Context, struct{}) (any, error) { return svc.logs.Settings(), nil })
 	handle(srv, "logs.rotation.set", func(ctx context.Context, p logrotate.Settings) (any, error) { return svc.logs.Set(ctx, p) })
+	handle(srv, "quota.status", func(ctx context.Context, _ struct{}) (any, error) { return svc.quotas.Status(ctx) })
+	// Installing packages and counting every file outlive a panel request
+	// that gives up.
+	handle(srv, "quota.enable", func(ctx context.Context, _ struct{}) (any, error) {
+		return svc.quotas.Enable(context.WithoutCancel(ctx))
+	})
+	handle(srv, "quota.report", func(ctx context.Context, p quota.UsersSpec) (any, error) { return svc.quotas.Report(ctx, p) })
+	handle(srv, "quota.set", func(ctx context.Context, p quota.LimitsSpec) (any, error) { return svc.quotas.Set(ctx, p) })
 
 	handle(srv, "panel.web.status", func(context.Context, struct{}) (any, error) { return db.WebPortsStatus() })
 	// Reconfiguring serfex-web (maybe installing packages) outlives a

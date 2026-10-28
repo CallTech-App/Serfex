@@ -58,6 +58,14 @@
         </div>
     @endif
 
+    @if ($enforcing)
+        <x-disk-full-notice :customer="$customer">
+            <button type="button" wire:click="$set('tab', 'details')" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
+                <x-icon name="hard-drive" class="size-3.5" />{{ __('Disk sınırını değiştir') }}
+            </button>
+        </x-disk-full-notice>
+    @endif
+
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
             @foreach (['usage' => __('Kullanım'), 'sites' => __('Siteler (:site_count)', ['site_count' => $siteCount]), 'details' => __('Bilgiler ve paket')] as $key => $label)
@@ -77,6 +85,13 @@
             <div class="flex flex-wrap items-center gap-3 border-t border-line px-5 py-3 text-[13px] text-muted">
                 <span>
                     {{ __('Disk; site dosyaları, posta, veritabanları ve Laravel yedeklerinin toplamıdır. :measured_at', ['measured_at' => $measuredAt ? __('Son ölçüm :format.', ['format' => \App\Support\When::dateTime(\Illuminate\Support\Carbon::parse($measuredAt))]) : __('Henüz ölçülmedi.')]) }}
+                </span>
+                <span class="basis-full sm:basis-auto">
+                    @if ($enforcing)
+                        {{ __('Disk sınırı dosya sisteminde uygulanıyor: dolunca dosyalara yazılamaz ve gelen posta bekletilir.') }}
+                    @else
+                        <x-t text="Bu sunucuda disk sınırı yalnızca uyarıdır (:link)."><x-slot:link><a href="{{ route('settings.server') }}" wire:navigate class="text-accent hover:underline">{{ __('Sunucu ayarları') }}</a></x-slot:link></x-t>
+                    @endif
                 </span>
                 <a href="{{ route('customers.usage', $customer) }}" wire:navigate class="ml-auto text-[13px] text-accent hover:underline">{{ __('Disk ve trafik ayrıntısı') }}</a>
                 <button type="button" wire:click="measure" wire:loading.attr="disabled" wire:target="measure" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] text-fg hover:bg-surface-2 disabled:opacity-60">
@@ -168,6 +183,27 @@
                             @endforeach
                         </select>
                         <p class="mt-1.5 text-2xs text-muted">{{ __('Yeni paketin sınırları ve özellikleri hemen geçerli olur; sınırı aşan mevcut şeyler silinmez.') }}</p>
+                    </div>
+                </div>
+                <div class="grid gap-1.5 px-5 py-3.5 sm:grid-cols-[12rem_minmax(0,28rem)] sm:items-start">
+                    <label for="info-disk" class="sm:pt-2">{{ __('Disk sınırı') }}</label>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="info-disk" wire:model.live="diskMode" class="{{ $field }} border-line px-2.5 sm:w-auto sm:min-w-56">
+                                @php $packageDisk = $packages->firstWhere('id', (int) $packageId)?->limit('disk'); @endphp
+                                <option value="package">{{ __('Paketteki (:limit)', ['limit' => $packageDisk === null ? __('Sınırsız') : \App\Support\Bytes::format($packageDisk)]) }}</option>
+                                <option value="custom">{{ __('Bu müşteriye özel') }}</option>
+                                <option value="unlimited">{{ __('Sınırsız') }}</option>
+                            </select>
+                            @if ($diskMode === 'custom')
+                                <div class="flex items-center gap-2">
+                                    <input id="info-disk-gb" wire:model="diskGb" inputmode="decimal" aria-label="{{ __('Disk sınırı (GB)') }}" class="{{ $field }} num w-28 {{ $errors->has('diskGb') ? 'border-crit' : 'border-line' }}">
+                                    <span class="text-muted">GB</span>
+                                </div>
+                            @endif
+                        </div>
+                        @error('diskGb') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
+                        <p class="mt-1.5 text-2xs text-muted">{{ __('Paketten farklı bir sınır yalnızca bu müşteri için geçerlidir. Dosyalar, posta, veritabanları ve Laravel yedekleri birlikte sayılır.') }}</p>
                     </div>
                 </div>
                 <div class="grid gap-1.5 px-5 py-3.5 sm:grid-cols-[12rem_minmax(0,28rem)]">

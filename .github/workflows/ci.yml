@@ -765,6 +765,15 @@ jobs:
           sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
           go test -tags realhost -run TestRealHost -v -timeout 5m ./internal/system
 
+      # Disk quotas on a loop-mounted ext4 file system: fstab options,
+      # remount, quotacheck and quotaon, then a write past a 1 MiB limit
+      # fails with "Disk quota exceeded". A kernel without quota_v2 must
+      # leave fstab as it was and report itself unsupported.
+      - name: Disk quotas for real
+        run: >-
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)"
+          go test -tags realhost -run TestRealHost -v -timeout 10m ./internal/quota
+
       - name: Logs
         if: failure()
         run: |

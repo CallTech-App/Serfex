@@ -1,9 +1,10 @@
 @props(['customer'])
-{{-- Etkin, Askıda, Davet bekliyor or the time a deleted customer goes for good. --}}
+{{-- Etkin, Askıda, Disk dolu, Davet bekliyor or the time a deleted customer goes for good. --}}
 @php
     [$tone, $label] = match (true) {
         $customer->trashed() => ['crit', __(':time sularında silinecek', ['time' => \App\Support\When::time($customer->deleted_at->addSeconds(\App\Services\Customers\Customers::UNDO_SECONDS))])],
         $customer->suspended_at !== null => ['warn', __('Askıda')],
+        $customer->disk_full_at !== null => ['crit', __('Disk dolu')],
         (bool) $customer->user?->isInvited() => ['info', __('Davet bekliyor')],
         default => ['ok', __('Etkin')],
     };

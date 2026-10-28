@@ -21,6 +21,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Ai\AiSettings;
 use App\Services\Backups\Backups;
+use App\Services\Customers\DiskQuotas;
 use App\Services\Customers\Quotas;
 use App\Services\Monitor\Health;
 use App\Services\Monitor\LiveStats;
@@ -243,12 +244,34 @@ class Overview extends Component
 
         // Müşteri paketleri
         $quota = app(Quotas::class)->attentionCount();
-        $add('users', __('Müşteri paketleri'), $quota ? 'warn' : 'ok', $quota ? trans_choice(':count müşteri sınıra yakın', $quota) : trans_choice(':count müşteri', Customer::count()), route('customers.index'), $quota ? [
-            'title' => trans_choice(':count müşteri paket sınırına yaklaştı ya da aştı', $quota),
-            'text' => __('Sınırı aşan müşteri yeni site, posta kutusu ya da veritabanı açamaz. Paketini yükseltebilir ya da müşteriyle görüşebilirsiniz.'),
-            'ai' => null,
-            'action' => [__('Müşterilere git'), route('customers.index')],
-        ] : null);
+        $diskQuotas = app(DiskQuotas::class);
+        $full = $diskQuotas->fullCustomers();
+        $serverUrl = route('settings.server');
+        if ($full->isNotEmpty()) {
+            $url = $full->count() === 1 ? route('customers.show', $full->first()) : route('customers.index');
+            $add('users', __('Müşteri paketleri'), 'crit', trans_choice(':count müşterinin diski dolu', $full->count()), $url, [
+                'title' => $full->count() === 1
+                    ? __(':name müşterisinin disk kotası doldu', ['name' => $full->first()->displayName()])
+                    : trans_choice(':count müşterinin disk kotası doldu', $full->count()),
+                'text' => __('Bu müşterilerin dosyalarına yazılamıyor (yükleme, FTP, siteler) ve gelen postaları bekletiliyor. Yer açmalarını isteyebilir ya da disk sınırlarını yükseltebilirsiniz.'),
+                'ai' => null,
+                'action' => [__('Müşteriye git'), $url],
+            ]);
+        } elseif ($diskQuotas->broken()) {
+            $add('users', __('Müşteri paketleri'), 'warn', __('Disk kotaları çalışmıyor'), $serverUrl, [
+                'title' => __('Disk kotaları çalışmıyor'),
+                'text' => __('Dosya sistemi kotaları kapandı, bu yüzden müşteriler paketlerindeki disk alanını aşabilir. Serfex 5 dakikada bir yeniden açmayı dener.'),
+                'ai' => null,
+                'action' => [__('Sunucu ayarlarına git'), $serverUrl],
+            ]);
+        } else {
+            $add('users', __('Müşteri paketleri'), $quota ? 'warn' : 'ok', $quota ? trans_choice(':count müşteri sınıra yakın', $quota) : trans_choice(':count müşteri', Customer::count()), route('customers.index'), $quota ? [
+                'title' => trans_choice(':count müşteri paket sınırına yaklaştı ya da aştı', $quota),
+                'text' => __('Sınırı aşan müşteri yeni site, posta kutusu ya da veritabanı açamaz. Paketini yükseltebilir ya da müşteriyle görüşebilirsiniz.'),
+                'ai' => null,
+                'action' => [__('Müşterilere git'), route('customers.index')],
+            ] : null);
+        }
 
         // Hesabınız
         $twoFactor = $user->hasTwoFactor();

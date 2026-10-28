@@ -115,6 +115,7 @@ class FileManager
             'too_many' => __('Arşivde çok fazla dosya var.'),
             'into_itself' => __('Bir klasör kendi içine taşınamaz ya da kopyalanamaz.'),
             'no_space' => __('Diskte yer kalmadı.'),
+            'quota' => __('Disk kotası doldu: paketin disk alanının tamamı kullanılıyor. Yer açın ya da paketi yükseltin.'),
             'invalid' => __('Geçersiz istek: :parts', ['parts' => ($parts[count($parts) - 1] ?? '')]),
             default => __('İşlem tamamlanamadı: :reason', ['reason' => ($parts[count($parts) - 1] ?? $e->reason)]),
         };
