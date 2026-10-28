@@ -337,16 +337,22 @@ func TestUpdateThatBreaksTheSiteIsUndone(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	m.Health = func(context.Context, string, string) HealthResult {
+	var hosts []string
+	m.Health = func(_ context.Context, host, _ string) HealthResult {
 		calls++
+		hosts = append(hosts, host)
 		if calls == 1 {
 			return HealthResult{OK: true, Status: 200}
 		}
 		return HealthResult{Status: 500}
 	}
-	res, err := m.UpdateWordPress(ctx, WPUpdateSpec{App: wpApp, Run: "up1", Plugins: []string{"akismet"}, Check: "/"})
+	// The site sends visitors to its www. name: the checks ask for it.
+	res, err := m.UpdateWordPress(ctx, WPUpdateSpec{App: wpApp, Run: "up1", Plugins: []string{"akismet"}, Check: "/", Host: "www." + target.Domain})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(hosts) != 2 || hosts[0] != "www."+target.Domain || hosts[1] != "www."+target.Domain {
+		t.Errorf("checked %v", hosts)
 	}
 	if !res.RolledBack || len(res.Changes) != 0 || !strings.Contains(res.Problem, "HTTP 500") {
 		t.Fatalf("update %+v", res)
@@ -382,5 +388,8 @@ func TestWordPressValidation(t *testing.T) {
 	}
 	if _, err := m.UpdateWordPress(ctx, WPUpdateSpec{App: wpApp, Run: "u", Plugins: []string{"../x"}, Check: "/"}); err == nil {
 		t.Error("bad plugin name accepted")
+	}
+	if _, err := m.UpdateWordPress(ctx, WPUpdateSpec{App: wpApp, Run: "u", Core: true, Check: "/", Host: "evil.example"}); err == nil {
+		t.Error("a host outside the site accepted")
 	}
 }

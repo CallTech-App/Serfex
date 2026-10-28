@@ -42,6 +42,9 @@ type WPUpdateSpec struct {
 	// Check is the address on the site requested before and after the
 	// update to tell whether it broke the site, / normally.
 	Check string `json:"check"`
+	// Host is the name the check asks for when visitors are sent to the
+	// domain's www. pair; the domain itself when empty.
+	Host string `json:"host,omitempty"`
 }
 
 // WPChange is one thing an update changed.
@@ -92,7 +95,18 @@ func (s WPUpdateSpec) validate() error {
 	if !strings.HasPrefix(s.Check, "/") || len(s.Check) > 200 || strings.ContainsAny(s.Check, " \r\n#") {
 		return invalid("check must start with /")
 	}
+	if s.Host != "" && s.Host != s.Domain && s.Host != "www."+s.Domain && "www."+s.Host != s.Domain {
+		return invalid("host must be the domain or its www. pair")
+	}
 	return nil
+}
+
+// checkHost is the name the update's checks request.
+func (s WPUpdateSpec) checkHost() string {
+	if s.Host != "" {
+		return s.Host
+	}
+	return s.Domain
 }
 
 // UpdateWordPress takes a restore point and runs the updates.
@@ -138,7 +152,7 @@ func (m *Manager) UpdateWordPress(ctx context.Context, spec WPUpdateSpec) (res W
 	for _, c := range plan {
 		fmt.Fprintf(log, "  %s %s: %s → %s\n", c.Kind, c.Name, c.From, c.To)
 	}
-	before := m.Health(ctx, spec.Domain, spec.Check)
+	before := m.Health(ctx, spec.checkHost(), spec.Check)
 
 	r.step("Geri dönüş noktası alınıyor: veritabanı ve güncellenecek dosyalar")
 	if err := m.wpTakePoint(ctx, spec, plan); err != nil {
@@ -186,7 +200,7 @@ func (m *Manager) UpdateWordPress(ctx context.Context, spec WPUpdateSpec) (res W
 	}
 	res.Changes = m.wpChanges(ctx, spec.App, plan)
 
-	after := m.Health(ctx, spec.Domain, spec.Check)
+	after := m.Health(ctx, spec.checkHost(), spec.Check)
 	if before.OK && !after.OK {
 		code := fmt.Sprint(after.Status)
 		if after.Status == 0 {

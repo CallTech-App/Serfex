@@ -327,6 +327,21 @@ class WordPressTest extends TestCase
             ->assertSee('Kötü &amp; Eklenti', false);
     }
 
+    public function test_a_site_that_prefers_www_installs_and_checks_on_www(): void
+    {
+        $this->site->update(['aliases' => ['www.kahveatolyesi.com.tr'], 'preferred_host' => Site::PREFER_WWW]);
+        app(WordPressSites::class)->install($this->site->fresh('systemUser'), [
+            'title' => 'Kahve', 'admin_user' => 'sercan', 'admin_email' => 'sercan@example.com',
+            'admin_password' => 'Uzun-bir-parola-1', 'locale' => 'tr_TR', 'harden' => true,
+        ], null);
+        Queue::assertPushed(RunWordPressOperation::class, fn (RunWordPressOperation $j) => str_ends_with($j->secrets['url'], '://www.kahveatolyesi.com.tr'));
+        $this->work(WordPressOperation::first(), ['url' => 'http://www.kahveatolyesi.com.tr']);
+
+        $install = $this->site->wordpress()->first();
+        $this->work(app(WordPressSites::class)->update($install->setRelation('site', $this->site->fresh('systemUser')), false, ['akismet'], [], null));
+        $this->assertSame('www.kahveatolyesi.com.tr', $this->agent->called('wordpress.update')[0]['host']);
+    }
+
     public function test_the_daily_check_refreshes_managed_sites(): void
     {
         $install = $this->managed();

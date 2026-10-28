@@ -126,7 +126,9 @@ class WordPressSites
         ]);
         $operation = $this->operation($install, 'install', $by, ['locale' => $data['locale'], 'harden' => $data['harden']]);
         RunWordPressOperation::dispatch($operation, [
-            'url' => ($site->hasHttps() ? 'https' : 'http').'://'.$site->domain,
+            // The address visitors end up on, so WordPress and a www.
+            // redirect do not send them back and forth.
+            'url' => ($site->hasHttps() ? 'https' : 'http').'://'.$site->primaryHost(),
             'title' => $data['title'],
             'admin_user' => $data['admin_user'],
             'admin_email' => $data['admin_email'],

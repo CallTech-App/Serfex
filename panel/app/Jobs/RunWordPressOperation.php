@@ -51,6 +51,7 @@ class RunWordPressOperation implements ShouldBeEncrypted, ShouldQueue
                     'plugins' => array_values((array) ($operation->request['plugins'] ?? [])),
                     'themes' => array_values((array) ($operation->request['themes'] ?? [])),
                     'check' => $install->webPath() ?? '/',
+                    'host' => $install->site->primaryHost(),
                 ], config('serfex.agent.deploy_timeout')),
                 'restore' => $agent->call('wordpress.restore', $spec + ['point' => (string) $operation->point], config('serfex.agent.deploy_timeout')),
             };
