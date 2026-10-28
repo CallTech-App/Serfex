@@ -68,8 +68,8 @@ A backup that is only on a remote destination is fetched to the server first
 
 **Import** brings another Serfex server's backup here: upload a file, drop
 archives into `/var/lib/serfex/backups/import/`, or scan a destination.
-cPanel account backups are moved with Sites → **Move from another server**
-(see [Sites](sites.md#moving-an-account-from-cpanel)).
+cPanel account backups and Plesk subscriptions are moved with Sites → **Move
+from another server** (see [Sites](sites.md#moving-an-account-from-cpanel)).
 
 ## Rebuilding a server
 

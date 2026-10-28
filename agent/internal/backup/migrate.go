@@ -393,7 +393,7 @@ func (m *Manager) MigrateConvert(ctx context.Context, spec MigrateSpec) (res Mig
 	for _, u := range users {
 		res.Passwords = append(res.Passwords, MigratedPassword{Name: u, Password: c.resets[u], Files: append([]string{}, c.changed[u]...)})
 	}
-	desc := Descriptor{Version: 1, Key: spec.Key, Server: "cpanel:" + a.user, Scope: "site", Created: m.now().UTC(), Items: res.Items}
+	desc := Descriptor{Version: 1, Key: spec.Key, Server: a.source() + ":" + a.user, Scope: "site", Created: m.now().UTC(), Items: res.Items}
 	if err := writeJSON(filepath.Join(setDirAbs, "backup.json"), desc); err != nil {
 		return MigrateResult{}, err
 	}
@@ -774,7 +774,7 @@ func (c *converter) pack(s *convSite) (ItemResult, error) {
 	if err := writeJSON(filepath.Join(s.dir, "site.json"), meta); err != nil {
 		return ir, err
 	}
-	man := Manifest{Version: 1, Kind: "site", Name: s.Domain, Key: c.spec.Key, Server: "cpanel:" + c.a.user, Created: c.m.now().UTC(), User: c.spec.Account, Parts: ir.Parts}
+	man := Manifest{Version: 1, Kind: "site", Name: s.Domain, Key: c.spec.Key, Server: c.a.source() + ":" + c.a.user, Created: c.m.now().UTC(), User: c.spec.Account, Parts: ir.Parts}
 	for _, db := range s.dbs {
 		man.Databases = append(man.Databases, DatabaseRef{Server: database.MySQL, Name: db})
 	}
@@ -837,7 +837,7 @@ func (c *converter) meta(s *convSite) siteMeta {
 		Databases:     []DatabaseRef{},
 		DatabaseUsers: []metaDBUser{},
 		Certificates:  []map[string]any{},
-		Migration:     map[string]any{"source": "cpanel", "user": c.a.user, "zones": []any{}},
+		Migration:     map[string]any{"source": c.a.source(), "user": c.a.user, "zones": []any{}},
 	}
 	for _, db := range s.dbs {
 		m.Databases = append(m.Databases, DatabaseRef{Server: database.MySQL, Name: db})

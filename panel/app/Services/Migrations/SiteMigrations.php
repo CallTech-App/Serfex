@@ -2,6 +2,7 @@
 
 namespace App\Services\Migrations;
 
+use App\Jobs\PullSiteMigration;
 use App\Jobs\RunSiteMigration;
 use App\Models\Backup;
 use App\Models\BackupItem;
@@ -34,7 +35,10 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Moves an account from cPanel: the agent reads the account archive
+ * Moves an account from cPanel or a subscription from Plesk. A Plesk
+ * subscription is first copied from the old server over SSH
+ * (migrate.plesk.connect lists them, migrate.plesk.pull copies one into
+ * an archive like cPanel's). The agent reads the account archive
  * (migrate.inspect) and turns it into Serfex site backups, one per site
  * (migrate.convert); each is then restored like a deleted site's backup,
  * which creates the site under the account, with its files, databases
@@ -94,6 +98,118 @@ class SiteMigrations
     }
 
     /**
+     * Signs in to a Plesk server and lists its subscriptions. $conn holds
+     * host, port, user, password (empty: Serfex's key) and host_key (empty
+     * the first time). Returns the server, or why not.
+     *
+     * @param  array{host: string, port: int, user: string, password?: string, host_key?: string}  $conn
+     * @return array<string, mixed>|string
+     */
+    public function pleskConnect(array $conn): array|string
+    {
+        try {
+            $server = (array) $this->agent->call('migrate.plesk.connect', array_filter($conn, fn ($v) => $v !== '' && $v !== null), 150);
+        } catch (AgentException $e) {
+            return $this->reason($e);
+        }
+
+        return [
+            'host_key' => (string) ($server['host_key'] ?? ''),
+            'fingerprint' => (string) ($server['fingerprint'] ?? ''),
+            'hostname' => (string) ($server['hostname'] ?? ''),
+            'version' => (string) ($server['version'] ?? ''),
+            'subscriptions' => array_values(array_map(fn ($s) => [
+                'id' => (int) $s['id'],
+                'domain' => (string) $s['domain'],
+                'user' => (string) ($s['user'] ?? ''),
+                'owner' => (string) ($s['owner'] ?? ''),
+                'size' => (int) ($s['size'] ?? 0),
+                'domains' => (int) ($s['domains'] ?? 0),
+            ], (array) ($server['subscriptions'] ?? []))),
+        ];
+    }
+
+    /**
+     * Starts copying a subscription from the Plesk server (PullSiteMigration
+     * runs it). The password is kept, encrypted, only until the copy is
+     * done. Returns the migration, or why not.
+     *
+     * @param  array{host: string, port: int, user: string, password?: string, host_key: string}  $conn
+     * @param  array{id: int, domain: string, user: string, size: int}  $subscription
+     */
+    public function pleskPull(array $conn, array $subscription, ?User $user): SiteMigration|string
+    {
+        if ($this->busy()) {
+            return __(Backups::BUSY);
+        }
+        $migration = SiteMigration::create([
+            'user_id' => $user?->id,
+            'source' => 'plesk',
+            'upload' => 'pl-'.Str::lower(Str::random(20)),
+            'name' => $subscription['domain'].' · '.$conn['host'],
+            'size' => (int) $subscription['size'],
+            'status' => 'pulling',
+            'plan' => ['source' => 'plesk', 'user' => $subscription['user'], 'main_domain' => $subscription['domain']],
+            'options' => ['plesk' => [
+                'host' => $conn['host'], 'port' => (int) $conn['port'], 'user' => $conn['user'], 'host_key' => $conn['host_key'],
+                'subscription' => (int) $subscription['id'], 'run' => 'pull-'.Str::lower(Str::random(12)), 'key' => ($conn['password'] ?? '') === '',
+            ]],
+            'secrets' => ($conn['password'] ?? '') !== '' ? ['ssh_password' => $conn['password']] : null,
+            'started_at' => now(),
+        ]);
+        PullSiteMigration::dispatch($migration);
+
+        return $migration;
+    }
+
+    /**
+     * Copies the subscription and reads the copy (PullSiteMigration calls
+     * it): the migration is then ready for the administrator's choices.
+     */
+    public function pull(SiteMigration $migration): void
+    {
+        $plesk = (array) ($migration->options['plesk'] ?? []);
+        $password = (string) ($migration->secrets['ssh_password'] ?? '');
+        try {
+            $this->agent->call('migrate.plesk.pull', array_filter([
+                'host' => $plesk['host'], 'port' => $plesk['port'], 'user' => $plesk['user'], 'password' => $password,
+                'host_key' => $plesk['host_key'], 'subscription' => $plesk['subscription'],
+                'source' => $migration->upload, 'run' => $plesk['run'],
+            ], fn ($v) => $v !== ''), config('serfex.agent.server_backup_timeout'));
+            $in = (array) $this->agent->call('migrate.inspect', ['source' => $migration->upload], config('serfex.agent.backup_timeout'));
+        } catch (AgentException $e) {
+            $migration->update(['secrets' => null]);
+            $this->fail($migration, $this->reason($e));
+            $this->discardArchive($migration);
+
+            return;
+        }
+        $plan = (array) ($in['plan'] ?? []);
+        $plan['free_backups'] = (int) ($in['free_backups'] ?? 0);
+        $plan['free_home'] = (int) ($in['free_home'] ?? 0);
+        $migration->update([
+            'status' => SiteMigration::READY,
+            'plan' => $plan,
+            'size' => (int) ($plan['size'] ?? 0),
+            'secrets' => null,
+            'started_at' => null,
+        ]);
+    }
+
+    /**
+     * The key Serfex signs in to the Plesk server with, for its
+     * authorized_keys (the one SFTP backup targets use).
+     */
+    public function publicKey(): ?string
+    {
+        try {
+            return (string) ($this->agent->call('backup.status')['public_key'] ?? '') ?: null;
+        } catch (AgentException) {
+            return null;
+        }
+    }
+
+    /**
      * What stands in the way and what will not come, worked out against
      * this server: domains and databases that exist here, software not
      * installed, disk space.
@@ -141,7 +257,9 @@ class SiteMigrations
         }
         $review = $this->review($migration);
         if (! $review['account_valid']) {
-            return __('cPanel kullanıcı adı :user burada sistem kullanıcısı olamaz.', ['user' => $migration->plan['user'] ?? '']);
+            return $migration->source === 'plesk'
+                ? __('Plesk sistem kullanıcısı :user burada sistem kullanıcısı olamaz.', ['user' => $migration->plan['user'] ?? ''])
+                : __('cPanel kullanıcı adı :user burada sistem kullanıcısı olamaz.', ['user' => $migration->plan['user'] ?? '']);
         }
         $sites = array_values(array_filter($options['sites'], fn ($d) => array_key_exists($d, $review['taken']) && $review['taken'][$d] === null));
         if ($sites === []) {
@@ -161,7 +279,7 @@ class SiteMigrations
         }
         $migration->update([
             'status' => 'queued',
-            'options' => ['sites' => $sites, 'parts' => $parts],
+            'options' => [...($migration->options ?? []), 'sites' => $sites, 'parts' => $parts],
             'customer_id' => $customer?->id,
             'user_id' => $user?->id ?? $migration->user_id,
             'run' => 'migrate-'.Str::lower(Str::random(12)),
@@ -225,7 +343,7 @@ class SiteMigrations
             'status' => 'succeeded',
             'size' => (int) ($converted['size'] ?? 0),
             'run' => $migration->run,
-            'source_host' => 'cpanel:'.$account,
+            'source_host' => $migration->source.':'.$account,
             'user_id' => $migration->user_id,
             'started_at' => $migration->started_at,
             'finished_at' => now(),
@@ -439,6 +557,11 @@ class SiteMigrations
             'mail-without-site' => __(':subject alan adının postası taşınmaz: Serfex postayı yalnızca sitelerin kendi alan adında tutar.', $s),
             'database-exists' => __(':subject veritabanı bu sunucuda zaten var; üzerine yazılmadı.', $s),
             'database-user-exists' => __(':subject veritabanı kullanıcısı bu sunucuda zaten var; değiştirilmedi.', $s),
+            'plesk-no-hosting' => __(':subject alan adının Plesk\'te web barındırması yok (yönlendirme ya da yalnızca ad); taşınmaz.', $s),
+            'alias-mail' => __(':subject takma adının postası taşınmaz: Serfex postayı yalnızca sitelerin kendi alan adında tutar.', $s),
+            'remote-database' => __(':subject veritabanı başka bir veritabanı sunucusunda; taşınmaz.', $s),
+            'renamed-user' => __('Plesk\'teki :subject sistem kullanıcısının adı burada kullanılamıyor; hesap düzeltilmiş adla açılır.', $s),
+            'old-path' => __(':subject dosyasında eski sunucunun /var/www/vhosts/ yolu geçiyor; taşımadan sonra yeni yola göre düzeltin.', $s),
             default => $note['code'].($s['subject'] !== '' ? ': '.$s['subject'] : ''),
         };
     }
@@ -474,7 +597,10 @@ class SiteMigrations
      */
     public function runs(SiteMigration $migration): array
     {
-        $runs = $migration->run !== null ? [$migration->run] : [];
+        $runs = isset($migration->options['plesk']['run']) ? [$migration->options['plesk']['run']] : [];
+        if ($migration->run !== null) {
+            $runs[] = $migration->run;
+        }
         foreach ((array) ($migration->result['sites'] ?? []) as $s) {
             if (isset($s['restore_id']) && ($r = BackupRestore::find($s['restore_id'])) !== null) {
                 $runs[] = $r->run;
@@ -504,7 +630,14 @@ class SiteMigrations
             $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
             str_contains($why, 'not a cPanel account') => __('Bu dosya bir cPanel hesap yedeği değil. WHM\'deki aktarım aracının ya da cPanel\'deki tam yedeğin oluşturduğu .tar.gz dosyasını kullanın.'),
             str_contains($why, 'upload it again') => __('Arşiv artık sunucuda değil; yeniden yükleyin.'),
+            str_contains($why, 'not enough free disk space to copy') => __('Aboneliği bu sunucuya almak için diskte yeterli boş yer yok.'),
             str_contains($why, 'not enough free disk space') => __('Arşivi dönüştürmek için diskte yeterli boş yer yok.'),
+            str_contains($why, 'could not reach') => __('Sunucuya SSH ile ulaşılamadı. Adresi, bağlantı noktasını ve güvenlik duvarını denetleyin.'),
+            str_contains($why, 'refused the user name or password') => __('Sunucu kullanıcı adını ya da parolayı kabul etmedi.'),
+            str_contains($why, 'refused Serfex\'s key') => __('Sunucu Serfex\'in anahtarını kabul etmedi. Genel anahtarı eski sunucuda bağlandığınız kullanıcının ~/.ssh/authorized_keys dosyasına ekleyin.'),
+            str_contains($why, 'host key changed') => __('Sunucunun SSH anahtarı ilk bağlantıdakinden farklı. Sunucuyu yeniden kurduysanız baştan bağlanın; kurmadıysanız araya başka biri girmiş olabilir, devam etmeyin.'),
+            str_contains($why, 'not a Plesk server') => __('Bu sunucuda Plesk bulunamadı (/usr/local/psa yok).'),
+            str_contains($why, 'cannot use sudo') => __('Bu kullanıcı root değil ve parolasız sudo kullanamıyor. root olarak bağlanın.'),
             $e->getCode() === -32006 => __(Backups::BUSY),
             default => $why,
         };

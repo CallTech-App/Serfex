@@ -803,7 +803,7 @@ func registerBackups(srv *rpc.Server, svc services) {
 	}) (any, error) {
 		return b.UploadWrite(q.Upload, q.Offset, q.Data)
 	})
-	// Accounts moved from other panels (cPanel).
+	// Accounts moved from other panels (cPanel, Plesk).
 	handle(srv, "migrate.scan", func(context.Context, struct{}) (any, error) { return b.MigrateScan() })
 	handle(srv, "migrate.inspect", func(ctx context.Context, p backup.MigrateSource) (any, error) {
 		return b.MigrateInspect(context.WithoutCancel(ctx), p)
@@ -813,6 +813,13 @@ func registerBackups(srv *rpc.Server, svc services) {
 	})
 	handle(srv, "migrate.discard", func(_ context.Context, p backup.MigrateSource) (any, error) {
 		return map[string]bool{"discarded": true}, b.MigrateDiscard(p)
+	})
+	// Plesk subscriptions, read from the old server over SSH.
+	handle(srv, "migrate.plesk.connect", func(ctx context.Context, p backup.PleskConn) (any, error) {
+		return b.MigratePleskConnect(ctx, p)
+	})
+	handle(srv, "migrate.plesk.pull", func(ctx context.Context, p backup.PleskPullSpec) (any, error) {
+		return b.MigratePleskPull(context.WithoutCancel(ctx), p)
 	})
 	handle(srv, "backup.run.read", func(_ context.Context, q struct {
 		Run    string `json:"run"`

@@ -153,8 +153,40 @@ address, an existing one, or none), then **Start the move**.
 
 The old server is not touched. Visitors keep going there until you point the
 domains' DNS here; the report lists the next steps and any new passwords
-(kept encrypted until you press **Forget passwords**). Plesk accounts are not
-supported yet.
+(kept encrypted until you press **Forget passwords**).
+
+## Moving a subscription from Plesk
+
+Plesk needs no backup: on Sites → **Move from another server**, open the
+**Plesk server** tab and connect to the old server over SSH, as root or as a
+user with passwordless sudo. Sign in with Serfex's own key (the page shows
+the line that adds it to `~/.ssh/authorized_keys`; it is the key SFTP backup
+targets use) or with the password, which is kept encrypted only until the
+copy is done. The page shows the server's SSH fingerprint, and every later
+connection must show the same key. Plesk Obsidian (18) on Linux is needed.
+
+Pick a subscription: it is copied to this server first (on the backups
+queue; you can leave the page), read with Plesk's own tools, and nothing
+changes on the old server:
+
+- settings from Plesk's database (`plesk db`): domains, aliases, mailboxes,
+  forwarders, databases, DNS records and certificates;
+- files with `tar` from `/var/www/vhosts/<domain>` (without `logs/` and
+  `tmp/`), mail from `/var/qmail/mailnames` (Maildir);
+- MySQL databases with `plesk db dump`, users with their stored hashes;
+- mailbox passwords with `mail_auth_view`; they are stored here only as
+  SHA512-CRYPT hashes, so mailboxes keep their passwords.
+
+Then the same review, move and report follow as for cPanel. The account
+opens under the subscription's system user (a name this server cannot use
+is corrected and noted). The main domain and each additional domain become
+a site, aliases become additional names with their zones, subdomains come
+with their folders, and `~/httpdocs` is linked to the new place.
+
+Listed but not moved: domains without web hosting (forwarding), the mail of
+aliases, databases on another database server, PostgreSQL databases, cron
+jobs and additional FTP accounts. Settings files that name the old
+`/var/www/vhosts/` path are listed so you can correct them.
 
 ## Deleting a site
 

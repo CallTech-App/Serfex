@@ -7,11 +7,13 @@
     $field = 'h-9 rounded-md border border-line bg-surface px-3 text-[13.5px] outline-none focus:border-accent';
     $row = 'grid items-start gap-2 py-4 sm:grid-cols-[220px_1fr] sm:gap-6';
     $plan = $migration?->plan ?? [];
+    $plesk = $migration?->source === 'plesk';
     $copy = fn (string $value) => '<button type="button" x-data="{ done: false }" @click="navigator.clipboard.writeText('.e(json_encode($value)).'); done = true; setTimeout(() => done = false, 1500)" class="shrink-0 text-[12.5px] text-accent hover:underline"><span x-show="!done">'.e(__('Kopyala')).'</span><span x-show="done" x-cloak>'.e(__('Kopyalandı')).'</span></button>';
     $statusBadge = [
         'succeeded' => ['bg-ok-soft text-ok', __('Taşındı')],
         'partial' => ['bg-warn-soft text-warn', __('Kısmen taşındı')],
         'failed' => ['bg-crit-soft text-crit', __('Başarısız')],
+        'pulling' => ['bg-accent-soft text-accent', __('Alınıyor')],
         'queued' => ['bg-surface-2 text-muted', __('Sırada')],
         'converting' => ['bg-accent-soft text-accent', __('Dönüştürülüyor')],
         'restoring' => ['bg-accent-soft text-accent', __('Siteler kuruluyor')],
@@ -25,7 +27,7 @@
             <span class="text-fg">{{ __('Başka sunucudan taşı') }}</span>
         </nav>
         <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Başka sunucudan taşı') }}</h1>
-        <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Bir cPanel hesabının tam yedeğini yükleyin: siteleri, dosyaları, veritabanları, posta kutuları, DNS kayıtları ve SSL sertifikalarıyla bu sunucuya taşınır. Eski sunucu olduğu gibi kalır.') }}</p>
+        <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Bir cPanel hesabının tam yedeğini yükleyin ya da bir Plesk sunucusuna SSH ile bağlanıp aboneliği alın: siteleri, dosyaları, veritabanları, posta kutuları, DNS kayıtları ve SSL sertifikalarıyla bu sunucuya taşınır. Eski sunucu olduğu gibi kalır.') }}</p>
     </div>
 
     @if ($error)
@@ -36,9 +38,9 @@
         {{-- 1. Arşivi seçin --}}
         <section class="min-w-0 rounded-xl border border-line bg-surface">
             <div class="border-b border-line px-5 pt-4">
-                <h2 class="text-[15px] font-semibold">{{ __('cPanel yedeğini seçin') }}</h2>
-                <div class="mt-3 flex gap-4 text-[13.5px]" role="tablist">
-                    @foreach (['upload' => __('Dosya yükle'), 'folder' => __('İçe aktarma klasörü')] as $k => $l)
+                <h2 class="text-[15px] font-semibold">{{ __('Taşınacak hesabı seçin') }}</h2>
+                <div class="scroll-thin mt-3 flex gap-4 overflow-x-auto text-[13.5px]" role="tablist">
+                    @foreach (['upload' => __('cPanel yedeği yükle'), 'folder' => __('İçe aktarma klasörü'), 'plesk' => __('Plesk sunucusu')] as $k => $l)
                         <button type="button" role="tab" wire:click="$set('from', '{{ $k }}')" @class(['-mb-px h-9 border-b-2 whitespace-nowrap', 'border-accent font-medium' => $from === $k, 'border-transparent text-muted hover:text-fg' => $from !== $k])>{{ $l }}</button>
                     @endforeach
                 </div>
@@ -76,6 +78,8 @@
                             <button type="button" @click="send()" :disabled="! file || busy" class="{{ $primary }}"><x-icon name="upload" />{{ __('Yükle ve oku') }}</button>
                         </div>
                     </div>
+                @elseif ($from === 'plesk')
+                    @include('livewire.sites.migrate-plesk')
                 @else
                     <p class="text-[13px] text-muted"><x-t text="Büyük arşivleri eski sunucudan :part klasörüne kopyalayın (örneğin :part2 ile), sonra burada seçin."><x-slot:part><span class="font-mono">/var/lib/serfex/backups/import</span></x-slot:part><x-slot:part2><span class="font-mono">scp</span></x-slot:part2></x-t></p>
                     @isset($filesError)
@@ -98,14 +102,16 @@
                         @endforelse
                     </div>
                 @endif
+                @if ($from !== 'plesk')
                 <div class="rounded-lg bg-surface-2 p-4 text-[13px]">
                     <p class="font-medium">{{ __('Yedeği nereden alırım?') }}</p>
                     <ul class="mt-1.5 list-disc space-y-1 pl-5 text-muted">
                         <li><x-t text="cPanel'de :path → :button. Arşiv adı :name gibidir."><x-slot:path><span class="text-fg">{{ __('Dosyalar → Yedekleme') }}</span></x-slot:path><x-slot:button><span class="text-fg">{{ __('Tam hesap yedeğini indir') }}</span></x-slot:button><x-slot:name><span class="font-mono">backup-…_{{ __('kullanici') }}.tar.gz</span></x-slot:name></x-t></li>
                         <li><x-t text="WHM'de ya da sunucuda root olarak: :cmd. Arşiv :file olarak oluşur."><x-slot:cmd><span class="font-mono text-fg">/scripts/pkgacct {{ __('kullanici') }}</span></x-slot:cmd><x-slot:file><span class="font-mono">/home/cpmove-{{ __('kullanici') }}.tar.gz</span></x-slot:file></x-t></li>
-                        <li>{{ __('Plesk hesapları bir sonraki sürümde, eski sunucuya SSH ile bağlanarak taşınacak.') }}</li>
+                        <li>{{ __('Plesk\'ten taşımak için yedek gerekmez: Plesk sunucusu sekmesinden eski sunucuya bağlanın.') }}</li>
                     </ul>
                 </div>
+                @endif
             </div>
         </section>
 
@@ -116,6 +122,7 @@
                     @foreach ($history as $h)
                         <a href="{{ route('sites.migrate', ['migration' => $h->id]) }}" wire:navigate wire:key="h-{{ $h->id }}" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-[13.5px] hover:bg-surface-2/60">
                             <span class="font-mono">{{ $h->plan['user'] ?? '' }}</span>
+                            <span class="rounded-full bg-surface-2 px-1.5 py-0.5 text-2xs text-muted">{{ $h->source === 'plesk' ? 'Plesk' : 'cPanel' }}</span>
                             <span class="text-muted">{{ implode(', ', $h->options['sites'] ?? []) }}</span>
                             <span class="num ml-auto text-2xs text-muted">{{ When::dateTime($h->finished_at ?? $h->created_at) }}</span>
                             <span class="rounded-full px-2 py-0.5 text-2xs font-medium {{ $statusBadge[$h->status][0] ?? '' }}">{{ $statusBadge[$h->status][1] ?? $h->status }}</span>
@@ -170,7 +177,7 @@
         @endphp
         <section class="min-w-0 rounded-xl border border-line bg-surface">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-5 py-3">
-                <h2 class="text-[15px] font-semibold">{{ __('Arşivde ne var') }}</h2>
+                <h2 class="text-[15px] font-semibold">{{ $plesk ? __('Abonelikte ne var') : __('Arşivde ne var') }}</h2>
                 <span class="text-[13px] text-muted"><span class="font-mono">{{ $migration->name }}</span> · {{ Bytes::format($migration->size) }}</span>
             </div>
             <div class="divide-y divide-line px-5 text-[13.5px]">
@@ -178,7 +185,7 @@
                 <div class="{{ $row }}">
                     <div>
                         <p class="font-medium">{{ __('Hesap') }}</p>
-                        <p class="mt-0.5 text-2xs text-muted">{{ __('cPanel\'deki adıyla açılır; veritabanı adları ve dosya yolları değişmez.') }}</p>
+                        <p class="mt-0.5 text-2xs text-muted">{{ $plesk ? __('Plesk\'teki sistem kullanıcısının adıyla açılır; veritabanı adları değişmez.') : __('cPanel\'deki adıyla açılır; veritabanı adları ve dosya yolları değişmez.') }}</p>
                     </div>
                     <dl class="grid gap-x-6 gap-y-1.5 sm:grid-cols-[140px_1fr]">
                         <dt class="text-muted">{{ __('Sistem kullanıcısı') }}</dt>
@@ -243,7 +250,7 @@
                 <div class="{{ $row }}">
                     <div>
                         <p class="font-medium">{{ __('Siteler') }}</p>
-                        <p class="mt-0.5 text-2xs text-muted">{{ __('Ana alan adı ve ek alan adları ayrı site olur; park edilmiş alan adları ek ad olarak gelir.') }}</p>
+                        <p class="mt-0.5 text-2xs text-muted">{{ $plesk ? __('Ana alan adı ve ek alan adları ayrı site olur; takma adlar (alias) ek ad olarak gelir.') : __('Ana alan adı ve ek alan adları ayrı site olur; park edilmiş alan adları ek ad olarak gelir.') }}</p>
                     </div>
                     <div class="space-y-2">
                         @foreach ($siteRows as $s)
@@ -341,7 +348,7 @@
         @endif
         <section class="min-w-0 rounded-xl border border-line bg-surface">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-5 py-3">
-                <h2 class="text-[15px] font-semibold">{{ $migration->isRunning() ? __('Taşınıyor') : __('Taşıma raporu') }}</h2>
+                <h2 class="text-[15px] font-semibold">{{ $migration->status === 'pulling' ? __('Plesk\'ten alınıyor') : ($migration->isRunning() ? __('Taşınıyor') : __('Taşıma raporu')) }}</h2>
                 <span class="font-mono text-[13px] text-muted">{{ $plan['user'] ?? '' }}</span>
                 <span class="rounded-full px-2 py-0.5 text-2xs font-medium {{ $statusBadge[$migration->status][0] ?? '' }}">{{ $statusBadge[$migration->status][1] ?? $migration->status }}</span>
                 @if ($migration->isFinished())
@@ -351,7 +358,26 @@
             <ol class="divide-y divide-line px-5 text-[13.5px]">
                 @php
                     $converted = ! in_array($migration->status, ['queued', 'converting'], true) && ! ($migration->status === 'failed' && $results->isEmpty());
+                    // A Plesk copy that stopped before anything was chosen.
+                    $pulled = isset($migration->options['sites']);
                 @endphp
+                @if ($plesk)
+                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
+                        @if ($migration->status === 'pulling')
+                            <x-icon name="loader-circle" class="animate-spin text-accent" />
+                        @elseif ($pulled)
+                            <x-icon name="circle-check" class="text-ok" />
+                        @else
+                            <x-icon name="circle-x" class="text-crit" />
+                        @endif
+                        <span>{{ __('Abonelik Plesk sunucusundan alınıyor') }}</span>
+                        <span class="font-mono text-2xs text-muted">{{ $plan['main_domain'] ?? '' }} · {{ $migration->options['plesk']['host'] ?? '' }}</span>
+                    </li>
+                    @if ($migration->status === 'pulling')
+                        <li class="py-3 text-[13px] text-muted">{{ __('Sayfadan ayrılabilirsiniz; aktarım arka planda sürer. Bitince neyin taşınacağını burada seçersiniz.') }}</li>
+                    @endif
+                @endif
+                @if (! $plesk || $pulled)
                 <li class="flex items-center gap-3 py-3">
                     @if ($converted)
                         <x-icon name="circle-check" class="text-ok" />
@@ -362,6 +388,7 @@
                     @endif
                     <span>{{ __('Arşiv Serfex yedeklerine dönüştürülüyor') }}</span>
                 </li>
+                @endif
                 @foreach ($migration->options['sites'] ?? [] as $d)
                     @php $r = $results[$d] ?? null; @endphp
                     <li wire:key="r-{{ $d }}" class="flex flex-wrap items-start gap-3 py-3">
@@ -482,6 +509,9 @@
                     @endif
                     @if (count($plan['ftp'] ?? []) > 0)
                         <li>{{ __('FTP hesapları taşınmadı; sitenin FTP sayfasından yeniden açın: :accounts', ['accounts' => implode(', ', $plan['ftp'])]) }}</li>
+                    @endif
+                    @if ($plesk)
+                        <li>{{ __('Eski sunucudaki aboneliğe dokunulmadı. Siteler burada çalışınca ve DNS bu sunucuyu gösterince Plesk\'teki aboneliği askıya alabilirsiniz.') }}</li>
                     @endif
                     @if ($migration->file)
                         <li><x-t text="Arşiv hâlâ içe aktarma klasöründe (:file); işiniz bitince silin."><x-slot:file><span class="font-mono">{{ $migration->file }}</span></x-slot:file></x-t></li>

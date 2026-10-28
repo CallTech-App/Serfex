@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * An account moved from another panel (cPanel): the archive read, what it
- * holds (plan), what the administrator chose (options), and how each site
- * came through (result). Passwords made on the way (database users whose
+ * An account moved from another panel: a cPanel archive, or a Plesk
+ * subscription copied from the old server over SSH (status "pulling"
+ * until the copy is here). It keeps the archive read, what it holds
+ * (plan), what the administrator chose (options), and how each site came
+ * through (result). Passwords made on the way (database users whose
  * stored password this server cannot use, mailboxes with an old hash, the
  * new customer's invitation) are kept encrypted in secrets for the report.
  */
@@ -19,7 +21,7 @@ class SiteMigration extends Model
     /** Read and waiting for the administrator's choices. */
     public const READY = 'ready';
 
-    public const RUNNING = ['queued', 'converting', 'restoring'];
+    public const RUNNING = ['pulling', 'queued', 'converting', 'restoring'];
 
     protected $attributes = [
         'source' => 'cpanel',
