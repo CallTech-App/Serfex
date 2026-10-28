@@ -24,6 +24,9 @@ type Credential struct {
 	// Hash is the hex authentication string (MySQL, MariaDB) or the SCRAM
 	// or md5 verifier (PostgreSQL).
 	Hash string `json:"hash"`
+	// Password replaces a stored password this server cannot use (one
+	// moved from another panel): the user is created with it instead.
+	Password string `json:"password,omitempty"`
 }
 
 // UserExport is a user's credential, for a backup.
@@ -42,6 +45,8 @@ var (
 
 func (c Credential) validate(server string) error {
 	switch {
+	case c.Password != "":
+		return validatePassword(c.Password)
 	case server == PostgreSQL && c.Plugin == "" && (scramRe.MatchString(c.Hash) || md5Re.MatchString(c.Hash)):
 		return nil
 	case server == MySQL && slices.Contains(mysqlPlugins, c.Plugin) && len(c.Hash) <= 1024 && hexRe.MatchString(c.Hash):
@@ -160,6 +165,11 @@ func (m *Manager) RestoreUser(ctx context.Context, spec UserSpec, c Credential) 
 	if err != nil {
 		return err
 	}
+	if c.Password != "" {
+		spec.Password = c.Password
+		_, err = m.ApplyUser(ctx, spec)
+		return err
+	}
 	m.mu.Lock()
 	_, found, err := e.credential(ctx, spec.Name)
 	if err == nil && !found {
@@ -171,6 +181,34 @@ func (m *Manager) RestoreUser(ctx context.Context, spec UserSpec, c Credential) 
 	}
 	_, err = m.ApplyUser(ctx, spec)
 	return err
+}
+
+// Accepts tells whether users can be created on server with c: a MySQL
+// 8.4 server no longer loads mysql_native_password unless told to, MySQL
+// 9 has none, and MariaDB has no caching_sha2_password.
+func (m *Manager) Accepts(ctx context.Context, server string, c Credential) bool {
+	if c.Password != "" {
+		return true
+	}
+	if c.validate(server) != nil {
+		return false
+	}
+	e, err := m.engineFor(server)
+	if err != nil {
+		return false
+	}
+	switch e := e.(type) {
+	case *mysqlEngine:
+		if e.mariadb(ctx) {
+			return c.Plugin == "mysql_native_password" || c.Plugin == "ed25519"
+		}
+		out, err := e.exec(ctx, "SELECT PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME = "+sqlString(c.Plugin)+";")
+		return err == nil && strings.TrimSpace(out) == "ACTIVE"
+	case *simEngine:
+		// Behaves like MySQL 8.4 as installed.
+		return c.Plugin != "mysql_native_password"
+	}
+	return true
 }
 
 // MySQL and MariaDB.

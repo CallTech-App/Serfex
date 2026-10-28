@@ -33,6 +33,20 @@ class Queues extends Section
     /** @var list<array<string, string>>|null */
     public ?array $failed = null;
 
+    /**
+     * The queue connections config/queue.php defines, for the worker form;
+     * null when the application could not be asked.
+     *
+     * @var list<string>|null
+     */
+    public ?array $connections = null;
+
+    /** The application's default queue connection (QUEUE_CONNECTION). */
+    public string $defaultConnection = '';
+
+    /** Laravel's database connection names, often typed here by mistake. */
+    public const DB_CONNECTIONS = ['sqlite', 'mysql', 'mariadb', 'pgsql', 'sqlsrv'];
+
     public function scale(int $id, int $by, LaravelApps $apps): void
     {
         $worker = $this->worker($id);
@@ -60,8 +74,44 @@ class Queues extends Section
             'max_time' => $worker->max_time ?? 3600,
             'memory' => $worker->memory ?? 128,
         ];
+        $this->loadConnections();
         $this->resetValidation();
         $this->editing = true;
+    }
+
+    /**
+     * Asks the application which queue connections it has.
+     */
+    private function loadConnections(): void
+    {
+        $probe = $this->agent('laravel.probe', $this->app()->agentApp() + ['kind' => 'queues', 'queues' => []]);
+        $this->connections = isset($probe['connections']) ? array_values(array_map('strval', $probe['connections'])) : null;
+        $this->defaultConnection = (string) ($probe['default'] ?? '');
+    }
+
+    /**
+     * Why a worker on $connection (empty: the default) cannot start, when
+     * the application does not define that queue connection.
+     *
+     * @param  list<string>|null  $connections
+     */
+    public static function connectionProblem(string $connection, ?array $connections, string $default): ?string
+    {
+        if ($connections === null) {
+            return null;
+        }
+        $name = $connection !== '' ? $connection : $default;
+        if ($name === '' || in_array($name, $connections, true)) {
+            return null;
+        }
+        $problem = $connection !== ''
+            ? __('Uygulamada :name adlı bir kuyruk bağlantısı yok (config/queue.php).', ['name' => $name])
+            : __('.env dosyasındaki QUEUE_CONNECTION=:name uygulamanın config/queue.php dosyasında tanımlı değil.', ['name' => $name]);
+        if (in_array($name, self::DB_CONNECTIONS, true)) {
+            $problem .= ' '.__(':name bir veritabanı bağlantısının adı; işleri veritabanında tutmak için database kullanın.', ['name' => $name]);
+        }
+
+        return $problem;
     }
 
     public function saveWorker(LaravelApps $apps): void
@@ -89,6 +139,15 @@ class Queues extends Section
             'form.name' => 'ad', 'form.queue' => 'kuyruk', 'form.processes' => __('süreç sayısı'), 'form.timeout' => __('zaman aşımı'),
             'form.tries' => 'deneme', 'form.memory' => 'bellek', 'form.connection' => __('bağlantı'),
         ]);
+        $this->form['connection'] = trim((string) $this->form['connection']);
+        if ($this->form['connection'] !== '') {
+            $this->loadConnections();
+            if (($problem = self::connectionProblem($this->form['connection'], $this->connections, $this->defaultConnection)) !== null) {
+                $this->addError('form.connection', $problem.' '.__('Boş bırakırsanız .env dosyasındaki QUEUE_CONNECTION kullanılır.'));
+
+                return;
+            }
+        }
         $data = $this->form + ['laravel_app_id' => $app->id];
         $data['connection'] = $data['connection'] === '' ? null : $data['connection'];
         $this->workerId ? $this->worker($this->workerId)?->update($data) : LaravelWorker::create($data);
@@ -123,6 +182,35 @@ class Queues extends Section
             LaravelWorker::create(array_intersect_key($data, array_flip((new LaravelWorker)->getFillable())));
             $apps->syncProcesses($this->app());
         }
+    }
+
+    /**
+     * Lets a worker use the application's default queue connection again.
+     */
+    public function useDefaultConnection(int $id, LaravelApps $apps): void
+    {
+        $worker = $this->worker($id);
+        if ($worker === null || $worker->connection === null) {
+            return;
+        }
+        $previous = $worker->connection;
+        $worker->update(['connection' => null]);
+        $apps->syncProcesses($this->app());
+        $this->dispatch('toast',
+            message: __(':name işçisi artık varsayılan kuyruk bağlantısını kullanıyor.', ['name' => $worker->name]),
+            source: $this->getId(),
+            undo: ['method' => 'restoreConnection', 'args' => [$id, $previous]],
+        );
+    }
+
+    public function restoreConnection(int $id, string $connection, LaravelApps $apps): void
+    {
+        $worker = $this->worker($id);
+        if ($worker === null || ! preg_match('/^[A-Za-z0-9_-]{1,32}$/', $connection)) {
+            return;
+        }
+        $worker->update(['connection' => $connection]);
+        $apps->syncProcesses($this->app());
     }
 
     public function restart(AgentClient $agent): void
@@ -187,12 +275,16 @@ class Queues extends Section
         foreach ($sizes['sizes'] ?? [] as $s) {
             $pending[$s['connection'].'|'.$s['queue']] = $s['size'];
         }
+        $connections = isset($sizes['connections']) ? array_values(array_map('strval', $sizes['connections'])) : null;
+        $problems = $workers->mapWithKeys(fn ($w) => [$w->id => self::connectionProblem((string) $w->connection, $connections, (string) ($sizes['default'] ?? ''))])->filter();
 
         return view('livewire.laravel.sections.queues', [
             'app' => $app,
             'workers' => $workers,
             'states' => collect($status['workers'] ?? [])->groupBy('worker'),
             'pending' => $pending,
+            'problems' => $problems,
+            'defaultWorks' => self::connectionProblem('', $connections, (string) ($sizes['default'] ?? '')) === null,
             'failedCount' => $sizes['failed'] ?? null,
             'syncing' => $app->processes_state === 'syncing',
             'horizon' => $app->processes()->where('kind', 'horizon')->where('enabled', true)->exists(),

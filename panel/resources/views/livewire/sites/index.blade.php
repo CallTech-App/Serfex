@@ -15,6 +15,11 @@
             <button type="button" wire:click="openCreate" class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                 <x-icon name="plus" />{{ __('Site ekle') }}
             </button>
+            @if ($admin)
+                <a href="{{ route('sites.migrate') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">
+                    <x-icon name="download" />{{ __('Başka sunucudan taşı') }}
+                </a>
+            @endif
             <label class="relative ml-auto w-full sm:w-64">
                 <span class="sr-only">{{ __('Site ara') }}</span>
                 <x-icon name="search" class="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
