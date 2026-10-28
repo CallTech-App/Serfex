@@ -180,6 +180,7 @@ func main() {
 	svc.log = log
 	svc.security = security.NewManager(h, svc.files)
 	svc.security.WebUser = *webUser
+	svc.laravel.Snippet = svc.security.WriteSnippet
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses

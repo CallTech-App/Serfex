@@ -55,6 +55,9 @@ serfex deploy -a api.example.com --wait
   Apache behind Nginx, per site; PHP 8.1 to 8.5 side by side; subdomains,
   aliases, redirects, error pages, a file manager, SFTP accounts, cron jobs,
   traffic statistics and logs.
+- **WordPress**: one-click install with its own database, or manage one already
+  on the site; updates of WordPress, plugins and themes with a restore point and
+  automatic rollback, one-click sign-in, maintenance mode and hardening rules.
 - **DNS**: its own authoritative DNS server (PowerDNS). Adding a site writes
   its zone, and mail and certificates fill in their own records.
 - **SSL**: Let's Encrypt for every site and alias, wildcards when the DNS is
@@ -137,8 +140,8 @@ PostgreSQL are kept apart from the ones customer sites use. Read
 0.1 covers everything a single server needs to host sites, mail and Laravel
 applications for paying customers. Known gaps, planned for later releases:
 
-- WordPress toolkit, an SSH terminal in the browser, and moving sites from
-  another server (shown as "Soon" in the panel);
+- an SSH terminal in the browser, and moving sites from another server
+  (shown as "Soon" in the panel);
 - DNSSEC and secondary DNS servers;
 - backing up mailboxes on their own, CalDAV and CardDAV;
 - Slack and Telegram notifications;
