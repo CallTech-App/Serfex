@@ -499,6 +499,37 @@ func TestTailFollowsRotation(t *testing.T) {
 	if got := tl.read(); strings.Join(got, ",") != "new" {
 		t.Fatalf("after rotation = %q", got)
 	}
+
+	// Lines written between the last read and the rename (and before the
+	// web server reopened its log) are read from the rotated file first,
+	// together with a partial line read before.
+	fh, _ = os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0)
+	fh.WriteString("late1\nla")
+	fh.Close()
+	if got := tl.read(); strings.Join(got, ",") != "late1" {
+		t.Fatalf("read = %q", got)
+	}
+	fh, _ = os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0)
+	fh.WriteString("te2\n")
+	fh.Close()
+	os.Rename(file, file+".1")
+	os.WriteFile(file, []byte("fresh\n"), 0o644)
+	if got := tl.read(); strings.Join(got, ",") != "late2,fresh" {
+		t.Fatalf("after second rotation = %q", got)
+	}
+
+	// The log missing for a moment: the old file is still finished.
+	fh, _ = os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0)
+	fh.WriteString("last\n")
+	fh.Close()
+	os.Rename(file, file+".1")
+	if got := tl.read(); got != nil {
+		t.Fatalf("while missing = %q", got)
+	}
+	os.WriteFile(file, []byte("again\n"), 0o644)
+	if got := tl.read(); strings.Join(got, ",") != "last,again" {
+		t.Fatalf("after reappearing = %q", got)
+	}
 }
 
 // TestFetchPoolStatus talks FastCGI to a fake PHP-FPM.

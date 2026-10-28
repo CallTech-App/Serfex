@@ -39,6 +39,8 @@ class SettingsTest extends TestCase
 
     private User $admin;
 
+    private int $logDays = 14;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -51,6 +53,12 @@ class SettingsTest extends TestCase
             'system.timezones' => ['Europe/Berlin', 'Europe/Istanbul', 'UTC'],
             'system.timezone.set' => fn ($p) => ['timezone' => $p['timezone']],
             'system.hostname.set' => fn ($p) => ['hostname' => $p['hostname']],
+            'logs.rotation.get' => fn () => ['keep_days' => $this->logDays],
+            'logs.rotation.set' => function ($p) {
+                $this->logDays = $p['keep_days'];
+
+                return ['keep_days' => $p['keep_days']];
+            },
             'panel.web.ports' => fn ($p) => ['ports' => $p['ports'], 'port' => $p['ports'][0]],
             'ssl.panel.install' => ['domains' => ['panel.kahve.com.tr'], 'not_before' => '2026-10-01T00:00:00Z', 'not_after' => '2027-10-01T00:00:00Z', 'changed' => true, 'reloaded' => true],
         ]);
@@ -218,6 +226,37 @@ class SettingsTest extends TestCase
 
         $page->call('undoHostname', 'srv-ist-01');
         $this->assertSame('srv-ist-01', $this->agent->called('system.hostname.set')[1]['hostname']);
+    }
+
+    public function test_the_server_page_sets_how_long_logs_are_kept_with_undo(): void
+    {
+        $this->get(route('settings.server'))->assertOk()
+            ->assertSee('Günlükleri sakla')->assertSee('14 gün')->assertSee('365 gün');
+
+        $page = Livewire::test(ServerSettings::class)
+            ->assertSet('logDays', 14)
+            ->call('save')
+            ->assertDispatched('toast', message: 'Değişiklik yok.');
+        $this->assertSame([], $this->agent->called('logs.rotation.set'));
+        $this->assertSame([], $this->agent->called('system.hostname.set'));
+
+        $page->set('logDays', 45)->call('save')->assertHasErrors('logDays');
+        $this->assertSame([], $this->agent->called('logs.rotation.set'));
+
+        $page->set('logDays', 30)->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast', message: 'Günlükler artık 30 gün saklanacak.', undo: ['method' => 'undoLogDays', 'args' => [14]]);
+        $this->assertSame([['keep_days' => 30]], $this->agent->called('logs.rotation.set'));
+        // Only the setting that changed goes to the agent.
+        $this->assertSame([], $this->agent->called('system.hostname.set'));
+
+        $page->call('undoLogDays', 14)->assertSet('logDays', 14);
+        $this->assertSame(14, $this->logDays);
+
+        // A value set outside the panel stays among the choices.
+        $this->logDays = 21;
+        $this->get(route('settings.server'))->assertSee('21 gün');
+        Livewire::test(ServerSettings::class)->assertSet('logDays', 21)->call('save')->assertHasNoErrors()->assertDispatched('toast', message: 'Değişiklik yok.');
     }
 
     public function test_the_server_page_says_when_the_agent_is_unreachable(): void

@@ -99,6 +99,8 @@ lists every method by area.
 | `system.hostname.set` | `hostname` | sets the host name (hostnamectl) and its `127.0.1.1` line in `/etc/hosts` |
 | `system.timezone.set` | `timezone` | sets the time zone (timedatectl) |
 | `system.timezones` | | the time zones the server knows, sorted |
+| `logs.rotation.get` | | `keep_days`: how many days of rotated logs are kept (default 14) |
+| `logs.rotation.set` | `keep_days` (1-365) | saves the setting and rewrites the rotation rules (see Log rotation) |
 | `panel.web.status` | | serfex-web's `ports` and primary `port` |
 | `panel.web.ports` | `ports` | makes serfex-web listen on 1-3 ports (the first is the primary one), for moving the panel to a new port with the old one still open until the new one is confirmed |
 | `ssl.panel.install` | `certificate`, `private_key` | stores an uploaded certificate as the panel's own and reloads serfex-web |
@@ -128,7 +130,7 @@ component operation is running.
 /home/<user>/tmp/                       PHP temp files and sessions
 /home/<user>/web/<domain>/public_html/  document root
 /home/<user>/web/<domain>/logs/         PHP error log
-/var/log/serfex/sites/<domain>/         Nginx access and error logs
+/var/log/serfex/sites/<domain>/         Nginx access and error logs, Apache error log
 /etc/nginx/sites-available/<domain>.conf  (+ symlink in sites-enabled/)
 /etc/php/<version>/fpm/pool.d/<domain>.conf
 /run/php/serfex-<domain>.sock           PHP-FPM socket
@@ -418,6 +420,29 @@ flood, blocks and unblocks the address with nftables, caps the site's CPU
 and memory through its scope (also for workers started later), limits its
 PHP workers and restarts its pool.
 
+
+## Log rotation
+
+Every log Serfex's web servers write is rotated once a day by the system's
+logrotate, compressed from the second day on (`delaycompress`) and kept for
+`keep_days` days (`/etc/serfex/logs.json`, default 14):
+
+```
+/etc/logrotate.d/serfex-sites     /var/log/serfex/sites/*/*.log; Nginx reopens its logs (USR1), Apache reloads
+/etc/logrotate.d/serfex-php       each site's logs/php-error.log, as the site's user (su), so a link planted in the customer's directory reaches nothing else
+/etc/logrotate.d/serfex-web       /var/log/serfex/web/*.log; serfex-web and serfex-php reopen theirs
+/etc/logrotate.d/serfex-webmail   /var/log/serfex/webmail/*.log, as serfex-webmail
+```
+
+The agent rebuilds these files when it starts, every hour, after
+`site.apply` and `site.delete`, and on `logs.rotation.set`; the sites are
+the PHP-FPM pools Serfex wrote whose account and log directory exist (one
+unknown user would make logrotate refuse the whole file). A changed file is
+checked with `logrotate --debug` and undone if refused. The monitor finishes
+reading a renamed access log (`access.log.1`) before it follows the new one,
+so statistics lose no lines to a rotation. Laravel's queue and scheduler
+logs (weekly, 4) and ModSecurity's audit log (daily, 14) keep their own
+rules.
 
 ## Statistics
 
