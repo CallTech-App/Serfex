@@ -267,6 +267,16 @@ class Site extends Model
     }
 
     /**
+     * The site's WordPress, when Serfex manages one.
+     *
+     * @return HasOne<WordPressInstall, $this>
+     */
+    public function wordpress(): HasOne
+    {
+        return $this->hasOne(WordPressInstall::class);
+    }
+
+    /**
      * The site's mail domain, when e-mail is on.
      *
      * @return HasOne<MailDomain, $this>

@@ -421,6 +421,11 @@ func (s *Simulator) xargs(c Command, cwd string) (string, error) {
 
 func (s *Simulator) php(c Command, cwd string, env map[string]string) (string, error) {
 	args := c.Args
+	for i, a := range args {
+		if strings.HasSuffix(a, "wp-cli.phar") {
+			return s.wpCLI(c, cwd, args[i+1:])
+		}
+	}
 	if len(args) == 0 {
 		// The panel's probe script on stdin: answer from .serfex-sim.
 		b, err := os.ReadFile(s.Path(filepath.Join(cwd, ".serfex-sim", env["SERFEX_PROBE"]+".json")))

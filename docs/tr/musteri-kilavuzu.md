@@ -116,6 +116,16 @@ başlatın, kesintisiz dağıtın, geri dönün, Artisan çalıştırın; kuyruk
 zamanlayıcıyı ve `.env`'yi yönetin, geliştiricilerinize erişim verin.
 Bkz. [Laravel kılavuzu](../laravel.md) (İngilizce).
 
+## WordPress
+
+Site → **WordPress**: WordPress'i tek tıkla kurun (veritabanı ve yönetici
+hesabı sizin için hazırlanır) ya da sitede zaten olanı yönetin. WordPress'i,
+eklentileri ve temaları güvenle güncelleyin: her güncellemeden önce geri dönüş
+noktası alınır, bozulan site kendiliğinden eski hâline döner ve son
+güncellemeyi 7 gün içinde geri alabilirsiniz. **WordPress'e giriş yap**
+yönetim panelini parolasız açar. Bakım modu ve önerilen güvenlik ayarları
+birer tıklık.
+
 ## Yedekler
 
 Siteleriniz sunucunun zamanlanmış yedeklerine dahildir. **Yedek al** ile

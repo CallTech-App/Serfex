@@ -1,7 +1,8 @@
 // Package laravel runs Laravel applications on Serfex sites: zero-downtime
 // deploys from Git or a fresh Laravel project, the .env file, Artisan,
 // Composer and Node.js commands, queue workers, the scheduler, logs and
-// maintenance mode.
+// maintenance mode. Git deploys of plain sites (git.go) and WordPress
+// sites (wordpress.go) share its helpers.
 //
 // Layout of an application Serfex deploys (inside the site directory
 // /home/<user>/web/<domain>):
@@ -138,6 +139,9 @@ type Manager struct {
 	Health func(ctx context.Context, domain, path string) HealthResult
 	// Download fetches a URL; tests replace it.
 	Download func(ctx context.Context, url string) ([]byte, error)
+	// Snippet writes one of a site's Nginx snippets (nil data removes
+	// it), checks Nginx and reloads it: the WordPress hardening rules.
+	Snippet func(ctx context.Context, domain, name string, data []byte) error
 
 	mu    sync.Mutex
 	locks map[string]*sync.Mutex
