@@ -16,25 +16,27 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
-// Sites send mail with sendmail (PHP's mail()) as their system user, or
-// over SMTP from this server without a login. Postfix would accept any
-// sender from both, so a customer could send as another customer's
-// domain and pass SPF and DKIM. The panel sends which domains each
-// system user's sites use:
+// Sites could send mail with sendmail (PHP's mail()) as their system
+// user, or over SMTP from this server without a login. Mail that nobody
+// logged in for is what spam from a hacked site looks like, so a site
+// sends only with a mailbox login on port 587, like any mail client:
 //
-//   - login-senders (local_login_sender_maps) limits sendmail: a listed
-//     user may send only as its own domains or its bare login; accounts
-//     not listed (root, the panel) are not limited.
-//   - local-senders, used for clients in local-clients, refuses a hosted
-//     domain as the sender of unauthenticated SMTP from this server:
-//     Postfix cannot tell whose site connected, so such mail must go
-//     through sendmail or a mailbox login on port 587.
+//   - login-senders (local_login_sender_maps) refuses sendmail to every
+//     site's system user; accounts not listed (root, the panel, Dovecot's
+//     vmail for Sieve) are not limited.
+//   - main.cf relays unauthenticated SMTP from this server nowhere, and
+//     local-senders, used for clients in local-clients, refuses a hosted
+//     domain as its sender even to local mailboxes: Postfix cannot tell
+//     whose site connected.
+//
+// The panel sends each system user with its sites' domains, which make
+// the hosted list.
 const sendersState = stateDir + "/senders.json"
 
-// SendersSpec says which domains each site's system user may send as.
+// SendersSpec names each site's system user and its domains.
 type SendersSpec struct {
 	// Logins maps a system user to the domains its sites and mail
-	// domains use. A user with no domains may send only as itself.
+	// domains use. Every listed user is refused sendmail.
 	Logins map[string][]string `json:"logins"`
 }
 
@@ -121,7 +123,7 @@ type senderMaps struct {
 // hosted, even before the panel sent the sites' domains.
 func buildSenderMaps(spec SendersSpec, domains []DomainSpec, addrs []netip.Addr) senderMaps {
 	var login, clients, local strings.Builder
-	login.WriteString(mapHeader("Which domains a site's system user may send as with sendmail (local_login_sender_maps)."))
+	login.WriteString(mapHeader("Site system users, refused sendmail (local_login_sender_maps): they send with a mailbox login on port 587."))
 	clients.WriteString(mapHeader("Clients on this server whose unauthenticated SMTP may not use a hosted domain as sender."))
 	local.WriteString(mapHeader("Hosted domains, refused as sender of unauthenticated SMTP from this server."))
 
@@ -132,13 +134,11 @@ func buildSenderMaps(spec SendersSpec, domains []DomainSpec, addrs []netip.Addr)
 	sort.Strings(logins)
 	hosted := map[string]bool{}
 	for _, l := range logins {
-		// The bare login allows sendmail's default sender, login@hostname.
-		allowed := []string{l}
+		// No sender matches this address, so postdrop refuses them all.
+		fmt.Fprintf(&login, "%s %s\n", l, noSender)
 		for _, d := range spec.Logins[l] {
-			allowed = append(allowed, "@"+d)
 			hosted[d] = true
 		}
-		fmt.Fprintf(&login, "%s %s\n", l, strings.Join(allowed, ", "))
 	}
 	for _, d := range domains {
 		hosted[d.Domain] = true
@@ -163,7 +163,7 @@ func buildSenderMaps(spec SendersSpec, domains []DomainSpec, addrs []netip.Addr)
 	sort.Strings(names)
 	for _, d := range names {
 		// Postfix's access maps match subdomains too.
-		fmt.Fprintf(&local, "%s REJECT 5.7.1 Mail from this server may use %s as sender only through sendmail or a mailbox login on port 587\n", d, d)
+		fmt.Fprintf(&local, "%s REJECT 5.7.1 Mail from this server may use %s as sender only with a mailbox login on port 587\n", d, d)
 	}
 	return senderMaps{login: []byte(login.String()), clients: []byte(clients.String()), local: []byte(local.String())}
 }
@@ -182,6 +182,10 @@ func (m *Manager) allMaps(domains []DomainSpec) (maps, error) {
 	built.senders = buildSenderMaps(spec, domains, addrs)
 	return built, nil
 }
+
+// noSender is the only sender a site's system user may use with sendmail;
+// .invalid never resolves, so nothing can match it.
+const noSender = "sendmail-is-off@serfex.invalid"
 
 // localSendersClass is the restriction class main.cf defines for local
 // clients.

@@ -19,13 +19,14 @@ func TestSendersLimitSitesToTheirOwnDomains(t *testing.T) {
 		t.Fatalf("err before setup = %v", err)
 	}
 	setUp(t, m)
-	// The maps exist from setup on, so sendmail works before the panel
-	// sends anything.
+	// The maps exist from setup on, before the panel sends anything.
 	contains(t, "main.cf", read(t, sim, postfixMain),
 		"local_login_sender_maps = texthash:/etc/postfix/serfex/login-senders, static:*",
 		"smtpd_restriction_classes = serfex_local_senders",
 		"serfex_local_senders = check_sender_access texthash:/etc/postfix/serfex/local-senders",
-		"smtpd_sender_restrictions = check_client_access cidr:/etc/postfix/serfex/local-clients")
+		"smtpd_sender_restrictions = check_client_access cidr:/etc/postfix/serfex/local-clients",
+		// Unauthenticated SMTP from this server is relayed nowhere.
+		"smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination\n")
 	if _, err := os.Stat(sim.Path(postfixMaps + "/login-senders")); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,8 @@ func TestSendersLimitSitesToTheirOwnDomains(t *testing.T) {
 		t.Fatalf("result = %+v", res)
 	}
 	login := read(t, sim, postfixMaps+"/login-senders")
-	contains(t, "login-senders", login, "alice alice, @alice.test, @www.alice.test\n", "bob bob, @bob.test\n", "carol carol\n")
+	// Every site's system user is refused sendmail.
+	contains(t, "login-senders", login, "alice sendmail-is-off@serfex.invalid\n", "bob sendmail-is-off@serfex.invalid\n", "carol sendmail-is-off@serfex.invalid\n")
 	info, err := os.Stat(sim.Path(postfixMaps + "/login-senders"))
 	if err != nil || info.Mode().Perm() != 0o640 {
 		t.Fatalf("login-senders mode = %v, %v", info.Mode(), err)

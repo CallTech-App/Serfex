@@ -13,7 +13,6 @@ use App\Services\Agent\AgentException;
 use App\Services\Git\GitAccounts;
 use App\Services\Git\GitProviderException;
 use App\Services\Laravel\AppTemplates;
-use App\Services\Laravel\MailEnv;
 use App\Services\Laravel\Processes;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -177,8 +176,6 @@ class InstallFromTemplate implements ShouldQueue
             'template_version' => $version,
             'last_error' => null,
         ])->save();
-        // The application's installer wrote its .env; mail must work from here.
-        app(MailEnv::class)->setUp($app);
         $problems = [];
         try {
             $site->update(['web_root' => $app->webRoot()]);

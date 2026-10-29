@@ -2,47 +2,60 @@
 
 namespace App\Services\Laravel;
 
-use App\Models\LaravelApp;
-use App\Models\LaravelEnvVersion;
+use App\Models\Mailbox;
 use App\Models\Site;
-use App\Services\Agent\AgentException;
-use App\Services\Mail\MailSenders;
+use App\Services\Mail\MailPassword;
 use App\Services\Mail\MailSettings;
-use Illuminate\Support\Facades\Log;
 
 /**
- * Whether a Laravel application can send mail from this server, and the
- * .env values that make it so.
+ * Whether an application can send mail from this server, and the .env
+ * values of a mailbox login that make it so.
  *
- * Since 0.1.49 a site may send only as its own domains: through sendmail
- * as the site's account, or with a mailbox login on port 587. SMTP to
- * 127.0.0.1:25 without a login is refused for hosted domains, because
- * Postfix cannot tell which site connected. Laravel's .env.example
- * leaves MAIL_MAILER=log (or smtp to 127.0.0.1:2525) and
- * hello@example.com, so a new application sends nothing.
+ * A site sends only with a mailbox login on port 587, like any mail
+ * client: sendmail (PHP's mail()) is refused to sites' system users and
+ * unauthenticated SMTP from the server is relayed nowhere, since mail
+ * nobody logged in for is what spam from a hacked site looks like.
+ * Laravel's .env.example leaves MAIL_MAILER=log (or SMTP to
+ * 127.0.0.1:2525 without a login) and hello@example.com, so a new
+ * application sends nothing until its owner opens a mailbox for it.
  *
- * An application that uses a real outside SMTP server or a mail API
- * (SES, Postmark, Mailgun…) is left alone; only an example sender
- * address is changed there.
+ * An application that uses an outside SMTP server or a mail API (SES,
+ * Postmark, Mailgun…) is its owner's business; only an example sender
+ * address is reported there.
  */
 class MailEnv
 {
-    public const MAILER = 'sendmail';
+    public const PORT = '587';
 
     /** Mailers that do not send: the message goes to the log or memory. */
     private const NOT_SENDING = ['', 'log', 'array'];
 
+    /** Mailers that hand the message to sendmail. */
+    private const SENDMAIL = ['sendmail', 'mail', 'native'];
+
     private const LOCAL_HOSTS = ['', '127.0.0.1', 'localhost', '::1', '[::1]', '0.0.0.0', 'mailpit', 'mailhog'];
 
-    public function __construct(private readonly MailSettings $settings, private readonly Environments $environments) {}
+    /** WordPress plugins that send through SMTP or a mail API, by slug. */
+    private const WORDPRESS_SMTP = ['wp-mail-smtp', 'fluent-smtp', 'post-smtp', 'easy-wp-smtp', 'smtp-mailer', 'wp-smtp', 'gmail-smtp', 'mailgun', 'sendgrid-email-delivery-simplified', 'wp-ses', 'mailin'];
+
+    public function __construct(private readonly MailSettings $settings) {}
 
     /**
-     * False when the server has no mail server, so there is nothing that
-     * could send.
+     * False when the server has no mail server, so there is no mailbox
+     * to send with.
      */
     public function available(): bool
     {
         return $this->settings->isSetUp();
+    }
+
+    /**
+     * The server applications log in to: the mail server's name, whose
+     * certificate their STARTTLS checks.
+     */
+    public function host(): ?string
+    {
+        return $this->settings->hostname();
     }
 
     /**
@@ -59,103 +72,92 @@ class MailEnv
             'mailer' => strtolower($get('MAIL_MAILER') !== '' ? $get('MAIL_MAILER') : $get('MAIL_DRIVER')),
             'host' => strtolower($get('MAIL_HOST')),
             'port' => $get('MAIL_PORT'),
-            'username' => $get('MAIL_USERNAME'),
+            'username' => strtolower($get('MAIL_USERNAME')),
             'from' => strtolower($get('MAIL_FROM_ADDRESS')),
         ];
     }
 
     /**
-     * What is wrong with an application's mail settings, as sentences;
-     * empty when it can send (or there is no mail server to send with).
+     * What keeps an application from sending, as sentences; empty when it
+     * can send (or there is no mail server).
      *
-     * @param  array{mailer?: string, host?: string, port?: string, username?: string, from?: string}  $mail
+     * @param  array{mailer?: mixed, host?: mixed, port?: mixed, username?: mixed, from?: mixed}  $mail
      * @return list<string>
      */
-    public function problems(Site $site, array $mail): array
+    public function problems(array $mail): array
     {
         if (! $this->available()) {
             return [];
         }
         $mailer = strtolower(self::clean($mail['mailer'] ?? ''));
+        $host = strtolower(self::clean($mail['host'] ?? ''));
+        $username = strtolower(self::clean($mail['username'] ?? ''));
         $from = strtolower(self::clean($mail['from'] ?? ''));
+        $ours = in_array($host, [...self::LOCAL_HOSTS, strtolower((string) $this->host())], true);
         $problems = [];
         if (in_array($mailer, self::NOT_SENDING, true)) {
             $problems[] = __('E-postalar gönderilmiyor, yalnızca uygulamanın günlüğüne yazılıyor (MAIL_MAILER=:mailer).', ['mailer' => $mailer === '' ? 'log' : $mailer]);
-        } elseif ($this->localSmtp($mail)) {
-            $problems[] = __('Uygulama :address adresine giriş yapmadan bağlanıyor. Bu sunucu bu yoldan barındırılan alan adlarıyla gönderilen e-postayı reddeder.', ['address' => (self::clean($mail['host'] ?? '') ?: '127.0.0.1').':'.(self::clean($mail['port'] ?? '') ?: '25')]);
+        } elseif (in_array($mailer, self::SENDMAIL, true)) {
+            $problems[] = __('Bu sunucuda sendmail (PHP mail()) ile gönderim kapalı.');
+        } elseif ($mailer === 'smtp' && $ours && $username === '') {
+            $problems[] = __('Uygulama :address adresine giriş yapmadan bağlanıyor. Bu sunucu giriş yapılmadan gönderilen e-postayı kabul etmez.', ['address' => ($host ?: '127.0.0.1').':'.(self::clean($mail['port'] ?? '') ?: '25')]);
         }
-        $sendmail = $mailer === self::MAILER || $this->fixesMailer($mail);
         if ($from === '' || self::isExample($from)) {
             $problems[] = $from === '' ? __('Gönderen adresi (MAIL_FROM_ADDRESS) boş.') : __('Gönderen adresi :from örnek bir adres.', ['from' => $from]);
-        } elseif ($sendmail && ! $this->ownsAddress($site, $from)) {
-            $problems[] = __('Gönderen adresi :from bu sitenin alan adlarından biri değil. Sunucu bu siteden yalnızca kendi alan adlarıyla gönderime izin verir.', ['from' => $from]);
+        } elseif ($mailer === 'smtp' && $ours && str_contains($username, '@') && $from !== $username) {
+            $problems[] = __('Gönderen adresi :from, giriş yapılan posta kutusu :username ile aynı değil. Posta kutusu yalnızca kendi adresiyle gönderebilir.', ['from' => $from, 'username' => $username]);
         }
 
         return $problems;
     }
 
     /**
-     * The .env values that fix problems(): sendmail as the mailer when it
-     * does not send or uses local SMTP without a login, and
-     * noreply@<site> as the sender when it is an example or not the
-     * site's. Empty when nothing needs to change.
+     * The .env values that send as $mailbox: SMTP on port 587 of the mail
+     * server with its login, and its address as the sender.
      *
      * @param  array<string, string>  $env
      * @return array<string, string>
      */
-    public function fix(Site $site, array $env): array
+    public function values(Mailbox $mailbox, string $password, array $env): array
     {
-        if (! $this->available()) {
-            return [];
+        $values = [
+            'MAIL_MAILER' => 'smtp',
+            'MAIL_HOST' => (string) $this->host(),
+            'MAIL_PORT' => self::PORT,
+            'MAIL_USERNAME' => $mailbox->address(),
+            'MAIL_PASSWORD' => $password,
+            'MAIL_FROM_ADDRESS' => $mailbox->address(),
+        ];
+        // Laravel 6 reads MAIL_DRIVER.
+        if (array_key_exists('MAIL_DRIVER', $env) && ! array_key_exists('MAIL_MAILER', $env)) {
+            $values['MAIL_DRIVER'] = $values['MAIL_MAILER'];
+            unset($values['MAIL_MAILER']);
         }
-        $mail = self::fromEnv($env);
-        $values = [];
-        $sendmail = $mail['mailer'] === self::MAILER;
-        if ($this->fixesMailer($mail)) {
-            // Laravel 6 and older read MAIL_DRIVER.
-            $values[array_key_exists('MAIL_MAILER', $env) || ! array_key_exists('MAIL_DRIVER', $env) ? 'MAIL_MAILER' : 'MAIL_DRIVER'] = self::MAILER;
-            $sendmail = true;
+        // STARTTLS on 587, not TLS from the first byte.
+        if (array_key_exists('MAIL_SCHEME', $env)) {
+            $values['MAIL_SCHEME'] = 'smtp';
         }
-        $from = $mail['from'];
-        if ($from === '' || self::isExample($from) || ($sendmail && ! $this->ownsAddress($site, $from))) {
-            $values['MAIL_FROM_ADDRESS'] = self::sender($site);
+        if (array_key_exists('MAIL_ENCRYPTION', $env)) {
+            $values['MAIL_ENCRYPTION'] = 'tls';
         }
 
         return $values;
     }
 
     /**
-     * Writes fix() into the application's .env, keeping the file as it
-     * was in the history. Returns the history entry, or null when nothing
-     * changed.
+     * The mailboxes a site's application may send as: those of its mail
+     * domain.
      *
-     * @throws AgentException
+     * @return list<Mailbox>
      */
-    public function apply(LaravelApp $app, ?string $by): ?LaravelEnvVersion
+    public static function mailboxes(Site $site): array
     {
-        $before = (string) ($this->environments->read($app)['env'] ?? '');
-        $values = $this->fix($app->site, EnvFile::values($before));
-        if ($values === []) {
-            return null;
-        }
-
-        return $this->environments->save($app, $before, self::write($before, $values), $by)['version'];
+        return $site->mailDomain?->mailboxes()->orderBy('name')->get()->all() ?? [];
     }
 
-    /**
-     * After an install: the new application sends mail from the start. A
-     * failure only leaves the warning on its page.
-     */
-    public function setUp(LaravelApp $app): void
+    public static function passwordMatches(Mailbox $mailbox, string $password): bool
     {
-        if ($app->isPreview() || ! $this->available()) {
-            return;
-        }
-        try {
-            $this->apply($app, 'Serfex');
-        } catch (AgentException $e) {
-            Log::warning("Mail settings of {$app->site->domain} were not written: {$e->getMessage()}");
-        }
+        return MailPassword::verify($password, (string) $mailbox->password_hash);
     }
 
     /**
@@ -169,47 +171,29 @@ class MailEnv
     }
 
     /**
-     * The address a site's application sends as by default.
-     */
-    public static function sender(Site $site): string
-    {
-        return 'noreply@'.strtolower($site->domain);
-    }
-
-    /**
-     * @param  array<string, string>  $mail
-     */
-    private function fixesMailer(array $mail): bool
-    {
-        return in_array(strtolower(self::clean($mail['mailer'] ?? '')), self::NOT_SENDING, true) || $this->localSmtp($mail);
-    }
-
-    /**
-     * SMTP to this server without a login: refused for hosted domains on
-     * port 25, and nothing listens on Mailpit's 1025 or Laravel's 2525.
+     * The active WordPress plugin that sends mail through SMTP or a mail
+     * API, or null while WordPress uses PHP's mail().
      *
-     * @param  array<string, string>  $mail
+     * @param  list<array<string, mixed>>  $plugins
      */
-    private function localSmtp(array $mail): bool
+    public static function wordpressSmtpPlugin(array $plugins): ?string
     {
-        return strtolower(self::clean($mail['mailer'] ?? '')) === 'smtp'
-            && in_array(strtolower(self::clean($mail['host'] ?? '')), self::LOCAL_HOSTS, true)
-            && self::clean($mail['username'] ?? '') === '';
-    }
+        foreach ($plugins as $plugin) {
+            $slug = strtolower((string) ($plugin['name'] ?? ''));
+            if (in_array((string) ($plugin['status'] ?? ''), ['active', 'active-network', 'must-use'], true)
+                && (in_array($slug, self::WORDPRESS_SMTP, true) || str_contains($slug, 'smtp'))) {
+                return (string) (($plugin['title'] ?? '') ?: $slug);
+            }
+        }
 
-    private function ownsAddress(Site $site, string $address): bool
-    {
-        $domain = strtolower(substr(strrchr($address, '@') ?: '', 1));
-        $own = $site->systemUser !== null ? MailSenders::domainsOf($site->systemUser) : $site->hostnames();
-
-        return $domain !== '' && in_array($domain, array_map('strtolower', $own), true);
+        return null;
     }
 
     private static function isExample(string $address): bool
     {
         $domain = strtolower(substr(strrchr($address, '@') ?: '@', 1));
 
-        return $domain === '' || ! str_contains($address, '@')
+        return $domain === ''
             || in_array($domain, ['example.com', 'example.org', 'example.net', 'localhost', 'laravel.com'], true)
             || preg_match('/\.(example|test|local|localhost|invalid)$/', $domain) === 1;
     }

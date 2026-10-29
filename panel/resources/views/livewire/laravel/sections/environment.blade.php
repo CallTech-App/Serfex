@@ -13,16 +13,16 @@
         @if ($mailProblems)
             <div class="flex flex-wrap items-start gap-3 border-b border-line bg-warn-soft/40 px-5 py-3 text-[13px]">
                 <x-icon name="mail" class="mt-0.5 shrink-0 text-warn" />
-                <div class="min-w-0 flex-1">
+                <div class="min-w-56 flex-1">
                     <p class="font-medium">{{ __('Uygulama bu sunucudan e-posta gönderemiyor') }}</p>
                     <ul class="mt-0.5 list-disc pl-4 text-muted">
                         @foreach ($mailProblems as $problem)
                             <li>{{ $problem }}</li>
                         @endforeach
                     </ul>
-                    <p class="mt-1 text-2xs text-muted"><x-t text="Düzelt, :mailer ve :from yazar. Kendi SMTP sunucunuzu kullanıyorsanız MAIL_HOST, MAIL_USERNAME ve MAIL_PASSWORD değerlerini girin; o zaman bu uyarı çıkmaz."><x-slot:mailer><span class="font-mono">MAIL_MAILER=sendmail</span></x-slot:mailer><x-slot:from><span class="font-mono">MAIL_FROM_ADDRESS={{ \App\Services\Laravel\MailEnv::sender($app->site) }}</span></x-slot:from></x-t></p>
+                    <p class="mt-1 text-2xs text-muted"><x-t text="Bu sunucuda e-posta yalnızca bir posta kutusuyla giriş yapılarak gönderilir: sunucu :host, port :port (STARTTLS), kullanıcı adı posta kutusunun adresi."><x-slot:host><span class="font-mono">{{ $mailHost }}</span></x-slot:host><x-slot:port><span class="font-mono">587</span></x-slot:port></x-t></p>
                 </div>
-                <button type="button" wire:click="fixMail" wire:loading.attr="disabled" wire:target="fixMail" class="h-8 shrink-0 rounded-md bg-accent px-3 text-[13px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Düzelt') }}</button>
+                <button type="button" wire:click="openMail" class="h-8 shrink-0 rounded-md bg-accent px-3 text-[13px] font-medium text-accent-fg hover:brightness-110">{{ __('Posta kutusuyla bağla') }}</button>
             </div>
         @endif
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
@@ -125,6 +125,45 @@
             <span class="text-2xs text-muted"><x-t text="Gizli değerler maskelenir. Kaydedince önceki hâli geçmişe yazılır, uygulama yapılandırmayı önbellekliyorsa :command yenilenir ve kuyruk işçileri yeniden başlar."><x-slot:command><span class="font-mono">config:cache</span></x-slot:command></x-t></span>
         </div>
     @endif
+
+    {{-- Posta kutusuyla bağla --}}
+    <x-modal :title="__('Posta kutusuyla bağla')" show="settingMail">
+        <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Posta kutusuyla bağla') }}</h2>
+        @if ($mailboxes === [])
+            <div class="space-y-2 px-5 py-4 text-[13.5px]">
+                <p><x-t text=":domain için henüz posta kutusu yok. Önce bir posta kutusu açın (örneğin :address), sonra buraya dönün."><x-slot:domain><span class="font-mono">{{ $app->site->domain }}</span></x-slot:domain><x-slot:address><span class="font-mono">{{ 'noreply@'.$app->site->domain }}</span></x-slot:address></x-t></p>
+                <a href="{{ $app->site->mailDomain ? route('mail.show', $app->site->mailDomain) : route('mail.index') }}" wire:navigate class="inline-flex items-center gap-1.5 text-accent hover:underline"><x-icon name="mail" class="size-3.5" />{{ __('Posta kutusu aç') }}</a>
+            </div>
+            <div class="flex justify-end border-t border-line px-5 py-3">
+                <button type="button" wire:click="$set('settingMail', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Kapat') }}</button>
+            </div>
+        @else
+            {{-- Inside the page's form, so no form of its own. --}}
+            <div>
+                <div class="space-y-4 px-5 py-4 text-[13.5px]">
+                    <label class="block">
+                        <span class="mb-1 block font-medium">{{ __('Posta kutusu') }}</span>
+                        <select wire:model="mailboxId" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 font-mono text-[13px] outline-none focus:border-accent">
+                            @foreach ($mailboxes as $box)
+                                <option value="{{ $box->id }}">{{ $box->address() }}</option>
+                            @endforeach
+                        </select>
+                        @error('mailboxId')<span class="mt-1 block text-[13px] text-crit">{{ $message }}</span>@enderror
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block font-medium">{{ __('Parolası') }}</span>
+                        <input type="password" wire:model="mailPassword" wire:keydown.enter.prevent="saveMail" autocomplete="off" class="h-9 w-full rounded-md border bg-surface px-2.5 text-[13px] outline-none focus:border-accent {{ $errors->has('mailPassword') ? 'border-crit' : 'border-line' }}">
+                        @error('mailPassword')<span class="mt-1 block text-[13px] text-crit">{{ $message }}</span>@enderror
+                    </label>
+                    <p class="text-2xs text-muted"><x-t text=".env dosyasına :values yazılır; gönderen adresi posta kutusunun adresi olur. Önceki hâli geçmişte kalır."><x-slot:values><span class="font-mono">MAIL_MAILER=smtp, MAIL_HOST={{ $mailHost }}, MAIL_PORT=587, MAIL_USERNAME, MAIL_PASSWORD</span></x-slot:values></x-t></p>
+                </div>
+                <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+                    <button type="button" wire:click="$set('settingMail', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                    <button type="button" wire:click="saveMail" wire:loading.attr="disabled" wire:target="saveMail" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('.env dosyasına yaz') }}</button>
+                </div>
+            </div>
+        @endif
+    </x-modal>
 
     {{-- Geçmiş --}}
     <x-modal :title="__('.env geçmişi')" show="showingHistory">

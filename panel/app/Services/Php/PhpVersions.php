@@ -66,9 +66,6 @@ class PhpVersions
     /** Functions customers' sites run without, unless allowed per site. */
     public const DANGEROUS = ['exec', 'passthru', 'shell_exec', 'system', 'proc_open', 'popen', 'pcntl_exec', 'show_source'];
 
-    /** Functions a Laravel application's site keeps among DANGEROUS. */
-    public const LARAVEL_FUNCTIONS = ['proc_open'];
-
     /** Settings Serfex sets for every pool; never changeable. */
     public const RESERVED = ['open_basedir', 'upload_tmp_dir', 'sys_temp_dir', 'session.save_path', 'error_log', 'log_errors',
         'disable_functions', 'disable_classes', 'extension', 'zend_extension', 'extension_dir', 'doc_root', 'user_dir'];
@@ -310,11 +307,6 @@ class PhpVersions
         }
         if ($customer !== null && ! ($s['allow_functions'] ?? false)) {
             $spec['disable_functions'] = $this->disabledFunctions();
-            // Laravel sends mail with sendmail through proc_open (Symfony
-            // Mailer); the rest stays off.
-            if ($site->laravelApp()->exists()) {
-                $spec['disable_functions'] = array_values(array_diff($spec['disable_functions'], self::LARAVEL_FUNCTIONS));
-            }
         }
         foreach (['pm', 'max_children', 'max_requests', 'request_timeout'] as $key) {
             if (! empty($s[$key])) {

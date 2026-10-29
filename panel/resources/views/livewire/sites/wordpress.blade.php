@@ -177,6 +177,20 @@
                         <span class="text-2xs text-muted">{{ __('WordPress\'in kendisi için; eklentiler satırlarından.') }}</span>
                     </dd>
                 </div>
+                @if ($mailHost)
+                    <div class="{{ $dl }}">
+                        <dt class="text-muted">{{ __('E-posta') }}</dt>
+                        <dd class="min-w-0">
+                            @if ($smtpPlugin)
+                                {{ __('SMTP eklentisiyle: :plugin', ['plugin' => html_entity_decode(strip_tags($smtpPlugin), ENT_QUOTES | ENT_HTML5)]) }}
+                            @else
+                                <span class="flex items-start gap-2 text-warn"><x-icon name="triangle-alert" class="mt-0.5 size-3.5 shrink-0" />{{ __('Gönderemiyor: WordPress PHP mail() kullanıyor, bu sunucuda kapalı.') }}</span>
+                                <p class="mt-1 text-2xs text-muted"><x-t text="Bir SMTP eklentisi kurun (WP Mail SMTP, FluentSMTP) ve bir posta kutusuyla giriş yapın: sunucu :host, port :port (STARTTLS), kullanıcı adı posta kutusunun adresi."><x-slot:host><span class="font-mono">{{ $mailHost }}</span></x-slot:host><x-slot:port><span class="font-mono">587</span></x-slot:port></x-t></p>
+                                <a href="{{ $site->mailDomain ? route('mail.show', $site->mailDomain) : route('mail.index') }}" wire:navigate class="mt-1 inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline"><x-icon name="mail" class="size-3.5" />{{ __('Posta kutuları') }}</a>
+                            @endif
+                        </dd>
+                    </div>
+                @endif
                 <div class="{{ $dl }}">
                     <dt class="text-muted">{{ __('Son denetim') }}</dt>
                     <dd class="text-muted">

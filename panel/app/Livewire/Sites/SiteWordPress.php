@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Models\WordPressInstall;
 use App\Models\WordPressOperation;
 use App\Services\Agent\AgentException;
+use App\Services\Laravel\MailEnv;
 use App\Services\Sites\WordPressSites;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -497,6 +498,9 @@ class SiteWordPress extends Component
             'log' => $this->logId ? $operations->firstWhere('id', $this->logId) : null,
             'restoreOp' => $this->restoreId ? $operations->firstWhere('id', $this->restoreId) : null,
             'rules' => self::ruleLabels(),
+            // WordPress sends with PHP's mail(), which this server refuses to sites.
+            'mailHost' => $wp?->isActive() && app(MailEnv::class)->available() ? app(MailEnv::class)->host() : null,
+            'smtpPlugin' => $wp ? MailEnv::wordpressSmtpPlugin($wp->items('plugins')) : null,
         ])->title(__('WordPress · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

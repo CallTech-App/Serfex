@@ -119,25 +119,23 @@ restarts the workers.
 
 ### Mail
 
-A site may send mail only as its own domains (the site's name, aliases,
-subdomains, redirected domains and mail domain): through `sendmail` as the
-site's user, or with a mailbox login on port 587. SMTP to `127.0.0.1:25`
-without a login is refused for hosted domains, since Postfix cannot tell
-which site connected.
+Mail from a site leaves this server only with a mailbox login, like any mail
+client: SMTP to the mail server's name on port 587 (STARTTLS), the mailbox's
+address as the username, and that address as the sender. `sendmail` (PHP's
+`mail()`) is refused to sites' users and SMTP from the server without a login
+is relayed nowhere, because mail nobody logged in for is what a hacked site
+sends.
 
 Laravel's `.env.example` sends nothing from here (`MAIL_MAILER=log`, or SMTP
-to `127.0.0.1:2525`, and `hello@example.com`). So when the mail server is set
-up, Serfex writes `MAIL_MAILER=sendmail` and
-`MAIL_FROM_ADDRESS=noreply@<domain>` after an install, from a template too.
-It changes only values that cannot work: a real SMTP server with a login, or
-a mail API such as SES or Postmark, is kept (only an example sender address
-is replaced). The change is in the history like any save.
-
-For an application whose settings cannot send, Environment and Overview
-show what is wrong and a **Fix** button that writes the same values (with
-Undo). Sites of Laravel applications keep `proc_open`, which Laravel's
-sendmail transport needs, among the functions customer sites run without.
-Failed sends in the logs get a plain explanation.
+to `127.0.0.1:2525`, and `hello@example.com`). When the mail server is set
+up and an application's settings cannot send, Environment says what is wrong
+and Overview shows it on the mail line. **Connect a mailbox** picks one of
+the site's mailboxes, checks its password and writes `MAIL_MAILER=smtp`,
+`MAIL_HOST`, `MAIL_PORT=587`, `MAIL_USERNAME`, `MAIL_PASSWORD` and
+`MAIL_FROM_ADDRESS` (with Undo; the previous file stays in the history).
+Without a mailbox it links to the mail domain to open one. An application
+that uses its own SMTP server or a mail API such as SES or Postmark is left
+alone; only an example sender address is reported.
 
 ## Commands
 
@@ -179,8 +177,9 @@ Octane and Reverb listen on 127.0.0.1, on ports Serfex picks from 20000 to
 ## Logs
 
 The application's own log files with level filters, a search and live follow.
-A failed send (a refused sender address, SMTP to this server without a login)
-gets a line saying what it means and a link to fix the mail settings.
+A failed send (sendmail refused, SMTP without a login, a wrong mailbox
+password, a sender that is not the mailbox) gets a line saying what it means
+and a link to the mail settings.
 
 ## Maintenance mode
 

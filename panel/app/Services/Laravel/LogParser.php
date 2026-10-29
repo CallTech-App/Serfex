@@ -46,8 +46,8 @@ final class LogParser
     /**
      * What a failed send in the log means on this server, in plain words;
      * null when the entry is not one. Postfix's own answers are short and
-     * cryptic ("451 4.3.0 Error: internal error 512" when sendmail refuses
-     * the sender).
+     * cryptic ("451 4.3.0 Error: internal error 512" when sendmail is
+     * refused).
      */
     public static function mailHint(string $message, string $detail = ''): ?string
     {
@@ -55,10 +55,12 @@ final class LogParser
 
         return match (true) {
             str_contains($text, 'not authorized to use sender'),
-            str_contains($text, '451 4.3.0 Error: internal error') => __('E-posta reddedildi: gönderen adresi bu sitenin alan adlarından biri değil. Bu sunucu her siteden yalnızca kendi alan adlarıyla gönderime izin verir; MAIL_FROM_ADDRESS değerini sitenin alan adıyla yazın.'),
-            str_contains($text, 'Mail from this server may use') => __('E-posta reddedildi: uygulama bu sunucunun 25 numaralı portuna giriş yapmadan bağlanıyor. Bu yol barındırılan alan adlarına kapalı; MAIL_MAILER=sendmail kullanın ya da bir posta kutusuyla 587 numaralı porttan giriş yapın.'),
-            (bool) preg_match('/Connection could not be established with host "?(127\.0\.0\.1|localhost|\[?::1\]?|mailpit|mailhog)[:"]|expected name `(127\.0\.0\.1|localhost)\'/', $text) => __('E-posta gönderilemedi: uygulama bu sunucuda giriş yapmadan SMTP ile göndermeye çalışıyor. MAIL_MAILER=sendmail kullanın.'),
-            str_contains($text, 'proc_open()') && str_contains($text, 'Mailer') => __('E-posta gönderilemedi: sendmail için gereken proc_open bu sitenin PHP ayarlarında kapalı.'),
+            str_contains($text, '451 4.3.0 Error: internal error') => __('E-posta reddedildi: bu sunucuda sendmail (PHP mail()) ile gönderim kapalı. Bir posta kutusuyla 587 numaralı porttan giriş yaparak gönderin.'),
+            str_contains($text, 'Mail from this server may use'),
+            str_contains($text, 'Relay access denied') => __('E-posta reddedildi: uygulama giriş yapmadan SMTP ile gönderiyor. Bir posta kutusuyla 587 numaralı porttan giriş yaparak gönderin.'),
+            (bool) preg_match('/535[ -]5\.7\.8|Authentication failed/i', $text) => __('E-posta gönderilemedi: posta kutusunun kullanıcı adı ya da parolası yanlış.'),
+            str_contains($text, 'not owned by user') => __('E-posta reddedildi: gönderen adresi giriş yapılan posta kutusuna ait değil. MAIL_FROM_ADDRESS posta kutusunun adresi olmalı.'),
+            (bool) preg_match('/Connection could not be established with host "?(127\.0\.0\.1|localhost|\[?::1\]?|mailpit|mailhog)[:"]|expected name `(127\.0\.0\.1|localhost)\'/', $text) => __('E-posta gönderilemedi: SMTP ayarı bu sunucuya uymuyor. E-posta sunucusunun adına, 587 numaralı porta bir posta kutusuyla giriş yaparak bağlanın.'),
             default => null,
         };
     }

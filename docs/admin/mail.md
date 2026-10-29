@@ -86,6 +86,20 @@ The records Serfex writes:
 Removed mailboxes and domains keep their mail for 10 minutes so the change
 can be undone.
 
+## Mail from sites
+
+Sites send only with a mailbox login on port 587, like any mail client, and
+a mailbox sends only as its own address. `sendmail` and PHP's `mail()` are
+refused to sites' system users, and SMTP from the server without a login is
+relayed nowhere: mail nobody logged in for is what a hacked site sends, and it
+lands the server's address on spam lists. Root, the panel's own mail and
+webmail are not affected.
+
+So an application needs a mailbox: open one (for example `noreply@<domain>`)
+and enter its SMTP settings in the application. For Laravel, Environment →
+**Connect a mailbox** writes them into the `.env`; for WordPress, an SMTP
+plugin. Refused sends show in Laravel's logs with what they mean.
+
 ## The mail queue
 
 Live Monitor → **Mail queue** shows Postfix's queue grouped by sender domain.

@@ -10,9 +10,10 @@ use App\Services\Agent\AgentException;
 /**
  * Which domains each site's system user may send mail as: its sites'
  * names, aliases, subdomains and redirected domains, and their mail
- * domains. The agent limits sendmail (PHP's mail()) to them, so one
- * customer cannot send as another customer's domain with this server's
- * SPF and DKIM.
+ * domains. The agent refuses sendmail (PHP's mail()) to these users, so
+ * a site sends only with a mailbox login, and keeps hosted domains from
+ * being used as senders without one: one customer cannot send as another
+ * customer's domain with this server's SPF and DKIM.
  */
 class MailSenders
 {
@@ -31,31 +32,19 @@ class MailSenders
             if ($user->name === 'root') {
                 return;
             }
-            $logins[$user->name] = self::domainsOf($user);
+            $domains = [];
+            foreach ($user->sites as $site) {
+                $domains = [...$domains, ...$site->hostnames()];
+                if ($site->mailDomain !== null) {
+                    $domains[] = $site->mailDomain->name;
+                }
+            }
+            $domains = array_values(array_unique(array_map('strtolower', $domains)));
+            sort($domains);
+            $logins[$user->name] = $domains;
         });
 
         return $logins;
-    }
-
-    /**
-     * The domains a system user may send as, lower-case and sorted.
-     *
-     * @return list<string>
-     */
-    public static function domainsOf(SystemUser $user): array
-    {
-        $user->loadMissing('sites.subdomains', 'sites.redirects', 'sites.mailDomain');
-        $domains = [];
-        foreach ($user->sites as $site) {
-            $domains = [...$domains, ...$site->hostnames()];
-            if ($site->mailDomain !== null) {
-                $domains[] = $site->mailDomain->name;
-            }
-        }
-        $domains = array_values(array_unique(array_map('strtolower', $domains)));
-        sort($domains);
-
-        return $domains;
     }
 
     /**

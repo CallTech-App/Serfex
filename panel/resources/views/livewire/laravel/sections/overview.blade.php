@@ -91,7 +91,7 @@
                         <div class="{{ $row }}"><dt class="text-muted">{{ __('E-posta') }}</dt>
                             <dd class="min-w-0 text-right"><span class="font-mono">{{ ($about['mail']['mailer'] ?? '') ?: '—' }}</span>@if ($about['mail']['from'] ?? '') <span class="font-mono text-muted">· {{ $about['mail']['from'] }}</span>@endif
                                 @if ($mailProblems)
-                                    <span class="block text-warn">{{ __('Bu sunucudan gönderemiyor') }}@if ($canFixMail) · <button type="button" wire:click="$parent.show('environment')" class="text-accent hover:underline">{{ __('Düzelt') }}</button>@endif</span>
+                                    <span class="block text-warn">{{ __('Bu sunucudan gönderemiyor') }}@if ($canFixMail) · <button type="button" wire:click="$parent.show('environment')" class="text-accent hover:underline">{{ __('Ayarla') }}</button>@endif</span>
                                 @endif
                             </dd></div>
                     @endisset
