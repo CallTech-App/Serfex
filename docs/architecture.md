@@ -94,6 +94,7 @@ in Turkish or English.
 | Security | `firewall.block`, `firewall.unblock`, `firewall.list`, `firewall.rules`, `firewall.rules.apply`, `waf.site.apply`, `waf.events`, `scan.run`, `scan.files`, `scan.fix`, `fail2ban.status`, `fail2ban.refresh`, `fail2ban.ban`, `fail2ban.unban`, `ssh.status`, `ssh.apply` |
 | Services | `service.list`, `service.action`, `service.logs`, `service.settings`, `service.settings.apply` |
 | Software | `component.list`, `component.check`, `component.install`, `component.update`, `component.upgrade`, `component.remove-old`, `component.remove`, `component.configure`, `component.extension`, `component.run.read` |
+| Ubuntu packages | `packages.list`, `packages.upgrade`, `packages.auto`, `system.reboot` |
 | Backups | `backup.create`, `backup.restore`, `backup.status`, `backup.read`, `backup.run.read`, `backup.delete`, `backup.fetch`, `backup.import`, `backup.scan`, `backup.inspect`, `backup.member.read`, `backup.upload.write`, `backup.target.test` |
 | Panel and updates | `panel.setup`, `panel.web.status`, `panel.web.ports`, `update.status`, `update.check`, `update.start`, `update.rollback`, `update.run.read` |
 

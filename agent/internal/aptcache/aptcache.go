@@ -10,6 +10,10 @@ type Candidate struct {
 	// From is the archive as host and path ("archive.ubuntu.com/ubuntu"),
 	// empty when apt knows the version only from dpkg's status.
 	From string `json:"from,omitempty"`
+	// Installed is the version installed now ("" when it is not), and
+	// Security whether the candidate comes from a security pocket.
+	Installed string `json:"-"`
+	Security  bool   `json:"-"`
 }
 
 // Policy parses the output of "LC_ALL=C apt-cache policy PKG...". Packages
@@ -36,6 +40,12 @@ func Policy(out string) map[string]Candidate {
 			continue
 		}
 		trimmed := strings.TrimSpace(line)
+		if v, ok := strings.CutPrefix(trimmed, "Installed:"); ok {
+			if v = strings.TrimSpace(v); v != "(none)" {
+				c.Installed = v
+			}
+			continue
+		}
 		if v, ok := strings.CutPrefix(trimmed, "Candidate:"); ok {
 			if v = strings.TrimSpace(v); v != "(none)" {
 				c.Version = v
@@ -60,6 +70,9 @@ func Policy(out string) map[string]Candidate {
 			if _, rest, ok := strings.Cut(f[1], "://"); ok {
 				c.From = strings.TrimSuffix(rest, "/")
 			}
+		}
+		if mine && len(f) >= 3 && SecuritySuite(f[2]) {
+			c.Security = true
 		}
 	}
 	done()

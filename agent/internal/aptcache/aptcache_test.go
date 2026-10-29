@@ -43,10 +43,10 @@ nothing-here:
 func TestPolicy(t *testing.T) {
 	got := Policy(policy)
 	want := map[string]Candidate{
-		"mysql-server":   {"8.0.46-0ubuntu0.24.04.4", "archive.ubuntu.com/ubuntu"},
-		"mariadb-server": {"1:10.11.14-0ubuntu0.24.04.1", "archive.ubuntu.com/ubuntu"},
-		"php8.4-fpm":     {"8.4.14-1+ubuntu24.04.1+deb.sury.org+1", "ppa.launchpadcontent.net/ondrej/php/ubuntu"},
-		"python3-pip":    {"24.0+dfsg-1ubuntu1.3", ""},
+		"mysql-server":   {Version: "8.0.46-0ubuntu0.24.04.4", From: "archive.ubuntu.com/ubuntu", Security: true},
+		"mariadb-server": {Version: "1:10.11.14-0ubuntu0.24.04.1", From: "archive.ubuntu.com/ubuntu"},
+		"php8.4-fpm":     {Version: "8.4.14-1+ubuntu24.04.1+deb.sury.org+1", From: "ppa.launchpadcontent.net/ondrej/php/ubuntu", Installed: "8.4.13-1+ubuntu24.04.1+deb.sury.org+1"},
+		"python3-pip":    {Version: "24.0+dfsg-1ubuntu1.3", Installed: "24.0+dfsg-1ubuntu1.3"},
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %v", got)

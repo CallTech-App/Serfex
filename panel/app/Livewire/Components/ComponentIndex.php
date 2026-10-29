@@ -11,6 +11,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 use App\Services\Components\Components;
+use App\Services\Components\SystemPackages;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Mail\MailSettings;
 use Illuminate\Contracts\View\View;
@@ -28,6 +29,10 @@ use Livewire\Component;
  * removed and the page says what uses it. A database server can be
  * upgraded to the next major version Serfex allows; the old version is
  * kept for a week and removed from here.
+ *
+ * Ubuntu güncellemeleri lists Ubuntu's own packages with updates: full
+ * administrators upgrade all or a chosen few, turn the automatic security
+ * updates on or off and restart the server when an upgrade asks for it.
  */
 #[Layout('components.layouts.app')]
 #[Title('Yazılım Yönetimi · Serfex')]
@@ -56,6 +61,12 @@ class ComponentIndex extends Component
 
     /** Why the last action could not be done. */
     public ?string $refused = null;
+
+    /** @var list<string> Ubuntu packages ticked on the Ubuntu güncellemeleri tab */
+    public array $selected = [];
+
+    /** all or security: which Ubuntu updates the table shows. */
+    public string $packageFilter = 'all';
 
     public function mount(Components $components): void
     {
@@ -86,12 +97,39 @@ class ComponentIndex extends Component
         $this->installVersion = collect($choices)->firstWhere('default', true)['major'] ?? ($choices[0]['major'] ?? null);
     }
 
-    public function confirm(Components $components, MailSettings $mail): void
+    /**
+     * Opens the confirmation for upgrading Ubuntu packages: every update
+     * (all), the ticked ones (selected) or one ($name).
+     */
+    public function askPackages(string $scope, ?string $name = null): void
+    {
+        $packages = match ($scope) {
+            'one' => $name !== null ? [$name] : [],
+            'selected' => array_values(array_filter($this->selected, 'is_string')),
+            default => null,
+        };
+        if ($packages === []) {
+            return;
+        }
+        $this->confirming = ['id' => SystemPackages::COMPONENT, 'action' => SystemPackages::ACTION, 'packages' => $packages];
+    }
+
+    public function askReboot(): void
+    {
+        $this->confirming = ['id' => SystemPackages::COMPONENT, 'action' => 'reboot'];
+    }
+
+    public function confirm(Components $components, MailSettings $mail, SystemPackages $packages, AgentClient $agent): void
     {
         $ask = $this->confirming;
         $this->confirming = null;
         $this->refused = null;
         if ($ask === null) {
+            return;
+        }
+        if ($ask['id'] === SystemPackages::COMPONENT) {
+            $ask['action'] === 'reboot' ? $this->reboot($agent, $packages) : $this->upgradePackages($ask['packages'] ?? null, $packages);
+
             return;
         }
         if (array_key_exists($ask['id'], MailSettings::WEBMAIL_APPS)) {
@@ -116,11 +154,12 @@ class ComponentIndex extends Component
     /**
      * Refreshes the package lists to show which updates are available.
      */
-    public function check(AgentClient $agent, MailSettings $mail): void
+    public function check(AgentClient $agent, MailSettings $mail, SystemPackages $packages): void
     {
         $this->refused = null;
         try {
             $agent->call('component.check', [], 300);
+            $packages->forget();
             $mail->checkWebmailUpdate($agent);
         } catch (AgentException $e) {
             $this->refused = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Güncellemeler denetlenemedi: :reason', ['reason' => $e->reason]);
@@ -128,6 +167,61 @@ class ComponentIndex extends Component
             return;
         }
         $this->dispatch('toast', message: __('Paket listeleri yenilendi.'));
+    }
+
+    /**
+     * Ticks every Ubuntu update that can be chosen alone, or none.
+     */
+    public function selectAllPackages(bool $all, SystemPackages $packages): void
+    {
+        $this->selected = $all ? collect($packages->rows())->where('selectable', true)->when($this->packageFilter === 'security', fn ($c) => $c->where('security', true))->pluck('name')->all() : [];
+    }
+
+    /**
+     * Turns Ubuntu's automatic security updates on or off (Undo turns them
+     * back).
+     */
+    public function setAutoUpdates(bool $on, AgentClient $agent, SystemPackages $packages): void
+    {
+        $this->refused = null;
+        if (! auth()->user()?->isFullAdmin()) {
+            $this->refused = __('Otomatik güncellemeleri yalnızca tam yetkili yöneticiler değiştirebilir.');
+
+            return;
+        }
+        try {
+            $agent->call('packages.auto', ['enabled' => $on], 300);
+        } catch (AgentException $e) {
+            $this->refused = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Otomatik güncellemeler değiştirilemedi: :reason', ['reason' => $e->reason]);
+
+            return;
+        }
+        $packages->forget();
+        $this->dispatch('toast',
+            message: $on ? __('Güvenlik güncellemeleri her gün kendiliğinden kurulacak.') : __('Güvenlik güncellemeleri artık kendiliğinden kurulmayacak.'),
+            source: $this->getId(),
+            undo: ['method' => 'setAutoUpdates', 'args' => [! $on]],
+        );
+    }
+
+    /**
+     * Stops a restart started from this page (the toast's Undo).
+     */
+    public function abortReboot(AgentClient $agent, SystemPackages $packages): void
+    {
+        $this->refused = null;
+        if (! auth()->user()?->isFullAdmin()) {
+            return;
+        }
+        try {
+            $agent->call('system.reboot', ['cancel' => true], 30);
+        } catch (AgentException $e) {
+            $this->refused = $e instanceof AgentUnavailableException ? __('Sunucu ajanına ulaşılamıyor.') : __('Yeniden başlatma durdurulamadı: :reason', ['reason' => $e->reason]);
+
+            return;
+        }
+        $packages->forget();
+        $this->dispatch('toast', message: __('Sunucunun yeniden başlatılması iptal edildi.'));
     }
 
     public function saveDefault(Components $components): void
@@ -189,10 +283,31 @@ class ComponentIndex extends Component
         }
     }
 
-    public function render(Components $components, DatabaseServers $databases): View
+    public function render(Components $components, DatabaseServers $databases, SystemPackages $packages): View
     {
         $error = null;
         $groups = $components->rows($this->tab, $error);
+        $system = null;
+        if ($this->tab === 'packages' && $groups !== null) {
+            $packageError = null;
+            $list = $packages->list($packageError);
+            $rows = $list === null ? [] : $packages->rows();
+            $this->selected = array_values(array_intersect($this->selected, array_column(array_filter($rows, fn ($r) => $r['selectable']), 'name')));
+            $system = [
+                'error' => $list === null ? ($packageError ? __('Paket listesi okunamadı: :error', ['error' => $packageError]) : __('Sunucu ajanına ulaşılamıyor.')) : null,
+                'rows' => $this->packageFilter === 'security' ? array_values(array_filter($rows, fn ($r) => $r['security'])) : $rows,
+                'counts' => [
+                    'all' => count($rows),
+                    'security' => count(array_filter($rows, fn ($r) => $r['security'])),
+                    'upgradable' => count(array_filter($rows, fn ($r) => $r['selectable'] && ! $r['kept_back'])),
+                    'new' => count(array_filter($rows, fn ($r) => $r['new'])),
+                ],
+                'reboot' => $list['reboot'] ?? ['required' => false],
+                'auto' => $list['auto'] ?? null,
+                'checked_at' => $list['checked_at'] ?? null,
+                'can' => (bool) auth()->user()?->isFullAdmin(),
+            ];
+        }
         $this->agentError = $groups === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')) : null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $blocker = $components->blocker();
@@ -207,7 +322,8 @@ class ComponentIndex extends Component
             'operationName' => $operation ? $components->operationName($operation) : null,
             'blocker' => $blocker,
             'busy' => $blocker !== null || collect($groups ?? [])->flatten(1)->contains(fn ($r) => $r['busy'] !== null),
-            'checkedAt' => $components->checkedAt(),
+            'checkedAt' => $system['checked_at'] ?? $components->checkedAt(),
+            'system' => $system,
             'apacheInstalled' => $components->isInstalled('apache'),
             'manager' => $manager,
             'managerPort' => $databases->managerPort(),
@@ -296,6 +412,9 @@ class ComponentIndex extends Component
      */
     private function confirmText(Components $components, string $id, string $action): array
     {
+        if ($id === SystemPackages::COMPONENT) {
+            return $this->systemConfirmText($action, $this->confirming['packages'] ?? null, app(SystemPackages::class));
+        }
         $name = $components->name($id);
         $row = collect($components->rows($components->meta($id)[2]) ?? [])->flatten(1)->firstWhere('id', $id) ?? [];
         $version = $row['latest'] ?? $row['version'] ?? null;
@@ -347,6 +466,98 @@ class ComponentIndex extends Component
                 'danger' => true,
             ],
         };
+    }
+
+    /**
+     * Starts upgrading Ubuntu packages; the progress window shows it.
+     *
+     * @param  list<string>|null  $names
+     */
+    private function upgradePackages(?array $names, SystemPackages $packages): void
+    {
+        $result = $packages->start($names, auth()->user());
+        if (is_string($result)) {
+            $this->refused = $result;
+
+            return;
+        }
+        $this->operationId = $result->id;
+        $this->selected = [];
+        $this->dispatch('toast', message: $names === null
+            ? __('Ubuntu paketlerinin hepsi güncelleniyor.')
+            : trans_choice(':count Ubuntu paketi güncelleniyor: :names', count($names), ['names' => implode(', ', array_slice($names, 0, 5)).(count($names) > 5 ? '…' : '')]));
+    }
+
+    /**
+     * Restarts the server in a minute; the toast's Undo stops it.
+     */
+    private function reboot(AgentClient $agent, SystemPackages $packages): void
+    {
+        if (! auth()->user()?->isFullAdmin()) {
+            $this->refused = __('Sunucuyu yalnızca tam yetkili yöneticiler yeniden başlatabilir.');
+
+            return;
+        }
+        try {
+            $agent->call('system.reboot', [], 30);
+        } catch (AgentException $e) {
+            $this->refused = match (true) {
+                $e instanceof AgentUnavailableException => __('Sunucu ajanına ulaşılamıyor.'),
+                $e->getCode() === -32005 => __('Bir yazılım işlemi sürüyor. Bitince yeniden deneyin.'),
+                default => __('Sunucu yeniden başlatılamadı: :reason', ['reason' => $e->reason]),
+            };
+
+            return;
+        }
+        $packages->forget();
+        $this->dispatch('toast',
+            message: __('Sunucu 1 dakika içinde yeniden başlatılacak.'),
+            source: $this->getId(),
+            undo: ['method' => 'abortReboot', 'args' => []],
+        );
+    }
+
+    /**
+     * The confirmation of an Ubuntu package upgrade or a restart.
+     *
+     * @param  list<string>|null  $names
+     * @return array{title: string, text: string, button: string, danger: bool, packages?: array<string, mixed>}
+     */
+    private function systemConfirmText(string $action, ?array $names, SystemPackages $packages): array
+    {
+        if ($action === 'reboot') {
+            $reboot = $packages->list()['reboot'] ?? [];
+
+            return [
+                'title' => __('Sunucu yeniden başlatılsın mı?'),
+                'text' => __('Sunucu 1 dakika sonra yeniden başlar. Siteler, posta ve panel birkaç dakika ulaşılamaz olur; hizmetler kendiliğinden yeniden açılır. O bir dakika içinde bildirimdeki Geri al ile vazgeçebilirsiniz.'),
+                'button' => __('Yeniden başlat'),
+                'danger' => true,
+                'packages' => ['reboot' => $reboot['packages'] ?? []],
+            ];
+        }
+        $rows = collect($packages->rows())->keyBy('name');
+        $chosen = $names === null
+            ? $rows->filter(fn ($r) => $r['selectable'] && ! $r['kept_back'])
+            : $rows->only($names);
+        $count = $names === null ? $chosen->count() : count($names);
+        $components = $chosen->pluck('component_name')->filter()->unique()->values()->all();
+
+        return [
+            'title' => $names === null
+                ? trans_choice(':count Ubuntu paketi güncellensin mi?', $count)
+                : ($count === 1 ? __(':name güncellensin mi?', ['name' => $names[0]]) : trans_choice(':count Ubuntu paketi güncellensin mi?', $count)),
+            'text' => __('Serfex Agent yeni sürümleri apt ile kurar. Hiçbir paket kaldırılmaz, sunucuda değiştirilmiş ayar dosyaları korunur ve güncellenen hizmetler kendiliğinden yeniden başlar; birkaç saniyelik kesinti olabilir. Güncellenen paketler geri alınamaz.'),
+            'button' => __('Güncelle'),
+            'danger' => false,
+            'packages' => [
+                'count' => $count,
+                'security' => $chosen->where('security', true)->count(),
+                'new' => $names === null ? $rows->where('new', true)->count() : 0,
+                'components' => $components,
+                'list' => $names ?? [],
+            ],
+        ];
     }
 
     /**

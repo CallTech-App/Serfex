@@ -41,7 +41,7 @@ class DashboardTest extends TestCase
             ->get('/')
             ->assertOk()
             ->assertSee('Her şey yolunda')
-            ->assertSeeInOrder(['Canlı izleme', 'Hizmetler', 'SSL sertifikaları', 'Yedekler', 'Güvenlik taraması', 'Disk alanı', 'Müşteri paketleri', 'Hesabınız', 'Serfex sürümü'])
+            ->assertSeeInOrder(['Canlı izleme', 'Hizmetler', 'SSL sertifikaları', 'Yedekler', 'Güvenlik taraması', 'Disk alanı', 'Müşteri paketleri', 'Hesabınız', 'Güncellemeler'])
             ->assertSee('Sunucu kaynakları')
             ->assertSee('%30')
             ->assertSee('Barındırma')

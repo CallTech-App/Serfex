@@ -570,8 +570,12 @@ func (m *Manager) versions(ctx context.Context, pkgs []string) map[string]string
 		return out
 	}
 	if m.sim {
+		upgraded := m.simUpgraded()
 		for _, p := range pkgs {
 			out[p] = simVersions[p]
+			if v := simCandidates[p]; v != "" && upgraded[p] {
+				out[p] = v
+			}
 			if product, ok := strings.CutSuffix(p, "-server"); ok {
 				if v := database.SimVersion(m.h, product); v != "" {
 					out[p] = v

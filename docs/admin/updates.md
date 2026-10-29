@@ -1,9 +1,9 @@
 # Updates
 
 Serfex updates itself from its GitHub Releases. An update replaces the panel,
-the agent and the command line; operating system packages and the
-customers' software (PHP, MySQL, Nginx…) are updated separately, under
-Software and Services.
+the agent and the command line; Ubuntu's packages and the customers'
+software (PHP, MySQL, Nginx…) are updated separately, under Software (its
+Ubuntu updates tab, see [Services, PHP and software](services.md#ubuntu-updates)).
 
 ## Updating from the panel
 

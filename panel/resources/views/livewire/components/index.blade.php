@@ -56,6 +56,9 @@
             @endforeach
         </div>
 
+        @if ($tab === 'packages')
+            @include('livewire.components.packages')
+        @else
         <div class="relative overflow-x-auto">
             <table class="w-full text-[13.5px] sm:min-w-[720px]">
                 <thead>
@@ -106,6 +109,7 @@
                 </tbody>
             </table>
         </div>
+        @endif
 
         @if ($tab === 'web')
             <form wire:submit="saveDefault" class="grid grid-cols-1 gap-x-6 gap-y-2 border-t border-line px-5 py-4 text-[13.5px] md:grid-cols-[220px_1fr]">
@@ -128,7 +132,7 @@
             </a>
         @elseif ($tab === 'databases')
             <p class="border-t border-line px-5 py-3 text-2xs text-muted"><x-t text="MySQL ve MariaDB aynı anda kurulamaz; PostgreSQL ikisinin yanında çalışır. Panelin kendi PostgreSQL'i ayrı çalışır, buradaki işlemler onu etkilemez. Veritabanları ve kullanıcılar :link sayfasından yönetilir."><x-slot:link><a href="{{ route('databases.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Veritabanları') }}</a></x-slot:link></x-t></p>
-        @else
+        @elseif ($tab === 'other')
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Redis her Laravel uygulamasına kendi parolalı örneğini verir; uygulamanın Ortam bölümünden bağlanır. Node.js ve Composer, Laravel derlemelerinde kullanılır.') }}</p>
         @endif
     </section>
@@ -141,6 +145,7 @@
                 <p class="mt-1 text-[13px] text-muted">{{ $confirm['text'] }}</p>
                 @include('livewire.components.candidate')
                 @include('livewire.components.upgrade')
+                @include('livewire.components.packages-confirm')
                 <div class="mt-4 flex justify-end gap-2">
                     <button type="button" wire:click="$set('confirming', null)" class="h-9 rounded-md border border-line px-3.5 hover:bg-surface-2">{{ __('Vazgeç') }}</button>
                     <button type="button" wire:click="confirm" wire:loading.attr="disabled" @class(['h-9 rounded-md px-3.5 font-medium disabled:opacity-40', 'bg-crit text-on-crit' => $confirm['danger'], 'bg-accent text-accent-fg hover:brightness-110' => ! $confirm['danger']])>{{ $confirm['button'] }}</button>

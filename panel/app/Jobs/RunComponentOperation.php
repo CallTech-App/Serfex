@@ -6,6 +6,7 @@ use App\Models\ComponentOperation;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
+use App\Services\Components\SystemPackages;
 use App\Services\Security\Waf;
 use App\Services\Settings\PanelSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,6 +35,10 @@ class RunComponentOperation implements ShouldQueue
             $this->timeout = 43400;
             $this->onConnection('backups')->onQueue('backups');
         }
+        if ($operation->component === SystemPackages::COMPONENT) {
+            // apt may first wait for unattended-upgrades to finish.
+            $this->timeout = 3700;
+        }
     }
 
     public function handle(AgentClient $agent, Components $components): void
@@ -51,14 +56,21 @@ class RunComponentOperation implements ShouldQueue
                 $params['version'] = $op->detail;
             }
         }
-        if (str_starts_with($op->action, 'ext-')) {
+        if ($op->component === SystemPackages::COMPONENT) {
+            $method = 'packages.upgrade';
+            $params = ['run' => $op->run, 'packages' => $op->packages ?? []];
+        } elseif (str_starts_with($op->action, 'ext-')) {
             $method = 'component.extension';
             $params = ['version' => substr($op->component, 3), 'name' => (string) $op->detail, 'remove' => $op->action === 'ext-remove', 'run' => $op->run];
         } else {
             $method = 'component.'.$op->action;
         }
         try {
-            $agent->call($method, $params, $op->action === 'upgrade' ? config('serfex.agent.upgrade_timeout') : config('serfex.agent.component_timeout'));
+            $agent->call($method, $params, match (true) {
+                $op->component === SystemPackages::COMPONENT => config('serfex.agent.packages_timeout'),
+                $op->action === 'upgrade' => config('serfex.agent.upgrade_timeout'),
+                default => config('serfex.agent.component_timeout'),
+            });
         } catch (AgentException $e) {
             $op->update(['status' => 'failed', 'error' => $e->reason, 'finished_at' => now()]);
             $components->statuses();
