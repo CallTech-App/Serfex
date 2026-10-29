@@ -74,10 +74,10 @@ abstract class GitProvider
     abstract public function removeDeployKey(string $token, string $repository, string $id): void;
 
     /**
-     * Adds a webhook for pushes (and pull requests when $pullRequests);
-     * returns its id.
+     * Adds a webhook for pushes (and pull requests when $pullRequests),
+     * signed with $secret; returns its id.
      */
-    abstract public function addWebhook(string $token, string $repository, string $url, bool $pullRequests, bool $verifySsl): string;
+    abstract public function addWebhook(string $token, string $repository, string $url, string $secret, bool $pullRequests, bool $verifySsl): string;
 
     abstract public function removeWebhook(string $token, string $repository, string $id): void;
 

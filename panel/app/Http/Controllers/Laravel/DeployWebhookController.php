@@ -23,6 +23,11 @@ use RuntimeException;
  *
  * The same address deploys sites set up for Git dağıtımı (GitRepository);
  * the token says which.
+ *
+ * The token is also the webhook's secret: GitHub and Bitbucket sign the
+ * body with it, GitLab sends it back. A wrong signature is refused, and
+ * pull request events count only when signed, because anyone who learnt
+ * the address could otherwise make previews of any branch.
  */
 class DeployWebhookController extends Controller
 {
@@ -30,16 +35,23 @@ class DeployWebhookController extends Controller
     {
         $app = strlen($token) < 32 ? null : LaravelApp::with('site')->where('webhook_token', $token)->first();
         $repo = $app !== null || strlen($token) < 32 ? null : GitRepository::with('site')->where('webhook_token', $token)->first();
+        if ($app === null && $repo === null) {
+            return response()->json(['message' => 'Unknown deploy hook.'], 404);
+        }
+        $signed = $this->signed($request, $token);
+        if ($signed === false) {
+            return response()->json(['message' => 'The webhook signature does not match; its secret must be the token in this address.'], 403);
+        }
         if ($repo !== null) {
             return $this->site($request, $repo, $sites);
-        }
-        if ($app === null) {
-            return response()->json(['message' => 'Unknown deploy hook.'], 404);
         }
         if ($request->header('X-GitHub-Event') === 'ping') {
             return response()->json(['message' => 'pong']);
         }
         $pr = $this->pullRequest($request);
+        if ($pr !== null && $signed !== true) {
+            return response()->json(['message' => 'Pull request events are used only when signed: set the webhook secret to the token in this address.'], 202);
+        }
         if ($pr !== null) {
             return $this->preview($app, $pr, $previews);
         }
@@ -134,6 +146,29 @@ class DeployWebhookController extends Controller
         }
 
         return response()->json(['message' => 'Preview environment queued.', 'preview' => $preview->name, 'url' => 'https://'.$preview->domain()], 202);
+    }
+
+    /**
+     * True when the request proves it knows $secret (GitHub's and
+     * Bitbucket's HMAC of the body, GitLab's token), false when it tries
+     * and fails, null when it carries no proof (a plain POST from CI, or
+     * a webhook added by hand without a secret).
+     */
+    private function signed(Request $request, string $secret): ?bool
+    {
+        $signature = $request->header('X-Hub-Signature-256') ?? $request->header('X-Hub-Signature');
+        if (is_string($signature) && $signature !== '') {
+            // Old GitHub servers send only the SHA-1 form.
+            $algo = str_starts_with($signature, 'sha1=') ? 'sha1' : 'sha256';
+
+            return hash_equals($algo.'='.hash_hmac($algo, $request->getContent(), $secret), $signature);
+        }
+        $token = $request->header('X-Gitlab-Token');
+        if (is_string($token) && $token !== '') {
+            return hash_equals($secret, $token);
+        }
+
+        return null;
     }
 
     /**

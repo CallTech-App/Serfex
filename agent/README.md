@@ -37,6 +37,7 @@ lists every method by area.
 | `mail.status` | | `installed`, `configured`, `running`, per-service `services`, `hostname`, `webmail_url` |
 | `mail.setup` | `hostname`, `certificate`, `hourly_limit`, `webmail` | installs the mail server if missing, configures and (re)starts it; returns `installed`, `changed`, `hostname`, `webmail_url` |
 | `mail.domain.apply` | `domain`, `spam_filter`, `mailboxes`, `aliases`, `catch_all`, `suspended`, `disk_full` | serves exactly these mailboxes and forwarders (a suspended domain defers incoming mail and refuses logins; `disk_full` defers incoming mail with `452 4.2.2 Mailbox full` while logins keep working); returns `changed` and the domain's `dkim` record |
+| `mail.senders.apply` | `logins` (system user → its sites' domains) | limits senders of mail sent from this server: sendmail by a listed user only as its domains or its bare login, unauthenticated SMTP from the server's own addresses never as a hosted domain; returns `changed` and `logins` |
 | `mail.domain.delete` | `domain`, `remove_files` | stops serving the domain's mail; returns `deleted`, `files_removed` |
 | `mail.mailbox.purge` | `domain`, `name` | deletes the stored mail of a removed mailbox |
 | `mail.usage` | `domain` | bytes stored per mailbox |
@@ -276,6 +277,15 @@ Dovecot's master user.
   ratelimit; 0 is no limit). Messages scoring 15 or more are rejected, 6 or
   more get an `X-Spam` header, and domains with `spam_filter` file them
   into Junk.
+- Sites send only as their own domains. `mail.senders.apply` writes which
+  domains each site's system user may use; Postfix's
+  `local_login_sender_maps` enforces it for sendmail (PHP's `mail()`).
+  Unauthenticated SMTP from the server itself (loopback and its own
+  addresses) may not use any hosted domain as sender, because Postfix
+  cannot tell whose site connected: such mail must use sendmail or a
+  mailbox login on 587. Accounts not listed (root, the panel) are not
+  limited. Updates rewrite Postfix's configuration, so older servers get
+  new settings.
 - Every domain signs with selector `serfex`; `mail.domain.apply` returns
   the TXT record to publish at `serfex._domainkey`. The key survives
   `mail.domain.delete` unless `remove_files` is set, so turning mail off and

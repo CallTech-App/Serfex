@@ -500,6 +500,12 @@ var simAccounts = map[string][]string{
 	"postgresql":     {"postgres:x:110:116:PostgreSQL administrator:/var/lib/postgresql:/bin/bash"},
 }
 
+// simGroups are the groups without an account of their own that packages
+// create, as group lines.
+var simGroups = map[string][]string{
+	"postfix": {"postdrop:x:120:"},
+}
+
 // apt-get install [-OPTIONS] PACKAGE...; apt-get purge|remove PATTERN...
 // deletes the marker files of the matching packages.
 func (s *Simulator) aptGet(args []string) error {
@@ -541,6 +547,11 @@ func (s *Simulator) aptGet(args []string) error {
 	for _, a := range args[1:] {
 		if err := s.addAccounts(simAccounts[a]); err != nil {
 			return err
+		}
+		for _, g := range simGroups[a] {
+			if err := s.addGroup(g); err != nil {
+				return err
+			}
 		}
 		files := simPackages[a]
 		if m := simPGServer.FindStringSubmatch(a); m != nil {
@@ -642,6 +653,19 @@ func (s *Simulator) addAccounts(lines []string) error {
 		}
 	}
 	return nil
+}
+
+func (s *Simulator) addGroup(line string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	group, err := os.ReadFile(s.Path("/etc/group"))
+	if err != nil {
+		return err
+	}
+	if strings.Contains("\n"+string(group), "\n"+strings.Split(line, ":")[0]+":") {
+		return nil
+	}
+	return appendFile(s.Path("/etc/group"), line+"\n")
 }
 
 // PackageInstalled reports whether a simulated package's files are there.

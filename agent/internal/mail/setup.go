@@ -175,6 +175,62 @@ type SetupResult struct {
 	WebmailVersion string `json:"webmail_version,omitempty"`
 }
 
+// templateData fills the configuration templates for the server s.
+func (m *Manager) templateData(s *server, vmail host.User) tmplData {
+	certFile, keyFile := s.tlsFiles()
+	return tmplData{
+		Hostname: s.Hostname, CertFile: certFile, KeyFile: keyFile, IPv6: m.hasIPv6(),
+		VmailUID: vmail.UID, HourlyLimit: s.HourlyLimit, MilterAddr: milterAddr,
+		RedisSocket: redisSocket, Maps: postfixMaps, DovecotDir: dovecotDir, VmailDir: VmailDir,
+		MasterUser: MasterUser,
+		// Hizmetler → Postfix changes it.
+		MessageSize: int64(tuning.Load(m.h).Postfix.MessageSizeMB) << 20,
+	}
+}
+
+// RefreshPostfix rewrites Postfix's configuration and maps from the
+// applied setup, so a Serfex update brings servers set up before it to
+// the new settings. It reports whether anything changed; before
+// mail.setup it does nothing.
+func (m *Manager) RefreshPostfix(ctx context.Context) (changed bool, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, err := m.loadServer()
+	if errors.Is(err, ErrNotSetUp) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	vmail, err := m.h.LookupUser(VmailUser)
+	if err != nil {
+		return false, fmt.Errorf("%s account: %w", VmailUser, err)
+	}
+	t := txn.New(m.h)
+	defer m.finish(ctx, t, &err)
+
+	data := m.templateData(s, vmail)
+	for path, tmpl := range map[string][]byte{postfixMain: render(postfixMainTmpl, data), postfixMaster: render(postfixMasterTmpl, data)} {
+		if err := t.WriteFile(path, tmpl); err != nil {
+			return false, err
+		}
+	}
+	// rebuild checks and reloads Postfix only when its maps changed.
+	conf := t.Changed
+	if err := m.rebuild(ctx, t); err != nil {
+		return false, err
+	}
+	if conf {
+		if _, err := m.h.Run(ctx, host.Command{Name: "postfix", Args: []string{"check"}}); err != nil {
+			return false, fmt.Errorf("postfix rejected the configuration: %w", err)
+		}
+		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "postfix"}}); err != nil {
+			return false, err
+		}
+	}
+	return t.Changed, nil
+}
+
 // Setup installs the mail server's packages when missing, writes the
 // configuration and (re)starts the services. Running it again repairs a
 // stopped or changed server. Configuration changes are rolled back if a
@@ -309,15 +365,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	if err != nil {
 		return SetupResult{}, fmt.Errorf("dovecot account: %w", err)
 	}
-	certFile, keyFile := s.tlsFiles()
-	data := tmplData{
-		Hostname: spec.Hostname, CertFile: certFile, KeyFile: keyFile, IPv6: m.hasIPv6(),
-		VmailUID: vmail.UID, HourlyLimit: spec.HourlyLimit, MilterAddr: milterAddr,
-		RedisSocket: redisSocket, Maps: postfixMaps, DovecotDir: dovecotDir, VmailDir: VmailDir,
-		MasterUser: MasterUser,
-		// Hizmetler → Postfix changes it.
-		MessageSize: int64(tuning.Load(m.h).Postfix.MessageSizeMB) << 20,
-	}
+	data := m.templateData(s, vmail)
 
 	// Each service restarts only when its own files changed.
 	restart := map[string]bool{}
@@ -383,7 +431,11 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	if err != nil {
 		return SetupResult{}, err
 	}
-	mapChanges, err := m.writeMaps(t, buildMaps(domains), dovecot.GID)
+	built, err := m.allMaps(domains)
+	if err != nil {
+		return SetupResult{}, err
+	}
+	mapChanges, err := m.writeMaps(t, built, dovecot.GID)
 	if err != nil {
 		return SetupResult{}, err
 	}

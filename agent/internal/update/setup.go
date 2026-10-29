@@ -76,6 +76,15 @@ func (m *Manager) Setup(ctx context.Context) (SetupResult, error) {
 			res.DefaultSiteError = err.Error()
 		}
 	}
+	if m.Mail != nil {
+		// Not fatal either: a rejected change is rolled back and mail
+		// keeps flowing with the old settings.
+		written, err := m.Mail(ctx)
+		res.Mail = written
+		if err != nil {
+			res.MailError = err.Error()
+		}
+	}
 	if m.Web != nil {
 		web, err := m.Web(ctx)
 		if err != nil {
@@ -94,6 +103,9 @@ type SetupResult struct {
 	// DefaultSite says whether the Nginx default server was (re)written.
 	DefaultSite      bool   `json:"default_site,omitempty"`
 	DefaultSiteError string `json:"default_site_error,omitempty"`
+	// Mail says whether Postfix's configuration was rewritten.
+	Mail      bool   `json:"mail,omitempty"`
+	MailError string `json:"mail_error,omitempty"`
 }
 
 // needrestartConf keeps Ubuntu's needrestart from restarting Serfex's

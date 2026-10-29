@@ -270,7 +270,7 @@ class GitProvidersTest extends TestCase
             && $r['read_only'] === true && $r['key'] === self::KEY && $r['title'] === 'Serfex · kahve.com.tr' && $r->hasHeader('Authorization', 'Bearer gho_token'));
         Http::assertSent(fn (Request $r) => $r->method() === 'POST' && $r->url() === 'https://api.github.com/repos/aylin/kahve-site/hooks'
             && $r['events'] === ['push'] && $r['config']['url'] === 'https://panel.kahve.com.tr:8443/hooks/deploy/'.$repo->webhook_token
-            && $r['config']['insecure_ssl'] === '1');
+            && $r['config']['insecure_ssl'] === '1' && $r['config']['secret'] === $repo->webhook_token);
         $page->assertSee('Webhook GitHub deposuna eklendi.');
 
         // Disconnecting removes both from the repository.
@@ -382,7 +382,7 @@ class GitProvidersTest extends TestCase
 
         $this->assertSame(['key' => true, 'hook' => true, 'errors' => []], $linked);
         $this->assertSame(['123', '{abc-def}'], [$repo->fresh()->remote_key_id, $repo->fresh()->remote_hook_id]);
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/hooks') && $r['events'] === ['repo:push'] && $r['skip_cert_verification'] === true);
+        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/hooks') && $r['events'] === ['repo:push'] && $r['skip_cert_verification'] === true && $r['secret'] === $repo->fresh()->webhook_token);
     }
 
     public function test_laravel_install_from_a_picked_repository(): void

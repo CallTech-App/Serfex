@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SyncsMailSenders;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['site_id', 'kind', 'source', 'with_www', 'target', 'code', 'keep_path'])]
 class SiteRedirect extends Model
 {
+    use SyncsMailSenders;
+
+    /** Changes to these alter the domains the site may send mail as. */
+    protected const SENDER_FIELDS = ['site_id', 'kind', 'source', 'with_www'];
+
     public const DOMAIN = 'domain';
 
     public const PATH = 'path';

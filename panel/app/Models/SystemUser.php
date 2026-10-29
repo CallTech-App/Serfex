@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SyncsMailSenders;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['customer_id', 'name', 'uid', 'home', 'disk_bytes', 'disk_measured_at', 'quota_limit_bytes', 'ssh_access', 'ssh_password_at'])]
 class SystemUser extends Model
 {
-    use HasFactory;
+    use HasFactory, SyncsMailSenders;
+
+    /** Changes to these alter the domains the site may send mail as. */
+    protected const SENDER_FIELDS = ['name'];
 
     protected function casts(): array
     {

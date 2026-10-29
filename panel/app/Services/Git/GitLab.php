@@ -133,10 +133,11 @@ class GitLab extends GitProvider
         $this->send(fn () => $this->http($token)->delete($this->api($this->project($repository).'/deploy_keys/'.rawurlencode($id))));
     }
 
-    public function addWebhook(string $token, string $repository, string $url, bool $pullRequests, bool $verifySsl): string
+    public function addWebhook(string $token, string $repository, string $url, string $secret, bool $pullRequests, bool $verifySsl): string
     {
         $hook = $this->send(fn () => $this->http($token)->post($this->api($this->project($repository).'/hooks'), [
             'url' => $url,
+            'token' => $secret,
             'push_events' => true,
             'merge_requests_events' => $pullRequests,
             'enable_ssl_verification' => $verifySsl,

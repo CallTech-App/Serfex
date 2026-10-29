@@ -1267,7 +1267,7 @@
     "Dağıtım öncesi veritabanı yedeği alınamadı: :error": "The pre-deployment database backup failed: :error",
     "Dağıtım, önizlemeler, komutlar ve Tinker, .env, kuyruklar, süreçler, yedek alma, bakım modu": "Deploys, previews, commands and Tinker, .env, queues, processes, taking backups, maintenance mode",
     "Dağıtımlar": "Deployments",
-    "Dağıtımlar bölümündeki webhook adresine :app için pull request olaylarını da açın (GitHub: :part, GitLab: :part2). Çatallardan (fork) gelen pull request'ler kurulmaz.": "For :app, also turn on pull request events for the webhook address in the Deployments section (GitHub: :part, GitLab: :part2). Pull requests from forks are not set up.",
+    "Dağıtımlar bölümündeki webhook adresine :app için pull request olaylarını da açın (GitHub: :part, GitLab: :part2) ve webhook'un gizli anahtarına (:secret) adresin sonundaki anahtarı yazın; imzasız pull request olayları kullanılmaz. Çatallardan (fork) gelen pull request'ler kurulmaz.": "For :app, also turn on pull request events for the webhook address in the Deployments section (GitHub: :part, GitLab: :part2) and set the webhook's secret (:secret) to the key at the end of the address; unsigned pull request events are not used. Pull requests from forks are not set up.",
     "Dağıtımın yanı sıra .env, komutlar, kuyruklar, bakım modu ve günlükler.": "Deploys, and also .env, commands, queues, maintenance mode and logs.",
     "Dağıtır, dağıtımları izler, önizleme açar ve kaldırır.": "Deploys, follows deploys, opens and removes previews.",
     "Dene ve uygula": "Try and apply",

@@ -133,6 +133,25 @@ func lookupPasswd(file, name string) (User, error) {
 	return User{}, ErrUserNotFound
 }
 
+// LookupGroup returns the ID of a group in h's group(5) file.
+func LookupGroup(h Host, name string) (int, error) {
+	data, err := os.ReadFile(h.Path("/etc/group"))
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 4 && fields[0] == name {
+			gid, err := strconv.Atoi(fields[2])
+			if err != nil {
+				return 0, fmt.Errorf("malformed group entry for %q", name)
+			}
+			return gid, nil
+		}
+	}
+	return 0, fmt.Errorf("group %s not found", name)
+}
+
 // commandError formats a failed command with the tail of its output.
 func commandError(c Command, out string, err error) error {
 	out = strings.TrimSpace(out)

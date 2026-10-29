@@ -241,7 +241,10 @@ func (m *Manager) rebuild(ctx context.Context, t *txn.Tx) error {
 	if err != nil {
 		return err
 	}
-	built := buildMaps(domains)
+	built, err := m.allMaps(domains)
+	if err != nil {
+		return err
+	}
 	changed, err := m.writeMaps(t, built, dovecot.GID)
 	if err != nil {
 		return err
@@ -307,7 +310,7 @@ func (m *Manager) writeMaps(t *txn.Tx, built maps, dovecotGID int) (map[string]b
 				return err
 			}
 		}
-		return nil
+		return m.writeSenderMaps(t, built.senders)
 	}); err != nil {
 		return nil, err
 	}

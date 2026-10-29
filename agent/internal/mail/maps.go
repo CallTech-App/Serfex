@@ -18,6 +18,8 @@ type maps struct {
 	sieve map[string][]byte
 	// dkim is Rspamd's dkim_signing.conf.
 	dkim []byte
+	// senders limits the senders of mail sent from this server.
+	senders senderMaps
 }
 
 // suspendedHash stands in for a suspended mailbox's password: a crypt

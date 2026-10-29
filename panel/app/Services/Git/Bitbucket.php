@@ -107,7 +107,7 @@ class Bitbucket extends GitProvider
         $this->send(fn () => $this->http($token)->delete(self::API."/repositories/{$repository}/deploy-keys/".rawurlencode($id)));
     }
 
-    public function addWebhook(string $token, string $repository, string $url, bool $pullRequests, bool $verifySsl): string
+    public function addWebhook(string $token, string $repository, string $url, string $secret, bool $pullRequests, bool $verifySsl): string
     {
         $events = ['repo:push'];
         if ($pullRequests) {
@@ -116,6 +116,7 @@ class Bitbucket extends GitProvider
         $hook = $this->send(fn () => $this->http($token)->post(self::API."/repositories/{$repository}/hooks", [
             'description' => 'Serfex',
             'url' => $url,
+            'secret' => $secret,
             'active' => true,
             'events' => $events,
             'skip_cert_verification' => ! $verifySsl,
