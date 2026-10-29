@@ -15,7 +15,7 @@ class AuthTest extends TestCase
         foreach (['/', '/sites'] as $url) {
             $this->get($url)->assertRedirect('/login');
         }
-        $this->get('/login')->assertOk()->assertSee('Panele giriş yapın');
+        $this->get('/login')->assertOk()->assertSee('Panele giriş yapın')->assertSee('<link rel="icon" href="/favicon.svg"', false);
     }
 
     public function test_admin_can_sign_in_and_out(): void

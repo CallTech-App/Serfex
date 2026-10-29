@@ -93,7 +93,8 @@ class CustomerAccessTest extends TestCase
             ->assertDontSee('Canlı İzleme')
             ->assertDontSee('Serfex AI')
             ->assertDontSee('Müşteriler ve Paketler')
-            ->assertDontSee('Yazılım Yönetimi');
+            ->assertDontSee('Yazılım Yönetimi')
+            ->assertDontSee('Serfex '.config('serfex.version'));
         foreach (['/monitor', '/ai', '/ai/settings', '/customers', '/customers/'.$this->customer->id, '/dns/settings', '/mail/settings', '/ssl/settings', '/software'] as $url) {
             $this->get($url)->assertForbidden();
         }

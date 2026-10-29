@@ -21,9 +21,9 @@
     --accent: 13 116 121; --accent-fg: 255 255 255; --accent-soft: 223 240 240;
     --ok: 21 128 76; --ok-soft: 224 243 232;
     --warn: 176 104 0; --warn-soft: 252 241 220;
-    --crit: 196 38 46; --crit-soft: 252 231 231; --on-crit: 255 255 255;
+    --crit: 196 38 46; --crit-soft: 252 231 231; --on-crit: 255 255 255; --on-warn: 14 31 34;
     --info: 37 99 185; --info-soft: 226 236 251;
-    --nav: 14 31 34; --nav-fg: 222 233 234; --nav-muted: 132 157 161; --nav-line: 33 54 58; --nav-active: 26 52 56;
+    --nav: 250 251 251; --nav-fg: 52 64 68; --nav-muted: 110 124 129; --nav-line: 226 231 232; --nav-active: 236 241 241; --nav-strong: 17 25 28;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,9 +33,9 @@
         --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
         --ok: 76 200 132; --ok-soft: 17 46 32;
         --warn: 236 170 62; --warn-soft: 55 39 14;
-        --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+        --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10; --on-warn: 30 20 4;
         --info: 112 162 240; --info-soft: 21 36 62;
-        --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+        --nav: 14 20 22; --nav-fg: 205 216 218; --nav-muted: 118 136 140; --nav-line: 34 45 48; --nav-active: 27 37 40; --nav-strong: 255 255 255;
         color-scheme: dark;
     }
 }
@@ -46,9 +46,9 @@
     --accent: 52 184 188; --accent-fg: 5 22 24; --accent-soft: 19 50 52;
     --ok: 76 200 132; --ok-soft: 17 46 32;
     --warn: 236 170 62; --warn-soft: 55 39 14;
-    --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10;
+    --crit: 242 104 104; --crit-soft: 60 22 24; --on-crit: 40 8 10; --on-warn: 30 20 4;
     --info: 112 162 240; --info-soft: 21 36 62;
-    --nav: 8 13 15; --nav-fg: 222 233 234; --nav-muted: 120 140 145; --nav-line: 27 38 41; --nav-active: 22 38 41;
+    --nav: 14 20 22; --nav-fg: 205 216 218; --nav-muted: 118 136 140; --nav-line: 34 45 48; --nav-active: 27 37 40; --nav-strong: 255 255 255;
     color-scheme: dark;
 }
 
@@ -75,6 +75,7 @@
     --color-crit: rgb(var(--crit));
     --color-crit-soft: rgb(var(--crit-soft));
     --color-on-crit: rgb(var(--on-crit));
+    --color-on-warn: rgb(var(--on-warn));
     --color-info: rgb(var(--info));
     --color-info-soft: rgb(var(--info-soft));
     --color-nav: rgb(var(--nav));
@@ -82,6 +83,7 @@
     --color-nav-muted: rgb(var(--nav-muted));
     --color-nav-line: rgb(var(--nav-line));
     --color-nav-active: rgb(var(--nav-active));
+    --color-nav-strong: rgb(var(--nav-strong));
 }
 
 @layer base {

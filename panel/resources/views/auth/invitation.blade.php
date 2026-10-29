@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ __('Daveti kabul et · Serfex') }}</title>
+        <x-favicon />
         <script>
             try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
@@ -12,8 +13,8 @@
     <body class="grid min-h-screen place-items-center px-4 py-10">
         <main class="w-full max-w-sm">
             <div class="mb-6 flex items-center justify-center gap-2.5">
-                <x-logo />
-                <span class="text-[19px] font-semibold tracking-tight">serfex</span>
+                <x-logo class="size-8" />
+                <span class="text-[20px] font-semibold tracking-[-0.015em]">serfex</span>
             </div>
 
             <form method="POST" action="{{ url('/invite/'.$token) }}" class="rounded-xl border border-line bg-surface">

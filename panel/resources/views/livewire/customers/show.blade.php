@@ -240,7 +240,7 @@
             @error('reason') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
             <div class="mt-4 flex justify-end gap-2">
                 <button type="button" wire:click="$set('suspending', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
-                <button type="submit" class="h-9 rounded-md bg-warn px-3.5 text-[13.5px] font-medium text-nav">{{ __('Askıya al') }}</button>
+                <button type="submit" class="h-9 rounded-md bg-warn px-3.5 text-[13.5px] font-medium text-on-warn">{{ __('Askıya al') }}</button>
             </div>
         </form>
     </x-modal>

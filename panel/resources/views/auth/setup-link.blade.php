@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="referrer" content="no-referrer">
         <title>{{ __('Kurulum bağlantısı · Serfex') }}</title>
+        <x-favicon />
         <script>
             try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
@@ -13,8 +14,8 @@
     <body class="grid min-h-screen place-items-center px-4 py-10">
         <main class="w-full max-w-md">
             <div class="mb-6 flex items-center justify-center gap-2.5">
-                <x-logo />
-                <span class="text-[19px] font-semibold tracking-tight">serfex</span>
+                <x-logo class="size-8" />
+                <span class="text-[20px] font-semibold tracking-[-0.015em]">serfex</span>
             </div>
             <div class="rounded-xl border border-line bg-surface">
                 <h1 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">
