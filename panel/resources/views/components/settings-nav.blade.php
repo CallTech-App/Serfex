@@ -22,7 +22,7 @@
            class="flex h-9 shrink-0 items-center gap-2.5 rounded-md px-3 whitespace-nowrap {{ $on ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:bg-surface-2 hover:text-fg' }}">
             <x-icon :name="$icon" class="size-4" />{{ __($label) }}
             @if ($route === 'settings.updates' && $updates)
-                <span class="num ml-auto min-w-5 rounded-full bg-warn px-1.5 text-center text-2xs leading-5 font-semibold text-nav">{{ $updates }}</span>
+                <span class="num ml-auto rounded bg-warn/15 px-1.5 text-2xs leading-[18px] font-semibold text-warn">{{ $updates }}</span>
             @endif
         </a>
     @endforeach
