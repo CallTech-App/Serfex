@@ -652,3 +652,53 @@ func TestResetPasswordPrintsTheLink(t *testing.T) {
 		t.Error("ran without root")
 	}
 }
+
+func TestChangeEmailChangesItOnTheServer(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "panel.json")
+	os.WriteFile(cfg, []byte(`{"php":"8.5"}`), 0o644)
+	var out, errOut bytes.Buffer
+	var ran []string
+	answer := `{"old":"sercan@calltach.app","email":"sercan@calltech.app"}`
+	env := &Env{
+		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
+		Getenv: func(k string) string {
+			return map[string]string{"SERFEX_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
+		},
+		Geteuid:  func() int { return 0 },
+		Hostname: func() (string, error) { return "srv1", nil },
+		ReadFile: func(p string) ([]byte, error) {
+			if p == panelConfig {
+				return os.ReadFile(cfg)
+			}
+			return os.ReadFile(p)
+		},
+		Command: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			ran = append([]string{name}, args...)
+			return []byte(answer + "\n"), nil
+		},
+	}
+	if code := Main([]string{"change-email", "sercan@calltach.app", "sercan@calltech.app"}, env); code != 0 {
+		t.Fatalf("change-email: %d %s", code, errOut.String())
+	}
+	// The addresses go after "--", so artisan never reads them as options.
+	if got := strings.Join(ran, " "); got != "runuser -u serfex -- env -C /opt/serfex/current/panel php8.5 artisan serfex:change-email --json -- sercan@calltach.app sercan@calltech.app" {
+		t.Errorf("ran %q", got)
+	}
+	if !strings.Contains(out.String()+errOut.String(), "sercan@calltech.app") {
+		t.Errorf("output %q %q", out.String(), errOut.String())
+	}
+
+	answer = `{"error":"Bu e-posta adresiyle bir panel hesabı zaten var."}`
+	errOut.Reset()
+	if code := Main([]string{"change-email", "a@ornek.com.tr", "b@ornek.com.tr"}, env); code == 0 || !strings.Contains(errOut.String(), "zaten var") {
+		t.Errorf("taken address: %d %q", code, errOut.String())
+	}
+	if code := Main([]string{"change-email", "a@ornek.com.tr"}, env); code == 0 {
+		t.Error("ran with one address")
+	}
+	env.Geteuid = func() int { return 1000 }
+	if code := Main([]string{"change-email", "a@ornek.com.tr", "b@ornek.com.tr"}, env); code == 0 {
+		t.Error("ran without root")
+	}
+}

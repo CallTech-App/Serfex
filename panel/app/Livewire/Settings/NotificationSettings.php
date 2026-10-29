@@ -202,6 +202,7 @@ class NotificationSettings extends Component
             'secret' => $this->showSecret ? $notifications->secret() : null,
             'hasPassword' => $mail->settings()['password'] !== null,
             'mailProblem' => $mail->problem(),
+            'deliveryWarning' => $mail->deliveryWarning(),
             'fromDefault' => $mail->fromAddress(),
         ]);
     }

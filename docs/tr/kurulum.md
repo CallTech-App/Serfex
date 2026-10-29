@@ -116,6 +116,13 @@ sudo serfex reset-password ayse@ornek.com.tr
 
 komutu herhangi bir hesap için aynı türden bir bağlantıyı e-posta göndermeden
 yazar.
+Yeni e-posta adresini doğrulama bağlantısı ulaşmazsa
+
+```sh
+sudo serfex change-email ayse@ornke.com.tr ayse@ornek.com.tr
+```
+
+komutu hesabın adresini hemen değiştirir.
 
 Serfex sunucunun root parolasıyla giriş yaptırmaz: PHP hiçbir zaman root
 olarak çalışmaz, root parolası tarayıcıdan geçmez ve kurulum bağlantısı

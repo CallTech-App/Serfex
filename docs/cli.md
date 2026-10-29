@@ -83,6 +83,22 @@ Examples:
 sudo serfex reset-password ayse@ornek.com.tr
 ```
 
+### serfex change-email
+
+```
+serfex change-email <old-email> <new-email>
+```
+
+Changes the sign-in address of an administrator, customer or team member account without waiting for a confirmation link. The notification recipients, the Let's Encrypt contact and the customer record move to the new address too; a pending address change is cancelled.
+
+Use it when the confirmation mail sent to the new address does not arrive. Runs on the server itself as root.
+
+Examples:
+
+```sh
+sudo serfex change-email ayse@ornek.com ayse@ornek.com.tr
+```
+
 ### serfex logout
 
 ```

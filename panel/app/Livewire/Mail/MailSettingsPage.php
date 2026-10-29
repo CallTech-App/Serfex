@@ -7,6 +7,7 @@ use App\Jobs\SetupMailServer;
 use App\Models\Setting;
 use App\Services\Agent\AgentClient;
 use App\Services\Mail\MailSettings;
+use App\Services\Mail\ReverseDns;
 use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Support\Hostnames;
@@ -117,6 +118,7 @@ class MailSettingsPage extends Component
             'savedHostname' => $settings->hostname(),
             'setup' => $settings->server(),
             'quotas' => MailSettings::QUOTAS,
+            'reverseDns' => $settings->isSetUp() ? app(ReverseDns::class)->problem() : null,
         ]);
     }
 

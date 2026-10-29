@@ -136,6 +136,31 @@ class EmailChange
     }
 
     /**
+     * `sudo serfex change-email`: moves $user to $email at once, for when
+     * the link doesn't arrive. Whoever can run it as root already controls
+     * the panel, so no password or link is asked.
+     *
+     * @throws RuntimeException when the address is not valid or is taken
+     */
+    public function changeOnServer(User $user, string $email): void
+    {
+        $email = Str::lower(trim($email));
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) {
+            throw new RuntimeException(__(':email geçerli bir e-posta adresi değil.', ['email' => $email]));
+        }
+        if ($email === Str::lower($user->email)) {
+            throw new RuntimeException(__(':email zaten bu hesabın adresi.', ['email' => $email]));
+        }
+        if (! $this->available($user, $email)) {
+            throw new RuntimeException(__('Bu e-posta adresiyle bir panel hesabı zaten var.'));
+        }
+        $old = $user->email;
+        $this->apply($user, $email, null, verified: false);
+        AuditLog::record(__('Sunucuda komut satırıyla e-posta adresi :old yerine :new yapıldı.', ['old' => $old, 'new' => $email]),
+            $user, 'system', ['actor' => 'root', 'section' => __('Hesap bilgileri')]);
+    }
+
+    /**
      * @throws RuntimeException
      */
     private function send(User $user, string $email, ?string $ip): void

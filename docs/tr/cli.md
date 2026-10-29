@@ -83,6 +83,22 @@ Panel e-posta gönderemediğinde ya da e-posta ulaşmadığında kullanın. Sunu
 sudo serfex reset-password ayse@ornek.com.tr
 ```
 
+### serfex change-email
+
+```
+serfex change-email <eski-e-posta> <yeni-e-posta>
+```
+
+Bir yönetici, müşteri ya da ekip üyesi hesabının giriş adresini doğrulama bağlantısı beklemeden değiştirir. Bildirim alıcıları, Let's Encrypt iletişim adresi ve müşteri kaydı da yeni adrese geçer; bekleyen bir adres değişikliği iptal olur.
+
+Yeni adrese gönderilen doğrulama e-postası ulaşmadığında kullanın. Sunucunun kendisinde root olarak çalışır.
+
+Örnekler:
+
+```sh
+sudo serfex change-email ayse@ornek.com ayse@ornek.com.tr
+```
+
 ### serfex logout
 
 ```
