@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Audit\AuditLog;
 use App\Services\Customers\Customers;
+use App\Support\Impersonation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -86,6 +87,9 @@ class AccessAndAuditTest extends TestCase
 
         // Plain form posts too.
         $this->post(route('customers.impersonate', $customer))->assertForbidden();
+        // A hand-made X-Livewire header does not make a form post a Livewire call.
+        $this->post(route('customers.impersonate', $customer), [], ['X-Livewire' => '1'])->assertForbidden();
+        $this->assertNull(session(Impersonation::KEY));
         $this->post(route('logout'))->assertRedirect();
     }
 

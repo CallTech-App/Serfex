@@ -177,7 +177,7 @@ class Deployments extends Section
         if ($previous === null) {
             return;
         }
-        $rollback = LaravelDeployment::find($rollbackId);
+        $rollback = LaravelDeployment::where('laravel_app_id', $app->id)->find($rollbackId);
         if ($rollback?->status->isBusy()) {
             // Not started yet: it simply does not run.
             $rollback->delete();
@@ -302,7 +302,7 @@ class Deployments extends Section
             // Releases still on disk that are not live can be returned to.
             'canReturn' => fn (LaravelDeployment $d) => $d->status->isLive() && $d->kind !== 'rollback' && $d->release !== null
                 && $d->release !== $app->current_release && in_array($d->release, $onDisk, true),
-            'log' => $this->logId ? $deployments->firstWhere('id', $this->logId) ?? LaravelDeployment::find($this->logId) : null,
+            'log' => $this->logId ? $deployments->firstWhere('id', $this->logId) ?? $app->deployments()->find($this->logId) : null,
             'rollbackTo' => $this->rollbackId ? $deployments->firstWhere('id', $this->rollbackId) : null,
             'busy' => $busy,
             'webhookShort' => Str::limit($app->webhookUrl(), 60),

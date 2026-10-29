@@ -5,7 +5,8 @@ How to run Serfex from a checkout, and the tests that guard it. Read
 [Architecture](architecture.md) for how the pieces fit.
 
 You need PHP 8.3 or newer (production runs 8.5), Composer, Node.js 22 or
-newer, PostgreSQL 16 or newer and Go 1.24 or newer. You do not need root:
+newer, PostgreSQL 16 or newer and Go 1.26 or newer (the toolchain line in
+go.mod fetches the version releases are built with). You do not need root:
 the agent has a dry-run mode that keeps every server change under a scratch
 directory.
 

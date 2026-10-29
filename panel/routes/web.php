@@ -187,7 +187,6 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
 
     Route::middleware(EnsureAdmin::class)->group(function () {
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
-        Route::livewire('/sites/{site}/directives', SiteDirectives::class)->whereNumber('site')->name('sites.directives');
         Route::livewire('/sites/migrate', SiteMigrate::class)->name('sites.migrate');
         Route::livewire('/security', SecurityIndex::class)->name('security.index');
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
@@ -208,6 +207,9 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
 
         // Araçlar ve Ayarlar and Serfex AI's settings: full administrators.
         Route::middleware(EnsureFullAdmin::class)->group(function () {
+            // Nginx and Apache open logs and pipes as root: these lines are
+            // as good as root, so only full administrators write them.
+            Route::livewire('/sites/{site}/directives', SiteDirectives::class)->whereNumber('site')->name('sites.directives');
             Route::livewire('/install', SetupWizard::class)->name('setup');
             Route::livewire('/settings', GeneralSettings::class)->name('settings.general');
             Route::livewire('/settings/server', ServerSettings::class)->name('settings.server');

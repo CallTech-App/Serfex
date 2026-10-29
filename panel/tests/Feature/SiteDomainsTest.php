@@ -232,6 +232,11 @@ class SiteDomainsTest extends TestCase
 
         // Directives are for administrators.
         $this->get(route('sites.directives', $site))->assertForbidden();
+        // ...full ones: support administrators would reach root through them.
+        $this->actingAs(User::factory()->create(['role' => 'support']));
+        $this->get(route('sites.directives', $site))->assertForbidden();
+        $this->get(route('sites.show', $site))->assertOk()->assertDontSee('Web sunucusu yönergeleri');
+        $this->actingAs($customer->user);
         $this->get(route('sites.show', $site))->assertOk()->assertDontSee('Web sunucusu yönergeleri');
         $this->get(route('sites.domains', $site))->assertOk()->assertSee('1 / 1 alt alan adı (paket)');
     }

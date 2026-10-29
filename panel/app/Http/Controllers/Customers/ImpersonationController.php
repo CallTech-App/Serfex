@@ -21,6 +21,8 @@ class ImpersonationController extends Controller
         $admin = $request->user();
         $user = $customer->user;
         abort_unless($admin->is_admin && $user !== null && ! $user->is_admin, 403);
+        // A read-only administrator would get the customer's full rights.
+        abort_if($admin->isReadOnly(), 403);
         AuditLog::record(__(':name olarak panele girdi.', ['name' => $customer->displayName()]), $admin, extra: ['section' => __('Müşteriler ve Paketler'), 'url' => route('customers.show', $customer, false)]);
 
         Auth::login($user);
