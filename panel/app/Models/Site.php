@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CertificateStatus;
 use App\Enums\SiteStatus;
+use App\Models\Concerns\SyncsMailSenders;
 use App\Services\Php\PhpVersions;
 use App\Services\Settings\Notifications;
 use App\Services\Sites\SiteCache;
@@ -23,6 +24,11 @@ class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
     use HasFactory;
+
+    use SyncsMailSenders;
+
+    /** Changes to these alter the domains the site may send mail as. */
+    protected const SENDER_FIELDS = ['domain', 'aliases', 'system_user_id'];
 
     protected $attributes = [
         'aliases' => '[]',

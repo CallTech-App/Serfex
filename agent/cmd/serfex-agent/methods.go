@@ -328,6 +328,17 @@ func registerMail(srv *rpc.Server, svc services) {
 		}
 		return res, nil
 	})
+	srv.Handle("mail.senders.apply", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec mail.SendersSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.ApplySenders(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
 	srv.Handle("mail.domain.delete", func(ctx context.Context, p json.RawMessage) (any, error) {
 		var q struct {
 			Domain      string `json:"domain"`

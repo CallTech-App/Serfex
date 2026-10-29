@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MailDomainStatus;
 use App\Models\Concerns\OwnedThroughSite;
+use App\Models\Concerns\SyncsMailSenders;
 use Database\Factories\MailDomainFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +19,10 @@ class MailDomain extends Model
     use HasFactory;
 
     use OwnedThroughSite;
+    use SyncsMailSenders;
+
+    /** Changes to these alter the domains the site may send mail as. */
+    protected const SENDER_FIELDS = ['site_id', 'name'];
 
     protected $attributes = [
         'status' => 'syncing',

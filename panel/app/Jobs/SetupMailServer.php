@@ -69,6 +69,7 @@ class SetupMailServer implements ShouldBeUnique, ShouldQueue
         ]);
 
         $serverDns->apply($hostname);
+        SyncMailSenders::dispatch();
 
         MailDomain::whereIn('status', [MailDomainStatus::Failed, MailDomainStatus::Syncing])->each(function (MailDomain $domain) {
             if ($domain->status === MailDomainStatus::Failed) {

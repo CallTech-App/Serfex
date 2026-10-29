@@ -116,13 +116,13 @@ class GitHub extends GitProvider
         $this->send(fn () => $this->http($token)->delete(self::API."/repos/{$repository}/keys/".rawurlencode($id)));
     }
 
-    public function addWebhook(string $token, string $repository, string $url, bool $pullRequests, bool $verifySsl): string
+    public function addWebhook(string $token, string $repository, string $url, string $secret, bool $pullRequests, bool $verifySsl): string
     {
         $hook = $this->send(fn () => $this->http($token)->post(self::API."/repos/{$repository}/hooks", [
             'name' => 'web',
             'active' => true,
             'events' => $pullRequests ? ['push', 'pull_request'] : ['push'],
-            'config' => ['url' => $url, 'content_type' => 'json', 'insecure_ssl' => $verifySsl ? '0' : '1'],
+            'config' => ['url' => $url, 'content_type' => 'json', 'secret' => $secret, 'insecure_ssl' => $verifySsl ? '0' : '1'],
         ]));
 
         return (string) ($hook['id'] ?? '');

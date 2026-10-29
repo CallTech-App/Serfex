@@ -95,25 +95,53 @@ class LaravelAdvancedTest extends TestCase
             'head' => ['ref' => 'feature/odeme', 'repo' => ['full_name' => $fork]], 'base' => ['repo' => ['full_name' => 'hizlikargo/api']],
         ]];
 
-        $this->postJson($url, $event('opened'), ['X-GitHub-Event' => 'pull_request'])
+        $signed = fn (array $body) => ['X-GitHub-Event' => 'pull_request', 'X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', json_encode($body), $app->webhook_token)];
+        $send = fn (array $body) => $this->postJson($url, $body, $signed($body));
+
+        $send($event('opened'))
             ->assertStatus(202)->assertJson(['preview' => 'pr-212', 'url' => 'https://pr-212.hizlikargo.app']);
         $preview = $app->previews()->sole();
         $this->assertSame(['feature/odeme', 'creating', 'GitHub pull request', 'webhook'], [$preview->branch, $preview->status, $preview->created_by, $preview->source]);
         Queue::assertPushed(CreateLaravelPreview::class, fn ($job) => $job->preview->is($preview));
 
         // Forks never get one; neither do apps with previews off.
-        $this->postJson($url, ['action' => 'opened'] + $event('opened', 'saldirgan/api'), ['X-GitHub-Event' => 'pull_request'])->assertStatus(202);
+        $send($event('opened', 'saldirgan/api'))->assertStatus(202);
         $this->assertSame(1, $app->previews()->count());
 
-        $this->postJson($url, $event('labeled'), ['X-GitHub-Event' => 'pull_request'])->assertStatus(202)->assertJsonMissing(['preview' => 'pr-212']);
+        $send($event('labeled'))->assertStatus(202)->assertJsonMissing(['preview' => 'pr-212']);
 
-        $this->postJson($url, $event('closed'), ['X-GitHub-Event' => 'pull_request'])->assertStatus(202)->assertJson(['preview' => 'pr-212']);
+        $send($event('closed'))->assertStatus(202)->assertJson(['preview' => 'pr-212']);
         $this->assertSame('deleting', $preview->fresh()->status);
         Queue::assertPushed(DeleteLaravelPreview::class);
 
         $app->update(['previews_enabled' => false]);
         $this->postJson($url, ['object_attributes' => ['action' => 'open', 'iid' => 7, 'title' => 'x', 'source_branch' => 'fix', 'source_project_id' => 1, 'target_project_id' => 1]],
-            ['X-Gitlab-Event' => 'Merge Request Hook'])->assertStatus(202)->assertJson(['message' => 'Preview environments are off for this application.']);
+            ['X-Gitlab-Event' => 'Merge Request Hook', 'X-Gitlab-Token' => $app->webhook_token])->assertStatus(202)->assertJson(['message' => 'Preview environments are off for this application.']);
+    }
+
+    public function test_pull_request_webhooks_must_be_signed_with_the_token(): void
+    {
+        $app = $this->laravelApp(['previews_enabled' => true]);
+        $url = '/hooks/deploy/'.$app->webhook_token;
+        $body = ['action' => 'opened', 'pull_request' => [
+            'number' => 9, 'title' => 'x', 'head' => ['ref' => 'feature/x', 'repo' => ['full_name' => 'hizlikargo/api']], 'base' => ['repo' => ['full_name' => 'hizlikargo/api']],
+        ]];
+
+        // Someone who only knows the address cannot open previews.
+        $this->postJson($url, $body, ['X-GitHub-Event' => 'pull_request'])
+            ->assertStatus(202)->assertJsonMissing(['preview' => 'pr-9']);
+        $this->postJson($url, $body, ['X-GitHub-Event' => 'pull_request', 'X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', json_encode($body), 'yanlis')])
+            ->assertStatus(403);
+        $this->postJson($url, ['object_attributes' => ['action' => 'open', 'iid' => 7, 'title' => 'x', 'source_branch' => 'fix', 'source_project_id' => 1, 'target_project_id' => 1]],
+            ['X-Gitlab-Event' => 'Merge Request Hook', 'X-Gitlab-Token' => 'yanlis'])->assertStatus(403);
+        // A wrong signature stops pushes too.
+        $this->postJson($url, ['ref' => 'refs/heads/main'], ['X-GitHub-Event' => 'push', 'X-Hub-Signature-256' => 'sha256=00'])->assertStatus(403);
+        $this->assertSame(0, $app->previews()->count());
+        Queue::assertNotPushed(CreateLaravelPreview::class);
+
+        // GitHub's older SHA-1 header is accepted too.
+        $this->postJson($url, $body, ['X-GitHub-Event' => 'pull_request', 'X-Hub-Signature' => 'sha1='.hash_hmac('sha1', json_encode($body), $app->webhook_token)])
+            ->assertStatus(202)->assertJson(['preview' => 'pr-9']);
     }
 
     public function test_previews_respect_the_limit_and_need_a_repository(): void

@@ -25,7 +25,7 @@
                 <dt class="text-muted">{{ __('Pull request önizlemeleri') }}</dt>
                 <dd class="space-y-1">
                     <label class="flex items-center gap-2.5"><input type="checkbox" @checked($app->previews_enabled) wire:change="setting('previews_enabled', $event.target.checked)" @disabled(! $operate) class="{{ $check }}">{{ __('Pull request açılınca önizleme kur, kapanınca sil') }}</label>
-                    <p class="text-2xs text-muted"><x-t text="Dağıtımlar bölümündeki webhook adresine :app için pull request olaylarını da açın (GitHub: :part, GitLab: :part2). Çatallardan (fork) gelen pull request'ler kurulmaz." :with="['app' => $app->providerLabel()]"><x-slot:part><span class="font-mono">Pull requests</span></x-slot:part><x-slot:part2><span class="font-mono">Merge request events</span></x-slot:part2></x-t></p>
+                    <p class="text-2xs text-muted"><x-t text="Dağıtımlar bölümündeki webhook adresine :app için pull request olaylarını da açın (GitHub: :part, GitLab: :part2) ve webhook'un gizli anahtarına (:secret) adresin sonundaki anahtarı yazın; imzasız pull request olayları kullanılmaz. Çatallardan (fork) gelen pull request'ler kurulmaz." :with="['app' => $app->providerLabel()]"><x-slot:part><span class="font-mono">Pull requests</span></x-slot:part><x-slot:part2><span class="font-mono">Merge request events</span></x-slot:part2><x-slot:secret><span class="font-mono">Secret</span></x-slot:secret></x-t></p>
                 </dd>
             </div>
             <div class="{{ $dl }}">

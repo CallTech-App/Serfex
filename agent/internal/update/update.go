@@ -125,6 +125,10 @@ type Manager struct {
 	// DefaultSite writes the customers' Nginx default server (the site
 	// package's), so servers set up before it existed get it too.
 	DefaultSite func(ctx context.Context) (bool, error)
+	// Mail rewrites Postfix's configuration (the mail package's
+	// RefreshPostfix), so mail servers set up before a release get its
+	// settings too.
+	Mail func(ctx context.Context) (bool, error)
 	// Health checks that the panel answers; nil checks it over HTTPS on
 	// WebPort, or skips the check on a simulator.
 	Health func(ctx context.Context) error

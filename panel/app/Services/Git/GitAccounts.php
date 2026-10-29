@@ -159,7 +159,7 @@ class GitAccounts
             return null;
         }
         try {
-            $model->update(['remote_hook_id' => $this->addWebhook($account, $model->remote_repository, $hookUrl, $pullRequests)]);
+            $model->update(['remote_hook_id' => $this->addWebhook($account, $model->remote_repository, $hookUrl, $model->webhook_token, $pullRequests)]);
 
             return null;
         } catch (GitProviderException $e) {
@@ -180,9 +180,9 @@ class GitAccounts
     /**
      * @throws GitProviderException
      */
-    public function addWebhook(GitAccount $account, string $repository, string $url, bool $pullRequests): string
+    public function addWebhook(GitAccount $account, string $repository, string $url, string $secret, bool $pullRequests): string
     {
-        return $this->required($account)->addWebhook($this->token($account), $repository, $url, $pullRequests, $this->providers->panelHasTrustedCertificate());
+        return $this->required($account)->addWebhook($this->token($account), $repository, $url, $secret, $pullRequests, $this->providers->panelHasTrustedCertificate());
     }
 
     /**

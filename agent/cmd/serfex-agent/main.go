@@ -112,6 +112,7 @@ func main() {
 	}
 	svc.certs = cert.NewManager(h, svc.dns, issuer)
 	svc.mail = mail.NewManager(h, *webUser)
+	svc.mail.Addresses = ownAddresses
 	svc.certs.AddConsumer(svc.mail)
 	svc.laravel = laravel.NewManager(h)
 	if *dryRun {
@@ -189,6 +190,7 @@ func main() {
 	svc.updates.WebPort = svc.databases.WebPort
 	svc.updates.Web = func(ctx context.Context) (any, error) { return svc.databases.SetupPanelWeb(ctx) }
 	svc.updates.DefaultSite = svc.sites.EnsureDefaultSite
+	svc.updates.Mail = svc.mail.RefreshPostfix
 	if *dryRun {
 		// The run stays in this process, which is not restarted.
 		svc.updates.ApplyPanel = func(ctx context.Context) error {

@@ -9,10 +9,11 @@
 //
 //	/etc/serfex/mail/server.json            server settings the agent applied, root 0600
 //	/etc/serfex/mail/domains/<domain>.json  each mail domain as the panel sent it, root 0600
+//	/etc/serfex/mail/senders.json           which domains each site's system user may send as, root 0600
 //	/etc/serfex/mail/dkim/<domain>.key      DKIM private keys, root:_rspamd 0640
 //	/etc/serfex/mail/tls/                   self-signed certificate until a real one is set
 //	/etc/postfix/main.cf, master.cf         Postfix configuration (the stock files are kept as *.before-serfex)
-//	/etc/postfix/serfex/                    domain, mailbox, alias and sender maps
+//	/etc/postfix/serfex/                    domain, mailbox, alias and sender maps (login-senders root:postdrop 0640)
 //	/etc/dovecot/dovecot.conf               Dovecot configuration (the stock file is kept as dovecot.conf.before-serfex)
 //	/etc/dovecot/serfex/users               mailboxes with their password hashes, root:dovecot 0640
 //	/etc/dovecot/serfex/sieve/              spam filing and autoreply scripts
@@ -33,6 +34,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"sync"
 
@@ -107,6 +109,9 @@ type Manager struct {
 
 	// Download fetches a URL (the SnappyMail release); tests replace it.
 	Download func(ctx context.Context, url string) ([]byte, error)
+	// Addresses are the server's own addresses: SMTP from them counts as
+	// sent from this server. Nil uses only loopback.
+	Addresses func() []netip.Addr
 }
 
 // NewManager returns a Manager. webUser is the account Nginx runs as; it
