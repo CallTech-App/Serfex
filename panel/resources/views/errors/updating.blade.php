@@ -8,6 +8,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="refresh" content="10">
         <title>{{ __('Serfex güncelleniyor') }}</title>
+        <x-favicon />
         <script>
             try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>

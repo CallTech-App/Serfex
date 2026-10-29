@@ -1,4 +1,9 @@
-# Serfex
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/serfex-logo-dark.svg">
+    <img src="docs/images/serfex-logo.svg" alt="Serfex" height="48">
+  </picture>
+</h1>
 
 **An open-source web hosting control panel for Ubuntu servers, with a
 first-class toolkit for Laravel applications.**

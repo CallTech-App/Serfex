@@ -25,7 +25,7 @@ class Icon extends Component
         $paths = self::$cache[$this->name] ??= trim((string) file_get_contents(resource_path("icons/{$this->name}.svg")));
 
         return <<<BLADE
-            <svg {{ \$attributes->merge(['class' => 'w-4 h-4 shrink-0']) }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{$paths}</svg>
+            <svg {{ \$attributes->merge(['class' => 'w-4 h-4 shrink-0', 'stroke-width' => '2']) }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{$paths}</svg>
             BLADE;
     }
 }

@@ -77,6 +77,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <title>{{ __($title ?? 'Serfex') }}</title>
+        <x-favicon />
         <script>
             try { const t = localStorage.getItem('serfex-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
         </script>
@@ -86,33 +87,35 @@
     <body class="min-h-screen" x-data="{ menu: false }">
         <div class="flex min-h-screen">
             {{-- Sidebar --}}
-            <aside :class="menu ? 'translate-x-0' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-nav-line bg-nav text-nav-fg transition-transform lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0">
-                <div class="flex h-14 items-center gap-2.5 border-b border-nav-line px-5">
-                    <x-logo />
-                    <span class="text-[17px] font-semibold tracking-tight">serfex</span>
-                    <span class="ml-auto font-mono text-2xs text-nav-muted">{{ config('serfex.version') }}</span>
+            <aside :class="menu ? 'translate-x-0' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-40 flex w-60 -translate-x-full flex-col border-r border-nav-line bg-nav text-nav-fg transition-transform lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0">
+                <div class="flex h-14 shrink-0 items-center px-4">
+                    <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5 rounded-md" aria-label="{{ __('Genel Bakış') }}">
+                        <x-logo class="size-7" />
+                        <span class="text-[16.5px] font-semibold tracking-[-0.015em] text-nav-strong">serfex</span>
+                    </a>
                 </div>
 
-                <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-4 text-[13.5px]" aria-label="{{ __('Ana menü') }}">
+                <nav class="flex-1 overflow-y-auto px-3 pt-1 pb-4 text-[13.5px]" aria-label="{{ __('Ana menü') }}">
                     @foreach ($nav as [$group, $items])
-                        <div>
+                        <div class="mt-5 first:mt-1">
                             @if ($group)
-                                <p class="mb-1.5 px-3 text-2xs font-medium tracking-[.08em] text-nav-muted uppercase">{{ __($group) }}</p>
+                                <p class="mb-1 px-2.5 text-xs font-medium text-nav-muted">{{ __($group) }}</p>
                             @endif
-                            <div class="space-y-0.5">
+                            <div class="space-y-px">
                                 @foreach ($items as [$route, $icon, $label])
                                     @if ($route)
                                         @php $on = request()->routeIs($route) || request()->routeIs(\Illuminate\Support\Str::before($route, '.').'.*'); @endphp
                                         <a href="{{ route($route) }}" wire:navigate @if ($on) aria-current="page" @endif
-                                           class="flex h-9 items-center gap-3 rounded-md px-3 {{ $on ? 'bg-nav-active font-medium text-white' : 'text-nav-fg/80 hover:bg-nav-active hover:text-white' }}">
-                                            <x-icon :name="$icon" @class(['text-accent' => $on]) />{{ __($label) }}
+                                           class="relative flex h-8 items-center gap-2.5 rounded-md px-2.5 {{ $on ? 'bg-nav-active font-medium text-nav-strong before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-accent' : 'hover:bg-nav-active hover:text-nav-strong' }}">
+                                            {{-- Teal is for the brand and Serfex AI only. --}}
+                                            <x-icon :name="$icon" stroke-width="1.75" @class(['text-accent' => $icon === 'sparkles', 'text-nav-strong' => $on && $icon !== 'sparkles', 'text-nav-muted' => ! $on && $icon !== 'sparkles']) />{{ __($label) }}
                                             @if ($alerts[$route][0] ?? 0)
-                                                <span class="num ml-auto min-w-5 rounded-full bg-warn px-1.5 text-center text-2xs leading-5 font-semibold text-nav" title="{{ trans_choice($alerts[$route][1], $alerts[$route][0]) }}">{{ $alerts[$route][0] }}</span>
+                                                <span class="num ml-auto rounded bg-warn/15 px-1.5 text-2xs leading-[18px] font-semibold text-warn" title="{{ trans_choice($alerts[$route][1], $alerts[$route][0]) }}">{{ $alerts[$route][0] }}</span>
                                             @endif
                                         </a>
                                     @else
-                                        <span aria-disabled="true" title="{{ __('Sonraki sürümlerde gelecek') }}" class="flex h-9 cursor-not-allowed items-center gap-3 rounded-md px-3 text-nav-muted/70">
-                                            <x-icon :name="$icon" />{{ __($label) }}
+                                        <span aria-disabled="true" title="{{ __('Sonraki sürümlerde gelecek') }}" class="flex h-8 cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 text-nav-muted/70">
+                                            <x-icon :name="$icon" stroke-width="1.75" />{{ __($label) }}
                                         </span>
                                     @endif
                                 @endforeach
@@ -122,18 +125,23 @@
                 </nav>
 
                 @if ($user)
-                    <div class="flex items-center gap-3 border-t border-nav-line p-4">
-                        <a href="{{ route('account.profile') }}" wire:navigate class="flex min-w-0 items-center gap-3 hover:text-white" title="{{ __('Hesap bilgileri') }}">
-                            <div class="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-xs font-semibold text-accent">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
-                            <div class="min-w-0 leading-tight">
-                                <p class="truncate text-[13px] font-medium">{{ $user->name }}</p>
-                                <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => $user->roleName(), $user->isCustomer() => __('Müşteri · :package', ['package' => $user->customer?->package?->name]), default => __('Laravel ekibi') } }}</p>
-                            </div>
-                        </a>
-                        <form method="POST" action="{{ route('logout') }}" class="ml-auto">
-                            @csrf
-                            <button type="submit" class="text-nav-muted hover:text-white" aria-label="{{ __('Çıkış yap') }}" title="{{ __('Çıkış yap') }}"><x-icon name="log-out" /></button>
-                        </form>
+                    <div class="border-t border-nav-line p-3">
+                        <div class="flex items-center gap-2.5 px-1.5 py-1">
+                            <a href="{{ route('account.profile') }}" wire:navigate class="group flex min-w-0 items-center gap-2.5" title="{{ __('Hesap bilgileri') }}">
+                                <div class="grid size-8 shrink-0 place-items-center rounded-full bg-nav-active text-xs font-semibold text-nav-strong">{{ \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') }}</div>
+                                <div class="min-w-0 leading-tight">
+                                    <p class="truncate text-[13px] font-medium text-nav-strong group-hover:underline">{{ $user->name }}</p>
+                                    <p class="truncate text-2xs text-nav-muted">{{ match (true) { $user->is_admin => $user->roleName(), $user->isCustomer() => __('Müşteri · :package', ['package' => $user->customer?->package?->name]), default => __('Laravel ekibi') } }}</p>
+                                </div>
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}" class="ml-auto">
+                                @csrf
+                                <button type="submit" class="rounded-md p-1.5 text-nav-muted hover:bg-nav-active hover:text-nav-strong" aria-label="{{ __('Çıkış yap') }}" title="{{ __('Çıkış yap') }}"><x-icon name="log-out" stroke-width="1.75" /></button>
+                            </form>
+                        </div>
+                        @if ($user->is_admin)
+                            <p class="mt-2 px-1.5 font-mono text-2xs text-nav-muted">Serfex {{ config('serfex.version') }}</p>
+                        @endif
                     </div>
                 @endif
             </aside>
