@@ -7,6 +7,7 @@ use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -23,6 +24,8 @@ abstract class Section extends Component
 
     protected const MANAGE_METHODS = [];
 
+    /** Set once by mount: the page must not switch to another application. */
+    #[Locked]
     public int $appId;
 
     /** Shown at the top of the section when the agent could not be used. */
@@ -48,7 +51,12 @@ abstract class Section extends Component
 
     protected function app(): ?LaravelApp
     {
-        return LaravelApp::with('site.systemUser', 'site.certificate')->find($this->appId);
+        $app = LaravelApp::with('site.systemUser', 'site.certificate')->find($this->appId);
+        // Renders are not calls: check the role here too (see Access).
+        abort_unless($app === null || auth()->user()->canOnApp($app, static::ABILITY), 403);
+        abort_unless($app === null || ! defined(static::class.'::FEATURE') || auth()->user()->mayUseOnApp($app, static::FEATURE), 403);
+
+        return $app;
     }
 
     /**

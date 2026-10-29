@@ -684,7 +684,7 @@ class BackupIndex extends Component
         $itemRows = ! $user->is_admin || $this->siteId !== 0;
         $data = [
             'itemRows' => $itemRows,
-            'filterSite' => $this->siteId !== 0 ? Site::find($this->siteId) : null,
+            'filterSite' => $this->siteId !== 0 ? Site::visibleTo($user)->find($this->siteId) : null,
             'next' => $settings->next(now()),
             'summary' => $settings->summary(),
             'busy' => $backups->busy(),
@@ -699,7 +699,7 @@ class BackupIndex extends Component
                     ->with('backup.target', 'site')
                     ->where('name', '!=', 'panel')
                     ->whereHas('backup', fn ($q) => $q->where('status', '!=', 'deleted')->when($this->scope !== '', fn ($q) => $q->where('scope', $this->scope)))
-                    ->when($this->siteId !== 0, fn ($q) => $q->where(fn ($q) => $q->where('site_id', $this->siteId)->orWhere('name', Site::find($this->siteId)?->domain)))
+                    ->when($this->siteId !== 0, fn ($q) => $q->where(fn ($q) => $q->where('site_id', $this->siteId)->orWhere('name', Site::visibleTo($user)->find($this->siteId)?->domain)))
                     ->orderByDesc('backup_id')
                     ->paginate(25);
                 $data['total'] = (int) BackupItem::visibleTo($user)->where('status', 'succeeded')->whereHas('backup', fn ($q) => $q->usable())
@@ -758,7 +758,7 @@ class BackupIndex extends Component
             $data['detailDependents'] = $data['detail'] && $user->is_admin ? $backups->dependents($data['detail'])->count() : 0;
         }
         if ($this->deleteId !== null) {
-            $data['deleting'] = Backup::find($this->deleteId);
+            $data['deleting'] = $this->deletable()->find($this->deleteId);
             $data['deletingDependents'] = $data['deleting'] ? $backups->dependents($data['deleting'])->count() : 0;
         }
         if ($this->running !== null) {

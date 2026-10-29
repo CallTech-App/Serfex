@@ -11,6 +11,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Crypt;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -56,6 +57,7 @@ class LaravelShow extends Component
 
     protected const MANAGE_METHODS = ['openRemove', 'remove'];
 
+    #[Locked]
     public int $appId;
 
     #[Url(as: 'section', except: 'overview')]
@@ -225,7 +227,10 @@ class LaravelShow extends Component
 
     protected function app(): ?LaravelApp
     {
-        return LaravelApp::with('site.systemUser', 'site.certificate', 'previewOf.site', 'template')->find($this->appId);
+        $app = LaravelApp::with('site.systemUser', 'site.certificate', 'previewOf.site', 'template')->find($this->appId);
+        abort_unless($app === null || auth()->user()->canOnApp($app, 'view'), 403);
+
+        return $app;
     }
 
     /**

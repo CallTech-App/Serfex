@@ -7,10 +7,13 @@ use App\Jobs\DeployLaravelApp;
 use App\Livewire\Laravel\LaravelIndex;
 use App\Livewire\Laravel\LaravelShow;
 use App\Livewire\Laravel\Sections\Access;
+use App\Livewire\Laravel\Sections\Commands;
+use App\Livewire\Laravel\Sections\Deployments;
 use App\Livewire\Laravel\Sections\Environment;
 use App\Livewire\Sites\SiteIndex;
 use App\Models\LaravelApiToken;
 use App\Models\LaravelApp;
+use App\Models\LaravelCommand;
 use App\Models\LaravelDeployment;
 use App\Models\Site;
 use App\Models\SystemUser;
@@ -19,6 +22,7 @@ use App\Services\Agent\AgentClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\Support\FakeAgent;
 use Tests\TestCase;
@@ -84,6 +88,40 @@ class LaravelAccessTest extends TestCase
         $page->call('openDeploy')->assertForbidden();
         Livewire::withoutLazyLoading()->test(Environment::class, ['appId' => $app->id])->assertForbidden();
         Queue::assertNotPushed(DeployLaravelApp::class);
+    }
+
+    public function test_a_page_cannot_be_switched_to_another_application(): void
+    {
+        $mine = $this->laravelApp();
+        $other = $this->laravelApp('magaza.com.tr');
+        $this->actingAs($this->member($mine, 'developer'));
+
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        Livewire::withoutLazyLoading()->test(Deployments::class, ['appId' => $mine->id])->set('appId', $other->id);
+    }
+
+    public function test_the_show_page_cannot_be_switched_to_another_application(): void
+    {
+        $mine = $this->laravelApp();
+        $other = $this->laravelApp('magaza.com.tr');
+        $this->actingAs($this->member($mine, 'developer'));
+
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        Livewire::test(LaravelShow::class, ['app' => $mine->id])->set('appId', $other->id);
+    }
+
+    public function test_logs_and_outputs_of_other_applications_stay_hidden(): void
+    {
+        $mine = $this->laravelApp();
+        $other = $this->laravelApp('magaza.com.tr');
+        $theirs = LaravelDeployment::create(['laravel_app_id' => $other->id, 'number' => 1, 'kind' => 'deploy', 'status' => DeploymentStatus::Failed, 'run' => 'deploy-1', 'error' => 'gizli hata']);
+        $command = LaravelCommand::create(['laravel_app_id' => $other->id, 'tool' => 'artisan', 'command' => 'config:show', 'run' => 'cmd-1', 'status' => 'succeeded']);
+        $this->actingAs($this->member($mine, 'owner'));
+
+        Livewire::withoutLazyLoading()->test(Deployments::class, ['appId' => $mine->id])
+            ->set('logId', $theirs->id)->assertViewHas('log', fn ($log) => $log === null)->assertDontSee('gizli hata');
+        Livewire::withoutLazyLoading()->test(Commands::class, ['appId' => $mine->id])
+            ->set('shownId', $command->id)->assertViewHas('shown', fn ($shown) => $shown === null);
     }
 
     public function test_developers_deploy_but_only_owners_manage_people(): void

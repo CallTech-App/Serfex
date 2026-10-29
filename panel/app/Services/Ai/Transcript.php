@@ -63,9 +63,13 @@ final class Transcript
     /**
      * Claude's Markdown as HTML. Raw HTML is dropped and unsafe links are
      * not followed, so an answer cannot inject markup into the panel.
+     * Images become their text: the browser would load them on its own,
+     * and an answer led astray by a log line could put data in the address.
      */
     public static function markdown(string $text): string
     {
-        return Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false, 'max_nesting_level' => 20]);
+        $html = Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false, 'max_nesting_level' => 20]);
+
+        return (string) preg_replace_callback('/<img\b[^>]*>/i', fn (array $m) => preg_match('/\balt="([^"]*)"/i', $m[0], $alt) ? $alt[1] : '', $html);
     }
 }

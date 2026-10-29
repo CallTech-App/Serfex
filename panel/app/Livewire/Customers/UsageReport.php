@@ -13,6 +13,7 @@ use App\Services\Stats\SiteStats;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -28,6 +29,7 @@ class UsageReport extends Component
 {
     public const TABS = ['limits' => 'Paket sınırları', 'disk' => 'Disk', 'traffic' => 'Trafik'];
 
+    #[Locked]
     public int $customerId;
 
     #[Url(except: 'limits')]
@@ -53,6 +55,9 @@ class UsageReport extends Component
 
     public function render(Quotas $quotas, DiskBreakdown $disk, SiteStats $stats, DiskQuotas $diskQuotas): View
     {
+        $user = auth()->user();
+        // A customer only ever sees their own report.
+        abort_unless($user->is_admin || $this->customerId === (int) $user->customer_id, 404);
         $customer = Customer::with('package')->findOrFail($this->customerId);
         if (! isset(self::TABS[$this->tab])) {
             $this->tab = 'limits';

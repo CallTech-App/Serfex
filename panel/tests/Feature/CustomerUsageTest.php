@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Customers\UsageReport;
 use App\Models\Customer;
 use App\Models\LaravelApp;
 use App\Models\Mailbox;
@@ -14,6 +15,8 @@ use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
+use Livewire\Livewire;
 use Tests\Support\FakeAgent;
 use Tests\TestCase;
 
@@ -101,5 +104,15 @@ class CustomerUsageTest extends TestCase
             ->assertSee('Mini paketi')
             ->assertSee('2 / 1')
             ->assertSee('Paketinizin bir sınırı doldu');
+    }
+
+    public function test_a_customer_cannot_open_another_customers_report(): void
+    {
+        $customer = Customer::factory()->withLogin()->create();
+        $other = Customer::factory()->withLogin()->create();
+        $this->actingAs(User::where('customer_id', $customer->id)->sole());
+
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        Livewire::test(UsageReport::class)->assertSet('customerId', $customer->id)->set('customerId', $other->id);
     }
 }

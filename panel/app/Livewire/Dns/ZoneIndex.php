@@ -193,7 +193,7 @@ class ZoneIndex extends Component
             ->orderBy('name')
             ->paginate(25);
 
-        $selectedZones = $this->confirmingDelete ? DnsZone::whereKey($this->selected)->orderBy('name')->get() : collect();
+        $selectedZones = $this->confirmingDelete ? DnsZone::visibleTo(auth()->user())->whereKey($this->selected)->orderBy('name')->get() : collect();
 
         return view('livewire.dns.index', [
             'zones' => $zones,

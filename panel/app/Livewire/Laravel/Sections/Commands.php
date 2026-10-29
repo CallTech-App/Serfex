@@ -219,7 +219,7 @@ class Commands extends Section
             'session' => $session,
             'saved' => $this->savedCommands($app->saved_commands ?? [])[$this->tool] ?? [],
             'recent' => $recent,
-            'shown' => $this->shownId ? ($recent->firstWhere('id', $this->shownId) ?? LaravelCommand::find($this->shownId)) : null,
+            'shown' => $this->shownId ? ($recent->firstWhere('id', $this->shownId) ?? $app->commands()->find($this->shownId)) : null,
             'busy' => $recent->contains(fn (LaravelCommand $c) => $c->tool !== 'tinker' && in_array($c->status, ['queued', 'running'], true)),
         ]);
     }
