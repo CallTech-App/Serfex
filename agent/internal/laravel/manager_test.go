@@ -560,3 +560,53 @@ func TestRequiresLaravel(t *testing.T) {
 		}
 	}
 }
+
+func TestHandEditedEnvMovesBackToShared(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	if _, err := m.Deploy(ctx, newApp("1")); err != nil {
+		t.Fatal(err)
+	}
+	// "sed -i" on current/.env replaces the link with an edited copy.
+	live := sim.Path(appDir + "/releases/1/.env")
+	if err := os.Remove(live); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(live, []byte("MAIL_MAILER=sendmail\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Deploy(ctx, gitDeploy("2")); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, sim, appDir+"/shared/.env"); got != "MAIL_MAILER=sendmail\n" {
+		t.Fatalf("shared/.env = %q", got)
+	}
+	if !strings.Contains(read(t, sim, appDir+"/shared/.env.old"), "APP_ENV=production") {
+		t.Error("the replaced shared/.env was not kept")
+	}
+	for _, r := range []string{"1", "2"} {
+		if got, _ := os.Readlink(sim.Path(appDir + "/releases/" + r + "/.env")); got != "../../shared/.env" {
+			t.Errorf("releases/%s/.env -> %q", r, got)
+		}
+	}
+	log, _ := m.ReadRun(target.Domain, "deploy-2", 0)
+	if !strings.Contains(log.Data, "releases/1 içinde elle değiştirilmişti") {
+		t.Errorf("log does not say so:\n%s", log.Data)
+	}
+
+	// Saving from the panel does the same before writing.
+	live = sim.Path(appDir + "/releases/2/.env")
+	_ = os.Remove(live)
+	if err := os.WriteFile(live, []byte("MAIL_MAILER=log\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.SetEnv(ctx, EnvSpec{App: App{Target: target, Path: CurrentPath}, Content: "MAIL_MAILER=sendmail\n"}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.Readlink(live); got != "../../shared/.env" {
+		t.Fatalf("releases/2/.env -> %q", got)
+	}
+	if got := read(t, sim, appDir+"/shared/.env"); got != "MAIL_MAILER=sendmail\n" {
+		t.Fatalf("shared/.env = %q", got)
+	}
+}

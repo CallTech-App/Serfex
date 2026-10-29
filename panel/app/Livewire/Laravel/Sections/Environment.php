@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Laravel\Sections;
 
+use App\Jobs\ApplySitePhp;
 use App\Models\Database;
 use App\Models\DatabaseUser;
 use App\Models\LaravelEnvVersion;
@@ -13,6 +14,7 @@ use App\Services\Databases\Databases;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Laravel\EnvFile;
 use App\Services\Laravel\Environments;
+use App\Services\Laravel\MailEnv;
 use App\Services\Laravel\Redis;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -320,10 +322,43 @@ class Environment extends Section
     }
 
     /**
+     * Writes the mail settings that work on this server (sendmail and a
+     * sender address of the site) over the ones that do not.
+     */
+    public function fixMail(AgentClient $agent, MailEnv $mail): void
+    {
+        $app = $this->app();
+        $values = $mail->fix($app->site, EnvFile::values((string) $this->original));
+        if ($this->original === null || $values === []) {
+            return;
+        }
+        $this->mode = 'text';
+        $this->text = MailEnv::write($this->original, $values);
+        $this->quiet = true;
+        $this->save($agent);
+        $this->quiet = false;
+        $this->mode = 'rows';
+        if ($this->agentError !== null) {
+            $this->loadContent((string) $this->original);
+
+            return;
+        }
+        // Laravel's sendmail needs proc_open, which the site keeps from now on.
+        if ($app->site->customer() !== null) {
+            ApplySitePhp::dispatch([$app->site_id]);
+        }
+        $this->dispatch('toast',
+            message: __('E-posta ayarı düzeltildi: :values', ['values' => collect($values)->map(fn ($v, $k) => $k.'='.$v)->implode(', ')]),
+            source: $this->getId(),
+            undo: ['method' => 'restore', 'args' => [$app->envVersions()->first()?->id]],
+        );
+    }
+
+    /**
      * Puts an earlier version of the .env back (it is saved like an edit,
      * so the current file goes into the history).
      */
-    public function restore(int $versionId, AgentClient $agent): void
+    public function restore(?int $versionId, AgentClient $agent): void
     {
         $version = LaravelEnvVersion::where('laravel_app_id', $this->appId)->find($versionId);
         if ($version === null) {
@@ -345,6 +380,7 @@ class Environment extends Section
             'canConnectRedis' => $app->redis_port === null && ! $app->isPreview() && app(Components::class)->isInstalled('redis') && auth()->user()->canOnApp($app, 'manage'),
             'canCreateDatabase' => $app->database_id === null && app(DatabaseServers::class)->installed() !== [] && auth()->user()->canOnApp($app, 'manage') && ! $app->isPreview(),
             'diff' => EnvFile::compare($current, $this->example),
+            'mailProblems' => $this->original === null ? [] : app(MailEnv::class)->problems($app->site, MailEnv::fromEnv(EnvFile::values($this->original))),
             'history' => $this->showingHistory ? $app->envVersions()->limit(self::HISTORY)->get() : collect(),
         ]);
     }

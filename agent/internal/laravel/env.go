@@ -177,6 +177,12 @@ func (m *Manager) SetEnv(ctx context.Context, spec EnvSpec) (EnvResult, error) {
 	if err := m.requireApp(spec.App); err != nil {
 		return EnvResult{}, err
 	}
+	if spec.Path == CurrentPath {
+		// A copy left by a hand edit would be lost on the next deploy.
+		if _, err := m.relinkEnv(ctx, spec.Target); err != nil {
+			return EnvResult{}, err
+		}
+	}
 	content := spec.Content
 	if content != "" && !strings.HasSuffix(content, "\n") {
 		content += "\n"

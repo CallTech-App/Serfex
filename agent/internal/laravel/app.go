@@ -271,7 +271,11 @@ $out = null;
 $line = fn ($s) => trim(strtok((string) $s, "\n"));
 if ($kind === 'about') {
     $out = ['laravel' => $app->version(), 'php' => PHP_VERSION, 'environment' => $app->environment(), 'debug' => (bool) config('app.debug'),
-        'queue' => config('queue.default'), 'cache' => config('cache.default'), 'database' => config('database.default'), 'session' => config('session.driver')];
+        'queue' => config('queue.default'), 'cache' => config('cache.default'), 'database' => config('database.default'), 'session' => config('session.driver'),
+        // How it sends mail, for the panel's check of its mail settings.
+        'mail' => ['mailer' => (string) config('mail.default'), 'from' => (string) config('mail.from.address'),
+            'host' => (string) config('mail.mailers.'.config('mail.default').'.host'), 'port' => (string) config('mail.mailers.'.config('mail.default').'.port'),
+            'username' => (string) config('mail.mailers.'.config('mail.default').'.username')]];
 } elseif ($kind === 'queues') {
     $sizes = [];
     foreach (json_decode((string) getenv('SERFEX_PROBE_ARGS'), true) ?: [] as [$conn, $queue]) {

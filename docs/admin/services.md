@@ -54,7 +54,9 @@ site can then change within its plan:
 It also installs and removes extensions. **Disabled functions on customer
 sites** (`exec`, `passthru`, `shell_exec`, `system`, `proc_open`, `popen`,
 `pcntl_exec`, `show_source` by default) applies to every customer site;
-an administrator can allow them for one site on its PHP page.
+an administrator can allow them for one site on its PHP page. Sites with a
+Laravel application keep `proc_open`, which Laravel needs to send mail with
+`sendmail`.
 
 These values apply to PHP-FPM and to command-line PHP (Artisan, queue
 workers, the scheduler, cron tasks, Composer), which reads a copy in

@@ -10,6 +10,21 @@
     @if ($original === null)
         <p class="px-5 py-6 text-[13.5px] text-muted">{{ __('.env okunamadı.') }}</p>
     @else
+        @if ($mailProblems)
+            <div class="flex flex-wrap items-start gap-3 border-b border-line bg-warn-soft/40 px-5 py-3 text-[13px]">
+                <x-icon name="mail" class="mt-0.5 shrink-0 text-warn" />
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium">{{ __('Uygulama bu sunucudan e-posta gönderemiyor') }}</p>
+                    <ul class="mt-0.5 list-disc pl-4 text-muted">
+                        @foreach ($mailProblems as $problem)
+                            <li>{{ $problem }}</li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-1 text-2xs text-muted"><x-t text="Düzelt, :mailer ve :from yazar. Kendi SMTP sunucunuzu kullanıyorsanız MAIL_HOST, MAIL_USERNAME ve MAIL_PASSWORD değerlerini girin; o zaman bu uyarı çıkmaz."><x-slot:mailer><span class="font-mono">MAIL_MAILER=sendmail</span></x-slot:mailer><x-slot:from><span class="font-mono">MAIL_FROM_ADDRESS={{ \App\Services\Laravel\MailEnv::sender($app->site) }}</span></x-slot:from></x-t></p>
+                </div>
+                <button type="button" wire:click="fixMail" wire:loading.attr="disabled" wire:target="fixMail" class="h-8 shrink-0 rounded-md bg-accent px-3 text-[13px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Düzelt') }}</button>
+            </div>
+        @endif
         <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
             @if ($mode === 'rows')
                 <button type="button" wire:click="addRow" class="{{ $btn }}"><x-icon name="plus" />{{ __('Değişken ekle') }}</button>

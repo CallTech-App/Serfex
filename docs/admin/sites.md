@@ -72,7 +72,8 @@ its accounts carry the comment `Serfex site user` and its files start with
   Software); PHP settings such as `memory_limit` and `upload_max_filesize`
   within the plan's cap; custom `php.ini` lines; the PHP-FPM pool (most
   workers, renewal, request timeout). On customer sites `exec`,
-  `shell_exec`, `proc_open` and similar functions are off; an administrator
+  `shell_exec`, `proc_open` and similar functions are off (a Laravel
+  application's site keeps `proc_open` for sending mail); an administrator
   can allow them per site.
 - **Cache & speed**: three switches, all off until you turn them on.
   - *Page cache*: Nginx keeps the pages PHP makes and sends them again

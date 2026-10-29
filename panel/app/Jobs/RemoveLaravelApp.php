@@ -60,5 +60,9 @@ class RemoveLaravelApp implements ShouldQueue
         }
         app(GitAccounts::class)->unlink($app);
         $app->delete();
+        // Without the application the site no longer keeps proc_open.
+        if ($site->customer() !== null) {
+            ApplySitePhp::dispatch([$site->id]);
+        }
     }
 }

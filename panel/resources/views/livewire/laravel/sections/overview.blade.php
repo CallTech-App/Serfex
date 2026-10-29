@@ -87,6 +87,14 @@
                         @if ($app->database->measured_at)<span class="font-sans text-muted">({{ \App\Support\Bytes::format($app->database->size_bytes) }})</span>@endif @endif</dd></div>
                     <div class="{{ $row }}"><dt class="text-muted">{{ __('Önbellek / oturum') }}</dt><dd class="font-mono">{{ $about['cache'] ?? '—' }} / {{ $about['session'] ?? '—' }}</dd></div>
                     <div class="{{ $row }}"><dt class="text-muted">{{ __('Kuyruk bağlantısı') }}</dt><dd class="font-mono">{{ $about['queue'] ?? '—' }}</dd></div>
+                    @isset($about['mail'])
+                        <div class="{{ $row }}"><dt class="text-muted">{{ __('E-posta') }}</dt>
+                            <dd class="min-w-0 text-right"><span class="font-mono">{{ ($about['mail']['mailer'] ?? '') ?: '—' }}</span>@if ($about['mail']['from'] ?? '') <span class="font-mono text-muted">· {{ $about['mail']['from'] }}</span>@endif
+                                @if ($mailProblems)
+                                    <span class="block text-warn">{{ __('Bu sunucudan gönderemiyor') }}@if ($canFixMail) · <button type="button" wire:click="$parent.show('environment')" class="text-accent hover:underline">{{ __('Düzelt') }}</button>@endif</span>
+                                @endif
+                            </dd></div>
+                    @endisset
                 </dl>
                 <button type="button" wire:click="$parent.show('environment')" class="mt-2 text-[13px] text-accent hover:underline">{{ __('.env dosyasını düzenle') }}</button>
             @else

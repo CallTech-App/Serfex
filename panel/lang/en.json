@@ -5339,5 +5339,20 @@
     "E-posta adresi :old yerine :new oldu.": "The e-mail address changed from :old to :new.",
     "Gelmediyse istenmeyen klasörüne bakın. Hâlâ yoksa sunucu yöneticinizden adresinizi değiştirmesini isteyin.": "If it hasn't arrived, check the spam folder. If it still isn't there, ask your server administrator to change your address.",
     "Gelmediyse istenmeyen klasörüne bakın. Hâlâ yoksa sunucunun posta günlüğüne (/var/log/mail.log) bakın ya da adresi sunucuda hemen değiştirin:": "If it hasn't arrived, check the spam folder. If it still isn't there, look at the server's mail log (/var/log/mail.log) or change the address on the server right away:",
-    "Sunucuda komut satırıyla e-posta adresi :old yerine :new yapıldı.": "The e-mail address was changed from :old to :new on the server's command line."
+    "Sunucuda komut satırıyla e-posta adresi :old yerine :new yapıldı.": "The e-mail address was changed from :old to :new on the server's command line.",
+    "Bu sunucudan gönderemiyor": "Cannot send from this server",
+    "Düzelt": "Fix",
+    "Düzelt, :mailer ve :from yazar. Kendi SMTP sunucunuzu kullanıyorsanız MAIL_HOST, MAIL_USERNAME ve MAIL_PASSWORD değerlerini girin; o zaman bu uyarı çıkmaz.": "Fix writes :mailer and :from. If you use your own SMTP server, enter MAIL_HOST, MAIL_USERNAME and MAIL_PASSWORD instead; this warning then goes away.",
+    "E-posta ayarı düzeltildi: :values": "Mail settings fixed: :values",
+    "E-posta ayarını düzelt": "Fix the mail settings",
+    "E-posta gönderilemedi: sendmail için gereken proc_open bu sitenin PHP ayarlarında kapalı.": "Mail was not sent: proc_open, which sendmail needs, is disabled in this site's PHP settings.",
+    "E-posta gönderilemedi: uygulama bu sunucuda giriş yapmadan SMTP ile göndermeye çalışıyor. MAIL_MAILER=sendmail kullanın.": "Mail was not sent: the application tries SMTP on this server without a login. Use MAIL_MAILER=sendmail.",
+    "E-posta reddedildi: gönderen adresi bu sitenin alan adlarından biri değil. Bu sunucu her siteden yalnızca kendi alan adlarıyla gönderime izin verir; MAIL_FROM_ADDRESS değerini sitenin alan adıyla yazın.": "Mail refused: the sender address is not one of this site's domains. This server lets each site send only as its own domains; set MAIL_FROM_ADDRESS to an address of the site's domain.",
+    "E-posta reddedildi: uygulama bu sunucunun 25 numaralı portuna giriş yapmadan bağlanıyor. Bu yol barındırılan alan adlarına kapalı; MAIL_MAILER=sendmail kullanın ya da bir posta kutusuyla 587 numaralı porttan giriş yapın.": "Mail refused: the application connects to port 25 of this server without a login. That way is closed to hosted domains; use MAIL_MAILER=sendmail, or log in with a mailbox on port 587.",
+    "E-postalar gönderilmiyor, yalnızca uygulamanın günlüğüne yazılıyor (MAIL_MAILER=:mailer).": "Mail is not sent, only written to the application's log (MAIL_MAILER=:mailer).",
+    "Gönderen adresi (MAIL_FROM_ADDRESS) boş.": "The sender address (MAIL_FROM_ADDRESS) is empty.",
+    "Gönderen adresi :from bu sitenin alan adlarından biri değil. Sunucu bu siteden yalnızca kendi alan adlarıyla gönderime izin verir.": "The sender address :from is not one of this site's domains. The server lets this site send only as its own domains.",
+    "Gönderen adresi :from örnek bir adres.": "The sender address :from is an example address.",
+    "Uygulama :address adresine giriş yapmadan bağlanıyor. Bu sunucu bu yoldan barındırılan alan adlarıyla gönderilen e-postayı reddeder.": "The application connects to :address without a login. This server refuses mail from hosted domains sent that way.",
+    "Uygulama bu sunucudan e-posta gönderemiyor": "The application cannot send mail from this server"
 }

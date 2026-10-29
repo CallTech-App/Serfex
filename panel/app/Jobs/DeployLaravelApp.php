@@ -11,6 +11,7 @@ use App\Services\Agent\AgentException;
 use App\Services\Laravel\AppTemplates;
 use App\Services\Laravel\Backups;
 use App\Services\Laravel\LaravelApps;
+use App\Services\Laravel\MailEnv;
 use App\Services\Laravel\Processes;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -106,6 +107,11 @@ class DeployLaravelApp implements ShouldQueue
             'finished_at' => now(),
         ])->save();
         $app->fill(['last_error' => null, 'install_env' => null])->save();
+
+        // Laravel's .env.example does not send mail from this server.
+        if ($first && $deployment->status !== DeploymentStatus::RolledBack) {
+            app(MailEnv::class)->setUp($app);
+        }
 
         // A new preview environment's empty database gets the seed data.
         if ($first && $app->isPreview() && $deployment->status === DeploymentStatus::Succeeded && $app->previewOf?->preview_seed) {

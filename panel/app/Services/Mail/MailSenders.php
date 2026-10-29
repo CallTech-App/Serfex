@@ -31,19 +31,31 @@ class MailSenders
             if ($user->name === 'root') {
                 return;
             }
-            $domains = [];
-            foreach ($user->sites as $site) {
-                $domains = [...$domains, ...$site->hostnames()];
-                if ($site->mailDomain !== null) {
-                    $domains[] = $site->mailDomain->name;
-                }
-            }
-            $domains = array_values(array_unique(array_map('strtolower', $domains)));
-            sort($domains);
-            $logins[$user->name] = $domains;
+            $logins[$user->name] = self::domainsOf($user);
         });
 
         return $logins;
+    }
+
+    /**
+     * The domains a system user may send as, lower-case and sorted.
+     *
+     * @return list<string>
+     */
+    public static function domainsOf(SystemUser $user): array
+    {
+        $user->loadMissing('sites.subdomains', 'sites.redirects', 'sites.mailDomain');
+        $domains = [];
+        foreach ($user->sites as $site) {
+            $domains = [...$domains, ...$site->hostnames()];
+            if ($site->mailDomain !== null) {
+                $domains[] = $site->mailDomain->name;
+            }
+        }
+        $domains = array_values(array_unique(array_map('strtolower', $domains)));
+        sort($domains);
+
+        return $domains;
     }
 
     /**
