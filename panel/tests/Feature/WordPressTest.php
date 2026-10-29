@@ -17,6 +17,7 @@ use App\Models\WordPressOperation;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Customers\Customers;
+use App\Services\Mail\MailSettings;
 use App\Services\Sites\WordPressSites;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -348,5 +349,26 @@ class WordPressTest extends TestCase
         $this->agent->answers['wordpress.status'] = self::wpStatus(['core_update' => '', 'plugins' => [], 'themes' => []]);
         $this->artisan('serfex:wordpress-check')->assertSuccessful();
         $this->assertSame(0, $install->fresh()->update_count);
+    }
+
+    public function test_the_page_says_wordpress_needs_an_smtp_plugin_to_send(): void
+    {
+        $install = $this->managed();
+        // No mail server: nothing to say.
+        $this->get(route('sites.wordpress', $this->site))->assertOk()->assertDontSee('PHP mail()');
+
+        app(MailSettings::class)->saveServer(['setup_at' => now()->toIso8601String()]);
+        Setting::put('mail.hostname', 'mail.kahveatolyesi.com.tr');
+        $this->get(route('sites.wordpress', $this->site))->assertOk()
+            ->assertSee('Gönderemiyor: WordPress PHP mail() kullanıyor, bu sunucuda kapalı.', false)
+            ->assertSee('mail.kahveatolyesi.com.tr');
+
+        $status = self::wpStatus();
+        $status['plugins'][] = ['name' => 'wp-mail-smtp', 'title' => 'WP Mail SMTP', 'version' => '4.6', 'update' => '', 'status' => 'active', 'auto_update' => false];
+        $this->agent->answers['wordpress.status'] = $status;
+        app(WordPressSites::class)->refresh($install->setRelation('site', $this->site->fresh('systemUser')));
+        $this->get(route('sites.wordpress', $this->site))->assertOk()
+            ->assertSee('SMTP eklentisiyle: WP Mail SMTP')
+            ->assertDontSee('PHP mail() kullanıyor', false);
     }
 }

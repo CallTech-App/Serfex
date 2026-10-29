@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Laravel\Sections;
 
+use App\Services\Laravel\MailEnv;
 use App\Services\Laravel\PhpConstraint;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
@@ -52,6 +53,8 @@ class Overview extends Section
             'queues' => $queues,
             'workers' => $workers,
             'live' => $live,
+            'mailProblems' => is_array($about['mail'] ?? null) ? app(MailEnv::class)->problems($about['mail']) : [],
+            'canFixMail' => auth()->user()->canOnApp($app, 'operate'),
             'fits' => $app->php_requirement ? PhpConstraint::allows($app->php_requirement, $app->site->php_version) : null,
         ]);
     }

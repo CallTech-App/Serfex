@@ -10,9 +10,10 @@ use App\Services\Agent\AgentException;
 /**
  * Which domains each site's system user may send mail as: its sites'
  * names, aliases, subdomains and redirected domains, and their mail
- * domains. The agent limits sendmail (PHP's mail()) to them, so one
- * customer cannot send as another customer's domain with this server's
- * SPF and DKIM.
+ * domains. The agent refuses sendmail (PHP's mail()) to these users, so
+ * a site sends only with a mailbox login, and keeps hosted domains from
+ * being used as senders without one: one customer cannot send as another
+ * customer's domain with this server's SPF and DKIM.
  */
 class MailSenders
 {

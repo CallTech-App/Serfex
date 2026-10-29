@@ -56,7 +56,10 @@ The steps:
 
 1. Fetch the code (`git clone` of the branch or tag, or `composer
    create-project` for a new project).
-2. Link the shared `.env` and `storage`.
+2. Link the shared `.env` and `storage`. A live release whose `.env` was
+   turned into a plain file by a hand edit (`sed -i`, an editor) gives it
+   back to `shared/.env` first; the replaced one is kept as
+   `shared/.env.old`.
 3. *Before the build* hook.
 4. `composer install --no-dev --optimize-autoloader`; `key:generate` if
    `APP_KEY` is empty.
@@ -114,6 +117,26 @@ restarts the workers.
   values.
 - **Create and connect a database** does the same for a database.
 
+### Mail
+
+Mail from a site leaves this server only with a mailbox login, like any mail
+client: SMTP to the mail server's name on port 587 (STARTTLS), the mailbox's
+address as the username, and that address as the sender. `sendmail` (PHP's
+`mail()`) is refused to sites' users and SMTP from the server without a login
+is relayed nowhere, because mail nobody logged in for is what a hacked site
+sends.
+
+Laravel's `.env.example` sends nothing from here (`MAIL_MAILER=log`, or SMTP
+to `127.0.0.1:2525`, and `hello@example.com`). When the mail server is set
+up and an application's settings cannot send, Environment says what is wrong
+and Overview shows it on the mail line. **Connect a mailbox** picks one of
+the site's mailboxes, checks its password and writes `MAIL_MAILER=smtp`,
+`MAIL_HOST`, `MAIL_PORT=587`, `MAIL_USERNAME`, `MAIL_PASSWORD` and
+`MAIL_FROM_ADDRESS` (with Undo; the previous file stays in the history).
+Without a mailbox it links to the mail domain to open one. An application
+that uses its own SMTP server or a mail API such as SES or Postmark is left
+alone; only an example sender address is reported.
+
 ## Commands
 
 Run Artisan, Composer or the package manager's commands as the site's user
@@ -154,6 +177,9 @@ Octane and Reverb listen on 127.0.0.1, on ports Serfex picks from 20000 to
 ## Logs
 
 The application's own log files with level filters, a search and live follow.
+A failed send (sendmail refused, SMTP without a login, a wrong mailbox
+password, a sender that is not the mailbox) gets a line saying what it means
+and a link to the mail settings.
 
 ## Maintenance mode
 

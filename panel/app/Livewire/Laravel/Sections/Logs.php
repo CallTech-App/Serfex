@@ -40,6 +40,7 @@ class Logs extends Section
             'files' => $logs['files'] ?? [],
             'entries' => $entries,
             'truncated' => (bool) ($logs['truncated'] ?? false),
+            'canFixMail' => auth()->user()->canOnApp($app, 'operate'),
         ]);
     }
 }

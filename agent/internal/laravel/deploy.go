@@ -302,6 +302,11 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 	if spec.Release == previous {
 		return DeployResult{}, fmt.Errorf("release %s is the live release", spec.Release)
 	}
+	if moved, err := m.relinkEnv(ctx, spec.Target); err != nil {
+		return DeployResult{}, err
+	} else if moved {
+		d.step(".env, releases/%s içinde elle değiştirilmişti; shared/.env olarak alındı (eskisi shared/.env.old)", previous)
+	}
 	if m.exists(d.dir) {
 		if err := d.user("rm", "-rf", "--one-file-system", d.dir); err != nil {
 			return DeployResult{}, err
@@ -511,6 +516,37 @@ func (d *deploy) linkShared() error {
 	}
 	d.step("storage/ ve .env paylaşılan dizine bağlandı")
 	return nil
+}
+
+// relinkEnv puts the live release's .env back into shared/ when it is a
+// plain file there: an editor or "sed -i" on current/.env replaces the
+// link with a copy, and the next release would link the stale
+// shared/.env again. The live copy is what the application reads, so it
+// becomes shared/.env; the one it replaces is kept as shared/.env.old.
+func (m *Manager) relinkEnv(ctx context.Context, t Target) (bool, error) {
+	release := m.currentRelease(t)
+	if release == "" {
+		return false, nil
+	}
+	base := baseDir(t)
+	env := base + "/releases/" + release + "/.env"
+	fi, err := os.Lstat(m.h.Path(env))
+	if err != nil || !fi.Mode().IsRegular() {
+		return false, nil
+	}
+	shared := base + "/shared/.env"
+	if m.exists(shared) {
+		if _, err := m.userRun(ctx, t, "/", "mv", "-T", shared, shared+".old"); err != nil {
+			return false, failed("moving %s aside failed", shared)
+		}
+	}
+	if _, err := m.userRun(ctx, t, "/", "mv", "-T", env, shared); err != nil {
+		return false, failed("moving %s to shared/ failed", env)
+	}
+	if _, err := m.userRun(ctx, t, "/", "ln", "-s", "../../shared/.env", env); err != nil {
+		return false, failed("linking %s failed", env)
+	}
+	return true, nil
 }
 
 func (m *Manager) envContent(ctx context.Context, t Target, abs string) string {

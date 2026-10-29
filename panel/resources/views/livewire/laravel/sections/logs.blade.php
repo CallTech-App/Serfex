@@ -40,6 +40,9 @@
                     <span class="num shrink-0 font-mono text-2xs leading-5 text-muted">{{ $e['at'] }}</span>
                     <button type="button" @click="open = ! open" class="min-w-0 flex-1 text-left font-mono text-[12.5px] break-words {{ $e['detail'] !== '' ? 'hover:text-accent' : 'cursor-default' }}">{{ \Illuminate\Support\Str::limit($e['message'], 400) }}</button>
                 </div>
+                @if ($hint = LogParser::mailHint($e['message'], $e['detail']))
+                    <p class="mt-1.5 flex items-start gap-2 rounded-md bg-warn-soft/50 px-3 py-2 text-[13px]"><x-icon name="mail" class="mt-0.5 text-warn" /><span>{{ $hint }}@if ($canFixMail) <button type="button" wire:click="$parent.show('environment')" class="text-accent hover:underline">{{ __('E-posta ayarını düzelt') }}</button>@endif</span></p>
+                @endif
                 @if ($e['detail'] !== '')
                     <pre x-show="open" x-cloak class="scroll-thin mt-2 max-h-72 overflow-auto rounded-md bg-surface-2 p-3 font-mono text-[11.5px] whitespace-pre-wrap text-muted">{{ \Illuminate\Support\Str::limit($e['detail'], 20000) }}</pre>
                 @endif

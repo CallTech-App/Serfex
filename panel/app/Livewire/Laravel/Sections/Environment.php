@@ -13,6 +13,7 @@ use App\Services\Databases\Databases;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Laravel\EnvFile;
 use App\Services\Laravel\Environments;
+use App\Services\Laravel\MailEnv;
 use App\Services\Laravel\Redis;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -51,6 +52,12 @@ class Environment extends Section
     public bool $comparing = false;
 
     public bool $showingHistory = false;
+
+    public bool $settingMail = false;
+
+    public ?int $mailboxId = null;
+
+    public string $mailPassword = '';
 
     /** Set while another action saves and reports on its own. */
     private bool $quiet = false;
@@ -320,10 +327,64 @@ class Environment extends Section
     }
 
     /**
+     * Opens the form that writes a mailbox's SMTP login into the .env.
+     */
+    public function openMail(): void
+    {
+        $boxes = MailEnv::mailboxes($this->app()->site);
+        $preferred = collect(['noreply', 'no-reply', 'info'])->map(fn ($name) => collect($boxes)->firstWhere('name', $name))->filter()->first() ?? ($boxes[0] ?? null);
+        $this->mailboxId = $preferred?->id;
+        $this->mailPassword = '';
+        $this->resetValidation();
+        $this->settingMail = true;
+    }
+
+    /**
+     * Writes the SMTP login of one of the site's mailboxes (port 587 of
+     * the mail server) and its address as the sender.
+     */
+    public function saveMail(AgentClient $agent, MailEnv $mail): void
+    {
+        $app = $this->app();
+        $mailbox = collect(MailEnv::mailboxes($app->site))->firstWhere('id', $this->mailboxId);
+        if ($mailbox === null) {
+            $this->addError('mailboxId', __('Bir posta kutusu seçin.'));
+
+            return;
+        }
+        if ($this->mailPassword === '' || ! MailEnv::passwordMatches($mailbox, $this->mailPassword)) {
+            $this->addError('mailPassword', __('Parola bu posta kutusunun parolası değil.'));
+
+            return;
+        }
+        if ($this->original === null || $mail->host() === null) {
+            return;
+        }
+        $this->mode = 'text';
+        $this->text = MailEnv::write($this->original, $mail->values($mailbox, $this->mailPassword, EnvFile::values($this->original)));
+        $this->quiet = true;
+        $this->save($agent);
+        $this->quiet = false;
+        $this->mode = 'rows';
+        $this->mailPassword = '';
+        if ($this->agentError !== null) {
+            $this->loadContent((string) $this->original);
+
+            return;
+        }
+        $this->settingMail = false;
+        $this->dispatch('toast',
+            message: __(':address posta kutusuyla gönderecek (:host, port :port).', ['address' => $mailbox->address(), 'host' => $mail->host(), 'port' => MailEnv::PORT]),
+            source: $this->getId(),
+            undo: ['method' => 'restore', 'args' => [$app->envVersions()->first()?->id]],
+        );
+    }
+
+    /**
      * Puts an earlier version of the .env back (it is saved like an edit,
      * so the current file goes into the history).
      */
-    public function restore(int $versionId, AgentClient $agent): void
+    public function restore(?int $versionId, AgentClient $agent): void
     {
         $version = LaravelEnvVersion::where('laravel_app_id', $this->appId)->find($versionId);
         if ($version === null) {
@@ -345,6 +406,9 @@ class Environment extends Section
             'canConnectRedis' => $app->redis_port === null && ! $app->isPreview() && app(Components::class)->isInstalled('redis') && auth()->user()->canOnApp($app, 'manage'),
             'canCreateDatabase' => $app->database_id === null && app(DatabaseServers::class)->installed() !== [] && auth()->user()->canOnApp($app, 'manage') && ! $app->isPreview(),
             'diff' => EnvFile::compare($current, $this->example),
+            'mailProblems' => $this->original === null ? [] : app(MailEnv::class)->problems(MailEnv::fromEnv(EnvFile::values($this->original))),
+            'mailHost' => app(MailEnv::class)->host(),
+            'mailboxes' => $this->settingMail ? MailEnv::mailboxes($app->site) : [],
             'history' => $this->showingHistory ? $app->envVersions()->limit(self::HISTORY)->get() : collect(),
         ]);
     }

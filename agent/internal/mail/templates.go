@@ -104,16 +104,16 @@ smtpd_sasl_path = private/auth
 smtpd_sasl_auth_enable = no
 smtpd_sender_login_maps = texthash:{{.Maps}}/senders
 
-# Sites may send only as their own domains: sendmail (PHP's mail()) by
-# the site's system user, and unauthenticated SMTP from this server not
-# as any hosted domain (Postfix cannot tell whose site connected; such
-# mail goes through sendmail or a mailbox login on 587).
+# Sites send only with a mailbox login on 587: sendmail (PHP's mail()) is
+# refused to their system users, and unauthenticated SMTP from this server
+# is relayed nowhere and may not use a hosted domain as sender (Postfix
+# cannot tell whose site connected).
 local_login_sender_maps = texthash:{{.Maps}}/login-senders, static:*
 smtpd_restriction_classes = serfex_local_senders
 serfex_local_senders = check_sender_access texthash:{{.Maps}}/local-senders
 smtpd_sender_restrictions = check_client_access cidr:{{.Maps}}/local-clients
 
-smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination
+smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination
 smtpd_recipient_restrictions = reject_unauth_pipelining, reject_non_fqdn_recipient, reject_unknown_recipient_domain, check_recipient_access texthash:{{.Maps}}/suspended, permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination, check_policy_service unix:private/quota-status
 
 # Rspamd scores incoming mail, signs outgoing mail with DKIM and enforces

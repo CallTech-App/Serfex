@@ -143,6 +143,10 @@ site's own user:
   turn off XML-RPC. The web server rules live in the site's own Nginx snippet.
 - **Stop managing** leaves WordPress, its files and database on the site and
   removes only Serfex's sign-in plugin, web server rules and restore points.
+- **Email**: WordPress sends with PHP's `mail()`, which this server refuses to
+  sites. Until an SMTP plugin (WP Mail SMTP, FluentSMTP…) is active, the page
+  says so and gives the settings: a mailbox login on the mail server's name,
+  port 587 with STARTTLS.
 
 Customers manage the WordPress on their own sites the same way.
 

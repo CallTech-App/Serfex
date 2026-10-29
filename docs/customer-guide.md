@@ -131,6 +131,10 @@ last update for 7 days. **Sign in to WordPress** opens the dashboard without a
 password. Maintenance mode and the recommended security settings are one
 click each.
 
+To send mail (contact forms, password resets), WordPress needs an SMTP plugin
+such as WP Mail SMTP or FluentSMTP, logged in with one of your mailboxes on
+port 587: this server does not send mail without a login.
+
 ## Copying a site, cache and Composer
 
 Site → **Copy site** makes a staging copy on an address such as
