@@ -253,7 +253,7 @@
     ":email adresiyle bir hesap yok.": "There is no account with the address :email.",
     ":email adında bir yönetici yok.": "There is no administrator with the email :email.",
     ":email daveti geri alındı.": "The invitation for :email was taken back.",
-    ":email geçerli bir e-posta adresi değil.": ":email is not a valid email address.",
+    ":email geçerli bir e-posta adresi değil.": ":email is not a valid e-mail address.",
     ":email hesabı için yeni parolayı yazın. Kaydettiğinizde açık oturumlarınız kapanır.": "Type the new password for :email. Saving it signs out your open sessions.",
     ":email hesabının girişi ve açık oturumları.": "Sign-in and open sessions of the :email account.",
     ":email hesabınız için parola sıfırlama istendi (:ip).": "A password reset was requested for your account :email (:ip).",
@@ -5332,5 +5332,12 @@
     "Eklentiler okunamadı: :reason": "The extensions could not be read: :reason",
     "Sunucu hazır olunca eklentiler burada görünür.": "The extensions appear here once the server is ready.",
     "Eklentiyi aç": "Turn on",
-    "Açık bir eklenti için uygulamanın :sql çalıştırması gerekmez; çalıştırırsa zaten açık olduğu için atlanır.": "With an extension on, the application need not run :sql; if it does, it is skipped because the extension is already there."
+    "Açık bir eklenti için uygulamanın :sql çalıştırması gerekmez; çalıştırırsa zaten açık olduğu için atlanır.": "With an extension on, the application need not run :sql; if it does, it is skipped because the extension is already there.",
+    ":email zaten bu hesabın adresi.": ":email is already this account's address.",
+    ":ip adresinin ters DNS (PTR) kaydı :name adını gösteriyor, ama bu adın A kaydı :ip değil. Gmail ve Outlook bu sunucudan gönderilen e-postaları reddeder. :name için :ip adresine bir A kaydı ekleyin ya da PTR kaydını düzeltin.": "The reverse DNS (PTR) record of :ip names :name, but the A record of that name is not :ip. Gmail and Outlook refuse mail sent from this server. Add an A record for :name pointing at :ip or fix the PTR record.",
+    ":ip adresinin ters DNS (PTR) kaydı yok. Gmail ve Outlook bu sunucudan gönderilen e-postaları reddeder. Kaydı sunucuyu kiraladığınız firmanın panelinden sunucunun adına ayarlayın ya da bir SMTP sunucusu girin.": ":ip has no reverse DNS (PTR) record. Gmail and Outlook refuse mail sent from this server. Set it to the server's name in your hosting company's control panel, or enter an SMTP server.",
+    "E-posta adresi :old yerine :new oldu.": "The e-mail address changed from :old to :new.",
+    "Gelmediyse istenmeyen klasörüne bakın. Hâlâ yoksa sunucu yöneticinizden adresinizi değiştirmesini isteyin.": "If it hasn't arrived, check the spam folder. If it still isn't there, ask your server administrator to change your address.",
+    "Gelmediyse istenmeyen klasörüne bakın. Hâlâ yoksa sunucunun posta günlüğüne (/var/log/mail.log) bakın ya da adresi sunucuda hemen değiştirin:": "If it hasn't arrived, check the spam folder. If it still isn't there, look at the server's mail log (/var/log/mail.log) or change the address on the server right away:",
+    "Sunucuda komut satırıyla e-posta adresi :old yerine :new yapıldı.": "The e-mail address was changed from :old to :new on the server's command line."
 }

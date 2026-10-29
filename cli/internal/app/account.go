@@ -104,6 +104,14 @@ func accountCommands() []*Command {
 			Run:      resetPassword,
 		},
 		{
+			Name: "change-email", Group: T("Hesap"), Args: T("<eski-e-posta> <yeni-e-posta>"), MinArgs: 2, MaxArgs: 2,
+			Short: T("Bir hesabın e-posta adresini hemen değiştirir"),
+			Long: T("Bir yönetici, müşteri ya da ekip üyesi hesabının giriş adresini doğrulama bağlantısı beklemeden değiştirir. Bildirim alıcıları, Let's Encrypt iletişim adresi ve müşteri kaydı da yeni adrese geçer; bekleyen bir adres değişikliği iptal olur.\n\n" +
+				"Yeni adrese gönderilen doğrulama e-postası ulaşmadığında kullanın. Sunucunun kendisinde root olarak çalışır."),
+			Examples: []string{"sudo serfex change-email ayse@ornek.com ayse@ornek.com.tr"},
+			Run:      changeEmail,
+		},
+		{
 			Name: "logout", Group: T("Hesap"),
 			Short: T("Profilden çıkar ve anahtarını panelde kapatır"),
 			Run:   logout,
@@ -444,6 +452,34 @@ func resetPassword(c *Ctx) error {
 	for _, u := range link.URLs {
 		c.println(u)
 	}
+	return nil
+}
+
+// changeEmail moves an account to a new sign-in address at once: the
+// way out when the confirmation link doesn't arrive.
+func changeEmail(c *Ctx) error {
+	if c.env.Geteuid() != 0 {
+		return fmt.Errorf("%s", T("serfex change-email sunucunun kendisinde root olarak çalışır: sudo serfex change-email <eski-e-posta> <yeni-e-posta>"))
+	}
+	out, err := localArtisan(c, "serfex:change-email", "--json", "--", c.Args[0], c.Args[1])
+	var res struct {
+		Old   string `json:"old"`
+		Email string `json:"email"`
+		Error string `json:"error"`
+	}
+	if jerr := json.Unmarshal(lastLine(out), &res); jerr != nil {
+		if err != nil {
+			return fmt.Errorf("%s", T("Panel e-posta adresini değiştiremedi: %s", err))
+		}
+		return fmt.Errorf("%s", T("Panelin yanıtı anlaşılamadı."))
+	}
+	if res.Error != "" {
+		return fmt.Errorf("%s", res.Error)
+	}
+	if c.json {
+		return c.printJSON(lastLine(out))
+	}
+	c.note("%s", T("E-posta adresi %s yerine %s oldu. Bu adresle giriş yapın.", res.Old, res.Email))
 	return nil
 }
 

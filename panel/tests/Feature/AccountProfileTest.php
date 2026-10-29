@@ -10,6 +10,8 @@ use App\Models\Customer;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
+use App\Services\Dns\DnsSettings;
+use App\Services\Mail\ReverseDns;
 use App\Services\Settings\Notifications;
 use App\Services\Setup\FirstRun;
 use App\Support\Impersonation;
@@ -253,5 +255,82 @@ class AccountProfileTest extends TestCase
         $this->assertSame(0, DB::table('sessions')->where('id', 'other-browser')->count());
         Mail::assertSent(PanelMail::class, fn (PanelMail $m) => $m->hasTo('p@example.test') && $m->title === 'Serfex parolanız değiştirildi');
         $this->assertTrue(AuditEntry::where('user_id', $user->id)->where('message', 'like', 'Parolanız değiştirildi%')->exists());
+    }
+
+    public function test_the_server_changes_an_address_at_once_when_the_link_doesn_t_arrive(): void
+    {
+        $customer = Customer::factory()->withLogin()->create(['email' => 'typo@exmaple.test']);
+        $user = $customer->user;
+        $user->forceFill(['pending_email' => 'right@example.test', 'pending_email_token' => str_repeat('a', 64), 'pending_email_at' => now()])->save();
+        Setting::put(Notifications::KEY, ['emails' => ['typo@exmaple.test']]);
+
+        $this->artisan('serfex:change-email', ['email' => 'TYPO@exmaple.test', 'new' => 'Right@Example.test', '--json' => true])
+            ->expectsOutput('{"old":"typo@exmaple.test","email":"right@example.test"}')
+            ->assertSuccessful();
+        $user->refresh();
+        $this->assertSame('right@example.test', $user->email);
+        $this->assertNull($user->pending_email);
+        $this->assertSame('right@example.test', $customer->fresh()->email);
+        $this->assertSame(['right@example.test'], Setting::get(Notifications::KEY)['emails']);
+        $this->assertTrue(AuditEntry::where('user_id', $user->id)->where('actor', 'root')
+            ->where('message', 'Sunucuda komut satırıyla e-posta adresi typo@exmaple.test yerine right@example.test yapıldı.')->exists());
+
+        User::factory()->create(['email' => 'taken@example.test']);
+        $this->artisan('serfex:change-email', ['email' => 'right@example.test', 'new' => 'taken@example.test', '--json' => true])
+            ->expectsOutput('{"error":"Bu e-posta adresiyle bir panel hesabı zaten var."}')->assertFailed();
+        $this->artisan('serfex:change-email', ['email' => 'right@example.test', 'new' => 'not-an-address', '--json' => true])->assertFailed();
+        $this->artisan('serfex:change-email', ['email' => 'nobody@example.test', 'new' => 'x@example.test'])->assertFailed();
+        $this->assertSame('right@example.test', $user->fresh()->email);
+    }
+
+    public function test_a_missing_reverse_dns_record_is_named_where_the_panel_s_mail_goes_out(): void
+    {
+        config(['serfex.mail.check_dns' => true]);
+        Setting::put('panel.mail', ['mode' => 'server', 'host' => '', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Serfex']);
+        Setting::put('mail.server', ['setup_at' => now()->toIso8601String()]);
+        Setting::put('dns.ipv4', '203.0.113.10');
+        $reverse = new class(app(DnsSettings::class)) extends ReverseDns
+        {
+            public ?string $name = null;
+
+            public array $back = [];
+
+            protected function ptr(string $ip): ?string
+            {
+                return $this->name;
+            }
+
+            protected function addresses(string $host): array
+            {
+                return $this->back;
+            }
+        };
+        $this->app->instance(ReverseDns::class, $reverse);
+        $admin = User::factory()->create(['email' => 'a@example.test', 'role' => 'full', 'pending_email' => 'b@example.test', 'pending_email_at' => now()]);
+        $this->actingAs($admin);
+
+        $this->get('/account')->assertSeeText('203.0.113.10 adresinin ters DNS (PTR) kaydı yok')
+            ->assertSeeText('sudo serfex change-email a@example.test b@example.test');
+        $this->get(route('settings.notifications'))->assertSeeText('ters DNS (PTR) kaydı yok');
+
+        $reverse->forget();
+        $reverse->name = 'srv1.example.test';
+        $this->get('/account')->assertSeeText('srv1.example.test adını gösteriyor');
+
+        $reverse->forget();
+        $reverse->back = ['203.0.113.10'];
+        $this->get('/account')->assertDontSeeText('ters DNS');
+
+        // Through an SMTP server the PTR record of this server doesn't matter.
+        $reverse->forget();
+        $reverse->name = null;
+        Setting::put('panel.mail', ['mode' => 'smtp', 'host' => 'smtp.serfex.test', 'port' => 587, 'encryption' => 'starttls', 'username' => '', 'password' => null, 'from_address' => '', 'from_name' => 'Serfex']);
+        $this->get('/account')->assertDontSeeText('ters DNS');
+
+        // A customer is told to ask, not shown the server's command.
+        $customer = Customer::factory()->withLogin()->create();
+        $customer->user->forceFill(['pending_email' => 'new@example.test', 'pending_email_at' => now()])->save();
+        $this->actingAs($customer->user);
+        $this->get('/account')->assertSeeText('sunucu yöneticinizden adresinizi değiştirmesini isteyin')->assertDontSeeText('serfex change-email');
     }
 }

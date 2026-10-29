@@ -50,6 +50,17 @@
                                 <button type="button" wire:click="resendEmail" class="{{ $btn }}"><x-icon name="send" />{{ __('Yeniden gönder') }}</button>
                                 <button type="button" wire:click="cancelEmail" class="{{ $btn }}">{{ __('Vazgeç') }}</button>
                             </div>
+                            @if ($deliveryWarning)
+                                <p class="mt-2.5 flex items-start gap-2 rounded-md bg-warn-soft px-3 py-2 text-[13px]"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $deliveryWarning }}</p>
+                            @endif
+                            <p class="mt-2.5 text-2xs text-muted">
+                                @if ($user->isFullAdmin() && ! $impersonating)
+                                    {{ __('Gelmediyse istenmeyen klasörüne bakın. Hâlâ yoksa sunucunun posta günlüğüne (/var/log/mail.log) bakın ya da adresi sunucuda hemen değiştirin:') }}
+                                    <span class="mt-1 block font-mono text-[12.5px] text-fg select-all break-all">sudo serfex change-email {{ $user->email }} {{ $user->pending_email }}</span>
+                                @else
+                                    {{ __('Gelmediyse istenmeyen klasörüne bakın. Hâlâ yoksa sunucu yöneticinizden adresinizi değiştirmesini isteyin.') }}
+                                @endif
+                            </p>
                         </div>
                     @endif
                 </div>

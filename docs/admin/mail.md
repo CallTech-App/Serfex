@@ -17,7 +17,10 @@ stored only as hashes.
    configuration files are kept with a `.before-serfex` suffix.
 3. Make sure the server's reverse DNS (PTR) record, set at your hosting
    provider, matches the mail server's name, and that port 25 is open
-   outbound. Many providers block it until asked.
+   outbound. Many providers block it until asked. Without it Gmail and
+   Outlook refuse the mail (`550 5.7.25` in `/var/log/mail.log`); Email
+   settings and Notifications warn when the record is missing or doesn't
+   point back at the server.
 
 Email settings also hold the defaults:
 

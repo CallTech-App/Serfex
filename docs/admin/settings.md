@@ -120,7 +120,9 @@ the current password and takes effect once the link mailed to it is opened
 (24 hours); the old address stays in use until then. The notification
 recipients, the Let's Encrypt contact and a customer's own record move to the
 new address with it. When the panel can't send mail at all, the address
-changes at once without confirmation, and the dialog says so.
+changes at once without confirmation, and the dialog says so. When the link
+doesn't arrive (often a missing PTR record, which the page then names),
+`sudo serfex change-email <old> <new>` on the server changes it at once.
 
 **Account security** has the password change (the other sessions are signed
 out and a notice is mailed), two-step verification with recovery codes, open

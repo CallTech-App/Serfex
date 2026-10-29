@@ -111,7 +111,14 @@ When the panel cannot send mail, the page says so and points to the server:
 sudo serfex reset-password ayse@example.com
 ```
 
-prints the same kind of link for any account, without sending mail.
+prints the same kind of link for any account, without sending mail. When
+the link to confirm a new e-mail address doesn't arrive,
+
+```sh
+sudo serfex change-email ayse@exmaple.com ayse@example.com
+```
+
+changes the account's address at once.
 
 Serfex does not sign in with the server's root password: PHP never runs as
 root, the root password never crosses the browser, and the setup link works

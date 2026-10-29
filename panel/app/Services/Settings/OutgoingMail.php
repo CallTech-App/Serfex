@@ -5,6 +5,7 @@ namespace App\Services\Settings;
 use App\Mail\PanelMail;
 use App\Models\Setting;
 use App\Services\Mail\MailSettings;
+use App\Services\Mail\ReverseDns;
 use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
@@ -76,6 +77,19 @@ class OutgoingMail
         return app(MailSettings::class)->isSetUp() || is_executable('/usr/sbin/sendmail')
             ? null
             : __('Bu sunucuda posta sunucusu kurulu değil. E-posta bölümünden kurun ya da bir SMTP sunucusu girin.');
+    }
+
+    /**
+     * Why mail the panel sends may be refused on the way although it
+     * leaves: this server's reverse DNS when it sends through Postfix.
+     */
+    public function deliveryWarning(): ?string
+    {
+        if ($this->problem() !== null || $this->settings()['mode'] === 'smtp') {
+            return null;
+        }
+
+        return app(ReverseDns::class)->problem();
     }
 
     public function fromAddress(): string

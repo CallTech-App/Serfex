@@ -23,6 +23,10 @@
 
     @include('livewire.mail.server-state')
 
+    @if ($reverseDns)
+        <p class="flex items-start gap-2 rounded-lg bg-warn-soft p-3 text-[13px]" role="alert"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $reverseDns }}</p>
+    @endif
+
     <section class="rounded-xl border border-line bg-surface">
         <form wire:submit="save" class="max-w-3xl px-5 py-5 text-[13.5px]">
             <div class="divide-y divide-line">

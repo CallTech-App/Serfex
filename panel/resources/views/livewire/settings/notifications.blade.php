@@ -144,6 +144,8 @@
             </div>
             @if ($mailProblem)
                 <p class="mt-3 flex items-start gap-2 rounded-lg bg-warn-soft p-3 text-[13px]"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $mailProblem }}</p>
+            @elseif ($deliveryWarning && $mode === 'server')
+                <p class="mt-3 flex items-start gap-2 rounded-lg bg-warn-soft p-3 text-[13px]"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $deliveryWarning }}</p>
             @endif
             <div class="mt-5">
                 <button type="submit" class="h-9 rounded-md bg-accent px-3.5 font-medium text-accent-fg hover:brightness-110">{{ __('Kaydet') }}</button>

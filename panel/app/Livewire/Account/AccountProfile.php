@@ -219,6 +219,7 @@ class AccountProfile extends Component
             'pendingExpired' => $user->pending_email !== null && $user->pending_email_at?->lte(now()->subHours(EmailChange::HOURS)),
             'impersonating' => Impersonation::active(),
             'mailWorks' => app(OutgoingMail::class)->problem() === null,
+            'deliveryWarning' => $user->pending_email !== null && $user->isFullAdmin() ? app(OutgoingMail::class)->deliveryWarning() : null,
         ]);
     }
 }
