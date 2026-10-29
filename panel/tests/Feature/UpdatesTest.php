@@ -250,7 +250,7 @@ class UpdatesTest extends TestCase
 
     public function test_the_menu_and_dashboard_point_at_a_ready_or_failed_update_without_asking_the_agent(): void
     {
-        $this->get(route('dashboard'))->assertOk()->assertSee('Serfex sürümü')->assertDontSee('0.2.0 hazır');
+        $this->get(route('dashboard'))->assertOk()->assertSee('Güncellemeler')->assertDontSee('0.2.0 hazır');
 
         app(Updates::class)->check();
         $this->agent->calls = [];

@@ -21,6 +21,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Ai\AiSettings;
 use App\Services\Backups\Backups;
+use App\Services\Components\SystemPackages;
 use App\Services\Customers\DiskQuotas;
 use App\Services\Customers\Quotas;
 use App\Services\Monitor\Health;
@@ -65,7 +66,7 @@ class Overview extends Component
 
         $day = $this->history('24h');
         $daySum = ServerHistory::summary($day);
-        $checks = $this->checks($snap, $user);
+        $checks = $this->checks($snap, $user, $online);
         $problems = array_values(array_filter($checks, fn ($c) => $c['problem'] !== null));
         if (! $online) {
             array_unshift($problems, ['tone' => 'crit', 'icon' => 'unplug', 'problem' => [
@@ -138,7 +139,7 @@ class Overview extends Component
      *
      * @return list<array<string, mixed>>
      */
-    private function checks(?array $snap, $user): array
+    private function checks(?array $snap, $user, bool $online = true): array
     {
         $checks = [];
         $add = function (string $icon, string $name, string $tone, string $text, ?string $url, ?array $problem = null) use (&$checks) {
@@ -279,19 +280,41 @@ class Overview extends Component
         $twoFactor = $user->hasTwoFactor();
         $add('key-round', __('Hesabınız'), $twoFactor ? 'ok' : 'info', $twoFactor ? __('İki adımlı doğrulama açık') : __('İki adımlı doğrulama kapalı'), route('account.security'));
 
-        // Serfex sürümü
+        // Güncellemeler: Serfex itself, then Ubuntu's packages.
         $notices = app(Updates::class)->notices();
         $updatesUrl = $user->isFullAdmin() ? route('settings.updates') : null;
-        if ($notices) {
-            $warn = collect($notices)->firstWhere('level', 'warn');
-            $add('refresh-cw', __('Serfex sürümü'), $warn ? 'warn' : 'info', $notices[0]['text'], $updatesUrl, $warn ? [
+        $warn = collect($notices)->firstWhere('level', 'warn');
+        $system = $online ? app(SystemPackages::class)->summary() : null;
+        $systemUrl = route('components.index', ['tab' => 'packages']);
+        if ($warn) {
+            $add('refresh-cw', __('Güncellemeler'), 'warn', $notices[0]['text'], $updatesUrl, [
                 'title' => $warn['text'],
                 'text' => __('Panel çalışan sürümde kaldı. Ayrıntılar Güncellemeler sayfasında.'),
                 'ai' => null,
                 'action' => $updatesUrl ? [__('Güncellemelere git'), $updatesUrl] : null,
-            ] : null);
+            ]);
+        } elseif ($system !== null && ($system['reboot'] || $system['security'] > 0)) {
+            $title = match (true) {
+                $system['reboot'] && $system['security'] > 0 => trans_choice('Sunucunun yeniden başlatılması gerekiyor ve :count güvenlik güncellemesi bekliyor', $system['security']),
+                $system['reboot'] => __('Sunucunun yeniden başlatılması gerekiyor'),
+                default => trans_choice(':count Ubuntu güvenlik güncellemesi bekliyor', $system['security']),
+            };
+            $add('refresh-cw', __('Güncellemeler'), 'warn', $system['reboot'] ? __('Yeniden başlatma gerekiyor') : trans_choice(':count güvenlik güncellemesi', $system['security']), $systemUrl, [
+                'title' => $title,
+                'text' => $system['reboot']
+                    ? __('Güncellenen paketler (:packages) ancak sunucu yeniden başlayınca devreye girer. Uygun bir saatte Yazılım Yönetimi → Ubuntu güncellemeleri sayfasından yeniden başlatın.', ['packages' => implode(', ', array_slice($system['reboot_packages'], 0, 3)) ?: __('çekirdek')])
+                    : ($system['auto']
+                        ? __('Ubuntu bunları her gün kendiliğinden kurar; hemen kurmak için Ubuntu güncellemeleri sayfasına gidin.')
+                        : __('Otomatik güvenlik güncellemeleri kapalı, bu yüzden bunlar siz kurana kadar bekler.')),
+                'ai' => null,
+                'action' => [__('Ubuntu güncellemelerine git'), $systemUrl],
+            ]);
+        } elseif ($notices) {
+            $add('refresh-cw', __('Güncellemeler'), 'info', $notices[0]['text'], $updatesUrl);
+        } elseif ($system !== null && $system['updates'] > 0) {
+            $add('refresh-cw', __('Güncellemeler'), 'info', trans_choice(':count Ubuntu güncellemesi var', $system['updates']), $systemUrl);
         } else {
-            $add('refresh-cw', __('Serfex sürümü'), 'ok', 'Serfex '.config('serfex.version'), $updatesUrl);
+            $add('refresh-cw', __('Güncellemeler'), 'ok', $system !== null ? __('Serfex :version · Ubuntu güncel', ['version' => config('serfex.version')]) : 'Serfex '.config('serfex.version'), $updatesUrl);
         }
 
         foreach ($checks as &$c) {

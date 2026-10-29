@@ -98,6 +98,7 @@ the workers pick up new PHP binaries on their hourly restart.
 | Web server | Nginx (always in front), Apache (behind Nginx on 127.0.0.1:7080 for sites that choose it), and the default stack for new sites |
 | Database servers | MySQL or MariaDB, PostgreSQL, phpMyAdmin and Adminer |
 | Other components | Redis, Memcached, Supervisor, Node.js (22, 24, 26 from nodejs.org in `/opt/serfex/node`), Composer, Python, Fail2ban, ModSecurity, ClamAV; Roundcube or SnappyMail is chosen under Email settings |
+| Ubuntu updates | Ubuntu's own packages with a newer version, the restart they ask for and the automatic security updates (see below) |
 
 Notes:
 
@@ -112,3 +113,48 @@ Notes:
   jails are added as soon as the mail server is set up (also when Fail2ban
   was installed first), and the panel's jail follows a new panel port within
   a minute. A stopped Fail2ban is not started by this.
+
+### Ubuntu updates
+
+The **Ubuntu updates** tab lists every installed package that has a newer
+version, security updates first, with the installed and the new version and
+where it comes from. Full administrators update all of them at once
+(**Update all**) or tick a few (**Update selected**, or **Update** on a row);
+the progress window shows apt's output as it runs. Support and read-only
+administrators can look but not update.
+
+- **What "Update all" installs** is what `apt upgrade` would: every upgrade
+  apt can make without removing a package, with the new packages they need
+  (a new kernel's image is listed as *New package*). Packages apt leaves out
+  because they would need more changes are marked and can be updated on
+  their own.
+- **Nothing is removed.** A selection apt could only install by removing
+  another package is refused; do that one on the server with apt.
+- **Configuration files changed on the server are kept**
+  (`--force-confold`), and apt waits up to ten minutes for
+  unattended-upgrades to finish first.
+- **Held packages** (`apt-mark hold`) are shown and never updated.
+  **Phased** updates, which Ubuntu rolls out to servers step by step, wait
+  until Ubuntu offers them to this server.
+- **Serfex components**: a package that belongs to one (Nginx, a PHP
+  version, a database server, Redis…) is tagged with its name. After the
+  upgrade Serfex writes the component's configuration again, restarts it and
+  checks it, as the component's own **Update** does; if the check fails the
+  previous configuration comes back and the log says which one.
+- **Restart**: when an upgrade asks for it (`/run/reboot-required`, usually a
+  new kernel or OpenSSL), the tab and Overview say so. **Restart** reboots
+  the server one minute later (`shutdown -r +1`); **Undo** in the
+  notification, or **Cancel the restart**, stops it.
+- **Automatic security updates**: Ubuntu's unattended-upgrades installs
+  security updates every day by default and Serfex leaves it that way. The
+  tab shows whether it is on, whether it installs only security updates,
+  whether it restarts the server by itself (off by default) and when it last
+  ran. **Turn off** / **Turn on** writes `/etc/apt/apt.conf.d/20auto-upgrades`
+  (installing unattended-upgrades when it is missing), with Undo.
+
+The list comes from `apt-get -s upgrade --with-new-pkgs`, a dry run, and is
+worked out again whenever dpkg's status or the package lists change, so
+upgrades installed by unattended-upgrades or by hand show up without a
+check. **Check for updates** and the nightly check refresh the package lists
+first. Overview's **Updates** check turns amber when security updates wait or
+a restart is needed.

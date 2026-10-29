@@ -19,6 +19,7 @@ use App\Services\Backups\Backups;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Mail\MailSettings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
@@ -37,6 +38,8 @@ class Components
         'web' => 'Web sunucusu',
         'databases' => 'Veritabanı sunucuları',
         'other' => 'Diğer bileşenler',
+        // Ubuntu's own packages (SystemPackages).
+        'packages' => 'Ubuntu güncellemeleri',
     ];
 
     /** PHP versions and Node.js lines the agent offers. */
@@ -71,6 +74,9 @@ class Components
 
     private ?string $checkedAt = null;
 
+    /** Set while the agent upgrades Ubuntu's packages. */
+    private ?string $packagesBusy = null;
+
     public function __construct(
         private readonly AgentClient $agent,
         private readonly DatabaseServers $databases,
@@ -96,6 +102,7 @@ class Components
             return null;
         }
         $this->checkedAt = $list['checked_at'] ?? null;
+        $this->packagesBusy = $list['packages_busy'] ?? null;
         $this->list = [];
         foreach ($list['components'] ?? [] as $c) {
             $this->list[$c['id']] = $c;
@@ -119,7 +126,8 @@ class Components
     private function settleAll(): void
     {
         foreach (ComponentOperation::running()->get() as $op) {
-            if (($this->list[$op->component]['busy'] ?? null) !== null) {
+            $busy = $op->component === SystemPackages::COMPONENT ? $this->packagesBusy : ($this->list[$op->component]['busy'] ?? null);
+            if ($busy !== null) {
                 continue;
             }
             // A job sets "running" just before it calls the agent, and a
@@ -167,6 +175,14 @@ class Components
      */
     public function recorded(ComponentOperation $op): void
     {
+        if ($op->component === SystemPackages::COMPONENT) {
+            // Genel Bakış counts again; upgraded database servers were
+            // checked by the agent.
+            Cache::forget(SystemPackages::SUMMARY_KEY);
+            $this->databases->status();
+
+            return;
+        }
         if (! in_array($op->component, ['mysql', 'mariadb', 'postgresql'], true)) {
             return;
         }
@@ -284,6 +300,11 @@ class Components
      */
     public function operationName(ComponentOperation $operation): string
     {
+        if ($operation->component === SystemPackages::COMPONENT) {
+            $count = count($operation->packages ?? []);
+
+            return $count === 1 ? $operation->packages[0] : ($count > 1 ? trans_choice(':count Ubuntu paketi', $count) : __('Ubuntu paketleri'));
+        }
         $name = $this->name($operation->component);
 
         if ($operation->detail && ! str_starts_with($operation->action, 'ext-')) {
@@ -309,7 +330,7 @@ class Components
         if ($running !== null) {
             $name = $this->operationName($running);
             $doing = match ($running->action) {
-                'update' => __(':name güncelleniyor.', ['name' => $name]),
+                'update', 'packages' => __(':name güncelleniyor.', ['name' => $name]),
                 'upgrade' => __(':name sürümüne yükseltiliyor.', ['name' => $name]),
                 'remove', 'ext-remove', 'remove-old' => __(':name kaldırılıyor.', ['name' => $name]),
                 default => __(':name kuruluyor.', ['name' => $name]),

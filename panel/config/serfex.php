@@ -60,6 +60,9 @@ return [
         // Seconds to wait for a database server's major version upgrade:
         // every database is dumped, copied and counted.
         'upgrade_timeout' => (float) env('SERFEX_AGENT_UPGRADE_TIMEOUT', 43300),
+        // Seconds to wait for an upgrade of Ubuntu's packages; apt waits up
+        // to ten minutes for unattended-upgrades first.
+        'packages_timeout' => (float) env('SERFEX_AGENT_PACKAGES_TIMEOUT', 3600),
     ],
 
     /*

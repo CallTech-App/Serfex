@@ -196,6 +196,9 @@ type List struct {
 	Components []Status `json:"components"`
 	// CheckedAt is when component.check last refreshed the package lists.
 	CheckedAt string `json:"checked_at,omitempty"`
+	// PackagesBusy is set while a system package upgrade runs
+	// (packages.upgrade).
+	PackagesBusy string `json:"packages_busy,omitempty"`
 }
 
 // List reports every component. It reads package versions and service
@@ -234,7 +237,7 @@ func (m *Manager) List(ctx context.Context) List {
 	}
 	m.mu.Unlock()
 
-	out := List{Components: []Status{}, CheckedAt: latest.CheckedAt}
+	out := List{Components: []Status{}, CheckedAt: latest.CheckedAt, PackagesBusy: busy[packagesBusy]}
 	for _, id := range ids {
 		c := m.comps[id]
 		s := Status{ID: id, Installed: installed[id], Busy: busy[id], Required: c.required}
@@ -312,6 +315,7 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 		m.op.Unlock()
 		return List{}, opError(fmt.Errorf("apt-get update failed: %w", err))
 	}
+	m.refreshPackages(ctx)
 	l := latestState{Versions: map[string]string{}, Candidates: map[string]aptcache.Candidate{}, Choices: map[string][]database.Release{}, CheckedAt: m.now().UTC().Format(time.RFC3339)}
 	for id, c := range m.comps {
 		switch {

@@ -809,6 +809,16 @@ func registerComponents(srv *rpc.Server, svc services) {
 	}) (any, error) {
 		return c.ReadRun(q.Run, q.Offset)
 	})
+	handle(srv, "packages.list", func(ctx context.Context, _ struct{}) (any, error) { return c.Packages(ctx) })
+	handle(srv, "packages.upgrade", func(ctx context.Context, p component.UpgradeSpec) (any, error) {
+		return c.UpgradePackages(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "packages.auto", func(ctx context.Context, p struct {
+		Enabled bool `json:"enabled"`
+	}) (any, error) {
+		return c.SetAutoUpdates(context.WithoutCancel(ctx), p.Enabled)
+	})
+	handle(srv, "system.reboot", func(ctx context.Context, p component.RebootSpec) (any, error) { return c.Reboot(ctx, p) })
 	handle(srv, "redis.apply", func(ctx context.Context, p component.RedisSpec) (any, error) { return c.ApplyRedis(ctx, p) })
 	handle(srv, "redis.remove", func(ctx context.Context, p domainParam) (any, error) {
 		removed, err := c.RemoveRedis(ctx, p.Domain)
