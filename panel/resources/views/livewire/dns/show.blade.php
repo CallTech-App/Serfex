@@ -14,34 +14,36 @@
         <div wire:poll.2s="refreshStatus" hidden></div>
     @endif
 
-    {{-- Title --}}
-    <div>
-        <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('dns.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />{{ __('Alan Adları ve DNS') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="font-mono text-fg">{{ $zone->name }}</span>
-        </nav>
-        <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <div class="flex min-w-0 items-center gap-3">
-                <h1 class="truncate font-mono text-[22px] font-semibold tracking-tight">{{ $zone->name }}</h1>
-                <x-status-badge :status="$zone->status" />
+    {{-- Title; inside a site, the site's header stands above instead. --}}
+    @if ($siteId === null)
+        <div>
+            <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
+                <a href="{{ route('dns.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />{{ __('Alan Adları ve DNS') }}</a>
+                <x-icon name="chevron-right" class="size-3.5" />
+                <span class="font-mono text-fg">{{ $zone->name }}</span>
+            </nav>
+            <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                <div class="flex min-w-0 items-center gap-3">
+                    <h1 class="truncate font-mono text-[22px] font-semibold tracking-tight">{{ $zone->name }}</h1>
+                    <x-status-badge :status="$zone->status" />
+                </div>
+                @if ($zone->site)
+                    <a href="{{ route('sites.show', $zone->site) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                        <x-icon name="globe" />{{ __('Siteye git') }}
+                    </a>
+                @endif
             </div>
-            @if ($zone->site)
-                <a href="{{ route('sites.show', $zone->site) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-                    <x-icon name="globe" />{{ __('Siteye git') }}
-                </a>
-            @endif
+            <p class="mt-1 text-[13px] text-muted">
+                {{ __('Bu alan adının DNS kayıtlarını ve bölge ayarlarını yönetin.') }}
+                @if ($nameservers)
+                    {{ __('Ad sunucuları:') }}
+                    @foreach ($nameservers as $ns)
+                        <span class="font-mono">{{ rtrim($ns, '.') }}</span>{{ $loop->last ? '' : ',' }}
+                    @endforeach
+                @endif
+            </p>
         </div>
-        <p class="mt-1 text-[13px] text-muted">
-            {{ __('Bu alan adının DNS kayıtlarını ve bölge ayarlarını yönetin.') }}
-            @if ($nameservers)
-                {{ __('Ad sunucuları:') }}
-                @foreach ($nameservers as $ns)
-                    <span class="font-mono">{{ rtrim($ns, '.') }}</span>{{ $loop->last ? '' : ',' }}
-                @endforeach
-            @endif
-        </p>
-    </div>
+    @endif
 
     @if ($zone->status === \App\Enums\ZoneStatus::Failed)
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">

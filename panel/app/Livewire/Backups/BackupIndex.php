@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Json;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -57,6 +58,10 @@ class BackupIndex extends Component
     /** Only one site's backups (from the site's page). */
     #[Url(as: 'site', except: 0)]
     public int $siteId = 0;
+
+    /** Opened inside a site (Siteler → site → Yedekler): the site's header stands above. */
+    #[Locked]
+    public bool $inSite = false;
 
     /** Why the last action could not be done. */
     public ?string $refused = null;
@@ -164,9 +169,13 @@ class BackupIndex extends Component
     /** @var list<array<string, mixed>>|null */
     public ?array $scanResults = null;
 
-    public function mount(BackupSettings $settings): void
+    public function mount(BackupSettings $settings, ?int $site = null): void
     {
-        if (! array_key_exists($this->tab, self::TABS) || ! auth()->user()->is_admin) {
+        if ($site !== null) {
+            $this->siteId = Site::visibleTo(auth()->user())->findOrFail($site)->id;
+            $this->inSite = true;
+        }
+        if (! array_key_exists($this->tab, self::TABS) || ! auth()->user()->is_admin || $this->inSite) {
             $this->tab = 'backups';
         }
         if ($this->siteId !== 0 && Site::visibleTo(auth()->user())->whereKey($this->siteId)->doesntExist()) {

@@ -542,8 +542,8 @@ class BackupsTest extends TestCase
     {
         $this->serverBackup();
 
-        $this->get('/sites/'.$this->site->id)->assertOk()->assertSee('Son yedek')->assertSee(route('backups.index', ['site' => $this->site->id]), false);
-        $this->get('/backups?site='.$this->site->id)->assertOk()->assertSee('sitesinin yedekleri')->assertSee('İndir');
+        $this->get('/sites/'.$this->site->id)->assertOk()->assertSee('Son yedek')->assertSee(route('sites.backups', $this->site), false);
+        $this->get(route('sites.backups', $this->site))->assertOk()->assertSee('sitesinin yedekleri')->assertSee('İndir');
     }
 
     public function test_a_site_is_backed_up_before_it_is_deleted_and_undo_brings_it_back(): void

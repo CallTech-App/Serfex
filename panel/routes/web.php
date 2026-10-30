@@ -70,6 +70,7 @@ use App\Livewire\Sites\SiteCopyTool;
 use App\Livewire\Sites\SiteCron;
 use App\Livewire\Sites\SiteDirectives;
 use App\Livewire\Sites\SiteDisk;
+use App\Livewire\Sites\SiteDns;
 use App\Livewire\Sites\SiteDomainList;
 use App\Livewire\Sites\SiteErrorPages;
 use App\Livewire\Sites\SiteFiles;
@@ -168,6 +169,9 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::post('/sites/{site}/wordpress/login', WordPressLoginController::class)->whereNumber('site')->middleware('throttle:20,1')->name('sites.wordpress.login');
         Route::livewire('/sites/{site}/domains', SiteDomainList::class)->whereNumber('site')->name('sites.domains');
         Route::livewire('/sites/{site}/mail', SiteMail::class)->whereNumber('site')->name('sites.mail');
+        Route::livewire('/sites/{site}/dns', SiteDns::class)->whereNumber('site')->name('sites.dns');
+        Route::livewire('/sites/{site}/databases', DatabaseIndex::class)->whereNumber('site')->name('sites.databases');
+        Route::livewire('/sites/{site}/backups', BackupIndex::class)->whereNumber('site')->name('sites.backups');
         Route::livewire('/sites/{site}/error-pages', SiteErrorPages::class)->whereNumber('site')->name('sites.errors');
         Route::livewire('/sites/{site}/logs', SiteLogs::class)->whereNumber('site')->name('sites.logs');
         Route::get('/sites/{site}/logs/download', SiteLogController::class)->whereNumber('site')->middleware('throttle:30,1')->name('sites.logs.download');

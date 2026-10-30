@@ -5466,5 +5466,15 @@
     "Web sunucusu ve geliştirme": "Web server and development",
     "Yedekler, günlükler ve istatistik": "Backups, logs and statistics",
     "cPanel veya Plesk": "cPanel or Plesk",
-    "Ücretsiz Let's Encrypt sertifikasıyla tarayıcılar \"güvenli değil\" uyarısını göstermeyi bırakır.": "With a free Let's Encrypt certificate, browsers stop showing the \"not secure\" warning."
+    "Ücretsiz Let's Encrypt sertifikasıyla tarayıcılar \"güvenli değil\" uyarısını göstermeyi bırakır.": "With a free Let's Encrypt certificate, browsers stop showing the \"not secure\" warning.",
+    ":domain için kayıtlar başka bir yerde (alan adını aldığınız firma ya da Cloudflare gibi bir hizmet) yönetiliyor. Orada aşağıdaki kayıtların olması yeter; isterseniz DNS'i Serfex'e de taşıyabilirsiniz.": "The records of :domain are managed elsewhere (where you registered the domain, or a service such as Cloudflare). The records below are all it needs there; you can also move its DNS to Serfex.",
+    ":domain · DNS · Serfex": ":domain · DNS · Serfex",
+    ":name DNS bölgesi oluşturuldu.": "DNS zone :name created.",
+    ":zone bölgesinin kayıtları. Değişiklikler hemen yayınlanır.": "Records of the :zone zone. Changes are published at once.",
+    "Alt alan adları, ek adlar ve yönlendirmeler": "Subdomains, aliases and redirects",
+    "Bu alan adının DNS'i bu sunucuda tutulmuyor": "This domain's DNS is not kept on this server",
+    "Bu sitenin kayıtları üst alan adının bölgesinde duruyor: :zone.": "This site's records live in its parent domain's zone: :zone.",
+    "Bölge site, e-posta ve SSL kayıtlarıyla oluşturulur. Çalışması için alan adının ad sunucularını bu sunucuya çevirmeniz gerekir.": "The zone is created with the site, email and SSL records. For it to take effect, point the domain's nameservers to this server.",
+    "DNS bölgesi oluştur": "Create DNS zone",
+    "Sitenin açılması için gereken kayıtlar": "Records the site needs to open"
 }
