@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\PullSiteMigration;
 use App\Livewire\Sites\SiteMigrate;
+use App\Models\Customer;
 use App\Models\Database;
 use App\Models\DnsZone;
 use App\Models\MailDomain;
@@ -157,6 +158,7 @@ class PleskMigrationTest extends TestCase
         $this->assertSame('kafeweb', $m->plan['user']);
 
         Livewire::withQueryParams(['migration' => $m->id])->test(SiteMigrate::class)
+            ->assertSet('account', 'kafe')
             ->assertSet('sites', ['kafe.com.tr', 'kafemenu.net'])
             ->assertSet('customerEmail', 'mehmet@kafe.com.tr')
             ->assertSee('Abonelikte ne var')
@@ -201,7 +203,10 @@ class PleskMigrationTest extends TestCase
         $m->refresh();
 
         $this->assertSame('succeeded', $m->status, json_encode($m->result));
-        $this->assertSame('kafeweb', $this->agent->called('migrate.convert')[0]['account']);
+        // A short name from the main domain, not Plesk's.
+        $this->assertSame('kafe', $this->agent->called('migrate.convert')[0]['account']);
+        $this->assertSame('kafe', $m->options['account']);
+        $this->assertSame('kafe', Customer::where('email', 'mehmet@kafe.com.tr')->value('username'));
         $this->assertStringStartsWith('pl-', $this->agent->called('migrate.convert')[0]['source']);
 
         $main = Site::where('domain', 'kafe.com.tr')->sole();
@@ -246,5 +251,28 @@ class PleskMigrationTest extends TestCase
             'Could not be read from Plesk, so this part may be incomplete: The databases: ERROR 1146',
             SiteMigrations::noteText(['code' => 'plesk-read-failed', 'subject' => 'The databases: ERROR 1146']),
         );
+    }
+
+    public function test_the_account_name_can_be_changed_before_the_move(): void
+    {
+        $m = $this->pull();
+        app(SiteMigrations::class)->pull($m);
+        $m->refresh();
+
+        $page = Livewire::withQueryParams(['migration' => $m->id])->test(SiteMigrate::class)
+            ->assertSet('account', 'kafe')
+            ->assertSee("Plesk'teki adı:");
+        foreach (['Kafe' => 'regex', '1kafe' => 'regex', 'root' => 'not_in', '' => 'required'] as $bad => $rule) {
+            $page->set('account', $bad)->call('confirmStart')->assertHasErrors(['account' => $rule]);
+        }
+        $page->set('account', 'kafeweb2')->set('customerName', 'Mehmet Demir')
+            ->call('confirmStart')->assertHasNoErrors()
+            ->call('start')->assertHasNoErrors()->assertSet('error', null);
+        $m->refresh();
+        $this->assertSame('kafeweb2', $m->options['account']);
+        $this->assertSame('kafeweb2', $m->account());
+
+        app(SiteMigrations::class)->run($m);
+        $this->assertSame('kafeweb2', $this->agent->called('migrate.convert')[0]['account']);
     }
 }

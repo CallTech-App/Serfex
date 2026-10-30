@@ -271,6 +271,18 @@ func (f failingRemote) run(ctx context.Context, cmd string, w io.Writer) error {
 	return f.demoPlesk.run(ctx, cmd, w)
 }
 
+// plesk db prints MySQL's error on standard output, not on standard
+// error: the error tells it.
+func TestPleskQueryErrorsOnStandardOutput(t *testing.T) {
+	r := stubRemote(func(cmd string, w io.Writer) error {
+		io.WriteString(w, "--------------\nSELECT 1\n--------------\n\nERROR 1146 (42S02) at line 1: Table 'psa.x' doesn't exist\n")
+		return errors.New("Process exited with status 1")
+	})
+	if _, err := pleskQuery(context.Background(), r, "x", "SELECT 1"); err == nil || !strings.HasPrefix(err.Error(), "ERROR 1146 (42S02) at line 1: Table 'psa.x' doesn't exist (") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestPleskReadFailuresAreNoted(t *testing.T) {
 	m, _ := newMigrateTest(t)
 	m.dialPlesk = func(context.Context, PleskConn) (remote, string, error) {
@@ -303,8 +315,9 @@ func TestPleskDatabaseServersOfEitherVersion(t *testing.T) {
 		fail      []string
 		wantNotes []string
 	}{
-		{"Plesk 18", []string{" db_servers ", "public_ip_address"}, nil},
-		{"older Plesk", []string{" DatabaseServers "}, nil},
+		{"Plesk 18", []string{" db_servers ", "FROM ip_addresses"}, nil},
+		{"Plesk 18 without public addresses", []string{" db_servers ", "public_ip_address", "FROM ip_addresses"}, nil},
+		{"older Plesk", []string{" DatabaseServers ", "FROM IP_Addresses"}, nil},
 		// Neither: the server itself tells which databases it has; kafe_rapor
 		// is not there.
 		{"no servers table", []string{" DatabaseServers ", " db_servers "}, []string{"remote-database:kafe_rapor"}},

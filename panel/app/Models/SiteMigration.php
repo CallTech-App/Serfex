@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Hostnames;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -57,6 +58,27 @@ class SiteMigration extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The system user the sites go under here: the administrator's choice,
+     * else a cPanel account's own name, or for a Plesk subscription a short
+     * name from its main domain (Plesk's generated names are long:
+     * "shop.example_c2mbyoz2syf").
+     */
+    public function account(): string
+    {
+        if (($chosen = $this->options['account'] ?? null) !== null) {
+            return (string) $chosen;
+        }
+        if (isset($this->options['sites'])) {
+            // Started before the name could be chosen: the archive's.
+            return (string) ($this->plan['user'] ?? '');
+        }
+
+        return $this->source === 'plesk'
+            ? Hostnames::suggestUser((string) ($this->plan['main_domain'] ?? ''))
+            : (string) ($this->plan['user'] ?? '');
     }
 
     public function isRunning(): bool

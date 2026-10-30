@@ -216,23 +216,24 @@ class SiteMigrations
      *
      * @return array<string, mixed>
      */
-    public function review(SiteMigration $migration): array
+    public function review(SiteMigration $migration, ?string $account = null): array
     {
         $plan = $migration->plan;
+        $account ??= $migration->account();
         $domains = app(SiteDomains::class);
         $sites = [];
         foreach ($plan['sites'] ?? [] as $s) {
             $sites[$s['domain']] = $domains->taken($s['domain']);
         }
-        $account = SystemUser::with('customer')->where('name', $plan['user'] ?? '')->first();
+        $systemUser = SystemUser::with('customer')->where('name', $account)->first();
         $existingDbs = Database::where('server', 'mysql')->whereIn('name', array_column($plan['databases'] ?? [], 'name'))->pluck('name')->all();
         $existingUsers = DatabaseUser::where('server', 'mysql')->whereIn('name', array_column($plan['database_users'] ?? [], 'name'))->pluck('name')->all();
         $need = (int) ($plan['unpacked'] ?? 0);
 
         return [
             'taken' => $sites,
-            'account' => $account,
-            'account_valid' => preg_match(Hostnames::SYSTEM_USER_PATTERN, (string) ($plan['user'] ?? '')) === 1 && ! in_array($plan['user'], Hostnames::RESERVED_USERS, true),
+            'account' => $systemUser,
+            'account_valid' => preg_match(Hostnames::SYSTEM_USER_PATTERN, $account) === 1 && ! in_array($account, Hostnames::RESERVED_USERS, true),
             'existing_databases' => $existingDbs,
             'existing_users' => $existingUsers,
             'mysql' => app(DatabaseServers::class)->isInstalled('mysql'),
@@ -245,7 +246,7 @@ class SiteMigrations
     /**
      * Starts the move with the administrator's choices. Returns why not.
      *
-     * @param  array{sites: list<string>, parts: list<string>, customer_id: ?int}  $options
+     * @param  array{sites: list<string>, parts: list<string>, customer_id: ?int, account?: string}  $options
      */
     public function start(SiteMigration $migration, array $options, ?User $user): ?string
     {
@@ -255,11 +256,10 @@ class SiteMigrations
         if ($this->busy()) {
             return __(Backups::BUSY);
         }
-        $review = $this->review($migration);
+        $name = $options['account'] ?? $migration->account();
+        $review = $this->review($migration, $name);
         if (! $review['account_valid']) {
-            return $migration->source === 'plesk'
-                ? __('Plesk sistem kullanıcısı :user burada sistem kullanıcısı olamaz.', ['user' => $migration->plan['user'] ?? ''])
-                : __('cPanel kullanıcı adı :user burada sistem kullanıcısı olamaz.', ['user' => $migration->plan['user'] ?? '']);
+            return __(':user burada sistem kullanıcısı olamaz.', ['user' => $name]);
         }
         $sites = array_values(array_filter($options['sites'], fn ($d) => array_key_exists($d, $review['taken']) && $review['taken'][$d] === null));
         if ($sites === []) {
@@ -279,7 +279,7 @@ class SiteMigrations
         }
         $migration->update([
             'status' => 'queued',
-            'options' => [...($migration->options ?? []), 'sites' => $sites, 'parts' => $parts],
+            'options' => [...($migration->options ?? []), 'sites' => $sites, 'parts' => $parts, 'account' => $name],
             'customer_id' => $customer?->id,
             'user_id' => $user?->id ?? $migration->user_id,
             'run' => 'migrate-'.Str::lower(Str::random(12)),
@@ -305,7 +305,7 @@ class SiteMigrations
     {
         $migration->update(['status' => 'converting', 'started_at' => now()]);
         $plan = $migration->plan;
-        $account = (string) $plan['user'];
+        $account = $migration->account();
         $options = $migration->options;
         $dns = app(DnsSettings::class);
         app(ZoneTemplate::class)->detectAddresses();
@@ -343,7 +343,7 @@ class SiteMigrations
             'status' => 'succeeded',
             'size' => (int) ($converted['size'] ?? 0),
             'run' => $migration->run,
-            'source_host' => $migration->source.':'.$account,
+            'source_host' => $migration->source.':'.($plan['user'] ?? $account),
             'user_id' => $migration->user_id,
             'started_at' => $migration->started_at,
             'finished_at' => now(),
@@ -563,7 +563,7 @@ class SiteMigrations
             'plesk-unlisted-database' => __(':subject veritabanı Plesk\'te bu aboneliğe bağlı değil, ama sitenin ayar dosyasında (.env ya da wp-config.php) geçtiği için taşımaya eklendi.', $s),
             'plesk-missing-database' => __(':subject veritabanı sitenin ayar dosyasında geçiyor ama eski sunucuda yok; taşınmaz.', $s),
             'plesk-read-failed' => __('Plesk\'ten okunamadı, bu bölüm eksik görünebilir: :subject', $s),
-            'renamed-user' => __('Plesk\'teki :subject sistem kullanıcısının adı burada kullanılamıyor; hesap düzeltilmiş adla açılır.', $s),
+            'renamed-user' => __('Plesk\'teki sistem kullanıcısının adı :subject; hesap burada kısa bir adla açılır.', $s),
             'old-path' => __(':subject dosyasında eski sunucunun /var/www/vhosts/ yolu geçiyor; taşımadan sonra yeni yola göre düzeltin.', $s),
             default => $note['code'].($s['subject'] !== '' ? ': '.$s['subject'] : ''),
         };

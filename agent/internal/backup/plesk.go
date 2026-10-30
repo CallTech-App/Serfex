@@ -319,9 +319,18 @@ func pleskQuery(ctx context.Context, r remote, name, sql string) ([][]string, er
 	var b bytes.Buffer
 	sql = "/*serfex:" + name + "*/ " + strings.Join(strings.Fields(sql), " ")
 	if err := r.run(ctx, "plesk db -B -N -e "+shellQuote(sql), limitWriter(&b, 256<<20)); err != nil {
+		// plesk db can print MySQL's error on standard output.
+		if line := lastLine(b.Bytes()); strings.HasPrefix(line, "ERROR ") {
+			return nil, fmt.Errorf("%s (%w)", line, err)
+		}
 		return nil, err
 	}
 	return parseTSV(b.Bytes()), nil
+}
+
+func lastLine(b []byte) string {
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	return strings.TrimSpace(lines[len(lines)-1])
 }
 
 // parseTSV reads mysql's batch output: rows of tab separated fields, with
@@ -586,11 +595,23 @@ func (p *pleskPull) read(sub int) error {
 			p.remark("alias-mail", name)
 		}
 	}
-	// public_ip_address (the address behind NAT) is missing on some
-	// Plesk versions; the server's own addresses are read anyway.
-	ips, err := pleskQuery(p.ctx, p.r, "ips", `SELECT ip_address, IFNULL(public_ip_address,'') FROM ip_addresses`)
-	if err != nil {
-		ips = p.optional("ips", i18n.T(p.ctx, "IP adresleri"), `SELECT ip_address FROM ip_addresses`)
+	// Plesk names the table IP_Addresses (older ones ip_addresses), and
+	// public_ip_address (the address behind NAT) is missing on some; the
+	// server's own addresses are read anyway.
+	var ips [][]string
+	var ipErr error
+	for _, q := range []string{
+		`SELECT ip_address, IFNULL(public_ip_address,'') FROM IP_Addresses`,
+		`SELECT ip_address FROM IP_Addresses`,
+		`SELECT ip_address, IFNULL(public_ip_address,'') FROM ip_addresses`,
+		`SELECT ip_address FROM ip_addresses`,
+	} {
+		if ips, ipErr = pleskQuery(p.ctx, p.r, "ips", q); ipErr == nil {
+			break
+		}
+	}
+	if ipErr != nil {
+		p.readFailed(i18n.T(p.ctx, "IP adresleri"), ipErr)
 	}
 	for _, row := range ips {
 		p.ips = append(p.ips, row...)

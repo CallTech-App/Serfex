@@ -121,7 +121,7 @@
                 <div class="divide-y divide-line">
                     @foreach ($history as $h)
                         <a href="{{ route('sites.migrate', ['migration' => $h->id]) }}" wire:navigate wire:key="h-{{ $h->id }}" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-[13.5px] hover:bg-surface-2/60">
-                            <span class="font-mono">{{ $h->plan['user'] ?? '' }}</span>
+                            <span class="font-mono">{{ $h->account() }}</span>
                             <span class="rounded-full bg-surface-2 px-1.5 py-0.5 text-2xs text-muted">{{ $h->source === 'plesk' ? 'Plesk' : 'cPanel' }}</span>
                             <span class="text-muted">{{ implode(', ', $h->options['sites'] ?? []) }}</span>
                             <span class="num ml-auto text-2xs text-muted">{{ When::dateTime($h->finished_at ?? $h->created_at) }}</span>
@@ -143,7 +143,9 @@
                 'dns' => [__('DNS'), trans_choice(':count bölge', count($plan['zones'] ?? []), ['count' => count($plan['zones'] ?? [])]), true, null],
                 'certificates' => [__('SSL sertifikaları'), trans_choice(':count geçerli sertifika', $certs, ['count' => $certs]), true, null],
             ];
-            $warnings = array_map(fn ($n) => SiteMigrations::noteText($n), $plan['notes'] ?? []);
+            // Plesk's own name of the account shows beside the name chosen here.
+            $pleskLogin = collect($plan['notes'] ?? [])->firstWhere('code', 'renamed-user')['subject'] ?? ($plan['user'] ?? '');
+            $warnings = array_map(fn ($n) => SiteMigrations::noteText($n), array_filter($plan['notes'] ?? [], fn ($n) => ! ($plesk && $n['code'] === 'renamed-user')));
             foreach ($plan['database_users'] ?? [] as $u) {
                 if (! $u['keeps_password']) {
                     $warnings[] = __(':user veritabanı kullanıcısının eski parolası bu sunucuda kullanılamıyor; yeni parola verilir ve sitenin ayar dosyasına (wp-config.php, .env…) yazılır.', ['user' => $u['name']]);
@@ -185,11 +187,16 @@
                 <div class="{{ $row }}">
                     <div>
                         <p class="font-medium">{{ __('Hesap') }}</p>
-                        <p class="mt-0.5 text-2xs text-muted">{{ $plesk ? __('Plesk\'teki sistem kullanıcısının adıyla açılır; veritabanı adları değişmez.') : __('cPanel\'deki adıyla açılır; veritabanı adları ve dosya yolları değişmez.') }}</p>
+                        <p class="mt-0.5 text-2xs text-muted">{{ $plesk ? __('Ana alan adından kısa bir ad önerilir; değiştirebilirsiniz. Veritabanı adları değişmez.') : __('cPanel\'deki adıyla açılır. Değiştirirseniz ayar dosyalarındaki /home/… yollarını yeni ada göre düzeltmeniz gerekebilir.') }}</p>
                     </div>
                     <dl class="grid gap-x-6 gap-y-1.5 sm:grid-cols-[140px_1fr]">
-                        <dt class="text-muted">{{ __('Sistem kullanıcısı') }}</dt>
-                        <dd class="font-mono">{{ $plan['user'] ?? '' }}@if ($review['account'])<span class="ml-2 font-sans text-2xs text-muted">{{ __('bu sunucuda var; siteler ona eklenir') }}</span>@endif</dd>
+                        <dt class="text-muted"><label for="m-account">{{ __('Sistem kullanıcısı') }}</label></dt>
+                        <dd>
+                            <input id="m-account" wire:model.live.debounce.500ms="account" maxlength="32" autocomplete="off" spellcheck="false" class="{{ $field }} w-full max-w-64 font-mono">
+                            @error('account') <p class="mt-1 text-2xs text-crit">{{ $message }}</p> @enderror
+                            @if ($review['account'])<p class="mt-1 text-2xs text-muted">{{ __('bu sunucuda var; siteler ona eklenir') }}</p>@endif
+                            @if ($plesk && $pleskLogin !== '' && $pleskLogin !== $account)<p class="mt-1 text-2xs text-muted">{{ __('Plesk\'teki adı:') }} <span class="font-mono">{{ $pleskLogin }}</span></p>@endif
+                        </dd>
                         <dt class="text-muted">{{ __('Ana alan adı') }}</dt>
                         <dd class="font-mono">{{ $plan['main_domain'] ?? '' }}</dd>
                         @if ($plan['contact'] ?? '')
@@ -349,7 +356,7 @@
         <section class="min-w-0 rounded-xl border border-line bg-surface">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-5 py-3">
                 <h2 class="text-[15px] font-semibold">{{ $migration->status === 'pulling' ? __('Plesk\'ten alınıyor') : ($migration->isRunning() ? __('Taşınıyor') : __('Taşıma raporu')) }}</h2>
-                <span class="font-mono text-[13px] text-muted">{{ $plan['user'] ?? '' }}</span>
+                <span class="font-mono text-[13px] text-muted">{{ $migration->account() }}</span>
                 <span class="rounded-full px-2 py-0.5 text-2xs font-medium {{ $statusBadge[$migration->status][0] ?? '' }}">{{ $statusBadge[$migration->status][1] ?? $migration->status }}</span>
                 @if ($migration->isFinished())
                     <button type="button" wire:click="fresh" class="ml-auto text-[13px] text-accent hover:underline">{{ __('Yeni taşıma') }}</button>
