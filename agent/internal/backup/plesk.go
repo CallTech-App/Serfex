@@ -586,7 +586,13 @@ func (p *pleskPull) read(sub int) error {
 			p.remark("alias-mail", name)
 		}
 	}
-	for _, row := range p.optional("ips", i18n.T(p.ctx, "IP adresleri"), `SELECT ip_address, IFNULL(public_ip_address,'') FROM ip_addresses`) {
+	// public_ip_address (the address behind NAT) is missing on some
+	// Plesk versions; the server's own addresses are read anyway.
+	ips, err := pleskQuery(p.ctx, p.r, "ips", `SELECT ip_address, IFNULL(public_ip_address,'') FROM ip_addresses`)
+	if err != nil {
+		ips = p.optional("ips", i18n.T(p.ctx, "IP adresleri"), `SELECT ip_address FROM ip_addresses`)
+	}
+	for _, row := range ips {
 		p.ips = append(p.ips, row...)
 	}
 

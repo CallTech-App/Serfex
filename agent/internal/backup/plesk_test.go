@@ -303,7 +303,7 @@ func TestPleskDatabaseServersOfEitherVersion(t *testing.T) {
 		fail      []string
 		wantNotes []string
 	}{
-		{"Plesk 18", []string{" db_servers "}, nil},
+		{"Plesk 18", []string{" db_servers ", "public_ip_address"}, nil},
 		{"older Plesk", []string{" DatabaseServers "}, nil},
 		// Neither: the server itself tells which databases it has; kafe_rapor
 		// is not there.
