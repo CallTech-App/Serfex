@@ -428,15 +428,23 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 			return nil, err
 		}
 	}
+	// A site whose account is gone (a migration that stopped half way,
+	// a deletion cut off after the account went) has no files anyone may
+	// read; what else it has is still backed up.
 	account, err := m.h.LookupUser(s.User)
-	if err != nil {
+	noAccount := errors.Is(err, host.ErrUserNotFound)
+	if err != nil && !noAccount {
 		return nil, fmt.Errorf("account %s: %w", s.User, err)
 	}
 
 	// Files.
-	if !m.isDir(s.webDir()) {
+	switch {
+	case noAccount:
+		ir.Skipped["files"] = i18n.T(ctx, "sistem hesabı (%s) sunucuda yok", s.User)
+		fmt.Fprintf(log, "  ⚠ %s\n", i18n.T(ctx, "Sistem hesabı (%s) sunucuda yok; dosyalar yedeklenmedi", s.User))
+	case !m.isDir(s.webDir()):
 		ir.Skipped["files"] = "site dizini yok"
-	} else {
+	default:
 		excludes := make([]string, 0, len(spec.Exclude))
 		for _, e := range spec.Exclude {
 			excludes = append(excludes, "--exclude="+e)
@@ -458,7 +466,7 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 		}
 		ir.Parts["files"] = fileSize(filepath.Join(tmp, "files.tar.gz"))
 	}
-	if it.Home {
+	if it.Home && !noAccount {
 		fmt.Fprintln(log, "  "+i18n.T(ctx, "Hesabın diğer dosyaları arşivleniyor"))
 		_, _, warns, err := m.tarAs(ctx, account, "", s.Domain, CreateSpec{}, s.home(),
 			[]string{"--exclude=./web", "--exclude=./tmp", "--exclude=./.cache"}, filepath.Join(tmp, "home.tar.gz"))

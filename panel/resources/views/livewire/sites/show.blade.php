@@ -264,12 +264,15 @@
         <form wire:submit="delete" class="p-5 text-[13.5px]">
             <p class="font-semibold"><x-t text=":domain silinsin mi?"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t></p>
             <p class="mt-1 text-[13px] text-muted"><x-t text="Nginx ve PHP-FPM ayarları ile :document_root içindeki tüm dosyalar silinir."><x-slot:document_root><span class="font-mono">{{ $site->document_root ? dirname($site->document_root) : __('site klasörü') }}</span></x-slot:document_root></x-t></p>
+            @if ($accountGone && $noRoom === null)
+                <p class="mt-3 rounded-md bg-warn-soft px-3 py-2 text-[13px] text-warn"><x-t text="Sistem hesabı (:user) sunucuda yok. Yedekte dosyalar olmaz; veritabanları, e-posta, DNS ve sertifikalar yedeklenir."><x-slot:user><span class="font-mono">{{ $site->systemUser->name }}</span></x-slot:user></x-t></p>
+            @endif
             @if ($noRoom !== null)
                 <p class="mt-3 rounded-md bg-warn-soft px-3 py-2 text-[13px] text-warn">{{ $noRoom }} {{ __('Site yedek alınmadan silinir ve geri getirilemez.') }}</p>
             @elseif (auth()->user()->is_admin)
                 <label class="mt-3 flex items-start gap-2 text-[13px]">
                     <input type="checkbox" wire:model.live="backup" class="mt-0.5 size-4 shrink-0 accent-accent">
-                    <span>{{ __('Silmeden önce yedek al') }}<span class="block text-[12.5px] text-muted">{{ $backup ? __('Dosyalar, veritabanları, e-posta ve DNS :days gün Yedekler\'de saklanır; oradan geri yüklenebilir.', ['days' => $deleteDays]) : __('Yedek alınmazsa site geri getirilemez.') }}</span></span>
+                    <span>{{ __('Silmeden önce yedek al') }}<span class="block text-[12.5px] text-muted">{{ $backup ? ($accountGone ? __('Veritabanları, e-posta ve DNS :days gün Yedekler\'de saklanır; oradan geri yüklenebilir.', ['days' => $deleteDays]) : __('Dosyalar, veritabanları, e-posta ve DNS :days gün Yedekler\'de saklanır; oradan geri yüklenebilir.', ['days' => $deleteDays])) : __('Yedek alınmazsa site geri getirilemez.') }}</span></span>
                 </label>
             @else
                 <p class="mt-3 text-[13px] text-muted">{{ __('Silmeden önce sitenin yedeği alınır ve :days gün Yedekler\'de saklanır.', ['days' => $deleteDays]) }}</p>

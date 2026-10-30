@@ -609,6 +609,44 @@ class BackupsTest extends TestCase
         $this->assertCount(1, $this->agent->called('backup.delete'));
     }
 
+    public function test_a_site_whose_account_is_gone_is_deleted_with_a_backup_of_the_rest(): void
+    {
+        $this->fullSite();
+        $this->agent->answers['site.account.status'] = ['exists' => false];
+        $this->agent->answers['backup.create'] = fn ($p) => [
+            'key' => $p['key'],
+            'items' => [['name' => $p['items'][0]['name'], 'size' => 400, 'parts' => ['databases' => 300, 'mail' => 100],
+                'skipped' => ['files' => 'sistem hesabı (kahve) sunucuda yok'], 'incremental' => [], 'warnings' => []]],
+            'size' => 400, 'local' => true, 'remote' => false, 'encrypted' => false, 'seconds' => 3,
+        ];
+        $this->agent->answers['site.delete'] = ['user_removed' => true];
+
+        $page = Livewire::test(SiteShow::class, ['site' => $this->site->id])
+            ->call('openDelete')
+            ->assertSet('accountGone', true)
+            ->assertSet('backup', true)
+            ->assertSee('sunucuda yok. Yedekte dosyalar olmaz')
+            ->assertSee('Veritabanları, e-posta ve DNS 30 gün')
+            ->set('confirmDomain', 'kahveatolyesi.com.tr')
+            ->call('delete');
+        $this->assertSame(['user' => 'kahve'], $this->agent->called('site.account.status')[0]);
+        Queue::pushed(DeleteSite::class)->first()->handle($this->agent, app(Zones::class));
+
+        $this->assertNull($this->site->fresh());
+        $this->assertNull(SystemUser::where('name', 'kahve')->first());
+        $this->assertSame('succeeded', Backup::firstOrFail()->status);
+        $page->call('refreshStatus');
+        $this->assertSame("Site silindi. Sistem hesabı sunucuda olmadığından dosyalar yedeklenmedi; geri kalanının yedeği 30 gün Yedekler'de saklanır.", session('toast')['message']);
+    }
+
+    public function test_the_delete_dialog_says_nothing_of_the_account_when_it_is_there_or_unknown(): void
+    {
+        $this->agent->answers['site.account.status'] = ['exists' => true];
+        Livewire::test(SiteShow::class, ['site' => $this->site->id])->call('openDelete')->assertSet('accountGone', false)->assertDontSee('Yedekte dosyalar olmaz');
+        $this->agent->answers['site.account.status'] = AgentException::rpcError('site.account.status', -32601, 'method not found');
+        Livewire::test(SiteShow::class, ['site' => $this->site->id])->call('openDelete')->assertSet('accountGone', false);
+    }
+
     public function test_without_room_for_the_backup_the_dialog_says_so_and_the_job_refuses(): void
     {
         $this->agent->answers['backup.status'] = ['free' => 2 << 30, 'used' => 0, 'total' => 10 << 30, 'public_key' => '', 'busy' => false];

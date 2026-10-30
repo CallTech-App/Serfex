@@ -386,6 +386,21 @@ class Backups
     }
 
     /**
+     * True when the site's system account is no longer on this server (a
+     * migration that stopped half way, a deletion cut off after the
+     * account went): its backup then holds everything but the files.
+     * False when the agent cannot tell.
+     */
+    public function accountGone(Site $site): bool
+    {
+        try {
+            return ($this->agent->call('site.account.status', ['user' => $site->systemUser->name])['exists'] ?? true) === false;
+        } catch (AgentException) {
+            return false;
+        }
+    }
+
+    /**
      * The measured size of a site's files, databases and mail.
      */
     public function siteBytes(Site $site): int
