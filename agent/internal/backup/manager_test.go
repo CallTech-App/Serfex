@@ -133,7 +133,7 @@ func TestBackupHoldsFilesDatabasesMailAndTheSiteDescription(t *testing.T) {
 		t.Fatalf("members %v, want %v", got, want)
 	}
 	// The site's files were archived by its own account, at low priority.
-	if !sim.Ran("nice -n 19 ionice -c 3 runuser -u magaza -- tar -czf - --one-file-system --listed-incremental=") {
+	if !sim.Ran("nice -n 19 ionice -c 3 runuser -u magaza -- tar -czf - --one-file-system --ignore-failed-read --listed-incremental=") {
 		t.Fatal("tar did not run as the site's account at low priority")
 	}
 	if !sim.Ran("nice -n 19 ionice -c 3 runuser -u vmail -- tar") {
