@@ -19,14 +19,8 @@
         <div wire:poll.3s hidden></div>
     @endif
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('Composer ve Node.js') }}</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Composer ve Node.js') }}</h1>
+        <x-site-header :site="$site" active="overview" :tool="__('Composer ve Node.js')" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Composer ve Node.js') }}</h1>
         <p class="mt-1 max-w-3xl text-[13px] text-muted"><x-t text="PHP paketlerini kurun, ön yüzü derleyin. Komutlar sitenin kullanıcısıyla (:user) seçtiğiniz klasörde, sitenin PHP sürümüyle çalışır; Composer ve Node.js ilk kullanımda indirilir."><x-slot:user><span class="font-mono text-fg">{{ $site->systemUser->name }}</span></x-slot:user></x-t></p>
     </div>
 

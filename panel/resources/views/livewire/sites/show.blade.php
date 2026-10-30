@@ -14,87 +14,104 @@
     $wordpress = $site->wordpress;
     $cache = \App\Services\Sites\SiteCache::settings($site);
     $copyCount = $site->copies()->count();
+    $httpOnly = $site->status === \App\Enums\SiteStatus::Active && ! $site->hasHttps() && ! $ssl->isBusy();
+    $mailOn = $mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting;
+    // The document root from the site's home folder on, the whole path on hover.
+    $home = $site->systemUser->home;
+    $docRoot = $site->document_root === null ? null
+        : ($home && str_starts_with($site->document_root, rtrim($home, '/').'/') ? '~/'.substr($site->document_root, strlen(rtrim($home, '/')) + 1) : $site->document_root);
     $wordpressTool = ['blocks', 'WordPress', match (true) {
         $wordpress === null => __('Kurulu değil'),
         $wordpress->status === \App\Models\WordPressInstall::INSTALLING => __('Kuruluyor'),
         $wordpress->status === \App\Models\WordPressInstall::FAILED => __('Kurulum başarısız'),
         $wordpress->update_count > 0 => trans_choice(':count güncelleme', $wordpress->update_count),
         default => 'WordPress '.($wordpress->version ?? ''),
-    }, route('sites.wordpress', $site)];
-    $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel')] : ($laravel
+    }, route('sites.wordpress', $site), match (true) {
+        $wordpress === null => 'muted',
+        $wordpress->status === \App\Models\WordPressInstall::FAILED => 'crit',
+        $wordpress->update_count > 0 => 'warn',
+        default => null,
+    }];
+    $laravelTool = $missing('laravel') ? ['layers', 'Laravel', $missing('laravel'), null, 'muted'] : ($laravel
         ? ['layers', 'Laravel', $laravel->status === \App\Enums\LaravelAppStatus::Active ? 'Laravel '.($laravel->laravel_version ? \Illuminate\Support\Str::of($laravel->laravel_version)->explode('.')->take(2)->implode('.') : '') : $laravel->status->label(), route('laravel.show', $laravel)]
-        : ['layers', 'Laravel', __('Kurulu değil'), route('laravel.index', ['site' => $site->id])]);
-    // Site tools, grouped by job. Only the ones with a link work in this
-    // version; the rest show what is coming. [icon, name, status, link, opens in a new tab]
+        : ['layers', 'Laravel', __('Kurulu değil'), route('laravel.index', ['site' => $site->id]), 'muted']);
+    // Site tools, grouped by job: [key, name, icon, section page, tools].
+    // A tool is [icon, name, status, link, tone, opens in a new tab, hint]; tone
+    // colours the status (warn, crit, ok), "muted" marks nothing set up yet
+    // and "off" a tool that needs something turned on first.
     $groups = [
-        [__('Dosya ve veri'), 'folder', [
-            ['folder', __('Dosya Yöneticisi'), '', route('sites.files', $site)],
-            ['hard-drive-upload', __('FTP hesapları'), $ftpAccounts ? __(':ftp_accounts hesap', ['ftp_accounts' => $ftpAccounts]) : __('Yok'), route('sites.ftp', $site)],
-            ['database', __('Veritabanları'), $databases ? __(':databases veritabanı', ['databases' => $databases]) : __('Yok'), route('databases.index', ['site' => $site->id])],
-            ['chart-column', __('İstatistikler'), $monthStats['visitors'] ? __('Bu ay :visitors ziyaretçi', ['visitors' => \App\Support\Num::format($monthStats['visitors'], 0)]) : __('Bu ay ziyaret yok'), route('sites.stats', $site)],
-            ['hard-drive', __('Disk kullanımı'), $site->disk_bytes === null ? __('Ölçülmedi') : \App\Support\Bytes::format($diskTotal), route('sites.disk', $site)],
-            $missing('backups') ? ['archive-restore', __('Yedekler'), $missing('backups')] : ['archive-restore', __('Yedekler'), $lastBackup ? __('Son: :text', ['text' => $backupText]) : __('Henüz yok'), route('backups.index', ['site' => $site->id])],
+        ['files', __('Dosyalar ve veritabanları'), 'folder', route('sites.files', $site), [
+            ['folder', __('Dosya Yöneticisi'), $docRoot ?? __('Dosyalara göz atın'), route('sites.files', $site), null, false, $site->document_root],
+            ['hard-drive-upload', __('FTP hesapları'), $ftpAccounts ? __(':ftp_accounts hesap', ['ftp_accounts' => $ftpAccounts]) : __('Yok'), route('sites.ftp', $site), $ftpAccounts ? null : 'muted'],
+            ['database', __('Veritabanları'), $databases ? __(':databases veritabanı', ['databases' => $databases]) : __('Yok'), route('databases.index', ['site' => $site->id]), $databases ? null : 'muted'],
             ['key-round', __('Bağlantı bilgileri'), __('SFTP, veritabanı, SSH'), route('sites.connection', $site)],
-            ['copy', __('Siteyi kopyala'), $site->copy_of_id ? __('Bir sitenin kopyası') : ($copyCount ? trans_choice(':count kopya', $copyCount) : __('Kopya yok')), route('sites.copy', $site)],
+            ['hard-drive', __('Disk kullanımı'), $site->disk_bytes === null ? __('Ölçülmedi') : \App\Support\Bytes::format($diskTotal), route('sites.disk', $site)],
+            ['copy', __('Siteyi kopyala'), $site->copy_of_id ? __('Bir sitenin kopyası') : ($copyCount ? trans_choice(':count kopya', $copyCount) : __('Kopya yok')), route('sites.copy', $site), $site->copy_of_id || $copyCount ? null : 'muted'],
         ]],
-        [__('Geliştirme'), 'code', [
+        ['mail', __('E-posta'), 'mail', $missing('mail') ? null : route('sites.mail', $site), $missing('mail') ? [
+            ['mail', __('Posta kutuları'), $missing('mail'), null, 'muted'],
+            ['forward', __('Yönlendiriciler'), $missing('mail'), null, 'muted'],
+            ['inbox', 'Webmail', $missing('mail'), null, 'muted'],
+        ] : ($mailOn ? [
+            ['mail', __('Posta kutuları'), trans_choice(':count kutu', $mail->mailboxes_count), route('sites.mail', $site), $mail->status === \App\Enums\MailDomainStatus::Failed ? 'crit' : null],
+            ['forward', __('Yönlendiriciler'), $mail->forwarders_count ?: __('Yok'), route('sites.mail', ['site' => $site, 'tab' => 'forwarders']), $mail->forwarders_count ? null : 'muted'],
+            ['inbox', 'Webmail', $webmail ? $webmailApp : __('Kapalı'), $webmail, $webmail ? null : 'muted', true],
+        ] : [
+            ['mail', __('Posta kutuları'), __('E-posta kapalı'), route('sites.mail', $site), 'off'],
+            ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('sites.mail', $site), 'off'],
+            ['inbox', 'Webmail', __('E-posta kapalı'), route('sites.mail', $site), 'off'],
+        ])],
+        ['domains', __('Alan adları ve DNS'), 'network', route('sites.domains', $site), [
+            $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns'), null, 'muted'] : ($zone
+                ? ['network', __('DNS kayıtları'), __(':records_count kayıt', ['records_count' => $zone->records_count]), route('dns.show', $zone)]
+                : ['network', __('DNS kayıtları'), __('Bölge bu sunucuda değil'), null, 'muted']),
+            ['globe', __('Alt alan adları'), $subdomainCount ? __(':subdomain_count alt alan adı', ['subdomain_count' => $subdomainCount]) : __('Yok'), route('sites.domains', $site), $subdomainCount ? null : 'muted'],
+            ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'aliases']), $site->aliases ? null : 'muted'],
+            ['signpost', __('Tercih edilen adres'), $site->wwwPair() === null ? __('www. yok') : ($site->preferredName() ?? __('İkisi de açılıyor')), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
+            ['corner-up-right', __('Yönlendirmeler'), $redirectCount ? __(':redirect_count yönlendirme', ['redirect_count' => $redirectCount]) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'redirects']), $redirectCount ? null : 'muted'],
+        ]],
+        ['dev', __('Web sunucusu ve geliştirme'), 'code', null, [
             ['code', __('PHP ve web sunucusu'), 'PHP '.$site->php_version.' · '.($site->web_server === \App\Models\Site::APACHE ? 'Apache' : 'Nginx'), route('sites.php', $site)],
-            ['gauge', __('Önbellek ve hız'), $cache['page'] ? __('Sayfa önbelleği açık') : ($cache['browser'] || $cache['gzip'] ? __('Tarayıcı önbelleği') : __('Kapalı')), route('sites.cache', $site)],
+            ['gauge', __('Önbellek ve hız'), $cache['page'] ? __('Sayfa önbelleği açık') : ($cache['browser'] || $cache['gzip'] ? __('Tarayıcı önbelleği') : __('Kapalı')), route('sites.cache', $site), $cache['page'] || $cache['browser'] || $cache['gzip'] ? null : 'muted'],
             ...($missing('shell') ? [
-                ['package', 'Composer', $missing('shell')],
-                ['hexagon', 'Node.js', $missing('shell')],
+                ['package', 'Composer', $missing('shell'), null, 'muted'],
+                ['hexagon', 'Node.js', $missing('shell'), null, 'muted'],
             ] : [
                 ['package', 'Composer', __('Paketler ve komutlar'), route('sites.packages', ['site' => $site, 'tool' => 'composer'])],
                 ['hexagon', 'Node.js', $site->node_version ? 'Node.js '.$site->node_version : __('Sunucunun varsayılanı'), route('sites.packages', ['site' => $site, 'tool' => 'node'])],
             ]),
-            $laravelTool,
-            $missing('ssh') ? ['square-terminal', __('SSH erişimi'), $missing('ssh')] : ['square-terminal', __('SSH erişimi'), __(\App\Services\Files\SshAccess::LABELS[$site->systemUser->ssh_access] ?? 'Kapalı'), route('sites.ssh', $site)],
-            ['terminal', __('SSH terminali'), null],
-            ['clock', __('Zamanlanmış görevler'), $cronJobs ? __(':cron_jobs görev', ['cron_jobs' => $cronJobs]) : __('Yok'), route('sites.cron', $site)],
-            $laravel ? ['git-branch', __('Git dağıtımı'), $laravel->repository ? $laravel->repositoryName() : __('Bağlı değil'), route('laravel.show', [$laravel, 'section' => 'deployments'])]
-                : ['git-branch', __('Git dağıtımı'), $site->gitRepository ? $site->gitRepository->repositoryName() : __('Bağlı değil'), route('sites.git', $site)],
-            ['file-text', __('Günlükler'), __('Erişim ve hata'), route('sites.logs', $site)],
+            $missing('ssh') ? ['square-terminal', __('SSH erişimi'), $missing('ssh'), null, 'muted'] : ['square-terminal', __('SSH erişimi'), __(\App\Services\Files\SshAccess::LABELS[$site->systemUser->ssh_access] ?? 'Kapalı'), route('sites.ssh', $site), in_array($site->systemUser->ssh_access, [null, \App\Services\Files\SshAccess::OFF], true) ? 'muted' : null],
+            ['clock', __('Zamanlanmış görevler'), $cronJobs ? __(':cron_jobs görev', ['cron_jobs' => $cronJobs]) : __('Yok'), route('sites.cron', $site), $cronJobs ? null : 'muted'],
+            $laravel ? ['git-branch', __('Git dağıtımı'), $laravel->repository ? $laravel->repositoryName() : __('Bağlı değil'), route('laravel.show', [$laravel, 'section' => 'deployments']), $laravel->repository ? null : 'muted']
+                : ['git-branch', __('Git dağıtımı'), $site->gitRepository ? $site->gitRepository->repositoryName() : __('Bağlı değil'), route('sites.git', $site), $site->gitRepository ? null : 'muted'],
             ['file-warning', __('Hata sayfaları'), $site->error_pages ? __(':error_pages özel sayfa', ['error_pages' => count($site->error_pages)]) : __('Varsayılan'), route('sites.errors', $site)],
-            ...($user->isFullAdmin() ? [['file-cog', __('Web sunucusu yönergeleri'), filled($site->nginx_directives) || filled($site->apache_directives) ? __('Özel satırlar var') : __('Yok'), route('sites.directives', $site)]] : []),
+            ...($user->isFullAdmin() ? [['file-cog', __('Web sunucusu yönergeleri'), filled($site->nginx_directives) || filled($site->apache_directives) ? __('Özel satırlar var') : __('Yok'), route('sites.directives', $site), filled($site->nginx_directives) || filled($site->apache_directives) ? null : 'muted']] : []),
+            ['terminal', __('SSH terminali'), __('Yakında'), null, 'muted'],
         ]],
-        [__('Uygulamalar'), 'blocks', [
+        ['apps', __('Uygulamalar'), 'blocks', null, [
             $wordpressTool,
             $laravelTool,
-            ...($user->is_admin ? [['download', __('Başka sunucudan taşı'), __('cPanel yedeği'), route('sites.migrate')]] : []),
+            ...($user->is_admin ? [['download', __('Başka sunucudan taşı'), __('cPanel veya Plesk'), route('sites.migrate')]] : []),
         ]],
-        [__('Alan adı ve DNS'), 'network', [
-            $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns')] : ['network', __('DNS kayıtları'), $zone ? __(':records_count kayıt', ['records_count' => $zone->records_count]) : null, $zone ? route('dns.show', $zone) : null],
-            ['globe', __('Alt alan adları'), $subdomainCount ? __(':subdomain_count alt alan adı', ['subdomain_count' => $subdomainCount]) : __('Yok'), route('sites.domains', $site)],
-            ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
-            ['signpost', __('Tercih edilen adres'), $site->wwwPair() === null ? __('www. yok') : ($site->preferredName() ?? __('İkisi de açılıyor')), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
-            ['corner-up-right', __('Yönlendirmeler'), $redirectCount ? __(':redirect_count yönlendirme', ['redirect_count' => $redirectCount]) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'redirects'])],
-        ]],
-        [__('E-posta'), 'mail', $missing('mail') ? [
-            ['mail', __('Posta kutuları'), $missing('mail')],
-            ['forward', __('Yönlendiriciler'), $missing('mail')],
-            ['inbox', 'Webmail', $missing('mail')],
-        ] : ($mail && $mail->status !== \App\Enums\MailDomainStatus::Deleting ? [
-            ['mail', __('Posta kutuları'), trans_choice(':count kutu', $mail->mailboxes_count), route('mail.show', $mail)],
-            ['forward', __('Yönlendiriciler'), $mail->forwarders_count ?: __('Yok'), route('mail.show', [$mail, 'tab' => 'yonlendiriciler'])],
-            ['inbox', 'Webmail', $webmail ? $webmailApp : __('Kapalı'), $webmail, true],
-        ] : [
-            ['mail', __('Posta kutuları'), __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
-            ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
-            ['inbox', 'Webmail', __('E-posta kapalı'), route('mail.index', ['enable' => $site->domain])],
-        ])],
-        [__('Güvenlik'), 'shield', [
-            ['shield-check', __('SSL sertifikası'), $ssl->label(), route('sites.ssl', $site)],
+        ['security', __('SSL ve güvenlik'), 'shield-check', route('sites.ssl', $site), [
+            ['shield-check', __('SSL sertifikası'), $ssl->label(), route('sites.ssl', $site), $ssl->needsAttention() ? $ssl->tone() : ($httpOnly ? 'warn' : ($site->hasHttps() ? 'ok' : null))],
             ...($missing('security') ? [
-                ['shield', 'WAF', $missing('security')],
-                ['scan-search', __('Güvenlik taraması'), $missing('security')],
-                ['folder-lock', __('Parola korumalı klasörler'), $missing('security')],
+                ['shield', 'WAF', $missing('security'), null, 'muted'],
+                ['scan-search', __('Güvenlik taraması'), $missing('security'), null, 'muted'],
+                ['folder-lock', __('Parola korumalı klasörler'), $missing('security'), null, 'muted'],
             ] : [
-                ['shield', 'WAF', ! $wafInstalled ? __('Kurulu değil') : ($site->waf_mode ? \App\Services\Security\Waf::MODES[$site->waf_mode] : __('Sunucu ayarı')), route('sites.waf', $site)],
-                ['scan-search', __('Güvenlik taraması'), $openFindings ? __(':open_findings açık bulgu', ['open_findings' => $openFindings]) : ($scanned ? __('Sorun yok') : __('Taranmadı')), route('sites.scan', $site)],
-                ['folder-lock', __('Parola korumalı klasörler'), $protectedDirs ? __(':protected_dirs klasör', ['protected_dirs' => $protectedDirs]) : __('Yok'), route('sites.protect', $site)],
+                ['shield', 'WAF', ! $wafInstalled ? __('Kurulu değil') : ($site->waf_mode ? \App\Services\Security\Waf::MODES[$site->waf_mode] : __('Sunucu ayarı')), route('sites.waf', $site), $wafInstalled ? null : 'muted'],
+                ['scan-search', __('Güvenlik taraması'), $openFindings ? __(':open_findings açık bulgu', ['open_findings' => $openFindings]) : ($scanned ? __('Sorun yok') : __('Taranmadı')), route('sites.scan', $site), $openFindings ? 'warn' : ($scanned ? 'ok' : 'muted')],
+                ['folder-lock', __('Parola korumalı klasörler'), $protectedDirs ? __(':protected_dirs klasör', ['protected_dirs' => $protectedDirs]) : __('Yok'), route('sites.protect', $site), $protectedDirs ? null : 'muted'],
             ]),
         ]],
+        ['backups', __('Yedekler, günlükler ve istatistik'), 'archive', null, [
+            $missing('backups') ? ['archive-restore', __('Yedekler'), $missing('backups'), null, 'muted'] : ['archive-restore', __('Yedekler'), $lastBackup ? __('Son: :text', ['text' => $backupText]) : __('Henüz yok'), route('backups.index', ['site' => $site->id]), $lastBackup ? 'ok' : 'muted'],
+            ['file-text', __('Günlükler'), __('Erişim ve hata'), route('sites.logs', $site)],
+            ['chart-column', __('İstatistikler'), $monthStats['visitors'] ? __('Bu ay :visitors ziyaretçi', ['visitors' => \App\Support\Num::format($monthStats['visitors'], 0)]) : __('Bu ay ziyaret yok'), route('sites.stats', $site), $monthStats['visitors'] ? null : 'muted'],
+        ]],
     ];
+    $dot = ['ok' => 'bg-ok', 'warn' => 'bg-warn', 'crit' => 'bg-crit'];
 @endphp
 <div class="space-y-6">
     {{-- Refresh while the agent works on a site. --}}
@@ -104,32 +121,17 @@
         <div wire:poll.3s hidden></div>
     @endif
 
-    {{-- Title --}}
-    <div>
-        <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="font-mono text-fg">{{ $site->domain }}</span>
-        </nav>
-        <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <div class="flex min-w-0 items-center gap-3">
-                <h1 class="truncate font-mono text-[22px] font-semibold tracking-tight">{{ $site->domain }}</h1>
-                <x-status-badge :status="$site->status" />
-                <div class="relative" x-data="{ open: false }">
-                    <button type="button" @click="open = !open" class="grid size-8 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Diğer işlemler') }}"><x-icon name="ellipsis-vertical" /></button>
-                    <div x-show="open" x-cloak @click.outside="open = false" class="absolute top-full left-0 z-20 mt-1 w-52 rounded-lg border border-line bg-surface py-1 text-[13.5px] shadow-lg">
-                        <button type="button" wire:click="openDelete" @click="open = false" @disabled($site->status->isBusy())
-                                class="w-full px-3 py-2 text-left text-crit hover:bg-surface-2 disabled:opacity-40">{{ __('Siteyi sil') }}</button>
-                    </div>
+    <x-site-header :site="$site" active="overview">
+        <x-slot:menu>
+            <div class="relative" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="grid size-9 place-items-center rounded-md border border-line bg-surface text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Diğer işlemler') }}"><x-icon name="ellipsis-vertical" /></button>
+                <div x-show="open" x-cloak @click.outside="open = false" class="absolute top-full right-0 z-20 mt-1 w-52 rounded-lg border border-line bg-surface py-1 text-[13.5px] shadow-lg">
+                    <button type="button" wire:click="openDelete" @click="open = false" @disabled($site->status->isBusy())
+                            class="w-full px-3 py-2 text-left text-crit hover:bg-surface-2 disabled:opacity-40">{{ __('Siteyi sil') }}</button>
                 </div>
             </div>
-            @if ($site->status === \App\Enums\SiteStatus::Active)
-                <a href="{{ $site->hasHttps() ? 'https' : 'http' }}://{{ $site->primaryHost() }}" target="_blank" rel="noopener" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-                    <x-icon name="external-link" />{{ __('Siteyi aç') }}
-                </a>
-            @endif
-        </div>
-    </div>
+        </x-slot:menu>
+    </x-site-header>
 
     @if ($site->isSuspended())
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
@@ -177,17 +179,42 @@
         </div>
     @endif
 
-    {{-- Status strip --}}
-    <section class="grid grid-cols-1 rounded-xl border border-line bg-surface text-[13px] sm:grid-cols-2 xl:grid-cols-5 [&>*]:border-line [&>*]:p-4 max-sm:[&>*:not(:last-child)]:border-b sm:max-xl:[&>*:nth-child(-n+4)]:border-b sm:max-xl:[&>*:nth-child(odd):not(:last-child)]:border-r xl:[&>*:not(:last-child)]:border-r">
+    {{-- What needs a look --}}
+    @if ($ssl->needsAttention() || $httpOnly)
+        <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
+            <span class="absolute inset-y-0 left-0 w-1 {{ $ssl->tone() === 'crit' ? 'bg-crit' : 'bg-warn' }}"></span>
+            <x-icon name="shield-alert" class="{{ $ssl->tone() === 'crit' ? 'text-crit' : 'text-warn' }}" />
+            <div class="min-w-0 flex-1 basis-60">
+                @if ($ssl->needsAttention())
+                    <p class="font-medium">{{ __('SSL sertifikası: :state', ['state' => $ssl->label()]) }}</p>
+                    <p class="mt-0.5 text-[13px] text-muted">{{ __('Sertifika sayfasında nedenini ve nasıl düzeleceğini görebilirsiniz.') }}</p>
+                @else
+                    <p class="font-medium">{{ __('Site yalnızca http ile açılıyor') }}</p>
+                    <p class="mt-0.5 text-[13px] text-muted">
+                        @if ($site->pendingCertificate()?->status === \App\Enums\CertificateStatus::WaitingDns)
+                            {{ __('DNS henüz bu sunucuya işaret etmiyor; işaret edince Let\'s Encrypt sertifikası kendiliğinden alınır.') }}
+                        @else
+                            {{ __('Ücretsiz Let\'s Encrypt sertifikasıyla tarayıcılar "güvenli değil" uyarısını göstermeyi bırakır.') }}
+                        @endif
+                    </p>
+                @endif
+            </div>
+            <a href="{{ route('sites.ssl', $site) }}" wire:navigate class="flex h-8 items-center gap-2 rounded-md bg-accent px-3 text-[13px] font-medium text-accent-fg hover:brightness-110">{{ $ssl->needsAttention() ? __('Sertifikaya bak') : __('Sertifika al') }}</a>
+        </div>
+    @endif
+
+    {{-- Summary --}}
+    @php $backupCell = $user->allows('backups') ? route('backups.index', ['site' => $site->id]) : null; @endphp
+    <section class="grid grid-cols-2 overflow-hidden rounded-xl border border-line bg-surface text-[13px] xl:grid-cols-4 [&>*]:min-w-0 [&>*]:border-line [&>*]:p-4 [&>*:nth-child(odd)]:border-r max-xl:[&>*:nth-child(-n+2)]:border-b xl:[&>*:not(:last-child)]:border-r">
         <a href="{{ route('sites.php', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
-            <p class="text-2xs text-muted">{{ __('Web sunucusu') }}</p>
-            <p class="mt-1 font-medium">{{ $site->web_server === \App\Models\Site::APACHE ? 'Nginx + Apache' : 'Nginx' }} · PHP {{ $site->php_version }}</p>
-            <span class="text-2xs text-muted">{{ __('PHP-FPM, siteye özel havuz') }}</span>
+            <p class="flex items-center gap-1.5 text-2xs font-medium tracking-[.06em] text-muted uppercase"><x-icon name="server" class="size-3.5" />{{ __('Web sunucusu') }}</p>
+            <p class="mt-2 text-[15px] font-semibold">PHP {{ $site->php_version }} <span class="font-normal text-muted">· {{ $site->web_server === \App\Models\Site::APACHE ? 'Nginx + Apache' : 'Nginx' }}</span></p>
+            <p class="mt-0.5 truncate text-2xs text-muted">{{ __('PHP-FPM, siteye özel havuz') }}</p>
         </a>
         <a href="{{ route('sites.ssl', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
-            <p class="text-2xs text-muted">SSL</p>
-            <p class="mt-1"><x-status-badge :status="$ssl" /></p>
-            <span class="mt-1 block text-2xs text-muted">
+            <p class="flex items-center gap-1.5 text-2xs font-medium tracking-[.06em] text-muted uppercase"><x-icon name="lock" class="size-3.5" />SSL</p>
+            <p class="mt-2"><x-status-badge :status="$ssl" /></p>
+            <p class="mt-1 truncate text-2xs text-muted">
                 @if ($certificate?->isInstalled())
                     {{ __(':certificate · :not_after tarihine kadar', ['certificate' => $certificate->issuerLabel(), 'not_after' => \App\Support\When::date($certificate->not_after)]) }}
                 @elseif ($site->pendingCertificate()?->status === \App\Enums\CertificateStatus::WaitingDns)
@@ -195,26 +222,17 @@
                 @else
                     {{ __('Site şimdilik yalnızca http ile açılır') }}
                 @endif
-            </span>
+            </p>
         </a>
-        <div>
-            <p class="text-2xs text-muted">{{ __('Sistem kullanıcısı') }}</p>
-            <p class="mt-1 font-mono text-[12.5px]">{{ $site->systemUser->name }}</p>
-            <span class="text-2xs text-muted">{{ $otherSites ? __('Bu kullanıcının :other_sites sitesi daha var', ['other_sites' => $otherSites]) : __('Yalnızca bu siteye ait') }}</span>
-            @if ($user->is_admin && $owner)
-                <a href="{{ route('customers.show', $owner) }}" wire:navigate class="mt-0.5 block truncate text-2xs text-accent hover:underline">{{ __('Müşteri: :owner', ['owner' => $owner->displayName()]) }}</a>
-            @endif
-        </div>
-        <div class="min-w-0">
-            <p class="text-2xs text-muted">{{ __('Belge kökü') }}</p>
-            <p class="mt-1 truncate font-mono text-[12.5px]" title="{{ $site->document_root }}">{{ $site->document_root ?? '—' }}</p>
-            <span class="text-2xs text-muted">{{ $site->provisioned_at ? __('Oluşturuldu: :provisioned_at', ['provisioned_at' => \App\Support\When::dateTime($site->provisioned_at)]) : __('Henüz hazırlanmadı') }}</span>
-        </div>
-        @php $backupCell = $user->allows('backups') ? route('backups.index', ['site' => $site->id]) : null; @endphp
-        <{{ $backupCell ? 'a' : 'div' }} @if ($backupCell) href="{{ $backupCell }}" wire:navigate @endif class="block hover:bg-surface-2/60 sm:col-span-2 xl:col-span-1">
-            <p class="text-2xs text-muted">{{ __('Son yedek') }}</p>
-            <p class="num mt-1 font-medium">{{ $backupText }}</p>
-            <span class="text-2xs text-muted">{{ $lastBackup ? ($lastBackup->backup->scope === 'server' ? __('Tüm sunucu yedeğiyle') : __('Site yedeği')).' · '.\App\Support\Bytes::format($lastBackup->size) : ($owner?->package && ! $owner->package->allows('backups') ? __('Paketi yedekleme içermiyor') : __('Zamanlanmış yedeğe girer')) }}</span>
+        <a href="{{ route('sites.disk', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
+            <p class="flex items-center gap-1.5 text-2xs font-medium tracking-[.06em] text-muted uppercase"><x-icon name="hard-drive" class="size-3.5" />{{ __('Disk') }}</p>
+            <p class="num mt-2 text-[15px] font-semibold">{{ $site->disk_bytes === null ? __('Ölçülmedi') : \App\Support\Bytes::format($diskTotal) }}</p>
+            <p class="mt-0.5 truncate text-2xs text-muted">{{ __('Dosyalar, e-posta ve veritabanları') }}</p>
+        </a>
+        <{{ $backupCell ? 'a' : 'div' }} @if ($backupCell) href="{{ $backupCell }}" wire:navigate @endif class="block hover:bg-surface-2/60">
+            <p class="flex items-center gap-1.5 text-2xs font-medium tracking-[.06em] text-muted uppercase"><x-icon name="archive" class="size-3.5" />{{ __('Son yedek') }}</p>
+            <p class="num mt-2 text-[15px] font-semibold">{{ $backupText }}</p>
+            <p class="mt-0.5 truncate text-2xs text-muted">{{ $lastBackup ? ($lastBackup->backup->scope === 'server' ? __('Tüm sunucu yedeğiyle') : __('Site yedeği')).' · '.\App\Support\Bytes::format($lastBackup->size) : ($owner?->package && ! $owner->package->allows('backups') ? __('Paketi yedekleme içermiyor') : __('Zamanlanmış yedeğe girer')) }}</p>
         </{{ $backupCell ? 'a' : 'div' }}>
     </section>
 
@@ -228,29 +246,37 @@
                 <input x-model="q" type="search" placeholder="{{ __('Araç ara') }}" class="h-9 w-full rounded-md border border-line bg-surface pr-3 pl-9 text-[13.5px] outline-none focus:border-accent">
             </label>
         </div>
-        <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            @foreach ($groups as [$group, $groupIcon, $tools])
-                <section class="rounded-xl border border-line bg-surface"
+        <div class="gap-4 lg:columns-2">
+            @foreach ($groups as [$key, $group, $groupIcon, $groupLink, $tools])
+                <section class="mb-4 min-w-0 break-inside-avoid rounded-xl border border-line bg-surface"
                          x-show="!q || @js(mb_strtolower($group.' '.collect($tools)->pluck(1)->join(' '))).includes(q.toLocaleLowerCase('tr'))">
-                    <h3 class="flex h-11 items-center gap-2 border-b border-line px-4 text-[13.5px] font-semibold"><x-icon :name="$groupIcon" class="text-accent" />{{ $group }}</h3>
-                    <ul class="p-1.5">
+                    <div class="flex h-12 items-center gap-2.5 border-b border-line px-4">
+                        <x-icon :name="$groupIcon" class="text-muted" />
+                        <h3 class="text-[14px] font-semibold">{{ $group }}</h3>
+                        @if ($groupLink)
+                            <a href="{{ $groupLink }}" wire:navigate class="ml-auto flex items-center gap-1 text-[13px] text-accent hover:underline">{{ __('Tümü') }}<x-icon name="chevron-right" class="size-3.5" /></a>
+                        @endif
+                    </div>
+                    @if ($key === 'mail' && ! $mailOn && ! $missing('mail'))
+                        <div class="flex flex-wrap items-center gap-3 border-b border-line bg-surface-2/50 px-4 py-3 text-[13px]">
+                            <p class="min-w-0 flex-1 basis-52 text-muted"><x-t text="Bu alan adında e-posta kapalı. Açınca :address gibi posta kutuları buradan oluşturulur."><x-slot:address><span class="font-mono text-fg">info{{ '@'.$site->domain }}</span></x-slot:address></x-t></p>
+                            <a href="{{ route('sites.mail', $site) }}" wire:navigate class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] font-medium hover:bg-surface-2"><x-icon name="mail" class="size-3.5" />{{ __('E-postayı aç') }}</a>
+                        </div>
+                    @endif
+                    <ul class="grid grid-cols-1 gap-1 p-2 sm:grid-cols-2">
                         @foreach ($tools as $tool)
-                            @php [$icon, $name, $state, $link, $external] = $tool + [3 => null, 4 => false]; @endphp
-                            <li x-show="!q || @js(mb_strtolower($group.' '.$name)).includes(q.toLocaleLowerCase('tr'))">
-                                @if ($link)
-                                    <a href="{{ $link }}" @if ($external) target="_blank" rel="noopener" @else wire:navigate @endif class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px] hover:bg-surface-2">
-                                        <x-icon :name="$icon" class="text-muted" />
-                                        <span class="truncate">{{ $name }}</span>
-                                        <span class="ml-auto truncate text-2xs whitespace-nowrap text-muted">{{ $state }}</span>
-                                        <x-icon :name="$external ? 'external-link' : 'chevron-right'" class="size-3.5 text-muted" />
-                                    </a>
-                                @else
-                                    <div class="flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px]">
-                                        <x-icon :name="$icon" class="text-muted" />
-                                        <span class="truncate {{ $state === null ? 'text-muted' : '' }}">{{ $name }}</span>
-                                        <span class="ml-auto truncate text-2xs whitespace-nowrap text-muted">{{ $state ?? __('Yakında') }}</span>
-                                    </div>
-                                @endif
+                            @php [$icon, $name, $state, $link, $tone, $external, $hint] = $tool + [3 => null, 4 => null, 5 => false, 6 => null]; @endphp
+                            <li class="min-w-0" x-show="!q || @js(mb_strtolower($group.' '.$name)).includes(q.toLocaleLowerCase('tr'))">
+                                <{{ $link ? 'a' : 'div' }} @if ($link) href="{{ $link }}" @if ($external) target="_blank" rel="noopener" @else wire:navigate @endif @endif
+                                    class="group flex items-center gap-3 rounded-lg p-2 {{ $link ? 'hover:bg-surface-2' : '' }} {{ $tone === 'off' || ! $link ? 'opacity-60' : '' }}">
+                                    <span class="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-surface-2/60 text-fg {{ $link ? 'group-hover:border-accent/40 group-hover:text-accent' : '' }}"><x-icon :name="$icon" /></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="flex items-center gap-1.5 text-[13.5px] font-medium"><span class="truncate">{{ $name }}</span>@if ($external)<x-icon name="external-link" class="size-3 text-muted" />@endif</span>
+                                        <span class="flex items-center gap-1.5 text-2xs {{ in_array($tone, ['warn', 'crit'], true) ? 'text-'.$tone : 'text-muted' }}">
+                                            @isset($dot[$tone])<i class="size-1.5 shrink-0 rounded-full {{ $dot[$tone] }}"></i>@endisset<span class="truncate {{ $hint ? 'font-mono' : '' }}" @if ($hint) title="{{ $hint }}" @endif>{{ $state }}</span>
+                                        </span>
+                                    </span>
+                                </{{ $link ? 'a' : 'div' }}>
                             </li>
                         @endforeach
                     </ul>

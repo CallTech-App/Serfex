@@ -15,16 +15,9 @@
     @endif
 
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('PHP ve Web Sunucusu') }}</span>
-        </nav>
-        <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('PHP ve Web Sunucusu') }}</h1>
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="arrow-left" />{{ __('Siteye dön') }}</a>
+        <x-site-header :site="$site" active="overview" :tool="__('PHP ve Web Sunucusu')" />
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <h1 class="text-[18px] font-semibold tracking-tight">{{ __('PHP ve Web Sunucusu') }}</h1>
         </div>
         <p class="mt-1 max-w-3xl text-[13px] text-muted"><x-t text="Bu ayarlar yalnızca :domain için geçerlidir. Kaydettiğinizde hemen uygulanır; sunucu kabul etmezse site önceki ayarlarıyla çalışmaya devam eder."><x-slot:domain><span class="font-mono text-fg">{{ $site->domain }}</span></x-slot:domain></x-t></p>
     </div>

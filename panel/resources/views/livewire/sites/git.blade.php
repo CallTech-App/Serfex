@@ -12,14 +12,8 @@
     @endif
 
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('Git dağıtımı') }}</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Git dağıtımı') }}</h1>
+        <x-site-header :site="$site" active="overview" :tool="__('Git dağıtımı')" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Git dağıtımı') }}</h1>
         <p class="mt-1 text-[13px] text-muted">{{ __('Sitenin dosyalarını bir Git deposundan alın: "Dağıt" dalın son hâlini klasöre yazar, istenirse her push\'ta kendiliğinden. Her dağıtıma geri dönülebilir.') }}</p>
     </div>
 

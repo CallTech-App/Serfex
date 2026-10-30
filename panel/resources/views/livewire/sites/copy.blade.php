@@ -24,14 +24,8 @@
         <div wire:poll.3s hidden></div>
     @endif
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('Siteyi kopyala') }}</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Siteyi kopyala') }}</h1>
+        <x-site-header :site="$site" active="files" :tool="__('Siteyi kopyala')" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Siteyi kopyala') }}</h1>
         <p class="mt-1 max-w-3xl text-[13px] text-muted">
             @if ($isCopy)
                 <x-t text="Bu site :source sitesinin kopyası. Değişiklikleri burada deneyin; hazır olunca canlı siteye aktarın."><x-slot:source><a href="{{ route('sites.show', $source) }}" wire:navigate class="font-mono text-fg hover:text-accent">{{ $source->domain }}</a></x-slot:source></x-t>

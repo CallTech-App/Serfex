@@ -11,14 +11,8 @@
     @endif
 
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('SSL sertifikası') }}</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('SSL sertifikası') }}</h1>
+        <x-site-header :site="$site" active="security" :tool="__('SSL sertifikası')" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('SSL sertifikası') }}</h1>
         <p class="mt-1 text-[13px] text-muted">
             <x-t text=":domain için HTTPS sertifikası. Let's Encrypt sertifikaları bitişten :config gün önce otomatik yenilenir." :with="['config' => config('serfex.ssl.renew_days')]"><x-slot:domain><span class="font-mono">{{ $site->domain }}</span></x-slot:domain></x-t>
         </p>

@@ -10,14 +10,8 @@
 @endphp
 <div class="space-y-6">
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">WAF</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Web uygulaması güvenlik duvarı') }}</h1>
+        <x-site-header :site="$site" active="security" tool="WAF" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Web uygulaması güvenlik duvarı') }}</h1>
         <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('ModSecurity ve OWASP Core Rule Set, siteye gelen SQL enjeksiyonu, XSS, dosya yolu saldırısı gibi istekleri yakalar. Site :site ile çalışıyor; WAF her iki yığında da Nginx önünde çalışır.', ['site' => $site->stackLabel()]) }}</p>
     </div>
 

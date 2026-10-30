@@ -10,16 +10,10 @@
     ];
 @endphp
 <div class="space-y-6">
+    <x-site-header :site="$site" active="files" :tool="__('Disk kullanımı')" />
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-                <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-                <x-icon name="chevron-right" class="size-3.5" />
-                <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-                <x-icon name="chevron-right" class="size-3.5" />
-                <span class="text-fg">{{ __('Disk kullanımı') }}</span>
-            </nav>
-            <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Disk kullanımı') }}</h1>
+            <h1 class="text-[18px] font-semibold tracking-tight">{{ __('Disk kullanımı') }}</h1>
             <p class="mt-1 text-[13px] text-muted">{{ __('Sitenin diskte kapladığı yer: dosyalar, e-posta, veritabanları ve uygulama yedekleri.') }}</p>
         </div>
         <button type="button" wire:click="measure" wire:loading.attr="disabled" wire:target="measure" class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:opacity-60">
