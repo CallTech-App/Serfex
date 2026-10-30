@@ -45,6 +45,9 @@ class SiteMigrate extends Component
     /** @var list<string> */
     public array $parts = [];
 
+    /** The system user the sites go under here. */
+    public string $account = '';
+
     public string $customerMode = 'new';
 
     public string $customerName = '';
@@ -104,6 +107,7 @@ class SiteMigrate extends Component
         $review = app(SiteMigrations::class)->review($m);
         $this->sites = collect($m->plan['sites'] ?? [])->pluck('domain')->filter(fn ($d) => ($review['taken'][$d] ?? null) === null)->values()->all();
         $this->parts = array_values(array_filter(array_keys(SiteMigrations::PARTS), fn ($p) => ! ($p === 'databases' && ! $review['mysql']) && ! ($p === 'mail' && ! $review['mail'])));
+        $this->account = $m->account();
         $account = $review['account'];
         $this->customerMode = $account?->customer_id !== null ? 'existing' : 'new';
         $this->customerId = $account?->customer_id;
@@ -234,8 +238,9 @@ class SiteMigrate extends Component
      */
     private function rules(SiteMigration $m): array
     {
-        $user = (string) ($m->plan['user'] ?? '');
+        $user = $this->account;
         $rules = [
+            'account' => ['required', 'regex:'.Hostnames::SYSTEM_USER_PATTERN, Rule::notIn(Hostnames::RESERVED_USERS)],
             'sites' => ['required', 'array', 'min:1'],
             'parts' => ['array'],
             'customerMode' => ['required', Rule::in(['new', 'existing', 'none'])],
@@ -256,6 +261,9 @@ class SiteMigrate extends Component
         }
 
         return [$rules, [
+            'account.required' => __('Sistem kullanıcısının adını girin.'),
+            'account.regex' => __('Küçük harfle başlamalı; yalnızca a-z, 0-9, - ve _ içerebilir (en fazla 32).'),
+            'account.not_in' => __('Bu ad sisteme ayrılmış, başka bir ad seçin.'),
             'sites.required' => __('Taşınacak en az bir site seçin.'),
             'sites.min' => __('Taşınacak en az bir site seçin.'),
             'customerEmail.unique' => __('Bu e-posta adresiyle bir panel hesabı zaten var.'),
@@ -283,7 +291,7 @@ class SiteMigrate extends Component
             [$customer, $invite] = $customers->create([
                 'name' => trim($this->customerName),
                 'email' => mb_strtolower(trim($this->customerEmail)),
-                'username' => (string) $m->plan['user'],
+                'username' => $this->account,
                 'package_id' => $this->packageId,
             ]);
             $customerId = $customer->id;
@@ -292,7 +300,7 @@ class SiteMigrate extends Component
         if ($invite !== null) {
             $m->update(['secrets' => [...($m->secrets ?? []), 'invite' => route('invitation', $invite)]]);
         }
-        $why = $migrations->start($m, ['sites' => $this->sites, 'parts' => $this->parts, 'customer_id' => $customerId], auth()->user());
+        $why = $migrations->start($m, ['sites' => $this->sites, 'parts' => $this->parts, 'customer_id' => $customerId, 'account' => $this->account], auth()->user());
         $this->confirming = false;
         $this->error = $why;
     }
@@ -310,7 +318,7 @@ class SiteMigrate extends Component
      */
     public function fresh(): void
     {
-        $this->reset('migrationId', 'sites', 'parts', 'confirming', 'error', 'chosenFor');
+        $this->reset('migrationId', 'sites', 'parts', 'account', 'confirming', 'error', 'chosenFor');
     }
 
     public function forgetSecrets(): void
@@ -368,7 +376,7 @@ class SiteMigrate extends Component
                 }
             }
         } elseif ($m->status === SiteMigration::READY) {
-            $data['review'] = $migrations->review($m);
+            $data['review'] = $migrations->review($m, $this->account);
             $data['packages'] = Package::orderBy('id')->get();
             $data['customers'] = Customer::orderBy('name')->get();
         } else {
