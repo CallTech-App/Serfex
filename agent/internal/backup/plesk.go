@@ -231,7 +231,7 @@ func (m *Manager) MigratePleskPull(ctx context.Context, spec PleskPullSpec) (res
 	if err != nil {
 		return PleskPull{}, err
 	}
-	p := &pleskPull{r: r, ctx: ctx, log: log, noted: map[string]bool{}}
+	p := &pleskPull{r: r, ctx: ctx, log: log, noted: map[string]bool{}, hostname: pr.hostname}
 	if err := p.read(spec.Subscription); err != nil {
 		return PleskPull{}, err
 	}
@@ -427,6 +427,13 @@ type pleskDB struct {
 	name, kind, host string
 }
 
+// pleskConfigDB is a database a site's settings file (.env, wp-config.php)
+// names. Plesk does not always know it as the subscription's: it can be
+// registered under another subscription or made outside Plesk.
+type pleskConfigDB struct {
+	file, conn, name, host string
+}
+
 // pleskPull is one subscription being read.
 type pleskPull struct {
 	r     remote
@@ -439,14 +446,19 @@ type pleskPull struct {
 	noted map[string]bool
 
 	login, user, home string
+	hostname          string
 	sysID             int
 	size              int64
 	contact, plan     string
 	ips               []string
 	// domains[0] is the main domain.
-	domains   []*pleskDomain
+	domains []*pleskDomain
+	// webspace holds the ids of every domain of the subscription, also
+	// those not moved as a site: databases can belong to any of them.
+	webspace  []string
 	boxes     []*pleskBox
 	dbs       []pleskDB
+	configDBs []pleskConfigDB
 	passwords map[string]string
 }
 
@@ -458,14 +470,24 @@ func (p *pleskPull) remark(code, subject string) {
 }
 
 // optional runs a query whose answer the move can do without: a failure
-// is written in the log.
+// is written in the log and noted, so an empty part is not taken for an
+// empty one on the old server.
 func (p *pleskPull) optional(name, what, sql string) [][]string {
 	rows, err := pleskQuery(p.ctx, p.r, name, sql)
 	if err != nil {
-		fmt.Fprintf(p.log, "  ! %s\n", i18n.T(p.ctx, "%s okunamadı: %s", what, err))
+		p.readFailed(what, err)
 		return nil
 	}
 	return rows
+}
+
+func (p *pleskPull) readFailed(what string, err error) {
+	fmt.Fprintf(p.log, "  ! %s\n", i18n.T(p.ctx, "%s okunamadı: %s", what, err))
+	msg := oneLine(err.Error())
+	if len(msg) > 200 {
+		msg = msg[:200] + "…"
+	}
+	p.remark("plesk-read-failed", what+": "+msg)
 }
 
 func (p *pleskPull) domainByID(id int) *pleskDomain {
@@ -500,6 +522,7 @@ func (p *pleskPull) read(sub int) error {
 		if len(row) < 8 {
 			continue
 		}
+		p.webspace = append(p.webspace, strconv.Itoa(atoi(row[0])))
 		d := &pleskDomain{id: atoi(row[0]), name: strings.ToLower(row[1]), parent: atoi(row[2]), htype: row[3], root: path.Clean("/" + row[4]), cert: atoi(row[6])}
 		if m := pleskPHPRe.FindStringSubmatch(row[5]); m != nil {
 			d.php = "plesk-php" + m[1] + m[2]
@@ -602,12 +625,42 @@ func (p *pleskPull) read(sub int) error {
 		}
 	}
 
-	for _, row := range p.optional("databases", i18n.T(p.ctx, "Veritabanları"), `SELECT db.dom_id, db.name, db.type, IFNULL(s.host,'localhost') FROM data_bases db LEFT JOIN db_servers s ON s.id=db.db_server_id WHERE db.dom_id IN (`+p.ids()+`) ORDER BY db.name`) {
+	rows, err = p.databaseRows()
+	if err != nil {
+		p.readFailed(i18n.T(p.ctx, "Veritabanları"), err)
+	}
+	for _, row := range rows {
 		if len(row) >= 4 {
 			p.dbs = append(p.dbs, pleskDB{dom: atoi(row[0]), name: row[1], kind: row[2], host: strings.ToLower(row[3])})
 		}
 	}
 	return nil
+}
+
+// unknownHost stands for a database server Plesk's tables did not tell.
+const unknownHost = "?"
+
+// databaseRows lists the subscription's databases with their server's
+// host. Plesk 18 keeps the servers in DatabaseServers, older ones in
+// db_servers; where neither can be read the host is left unknown, and the
+// database is looked for on the server itself.
+func (p *pleskPull) databaseRows() ([][]string, error) {
+	where := ` WHERE db.dom_id IN (` + strings.Join(p.webspace, ",") + `) ORDER BY db.name`
+	var first error
+	for _, servers := range []string{"DatabaseServers", "db_servers"} {
+		rows, err := pleskQuery(p.ctx, p.r, "databases", `SELECT db.dom_id, db.name, db.type, IFNULL(s.host,'localhost') FROM data_bases db LEFT JOIN `+servers+` s ON s.id=db.db_server_id`+where)
+		if err == nil {
+			return rows, nil
+		}
+		if first == nil {
+			first = err
+		}
+	}
+	rows, err := pleskQuery(p.ctx, p.r, "databases", `SELECT db.dom_id, db.name, db.type, '`+unknownHost+`' FROM data_bases db`+where)
+	if err != nil {
+		return nil, first
+	}
+	return rows, nil
 }
 
 // pleskUser makes a Plesk system user's name one this server takes: lower
@@ -815,6 +868,7 @@ func (p *pleskPull) files() error {
 				if bytes.Contains(b, []byte("/var/www/vhosts/")) {
 					p.remark("old-path", name)
 				}
+				p.configDB(name, b)
 				r = bytes.NewReader(b)
 			}
 		}
@@ -938,11 +992,23 @@ func (p *pleskPull) mailPasswords() map[string]string {
 	return out
 }
 
-// databases dumps the subscription's MySQL databases and reads their
-// users.
+// databases dumps the subscription's MySQL databases, and those its
+// sites' settings name, and reads their users.
 func (p *pleskPull) databases() error {
 	var dumped []string
+	dump := func(name string) error {
+		if len(dumped) == 0 {
+			fmt.Fprintf(p.log, "▸ %s\n", i18n.T(p.ctx, "Veritabanları alınıyor"))
+		}
+		if err := p.dump(name); err != nil {
+			return err
+		}
+		dumped = append(dumped, name)
+		return nil
+	}
+	listed := map[string]bool{}
 	for _, db := range p.dbs {
+		listed[db.name] = true
 		switch {
 		case db.kind == "postgresql":
 			if err := p.file("psql/"+db.name, nil); err != nil {
@@ -951,25 +1017,183 @@ func (p *pleskPull) databases() error {
 			continue
 		case db.kind != "mysql":
 			continue
-		case db.host != "localhost" && db.host != "127.0.0.1" && db.host != "::1" && db.host != "":
+		case db.host == unknownHost:
+			// Looked for on the server below.
+			listed[db.name] = false
+			continue
+		case !p.localHost(db.host):
 			p.remark("remote-database", db.name)
 			continue
 		case database.ValidateDatabaseName(db.name) != nil:
 			p.remark("bad-database", db.name)
 			continue
 		}
-		if len(dumped) == 0 {
-			fmt.Fprintf(p.log, "▸ %s\n", i18n.T(p.ctx, "Veritabanları alınıyor"))
-		}
-		if err := p.dump(db.name); err != nil {
+		if err := dump(db.name); err != nil {
 			return err
 		}
-		dumped = append(dumped, db.name)
+	}
+	unknown, extra, err := p.unlisted(listed)
+	if err != nil {
+		return err
+	}
+	for _, name := range unknown {
+		if err := dump(name); err != nil {
+			return err
+		}
+	}
+	for _, name := range extra {
+		if err := dump(name); err != nil {
+			return err
+		}
+		p.remark("plesk-unlisted-database", name)
 	}
 	if len(dumped) == 0 {
 		return nil
 	}
 	return p.file("mysql.sql", []byte(p.mysqlUsers(dumped)))
+}
+
+// unlisted looks on Plesk's database server for the subscription's
+// databases whose server is not known (listed false), and for those the
+// sites' settings name that Plesk does not list as the subscription's
+// (extra). Those not there are noted.
+func (p *pleskPull) unlisted(listed map[string]bool) (unknown, extra []string, err error) {
+	var names []string
+	fromConfig := map[string]bool{}
+	for _, db := range p.dbs {
+		if db.host != unknownHost || db.kind != "mysql" || slices.Contains(names, db.name) {
+			continue
+		}
+		if database.ValidateDatabaseName(db.name) != nil {
+			p.remark("bad-database", db.name)
+			continue
+		}
+		names = append(names, db.name)
+	}
+	for _, c := range p.configDBs {
+		if _, ok := listed[c.name]; ok {
+			continue
+		}
+		listed[c.name] = true
+		switch {
+		case c.conn == "pgsql" || c.conn == "postgres" || c.conn == "postgresql":
+			if err := p.file("psql/"+c.name, nil); err != nil {
+				return nil, nil, err
+			}
+		case c.conn != "" && c.conn != "mysql" && c.conn != "mariadb":
+		case !p.localHost(c.host):
+			p.remark("remote-database", c.name)
+		case database.ValidateDatabaseName(c.name) != nil:
+			p.remark("bad-database", c.name)
+		default:
+			names = append(names, c.name)
+			fromConfig[c.name] = true
+		}
+	}
+	if len(names) == 0 {
+		return nil, nil, nil
+	}
+	rows, qerr := pleskQuery(p.ctx, p.r, "schemas", `SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (`+sqlList(names)+`)`)
+	if qerr != nil {
+		p.readFailed(i18n.T(p.ctx, "Veritabanı sunucusundaki veritabanları"), qerr)
+		return nil, nil, nil
+	}
+	there := map[string]bool{}
+	for _, row := range rows {
+		if len(row) > 0 {
+			there[row[0]] = true
+		}
+	}
+	for _, n := range names {
+		switch {
+		case there[n] && fromConfig[n]:
+			extra = append(extra, n)
+		case there[n]:
+			unknown = append(unknown, n)
+		case fromConfig[n]:
+			p.remark("plesk-missing-database", n)
+		default:
+			// Plesk has it, the server it runs on does not: another one.
+			p.remark("remote-database", n)
+		}
+	}
+	return unknown, extra, nil
+}
+
+// localHost tells whether a database host is the old server itself.
+func (p *pleskPull) localHost(h string) bool {
+	h = strings.ToLower(strings.TrimSpace(h))
+	if strings.HasPrefix(h, "[") {
+		if i := strings.Index(h, "]"); i > 0 {
+			h = h[1:i]
+		}
+	} else if strings.Count(h, ":") == 1 {
+		// host:port, or localhost:/path/to/mysqld.sock.
+		h, _, _ = strings.Cut(h, ":")
+	}
+	switch h {
+	case "", "localhost", "127.0.0.1", "::1", "localhost.localdomain":
+		return true
+	}
+	return h == strings.ToLower(p.hostname) || slices.Contains(p.ips, h)
+}
+
+var (
+	envLineRe = regexp.MustCompile(`^\s*(?:export\s+)?(DB_CONNECTION|DB_HOST|DB_DATABASE)\s*=\s*(.*?)\s*$`)
+	wpDefRe   = regexp.MustCompile(`define\s*\(\s*['"](DB_NAME|DB_HOST)['"]\s*,\s*['"]([^'"]*)['"]\s*\)`)
+)
+
+// configDB reads the database a Laravel .env or a WordPress
+// wp-config.php names. Copies under vendor/ and node_modules/ are
+// packages' own.
+func (p *pleskPull) configDB(name string, b []byte) {
+	if strings.Contains("/"+name, "/vendor/") || strings.Contains("/"+name, "/node_modules/") {
+		return
+	}
+	c := pleskConfigDB{file: name}
+	switch path.Base(name) {
+	case ".env":
+		for _, line := range strings.Split(string(b), "\n") {
+			m := envLineRe.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			v := m[2]
+			if len(v) > 0 && (v[0] == '"' || v[0] == '\'') {
+				if i := strings.IndexByte(v[1:], v[0]); i >= 0 {
+					v = v[1 : i+1]
+				}
+			} else if i := strings.Index(v, " #"); i >= 0 {
+				v = strings.TrimSpace(v[:i])
+			}
+			switch m[1] {
+			case "DB_CONNECTION":
+				c.conn = strings.ToLower(v)
+			case "DB_HOST":
+				c.host = v
+			case "DB_DATABASE":
+				c.name = v
+			}
+		}
+		if c.conn == "" {
+			c.conn = "mysql"
+		}
+	case "wp-config.php":
+		for _, m := range wpDefRe.FindAllStringSubmatch(string(b), -1) {
+			if m[1] == "DB_NAME" {
+				c.name = m[2]
+			} else {
+				c.host = m[2]
+			}
+		}
+		c.conn = "mysql"
+	default:
+		return
+	}
+	if c.name == "" || strings.ContainsAny(c.name, "${}/ ") {
+		return
+	}
+	p.configDBs = append(p.configDBs, c)
 }
 
 // dump copies a database's dump: plesk db dump, or mysqldump with Plesk's
@@ -1062,7 +1286,7 @@ func (p *pleskPull) mysqlUsers(dbs []string) string {
 		rows, err := pleskQuery(p.ctx, p.r, "user", "SET SESSION print_identified_with_as_hex=1; "+show)
 		if err != nil {
 			if rows, err = pleskQuery(p.ctx, p.r, "user", show); err != nil {
-				fmt.Fprintf(p.log, "  ! %s\n", i18n.T(p.ctx, "%s okunamadı: %s", a.user, err))
+				p.readFailed(a.user, err)
 				continue
 			}
 		}
@@ -1176,7 +1400,8 @@ func zoneString(s string) string {
 }
 
 // certificates writes the certificate each domain uses, with its key and
-// chain.
+// chain. Where the key in Plesk's table is not plain PEM (Plesk can keep
+// it encrypted there), the certificate's file is read instead.
 func (p *pleskPull) certificates() error {
 	var ids []string
 	for _, d := range p.domains {
@@ -1187,19 +1412,47 @@ func (p *pleskPull) certificates() error {
 	if len(ids) == 0 {
 		return nil
 	}
-	for _, row := range p.optional("certificates", i18n.T(p.ctx, "Sertifikalar"), `SELECT h.dom_id, IFNULL(c.pvt_key,''), IFNULL(c.cert,''), IFNULL(c.ca_cert,'') FROM hosting h JOIN certificates c ON c.id=h.certificate_id WHERE h.dom_id IN (`+strings.Join(ids, ",")+`)`) {
-		if len(row) < 4 {
+	for _, row := range p.optional("certificates", i18n.T(p.ctx, "Sertifikalar"), `SELECT h.dom_id, IFNULL(c.pvt_key,''), IFNULL(c.cert,''), IFNULL(c.ca_cert,''), IFNULL(c.cert_file,'') FROM hosting h JOIN certificates c ON c.id=h.certificate_id WHERE h.dom_id IN (`+strings.Join(ids, ",")+`)`) {
+		if len(row) < 5 {
 			continue
 		}
 		d := p.domainByID(atoi(row[0]))
-		if d == nil || row[1] == "" || row[2] == "" {
+		if d == nil {
 			continue
 		}
-		if err := p.file("apache_tls/"+d.name, []byte(row[1]+"\n"+row[2]+"\n"+row[3]+"\n")); err != nil {
+		bundle := row[1] + "\n" + row[2] + "\n" + row[3] + "\n"
+		if !strings.Contains(row[1], "PRIVATE KEY-----") || !strings.Contains(row[2], "CERTIFICATE-----") {
+			bundle = p.certFile(row[4], d.name)
+			if bundle == "" {
+				continue
+			}
+			bundle += "\n" + row[3] + "\n"
+		}
+		if err := p.file("apache_tls/"+d.name, []byte(bundle)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+var certFileRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+
+// certFile reads a certificate's file from Plesk's certificates folder:
+// its key and certificate, in PEM.
+func (p *pleskPull) certFile(name, domain string) string {
+	name = path.Base(name)
+	if !certFileRe.MatchString(name) || strings.HasPrefix(name, ".") {
+		return ""
+	}
+	var b bytes.Buffer
+	if err := p.r.run(p.ctx, "cat /usr/local/psa/var/certificates/"+shellQuote(name), limitWriter(&b, 1<<20)); err != nil {
+		p.readFailed(i18n.T(p.ctx, "%s sertifikası", domain), err)
+		return ""
+	}
+	if !strings.Contains(b.String(), "PRIVATE KEY-----") {
+		return ""
+	}
+	return b.String()
 }
 
 // cronAndFTP writes the system user's cron jobs and the additional FTP
