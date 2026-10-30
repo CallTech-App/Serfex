@@ -13,6 +13,11 @@ do not slow the sites down.
   certificates.
 
 Customer files are archived by the customer's own account, never as root.
+A file that account cannot read (for example a copy made with `sudo cp`,
+owned by root) is left out instead of failing the site's backup: the
+backup's details list it as a warning with the account to give it to
+(`sudo chown <user>: <file>`), or delete it. Once fixed, the next backup,
+incremental or full, takes it.
 `*/storage/framework/cache/*` and `*/node_modules/*` are left out by
 default; add your own exclusions and sites to skip under Schedule →
 Advanced.

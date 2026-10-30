@@ -442,16 +442,16 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 			excludes = append(excludes, "--exclude="+e)
 		}
 		fmt.Fprintln(log, "  "+i18n.T(ctx, "Dosyalar arşivleniyor"))
-		commit, incr, warn, err := m.tarAs(ctx, account, "files", s.Domain, spec, s.webDir(), excludes, filepath.Join(tmp, "files.tar.gz"))
+		commit, incr, warns, err := m.tarAs(ctx, account, "files", s.Domain, spec, s.webDir(), excludes, filepath.Join(tmp, "files.tar.gz"))
 		if err != nil {
 			return nil, fmt.Errorf("files: %w", err)
 		}
 		if incr {
 			ir.Incremental = append(ir.Incremental, "files")
 		}
-		if warn != "" {
-			ir.Warnings = append(ir.Warnings, warn)
-			fmt.Fprintf(log, "  ⚠ %s\n", warn)
+		ir.Warnings = append(ir.Warnings, warns...)
+		for _, w := range warns {
+			fmt.Fprintf(log, "  ⚠ %s\n", w)
 		}
 		if commit != nil {
 			pending = append(pending, commit)
@@ -460,13 +460,14 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 	}
 	if it.Home {
 		fmt.Fprintln(log, "  "+i18n.T(ctx, "Hesabın diğer dosyaları arşivleniyor"))
-		_, _, warn, err := m.tarAs(ctx, account, "", s.Domain, CreateSpec{}, s.home(),
+		_, _, warns, err := m.tarAs(ctx, account, "", s.Domain, CreateSpec{}, s.home(),
 			[]string{"--exclude=./web", "--exclude=./tmp", "--exclude=./.cache"}, filepath.Join(tmp, "home.tar.gz"))
 		if err != nil {
 			return nil, fmt.Errorf("home: %w", err)
 		}
-		if warn != "" {
-			ir.Warnings = append(ir.Warnings, warn)
+		ir.Warnings = append(ir.Warnings, warns...)
+		for _, w := range warns {
+			fmt.Fprintf(log, "  ⚠ %s\n", w)
 		}
 		ir.Parts["home"] = fileSize(filepath.Join(tmp, "home.tar.gz"))
 	}
@@ -503,15 +504,16 @@ func (m *Manager) siteParts(ctx context.Context, spec CreateSpec, it ItemSpec, t
 			ir.Skipped["mail"] = i18n.T(ctx, "bu alan adında saklanan posta yok")
 		default:
 			fmt.Fprintln(log, "  "+i18n.T(ctx, "Posta kutuları arşivleniyor"))
-			commit, incr, warn, err := m.tarAs(ctx, vmail, "mail", s.Domain, spec, dir, nil, filepath.Join(tmp, "mail.tar.gz"))
+			commit, incr, warns, err := m.tarAs(ctx, vmail, "mail", s.Domain, spec, dir, nil, filepath.Join(tmp, "mail.tar.gz"))
 			if err != nil {
 				return nil, fmt.Errorf("mail: %w", err)
 			}
 			if incr {
 				ir.Incremental = append(ir.Incremental, "mail")
 			}
-			if warn != "" {
-				ir.Warnings = append(ir.Warnings, warn)
+			ir.Warnings = append(ir.Warnings, warns...)
+			for _, w := range warns {
+				fmt.Fprintf(log, "  ⚠ %s\n", w)
 			}
 			if commit != nil {
 				pending = append(pending, commit)
@@ -632,20 +634,22 @@ func (m *Manager) dumpDatabase(ctx context.Context, d DatabaseRef, file string) 
 // tarAs archives dir as account into file. With a part name, the archive
 // is a listed-incremental one: incremental on the chain's saved state when
 // asked for and there is one, a full one otherwise. The returned commit
-// saves the new state (only for chained backups). warn is set when tar
-// read files that changed meanwhile, which does not fail the backup.
-func (m *Manager) tarAs(ctx context.Context, account host.User, part, domain string, spec CreateSpec, dir string, excludes []string, file string) (commit func() error, incremental bool, warn string, err error) {
+// saves the new state (only for chained backups). warns tell of files
+// that changed while tar read them and of files the account cannot read
+// (a root-owned leftover, say): tar goes on without those, and neither
+// fails the backup.
+func (m *Manager) tarAs(ctx context.Context, account host.User, part, domain string, spec CreateSpec, dir string, excludes []string, file string) (commit func() error, incremental bool, warns []string, err error) {
 	f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
-		return nil, false, "", err
+		return nil, false, nil, err
 	}
 	defer f.Close()
-	args := []string{"-czf", "-", "--one-file-system"}
+	args := []string{"-czf", "-", "--one-file-system", "--ignore-failed-read"}
 	var work, snar, state string
 	if part != "" {
 		work, err = m.workDir(account)
 		if err != nil {
-			return nil, false, "", err
+			return nil, false, nil, err
 		}
 		defer m.removeWork(context.WithoutCancel(ctx), account, work)
 		snar = work + "/" + part + ".snar"
@@ -653,16 +657,16 @@ func (m *Manager) tarAs(ctx context.Context, account host.User, part, domain str
 		if spec.Incremental {
 			if prev, err := os.ReadFile(m.h.Path(state)); err == nil {
 				if err := os.WriteFile(m.h.Path(snar), prev, 0o600); err != nil {
-					return nil, false, "", err
+					return nil, false, nil, err
 				}
 				if err := m.h.Chown(m.h.Path(snar), account.UID, account.GID); err != nil {
-					return nil, false, "", err
+					return nil, false, nil, err
 				}
 				incremental = true
 			}
 		}
 		if err := m.h.Chown(m.h.Path(work), account.UID, account.GID); err != nil {
-			return nil, false, "", err
+			return nil, false, nil, err
 		}
 		args = append(args, "--listed-incremental="+snar)
 	}
@@ -671,19 +675,22 @@ func (m *Manager) tarAs(ctx context.Context, account host.User, part, domain str
 	out, err := m.h.Run(ctx, c)
 	if err != nil {
 		if host.ExitCode(err) != 1 {
-			return nil, false, "", fmt.Errorf("tar failed: %s", firstLine(out))
+			return nil, false, nil, fmt.Errorf("tar failed: %s", firstLine(out))
 		}
-		warn = i18n.T(ctx, "bazı dosyalar okunurken değişti: %s", firstLine(out))
+		warns = append(warns, i18n.T(ctx, "bazı dosyalar okunurken değişti: %s", firstLine(changed(out))))
+	}
+	if paths := unreadable(out); len(paths) > 0 {
+		warns = append(warns, unreadableWarning(ctx, account.Name, paths))
 	}
 	if err := f.Close(); err != nil {
-		return nil, false, "", err
+		return nil, false, nil, err
 	}
 	if part == "" || !spec.Chain {
-		return nil, incremental, warn, nil
+		return nil, incremental, warns, nil
 	}
 	data, err := readOwned(m.h.Path(snar), account.UID, 256<<20)
 	if err != nil {
-		return nil, incremental, warn, err
+		return nil, incremental, warns, err
 	}
 	return func() error {
 		tmp := m.h.Path(state + ".tmp")
@@ -691,7 +698,49 @@ func (m *Manager) tarAs(ctx context.Context, account host.User, part, domain str
 			return err
 		}
 		return os.Rename(tmp, m.h.Path(state))
-	}, incremental, warn, nil
+	}, incremental, warns, nil
+}
+
+// unreadable returns the paths (relative to the archived directory) tar
+// went on without under --ignore-failed-read, as it names them in
+// "tar: ./a/b: Warning: Cannot open: Permission denied".
+func unreadable(out string) []string {
+	var paths []string
+	for _, line := range strings.Split(out, "\n") {
+		rest, ok := strings.CutPrefix(line, "tar: ")
+		if !ok {
+			continue
+		}
+		if i := strings.LastIndex(rest, ": Warning: Cannot "); i > 0 {
+			paths = append(paths, rest[:i])
+		}
+	}
+	return paths
+}
+
+// changed returns tar's output without the lines unreadable reads.
+func changed(out string) string {
+	var lines []string
+	for _, line := range strings.Split(out, "\n") {
+		if !strings.Contains(line, ": Warning: Cannot ") {
+			lines = append(lines, line)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// unreadableWarning tells which files the account could not read, and
+// how to let the next backup take them.
+func unreadableWarning(ctx context.Context, account string, paths []string) string {
+	const shown = 3
+	list := strings.Join(paths[:min(len(paths), shown)], ", ")
+	if len(paths) > shown {
+		list += " " + i18n.T(ctx, "ve %d dosya daha", len(paths)-shown)
+	}
+	if len(paths) == 1 {
+		return i18n.T(ctx, "%s kullanıcısının okuyamadığı bir dosya yedeğe alınmadı; sahibini %s yapın ya da silin: %s", account, account, list)
+	}
+	return i18n.T(ctx, "%s kullanıcısının okuyamadığı %d dosya yedeğe alınmadı; sahibini %s yapın ya da silin: %s", account, len(paths), account, list)
 }
 
 // workDir makes a private scratch directory for account (owned by root
