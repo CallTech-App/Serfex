@@ -424,8 +424,16 @@ type recorder struct {
 
 func (r *recorder) Run(ctx context.Context, c host.Command) (string, error) {
 	if c.Name == "mysql" {
-		r.scripts = append(r.scripts, string(c.Stdin))
-		return r.answer(string(c.Stdin)), nil
+		in := string(c.Stdin)
+		if c.Input != nil {
+			b, err := io.ReadAll(c.Input)
+			if err != nil {
+				return "", err
+			}
+			in = string(b)
+		}
+		r.scripts = append(r.scripts, in)
+		return r.answer(in), nil
 	}
 	return r.Simulator.Run(ctx, c)
 }

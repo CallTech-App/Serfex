@@ -108,6 +108,13 @@ func (m *Manager) Load(ctx context.Context, server, name, site string, r io.Read
 	if err := m.saveState(st); err != nil {
 		return opError(err)
 	}
+	if p, _ := m.installedProduct(server); p.name == MySQL {
+		// A dump made on MariaDB (another panel's, or this server's before
+		// it moved to MySQL) can name collations MySQL lacks.
+		rc := mariaDBToMySQL(r)
+		defer rc.Close()
+		r = rc
+	}
 	if err := e.loadDump(ctx, name, r, m.wrapped); err != nil {
 		return opError(fmt.Errorf("loading the dump of %s failed: %w", name, err))
 	}
