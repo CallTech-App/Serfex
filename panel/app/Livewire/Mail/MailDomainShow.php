@@ -18,6 +18,7 @@ use App\Services\Mail\MailUsage;
 use App\Services\Stats\MailTraffic;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -35,6 +36,10 @@ class MailDomainShow extends Component
     private const LOCAL = '/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/';
 
     public int $domainId;
+
+    /** Set when the page is shown inside its site (Siteler → site → E-posta). */
+    #[Locked]
+    public ?int $siteId = null;
 
     #[Url(except: 'mailboxes')]
     public string $tab = 'mailboxes';
@@ -109,7 +114,9 @@ class MailDomainShow extends Component
     {
         if ($this->domain() === null) {
             session()->flash('toast', __('E-posta kapatıldı.'));
-            $this->redirectRoute('mail.index', navigate: true);
+            $this->siteId !== null
+                ? $this->redirectRoute('sites.mail', ['site' => $this->siteId], navigate: true)
+                : $this->redirectRoute('mail.index', navigate: true);
         }
     }
 

@@ -13,15 +13,9 @@
 @endphp
 <div class="space-y-6">
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('SSH erişimi') }}</span>
-        </nav>
-        <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('SSH erişimi') }}</h1>
+        <x-site-header :site="$site" active="overview" :tool="__('SSH erişimi')" />
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+            <h1 class="text-[18px] font-semibold tracking-tight">{{ __('SSH erişimi') }}</h1>
             <a href="{{ route('sites.ftp', $site) }}" wire:navigate class="{{ $btn }}"><x-icon name="hard-drive-upload" />{{ __('FTP hesapları') }}</a>
         </div>
         <p class="mt-1 max-w-3xl text-[13px] text-muted">

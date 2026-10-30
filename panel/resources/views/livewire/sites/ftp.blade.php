@@ -4,15 +4,9 @@
 @endphp
 <div class="space-y-6">
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('FTP hesapları') }}</span>
-        </nav>
-        <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('FTP hesapları') }}</h1>
+        <x-site-header :site="$site" active="files" :tool="__('FTP hesapları')" />
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+            <h1 class="text-[18px] font-semibold tracking-tight">{{ __('FTP hesapları') }}</h1>
             <a href="{{ route('sites.files', $site) }}" wire:navigate class="{{ $btn }} font-medium"><x-icon name="folder" />{{ __('Dosya Yöneticisi') }}</a>
         </div>
         <p class="mt-1 text-[13px] text-muted">

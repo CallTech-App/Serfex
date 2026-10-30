@@ -17,14 +17,8 @@
     @endif
 
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('Alan adları') }}</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Alan adları') }}</h1>
+        <x-site-header :site="$site" active="domains" :tool="__('Alan adları')" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Alan adları') }}</h1>
         <p class="mt-1 text-[13px] text-muted">
             <x-t text=":domain sitesinin yanıt verdiği diğer adlar. Her yeni ad için DNS kaydı, bölgesi bu sunucudaysa kendiliğinden yazılır; DNS'i bu sunucuya işaret ettiğinde sitenin Let's Encrypt sertifikasına eklenir."><x-slot:domain><span class="font-mono text-fg">{{ $site->domain }}</span></x-slot:domain></x-t>
         </p>

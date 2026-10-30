@@ -15,26 +15,28 @@
         <div wire:poll.2s="refreshStatus" hidden></div>
     @endif
 
-    {{-- Title --}}
-    <div>
-        <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('mail.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />{{ __('E-posta') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="font-mono text-fg">{{ $domain->name }}</span>
-        </nav>
-        <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <div class="flex min-w-0 items-center gap-3">
-                <h1 class="truncate font-mono text-[22px] font-semibold tracking-tight">{{ $domain->name }}</h1>
-                <x-status-badge :status="$domain->status" />
+    {{-- Title; inside a site, the site's header stands above instead. --}}
+    @if ($siteId === null)
+        <div>
+            <nav class="flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
+                <a href="{{ route('mail.index') }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" />{{ __('E-posta') }}</a>
+                <x-icon name="chevron-right" class="size-3.5" />
+                <span class="font-mono text-fg">{{ $domain->name }}</span>
+            </nav>
+            <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                <div class="flex min-w-0 items-center gap-3">
+                    <h1 class="truncate font-mono text-[22px] font-semibold tracking-tight">{{ $domain->name }}</h1>
+                    <x-status-badge :status="$domain->status" />
+                </div>
+                @if ($domain->site)
+                    <a href="{{ route('sites.show', $domain->site) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                        <x-icon name="globe" />{{ __('Siteye git') }}
+                    </a>
+                @endif
             </div>
-            @if ($domain->site)
-                <a href="{{ route('sites.show', $domain->site) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-                    <x-icon name="globe" />{{ __('Siteye git') }}
-                </a>
-            @endif
+            <p class="mt-1 text-[13px] text-muted">{{ __('Bu alan adının posta kutularını, yönlendiricilerini ve posta ayarlarını yönetin.') }}</p>
         </div>
-        <p class="mt-1 text-[13px] text-muted">{{ __('Bu alan adının posta kutularını, yönlendiricilerini ve posta ayarlarını yönetin.') }}</p>
-    </div>
+    @endif
 
     @if (auth()->user()->is_admin)
         @include('livewire.mail.server-state')

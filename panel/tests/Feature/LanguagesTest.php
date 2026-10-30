@@ -262,7 +262,7 @@ class LanguagesTest extends TestCase
             'ai.settings', 'ai.audit', 'dns.settings', 'mail.settings', 'ssl.settings', 'databases.settings'];
         $urls = array_map(fn ($route) => route($route), $routes);
         foreach (['sites.show', 'sites.ssl', 'sites.domains', 'sites.php', 'sites.cron', 'sites.errors', 'sites.stats', 'sites.files', 'sites.ftp',
-            'sites.logs', 'sites.disk', 'sites.protect', 'sites.waf', 'sites.scan', 'sites.directives', 'sites.wordpress'] as $route) {
+            'sites.logs', 'sites.disk', 'sites.protect', 'sites.waf', 'sites.scan', 'sites.directives', 'sites.wordpress', 'sites.mail'] as $route) {
             $urls[] = route($route, $site);
         }
         array_push($urls, route('dns.show', $zone), route('mail.show', $mail), route('databases.show', $database), route('laravel.show', $app),

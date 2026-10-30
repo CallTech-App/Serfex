@@ -10,6 +10,8 @@ use App\Jobs\SyncMailDomain;
 use App\Livewire\Mail\MailDomainShow;
 use App\Livewire\Mail\MailIndex;
 use App\Livewire\Mail\MailSettingsPage;
+use App\Livewire\Sites\SiteMail;
+use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\Mailbox;
 use App\Models\MailDomain;
@@ -18,6 +20,7 @@ use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Customers\Customers;
 use App\Services\Mail\MailDns;
 use App\Services\Mail\MailDomains;
 use App\Services\Mail\MailPassword;
@@ -402,11 +405,63 @@ class MailPagesTest extends TestCase
     public function test_site_page_links_to_its_mail(): void
     {
         $site = Site::factory()->create(['domain' => 'kahve.com.tr']);
-        $this->get('/sites/'.$site->id)->assertOk()->assertSee('E-posta kapalı')->assertSee(route('mail.index', ['enable' => 'kahve.com.tr']), false);
+        $this->get('/sites/'.$site->id)->assertOk()->assertSee('E-posta kapalı')->assertSee('E-postayı aç')->assertSee(route('sites.mail', $site), false);
 
         $domain = $this->domain();
         Mailbox::factory()->for($domain, 'domain')->create();
-        $this->get('/sites/'.$site->id)->assertOk()->assertSee('1 kutu')->assertSee(route('mail.show', $domain))->assertSee('https://mail.example.net/');
+        $this->get('/sites/'.$site->id)->assertOk()->assertSee('1 kutu')->assertSee(route('sites.mail', $site))
+            ->assertSee(route('sites.mail', ['site' => $site, 'tab' => 'forwarders']), false)->assertSee('https://mail.example.net/');
+    }
+
+    public function test_mail_is_turned_on_inside_the_site(): void
+    {
+        $site = Site::factory()->create(['domain' => 'kahve.com.tr']);
+        $this->get(route('sites.mail', $site))->assertOk()->assertSee('için e-posta kapalı')->assertSee('E-postayı aç');
+
+        $page = Livewire::test(SiteMail::class, ['site' => $site->id])->call('enable')->assertDispatched('toast');
+        $domain = MailDomain::where('name', 'kahve.com.tr')->sole();
+        $this->assertSame($site->id, $domain->site_id);
+        Queue::assertPushed(SyncMailDomain::class);
+
+        // Undo from the notification turns it off again.
+        $page->call('undoEnable', $domain->id);
+        $this->assertSame(MailDomainStatus::Deleting, $domain->fresh()->status);
+    }
+
+    public function test_site_mail_page_manages_the_mailboxes_in_place(): void
+    {
+        $site = Site::factory()->create(['domain' => 'kahve.com.tr', 'aliases' => ['kahve.com']]);
+        $domain = MailDomain::factory()->create(['name' => 'kahve.com.tr', 'site_id' => $site->id]);
+        Mailbox::factory()->for($domain, 'domain')->create(['name' => 'siparis']);
+
+        $this->get(route('sites.mail', $site))->assertOk()
+            ->assertSee('siparis')->assertSee('Posta kutusu oluştur')->assertSee('Site bölümleri')
+            // The E-posta list's own title is left out inside the site.
+            ->assertDontSee('Bu alan adının posta kutularını, yönlendiricilerini ve posta ayarlarını yönetin.')
+            ->assertSee(route('mail.index', ['enable' => 'kahve.com']), false);
+
+        // Turning mail off inside the site returns to the site's mail page.
+        Livewire::test(MailDomainShow::class, ['domain' => $domain->id, 'siteId' => $site->id])
+            ->tap(fn () => $domain->delete())
+            ->call('refreshStatus')
+            ->assertRedirect(route('sites.mail', $site));
+    }
+
+    public function test_site_mail_follows_the_package_and_the_owner(): void
+    {
+        $customer = Customer::factory()->withLogin()->create();
+        $customer->package->update(['allow_mail' => false]);
+        $site = Site::factory()->for(app(Customers::class)->account($customer))->create(['domain' => 'kahve.com.tr']);
+        $other = Site::factory()->create(['domain' => 'baska.com.tr']);
+
+        $this->actingAs($customer->user);
+        $this->get(route('sites.mail', $site))->assertForbidden();
+        $this->get(route('sites.show', $site))->assertOk()->assertDontSee(route('sites.mail', $site));
+
+        $customer->package->update(['allow_mail' => true]);
+        $this->actingAs($customer->user->fresh());
+        $this->get(route('sites.mail', $site))->assertOk();
+        $this->get(route('sites.mail', $other))->assertNotFound();
     }
 
     public function test_new_sites_get_mail_once_the_server_is_set_up(): void

@@ -77,6 +77,7 @@ use App\Livewire\Sites\SiteFtp;
 use App\Livewire\Sites\SiteGit;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SiteLogs;
+use App\Livewire\Sites\SiteMail;
 use App\Livewire\Sites\SiteMigrate;
 use App\Livewire\Sites\SitePackages;
 use App\Livewire\Sites\SitePhp;
@@ -166,6 +167,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/sites/{site}/wordpress', SiteWordPress::class)->whereNumber('site')->name('sites.wordpress');
         Route::post('/sites/{site}/wordpress/login', WordPressLoginController::class)->whereNumber('site')->middleware('throttle:20,1')->name('sites.wordpress.login');
         Route::livewire('/sites/{site}/domains', SiteDomainList::class)->whereNumber('site')->name('sites.domains');
+        Route::livewire('/sites/{site}/mail', SiteMail::class)->whereNumber('site')->name('sites.mail');
         Route::livewire('/sites/{site}/error-pages', SiteErrorPages::class)->whereNumber('site')->name('sites.errors');
         Route::livewire('/sites/{site}/logs', SiteLogs::class)->whereNumber('site')->name('sites.logs');
         Route::get('/sites/{site}/logs/download', SiteLogController::class)->whereNumber('site')->middleware('throttle:30,1')->name('sites.logs.download');

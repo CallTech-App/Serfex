@@ -4,14 +4,8 @@
 @endphp
 <div class="space-y-6">
     <div>
-        <nav class="flex flex-wrap items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-            <a href="{{ route('sites.index') }}" wire:navigate class="hover:text-accent">{{ __('Siteler') }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <a href="{{ route('sites.show', $site) }}" wire:navigate class="font-mono hover:text-accent">{{ $site->domain }}</a>
-            <x-icon name="chevron-right" class="size-3.5" />
-            <span class="text-fg">{{ __('Hata sayfaları') }}</span>
-        </nav>
-        <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('Hata sayfaları') }}</h1>
+        <x-site-header :site="$site" active="overview" :tool="__('Hata sayfaları')" />
+        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Hata sayfaları') }}</h1>
         <p class="mt-1 text-[13px] text-muted">
             {{ __('Web sunucusu bir hatayı kendisi yanıtladığında ziyaretçiler Nginx\'in düz sayfası yerine bu sayfaları görür. Sitenizin kendi kodunun ürettiği hata sayfaları (Laravel, WordPress) değişmez. Sayfalar alt alan adlarında da kullanılır.') }}
         </p>
