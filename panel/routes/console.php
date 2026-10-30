@@ -22,6 +22,7 @@ Schedule::command('serfex:files-trash')->dailyAt('03:40')->withoutOverlapping();
 Schedule::command('serfex:security-scan')->weeklyOn(0, '03:20')->withoutOverlapping();
 Schedule::command('serfex:fail2ban-sync')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:services-check')->everyMinute()->withoutOverlapping();
+Schedule::command('serfex:jobs-recover')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:notify')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('serfex:settings-check')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:cron-history')->everyFiveMinutes()->withoutOverlapping();

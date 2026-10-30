@@ -5441,5 +5441,11 @@
     "İlk kez :since istendi.": "First asked for :since.",
     ":subject veritabanı Plesk'te bu aboneliğe bağlı değil, ama sitenin ayar dosyasında (.env ya da wp-config.php) geçtiği için taşımaya eklendi.": "The database :subject is not this subscription's in Plesk, but the site's settings file (.env or wp-config.php) uses it, so it moves too.",
     ":subject veritabanı sitenin ayar dosyasında geçiyor ama eski sunucuda yok; taşınmaz.": "The site's settings file names the database :subject, but it is not on the old server; it does not move.",
-    "Plesk'ten okunamadı, bu bölüm eksik görünebilir: :subject": "Could not be read from Plesk, so this part may be incomplete: :subject"
+    "Plesk'ten okunamadı, bu bölüm eksik görünebilir: :subject": "Could not be read from Plesk, so this part may be incomplete: :subject",
+    "Panelin iş kuyruğu bu iş sürerken durduruldu (panel güncellemesi ya da yeniden başlatma).": "The panel's job queue was stopped while this job ran (a panel update or a restart).",
+    "Silme yarıda kaldı: :error": "The deletion was interrupted: :error",
+    "Site silinemedi. Silmeyi yeniden başlatabilirsiniz.": "The site could not be deleted. You can start the deletion again.",
+    "Silmeyi yeniden dene": "Retry deletion",
+    "Arka planda uzun bir iş sürüyor (site silme, taşıma, kopyalama ya da tarama); güncelleme panelin iş kuyruklarını durdurur. Bitince yeniden deneyin.": "A long job is running in the background (a site deletion, migration, copy or scan); an update stops the panel's job queues. Try again when it has finished.",
+    "Arka plandaki iş :minutes dakikada bitmedi; güncelleme başlatılmadı. Bitince yeniden deneyin.": "The background job did not finish within :minutes minutes; the update was not started. Try again when it has finished."
 }

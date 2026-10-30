@@ -13,7 +13,9 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 use App\Services\Backups\Backups;
+use App\Services\Queue\RunningJobs;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 
 /**
@@ -42,9 +44,13 @@ class Updates
      */
     public const KNOWN_KEY = 'serfex.updates.known';
 
+    /** How long an update waits for a job on the backups queue to finish. */
+    public const DRAIN_SECONDS = 900;
+
     public function __construct(
         private readonly AgentClient $agent,
         private readonly Backups $backups,
+        private readonly RunningJobs $jobs,
     ) {}
 
     /**
@@ -156,6 +162,9 @@ class Updates
         if (ComponentOperation::running()->exists()) {
             return __('Yazılım Yönetimi\'nde bir işlem sürüyor. Bitince yeniden deneyin.');
         }
+        if ($this->jobs->busy('backups')) {
+            return __('Arka planda uzun bir iş sürüyor (site silme, taşıma, kopyalama ya da tarama); güncelleme panelin iş kuyruklarını durdurur. Bitince yeniden deneyin.');
+        }
 
         return null;
     }
@@ -219,6 +228,17 @@ class Updates
     public function begin(PanelUpdate $update): void
     {
         $update->update(['status' => 'backing_up', 'started_at' => now()]);
+        // The agent stops the panel's workers: a long job that started on
+        // the backups queue since the update was asked for finishes first
+        // rather than being cut off half-way.
+        for ($waited = 0; $this->jobs->busy('backups'); $waited += 5) {
+            if ($waited >= self::DRAIN_SECONDS) {
+                $this->fail($update, __('Arka plandaki iş :minutes dakikada bitmedi; güncelleme başlatılmadı. Bitince yeniden deneyin.', ['minutes' => intdiv(self::DRAIN_SECONDS, 60)]));
+
+                return;
+            }
+            Sleep::for(5)->seconds();
+        }
         $backup = $this->backups->takePanel($update->user);
         $update->update(['backup_id' => $backup->id]);
         $item = $backup->items()->first();

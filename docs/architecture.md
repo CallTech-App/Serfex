@@ -109,10 +109,15 @@ in Turkish or English.
   `Agent\AgentClient` is the only way to the agent.
 - **Jobs** on the database queue do anything slow (provisioning, certificates,
   deployments, component installs). Backups and restores have their own queue
-  (`backups`) so a long backup never holds up site work.
+  (`backups`) so a long backup never holds up site work. A worker holds a
+  PostgreSQL advisory lock while it runs a job (`Queue\RunningJobs`); a job
+  still marked as taken whose lock is free was cut off by a stopped worker
+  (an update, a restart) and `serfex:jobs-recover` fails it within a minute,
+  so its `failed()` records what happened. Updates wait for a running job on
+  the `backups` queue before they stop the workers.
 - **Scheduled commands** (`routes/console.php`), every minute unless noted:
   `serfex:monitor-record`, `serfex:stats-collect`, `serfex:services-check`,
-  `serfex:fail2ban-sync`, `serfex:settings-check`; every 5 minutes
+  `serfex:fail2ban-sync`, `serfex:settings-check`, `serfex:jobs-recover`; every 5 minutes
   `serfex:backups`, `serfex:laravel-backups`, `serfex:notify`,
   `serfex:cron-history`; every 30 minutes `serfex:disk-usage`,
   `serfex:mail-usage`; hourly `serfex:ssl-renew`, `serfex:mail-senders`, `serfex:stats-rollup`;

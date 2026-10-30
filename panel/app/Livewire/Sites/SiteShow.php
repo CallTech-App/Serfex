@@ -86,7 +86,8 @@ class SiteShow extends Component
     public function retry(): void
     {
         $site = $this->site();
-        if ($site === null || $site->status !== SiteStatus::Failed) {
+        // A deletion that did not finish is started again from its dialog.
+        if ($site === null || $site->status !== SiteStatus::Failed || $site->failed_action === Site::FAILED_DELETE) {
             return;
         }
         $site->update(['status' => SiteStatus::Provisioning, 'last_error' => null]);

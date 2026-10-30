@@ -31,7 +31,7 @@ func readDatabases(ctx context.Context, h host.Host) ([]dbConn, []string) {
 		}
 	}
 	if _, err := os.Stat(h.Path(postgresSocket)); err == nil {
-		c, err := query(ctx, h, host.AsUser("postgres", host.Command{Name: "psql", Args: []string{"-XAtq", "-F", "\t", "-c",
+		c, err := query(ctx, h, asPostgres(host.Command{Name: "psql", Args: []string{"-XAtq", "-F", "\t", "-c",
 			"SELECT usename, datname, CASE WHEN state = 'active' THEN 'Query' ELSE 'Sleep' END, " +
 				"COALESCE(EXTRACT(EPOCH FROM now() - query_start)::int, 0) FROM pg_stat_activity " +
 				"WHERE backend_type = 'client backend' AND pid <> pg_backend_pid()"}}), "postgresql")
@@ -41,6 +41,14 @@ func readDatabases(ctx context.Context, h host.Host) ([]dbConn, []string) {
 		}
 	}
 	return conns, servers
+}
+
+// asPostgres runs c as the postgres account the way runuser would, but
+// without a PAM login session: runuser opens and closes one on every
+// sample, and every two seconds the agent's journal got a pair of
+// "session opened/closed for user postgres" lines.
+func asPostgres(c host.Command) host.Command {
+	return host.Command{Name: "setpriv", Args: append([]string{"--reuid=postgres", "--regid=postgres", "--init-groups", "--reset-env", "--", c.Name}, c.Args...)}
 }
 
 func query(ctx context.Context, h host.Host, c host.Command, server string) ([]dbConn, error) {

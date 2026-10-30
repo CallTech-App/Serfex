@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\SiteStatus;
+use App\Models\Backup;
 use App\Models\DnsZone;
 use App\Models\LaravelPreview;
 use App\Models\MailDomain;
@@ -20,6 +21,7 @@ use App\Services\Sites\CronJobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Removes a site from the server (configuration and files) and then from
@@ -57,7 +59,7 @@ class DeleteSite implements ShouldQueue
             return;
         }
         if ($this->backup && ($why = $this->backUp($site)) !== null) {
-            $site->update(['status' => SiteStatus::Failed, 'last_error' => __('Silmeden önce yedek alınamadı, site silinmedi: :error', ['error' => $why])]);
+            $site->update(['status' => SiteStatus::Failed, 'failed_action' => Site::FAILED_DELETE, 'last_error' => __('Silmeden önce yedek alınamadı, site silinmedi: :error', ['error' => $why])]);
 
             return;
         }
@@ -103,7 +105,7 @@ class DeleteSite implements ShouldQueue
                 'remove_user' => $this->removeUser && $lastSite,
             ], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
-            $site->update(['status' => SiteStatus::Failed, 'last_error' => $e->getMessage()]);
+            $site->update(['status' => SiteStatus::Failed, 'failed_action' => Site::FAILED_DELETE, 'last_error' => $e->getMessage()]);
 
             return;
         }
@@ -143,6 +145,24 @@ class DeleteSite implements ShouldQueue
         if ($this->removeZone && $siteZones->isNotEmpty()) {
             $zones->delete(...$siteZones->map->fresh()->filter()->all());
         }
+    }
+
+    /**
+     * The deletion broke off (an error, or its worker was stopped by a panel
+     * update): the site shows that, so it can be deleted again, and a
+     * backup it was taking stops too.
+     */
+    public function failed(?Throwable $e): void
+    {
+        $site = Site::find($this->site->id);
+        if ($site !== null && $site->status === SiteStatus::Deleting) {
+            $site->update(['status' => SiteStatus::Failed, 'failed_action' => Site::FAILED_DELETE,
+                'last_error' => __('Silme yarıda kaldı: :error', ['error' => $e?->getMessage() ?: __('bilinmeyen hata')])]);
+        }
+        $backups = app(Backups::class);
+        Backup::where('trigger', 'delete')->whereIn('status', ['queued', 'running'])
+            ->whereHas('items', fn ($q) => $q->where('site_id', $this->site->id))
+            ->get()->each(fn (Backup $backup) => $backups->abandon($backup));
     }
 
     /**

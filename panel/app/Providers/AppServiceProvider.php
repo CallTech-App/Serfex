@@ -12,6 +12,7 @@ use App\Models\LaravelApp;
 use App\Services\Agent\AgentClient;
 use App\Services\Audit\AuditLog;
 use App\Services\Databases\DatabaseServers;
+use App\Services\Queue\RunningJobs;
 use App\Services\Settings\PanelSettings;
 use App\Support\Locales;
 use App\Support\PanelValidator;
@@ -19,6 +20,8 @@ use App\Support\ReadOnlyGuard;
 use App\Support\Translator;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Events\DiagnosingHealth;
+use Illuminate\Queue\Events\JobExceptionOccurred;
+use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
@@ -70,6 +73,10 @@ class AppServiceProvider extends ServiceProvider
         // A queued job works in the language of the person who started it.
         Queue::createPayloadUsing(fn () => ['locale' => app()->getLocale()]);
         Event::listen(JobProcessing::class, fn (JobProcessing $event) => Locales::apply($event->job->payload()['locale'] ?? Locales::serverDefault()));
+        // A running job holds a lock its worker loses when it stops, so a
+        // job left behind by a stopped worker can be told apart (RunningJobs).
+        Event::listen(JobProcessing::class, fn (JobProcessing $event) => app(RunningJobs::class)->started($event->job));
+        Event::listen([JobProcessed::class, JobExceptionOccurred::class], fn (JobProcessed|JobExceptionOccurred $event) => app(RunningJobs::class)->finished($event->job));
 
         // Every Livewire mount and call is authorized here, before the
         // component runs (see Access).
