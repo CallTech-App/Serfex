@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'cache', 'node_version'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'cache', 'node_version', 'failed_action'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -76,6 +76,19 @@ class Site extends Model
             'noindex' => 'boolean',
             'cache' => 'array',
         ];
+    }
+
+    /** failed_action of a deletion that did not finish. */
+    public const FAILED_DELETE = 'delete';
+
+    protected static function booted(): void
+    {
+        // What failed is forgotten once the site moves on.
+        static::saving(function (Site $site) {
+            if ($site->isDirty('status') && $site->status !== SiteStatus::Failed) {
+                $site->failed_action = null;
+            }
+        });
     }
 
     /**

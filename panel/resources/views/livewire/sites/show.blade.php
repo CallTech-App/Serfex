@@ -157,13 +157,23 @@
         <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
             <span class="absolute inset-y-0 left-0 w-1 bg-crit"></span>
             <x-icon name="triangle-alert" class="text-crit" />
-            <div class="min-w-0 flex-1">
-                <p class="font-medium">{{ __('Sunucuda son işlem tamamlanamadı. Önceki ayarlar geri yüklendi.') }}</p>
-                <p class="mt-0.5 font-mono text-[12.5px] break-words text-muted">{{ $site->last_error }}</p>
-            </div>
-            <button type="button" wire:click="retry" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
-                <x-icon name="refresh-cw" class="size-3.5" />{{ __('Tekrar dene') }}
-            </button>
+            @if ($site->failed_action === \App\Models\Site::FAILED_DELETE)
+                <div class="min-w-0 flex-1 basis-56">
+                    <p class="font-medium">{{ __('Site silinemedi. Silmeyi yeniden başlatabilirsiniz.') }}</p>
+                    <p class="mt-0.5 font-mono text-[12.5px] break-words text-muted">{{ $site->last_error }}</p>
+                </div>
+                <button type="button" wire:click="openDelete" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] text-crit hover:bg-surface-2">
+                    <x-icon name="refresh-cw" class="size-3.5" />{{ __('Silmeyi yeniden dene') }}
+                </button>
+            @else
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium">{{ __('Sunucuda son işlem tamamlanamadı. Önceki ayarlar geri yüklendi.') }}</p>
+                    <p class="mt-0.5 font-mono text-[12.5px] break-words text-muted">{{ $site->last_error }}</p>
+                </div>
+                <button type="button" wire:click="retry" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
+                    <x-icon name="refresh-cw" class="size-3.5" />{{ __('Tekrar dene') }}
+                </button>
+            @endif
         </div>
     @endif
 

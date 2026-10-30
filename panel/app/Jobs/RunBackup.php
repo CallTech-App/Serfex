@@ -39,8 +39,7 @@ class RunBackup implements ShouldQueue
     {
         $backup = $this->backup->fresh();
         if ($backup !== null && $backup->isRunning()) {
-            $backup->items()->where('status', 'pending')->update(['status' => 'failed', 'error' => __('Yedekleme yarıda kaldı.')]);
-            $backup->update(['status' => 'failed', 'error' => $e?->getMessage() ?? __('Yedekleme yarıda kaldı.'), 'finished_at' => now()]);
+            app(Backups::class)->abandon($backup, $e?->getMessage());
         }
     }
 }

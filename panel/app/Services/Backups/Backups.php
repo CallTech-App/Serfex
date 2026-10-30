@@ -316,6 +316,16 @@ class Backups
     }
 
     /**
+     * Records a backup whose job stopped half-way (it failed, or its worker
+     * was stopped) as failed.
+     */
+    public function abandon(Backup $backup, ?string $error = null): void
+    {
+        $backup->items()->where('status', 'pending')->update(['status' => 'failed', 'error' => __('Yedekleme yarıda kaldı.')]);
+        $backup->update(['status' => 'failed', 'error' => $error ?? __('Yedekleme yarıda kaldı.'), 'finished_at' => now()]);
+    }
+
+    /**
      * Takes a backup of the panel alone (its database, settings and the
      * agent's state) now, on this server, before Serfex updates itself;
      * returns it.

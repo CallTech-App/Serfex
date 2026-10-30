@@ -11,6 +11,7 @@ use App\Services\Ssl\Certificates;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Throwable;
 
 /**
  * Asks the agent to create or update a site (with HTTPS when it has a
@@ -74,6 +75,18 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
             // Like AutoSSL: every new site gets a certificate once its DNS
             // points here.
             $certificates->autoIssue($site);
+        }
+    }
+
+    /**
+     * The agent never answered (an error, or the worker was stopped by a
+     * panel update): the site shows it failed, with Tekrar dene.
+     */
+    public function failed(?Throwable $e): void
+    {
+        $site = Site::find($this->site->id);
+        if ($site !== null && $site->status === SiteStatus::Provisioning) {
+            $site->update(['status' => SiteStatus::Failed, 'last_error' => $e?->getMessage() ?: __('bilinmeyen hata')]);
         }
     }
 }
