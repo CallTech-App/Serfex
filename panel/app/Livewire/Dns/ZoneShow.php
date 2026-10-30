@@ -11,6 +11,7 @@ use App\Services\Dns\Zones;
 use App\Support\DnsRecords;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -25,6 +26,10 @@ class ZoneShow extends Component
     private const TYPE_ORDER = ['NS', 'A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV', 'CAA'];
 
     public int $zoneId;
+
+    /** Set when the page is shown inside a site (Siteler → site → Alan adları ve DNS). */
+    #[Locked]
+    public ?int $siteId = null;
 
     #[Url(except: 'records')]
     public string $tab = 'records';
@@ -75,7 +80,9 @@ class ZoneShow extends Component
     {
         if ($this->zone() === null) {
             session()->flash('toast', __('DNS bölgesi silindi.'));
-            $this->redirectRoute('dns.index', navigate: true);
+            $this->siteId !== null
+                ? $this->redirectRoute('sites.dns', ['site' => $this->siteId], navigate: true)
+                : $this->redirectRoute('dns.index', navigate: true);
         }
     }
 

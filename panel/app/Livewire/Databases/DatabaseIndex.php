@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -38,6 +39,10 @@ class DatabaseIndex extends Component
     /** Only the databases of one site. */
     #[Url(as: 'site', except: 0)]
     public int $siteId = 0;
+
+    /** Opened inside a site (Siteler → site → Veritabanları): the site's header stands above. */
+    #[Locked]
+    public bool $inSite = false;
 
     // "Veritabanı oluştur"
     public bool $creating = false;
@@ -67,8 +72,12 @@ class DatabaseIndex extends Component
 
     public string $newUserAccess = 'all';
 
-    public function mount(DatabaseServers $servers): void
+    public function mount(DatabaseServers $servers, ?int $site = null): void
     {
+        if ($site !== null) {
+            $this->siteId = Site::visibleTo(auth()->user())->findOrFail($site)->id;
+            $this->inSite = true;
+        }
         $this->refreshServer($servers);
         if ($this->siteId !== 0 && Site::visibleTo(auth()->user())->whereKey($this->siteId)->doesntExist()) {
             $this->siteId = 0;
@@ -232,7 +241,9 @@ class DatabaseIndex extends Component
      */
     private function sites(): Collection
     {
-        return Site::visibleTo(auth()->user())->whereDoesntHave('preview')->with('systemUser')->orderBy('domain')->get();
+        return Site::visibleTo(auth()->user())->whereDoesntHave('preview')->with('systemUser')
+            ->when($this->inSite, fn ($q) => $q->whereKey($this->siteId))
+            ->orderBy('domain')->get();
     }
 
     /**
@@ -240,6 +251,8 @@ class DatabaseIndex extends Component
      */
     private function visibleDatabases(): Collection
     {
-        return Database::visibleTo(auth()->user())->with('systemUser')->orderBy('name')->get();
+        return Database::visibleTo(auth()->user())->with('systemUser')
+            ->when($this->inSite, fn ($q) => $q->where('site_id', $this->siteId))
+            ->orderBy('name')->get();
     }
 }

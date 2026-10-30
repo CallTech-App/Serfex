@@ -18,7 +18,8 @@
 
     <div>
         <x-site-header :site="$site" active="domains" :tool="__('Alan adları')" />
-        <h1 class="mt-6 text-[18px] font-semibold tracking-tight">{{ __('Alan adları') }}</h1>
+        <div class="mt-6">@include('livewire.sites.partials.domains-nav', ['current' => 'names'])</div>
+        <h1 class="mt-5 text-[18px] font-semibold tracking-tight">{{ __('Alan adları') }}</h1>
         <p class="mt-1 text-[13px] text-muted">
             <x-t text=":domain sitesinin yanıt verdiği diğer adlar. Her yeni ad için DNS kaydı, bölgesi bu sunucudaysa kendiliğinden yazılır; DNS'i bu sunucuya işaret ettiğinde sitenin Let's Encrypt sertifikasına eklenir."><x-slot:domain><span class="font-mono text-fg">{{ $site->domain }}</span></x-slot:domain></x-t>
         </p>

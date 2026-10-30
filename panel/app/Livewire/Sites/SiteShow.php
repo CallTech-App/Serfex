@@ -19,6 +19,7 @@ use App\Models\Site;
 use App\Services\Backups\Backups;
 use App\Services\Backups\BackupSettings;
 use App\Services\Components\Components;
+use App\Services\Dns\Zones;
 use App\Services\Mail\MailSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -144,7 +145,9 @@ class SiteShow extends Component
             'site' => $site,
             'otherSites' => $site->systemUser->sites()->whereKeyNot($site->id)->count(),
             // The site's own zone first; additional domains may have theirs.
-            'zone' => DnsZone::withCount('records')->where('site_id', $site->id)->orderByRaw('name = ? desc', [$site->domain])->first(),
+            'zone' => $zone = DnsZone::withCount('records')->where('site_id', $site->id)->orderByRaw('name = ? desc', [$site->domain])->first(),
+            // The zone holding the site's records, also a parent domain's (not deleted with the site).
+            'recordsZone' => $zone ?? app(Zones::class)->holding($site->domain)?->loadCount('records'),
             'subdomainCount' => $site->subdomains()->count(),
             'redirectCount' => $site->redirects()->count(),
             'databases' => Database::where('site_id', $site->id)->count(),

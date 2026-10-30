@@ -43,7 +43,7 @@
         ['files', __('Dosyalar ve veritabanları'), 'folder', route('sites.files', $site), [
             ['folder', __('Dosya Yöneticisi'), $docRoot ?? __('Dosyalara göz atın'), route('sites.files', $site), null, false, $site->document_root],
             ['hard-drive-upload', __('FTP hesapları'), $ftpAccounts ? __(':ftp_accounts hesap', ['ftp_accounts' => $ftpAccounts]) : __('Yok'), route('sites.ftp', $site), $ftpAccounts ? null : 'muted'],
-            ['database', __('Veritabanları'), $databases ? __(':databases veritabanı', ['databases' => $databases]) : __('Yok'), route('databases.index', ['site' => $site->id]), $databases ? null : 'muted'],
+            ['database', __('Veritabanları'), $databases ? __(':databases veritabanı', ['databases' => $databases]) : __('Yok'), route('sites.databases', $site), $databases ? null : 'muted'],
             ['key-round', __('Bağlantı bilgileri'), __('SFTP, veritabanı, SSH'), route('sites.connection', $site)],
             ['hard-drive', __('Disk kullanımı'), $site->disk_bytes === null ? __('Ölçülmedi') : \App\Support\Bytes::format($diskTotal), route('sites.disk', $site)],
             ['copy', __('Siteyi kopyala'), $site->copy_of_id ? __('Bir sitenin kopyası') : ($copyCount ? trans_choice(':count kopya', $copyCount) : __('Kopya yok')), route('sites.copy', $site), $site->copy_of_id || $copyCount ? null : 'muted'],
@@ -61,10 +61,10 @@
             ['forward', __('Yönlendiriciler'), __('E-posta kapalı'), route('sites.mail', $site), 'off'],
             ['inbox', 'Webmail', __('E-posta kapalı'), route('sites.mail', $site), 'off'],
         ])],
-        ['domains', __('Alan adları ve DNS'), 'network', route('sites.domains', $site), [
-            $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns'), null, 'muted'] : ($zone
-                ? ['network', __('DNS kayıtları'), __(':records_count kayıt', ['records_count' => $zone->records_count]), route('dns.show', $zone)]
-                : ['network', __('DNS kayıtları'), __('Bölge bu sunucuda değil'), null, 'muted']),
+        ['domains', __('Alan adları ve DNS'), 'network', $missing('dns') ? route('sites.domains', $site) : route('sites.dns', $site), [
+            $missing('dns') ? ['network', __('DNS kayıtları'), $missing('dns'), null, 'muted'] : ($recordsZone
+                ? ['network', __('DNS kayıtları'), __(':records_count kayıt', ['records_count' => $recordsZone->records_count]), route('sites.dns', $site)]
+                : ['network', __('DNS kayıtları'), __('Bölge bu sunucuda değil'), route('sites.dns', $site), 'muted']),
             ['globe', __('Alt alan adları'), $subdomainCount ? __(':subdomain_count alt alan adı', ['subdomain_count' => $subdomainCount]) : __('Yok'), route('sites.domains', $site), $subdomainCount ? null : 'muted'],
             ['link', __('Ek alan adları'), $site->aliases ? trans_choice(':count ad', count($site->aliases)) : __('Yok'), route('sites.domains', ['site' => $site, 'tab' => 'aliases']), $site->aliases ? null : 'muted'],
             ['signpost', __('Tercih edilen adres'), $site->wwwPair() === null ? __('www. yok') : ($site->preferredName() ?? __('İkisi de açılıyor')), route('sites.domains', ['site' => $site, 'tab' => 'aliases'])],
@@ -106,7 +106,7 @@
             ]),
         ]],
         ['backups', __('Yedekler, günlükler ve istatistik'), 'archive', null, [
-            $missing('backups') ? ['archive-restore', __('Yedekler'), $missing('backups'), null, 'muted'] : ['archive-restore', __('Yedekler'), $lastBackup ? __('Son: :text', ['text' => $backupText]) : __('Henüz yok'), route('backups.index', ['site' => $site->id]), $lastBackup ? 'ok' : 'muted'],
+            $missing('backups') ? ['archive-restore', __('Yedekler'), $missing('backups'), null, 'muted'] : ['archive-restore', __('Yedekler'), $lastBackup ? __('Son: :text', ['text' => $backupText]) : __('Henüz yok'), route('sites.backups', $site), $lastBackup ? 'ok' : 'muted'],
             ['file-text', __('Günlükler'), __('Erişim ve hata'), route('sites.logs', $site)],
             ['chart-column', __('İstatistikler'), $monthStats['visitors'] ? __('Bu ay :visitors ziyaretçi', ['visitors' => \App\Support\Num::format($monthStats['visitors'], 0)]) : __('Bu ay ziyaret yok'), route('sites.stats', $site), $monthStats['visitors'] ? null : 'muted'],
         ]],
@@ -204,7 +204,7 @@
     @endif
 
     {{-- Summary --}}
-    @php $backupCell = $user->allows('backups') ? route('backups.index', ['site' => $site->id]) : null; @endphp
+    @php $backupCell = $user->allows('backups') ? route('sites.backups', $site) : null; @endphp
     <section class="grid grid-cols-2 overflow-hidden rounded-xl border border-line bg-surface text-[13px] xl:grid-cols-4 [&>*]:min-w-0 [&>*]:border-line [&>*]:p-4 [&>*:nth-child(odd)]:border-r max-xl:[&>*:nth-child(-n+2)]:border-b xl:[&>*:not(:last-child)]:border-r">
         <a href="{{ route('sites.php', $site) }}" wire:navigate class="block hover:bg-surface-2/60">
             <p class="flex items-center gap-1.5 text-2xs font-medium tracking-[.06em] text-muted uppercase"><x-icon name="server" class="size-3.5" />{{ __('Web sunucusu') }}</p>

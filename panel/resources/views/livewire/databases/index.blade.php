@@ -8,20 +8,18 @@
     $tabs = ['databases' => __('Veritabanları'), 'users' => __('Kullanıcılar')];
 @endphp
 <div class="space-y-6">
+    @if ($inSite && $filterSite)
+        <x-site-header :site="$filterSite" active="databases" :tool="__('Veritabanları')" />
+    @endif
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            @if ($filterSite)
-                <nav class="mb-2 flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-                    <a href="{{ route('sites.show', $filterSite) }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" /><span class="font-mono">{{ $filterSite->domain }}</span></a>
-                    <x-icon name="chevron-right" class="size-3.5" />
-                    <span class="text-fg">{{ __('Veritabanları') }}</span>
-                </nav>
-            @endif
-            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Veritabanları') }}</h1>
+            <h1 class="{{ $inSite ? 'text-[18px]' : 'text-[22px]' }} font-semibold tracking-tight">{{ __('Veritabanları') }}</h1>
             <p class="mt-1 text-[13px] text-muted">
                 @if ($filterSite)
                     <x-t text=":domain sitesinin veritabanları ve kullanıcıları."><x-slot:domain><span class="font-mono">{{ $filterSite->domain }}</span></x-slot:domain></x-t>
-                    <button type="button" wire:click="$set('siteId', 0)" class="text-accent hover:underline">{{ __('Tümünü göster') }}</button>
+                    @unless ($inSite)
+                        <button type="button" wire:click="$set('siteId', 0)" class="text-accent hover:underline">{{ __('Tümünü göster') }}</button>
+                    @endunless
                 @else
                     {{ __(':is_admin Ayrıntı için bir veritabanına tıklayın.', ['is_admin' => auth()->user()->is_admin ? __('Bu sunucudaki müşteri veritabanları ve kullanıcıları.') : __('Sitelerinizin veritabanları ve kullanıcıları.')]) }}
                 @endif

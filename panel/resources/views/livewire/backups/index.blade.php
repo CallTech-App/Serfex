@@ -21,20 +21,18 @@
     $when = fn ($t) => \App\Support\When::withTime($t);
 @endphp
 <div class="space-y-6">
+    @if ($inSite && $filterSite)
+        <x-site-header :site="$filterSite" active="backups" :tool="__('Yedekler')" />
+    @endif
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            @if ($filterSite)
-                <nav class="mb-2 flex items-center gap-1.5 text-[13px] text-muted" aria-label="{{ __('Konum') }}">
-                    <a href="{{ route('sites.show', $filterSite) }}" wire:navigate class="flex items-center gap-1 hover:text-accent"><x-icon name="arrow-left" class="size-3.5" /><span class="font-mono">{{ $filterSite->domain }}</span></a>
-                    <x-icon name="chevron-right" class="size-3.5" />
-                    <span class="text-fg">{{ __('Yedekler') }}</span>
-                </nav>
-            @endif
-            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Yedekler') }}</h1>
+            <h1 class="{{ $inSite ? 'text-[18px]' : 'text-[22px]' }} font-semibold tracking-tight">{{ __('Yedekler') }}</h1>
             <p class="mt-1 max-w-3xl text-[13px] text-muted">
                 @if ($filterSite)
                     <x-t text=":domain sitesinin yedekleri: dosyalar, veritabanları, e-posta, DNS ve SSL."><x-slot:domain><span class="font-mono">{{ $filterSite->domain }}</span></x-slot:domain></x-t>
-                    <button type="button" wire:click="$set('siteId', 0)" class="text-accent hover:underline">{{ __('Tümünü göster') }}</button>
+                    @unless ($inSite)
+                        <button type="button" wire:click="$set('siteId', 0)" class="text-accent hover:underline">{{ __('Tümünü göster') }}</button>
+                    @endunless
                 @elseif ($admin)
                     {{ __('Sunucu ve site yedeklerini alın, geri yükleyin ve yedekleme hedeflerini yönetin.') }}
                 @else
@@ -43,7 +41,7 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
-            @if ($admin)
+            @if ($admin && ! $inSite)
                 <button type="button" wire:click="$set('tab', 'schedule')" class="{{ $btn }}"><x-icon name="calendar-clock" />{{ __('Zamanlama') }}</button>
             @endif
             <button type="button" wire:click="openBackup" @disabled($busy || ($sites->isEmpty() && ! $admin)) class="{{ $primary }}">
@@ -73,7 +71,8 @@
     @endif
 
     <section class="min-w-0 rounded-xl border border-line bg-surface">
-        @if ($admin)
+        {{-- Destinations and the schedule are the server's, not one site's. --}}
+        @if ($admin && ! $inSite)
             <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
                 @foreach ($this::TABS as $key => $label)
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"

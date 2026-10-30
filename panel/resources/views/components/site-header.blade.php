@@ -12,11 +12,11 @@
     $tabs = array_filter([
         'overview' => ['layout-dashboard', __('Genel bakış'), route('sites.show', $site)],
         'files' => ['folder', __('Dosyalar'), route('sites.files', $site)],
-        'databases' => ['database', __('Veritabanları'), route('databases.index', ['site' => $site->id])],
+        'databases' => ['database', __('Veritabanları'), route('sites.databases', $site)],
         'mail' => $user->allows('mail') ? ['mail', __('E-posta'), route('sites.mail', $site)] : null,
-        'domains' => ['network', __('Alan adları ve DNS'), route('sites.domains', $site)],
+        'domains' => ['network', __('Alan adları ve DNS'), $user->allows('dns') ? route('sites.dns', $site) : route('sites.domains', $site)],
         'security' => ['shield-check', __('SSL ve güvenlik'), route('sites.ssl', $site)],
-        'backups' => $user->allows('backups') ? ['archive', __('Yedekler'), route('backups.index', ['site' => $site->id])] : null,
+        'backups' => $user->allows('backups') ? ['archive', __('Yedekler'), route('sites.backups', $site)] : null,
         'logs' => ['scroll-text', __('Günlükler'), route('sites.logs', $site)],
     ]);
 @endphp
