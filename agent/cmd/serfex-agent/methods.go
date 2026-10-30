@@ -151,6 +151,12 @@ func registerMethods(srv *rpc.Server, svc services) {
 		syncLogRotation(ctx, svc)
 		return res, nil
 	})
+	handle(srv, "site.account.status", func(_ context.Context, q struct {
+		User string `json:"user"`
+	}) (any, error) {
+		ok, err := svc.sites.AccountExists(q.User)
+		return map[string]bool{"exists": ok}, err
+	})
 	handle(srv, "site.logs", func(_ context.Context, p site.LogsSpec) (any, error) { return svc.sites.Logs(p) })
 	handle(srv, "site.cache.status", func(_ context.Context, q struct {
 		Domain string `json:"domain"`

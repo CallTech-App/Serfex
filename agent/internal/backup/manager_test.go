@@ -152,6 +152,39 @@ func TestBackupHoldsFilesDatabasesMailAndTheSiteDescription(t *testing.T) {
 	}
 }
 
+func TestBackupOfASiteWhoseAccountIsGoneKeepsTheRest(t *testing.T) {
+	m, sim := newTest(t)
+	passwd := string(must(os.ReadFile(sim.Path("/etc/passwd"))))
+	var kept []string
+	for _, line := range strings.SplitAfter(passwd, "\n") {
+		if !strings.HasPrefix(line, user+":") {
+			kept = append(kept, line)
+		}
+	}
+	if err := os.WriteFile(sim.Path("/etc/passwd"), []byte(strings.Join(kept, "")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	it := siteItem()
+	it.Home = true
+	res, err := m.Create(context.Background(), CreateSpec{Key: "k1", Run: "run-1", Scope: "site", Server: "srv", Items: []ItemSpec{it}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ir := res.Items[0]
+	if ir.Error != "" || ir.Skipped["files"] != "sistem hesabı (magaza) sunucuda yok" {
+		t.Fatalf("unexpected item %+v", ir)
+	}
+	got := members(t, sim.Path(archivePath("k1", domain)))
+	want := []string{"manifest.json", "database-users.json", "databases/mysql-magaza_shop.sql.gz", "mail.tar.gz", "site.json"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("members %v, want %v", got, want)
+	}
+	log, _ := m.ReadRun("run-1", 0)
+	if !strings.Contains(log.Data, "dosyalar yedeklenmedi") {
+		t.Fatalf("log: %s", log.Data)
+	}
+}
+
 func TestRestoreBringsBackFilesAfterTheSiteChanged(t *testing.T) {
 	m, sim := newTest(t)
 	ctx := context.Background()

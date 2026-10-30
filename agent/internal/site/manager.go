@@ -619,7 +619,29 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 		}
 		res.UserRemoved = true
 	}
+	// An account that is gone already (a migration that stopped half way,
+	// a deletion cut off after userdel) counts as removed once no site
+	// folder is left in its home, so the panel forgets it too.
+	if spec.RemoveUser && !userExists {
+		left, err := os.ReadDir(m.h.Path(p.home + "/web"))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return res, &OperationError{err}
+		}
+		res.UserRemoved = len(left) == 0
+	}
 	return res, nil
+}
+
+// AccountExists tells whether a site's system account is on the server.
+func (m *Manager) AccountExists(name string) (bool, error) {
+	if err := ValidateUser(name); err != nil {
+		return false, err
+	}
+	_, err := m.h.LookupUser(name)
+	if errors.Is(err, host.ErrUserNotFound) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // ensureUser returns the site's account, creating it when missing.
