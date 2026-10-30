@@ -302,6 +302,37 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteSiteWhoseAccountIsGone(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	if _, err := m.Apply(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := m.AccountExists(spec.User); !ok || err != nil {
+		t.Fatalf("account not found: %v %v", ok, err)
+	}
+	// The account and its home went before the site did.
+	if _, err := sim.Run(ctx, host.Command{Name: "userdel", Args: []string{spec.User}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(sim.Path("/home/kahveatolyesi")); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := m.AccountExists(spec.User); ok || err != nil {
+		t.Fatalf("account reported on the server: %v %v", ok, err)
+	}
+	res, err := m.Delete(ctx, DeleteSpec{Domain: spec.Domain, User: spec.User, RemoveFiles: true, RemoveUser: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.UserRemoved {
+		t.Fatalf("the missing account was not reported removed: %+v", res)
+	}
+	if exists(sim, "/etc/nginx/sites-enabled/kahveatolyesi.com.tr.conf") {
+		t.Error("site is still enabled")
+	}
+}
+
 func TestDeleteKeepsFilesWhenAsked(t *testing.T) {
 	m, sim := newTest(t)
 	ctx := context.Background()

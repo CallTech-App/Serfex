@@ -49,6 +49,9 @@ class SiteShow extends Component
     /** Why the backup before deleting would not fit on the disk, or null. */
     public ?string $noRoom = null;
 
+    /** The site's system account is no longer on the server. */
+    public bool $accountGone = false;
+
     /** Kept to find the backup once the site is gone. */
     public string $domain = '';
 
@@ -75,8 +78,11 @@ class SiteShow extends Component
     {
         if ($this->site() === null) {
             $item = $this->deleteBackup();
+            $days = app(BackupSettings::class)->schedule()['delete_days'];
             session()->flash('toast', $item === null ? __('Site silindi.') : [
-                'message' => __('Site silindi. Yedeği :days gün Yedekler\'de saklanır.', ['days' => app(BackupSettings::class)->schedule()['delete_days']]),
+                'message' => isset($item->skipped['files']) && $this->accountGone
+                    ? __('Site silindi. Sistem hesabı sunucuda olmadığından dosyalar yedeklenmedi; geri kalanının yedeği :days gün Yedekler\'de saklanır.', ['days' => $days])
+                    : __('Site silindi. Yedeği :days gün Yedekler\'de saklanır.', ['days' => $days]),
                 'undo' => ['name' => 'sites.site-index', 'method' => 'restoreDeleted', 'args' => [$item->id]],
             ]);
             $this->redirectRoute('sites.index', navigate: true);
@@ -99,6 +105,7 @@ class SiteShow extends Component
         $this->reset('confirmDomain', 'removeUser', 'removeZone', 'removeMail', 'removeDatabases', 'backup');
         $site = $this->site();
         $this->noRoom = $site ? app(Backups::class)->noRoomBeforeDelete($site) : null;
+        $this->accountGone = $site !== null && app(Backups::class)->accountGone($site);
         $this->backup = $this->noRoom === null;
         $this->deleting = true;
     }
