@@ -225,4 +225,26 @@ class PleskMigrationTest extends TestCase
             ->assertSee('Eski sunucudaki aboneliğe dokunulmadı')
             ->assertSee('kafe_tasarim');
     }
+
+    public function test_databases_from_site_settings_and_failed_reads_are_told_in_words(): void
+    {
+        $this->assertSame(
+            'kafe_siparis veritabanı Plesk\'te bu aboneliğe bağlı değil, ama sitenin ayar dosyasında (.env ya da wp-config.php) geçtiği için taşımaya eklendi.',
+            SiteMigrations::noteText(['code' => 'plesk-unlisted-database', 'subject' => 'kafe_siparis']),
+        );
+        $this->assertSame(
+            'kafe_eski veritabanı sitenin ayar dosyasında geçiyor ama eski sunucuda yok; taşınmaz.',
+            SiteMigrations::noteText(['code' => 'plesk-missing-database', 'subject' => 'kafe_eski']),
+        );
+        $this->assertSame(
+            'Plesk\'ten okunamadı, bu bölüm eksik görünebilir: Veritabanları: ERROR 1146',
+            SiteMigrations::noteText(['code' => 'plesk-read-failed', 'subject' => 'Veritabanları: ERROR 1146']),
+        );
+
+        app()->setLocale('en');
+        $this->assertSame(
+            'Could not be read from Plesk, so this part may be incomplete: The databases: ERROR 1146',
+            SiteMigrations::noteText(['code' => 'plesk-read-failed', 'subject' => 'The databases: ERROR 1146']),
+        );
+    }
 }

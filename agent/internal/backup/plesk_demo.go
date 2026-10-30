@@ -31,7 +31,8 @@ import (
 // tests read subscriptions from it (also through a real SSH server).
 // Subscription 1, kafe.com.tr, has an additional domain, a subdomain,
 // aliases, mailboxes, MySQL and PostgreSQL databases, zones and a
-// certificate; subscription 4, atolye.net, only a static site.
+// certificate, and a Laravel app whose database Plesk lists under no
+// subscription; subscription 4, atolye.net, only a static site.
 type demoPlesk struct {
 	files  map[string]string
 	tables map[string][][]string
@@ -79,6 +80,9 @@ func newDemoPlesk(now time.Time) *demoPlesk {
 			v + "/httpdocs/.htaccess":                                         "RewriteEngine On\n",
 			v + "/kafemenu.net/index.php":                                     "<?php require 'config.php';",
 			v + "/kafemenu.net/config.php":                                    "<?php\nreturn ['database' => 'kafemenu_db', 'username' => 'kafemenu_u', 'password' => 'menu-eski'];\n",
+			v + "/kafemenu.net/siparis/.env":                                  "APP_NAME=Siparis\nDB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=\"kafe_siparis\" # orders\nDB_USERNAME=kafe_siparis\n",
+			v + "/kafemenu.net/eski/.env":                                     "DB_CONNECTION=mysql\nDB_DATABASE=kafe_eski\n",
+			v + "/kafemenu.net/siparis/vendor/acme/pkg/.env":                  "DB_DATABASE=acme_test\n",
 			v + "/blog.kafe.com.tr/index.html":                                "<h1>Blog</h1>",
 			v + "/private/notlar.txt":                                         "backup notes",
 			v + "/error_docs/not_found.html":                                  "<h1>404</h1>",
@@ -86,6 +90,7 @@ func newDemoPlesk(now time.Time) *demoPlesk {
 			v + "/tmp/sess_1":                                                 "session",
 			v + "/.ssh/authorized_keys":                                       "ssh-ed25519 AAAA",
 			"/var/www/vhosts/atolye.net/httpdocs/index.html":                  "<h1>Atolye</h1>",
+			"/usr/local/psa/var/certificates/scfKafe01":                       key + leaf,
 			"/var/qmail/mailnames/kafe.com.tr/info/Maildir/cur/1.eml":         "Subject: Rezervasyon\n\nMerhaba",
 			"/var/qmail/mailnames/kafe.com.tr/info/Maildir/.Sent/cur/2.eml":   "Subject: Re: Rezervasyon\n\nThank you",
 			"/var/qmail/mailnames/kafe.com.tr/info/Maildir/dovecot.index.log": "index",
@@ -114,8 +119,10 @@ func newDemoPlesk(now time.Time) *demoPlesk {
 			"mailaliases":  {{"1", "1", "info", "iletisim"}},
 			"databases":    {{"1", "1", "kafe_analytics", "postgresql", "localhost"}, {"2", "2", "kafe_rapor", "mysql", "10.0.0.5"}, {"2", "2", "kafemenu_db", "mysql", "localhost"}, {"1", "1", "kafe_wp", "mysql", "localhost"}},
 			"grants":       {{"", "kafe_wpu", "localhost", "kafe_wp"}, {"", "kafemenu_u", "localhost", `kafemenu\_db`}, {"", "kafemenu_u", "%", `kafemenu\_db`}, {"", "baska", "localhost", "baska_db"}},
-			"certificates": {{"1", "1", key, leaf, ca}},
-			"ftp":          {{"101", "kafe_tasarim"}},
+			"certificates": {{"1", "1", key, leaf, ca, "scfKafe01"}},
+			// Databases on the MySQL server, Plesk's or not.
+			"schemas": {{"kafe_wp", "kafe_wp"}, {"kafemenu_db", "kafemenu_db"}, {"kafe_siparis", "kafe_siparis"}},
+			"ftp":     {{"101", "kafe_tasarim"}},
 			"dns": {
 				{"kafe.com.tr", "kafe.com.tr", "NS", "kafe.com.tr.", "ns1.kafe.com.tr.", ""},
 				{"kafe.com.tr", "kafe.com.tr", "NS", "kafe.com.tr.", "ns2.kafe.com.tr.", ""},
@@ -184,6 +191,12 @@ func (d *demoPlesk) run(ctx context.Context, cmd string, w io.Writer) error {
 		})
 	case len(f) > 2 && f[0] == "tar" && f[1] == "-C":
 		return d.tar(w, f)
+	case len(f) == 2 && f[0] == "cat":
+		body, ok := d.files[f[1]]
+		if !ok {
+			return fmt.Errorf("cat: %s: No such file or directory (exit status 1)", f[1])
+		}
+		return out(body)
 	case len(f) > 3 && f[0] == "crontab":
 		if f[3] == "kafeweb" {
 			return out("MAILTO=\"\"\n*/10 * * * * /opt/plesk/php/8.2/bin/php -f /var/www/vhosts/kafe.com.tr/httpdocs/wp-cron.php\n")

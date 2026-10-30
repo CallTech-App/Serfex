@@ -5438,5 +5438,8 @@
     "çekirdek": "kernel",
     "Ubuntu paketi": "Ubuntu package",
     "Güncellenecek": "To update",
-    "İlk kez :since istendi.": "First asked for :since."
+    "İlk kez :since istendi.": "First asked for :since.",
+    ":subject veritabanı Plesk'te bu aboneliğe bağlı değil, ama sitenin ayar dosyasında (.env ya da wp-config.php) geçtiği için taşımaya eklendi.": "The database :subject is not this subscription's in Plesk, but the site's settings file (.env or wp-config.php) uses it, so it moves too.",
+    ":subject veritabanı sitenin ayar dosyasında geçiyor ama eski sunucuda yok; taşınmaz.": "The site's settings file names the database :subject, but it is not on the old server; it does not move.",
+    "Plesk'ten okunamadı, bu bölüm eksik görünebilir: :subject": "Could not be read from Plesk, so this part may be incomplete: :subject"
 }

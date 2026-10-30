@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -104,7 +105,9 @@ func TestPleskSubscriptionIsReadLikeAnAccount(t *testing.T) {
 	if menu.Domain != "kafemenu.net" || menu.Kind != "addon" || menu.DocRoot != "kafemenu.net" || menu.PHP != "7.4" || !slices.Equal(menu.Aliases, []string{"kafemenu.com"}) {
 		t.Fatalf("additional domain = %+v", menu)
 	}
-	wantDBs := []MigrationDatabase{{Name: "kafe_wp", Size: 182, Site: "kafe.com.tr"}, {Name: "kafemenu_db", Size: 186, Site: "kafemenu.net"}}
+	// kafe_siparis is not the subscription's in Plesk, but the Laravel
+	// app's .env uses it.
+	wantDBs := []MigrationDatabase{{Name: "kafe_siparis", Size: 187, Site: "kafemenu.net"}, {Name: "kafe_wp", Size: 182, Site: "kafe.com.tr"}, {Name: "kafemenu_db", Size: 186, Site: "kafemenu.net"}}
 	if !slices.EqualFunc(p.Databases, wantDBs, func(a, b MigrationDatabase) bool { return a == b }) {
 		t.Fatalf("databases = %+v", p.Databases)
 	}
@@ -125,7 +128,8 @@ func TestPleskSubscriptionIsReadLikeAnAccount(t *testing.T) {
 	if len(p.Zones) != 3 || !slices.Equal(p.Cron, []string{"*/10 * * * * /opt/plesk/php/8.2/bin/php -f /var/www/vhosts/kafe.com.tr/httpdocs/wp-cron.php"}) || !slices.Equal(p.FTP, []string{"kafe_tasarim"}) {
 		t.Fatalf("zones %+v cron %v ftp %v", p.Zones, p.Cron, p.FTP)
 	}
-	wantNotes := []string{"plesk-no-hosting:eskikafe.com", "alias-mail:kafe.net", "old-path:httpdocs/wp-config.php", "remote-database:kafe_rapor", "postgresql:kafe_analytics"}
+	wantNotes := []string{"plesk-no-hosting:eskikafe.com", "alias-mail:kafe.net", "old-path:httpdocs/wp-config.php", "remote-database:kafe_rapor",
+		"plesk-missing-database:kafe_eski", "plesk-unlisted-database:kafe_siparis", "postgresql:kafe_analytics"}
 	if got := notes(p.Notes); !slices.Equal(got, wantNotes) {
 		t.Fatalf("notes = %v", got)
 	}
@@ -251,6 +255,140 @@ func TestPleskSubscriptionMovesAndRestores(t *testing.T) {
 	}
 }
 
+// failingRemote is the demo server with the commands holding any of fail
+// failing, as a missing table or a refused user makes them.
+type failingRemote struct {
+	*demoPlesk
+	fail []string
+}
+
+func (f failingRemote) run(ctx context.Context, cmd string, w io.Writer) error {
+	for _, s := range f.fail {
+		if strings.Contains(cmd, s) {
+			return errors.New("ERROR 1146 (42S02) at line 1: Table 'psa.data_bases' doesn't exist (exit status 1)")
+		}
+	}
+	return f.demoPlesk.run(ctx, cmd, w)
+}
+
+func TestPleskReadFailuresAreNoted(t *testing.T) {
+	m, _ := newMigrateTest(t)
+	m.dialPlesk = func(context.Context, PleskConn) (remote, string, error) {
+		return failingRemote{newDemoPlesk(time.Now()), []string{"/*serfex:databases*/", "/*serfex:mail*/", "/*serfex:schemas*/"}}, demoHostKey(), nil
+	}
+	p := pullKafe(t, m).Plan
+	if len(p.Databases) != 0 || len(p.Mail) != 0 {
+		t.Fatalf("databases %+v mail %+v", p.Databases, p.Mail)
+	}
+	var failed []string
+	for _, n := range p.Notes {
+		if n.Code == "plesk-read-failed" {
+			failed = append(failed, n.Subject)
+		}
+	}
+	want := []string{
+		"Posta hesapları: ERROR 1146 (42S02) at line 1: Table 'psa.data_bases' doesn't exist (exit status 1)",
+		"Veritabanları: ERROR 1146 (42S02) at line 1: Table 'psa.data_bases' doesn't exist (exit status 1)",
+		"Veritabanı sunucusundaki veritabanları: ERROR 1146 (42S02) at line 1: Table 'psa.data_bases' doesn't exist (exit status 1)",
+	}
+	if !slices.Equal(failed, want) {
+		t.Fatalf("failed reads = %q", failed)
+	}
+}
+
+// Plesk 18 has no db_servers table, older ones no DatabaseServers.
+func TestPleskDatabaseServersOfEitherVersion(t *testing.T) {
+	for _, c := range []struct {
+		name      string
+		fail      []string
+		wantNotes []string
+	}{
+		{"Plesk 18", []string{" db_servers "}, nil},
+		{"older Plesk", []string{" DatabaseServers "}, nil},
+		// Neither: the server itself tells which databases it has; kafe_rapor
+		// is not there.
+		{"no servers table", []string{" DatabaseServers ", " db_servers "}, []string{"remote-database:kafe_rapor"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m, _ := newMigrateTest(t)
+			m.dialPlesk = func(context.Context, PleskConn) (remote, string, error) {
+				return failingRemote{newDemoPlesk(time.Now()), c.fail}, demoHostKey(), nil
+			}
+			p := pullKafe(t, m).Plan
+			var dbs []string
+			for _, d := range p.Databases {
+				dbs = append(dbs, d.Name)
+			}
+			if !slices.Equal(dbs, []string{"kafe_siparis", "kafe_wp", "kafemenu_db"}) {
+				t.Fatalf("databases = %v", dbs)
+			}
+			for _, n := range notes(p.Notes) {
+				if strings.HasPrefix(n, "plesk-read-failed:") {
+					t.Fatalf("note %s", n)
+				}
+			}
+			if c.wantNotes != nil && !slices.Contains(notes(p.Notes), c.wantNotes[0]) {
+				t.Fatalf("notes = %v", notes(p.Notes))
+			}
+		})
+	}
+}
+
+// Plesk can keep a certificate's key encrypted in its table; the file in
+// /usr/local/psa/var/certificates has it in PEM.
+func TestPleskCertificateFromItsFile(t *testing.T) {
+	m, _ := newMigrateTest(t)
+	m.dialPlesk = func(context.Context, PleskConn) (remote, string, error) {
+		d := newDemoPlesk(time.Now())
+		d.tables["certificates"][0][2] = "$AES-128-CBC$c2VyZmV4$ZW5jcnlwdGVk"
+		return d, demoHostKey(), nil
+	}
+	p := pullKafe(t, m).Plan
+	if c := p.Sites[0].Certificate; c == nil || c.Issuer != "Let's Encrypt" {
+		t.Fatalf("certificate = %+v", c)
+	}
+}
+
+func TestPleskSiteSettingsNameDatabases(t *testing.T) {
+	p := &pleskPull{hostname: "plesk.eskisunucu.com", ips: []string{"192.0.2.10"}}
+	for name, body := range map[string]string{
+		"httpdocs/.env":                "APP_ENV=production\n# DB_DATABASE=yorum\nDB_CONNECTION=mysql\nDB_HOST=localhost:3306\nDB_DATABASE='magaza'\n",
+		"api/.env":                     "export DB_CONNECTION=pgsql\nDB_DATABASE=api_db # analytics\n",
+		"lite/.env":                    "DB_CONNECTION=sqlite\nDB_DATABASE=/var/www/vhosts/a.com/database.sqlite\n",
+		"blog/wp-config.php":           "<?php\ndefine('DB_NAME', \"blog_wp\");\ndefine( 'DB_HOST', 'db.baska.net' );\n",
+		"httpdocs/vendor/x/y/.env":     "DB_DATABASE=paket\n",
+		"httpdocs/node_modules/x/.env": "DB_DATABASE=paket\n",
+		"httpdocs/config.php":          "<?php $db = 'eski';",
+		"env/.env":                     "DB_DATABASE=${APP_DB}\n",
+	} {
+		p.configDB(name, []byte(body))
+	}
+	got := map[string]pleskConfigDB{}
+	for _, c := range p.configDBs {
+		got[c.file] = c
+	}
+	want := map[string]pleskConfigDB{
+		"httpdocs/.env":      {file: "httpdocs/.env", conn: "mysql", name: "magaza", host: "localhost:3306"},
+		"api/.env":           {file: "api/.env", conn: "pgsql", name: "api_db"},
+		"blog/wp-config.php": {file: "blog/wp-config.php", conn: "mysql", name: "blog_wp", host: "db.baska.net"},
+	}
+	// A SQLite file's path, a variable and packages' copies name none.
+	if len(got) != len(want) {
+		t.Fatalf("databases = %+v", p.configDBs)
+	}
+	for k, w := range want {
+		if got[k] != w {
+			t.Fatalf("%s = %+v, want %+v", k, got[k], w)
+		}
+	}
+	for h, local := range map[string]bool{"": true, "localhost": true, "127.0.0.1:3306": true, "[::1]:3306": true, "localhost:/run/mysqld/mysqld.sock": true,
+		"192.0.2.10": true, "PLESK.eskisunucu.com": true, "10.0.0.5": false, "db.baska.net:3306": false} {
+		if p.localHost(h) != local {
+			t.Fatalf("%q local = %v", h, !local)
+		}
+	}
+}
+
 func TestPleskNamesAndRecords(t *testing.T) {
 	for in, want := range map[string]string{"kafeweb": "kafeweb", "Kafe.Web": "kafe_web", "9kafe-1": "kafe-1", "_x": "x", "...": "plesk7", strings.Repeat("a", 40): strings.Repeat("a", 32)} {
 		if got := pleskUser(in, 7); got != want || site.ValidateUser(got) != nil {
@@ -323,7 +461,7 @@ func TestPleskOverSSH(t *testing.T) {
 		t.Fatal(err)
 	}
 	in, err := m.MigrateInspect(ctx, MigrateSource{Source: "pl-ssh"})
-	if err != nil || len(in.Plan.Sites) != 2 || len(in.Plan.Databases) != 2 {
+	if err != nil || len(in.Plan.Sites) != 2 || len(in.Plan.Databases) != 3 {
 		t.Fatalf("inspect = %+v, %v", in.Plan, err)
 	}
 }
