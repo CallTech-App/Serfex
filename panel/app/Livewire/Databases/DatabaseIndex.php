@@ -6,9 +6,12 @@ use App\Livewire\Attributes\ForCustomers;
 use App\Models\Database;
 use App\Models\DatabaseUser;
 use App\Models\Site;
+use App\Models\TuningSample;
 use App\Services\Agent\AgentException;
 use App\Services\Databases\Databases;
 use App\Services\Databases\DatabaseServers;
+use App\Services\Tuning\Optimization;
+use App\Services\Tuning\TuningSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -230,8 +233,25 @@ class DatabaseIndex extends Component
             'prefix' => ($site = $this->sites()->firstWhere('id', $this->formSite)) ? Databases::prefix($site->systemUser) : '',
             'userPrefix' => ($db = $this->visibleDatabases()->firstWhere('id', $this->userDatabase)) && $db->systemUser ? Databases::prefix($db->systemUser) : '',
             'userDatabases' => $this->visibleDatabases(),
+            'slow' => $this->inSite ? $this->slowQueries() : null,
             ...$this->userDialogData(),
         ]);
+    }
+
+    /**
+     * The site's slow statements on the MySQL or MariaDB server, when
+     * optimization measures it.
+     *
+     * @return array{rows: list<array<string, mixed>>, hours: float, available: bool}|null
+     */
+    private function slowQueries(): ?array
+    {
+        $unit = TuningSample::whereIn('unit', Optimization::UNITS)->latest('created_at')->value('unit');
+        if ($unit === null || ! app(TuningSettings::class)->enabled()) {
+            return null;
+        }
+
+        return app(Optimization::class)->slowRows($unit, [$this->siteId]);
     }
 
     /**

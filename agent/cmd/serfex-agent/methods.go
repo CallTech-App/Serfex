@@ -1005,6 +1005,11 @@ func registerServices(srv *rpc.Server, svc services) {
 	handle(srv, "service.settings.apply", func(ctx context.Context, q service.SettingsSpec) (any, error) {
 		return s.ApplySettings(context.WithoutCancel(ctx), q)
 	})
+	handle(srv, "service.measure", func(ctx context.Context, q struct {
+		Unit string `json:"unit"`
+	}) (any, error) {
+		return s.Measure(ctx, q.Unit)
+	})
 
 	handle(srv, "php.info", func(_ context.Context, q struct {
 		Version string `json:"version"`

@@ -162,9 +162,21 @@ func (m *Manager) ApplySettings(ctx context.Context, spec SettingsSpec) (Setting
 			return SettingsSpec{}, invalid("innodb_buffer_pool_size must be between 32 MB and 1 TB")
 		case db.MaxAllowedPacketMB < 1 || db.MaxAllowedPacketMB > 1024:
 			return SettingsSpec{}, invalid("max_allowed_packet must be between 1 and 1024 MB")
+		case db.TmpTableMB != 0 && (db.TmpTableMB < 16 || db.TmpTableMB > 1024):
+			return SettingsSpec{}, invalid("tmp_table_size must be between 16 and 1024 MB")
+		case db.TableOpenCache != 0 && (db.TableOpenCache < 400 || db.TableOpenCache > 100000):
+			return SettingsSpec{}, invalid("table_open_cache must be between 400 and 100000")
+		case db.IOCapacity != 0 && (db.IOCapacity < 100 || db.IOCapacity > 20000):
+			return SettingsSpec{}, invalid("innodb_io_capacity must be between 100 and 20000")
+		case db.SlowLog && (db.LongQueryTime < 1 || db.LongQueryTime > 60):
+			return SettingsSpec{}, invalid("long_query_time must be between 1 and 60 seconds")
 		}
+		if !db.SlowLog {
+			db.LongQueryTime = 0
+		}
+		old := s.Database
 		s.Database = *db
-		apply = func() error { return m.applyDatabase(ctx, t, d.unit, *db) }
+		apply = func() error { return m.applyDatabase(ctx, t, d.unit, old, *db) }
 	case "postfix":
 		p := spec.Postfix
 		if p == nil || p.MessageSizeMB < 1 || p.MessageSizeMB > 2048 {
@@ -287,25 +299,101 @@ func (m *Manager) applyNginx(ctx context.Context, t *txn.Tx, n tuning.Nginx) err
 	return err
 }
 
-func (m *Manager) applyDatabase(ctx context.Context, t *txn.Tx, unit string, db tuning.Database) error {
+// DatabaseContent is Serfex's tuning file for the database server.
+func DatabaseContent(db tuning.Database) []byte {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "# %s. Change these on the panel's Hizmetler page.\n[mysqld]\n", txn.Marker)
+	fmt.Fprintf(&b, "max_connections = %d\ninnodb_buffer_pool_size = %dM\nmax_allowed_packet = %dM\n", db.MaxConnections, db.BufferPoolMB, db.MaxAllowedPacketMB)
+	if db.TmpTableMB > 0 {
+		fmt.Fprintf(&b, "tmp_table_size = %dM\nmax_heap_table_size = %dM\n", db.TmpTableMB, db.TmpTableMB)
+	}
+	if db.TableOpenCache > 0 {
+		fmt.Fprintf(&b, "table_open_cache = %d\n", db.TableOpenCache)
+	}
+	if db.IOCapacity > 0 {
+		fmt.Fprintf(&b, "innodb_io_capacity = %d\ninnodb_io_capacity_max = %d\n", db.IOCapacity, 2*db.IOCapacity)
+	}
+	if db.SlowLog {
+		fmt.Fprintf(&b, "slow_query_log = 1\nslow_query_log_file = %s\nlong_query_time = %d\n", tuning.SlowLogFile, db.LongQueryTime)
+	}
+	return b.Bytes()
+}
+
+// DynamicStatements are the SET GLOBAL statements that move a running
+// server from old to db without a restart; every setting Serfex changes
+// can be changed while the server runs. A setting going back to the
+// server's default is set to DEFAULT.
+func DynamicStatements(old, db tuning.Database) []string {
+	var out []string
+	num := func(name string, from, to int, scale int64) {
+		if from == to {
+			return
+		}
+		if to == 0 {
+			out = append(out, fmt.Sprintf("SET GLOBAL %s = DEFAULT", name))
+			return
+		}
+		out = append(out, fmt.Sprintf("SET GLOBAL %s = %d", name, int64(to)*scale))
+	}
+	num("max_connections", old.MaxConnections, db.MaxConnections, 1)
+	num("max_allowed_packet", old.MaxAllowedPacketMB, db.MaxAllowedPacketMB, 1<<20)
+	num("tmp_table_size", old.TmpTableMB, db.TmpTableMB, 1<<20)
+	num("max_heap_table_size", old.TmpTableMB, db.TmpTableMB, 1<<20)
+	num("table_open_cache", old.TableOpenCache, db.TableOpenCache, 1)
+	if old.IOCapacity != db.IOCapacity {
+		// innodb_io_capacity may not exceed innodb_io_capacity_max: raise
+		// the ceiling first, lower it last.
+		capacity, ceiling := "SET GLOBAL innodb_io_capacity = DEFAULT", "SET GLOBAL innodb_io_capacity_max = DEFAULT"
+		if db.IOCapacity > 0 {
+			capacity = fmt.Sprintf("SET GLOBAL innodb_io_capacity = %d", db.IOCapacity)
+			ceiling = fmt.Sprintf("SET GLOBAL innodb_io_capacity_max = %d", 2*db.IOCapacity)
+		}
+		if db.IOCapacity > old.IOCapacity && db.IOCapacity > 0 {
+			out = append(out, ceiling, capacity)
+		} else {
+			out = append(out, capacity, ceiling)
+		}
+	}
+	if old.SlowLog != db.SlowLog || old.LongQueryTime != db.LongQueryTime {
+		if db.SlowLog {
+			out = append(out,
+				fmt.Sprintf("SET GLOBAL slow_query_log_file = '%s'", tuning.SlowLogFile),
+				fmt.Sprintf("SET GLOBAL long_query_time = %d", db.LongQueryTime),
+				"SET GLOBAL slow_query_log = ON")
+		} else {
+			out = append(out, "SET GLOBAL slow_query_log = OFF", "SET GLOBAL long_query_time = DEFAULT")
+		}
+	}
+	// The buffer pool grows or shrinks in the background, so it goes last.
+	num("innodb_buffer_pool_size", old.BufferPoolMB, db.BufferPoolMB, 1<<20)
+	return out
+}
+
+func (m *Manager) applyDatabase(ctx context.Context, t *txn.Tx, unit string, old, db tuning.Database) error {
 	file := mysqlTuning
 	if unit == "mariadb" {
 		file = mariaTuning
 	}
-	content := fmt.Sprintf(`# %s. Change these on the panel's Hizmetler page.
-[mysqld]
-max_connections = %d
-innodb_buffer_pool_size = %dM
-max_allowed_packet = %dM
-`, txn.Marker, db.MaxConnections, db.BufferPoolMB, db.MaxAllowedPacketMB)
 	if err := t.RootDir(filepath.Dir(file), 0o755, 0, 0); err != nil {
 		return err
 	}
-	if err := t.WriteFile(file, []byte(content)); err != nil {
+	if err := t.WriteFile(file, DatabaseContent(db)); err != nil {
 		return err
 	}
 	if !t.Changed || m.sim {
 		return nil
+	}
+	// The running server takes the new values at once; the file keeps
+	// them across restarts. Only when that fails is the server restarted.
+	if stmts := DynamicStatements(old, db); len(stmts) > 0 {
+		if _, err := m.h.Run(ctx, host.Command{Name: "mysql", Args: []string{"--batch", "-e", strings.Join(stmts, "; ")}}); err == nil {
+			return nil
+		}
+	}
+	if unit == "mysql" {
+		if err := m.test(ctx, "mysqld", "--validate-config"); err != nil {
+			return err
+		}
 	}
 	if out, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"restart", unit + ".service"}}); err != nil {
 		return fmt.Errorf("%s did not start with the new settings: %s", unit, tail(out, err))
