@@ -55,12 +55,29 @@ type Nginx struct {
 	KeepaliveTimeout int `json:"keepalive_timeout"`
 }
 
-// Database settings of the MySQL or MariaDB server customers use.
+// Database settings of the MySQL or MariaDB server customers use. The
+// fields after MaxAllowedPacketMB are set by the panel's optimization
+// suggestions; 0 (and false) leave the server's own default.
 type Database struct {
 	MaxConnections     int `json:"max_connections"`
 	BufferPoolMB       int `json:"innodb_buffer_pool_mb"`
 	MaxAllowedPacketMB int `json:"max_allowed_packet_mb"`
+	// TmpTableMB is both tmp_table_size and max_heap_table_size: an
+	// internal temporary table stays in memory up to the smaller one.
+	TmpTableMB     int `json:"tmp_table_mb"`
+	TableOpenCache int `json:"table_open_cache"`
+	// IOCapacity is innodb_io_capacity; innodb_io_capacity_max is set to
+	// twice it.
+	IOCapacity int `json:"innodb_io_capacity"`
+	// SlowLog writes queries slower than LongQueryTime seconds to
+	// SlowLogFile.
+	SlowLog       bool `json:"slow_query_log"`
+	LongQueryTime int  `json:"long_query_time"`
 }
+
+// SlowLogFile is where the database server writes slow queries; Ubuntu's
+// MySQL and MariaDB packages rotate the logs in /var/log/mysql.
+const SlowLogFile = "/var/log/mysql/mysql-slow.log"
 
 // Postfix settings.
 type Postfix struct {

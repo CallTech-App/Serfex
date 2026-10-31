@@ -6,6 +6,7 @@ use App\Models\Certificate;
 use App\Models\Customer;
 use App\Models\NotificationEvent;
 use App\Models\Setting;
+use App\Models\TuningChange;
 use App\Models\User;
 use App\Services\Backups\Backups;
 use App\Services\Customers\Quotas;
@@ -162,6 +163,11 @@ class Notifications
         }
         foreach (SystemServices::problems() as $s) {
             $out['service:'.$s['unit']] = ['service', __(':name çalışmıyor', ['name' => $s['name']]), null, route('services.show', $s['unit'], false)];
+        }
+        // An optimization change the server did not take well, for a day.
+        foreach (TuningChange::where('status', 'rolled_back')->where('finished_at', '>=', now()->subDay())->get() as $c) {
+            $out['tuning:'.$c->id] = ['service', __('Optimizasyon değişikliği kendiliğinden geri alındı: :title', ['title' => $c->title]), $c->note,
+                route('services.show', ['unit' => $c->unit, 'tab' => 'recs'], false)];
         }
 
         return $out;
