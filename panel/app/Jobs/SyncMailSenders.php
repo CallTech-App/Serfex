@@ -23,6 +23,12 @@ class SyncMailSenders implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public int $backoff = 30;
 
+    /**
+     * A lock whose job never ran (a queue cleared during an update) stops
+     * blocking new syncs after ten minutes, not a day.
+     */
+    public int $uniqueFor = 600;
+
     public function handle(MailSenders $senders): void
     {
         try {
