@@ -241,7 +241,11 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.apply(ctx, spec)
+}
 
+// apply is Apply for a valid spec, with the lock held.
+func (m *Manager) apply(ctx context.Context, spec Spec) (res Result, err error) {
 	versions, err := m.PHPVersions()
 	if err != nil {
 		return Result{}, &OperationError{err}
@@ -274,6 +278,11 @@ func (m *Manager) Apply(ctx context.Context, spec Spec) (res Result, err error) 
 
 	u, created, err := m.ensureUser(ctx, t, spec.User, p.home)
 	if err != nil {
+		return Result{}, err
+	}
+	// The folder of a site that was renamed away from this name stays as
+	// a link to its new folder (see Rename); a site of its own replaces it.
+	if err := m.dropRenameLink(t, p.siteDir); err != nil {
 		return Result{}, err
 	}
 
@@ -596,6 +605,8 @@ func (m *Manager) Delete(ctx context.Context, spec DeleteSpec) (res DeleteResult
 				return res, &OperationError{err}
 			}
 		}
+		// Links left by renames (old name → this folder) go with it.
+		m.removeRenameLinks(p.home+"/web", spec.Domain)
 		res.FilesRemoved = true
 	}
 

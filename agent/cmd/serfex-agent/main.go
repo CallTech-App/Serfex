@@ -166,6 +166,8 @@ func main() {
 		_, err := svc.certs.Install(ctx, spec)
 		return err
 	}
+	svc.backups.Sites = svc.sites
+	svc.backups.StopRedis = svc.components.StopRedisForRename
 	exe, err := os.Executable()
 	if err != nil {
 		log.Error("agent stopped", "err", err)

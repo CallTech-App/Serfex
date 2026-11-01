@@ -8,6 +8,7 @@ enum SiteStatus: string
     case Active = 'active';
     case Failed = 'failed';
     case Deleting = 'deleting';
+    case Renaming = 'renaming';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum SiteStatus: string
             self::Active => __('Yayında'),
             self::Failed => __('Hata'),
             self::Deleting => __('Siliniyor'),
+            self::Renaming => __('Alan adı değişiyor'),
         };
     }
 
@@ -25,7 +27,7 @@ enum SiteStatus: string
     public function tone(): string
     {
         return match ($this) {
-            self::Provisioning, self::Deleting => 'info',
+            self::Provisioning, self::Deleting, self::Renaming => 'info',
             self::Active => 'ok',
             self::Failed => 'crit',
         };
@@ -36,6 +38,6 @@ enum SiteStatus: string
      */
     public function isBusy(): bool
     {
-        return $this === self::Provisioning || $this === self::Deleting;
+        return $this === self::Provisioning || $this === self::Deleting || $this === self::Renaming;
     }
 }

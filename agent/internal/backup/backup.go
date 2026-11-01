@@ -60,6 +60,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
@@ -152,6 +153,13 @@ type Manager struct {
 	dialPlesk func(context.Context, PleskConn) (remote, string, error)
 	// now is time.Now, replaced in tests.
 	now func() time.Time
+
+	// Sites renames sites (site.rename); StopRedis stops a site's Redis
+	// for a rename and returns its data folder to move.
+	Sites interface {
+		Rename(context.Context, site.RenameSpec) (site.RenameResult, error)
+	}
+	StopRedis func(ctx context.Context, from, to string) ([][2]string, error)
 }
 
 // NewManager returns a Manager on h.
