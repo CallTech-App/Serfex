@@ -350,7 +350,7 @@
                     @enderror
                     @if (! str_starts_with($newDomain, 'www.'))
                         <label class="mt-2 flex items-center gap-2 text-[13px]">
-                            <input type="checkbox" wire:model.live="renameWww" class="size-4 accent-accent">
+                            <input type="checkbox" wire:model.live="renameWww" class="size-4 shrink-0 accent-accent">
                             <span><x-t text=":name adı da açılsın"><x-slot:name><span class="font-mono">www.{{ $newDomain !== '' ? $newDomain : __('yeni-ad') }}</span></x-slot:name></x-t></span>
                         </label>
                     @endif
@@ -364,7 +364,7 @@
                         \App\Models\SiteRename::OLD_NONE => [__('Kaldırılsın'), __('Eski ad artık bu siteyi açmaz.')],
                     ] as $mode => [$name, $hint])
                         <label class="flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 {{ $renameOld === $mode ? 'border-accent bg-accent-soft/40' : 'border-line hover:bg-surface-2' }}">
-                            <input type="radio" wire:model.live="renameOld" value="{{ $mode }}" class="mt-0.5 size-4 accent-accent">
+                            <input type="radio" wire:model.live="renameOld" value="{{ $mode }}" class="mt-0.5 size-4 shrink-0 accent-accent">
                             <span><span class="font-medium">{{ $name }}</span><span class="block text-2xs text-muted">{{ $hint }}</span></span>
                         </label>
                     @endforeach
@@ -444,7 +444,7 @@
     @if ($rename)
         <x-modal :title="__('Alan adı değişikliği')" show="renameDetails" size="max-w-3xl">
             <div>
-                <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold"><x-t text="Alan adı değişikliği: :from → :to"><x-slot:from><span class="ml-1 font-mono">{{ $rename->from_domain }}</span></x-slot:from><x-slot:to><span class="font-mono">{{ $rename->to_domain }}</span></x-slot:to></x-t></h2>
+                <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold"><span class="truncate"><x-t text="Alan adı değişikliği: :from → :to"><x-slot:from><span class="font-mono">{{ $rename->from_domain }}</span></x-slot:from><x-slot:to><span class="font-mono">{{ $rename->to_domain }}</span></x-slot:to></x-t></span></h2>
                 <div class="space-y-2 p-5 text-[13px]">
                     @if ($rename->error)
                         <p class="flex gap-2 text-crit"><x-icon name="triangle-alert" class="mt-0.5 shrink-0" />{{ $rename->error }}</p>
