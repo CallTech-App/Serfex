@@ -38,7 +38,7 @@ class Certificates
      * certificate is reissued in place; otherwise a new one is added and
      * the site switches to it once it is issued.
      */
-    public function letsEncrypt(Site $site, bool $wildcard = false, bool $auto = false): Certificate
+    public function letsEncrypt(Site $site, bool $wildcard = false, bool $auto = false, bool $separate = false): Certificate
     {
         $names = $site->hostnames();
         $zone = null;
@@ -51,8 +51,10 @@ class Certificates
         // Reuse the current Let's Encrypt certificate, or a request that is
         // still waiting, before adding a new one.
         $current = $site->certificate;
+        // $separate: a new request next to the current certificate, which
+        // keeps serving until the new one replaces it.
         $certificate = match (true) {
-            $current !== null && $current->isLetsEncrypt() => $current,
+            ! $separate && $current !== null && $current->isLetsEncrypt() => $current,
             default => $site->certificates()->whereNull('not_after')->where('source', Certificate::LETS_ENCRYPT)->latest('id')->first()
                 ?? new Certificate([
                     'site_id' => $site->id,
@@ -70,6 +72,43 @@ class Certificates
         IssueCertificate::dispatch($certificate, auto: $auto, zone: $zone?->name);
 
         return $certificate;
+    }
+
+    /**
+     * Obtains a Let's Encrypt certificate for $names now (HTTP validation,
+     * every name pointing here), as a certificate of $site that it does
+     * not use yet. A site being renamed gets the certificate of its new
+     * name before it switches to it.
+     *
+     * @param  list<string>  $names
+     *
+     * @throws AgentException
+     */
+    public function issueNow(Site $site, string $domain, array $names): Certificate
+    {
+        $certificate = Certificate::create([
+            'site_id' => $site->id,
+            'name' => $this->freeName($domain),
+            'source' => Certificate::LETS_ENCRYPT,
+            'domains' => $names,
+            'challenge' => 'http-01',
+            'status' => CertificateStatus::Issuing,
+        ]);
+        try {
+            $result = app(AgentClient::class)->call('ssl.issue', array_filter([
+                'name' => $certificate->name,
+                'names' => $names,
+                'challenge' => 'http-01',
+                'email' => self::email(),
+            ]), config('serfex.agent.ssl_timeout'));
+        } catch (AgentException $e) {
+            $certificate->delete();
+
+            throw $e;
+        }
+        $certificate->recordInstalled($result);
+
+        return $certificate->fresh();
     }
 
     /**

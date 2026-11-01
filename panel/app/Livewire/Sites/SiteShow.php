@@ -16,14 +16,20 @@ use App\Models\ProtectedDirectory;
 use App\Models\SecurityFinding;
 use App\Models\SecurityScan;
 use App\Models\Site;
+use App\Models\SiteRename;
+use App\Services\Agent\AgentClient;
+use App\Services\Agent\AgentException;
 use App\Services\Backups\Backups;
 use App\Services\Backups\BackupSettings;
 use App\Services\Components\Components;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailSettings;
+use App\Services\Sites\SiteRenames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Livewire\Attributes\Json;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
@@ -58,6 +64,26 @@ class SiteShow extends Component
 
     /** When this page asked for the deletion with a backup. */
     public ?string $backupSince = null;
+
+    /** Alan adını değiştir: the dialog is open. */
+    public bool $renaming = false;
+
+    public string $newDomain = '';
+
+    /** Give the new name its www. name too. */
+    public bool $renameWww = true;
+
+    /** What happens to the old name: SiteRename::OLD_*. */
+    public string $renameOld = SiteRename::OLD_REDIRECT;
+
+    /** Back the site up first. */
+    public bool $renameBackup = true;
+
+    /** Why the backup would not fit on the disk, or null. */
+    public ?string $renameNoRoom = null;
+
+    /** The details of the latest rename are shown. */
+    public bool $renameDetails = false;
 
     /**
      * Takes the id rather than a bound model: Livewire re-runs the page's
@@ -132,6 +158,106 @@ class SiteShow extends Component
         $this->deleting = false;
     }
 
+    public function openRename(): void
+    {
+        $site = $this->site();
+        if ($site === null) {
+            return;
+        }
+        if ($why = app(SiteRenames::class)->refusal(auth()->user(), $site)) {
+            $this->dispatch('toast', message: $why);
+
+            return;
+        }
+        $this->resetErrorBag();
+        $this->newDomain = '';
+        $this->renameWww = $site->wwwPair() !== null;
+        $this->renameOld = SiteRename::OLD_REDIRECT;
+        $this->renameNoRoom = app(Backups::class)->noRoomBeforeDelete($site);
+        $this->renameBackup = $this->renameNoRoom === null;
+        $this->renaming = true;
+    }
+
+    public function updatedNewDomain(): void
+    {
+        $this->newDomain = strtolower(trim($this->newDomain));
+        $this->resetErrorBag('newDomain');
+        $site = $this->site();
+        if ($site !== null && $this->newDomain !== '') {
+            $this->renameWww = app(SiteRenames::class)->suggestWww($site, $this->newDomain);
+        }
+    }
+
+    public function rename(): void
+    {
+        $site = $this->site();
+        if ($site === null) {
+            return;
+        }
+        $renames = app(SiteRenames::class);
+        $user = auth()->user();
+        $name = strtolower(trim($this->newDomain));
+        if ($why = $renames->refusal($user, $site)) {
+            $this->addError('newDomain', $why);
+
+            return;
+        }
+        if ($why = $renames->nameRefusal($site, $name, $user)) {
+            $this->addError('newDomain', $why);
+
+            return;
+        }
+        $old = in_array($this->renameOld, SiteRename::OLD, true) ? $this->renameOld : SiteRename::OLD_REDIRECT;
+        if ($why = $renames->oldRefusal($site, $old)) {
+            $this->addError('renameOld', $why);
+
+            return;
+        }
+        // Customers always get the backup; only a full disk leaves it out.
+        $backup = $this->renameNoRoom === null && ($this->renameBackup || ! $user->is_admin);
+        $renames->start($site, $name, $this->renameWww, $old, $backup, $user);
+        $this->renaming = false;
+    }
+
+    public function undoRename(int $id): void
+    {
+        $rename = SiteRename::where('site_id', $this->siteId)->find($id);
+        if ($rename === null) {
+            return;
+        }
+        $result = app(SiteRenames::class)->undo($rename, auth()->user());
+        if (is_string($result)) {
+            $this->dispatch('toast', message: $result);
+        }
+    }
+
+    /**
+     * The log of the site's latest rename, from $offset on.
+     *
+     * @return array{data: string, offset: int, more: bool, done: bool, error?: string}|null
+     */
+    #[Json, Renderless]
+    public function readRun(string $run, int $offset = 0): ?array
+    {
+        $rename = SiteRename::where('site_id', $this->siteId)->where('run', $run)->first();
+        if ($rename === null || $this->site() === null) {
+            return null;
+        }
+        try {
+            $chunk = app(AgentClient::class)->call('backup.run.read', ['run' => $run, 'offset' => max(0, $offset)]);
+        } catch (AgentException) {
+            return ['data' => '', 'offset' => $offset, 'more' => false, 'done' => ! $rename->isRunning(), 'error' => __('Sunucu ajanına ulaşılamıyor.')];
+        }
+        $next = (int) ($chunk['offset'] ?? 0);
+
+        return [
+            'data' => (string) ($chunk['data'] ?? ''),
+            'offset' => $next,
+            'more' => $next < (int) ($chunk['size'] ?? 0),
+            'done' => ! $rename->isRunning(),
+        ];
+    }
+
     public function render(): View
     {
         $site = $this->site();
@@ -163,6 +289,12 @@ class SiteShow extends Component
             'backingUp' => $site->status === SiteStatus::Deleting && BackupItem::where('site_id', $site->id)
                 ->whereHas('backup', fn ($q) => $q->where('trigger', 'delete')->whereIn('status', ['queued', 'running']))->exists(),
             'deleteDays' => app(BackupSettings::class)->schedule()['delete_days'],
+            'rename' => $rename = app(SiteRenames::class)->latest($site),
+            'renamePlan' => $this->renaming && $this->newDomain !== '' && ! $this->getErrorBag()->has('newDomain')
+                && app(SiteRenames::class)->nameRefusal($site, $this->newDomain, auth()->user()) === null
+                ? app(SiteRenames::class)->plan($site, $this->newDomain, $this->renameWww, $this->renameOld) : null,
+            'renameError' => $this->renaming && $this->newDomain !== '' ? app(SiteRenames::class)->nameRefusal($site, $this->newDomain, auth()->user()) : null,
+            'renameUndo' => $rename?->undoUntil()?->isFuture() && $rename->site_id === $site->id && $site->domain === $rename->to_domain ? $rename->undoUntil() : null,
         ])->title($site->domain.' · Serfex');
     }
 

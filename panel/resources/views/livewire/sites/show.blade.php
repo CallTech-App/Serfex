@@ -126,6 +126,8 @@
             <div class="relative" x-data="{ open: false }">
                 <button type="button" @click="open = !open" class="grid size-9 place-items-center rounded-md border border-line bg-surface text-muted hover:bg-surface-2 hover:text-fg" aria-label="{{ __('Diğer işlemler') }}"><x-icon name="ellipsis-vertical" /></button>
                 <div x-show="open" x-cloak @click.outside="open = false" class="absolute top-full right-0 z-20 mt-1 w-52 rounded-lg border border-line bg-surface py-1 text-[13.5px] shadow-lg">
+                    <button type="button" wire:click="openRename" @click="open = false" @disabled($site->status->isBusy())
+                            class="w-full px-3 py-2 text-left hover:bg-surface-2 disabled:opacity-40">{{ __('Alan adını değiştir') }}</button>
                     <button type="button" wire:click="openDelete" @click="open = false" @disabled($site->status->isBusy())
                             class="w-full px-3 py-2 text-left text-crit hover:bg-surface-2 disabled:opacity-40">{{ __('Siteyi sil') }}</button>
                 </div>
@@ -143,6 +145,46 @@
             </div>
             @if ($user->is_admin)
                 <a href="{{ route('customers.show', $owner) }}" wire:navigate class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">{{ __('Müşteriye git') }}</a>
+            @endif
+        </div>
+    @endif
+
+    {{-- Alan adını değiştir: in progress, done (with the way back) or failed --}}
+    @if ($rename && ($rename->isRunning() || $renameUndo || ($rename->status === 'failed' && $rename->finished_at?->gt(now()->subDay()))))
+        @php
+            $renameTone = $rename->isRunning() ? 'info' : ($rename->status === 'failed' ? 'crit' : 'ok');
+            $renameAttention = collect($rename->notes ?? [])->map(fn ($n) => \App\Services\Sites\SiteRenames::noteText($n))->filter(fn ($t) => $t[1])->count();
+        @endphp
+        <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
+            <span class="absolute inset-y-0 left-0 w-1 bg-{{ $renameTone }}"></span>
+            <x-icon :name="$rename->isRunning() ? 'loader-circle' : ($rename->status === 'failed' ? 'triangle-alert' : 'circle-check')" class="text-{{ $renameTone }} {{ $rename->isRunning() ? 'animate-spin' : '' }}" />
+            <div class="min-w-0 flex-1 basis-60">
+                <p class="font-medium">
+                    @if ($rename->isRunning())
+                        <x-t text="Alan adı değiştiriliyor: :from → :to"><x-slot:from><span class="font-mono">{{ $rename->from_domain }}</span></x-slot:from><x-slot:to><span class="font-mono">{{ $rename->to_domain }}</span></x-slot:to></x-t>
+                    @elseif ($rename->status === 'failed')
+                        {{ __('Alan adı değiştirilemedi; site eski adıyla çalışıyor.') }}
+                    @else
+                        <x-t text="Alan adı değiştirildi: :from → :to"><x-slot:from><span class="font-mono">{{ $rename->from_domain }}</span></x-slot:from><x-slot:to><span class="font-mono">{{ $rename->to_domain }}</span></x-slot:to></x-t>
+                    @endif
+                </p>
+                <p class="mt-0.5 text-[13px] break-words text-muted">
+                    @if ($rename->isRunning())
+                        {{ ($rename->options['backup'] ?? false) && $rename->backup_id === null ? __('Önce sitenin yedeği alınıyor; ardından site yeni adına taşınır.') : __('Site birkaç saniye içinde yeni adıyla açılır.') }}
+                    @elseif ($rename->status === 'failed')
+                        {{ $rename->error }}
+                    @else
+                        {{ $renameAttention ? trans_choice(':count konuya bakmanız gerekiyor.', $renameAttention) : __('Her şey yeni ada taşındı.') }}
+                        {{ __(':date tarihine kadar eski ada geri dönebilirsiniz.', ['date' => \App\Support\When::date($renameUndo)]) }}
+                    @endif
+                </p>
+            </div>
+            <button type="button" wire:click="$set('renameDetails', true)" class="flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">{{ __('Ayrıntılar') }}</button>
+            @if ($renameUndo && ! $rename->isRunning())
+                <button type="button" wire:click="undoRename({{ $rename->id }})" wire:confirm="{{ __('Site :from adına geri taşınsın mı?', ['from' => $rename->from_domain]) }}" @disabled($site->status->isBusy())
+                        class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2 disabled:opacity-40">
+                    <x-icon name="undo-2" class="size-3.5" />{{ __('Eski ada geri dön') }}
+                </button>
             @endif
         </div>
     @endif
@@ -284,6 +326,144 @@
             @endforeach
         </div>
     </div>
+
+    {{-- Alan adını değiştir --}}
+    <x-modal :title="__('Alan adını değiştir')" show="renaming" size="max-w-3xl">
+        <form wire:submit="rename">
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Alan adını değiştir') }}</h2>
+            <div class="grid items-start gap-x-4 gap-y-1.5 p-5 text-[13.5px] sm:grid-cols-[9rem_minmax(0,1fr)]">
+                <span class="sm:pt-2">{{ __('Şu anki ad') }}</span>
+                <p class="font-mono text-[13px] sm:pt-2">{{ $site->domain }}</p>
+
+                <label for="rename-domain" class="mt-2.5 sm:mt-0 sm:pt-2">{{ __('Yeni alan adı') }}</label>
+                <div>
+                    <input id="rename-domain" wire:model.live.debounce.400ms="newDomain" required spellcheck="false" autocomplete="off" placeholder="{{ __('ornek.com') }}"
+                           class="h-9 w-full rounded-md border bg-surface px-3 font-mono text-[13px] outline-none focus:border-accent {{ $errors->has('newDomain') || $renameError ? 'border-crit' : 'border-line' }}">
+                    @error('newDomain')
+                        <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
+                    @else
+                        @if ($renameError)
+                            <p class="mt-1.5 text-[13px] text-crit">{{ $renameError }}</p>
+                        @else
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('Başka bir alan adı (ornek.com) ya da bu sunucudaki bir alan adının alt adı (guncelleme.ornek.com) olabilir.') }}</p>
+                        @endif
+                    @enderror
+                    @if (! str_starts_with($newDomain, 'www.'))
+                        <label class="mt-2 flex items-center gap-2 text-[13px]">
+                            <input type="checkbox" wire:model.live="renameWww" class="size-4 accent-accent">
+                            <span><x-t text=":name adı da açılsın"><x-slot:name><span class="font-mono">www.{{ $newDomain !== '' ? $newDomain : __('yeni-ad') }}</span></x-slot:name></x-t></span>
+                        </label>
+                    @endif
+                </div>
+
+                <span class="mt-2.5 sm:mt-0 sm:pt-2">{{ __('Eski ad') }}</span>
+                <div class="space-y-2" role="radiogroup">
+                    @foreach ([
+                        \App\Models\SiteRename::OLD_REDIRECT => [__('Yeni ada yönlendirilsin (301)'), __('Ziyaretçiler ve arama motorları yeni adrese gider; yol ve sorgu korunur.')],
+                        \App\Models\SiteRename::OLD_ALIAS => [__('Siteyi açmaya devam etsin'), __('Ek alan adı olur. Eski adresi çağıran uygulamalar ve API istemcileri için en güvenlisi.')],
+                        \App\Models\SiteRename::OLD_NONE => [__('Kaldırılsın'), __('Eski ad artık bu siteyi açmaz.')],
+                    ] as $mode => [$name, $hint])
+                        <label class="flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 {{ $renameOld === $mode ? 'border-accent bg-accent-soft/40' : 'border-line hover:bg-surface-2' }}">
+                            <input type="radio" wire:model.live="renameOld" value="{{ $mode }}" class="mt-0.5 size-4 accent-accent">
+                            <span><span class="font-medium">{{ $name }}</span><span class="block text-2xs text-muted">{{ $hint }}</span></span>
+                        </label>
+                    @endforeach
+                    @error('renameOld') <p class="text-[13px] text-crit">{{ $message }}</p> @enderror
+                </div>
+
+                <span class="mt-2.5 sm:mt-0 sm:pt-2">{{ __('Yedek') }}</span>
+                <div class="text-[13px] sm:pt-2">
+                    @if ($renameNoRoom !== null)
+                        <p class="text-warn">{{ $renameNoRoom }} {{ __('Değişiklik yedeksiz yapılır.') }}</p>
+                    @elseif (auth()->user()->is_admin)
+                        <label class="flex items-start gap-2">
+                            <input type="checkbox" wire:model.live="renameBackup" class="mt-0.5 size-4 shrink-0 accent-accent">
+                            <span>{{ __('Önce sitenin yedeğini al') }}<span class="block text-2xs text-muted">{{ __('Dosyalar, veritabanları, e-posta ve DNS. Yedek alınamazsa hiçbir şey değişmez.') }}</span></span>
+                        </label>
+                    @else
+                        <p class="text-muted">{{ __('Önce sitenin yedeği alınır; yedek alınamazsa hiçbir şey değişmez.') }}</p>
+                    @endif
+                </div>
+            </div>
+
+            @if ($renamePlan)
+                @php
+                    $p = $renamePlan;
+                    $ip = implode(', ', $p['addresses']) ?: __('bu sunucu');
+                    $mono = fn ($v) => '<span class="font-mono">'.e($v).'</span>';
+                @endphp
+                <div class="mx-5 mb-1 rounded-lg border border-line bg-surface-2/50 px-4 py-3">
+                    <p class="text-2xs font-medium tracking-[.06em] text-muted uppercase">{{ __('Neler olacak') }}</p>
+                    <ul class="mt-2 space-y-1.5 text-[13px]">
+                        <li class="flex gap-2"><x-icon name="folder" class="mt-0.5 shrink-0 text-muted" /><span>{!! __('Klasör :from → :to olur; eski yol yeni klasöre bağlantı olarak kalır, dosya izinleri değişmez.', ['from' => $mono($p['folder_from']), 'to' => $mono($p['folder_to'])]) !!}</span></li>
+                        <li class="flex gap-2"><x-icon name="user" class="mt-0.5 shrink-0 text-muted" /><span>{!! __('Sistem hesabı :account aynı kalır; veritabanları, SSH anahtarları ve kota ona bağlı.', ['account' => $mono($p['account'])]) !!}</span></li>
+                        <li class="flex gap-2"><x-icon name="server" class="mt-0.5 shrink-0 text-muted" /><span>{{ __('Nginx ve PHP-FPM yeni adla yazılır, tek seferde yeniden yüklenir. Bir adım olmazsa her şey eski haline döner.') }}</span></li>
+                        <li class="flex gap-2"><x-icon name="network" class="mt-0.5 shrink-0 text-muted" /><span>
+                            @if ($p['dns']['kind'] === 'parent')
+                                {!! __(':zone bölgesine :label kaydı eklenir (bu sunucunun adresi).', ['zone' => $mono($p['dns']['zone']), 'label' => $mono($p['dns']['label'])]) !!}
+                            @elseif ($p['dns']['kind'] === 'own')
+                                {!! __(':zone bölgesi bu sunucuda; siteye bağlanır.', ['zone' => $mono($p['dns']['zone'])]) !!}
+                            @else
+                                {!! __(':zone için DNS bölgesi oluşturulur. DNS başka yerdeyse (kayıt firması, Cloudflare) A kaydını :ip adresine yönlendirin.', ['zone' => $mono($p['dns']['zone']), 'ip' => $mono($ip)]) !!}
+                            @endif
+                        </span></li>
+                        <li class="flex gap-2"><x-icon name="shield-check" class="mt-0.5 shrink-0 {{ in_array($p['certificate'], ['keep', 'issue'], true) ? 'text-ok' : 'text-warn' }}" /><span>
+                            @switch($p['certificate'])
+                                @case('keep') {{ __('Mevcut sertifika yeni adı da kapsıyor; HTTPS kesilmez.') }} @break
+                                @case('issue') {!! __(':to bu sunucuya işaret ediyor: Let\'s Encrypt sertifikası değişiklikten önce alınır, HTTPS kesilmez.', ['to' => $mono($p['to'])]) !!} @break
+                                @case('later') {!! __(':to henüz bu sunucuya işaret etmiyor (:found). Site yeni adla önce http ile açılır; DNS gelince sertifika kendiliğinden alınır. Kesintisiz geçiş için önce DNS\'i yönlendirin.', ['to' => $mono($p['to']), 'found' => e($p['pointing']['found'] === [] ? __('kayıt yok') : implode(', ', $p['pointing']['found']))]) !!} @break
+                                @default {{ __('Site sertifikasız; yeni ad http ile açılır.') }}
+                            @endswitch
+                        </span></li>
+                        @if ($p['laravel'] || $p['wordpress'])
+                            <li class="flex gap-2"><x-icon name="file-cog" class="mt-0.5 shrink-0 text-muted" /><span>{{ $p['wordpress'] ? __('wp-config.php ve WordPress veritabanındaki adresler yeni ada çevrilir.') : __('.env dosyasındaki adresler (APP_URL) ve klasör yolu güncellenir, yapılandırma önbelleği yenilenir.') }}</span></li>
+                        @else
+                            <li class="flex gap-2"><x-icon name="file-cog" class="mt-0.5 shrink-0 text-muted" /><span>{{ __('Ayar dosyalarındaki (.env, config.php…) eski adres ve klasör yolu güncellenir.') }}</span></li>
+                        @endif
+                        @if ($p['workers'] || $p['redis'] || $p['cron'] || $p['ftp'])
+                            <li class="flex gap-2"><x-icon name="refresh-cw" class="mt-0.5 shrink-0 text-muted" /><span>{{ __('Yeni adla yeniden başlatılır:') }} {{ collect([$p['workers'] ? trans_choice(':count kuyruk işçisi/süreç', $p['workers']) : null, $p['redis'] ? 'Redis' : null, $p['cron'] ? trans_choice(':count zamanlanmış görev', $p['cron']) : null, $p['ftp'] ? trans_choice(':count SFTP hesabı', $p['ftp']) : null])->filter()->implode(', ') }}</span></li>
+                        @endif
+                        @if ($p['subdomains'])
+                            <li class="flex gap-2"><x-icon name="globe" class="mt-0.5 shrink-0 text-muted" /><span>{!! __('Alt alan adları da taşınır: :names', ['names' => collect($p['subdomains'])->map($mono)->implode(', ')]) !!}</span></li>
+                        @endif
+                        @if ($p['mail'])
+                            <li class="flex gap-2"><x-icon name="mail" class="mt-0.5 shrink-0 text-muted" /><span>{!! $p['mail']['moves'] ? __('E-posta (posta kutusu yok) yeni ada taşınır.') : trans_choice(':count posta kutusu :from adında kalır ve posta almaya devam eder.', $p['mail']['mailboxes'], ['from' => $mono($p['from'])]) !!}</span></li>
+                        @endif
+                        <li class="flex gap-2"><x-icon name="undo-2" class="mt-0.5 shrink-0 text-muted" /><span>{{ __(':days gün içinde tek tıkla eski ada geri dönebilirsiniz.', ['days' => \App\Models\SiteRename::UNDO_DAYS]) }}</span></li>
+                    </ul>
+                </div>
+            @endif
+            <div class="mt-4 flex justify-end gap-2 border-t border-line px-5 py-3">
+                <button type="button" wire:click="$set('renaming', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                <button type="submit" wire:loading.attr="disabled" @disabled(! $renamePlan) class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{{ __('Alan adını değiştir') }}</button>
+            </div>
+        </form>
+    </x-modal>
+
+    {{-- The latest rename: what it did, with its log --}}
+    @if ($rename)
+        <x-modal :title="__('Alan adı değişikliği')" show="renameDetails" size="max-w-3xl">
+            <div>
+                <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold"><x-t text="Alan adı değişikliği: :from → :to"><x-slot:from><span class="ml-1 font-mono">{{ $rename->from_domain }}</span></x-slot:from><x-slot:to><span class="font-mono">{{ $rename->to_domain }}</span></x-slot:to></x-t></h2>
+                <div class="space-y-2 p-5 text-[13px]">
+                    @if ($rename->error)
+                        <p class="flex gap-2 text-crit"><x-icon name="triangle-alert" class="mt-0.5 shrink-0" />{{ $rename->error }}</p>
+                    @endif
+                    @foreach ($rename->notes ?? [] as $n)
+                        @php [$text, $look] = \App\Services\Sites\SiteRenames::noteText($n); @endphp
+                        <p class="flex gap-2 {{ $look ? 'text-warn' : '' }}"><x-icon :name="$look ? 'info' : 'check'" class="mt-0.5 shrink-0 {{ $look ? '' : 'text-ok' }}" />{{ $text }}</p>
+                    @endforeach
+                    @if ($rename->backup_id)
+                        <p class="flex gap-2"><x-icon name="archive" class="mt-0.5 shrink-0 text-muted" />{{ __('Değişiklikten önce alınan yedek Yedekler\'de.') }}</p>
+                    @endif
+                    <x-run-log :run="$rename->run" class="h-56" />
+                </div>
+                <div class="flex justify-end border-t border-line px-5 py-3">
+                    <button type="button" wire:click="$set('renameDetails', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Kapat') }}</button>
+                </div>
+            </div>
+        </x-modal>
+    @endif
 
     {{-- Delete confirmation --}}
     <x-modal :title="__('Siteyi sil')" show="deleting" size="max-w-md">

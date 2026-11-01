@@ -33,7 +33,8 @@ class ProvisionSite implements ShouldBeUnique, ShouldQueue
     public function handle(AgentClient $agent, Certificates $certificates): void
     {
         $site = $this->site->fresh(['systemUser', 'certificate']);
-        if ($site === null || $site->status === SiteStatus::Deleting) {
+        // A rename writes the site under its new name itself.
+        if ($site === null || $site->status === SiteStatus::Deleting || $site->status === SiteStatus::Renaming) {
             return;
         }
 

@@ -128,7 +128,7 @@ class Restores
      */
     public function refusal(?User $user, BackupItem $item, ?Site $site, array $parts = []): ?string
     {
-        if ($site !== null && in_array($site->status, [SiteStatus::Deleting, SiteStatus::Provisioning], true)) {
+        if ($site !== null && in_array($site->status, [SiteStatus::Deleting, SiteStatus::Provisioning, SiteStatus::Renaming], true)) {
             return __('Site şu an değişiyor; biraz sonra yeniden deneyin.');
         }
         if ($user === null || $user->is_admin) {
