@@ -34,6 +34,12 @@ func TestApplyWritesDefaultServer(t *testing.T) {
 			t.Errorf("default server lacks %q:\n%s", want, conf)
 		}
 	}
+	// The "no site" page is not indexed (also from its own location,
+	// whose add_header drops the server's), and robots.txt is left to
+	// the customers' sites answered here before their certificate.
+	if n := strings.Count(conf, `add_header X-Robots-Tag "noindex, nofollow" always;`); n != 2 || strings.Contains(conf, "location = /robots.txt") {
+		t.Errorf("default server X-Robots-Tag %d:\n%s", n, conf)
+	}
 	if target, err := os.Readlink(sim.Path(defaultSiteEnabled)); err != nil || target != defaultSiteAvail {
 		t.Fatalf("default server not enabled: %q %v", target, err)
 	}

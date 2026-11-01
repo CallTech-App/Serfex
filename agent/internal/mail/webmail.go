@@ -79,20 +79,7 @@ func roundcubeJobDropIn(unit string) string {
 // s.PHPVersion. It reports whether Nginx or PHP-FPM need a reload.
 func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data tmplData) (bool, error) {
 	return changes(t, func() error {
-		data.Webmail = s.Webmail
-		data.WebUser = m.webUser
-		data.ACMERoot = cert.Webroot
-		data.TLSConf = cert.TLSConf
-		data.AutoconfigDir = autoconfigDir
-		data.LogDir, data.ConfigDir, data.DataDir = webmailLogs, webmailConfig, webmailData
-		data.PHPSocket = webmailSocket
-		data.MasterPass, data.DESKey = s.MasterPassword, s.DESKey
-		data.WebmailApp = s.webmailApp()
-		data.SnappyData, data.SSODir, data.SSOFile = snappyMailData, webmailSSO, snappyMailSSO
-		if data.WebmailApp == SnappyMail {
-			data.WebmailRoot = snappyMailRoot(s.SnappyMailVersion)
-		}
-
+		data = m.webmailData(s, data)
 		for _, d := range []string{"/var/lib/serfex", "/var/lib/serfex/mail", autoconfigDir, cert.Webroot} {
 			if err := t.RootDir(d, 0o755, 0, 0); err != nil {
 				return err
@@ -156,6 +143,24 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 		}
 		return t.Symlink(mailVhost, mailVhostLink)
 	})
+}
+
+// webmailData adds webmail's settings to data.
+func (m *Manager) webmailData(s *server, data tmplData) tmplData {
+	data.Webmail = s.Webmail
+	data.WebUser = m.webUser
+	data.ACMERoot = cert.Webroot
+	data.TLSConf = cert.TLSConf
+	data.AutoconfigDir = autoconfigDir
+	data.LogDir, data.ConfigDir, data.DataDir = webmailLogs, webmailConfig, webmailData
+	data.PHPSocket = webmailSocket
+	data.MasterPass, data.DESKey = s.MasterPassword, s.DESKey
+	data.WebmailApp = s.webmailApp()
+	data.SnappyData, data.SSODir, data.SSOFile = snappyMailData, webmailSSO, snappyMailSSO
+	if data.WebmailApp == SnappyMail {
+		data.WebmailRoot = snappyMailRoot(s.SnappyMailVersion)
+	}
+	return data
 }
 
 // writeRoundcube sets up Roundcube to read Serfex's configuration, with

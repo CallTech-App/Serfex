@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\NoIndex;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestsDuringMaintenance(except: ['settings/updates/progress/*', 'ayarlar/guncellemeler/ilerleme/*']);
         // The person's language, the server's, or the browser's (SetLocale).
         $middleware->web(append: [SetLocale::class]);
+        // No page of the panel is ever listed by a search engine. First in
+        // line, so the maintenance page of an update is marked too.
+        $middleware->prepend(NoIndex::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

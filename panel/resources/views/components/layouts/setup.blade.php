@@ -4,6 +4,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="robots" content="noindex, nofollow">
         <title>{{ __($title ?? 'Kurulum sihirbazı · Serfex') }}</title>
         <x-favicon />
         <script>

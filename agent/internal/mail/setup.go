@@ -188,11 +188,11 @@ func (m *Manager) templateData(s *server, vmail host.User) tmplData {
 	}
 }
 
-// RefreshPostfix rewrites Postfix's configuration and maps from the
-// applied setup, so a Serfex update brings servers set up before it to
-// the new settings. It reports whether anything changed; before
-// mail.setup it does nothing.
-func (m *Manager) RefreshPostfix(ctx context.Context) (changed bool, err error) {
+// Refresh rewrites Postfix's configuration and maps and the mail
+// server's Nginx vhost (webmail) from the applied setup, so a Serfex
+// update brings servers set up before it to the new settings. It reports
+// whether anything changed; before mail.setup it does nothing.
+func (m *Manager) Refresh(ctx context.Context) (changed bool, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, err := m.loadServer()
@@ -225,6 +225,23 @@ func (m *Manager) RefreshPostfix(ctx context.Context) (changed bool, err error) 
 			return false, fmt.Errorf("postfix rejected the configuration: %w", err)
 		}
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "postfix"}}); err != nil {
+			return false, err
+		}
+	}
+
+	// The vhost alone: webmail's files and pools stay as mail.setup
+	// left them.
+	web, err := changes(t, func() error {
+		return t.WriteFile(mailVhost, render(mailVhostTmpl, m.webmailData(s, data)))
+	})
+	if err != nil {
+		return false, err
+	}
+	if web {
+		if err := m.checkWeb(ctx, ""); err != nil {
+			return false, err
+		}
+		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "nginx"}}); err != nil {
 			return false, err
 		}
 	}

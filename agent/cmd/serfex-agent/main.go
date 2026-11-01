@@ -192,7 +192,7 @@ func main() {
 	svc.updates.WebPort = svc.databases.WebPort
 	svc.updates.Web = func(ctx context.Context) (any, error) { return svc.databases.SetupPanelWeb(ctx) }
 	svc.updates.DefaultSite = svc.sites.EnsureDefaultSite
-	svc.updates.Mail = svc.mail.RefreshPostfix
+	svc.updates.Mail = svc.mail.Refresh
 	if *dryRun {
 		// The run stays in this process, which is not restarted.
 		svc.updates.ApplyPanel = func(ctx context.Context) error {
