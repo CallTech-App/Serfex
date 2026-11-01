@@ -101,12 +101,13 @@ server {
 
 func init() {
 	// Search engines never list webmail's sign-in page or the mail
-	// server's address, nor keep a copy or a snippet of them.
+	// server's address, nor keep a copy or a snippet of them. robots.txt
+	// lets crawlers in on purpose, so they see noindex (see serfex-web).
 	template.Must(mailVhostTmpl.New("noindex").Parse(`
     add_header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet" always;
     location = /robots.txt {
         default_type text/plain;
-        return 200 "User-agent: *\nDisallow: /\n";
+        return 200 "# Every response here is noindex (X-Robots-Tag).\nUser-agent: *\nDisallow:\n";
     }`))
 	template.Must(mailVhostTmpl.New("clients").Parse(`
     # Thunderbird and most clients read their settings from here.

@@ -65,10 +65,10 @@ setting. Findings can be ignored and reopen if they are seen again.
 - **Search engines** never list the panel, its sign-in page, the database
   tools or webmail: every response sends
   `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet`, every panel page
-  has a `robots` meta tag, and `/robots.txt` answers `Disallow: /`. The
-  "no site" page of the default server is `noindex` too, but has no
-  robots.txt, so a customer's site answered there before its certificate
-  is issued is not turned away from crawlers.
+  has a `robots` meta tag. `/robots.txt` lets crawlers in on purpose: a
+  page they may not fetch is never seen to be `noindex`, and one already
+  listed (found through a link) would stay in the results. The "no site"
+  page of the default server is `noindex` too.
 - **SSH**: root sign-in and password sign-in. Password sign-in cannot be
   turned off until an administrator has an SSH key. SFTP accounts always
   sign in with a password, and so do site users with SSH access that were

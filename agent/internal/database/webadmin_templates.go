@@ -103,10 +103,12 @@ http {
         # Plain HTTP on this port goes to HTTPS.
         error_page 497 =301 https://$host:$server_port$request_uri;
 
-        # Crawlers that read robots.txt stay out of everything here.
+        # robots.txt lets crawlers in on purpose: a page they may not
+        # fetch is never seen to be noindex, and one already listed (by a
+        # link somewhere) stays in the results.
         location = /robots.txt {
             default_type text/plain;
-            return 200 "User-agent: *\nDisallow: /\n";
+            return 200 "# Every response here is noindex (X-Robots-Tag).\nUser-agent: *\nDisallow:\n";
         }
 
 {{- if .Panel}}

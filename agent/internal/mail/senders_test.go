@@ -116,7 +116,7 @@ func TestRefreshKeepsWebmailOutOfSearchEngines(t *testing.T) {
 	setUp(t, m)
 	vhost := read(t, sim, mailVhost)
 	header := `add_header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet" always;`
-	robots := "location = /robots.txt {\n        default_type text/plain;\n        return 200 \"User-agent: *\\nDisallow: /\\n\";\n    }"
+	robots := "location = /robots.txt {\n        default_type text/plain;\n        return 200 \"# Every response here is noindex (X-Robots-Tag).\\nUser-agent: *\\nDisallow:\\n\";\n    }"
 	// Port 80 and webmail's 443.
 	if strings.Count(vhost, header) != 2 || strings.Count(vhost, robots) != 2 {
 		t.Fatalf("vhost:\n%s", vhost)

@@ -7,8 +7,8 @@ import (
 )
 
 // Search engines must never list the panel, its sign-in page or the
-// database tools: every response carries X-Robots-Tag and robots.txt
-// turns crawlers away.
+// database tools: every response carries X-Robots-Tag, and robots.txt
+// lets crawlers in so they see it (a page they may not fetch stays listed).
 func TestSerfexWebIsNeverIndexed(t *testing.T) {
 	var buf bytes.Buffer
 	if err := webConfTmpl.Execute(&buf, webData{
@@ -23,7 +23,7 @@ func TestSerfexWebIsNeverIndexed(t *testing.T) {
 	}
 	conf := buf.String()
 	header := `add_header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet" always;`
-	robots := "location = /robots.txt {\n            default_type text/plain;\n            return 200 \"User-agent: *\\nDisallow: /\\n\";\n        }"
+	robots := "location = /robots.txt {\n            default_type text/plain;\n            return 200 \"# Every response here is noindex (X-Robots-Tag).\\nUser-agent: *\\nDisallow:\\n\";\n        }"
 
 	// Both servers: the IP address's and the panel's name's.
 	if n := strings.Count(conf, "\n    server {"); n != 2 {

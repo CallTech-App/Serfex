@@ -48,9 +48,13 @@ class NoIndexTest extends TestCase
         }
     }
 
-    public function test_robots_txt_turns_every_crawler_away(): void
+    /**
+     * Crawlers may fetch the pages, on purpose: one they may not fetch is
+     * never seen to be noindex, and a page already listed stays listed.
+     */
+    public function test_robots_txt_lets_crawlers_see_noindex(): void
     {
-        $this->assertSame("User-agent: *\nDisallow: /\n", file_get_contents(public_path('robots.txt')));
+        $this->assertSame("# Every response here is noindex (X-Robots-Tag).\nUser-agent: *\nDisallow:\n", file_get_contents(public_path('robots.txt')));
     }
 
     public function test_every_page_layout_carries_the_robots_meta_tag(): void

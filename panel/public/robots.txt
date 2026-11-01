@@ -1,2 +1,3 @@
+# Every response here is noindex (X-Robots-Tag).
 User-agent: *
-Disallow: /
+Disallow:
