@@ -2,7 +2,12 @@
 
 namespace App\Livewire\Services;
 
+use App\Models\TuningChange;
 use App\Services\System\SystemServices;
+use App\Services\Tuning\MysqlAdvisor;
+use App\Services\Tuning\Optimization;
+use App\Services\Tuning\Tuner;
+use App\Services\Tuning\TuningSettings;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -17,7 +22,7 @@ use Livewire\Component;
 #[Layout('components.layouts.app')]
 class ServiceShow extends Component
 {
-    public const TABS = ['log' => 'Günlük', 'settings' => 'Ayarlar'];
+    public const TABS = ['recs' => 'Öneriler', 'log' => 'Günlük', 'settings' => 'Ayarlar'];
 
     public string $unit;
 
@@ -46,7 +51,12 @@ class ServiceShow extends Component
         if ($service === null && $services->list() !== null) {
             abort(404);
         }
-        if (! array_key_exists($this->tab, self::TABS) || ($this->tab === 'settings' && empty($service['settings']))) {
+        $database = ($service['settings'] ?? null) === 'database' && in_array($unit, Optimization::UNITS, true);
+        if (! request()->has('tab') && $database) {
+            // A database server opens on its optimization suggestions.
+            $this->tab = 'recs';
+        }
+        if (! array_key_exists($this->tab, self::TABS) || ($this->tab === 'settings' && empty($service['settings'])) || ($this->tab === 'recs' && ! $database)) {
             $this->tab = 'log';
         }
         if (! empty($service['settings'])) {
@@ -138,6 +148,14 @@ class ServiceShow extends Component
             return;
         }
         $this->settingsError = null;
+        if ($section === 'database') {
+            // A value a person set by hand is not touched by optimization.
+            foreach (MysqlAdvisor::FIELDS as $key => $field) {
+                if (($values[$field] ?? null) != ($before[$field] ?? null)) {
+                    app(TuningSettings::class)->lock($this->unit, $key, auth()->user());
+                }
+            }
+        }
         $this->useSettings($result);
         $this->dispatch('toast',
             message: __(':name yeni ayarlarla çalışıyor.', ['name' => __($service['name'] ?? $this->unit)]),
@@ -165,6 +183,59 @@ class ServiceShow extends Component
         $this->dispatch('toast', message: __('Önceki ayarlar geri yüklendi.'));
     }
 
+    public function lockTuning(string $key, TuningSettings $settings): void
+    {
+        if (isset(MysqlAdvisor::FIELDS[$key])) {
+            $settings->lock($this->unit, $key, auth()->user());
+            $this->dispatch('toast', message: __('Ayar kilitlendi; optimizasyon ona öneri getirmeyecek.'));
+        }
+    }
+
+    public function unlockTuning(string $key, TuningSettings $settings): void
+    {
+        $settings->unlock($this->unit, $key);
+        $this->dispatch('toast', message: __('Ayar optimizasyona bırakıldı.'));
+    }
+
+    public function undoTuning(int $id, Tuner $tuner, SystemServices $services): void
+    {
+        $error = $tuner->undo(TuningChange::where('unit', $this->unit)->findOrFail($id));
+        if ($error !== null) {
+            $this->settingsError = $error;
+
+            return;
+        }
+        $this->loadSettings($services, 'database');
+        $this->dispatch('toast', message: __('Önceki değer geri yüklendi.'));
+    }
+
+    /**
+     * Who last set each optimizable setting: a lock, or a change from a
+     * suggestion that can still be undone.
+     *
+     * @return array<string, array{locked?: array{0: string, 1: string}, change?: TuningChange}>
+     */
+    private function tuningNotes(?array $service): array
+    {
+        if (($service['settings'] ?? null) !== 'database' || ! in_array($this->unit, Optimization::UNITS, true)) {
+            return [];
+        }
+        $locked = app(TuningSettings::class)->locked($this->unit);
+        $tuner = app(Tuner::class);
+        $out = [];
+        foreach (MysqlAdvisor::FIELDS as $key => $field) {
+            if (isset($locked[$key])) {
+                $out[$field] = ['key' => $key, 'locked' => $locked[$key]];
+
+                continue;
+            }
+            $change = TuningChange::where('unit', $this->unit)->where('key', $key)->whereIn('status', TuningChange::IN_FORCE)->latest('applied_at')->first();
+            $out[$field] = ['key' => $key, 'change' => $change && $tuner->canUndo($change) ? $change : null];
+        }
+
+        return $out;
+    }
+
     public function render(SystemServices $services): View
     {
         $error = null;
@@ -180,6 +251,11 @@ class ServiceShow extends Component
             'logs' => $logs,
             'affects' => $services->affects($this->unit),
             'fields' => SystemServices::SETTINGS[$service['settings'] ?? ''] ?? [],
+            'tabs' => ($service['settings'] ?? null) === 'database' && in_array($this->unit, Optimization::UNITS, true)
+                ? ['recs' => __('Öneriler'), 'settings' => __('Ayarlar'), 'log' => __('Günlük')]
+                : (empty($service['settings']) ? [] : ['log' => __('Günlük'), 'settings' => __('Ayarlar')]),
+            'tuningCount' => $this->tab !== 'recs' && ($service['settings'] ?? null) === 'database' && in_array($this->unit, Optimization::UNITS, true) ? app(Optimization::class)->count($this->unit) : null,
+            'tuningNotes' => $this->tab === 'settings' ? $this->tuningNotes($service) : [],
             'confirm' => $this->confirming && $service ? $services->confirmation($service, $this->confirming) : null,
         ])->title(__(':name · Hizmetler · Serfex', ['name' => __($service['name'] ?? $this->unit)]));
     }

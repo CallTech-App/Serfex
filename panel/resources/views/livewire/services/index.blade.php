@@ -45,8 +45,11 @@
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
             @foreach (ServiceIndex::TABS as $key => $label)
                 <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"
-                        @class(['-mb-px h-12 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
-                    {{ $label }}
+                        @class(['-mb-px flex h-12 items-center gap-2 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
+                    {{ __($label) }}
+                    @if ($key === 'optimization' && $tuningCount)
+                        <span class="num rounded bg-surface-2 px-1.5 text-2xs leading-[18px] font-semibold text-muted">{{ $tuningCount }}</span>
+                    @endif
                 </button>
             @endforeach
         </div>
@@ -92,7 +95,7 @@
                 </table>
             </div>
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Serfex\'in kendi hizmetleri (panel, ajan, panelin PostgreSQL\'i) müşteri hizmetlerinden ayrı çalışır; ajan ve panel durdurulamaz. Hizmetin günlüğü ve ayarları için adına tıklayın.') }}</p>
-        @else
+        @elseif ($tab === 'php')
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-5 py-3">
                 <p class="text-[13px] text-muted">{{ __('PHP\'nin yama sürümleri Ubuntu ve ondrej/php paket depolarından gelir; paket listeleri her gece denetlenir.') }}</p>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -171,6 +174,8 @@
                 <span class="hidden md:block"></span>
                 <div><button type="submit" wire:loading.attr="disabled" wire:target="saveDefaults" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2 disabled:opacity-40">{{ __('Kaydet') }}</button></div>
             </form>
+        @elseif ($tab === 'optimization')
+            <livewire:services.optimization-overview key="optimization" />
         @endif
     </section>
 

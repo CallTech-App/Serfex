@@ -315,6 +315,15 @@ class SystemServices
      */
     public function applySettings(string $unit, string $section, array $values): array|string
     {
+        if ($section === 'database') {
+            // The page edits a few of the database settings; the ones set
+            // by optimization suggestions stay as they are.
+            $current = $this->settings($unit, $section);
+            if (is_string($current)) {
+                return $current;
+            }
+            $values = array_merge($current, $values);
+        }
         try {
             $res = (array) $this->agent->call('service.settings.apply', ['unit' => $unit, $section => $values], 300);
         } catch (AgentException $e) {

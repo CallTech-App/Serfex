@@ -13,6 +13,7 @@ use App\Services\Agent\AgentUnavailableException;
 use App\Services\Components\Components;
 use App\Services\Php\PhpVersions;
 use App\Services\System\SystemServices;
+use App\Services\Tuning\Optimization;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -36,7 +37,7 @@ class ServiceIndex extends Component
 {
     use ShowsComponentOperations;
 
-    public const TABS = ['services' => 'Hizmetler', 'php' => 'PHP sürümleri'];
+    public const TABS = ['services' => 'Hizmetler', 'php' => 'PHP sürümleri', 'optimization' => 'Optimizasyon'];
 
     #[Url(except: 'services')]
     public string $tab = 'services';
@@ -198,10 +199,15 @@ class ServiceIndex extends Component
         if ($this->tab === 'services') {
             $list = $services->list($error);
             $groups = $list === null ? null : $services->grouped($list);
-        } else {
+        } elseif ($this->tab === 'php') {
             $phpRows = $php->rows($error);
         }
         $failed = ($this->tab === 'services' ? $groups : $phpRows) === null;
+        $tuningCount = 0;
+        $optimization = app(Optimization::class);
+        foreach ($this->tab === 'optimization' ? [] : $optimization->servers() as $server) {
+            $tuningCount += $optimization->count($server['unit']);
+        }
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $blocker = $components->blocker();
 
@@ -216,6 +222,7 @@ class ServiceIndex extends Component
             'operationName' => $operation ? $components->operationName($operation) : null,
             'confirm' => $this->confirming ? $this->confirmText($services, $components) : null,
             'installed' => array_values(array_map(fn ($r) => $r['number'], array_filter($phpRows ?? [], fn ($r) => $r['installed']))),
+            'tuningCount' => $tuningCount,
         ]);
     }
 

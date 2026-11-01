@@ -171,6 +171,14 @@
         </section>
     @endif
 
+    @if ($slow && $slow['rows'] !== [])
+        {{-- The site's slow statements (optimization): advice for the site owner. --}}
+        <section class="min-w-0 overflow-hidden rounded-xl border border-line bg-surface [&>h3:first-child]:border-t-0">
+            @include('livewire.services.partials.slow-queries', ['slow' => $slow, 'showSite' => false])
+            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Yalnızca bu sitenin veritabanlarındaki sorgular gösterilir. Sorgulardaki değerler (?) gösterilmez.') }}</p>
+        </section>
+    @endif
+
     {{-- Veritabanı oluştur --}}
     <x-modal :title="__('Veritabanı oluştur')" show="creating">
         <form wire:submit="create">

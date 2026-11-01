@@ -88,12 +88,15 @@
                 @endif
             </dl>
 
-            @if ($fields !== [])
+            @if ($tabs !== [])
                 <div class="flex gap-5 overflow-x-auto border-t border-b border-line px-5 text-[13.5px]" role="tablist">
-                    @foreach (ServiceShow::TABS as $key => $label)
+                    @foreach ($tabs as $key => $label)
                         <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')"
-                                @class(['-mb-px h-12 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
+                                @class(['-mb-px flex h-12 items-center gap-2 border-b-2 whitespace-nowrap', 'border-accent font-medium text-fg' => $tab === $key, 'border-transparent text-muted hover:text-fg' => $tab !== $key])>
                             {{ $label }}
+                            @if ($key === 'recs' && $tuningCount)
+                                <span class="num rounded bg-surface-2 px-1.5 text-2xs leading-[18px] font-semibold text-muted">{{ $tuningCount }}</span>
+                            @endif
                         </button>
                     @endforeach
                 </div>
@@ -101,7 +104,9 @@
                 <h2 class="flex h-12 items-center border-t border-line px-5 text-[14.5px] font-semibold">{{ __('Günlük') }}</h2>
             @endif
 
-            @if ($tab === 'settings' && $fields !== [])
+            @if ($tab === 'recs')
+                <livewire:services.database-tuning :unit="$unit" :key="'tuning-'.$unit" />
+            @elseif ($tab === 'settings' && $fields !== [])
                 <form wire:submit="saveSettings">
                     @if ($settingsError)
                         <p class="mx-5 mt-4 rounded-lg bg-crit-soft px-3 py-2 text-[13px] text-crit" role="alert">{{ $settingsError }}</p>
@@ -133,6 +138,25 @@
                                 @endif
                                 @error('settings.'.$key) <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                                 <p class="mt-1.5 text-[13px] text-muted">{{ $help }}@if ($min !== null) <span class="whitespace-nowrap">({{ \App\Support\Num::format($min, 0) }}–{{ \App\Support\Num::format($max, 0) }})</span>@endif</p>
+                                @if ($note = $tuningNotes[$key] ?? null)
+                                    @if ($note['locked'] ?? null)
+                                        <p class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                                            <x-icon name="lock" class="size-3.5 text-muted" />
+                                            <span>{{ __('Kilitli (:date, :name): optimizasyon bu ayara öneri getirmez.', ['date' => \App\Support\When::date(\Carbon\Carbon::parse($note['locked'][1])), 'name' => $note['locked'][0]]) }}</span>
+                                            <button type="button" wire:click="unlockTuning('{{ $note['key'] }}')" class="text-accent hover:underline">{{ __('Optimizasyona bırak') }}</button>
+                                        </p>
+                                    @elseif ($note['change'] ?? null)
+                                        <p class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                                            <x-icon name="gauge" class="size-3.5 text-accent" />
+                                            <span>{{ __('Optimizasyonla :from değerinden :to yapıldı (:when).', ['from' => $note['change']->from_label, 'to' => $note['change']->to_label, 'when' => \App\Support\When::withTime($note['change']->applied_at)]) }}</span>
+                                            <button type="button" wire:click="undoTuning({{ $note['change']->id }})" class="text-accent hover:underline">{{ __('Geri al') }}</button>
+                                            <span class="text-muted">·</span>
+                                            <button type="button" wire:click="lockTuning('{{ $note['key'] }}')" class="text-accent hover:underline">{{ __('Kilitle') }}</button>
+                                        </p>
+                                    @else
+                                        <p class="mt-2"><button type="button" wire:click="lockTuning('{{ $note['key'] }}')" class="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg"><x-icon name="lock" class="size-3.5" />{{ __('Optimizasyon bu ayara dokunmasın') }}</button></p>
+                                    @endif
+                                @endif
                             </div>
                         @endforeach
                     </div>
@@ -140,7 +164,7 @@
                         <button type="submit" wire:loading.attr="disabled" wire:target="saveSettings" @disabled(! $running) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                             <x-icon name="loader-circle" class="animate-spin" wire:loading wire:target="saveSettings" />{{ __('Kaydet ve uygula') }}
                         </button>
-                        <span class="text-[13px] text-muted">{{ __('Ayar dosyası önce denetlenir; sunucu kabul etmezse önceki ayarlar kalır.') }}</span>
+                        <span class="text-[13px] text-muted">{{ $tuningNotes !== [] ? __('Ayar dosyası önce denetlenir; sunucu kabul etmezse önceki ayarlar kalır. Elle değiştirdiğiniz ayar kilitlenir; optimizasyon ona öneri getirmez.') : __('Ayar dosyası önce denetlenir; sunucu kabul etmezse önceki ayarlar kalır.') }}</span>
                     </div>
                 </form>
             @else
