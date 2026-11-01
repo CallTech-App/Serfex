@@ -904,6 +904,13 @@ func registerBackups(srv *rpc.Server, svc services) {
 		return b.MigratePleskPull(context.WithoutCancel(ctx), p)
 	})
 	handle(srv, "site.copy", func(ctx context.Context, p backup.CopySpec) (any, error) { return b.Copy(ctx, p) })
+	handle(srv, "site.rename", func(ctx context.Context, p backup.RenameSpec) (any, error) {
+		res, err := b.Rename(ctx, p)
+		if err == nil {
+			syncLogRotation(ctx, svc)
+		}
+		return res, err
+	})
 	handle(srv, "backup.run.read", func(_ context.Context, q struct {
 		Run    string `json:"run"`
 		Offset int64  `json:"offset"`

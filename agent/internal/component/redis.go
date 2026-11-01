@@ -261,3 +261,28 @@ func render(t *template.Template, data any) []byte {
 	}
 	return []byte(b.String())
 }
+
+// StopRedisForRename stops the Redis instance of the site called from
+// and removes its unit and configuration, keeping its data. It returns
+// the data folder to move with the site; the panel starts the instance
+// again under the site's name (redis.apply, same port and password).
+func (m *Manager) StopRedisForRename(ctx context.Context, from, to string) ([][2]string, error) {
+	m.rmu.Lock()
+	defer m.rmu.Unlock()
+	if !m.exists(redisUnitFile(from)) && !m.exists(redisConf(from)) {
+		return [][2]string{{redisData(from), redisData(to)}}, nil
+	}
+	// Redis writes its data to disk when it stops (save is on).
+	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", redisUnit(from)}}); err != nil {
+		return nil, opError(err)
+	}
+	t := txn.New(m.h)
+	if err := t.RemoveFile(redisUnitFile(from)); err != nil {
+		return nil, opError(err)
+	}
+	if err := t.RemoveFile(redisConf(from)); err != nil {
+		return nil, opError(err)
+	}
+	_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"daemon-reload"}})
+	return [][2]string{{redisData(from), redisData(to)}}, nil
+}
