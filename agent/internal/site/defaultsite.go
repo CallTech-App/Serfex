@@ -63,6 +63,10 @@ server {
     server_name _;
 
     root {{.Root}};
+    # The "no site" page is never listed by search engines. No robots.txt
+    # here: a customer's name answered here until its certificate arrives
+    # must not turn crawlers away from the site.
+    add_header X-Robots-Tag "noindex, nofollow" always;
 
     # Let's Encrypt validation, here too: a proxy in front (Cloudflare)
     # may send it over HTTPS before the site has a certificate.
@@ -77,6 +81,7 @@ server {
         internal;
         ssi on;
         add_header Cache-Control "no-store" always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
     }
 
     location / {

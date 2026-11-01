@@ -77,10 +77,10 @@ func TestSendersLimitSitesToTheirOwnDomains(t *testing.T) {
 	}
 }
 
-func TestRefreshPostfixBringsOldServersToTheNewSettings(t *testing.T) {
+func TestRefreshBringsOldServersToTheNewSettings(t *testing.T) {
 	m, sim := newTest(t)
 	ctx := context.Background()
-	if changed, err := m.RefreshPostfix(ctx); err != nil || changed {
+	if changed, err := m.Refresh(ctx); err != nil || changed {
 		t.Fatalf("before setup = %v, %v", changed, err)
 	}
 	setUp(t, m)
@@ -93,7 +93,7 @@ func TestRefreshPostfixBringsOldServersToTheNewSettings(t *testing.T) {
 	if err := os.Remove(sim.Path(postfixMaps + "/local-senders")); err != nil {
 		t.Fatal(err)
 	}
-	changed, err := m.RefreshPostfix(ctx)
+	changed, err := m.Refresh(ctx)
 	if err != nil || !changed {
 		t.Fatalf("refresh = %v, %v", changed, err)
 	}
@@ -103,7 +103,43 @@ func TestRefreshPostfixBringsOldServersToTheNewSettings(t *testing.T) {
 	if _, err := os.Stat(sim.Path(postfixMaps + "/local-senders")); err != nil {
 		t.Error("local-senders was not written")
 	}
-	if changed, err := m.RefreshPostfix(ctx); err != nil || changed {
+	if changed, err := m.Refresh(ctx); err != nil || changed {
 		t.Fatalf("second refresh = %v, %v", changed, err)
+	}
+}
+
+// Webmail's sign-in page and the mail server's address are kept out of
+// search engines, also on servers set up before that.
+func TestRefreshKeepsWebmailOutOfSearchEngines(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	setUp(t, m)
+	vhost := read(t, sim, mailVhost)
+	header := `add_header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet" always;`
+	robots := "location = /robots.txt {\n        default_type text/plain;\n        return 200 \"User-agent: *\\nDisallow: /\\n\";\n    }"
+	// Port 80 and webmail's 443.
+	if strings.Count(vhost, header) != 2 || strings.Count(vhost, robots) != 2 {
+		t.Fatalf("vhost:\n%s", vhost)
+	}
+
+	// A vhost from an older release.
+	old := strings.ReplaceAll(strings.ReplaceAll(vhost, header, ""), robots, "")
+	if err := os.WriteFile(sim.Path(mailVhost), []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := len(sim.Commands())
+	changed, err := m.Refresh(ctx)
+	if err != nil || !changed {
+		t.Fatalf("refresh = %v, %v", changed, err)
+	}
+	if read(t, sim, mailVhost) != vhost {
+		t.Error("the vhost was not rewritten")
+	}
+	var ran []string
+	for _, c := range sim.Commands()[before:] {
+		ran = append(ran, c.String())
+	}
+	if got := strings.Join(ran, "; "); !strings.Contains(got, "nginx -t; systemctl reload nginx") {
+		t.Errorf("commands: %s", got)
 	}
 }

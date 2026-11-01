@@ -17,6 +17,7 @@ server {
     listen [::]:80;
 {{- end}}
     server_name {{.Hostname}} ~^autoconfig\. ~^autodiscover\.;
+{{template "noindex"}}
 
     location ^~ /.well-known/acme-challenge/ {
         root {{.ACMERoot}};
@@ -53,6 +54,7 @@ server {
     client_max_body_size 26m;
     access_log {{.LogDir}}/access.log;
     error_log {{.LogDir}}/error.log;
+{{template "noindex"}}
 {{template "clients" .}}
     location = /index.php {
         include fastcgi_params;
@@ -98,6 +100,14 @@ server {
 `))
 
 func init() {
+	// Search engines never list webmail's sign-in page or the mail
+	// server's address, nor keep a copy or a snippet of them.
+	template.Must(mailVhostTmpl.New("noindex").Parse(`
+    add_header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet" always;
+    location = /robots.txt {
+        default_type text/plain;
+        return 200 "User-agent: *\nDisallow: /\n";
+    }`))
 	template.Must(mailVhostTmpl.New("clients").Parse(`
     # Thunderbird and most clients read their settings from here.
     location = /mail/config-v1.1.xml {

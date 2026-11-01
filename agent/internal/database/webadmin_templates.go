@@ -20,7 +20,13 @@ type webData struct {
 	// Panel serves the installed panel at / (see package panel).
 	Panel                             bool
 	PanelRoot, PanelSocket, PanelUser string
+	// NoIndex is the X-Robots-Tag value of every response.
+	NoIndex string
 }
+
+// NoIndex keeps search engines from listing serfex-web's pages, keeping
+// a copy of them or showing a snippet.
+const NoIndex = "noindex, nofollow, noarchive, nosnippet"
 
 var webConfTmpl = template.Must(template.New("web").Parse(`# {{.Marker}}. Manual changes are overwritten.
 # serfex-web: Serfex's own web server. It is separate from the Nginx that
@@ -91,8 +97,17 @@ http {
         add_header Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" always;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy same-origin always;
+        # Search engines never list the panel, its sign-in page or the
+        # database tools, nor keep a copy or a snippet of them.
+        add_header X-Robots-Tag "{{.NoIndex}}" always;
         # Plain HTTP on this port goes to HTTPS.
         error_page 497 =301 https://$host:$server_port$request_uri;
+
+        # Crawlers that read robots.txt stay out of everything here.
+        location = /robots.txt {
+            default_type text/plain;
+            return 200 "User-agent: *\nDisallow: /\n";
+        }
 
 {{- if .Panel}}
 
@@ -108,6 +123,8 @@ http {
             fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;
             fastcgi_param DOCUMENT_ROOT $realpath_root;
             fastcgi_param HTTPS on;
+            # The panel sends X-Robots-Tag itself; the one above stays.
+            fastcgi_hide_header X-Robots-Tag;
             fastcgi_pass unix:{{.PanelSocket}};
             fastcgi_read_timeout 300s;
             fastcgi_buffers 16 16k;
@@ -138,6 +155,7 @@ http {
             add_header X-Frame-Options SAMEORIGIN always;
             add_header X-Content-Type-Options nosniff always;
             add_header Referrer-Policy same-origin always;
+            add_header X-Robots-Tag "{{$.NoIndex}}" always;
             location ~ ^/phpmyadmin/(libraries|templates|setup|sql|vendor|doc)/ {
                 deny all;
             }
@@ -156,6 +174,7 @@ http {
             add_header X-Frame-Options SAMEORIGIN always;
             add_header X-Content-Type-Options nosniff always;
             add_header Referrer-Policy same-origin always;
+            add_header X-Robots-Tag "{{$.NoIndex}}" always;
             include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME {{.WWW}}/adminer.php;
             fastcgi_pass unix:{{.Socket}};
