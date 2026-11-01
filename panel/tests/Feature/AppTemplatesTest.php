@@ -194,6 +194,27 @@ class AppTemplatesTest extends TestCase
         $this->assertTrue($template->fresh()->create_admin);
     }
 
+    public function test_the_general_tab_saves_and_a_bad_health_address_is_a_message_not_an_error(): void
+    {
+        $template = $this->packageTemplate();
+
+        Livewire::test(AppTemplateShow::class, ['template' => $template])
+            ->set('name', 'Roifex Mağaza')
+            ->set('healthPath', '/health/check?full=1&x=%20~y')
+            ->call('saveGeneral')
+            ->assertHasNoErrors();
+        $this->assertSame('Roifex Mağaza', $template->fresh()->name);
+        $this->assertSame('/health/check?full=1&x=%20~y', $template->fresh()->health_path);
+
+        foreach (['up', '/up page', '/up#x', '/up|x'] as $bad) {
+            Livewire::test(AppTemplateShow::class, ['template' => $template])
+                ->set('healthPath', $bad)
+                ->call('saveGeneral')
+                ->assertHasErrors(['healthPath' => 'regex']);
+        }
+        $this->assertSame('/health/check?full=1&x=%20~y', $template->fresh()->health_path);
+    }
+
     public function test_an_administrator_adds_a_package_template_by_its_address(): void
     {
         Livewire::test(AppTemplateIndex::class)

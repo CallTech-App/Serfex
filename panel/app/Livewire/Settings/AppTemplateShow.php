@@ -215,7 +215,7 @@ class AppTemplateShow extends Component
             'phpVersion' => ['nullable', 'regex:/^\d\.\d{1,2}$/'],
             'database' => ['required', Rule::in(array_keys(AppTemplate::DATABASES))],
             'packageManager' => [Rule::in(LaravelApps::PACKAGE_MANAGERS)],
-            'healthPath' => ['required', 'max:200', 'regex:~^/[A-Za-z0-9._~/?=&%-]*$~'],
+            'healthPath' => ['required', 'max:200', 'regex:#^/[A-Za-z0-9._~/?=&%-]*$#'],
             'versionFile' => ['required', 'max:200', 'regex:~^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$~', 'not_regex:~(^|/)\.\.(/|$)~'],
         ], [
             'ref.regex' => __('Dal veya etiket adı geçersiz.'),
