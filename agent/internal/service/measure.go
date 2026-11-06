@@ -77,22 +77,33 @@ var measuredStatus = []string{
 const systemSchemas = "'mysql','sys','information_schema','performance_schema'"
 
 // Measure reads a running service the panel makes optimization
-// suggestions for: a MySQL or MariaDB server (Measurement) or a PHP-FPM
-// version (PHPMeasurement).
+// suggestions for: a MySQL or MariaDB server (Measurement), a PHP-FPM
+// version (PHPMeasurement), Nginx, the customers' PostgreSQL, Memcached
+// or, as RedisSites, the sites' own Redis instances.
 func (m *Manager) Measure(ctx context.Context, unit string) (any, error) {
+	if unit == RedisSites {
+		return m.measureRedis(ctx)
+	}
 	d, st, err := m.find(ctx, unit)
 	if err != nil {
 		return nil, err
 	}
 	v := PHPVersionOf(unit)
-	if d.settings != "database" && v == "" {
+	if d.settings != "database" && v == "" && d.settings != "nginx" && d.settings != "postgresql" && d.settings != "memcached" {
 		return nil, invalid("%s is not measured for optimization", d.name)
 	}
 	if st.State != "active" && st.State != "reloading" {
 		return nil, invalid("%s is not running; start it first", d.name)
 	}
-	if v != "" {
+	switch {
+	case v != "":
 		return m.measurePHP(ctx, unit, v)
+	case d.settings == "nginx":
+		return m.measureNginx(ctx, unit)
+	case d.settings == "postgresql":
+		return m.measurePostgres(ctx, unit)
+	case d.settings == "memcached":
+		return m.measureMemcached(ctx, unit)
 	}
 	return m.measureDatabase(ctx, unit)
 }

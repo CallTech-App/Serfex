@@ -181,7 +181,10 @@ class ServicesTest extends TestCase
 
     public function test_service_page_shows_logs_toggles_boot_and_changes_settings(): void
     {
+        // Nginx opens on its optimization suggestions.
         Livewire::test(ServiceShow::class, ['unit' => 'nginx'])
+            ->assertSet('tab', 'recs')
+            ->set('tab', 'log')
             ->assertSee('nginx.service')
             ->assertSee('nginx[812]: ready')
             ->assertSee('Yeniden yükle')

@@ -2,16 +2,21 @@
 
 namespace App\Services\Tuning;
 
+use App\Models\LaravelApp;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Laravel\Redis;
 use App\Services\Php\PhpVersions;
 use App\Services\System\SystemServices;
 
 /**
  * Where an optimization change is written, by the kind of service:
  *
- * - database: the agent's database settings of the server;
+ * - database, nginx, postgresql, memcached: the service's settings (as
+ *   Hizmetler → Ayarlar saves them), the other settings kept as they are;
+ * - redis: {app, max_memory_mb} the memory limit of one Laravel
+ *   application's Redis, set on the running instance;
  * - php: {ini: {...}} goes into the version's php.ini defaults (as Hizmetler
  *   → PHP sürümleri saves them), {site, pm | max_children} into one site's
  *   PHP settings (as PHP ve Web Sunucusu saves them).
@@ -54,7 +59,12 @@ class Targets
 
             return $out;
         }
-        $current = $this->services->settings($unit, 'database');
+        if (Optimization::kind($unit) === 'redis') {
+            $app = LaravelApp::find($values['app'] ?? 0);
+
+            return $app === null ? __('Uygulama bulunamadı.') : ['app' => $app->id, 'max_memory_mb' => (int) ($app->redis_memory_mb ?? self::REDIS_DEFAULT)];
+        }
+        $current = $this->services->settings($unit, self::section($unit));
 
         return is_string($current) ? $current : array_intersect_key($current, $values);
     }
@@ -68,12 +78,50 @@ class Targets
         if (Optimization::kind($unit) === 'php') {
             return isset($values['ini']) ? $this->setIni($unit, (array) $values['ini']) : $this->setSite($values);
         }
-        $current = $this->services->settings($unit, 'database');
+        if (Optimization::kind($unit) === 'redis') {
+            return $this->setRedis($values);
+        }
+        $section = self::section($unit);
+        $current = $this->services->settings($unit, $section);
         if (is_string($current)) {
             return $current;
         }
 
-        return $this->services->applySettings($unit, 'database', array_merge($current, $values));
+        return $this->services->applySettings($unit, $section, array_merge($current, $values));
+    }
+
+    /** Redis's memory limit when Serfex set none (MB). */
+    public const REDIS_DEFAULT = 128;
+
+    /** The agent's settings section of a unit. */
+    public static function section(string $unit): string
+    {
+        return Optimization::kind($unit) ?? 'database';
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>|string
+     */
+    private function setRedis(array $values): array|string
+    {
+        $app = LaravelApp::with('site.systemUser')->find($values['app'] ?? 0);
+        if ($app === null || $app->redis_port === null) {
+            return __('Bu uygulamanın Redis\'i yok.');
+        }
+        $before = $app->redis_memory_mb;
+        $mb = (int) ($values['max_memory_mb'] ?? 0);
+        $app->redis_memory_mb = $mb === self::REDIS_DEFAULT ? null : $mb;
+        try {
+            app(Redis::class)->connect($app);
+        } catch (AgentException $e) {
+            $app->update(['redis_memory_mb' => $before]);
+
+            return SystemServices::message($e);
+        }
+        $app->save();
+
+        return ['app' => $app->id, 'max_memory_mb' => $mb];
     }
 
     /**

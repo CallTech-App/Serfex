@@ -51,6 +51,7 @@ use App\Livewire\Mail\MailSettingsPage;
 use App\Livewire\Monitor\LiveMonitor;
 use App\Livewire\Security\SecurityIndex;
 use App\Livewire\Services\PhpVersionShow;
+use App\Livewire\Services\RedisTuningPage;
 use App\Livewire\Services\ServiceIndex;
 use App\Livewire\Services\ServiceShow;
 use App\Livewire\Settings\AdminIndex;
@@ -206,6 +207,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/software', ComponentIndex::class)->name('components.index');
         Route::livewire('/services', ServiceIndex::class)->name('services.index');
         Route::livewire('/services/php/{version}', PhpVersionShow::class)->where('version', '\d\.\d')->name('services.php');
+        Route::livewire('/services/redis-sites', RedisTuningPage::class)->name('services.redis');
         Route::livewire('/services/{unit}', ServiceShow::class)->where('unit', '[a-z0-9][a-z0-9@._-]{0,63}')->name('services.show');
         Route::post('/backups/upload/{upload}', BackupUploadController::class)->where('upload', 'up-[a-z0-9]{20}')->name('backups.upload');
         Route::livewire('/customers', CustomerIndex::class)->name('customers.index');

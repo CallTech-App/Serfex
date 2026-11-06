@@ -55,8 +55,9 @@ class Samples
     }
 
     /**
-     * When the measured run started: the database server's start, or
-     * PHP-FPM's (OPcache's) last start.
+     * When the measured run started: the database server's start,
+     * PHP-FPM's (OPcache's) last start, or the service's own start_time
+     * (PostgreSQL, Memcached).
      */
     public static function runStart(TuningSample $sample): CarbonInterface
     {
@@ -64,7 +65,7 @@ class Samples
         if (isset($data['status']['Uptime'])) {
             return $sample->created_at->copy()->subSeconds((int) $data['status']['Uptime']);
         }
-        $start = (int) ($data['opcache']['start_time'] ?? 0);
+        $start = (int) ($data['opcache']['start_time'] ?? ($data['start_time'] ?? 0));
 
         return $start > 0 ? Carbon::createFromTimestamp($start) : $sample->created_at->copy()->subDays(30);
     }

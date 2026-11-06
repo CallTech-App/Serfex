@@ -153,10 +153,17 @@ func (m *Manager) ApplyRedis(ctx context.Context, spec RedisSpec) (res RedisResu
 	if err := t.RootDir(redisData(spec.Domain), 0o700, u.UID, u.GID); err != nil {
 		return res, err
 	}
-	if err := t.WriteFileMode(redisConf(spec.Domain), render(redisConfTmpl, data), 0o640, 0, u.GID); err != nil {
+	oldConf, _ := os.ReadFile(m.h.Path(redisConf(spec.Domain)))
+	oldUnit, _ := os.ReadFile(m.h.Path(redisUnitFile(spec.Domain)))
+	newConf, newUnit := render(redisConfTmpl, data), render(redisUnitTmpl, data)
+	// Only the memory limit changes (optimization): the running instance
+	// takes it at once, without a restart.
+	live := oldConf != nil && string(oldConf) != string(newConf) && string(oldUnit) == string(newUnit) &&
+		redisMaxMemoryRe.ReplaceAllString(string(oldConf), "") == redisMaxMemoryRe.ReplaceAllString(string(newConf), "")
+	if err := t.WriteFileMode(redisConf(spec.Domain), newConf, 0o640, 0, u.GID); err != nil {
 		return res, err
 	}
-	if err := t.WriteFile(redisUnitFile(spec.Domain), render(redisUnitTmpl, data)); err != nil {
+	if err := t.WriteFile(redisUnitFile(spec.Domain), newUnit); err != nil {
 		return res, err
 	}
 	res = RedisResult{Unit: redisUnit(spec.Domain), Port: spec.Port, Changed: t.Changed}
@@ -167,7 +174,7 @@ func (m *Manager) ApplyRedis(ctx context.Context, spec RedisSpec) (res RedisResu
 		return res, err
 	}
 	verb := "start"
-	if t.Changed {
+	if t.Changed && !(live && m.setRedisMemory(ctx, spec)) {
 		verb = "restart"
 	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{verb, redisUnit(spec.Domain)}}); err != nil {
@@ -177,6 +184,19 @@ func (m *Manager) ApplyRedis(ctx context.Context, spec RedisSpec) (res RedisResu
 		return res, err
 	}
 	return res, nil
+}
+
+var redisMaxMemoryRe = regexp.MustCompile(`(?m)^maxmemory \d+mb$`)
+
+// setRedisMemory sets a running instance's memory limit; false when it
+// does not answer (the caller restarts it instead).
+func (m *Manager) setRedisMemory(ctx context.Context, spec RedisSpec) bool {
+	if m.sim {
+		return true
+	}
+	out, err := m.h.Run(ctx, host.Command{Name: "redis-cli", Args: []string{"-h", "127.0.0.1", "-p", fmt.Sprint(spec.Port), "--no-auth-warning", "CONFIG", "SET", "maxmemory", fmt.Sprintf("%dmb", spec.MaxMemoryMB)},
+		Env: []string{"REDISCLI_AUTH=" + spec.Password}})
+	return err == nil && strings.TrimSpace(out) == "OK"
 }
 
 // pingRedis waits until the instance answers.

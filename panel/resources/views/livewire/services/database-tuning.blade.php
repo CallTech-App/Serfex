@@ -6,7 +6,8 @@
     $primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40';
     $readOnly = auth()->user()->isReadOnly();
     $windowLevel = $level === \App\Services\Tuning\TuningSettings::WINDOW;
-    $php = ($report['kind'] ?? null) === 'php';
+    $kind = $report['kind'] ?? null;
+    $Opt = \App\Services\Tuning\Optimization::class;
 @endphp
 <div>
     @if ($error)
@@ -59,7 +60,7 @@
             @else
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-surface-2 px-3 py-2.5 text-[13px]">
                     <x-icon name="info" class="text-muted" />
-                    <span class="flex-1">{{ $php ? __('Öneriler ölçüm kurallarından. Gerekçeleri bu sunucuya göre yazması için Serfex AI\'ı açın.') : __('Öneriler ölçüm kurallarından. Yavaş sorguların hangi index\'le hızlanacağını yorumlaması için Serfex AI\'ı açın.') }}</span>
+                    <span class="flex-1">{{ $kind !== 'database' ? __('Öneriler ölçüm kurallarından. Gerekçeleri bu sunucuya göre yazması için Serfex AI\'ı açın.') : __('Öneriler ölçüm kurallarından. Yavaş sorguların hangi index\'le hızlanacağını yorumlaması için Serfex AI\'ı açın.') }}</span>
                     @if (auth()->user()->isFullAdmin())
                         <a href="{{ route('ai.settings') }}" wire:navigate class="font-medium text-accent hover:underline">{{ __('Serfex AI ayarları') }}</a>
                     @endif
@@ -108,11 +109,8 @@
                             <p class="mt-2 text-[13px] leading-relaxed">{{ $card['why'] }}</p>
                         @endif
                         <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-muted">
-                            @if (($card['disruption'] ?? 'none') === 'reload')
-                                <span class="flex items-center gap-1"><x-icon name="refresh-cw" class="size-3.5" />{{ __('PHP-FPM yeniden yüklenir, istekler kesilmez') }}</span>
-                            @else
-                                <span class="flex items-center gap-1"><x-icon name="zap" class="size-3.5" />{{ __('Kesintisiz uygulanır') }}</span>
-                            @endif
+                            @php $disruption = $card['disruption'] ?? 'none'; @endphp
+                            <span @class(['flex items-center gap-1', 'text-warn' => $disruption === 'restart'])><x-icon :name="['reload' => 'refresh-cw', 'restart' => 'rotate-ccw'][$disruption] ?? 'zap'" class="size-3.5" />{{ $Opt::disruptionText($this->unit, $disruption) }}</span>
                             <span>{{ __('Ölçüm: :measure', ['measure' => $card['measure']]) }}</span>
                             @if ($card['memory_mb'] > 0)
                                 <span>{{ __('Bellek: +:size', ['size' => Bytes::format($card['memory_mb'] << 20)]) }}</span>
@@ -187,12 +185,10 @@
     @endif
 
     @if ($report !== null)
-        @if ($php)
-            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('OPcache ayarları bu PHP sürümünün php.ini varsayılanlarına, işçi ayarları sitenin PHP ayarlarına yazılır; PHP-FPM yeniden yüklenir, süren istekler tamamlanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', ['minutes' => \App\Services\Tuning\Tuner::WATCH_MINUTES, 'days' => \App\Services\Tuning\Tuner::UNDO_DAYS]) }}</p>
-        @else
+        @if ($kind === 'database')
             @include('livewire.services.partials.slow-queries', ['slow' => $report['slow'], 'showSite' => true])
-            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Her değişiklik önce ayar dosyasına yazılır ve çalışan sunucuya yeniden başlatmadan uygulanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', ['minutes' => \App\Services\Tuning\Tuner::WATCH_MINUTES, 'days' => \App\Services\Tuning\Tuner::UNDO_DAYS]) }}</p>
         @endif
+        <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ $report['footer'] ?? $Opt::footer($this->unit) }}</p>
     @endif
 
     <x-modal :title="$confirm['title'] ?? __('Uygula')" show="confirming" size="max-w-xl" close="$wire.set('confirming', null)">
@@ -203,7 +199,7 @@
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[160px_1fr]">
                     <dt class="text-muted">{{ __('Ayar') }}</dt><dd class="font-mono text-[13px]">{{ $confirm['setting'] }}</dd>
                     <dt class="text-muted">{{ __('Değişiklik') }}</dt><dd class="font-mono text-[13px]">{{ $confirm['from_label'] }} → {{ $confirm['to_label'] }}</dd>
-                    <dt class="text-muted">{{ __('Kesinti') }}</dt><dd>{{ ($confirm['disruption'] ?? 'none') === 'reload' ? __('Yok. PHP-FPM yeniden yüklenir: süren istekler tamamlanır, OPcache baştan dolar.') : __('Yok. Çalışan sunucuya yeniden başlatmadan uygulanır.') }}</dd>
+                    <dt class="text-muted">{{ __('Kesinti') }}</dt><dd @class(['text-warn' => ($confirm['disruption'] ?? 'none') === 'restart'])>{{ $Opt::disruptionText($this->unit, $confirm['disruption'] ?? 'none', true) }}</dd>
                     @if ($confirm['memory_mb'] > 0)
                         <dt class="text-muted">{{ __('Bellek bütçesi') }}</dt>
                         <dd>{{ Bytes::format($budget['used'] << 20) }} → {{ Bytes::format(($budget['used'] + $confirm['memory_mb']) << 20) }} <span class="text-muted">/ {{ __(':size sınır', ['size' => Bytes::format($budget['limit'] << 20)]) }}</span></dd>

@@ -15,7 +15,8 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * Hizmetler → MySQL (or MariaDB, or a PHP-FPM version) → Öneriler: what
+ * Hizmetler → MySQL (or MariaDB, a PHP-FPM version, Nginx, PostgreSQL,
+ * Memcached, the sites' Redis instances) → Öneriler: what
  * the last week's measurements say, the suggestions with Apply, Apply
  * tonight and Dismiss, the changes being watched or rolled back, the
  * settings that are fine and, for the database server, the slow
@@ -57,7 +58,8 @@ class DatabaseTuning extends Component
     public function confirm(string $key, TuningSettings $settings): void
     {
         $this->confirming = $key;
-        $this->when = $settings->level() === TuningSettings::WINDOW ? 'window' : 'now';
+        // A restart is offered for the maintenance window first.
+        $this->when = $settings->level() === TuningSettings::WINDOW || Optimization::disruption($this->unit, $key) === 'restart' ? 'window' : 'now';
     }
 
     public function apply(Optimization $optimization, Tuner $tuner, TuningSettings $settings): void

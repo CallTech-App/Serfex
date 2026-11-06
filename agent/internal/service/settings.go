@@ -36,6 +36,10 @@ type SettingsSpec struct {
 	Postfix  *tuning.Postfix  `json:"postfix,omitempty"`
 	Apache   *tuning.Apache   `json:"apache,omitempty"`
 	PowerDNS *tuning.PowerDNS `json:"powerdns,omitempty"`
+	// PostgreSQL is the customers' cluster's tuning file.
+	PostgreSQL *PGSettings `json:"postgresql,omitempty"`
+	// Memcached is /etc/memcached.conf's memory and connection limits.
+	Memcached *MemcachedSettings `json:"memcached,omitempty"`
 }
 
 // Settings returns a service's changeable settings as they are now.
@@ -60,6 +64,7 @@ func (m *Manager) Settings(ctx context.Context, unit string) (SettingsSpec, erro
 			if v, err := strconv.Atoi(strings.TrimSuffix(directive(conf, "keepalive_timeout"), "s")); err == nil {
 				n.KeepaliveTimeout = v
 			}
+			n.WorkerRlimitNofile, _ = strconv.Atoi(directive(conf, "worker_rlimit_nofile"))
 		}
 		out.Nginx = &n
 	case "database":
@@ -74,6 +79,13 @@ func (m *Manager) Settings(ctx context.Context, unit string) (SettingsSpec, erro
 	case "powerdns":
 		p := s.PowerDNS
 		out.PowerDNS = &p
+	case "postgresql":
+		p := m.pgSettings(ctx, pgVersionOf(unit))
+		out.PostgreSQL = &p
+	case "memcached":
+		conf, _ := os.ReadFile(m.h.Path(memcachedConf))
+		mc := parseMemcached(conf).MemcachedSettings
+		out.Memcached = &mc
 	default:
 		return SettingsSpec{}, invalid("%s has no settings to change here", d.name)
 	}
@@ -148,6 +160,8 @@ func (m *Manager) ApplySettings(ctx context.Context, spec SettingsSpec) (Setting
 			return SettingsSpec{}, invalid("client_max_body_size must be between 1 and 102400 MB")
 		case n.KeepaliveTimeout < 0 || n.KeepaliveTimeout > 300:
 			return SettingsSpec{}, invalid("keepalive_timeout must be between 0 and 300 seconds")
+		case n.WorkerRlimitNofile != 0 && (n.WorkerRlimitNofile < 1024 || n.WorkerRlimitNofile > 1048576):
+			return SettingsSpec{}, invalid("worker_rlimit_nofile must be between 1024 and 1048576")
 		}
 		s.Nginx = *n
 		apply = func() error { return m.applyNginx(ctx, t, *n) }
@@ -212,6 +226,28 @@ func (m *Manager) ApplySettings(ctx context.Context, spec SettingsSpec) (Setting
 		p.AXFRAllow, p.Catalog = s.PowerDNS.AXFRAllow, s.PowerDNS.Catalog
 		s.PowerDNS = *p
 		apply = func() error { return m.applyPowerDNS(ctx, t, *p) }
+	case "postgresql":
+		p := spec.PostgreSQL
+		if p == nil {
+			return SettingsSpec{}, invalid("postgresql settings are missing")
+		}
+		if err := p.validate(); err != nil {
+			return SettingsSpec{}, err
+		}
+		v := pgVersionOf(d.unit)
+		old := m.pgFileSettings(v)
+		apply = func() error { return m.applyPostgres(ctx, t, d.unit, v, old, *p) }
+	case "memcached":
+		mc := spec.Memcached
+		switch {
+		case mc == nil:
+			return SettingsSpec{}, invalid("memcached settings are missing")
+		case mc.MemoryMB < 16 || mc.MemoryMB > 65536:
+			return SettingsSpec{}, invalid("memory must be between 16 and 65536 MB")
+		case mc.MaxConnections < 64 || mc.MaxConnections > 65536:
+			return SettingsSpec{}, invalid("max connections must be between 64 and 65536")
+		}
+		apply = func() error { return m.applyMemcached(ctx, t, *mc) }
 	default:
 		return SettingsSpec{}, invalid("%s has no settings to change here", d.name)
 	}
@@ -274,6 +310,13 @@ func (m *Manager) applyNginx(ctx context.Context, t *txn.Tx, n tuning.Nginx) err
 			if conf, err = setDirective(conf, d[0], d[1], d[2]); err != nil {
 				return err
 			}
+		}
+		if n.WorkerRlimitNofile > 0 {
+			if conf, err = setDirective(conf, "", "worker_rlimit_nofile", strconv.Itoa(n.WorkerRlimitNofile)); err != nil {
+				return err
+			}
+		} else {
+			conf = regexp.MustCompile(`(?m)^[ \t]*worker_rlimit_nofile[ \t]+[^;\n]*;[^\n]*\n`).ReplaceAll(conf, nil)
 		}
 		if err := t.WriteOwned(nginxConf, conf, 0o644, 0, 0); err != nil {
 			return err

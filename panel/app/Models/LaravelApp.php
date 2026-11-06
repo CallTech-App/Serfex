@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
     'scheduler', 'skipped_tasks', 'maintenance_secret', 'maintenance_retry', 'saved_commands', 'processes_state', 'processes_error', 'last_error', 'install_env', 'installed_at',
     'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
     'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
-    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id', 'redis_port', 'redis_password',
+    'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id', 'redis_port', 'redis_password', 'redis_memory_mb',
     'git_account_id', 'remote_repository', 'remote_key_id', 'remote_hook_id', 'app_template_id', 'template_version', 'template_setup'])]
 class LaravelApp extends Model
 {

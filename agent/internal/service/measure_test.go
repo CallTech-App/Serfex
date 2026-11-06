@@ -88,8 +88,8 @@ func TestMeasure(t *testing.T) {
 		t.Errorf("demo measurement: %+v", got)
 	}
 	var v *ValidationError
-	if _, err := m.Measure(ctx, "nginx"); !errors.As(err, &v) {
-		t.Errorf("nginx: %v", err)
+	if _, err := m.Measure(ctx, "postfix"); !errors.As(err, &v) {
+		t.Errorf("postfix: %v", err)
 	}
 	if _, err := m.Do(ctx, ActionSpec{Unit: "mysql", Action: "stop"}); err != nil {
 		t.Fatal(err)

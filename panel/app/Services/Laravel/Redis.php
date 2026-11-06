@@ -36,6 +36,8 @@ class Redis
             'user' => $app->site->systemUser->name,
             'port' => $port,
             'password' => $password,
+            // 0: Serfex's default; optimization may have set more.
+            'max_memory_mb' => (int) ($app->redis_memory_mb ?? 0),
         ], config('serfex.agent.job_timeout'));
         $app->update(['redis_port' => $port, 'redis_password' => $password]);
 

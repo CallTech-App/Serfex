@@ -7,7 +7,8 @@
     $readOnly = auth()->user()->isReadOnly();
     $parts = [
         'system' => [__('Sistem ve Serfex'), 'bg-muted/50'],
-        'mysql' => [__('Veritabanı'), 'bg-accent'],
+        'mysql' => ['MySQL / MariaDB', 'bg-accent'],
+        'postgresql' => ['PostgreSQL', 'bg-ok/70'],
         'php-fpm' => [__('PHP-FPM (en yoğun anda)'), 'bg-info'],
         'cache' => ['Redis, Memcached', 'bg-warn/70'],
     ];
@@ -63,7 +64,7 @@
                 @forelse ($servers as $s)
                     @php $r = $s['report']; @endphp
                     <tr>
-                        <td class="py-2.5 pr-3 pl-5 font-medium">{{ $s['name'] }}<span class="block font-mono text-2xs font-normal text-muted">{{ $s['unit'] }}</span></td>
+                        <td class="py-2.5 pr-3 pl-5 font-medium">{{ $s['name'] }}<span class="block font-mono text-2xs font-normal text-muted">{{ $s['unit'] === \App\Services\Tuning\Optimization::REDIS ? 'serfex-redis-*' : $s['unit'] }}</span></td>
                         <td class="px-3 py-2.5 text-[13px]">
                             @if (! $enabled)
                                 <span class="text-muted">{{ __('Optimizasyon kapalı') }}</span>
@@ -76,17 +77,17 @@
                         <td class="px-3 py-2.5 text-[13px] text-muted">{{ isset($r['measured_at']) ? When::withTime($r['measured_at']) : '—' }}</td>
                         <td class="py-2.5 pr-5 pl-3 text-right">
                             @if ($enabled)
-                                <a href="{{ route('services.show', ['unit' => $s['unit'], 'tab' => 'recs']) }}" wire:navigate class="text-[13px] text-accent hover:underline">{{ __('Önerileri gör') }}</a>
+                                <a href="{{ \App\Services\Tuning\Optimization::url($s['unit']) }}" wire:navigate class="text-[13px] text-accent hover:underline">{{ __('Önerileri gör') }}</a>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="px-5 py-4 text-[13px] text-muted">{{ __('Çalışan bir MySQL, MariaDB ya da PHP-FPM yok.') }}</td></tr>
+                    <tr><td colspan="4" class="px-5 py-4 text-[13px] text-muted">{{ __('İncelenecek çalışan bir hizmet yok.') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-2.5 text-2xs text-muted">{{ __('MySQL ya da MariaDB ile PHP-FPM (OPcache ve sitelerin işçileri) inceleniyor. Ölçüm her saat yapılır.') }}</p>
+    <p class="border-t border-line px-5 py-2.5 text-2xs text-muted">{{ __('MySQL ya da MariaDB, PHP-FPM (OPcache ve sitelerin işçileri), PostgreSQL, Nginx, Memcached ve sitelerin Redis\'leri inceleniyor. Ölçüm her saat yapılır.') }}</p>
 
     <h2 class="flex h-12 items-center border-t border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Optimizasyon ayarları') }}</h2>
     <form wire:submit="save" class="max-w-3xl px-5 py-2 text-[13.5px]">

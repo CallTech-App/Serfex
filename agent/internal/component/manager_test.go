@@ -306,6 +306,25 @@ func TestRedisInstances(t *testing.T) {
 	if !ran(sim, "systemctl restart serfex-redis-api.hizlikargo.app.service") {
 		t.Error("instance not started")
 	}
+	// A new memory limit alone is set on the running instance.
+	restarts := func() int {
+		n := 0
+		for _, c := range sim.Commands() {
+			if c.String() == "systemctl restart serfex-redis-api.hizlikargo.app.service" {
+				n++
+			}
+		}
+		return n
+	}
+	before := restarts()
+	bigger := spec
+	bigger.MaxMemoryMB = 256
+	if res, err := m.ApplyRedis(context.Background(), bigger); err != nil || !res.Changed {
+		t.Fatalf("memory change = %+v %v", res, err)
+	}
+	if !strings.Contains(read(t, sim, "/etc/serfex/redis/api.hizlikargo.app.conf"), "maxmemory 256mb") || restarts() != before {
+		t.Errorf("memory change restarted the instance or was not written")
+	}
 	// The same port cannot go to another site.
 	other := spec
 	other.Domain = "staging.hizlikargo.app"
