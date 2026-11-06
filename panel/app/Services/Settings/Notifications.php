@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Backups\Backups;
 use App\Services\Customers\Quotas;
 use App\Services\Customers\UsageNotices;
+use App\Services\Sites\SiteProblems;
 use App\Services\System\SystemServices;
 use App\Services\Updates\Updates;
 use App\Support\Locales;
@@ -22,7 +23,8 @@ use Throwable;
 /**
  * Araçlar ve Ayarlar → Bildirimler: e-mail and a webhook when something
  * needs the administrators: a certificate, a backup, an update, disk
- * space, a stopped service.
+ * space, a stopped service, a site that does not answer, a failed
+ * deployment, a failing scheduled task, a crashing queue worker.
  *
  * serfex:notify compares what is wrong now with what the administrators
  * were already told, and sends one message per run with the new problems
@@ -168,6 +170,10 @@ class Notifications
         foreach (TuningChange::where('status', 'rolled_back')->where('finished_at', '>=', now()->subDay())->get() as $c) {
             $out['tuning:'.$c->id] = ['service', __('Optimizasyon değişikliği kendiliğinden geri alındı: :title', ['title' => $c->title]), $c->note,
                 route('services.show', ['unit' => $c->unit, 'tab' => 'recs'], false)];
+        }
+
+        foreach (app(SiteProblems::class)->all() as $key => $p) {
+            $out[$key] = [$p['kind'], $p['title'], $p['text'] ?: null, $p['url']];
         }
 
         return $out;

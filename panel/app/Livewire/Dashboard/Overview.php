@@ -27,6 +27,7 @@ use App\Services\Customers\Quotas;
 use App\Services\Monitor\Health;
 use App\Services\Monitor\LiveStats;
 use App\Services\Security\Scans;
+use App\Services\Sites\SiteProblems;
 use App\Services\Stats\ServerHistory;
 use App\Services\Stats\SiteStats;
 use App\Services\System\SystemServices;
@@ -68,6 +69,16 @@ class Overview extends Component
         $daySum = ServerHistory::summary($day);
         $checks = $this->checks($snap, $user, $online);
         $problems = array_values(array_filter($checks, fn ($c) => $c['problem'] !== null));
+        // Sites, deployments, scheduled tasks and workers: first, the ones
+        // visitors notice first.
+        $sites = [];
+        foreach (app(SiteProblems::class)->all() as $p) {
+            $sites[] = ['tone' => $p['tone'], 'icon' => ['site' => 'globe', 'deploy' => 'rocket', 'cron' => 'calendar-clock', 'queue' => 'layers'][$p['kind']] ?? 'globe', 'problem' => [
+                'title' => $p['title'], 'text' => $p['text'], 'ai' => null, 'refresh' => false, 'action' => [$p['action'], url($p['url'])],
+            ]];
+        }
+        usort($sites, fn ($a, $b) => ($a['tone'] === 'crit' ? 0 : 1) <=> ($b['tone'] === 'crit' ? 0 : 1));
+        $problems = [...$sites, ...$problems];
         if (! $online) {
             array_unshift($problems, ['tone' => 'crit', 'icon' => 'unplug', 'problem' => [
                 'title' => __('Sunucu ajanına ulaşılamıyor'),

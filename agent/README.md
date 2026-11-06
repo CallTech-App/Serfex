@@ -51,6 +51,7 @@ lists every method by area.
 | `laravel.version` | app, `file` | the version the application keeps in a file (default `VERSION`) |
 | `laravel.run.read` | `domain`, `run`, `offset` | the next part of a run's log: `data`, `offset`, `size`, `done` |
 | `laravel.status` | app | `exists`, `current`, `releases`, `maintenance`, `workers`, `schedule` |
+| `laravel.watch` | `domains` | per application: enabled workers and processes with systemd `state` and `crashes` (failed runs in the last 10 minutes, from the journal), the scheduler's tasks with `failures` in a row |
 | `laravel.env.get` / `laravel.env.set` | app (+ `content`) | reads or writes the shared `.env`, then rebuilds the config cache and restarts workers |
 | `laravel.queue.apply` / `laravel.queue.restart` | app, `workers` | runs exactly these queue workers / restarts them gracefully |
 | `laravel.schedule.apply` | app, `enabled` | turns the every-minute `schedule:run` timer on or off |

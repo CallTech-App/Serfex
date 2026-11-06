@@ -25,7 +25,7 @@ use Illuminate\Support\Str;
     'preview_of_id', 'previews_enabled', 'preview_database', 'preview_seed', 'preview_env', 'preview_limit',
     'maintenance_mode', 'maintenance_on', 'maintenance_allow', 'maintenance_html',
     'backup_schedule', 'backup_time', 'backup_keep', 'backup_before_deploy', 'database_id', 'redis_port', 'redis_password', 'redis_memory_mb',
-    'git_account_id', 'remote_repository', 'remote_key_id', 'remote_hook_id', 'app_template_id', 'template_version', 'template_setup'])]
+    'git_account_id', 'remote_repository', 'remote_key_id', 'remote_hook_id', 'app_template_id', 'template_version', 'template_setup', 'watch'])]
 class LaravelApp extends Model
 {
     /** @use HasFactory<LaravelAppFactory> */
@@ -92,6 +92,7 @@ class LaravelApp extends Model
             'backup_before_deploy' => 'boolean',
             'redis_password' => 'encrypted',
             'template_setup' => 'encrypted:array',
+            'watch' => 'array',
         ];
     }
 

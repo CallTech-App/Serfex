@@ -7,7 +7,35 @@ monitoring (attacks, busy sites), services, sites (with this month's
 traffic), server resources, customers (quotas), SSL certificates, the security
 scan, your account (two-step verification), backups and the Serfex version.
 Each row links to the page where it is fixed; for some, **Ask AI** asks Serfex
-AI to explain.
+AI to explain. Sites that do not answer, failed deployments, failing
+scheduled tasks and crashing queue workers are listed first among the
+problems (see [Notifications](settings.md#notifications)).
+
+## Uptime
+
+Every minute `serfex:uptime` opens each site the way a visitor does: the
+preferred address (HTTPS when the site has a certificate, through Cloudflare
+when it is in front), following redirects, with a 10-second timeout. The
+path is the Laravel application's health path (`/up`) or `/`; **Site →
+Overview → Uptime → Set up** changes it or turns the check off.
+
+- **Down** is a connection that fails, a timeout, or HTTP 5xx (Cloudflare's
+  520–526 are named). Any other answer, 404 included, is up.
+- A failed check is tried again from the server itself (the name resolved to
+  127.0.0.1), and the outage says where the problem is: also failing on the
+  server (with a hint such as PHP-FPM for 502/504), or working on the server
+  (DNS, Cloudflare or the network; for Cloudflare 521–523, its addresses may
+  be blocked).
+- Two failed checks in a row open an outage and notify the administrators;
+  the first good check closes it and sends **Resolved**.
+- Not checked: suspended customers' sites, Laravel applications in maintenance
+  mode, sites with the check turned off. A site that never answered (DNS not
+  pointing here yet) is checked, but is not reported until it answers once.
+
+The **Uptime** card shows the last 24 hours in 15-minute bars, the share of
+good checks over 24 hours and 30 days, the average response time, and the
+latest outages. The site list shows **Not responding** for a site that is
+down. Checks are kept in 15-minute buckets for 90 days.
 
 ## Live Monitor
 

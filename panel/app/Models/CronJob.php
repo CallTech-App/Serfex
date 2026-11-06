@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * site's user on a cron schedule. A trashed task waits out its undo
  * window, already gone from the server.
  */
-#[Fillable(['site_id', 'schedule', 'command', 'note', 'enabled', 'timeout', 'last_run_at', 'last_status'])]
+#[Fillable(['site_id', 'schedule', 'command', 'note', 'enabled', 'timeout', 'last_run_at', 'last_status', 'failed_runs'])]
 class CronJob extends Model
 {
     use SoftDeletes;

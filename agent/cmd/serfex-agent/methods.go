@@ -620,6 +620,7 @@ func registerLaravel(srv *rpc.Server, svc services) {
 		return l.ReadRun(q.Domain, q.Run, q.Offset)
 	})
 	handle(srv, "laravel.status", func(ctx context.Context, p laravel.App) (any, error) { return l.Status(ctx, p) })
+	handle(srv, "laravel.watch", func(ctx context.Context, p laravel.WatchSpec) (any, error) { return l.Watch(ctx, p) })
 	handle(srv, "laravel.env.get", func(ctx context.Context, p laravel.App) (any, error) { return l.GetEnv(ctx, p) })
 	handle(srv, "laravel.env.set", func(ctx context.Context, p laravel.EnvSpec) (any, error) { return l.SetEnv(ctx, p) })
 	handle(srv, "laravel.queue.apply", func(ctx context.Context, p laravel.QueueSpec) (any, error) { return l.ApplyQueues(ctx, p) })
