@@ -28,7 +28,7 @@
                     <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
                         <th class="py-2.5 pr-3 pl-5 font-medium">{{ __('Ad') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('Cloudflare hesabı') }}</th>
-                        <th class="px-3 py-2.5 text-right font-medium">{{ __('Alan adı') }}</th>
+                        <th class="px-3 py-2.5 text-right font-medium">{{ __('Alan adları') }}</th>
                         <th class="px-3 py-2.5 text-right font-medium">{{ __('Bu sunucuda') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('İzinler') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('Durum') }}</th>

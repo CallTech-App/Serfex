@@ -74,6 +74,7 @@ lists every method by area.
 | `firewall.block` | `address`, `seconds`, `reason` | drops all traffic from an address or prefix, for `seconds` (0: until removed) |
 | `firewall.unblock` | `address` | removes a block; returns `removed` |
 | `firewall.list` | | the blocks in force |
+| `web.edge.apply` | `ranges` | Cloudflare's proxy ranges (empty keeps the ones in force); writes Nginx's real-IP and blocked-address files; returns `ranges`, `blocked`, `changed` |
 | `mail.queue` | | Postfix's queue: counts, messages grouped by sender domain, the oldest 200 messages |
 | `mail.queue.flush` | | retries every deferred message now |
 | `mail.queue.hold` / `mail.queue.release` | `domain` | holds a sender domain's queued messages (those being delivered right now finish their attempt) or releases them (`""` for bounces); returns `messages` |
@@ -217,7 +218,11 @@ on the server, and the agent stays one static binary.
 - **DNS-01** (wildcards): for zones this server's PowerDNS serves, the agent
   writes `_acme-challenge` TXT records straight through the PowerDNS API and
   removes them afterwards. `dns.zone.apply` leaves these records alone while
-  a validation runs.
+  a validation runs. For a zone at Cloudflare `ssl.issue` takes
+  `cloudflare` (`zone_id`, `token`, `nameservers`): the records are written
+  through Cloudflare's API with that token (never stored by the agent), the
+  agent waits up to 90 seconds until every Cloudflare name server answers
+  them, and deletes them afterwards.
 - Sites use a certificate by name, so renewing only replaces the two files
   and reloads Nginx. If `nginx -t` or the reload fails, the previous files
   come back.
@@ -418,6 +423,24 @@ The kernel ends a timed block by itself, so it ends on time even while the
 agent or the panel is down. Loopback, multicast, the server's own
 addresses and prefixes wider than /16 (IPv4) or /48 (IPv6) are refused.
 A block covers the whole server: sites share their addresses.
+Cloudflare's proxy ranges are refused too: visitors of a proxied site all
+come from them.
+
+### Visitors behind Cloudflare
+
+```
+/etc/serfex/cloudflare-ips.json           Cloudflare's ranges as the panel last sent them (built-in list otherwise)
+/etc/nginx/conf.d/serfex-realip.conf      set_real_ip_from <range>; real_ip_header CF-Connecting-IP
+/etc/nginx/conf.d/serfex-blocked.conf     deny <address> for the blocks in force
+```
+
+Nginx takes the visitor's address from `CF-Connecting-IP` only for requests
+that come from Cloudflare's ranges. Because a proxied visitor's packets come
+from Cloudflare, an nftables block does not reach them; the blocked file
+makes Nginx refuse them as well. The agent writes both files when it starts,
+after every block and unblock, and every 5 minutes (blocks expire); Nginx is
+tested and reloaded only when a file changed, and the old files come back if
+the test fails. Fail2ban's `ignoreip` lists the same ranges.
 
 ### Temporary limits
 

@@ -104,3 +104,110 @@ setting above, or each zone) and at the registrar. NOTIFY leaves from the
 server's main address; a secondary that only accepts the primary address it
 was given needs that same address. Another Serfex server cannot act as a
 secondary yet.
+
+## Cloudflare
+
+Domains whose DNS is at Cloudflare are managed in Serfex like any other
+zone: Serfex keeps the records in the panel and writes them to Cloudflare
+with an API token. This server's DNS does not serve those zones.
+
+### Connecting an account
+
+**Domains & DNS → Cloudflare → Connect account.** Create the token at
+Cloudflare: My Profile → API Tokens → Create Token → the **Edit zone DNS**
+template, Zone Resources: All zones (or the zones you want). Add these
+permissions for the rest:
+
+| Permission | Used for |
+|------------|----------|
+| Zone → DNS → Edit | the records (required) |
+| Zone → Zone Settings → Edit | setting the SSL/TLS mode to Full (strict) |
+| Zone → Cache Purge → Purge | "Purge Cloudflare cache" and the purge after deployments |
+| Zone → Zone → Edit and Account → Account Settings → Read | adding domains Cloudflare does not have yet |
+
+**Check token** shows what the token can do before it is saved. The token
+is stored encrypted and never shown again; **Renew token** replaces it. An
+account still used by a zone cannot be removed. Several accounts can be
+connected (your own and a customer's, for example).
+
+### Defaults
+
+- **Cloudflare proxy:** site addresses through the proxy (default) — the
+  domain, `www` and the other names a site answers to get the orange cloud
+  when Serfex writes them; mail, webmail, FTP and the panel's addresses are
+  always DNS only. Or none through the proxy, turned on per record.
+- **SSL mode:** Serfex sets the zone's SSL/TLS mode to **Full (strict)**
+  once the site's Let's Encrypt certificate is in place (default on). It
+  does so once; a mode you set at Cloudflare later is left alone. Flexible
+  mode loops with Serfex's HTTPS redirect, so the zone page warns about it.
+- **Laravel deployment:** purge the site's pages from Cloudflare's cache
+  after every successful deployment (default off).
+- **Visitor's real IP:** always on. Nginx takes the visitor's address from
+  `CF-Connecting-IP` for requests that come from Cloudflare's addresses
+  (`/etc/nginx/conf.d/serfex-realip.conf`), so logs, statistics, the WAF,
+  the IP blocks and Laravel's `request()->ip()` see the real visitor.
+  Cloudflare's address list is fetched every week; the agent ships with a
+  copy.
+
+### New sites
+
+When you type a domain in **Add site**, Serfex looks for it in the connected
+accounts. When it is found, **Cloudflare · found in the … account** is
+selected and the records that will change at Cloudflare are listed (the old
+server's `A` record → this server). The site's address records replace the
+ones there; every other record (mail at another provider, verification
+records, subdomains) is kept and taken into the panel. If mail is set up on
+this server, only missing mail records are added.
+
+A domain Cloudflare does not have can be added to an account (**Add to
+Cloudflare**); then set the domain's name servers at the registrar to the
+two Cloudflare shows on the zone page. Until Cloudflare sees them the zone
+shows **Waiting for name servers** and the certificate waits; it is asked
+for as soon as the zone is active.
+
+If Cloudflare refuses (a token without permission, for example), the site
+is still created and its DNS stays on this server.
+
+### Existing zones
+
+**Connect DNS to Cloudflare** on a zone's page compares the panel's
+records with Cloudflare's and lists only the differences, each with what to
+do: write Serfex's or keep Cloudflare's, take a Cloudflare-only record into
+Serfex or delete it there, add a Serfex-only record to Cloudflare or delete
+it in Serfex. **Settings → Move DNS back to this server** reverses it:
+the zone is served by PowerDNS again (name server records are added back)
+and nothing is changed at Cloudflare.
+
+### Keeping both sides the same
+
+Records can be changed in Serfex or in Cloudflare's dashboard. Serfex syncs
+every 5 minutes (and right after a change in the panel); **Sync now** does
+it at once and asks Cloudflare to check the name servers again.
+
+- changed in Serfex → written to Cloudflare; changed in both → Serfex wins;
+- changed only at Cloudflare → taken into Serfex;
+- deleted in Serfex → deleted at Cloudflare; deleted at Cloudflare → deleted
+  in Serfex (unless changed in Serfex since);
+- new on either side → added to the other.
+
+Record types Serfex does not keep (HTTPS, SVCB, …) and Cloudflare's own NS
+and SOA records are left alone. A record Cloudflare refuses does not stop
+the others; the zone shows the error. The zone page shows Cloudflare's
+status, name servers, SSL mode, DNSSEC and what the last sync changed.
+
+### Certificates
+
+Certificates for names in a Cloudflare zone use DNS validation through
+Cloudflare: the agent writes the `_acme-challenge` TXT records with the
+zone's token, waits until Cloudflare's name servers answer with them, and
+removes them afterwards. This works behind the proxy, and wildcard
+certificates become possible.
+
+### Blocking addresses
+
+Cloudflare's addresses can never be blocked (the panel, Serfex AI and the
+agent all refuse; Fail2ban ignores them): every visitor of a proxied site
+comes from them. Block the visitor's real address instead; Nginx refuses
+blocked addresses that arrive through Cloudflare too
+(`/etc/nginx/conf.d/serfex-blocked.conf`). Fail2ban's own bans act on
+connections, so they do not reach visitors behind the proxy.

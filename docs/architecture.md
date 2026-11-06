@@ -90,7 +90,7 @@ after 2 hours, or when the panel closes it.
 | Area | Methods |
 |------|---------|
 | System | `system.ping`, `agent.info`, `system.info`, `system.addresses`, `system.hostname.set`, `system.timezone.set`, `system.timezones`, `usage.disk`, `logs.rotation.get`, `logs.rotation.set`, `quota.status`, `quota.enable`, `quota.report`, `quota.set` |
-| Sites | `site.apply`, `site.delete`, `site.logs`, `web.protect.apply`, `web.deny.apply` |
+| Sites | `site.apply`, `site.delete`, `site.logs`, `web.protect.apply`, `web.deny.apply`, `web.edge.apply` (Cloudflare's addresses for Nginx's real IP; blocked addresses for proxied visitors) |
 | PHP | `php.versions`, `php.info`, `php.settings.apply`, `php.extension.set`, `php.restart` |
 | Files, SFTP and SSH | `files.*` (list, read, save, upload, move, copy, delete, chmod, compress, extract, search, trash…), `ftp.status`, `ftp.account.apply`, `ftp.account.delete`, `ftp.account.list`, `ssh.user.apply`, `terminal.open`, `terminal.list`, `terminal.get`, `terminal.close` |
 | Scheduled tasks | `cron.apply`, `cron.remove`, `cron.run`, `cron.runs` |
@@ -129,11 +129,11 @@ after 2 hours, or when the panel closes it.
   `serfex:monitor-record`, `serfex:stats-collect`, `serfex:services-check`,
   `serfex:fail2ban-sync`, `serfex:settings-check`, `serfex:jobs-recover`; every 5 minutes
   `serfex:backups`, `serfex:laravel-backups`, `serfex:notify`,
-  `serfex:cron-history`; every 30 minutes `serfex:disk-usage`,
+  `serfex:cron-history`, `serfex:cloudflare-sync`; every 30 minutes `serfex:disk-usage`,
   `serfex:mail-usage`; hourly `serfex:ssl-renew`, `serfex:mail-senders`, `serfex:stats-rollup`;
   daily `serfex:files-trash` (03:40), `serfex:stats-prune` (04:10),
   `serfex:components-check` and `serfex:update-check` (04:30); weekly
-  `serfex:security-scan` (Sunday 03:20).
+  `serfex:security-scan` (Sunday 03:20), `serfex:cloudflare-ips` (Monday 04:50).
 - **Access control** in layers: middleware (`EnsureHostingAccess`,
   `EnsureAdmin`, `EnsureFullAdmin`, `RefuseReadOnlyChanges`), the `Access`
   checks on every Livewire mount and action, and `visibleTo()` scopes on the

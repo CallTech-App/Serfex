@@ -1,4 +1,4 @@
-@props(['status'])
+@props(['status', 'label' => null])
 @php
     $tone = [
         'ok' => ['bg-ok-soft text-ok', 'bg-ok'],
@@ -14,5 +14,5 @@
     @else
         <i class="size-1.5 rounded-full {{ $tone[1] }}"></i>
     @endif
-    {{ $status->label() }}
+    {{ $label ?? $status->label() }}
 </span>

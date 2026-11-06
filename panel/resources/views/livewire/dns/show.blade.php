@@ -32,7 +32,7 @@
                     @if ($cfPending)
                         <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-warn-soft px-2 py-0.5 text-2xs font-medium text-warn"><span class="size-1.5 rounded-full bg-warn"></span>{{ __('Ad sunucusu bekleniyor') }}</span>
                     @else
-                        <x-status-badge :status="$zone->status" />
+                        <x-status-badge :status="$zone->status" :label="$cf && $zone->status === \App\Enums\ZoneStatus::Active ? __('Cloudflare\'de') : null" />
                     @endif
                 </div>
                 <div class="flex flex-wrap gap-2">

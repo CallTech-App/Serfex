@@ -18,7 +18,13 @@ class CloudflareApi
 {
     public const BASE = 'https://api.cloudflare.com/client/v4';
 
-    public function __construct(private readonly string $token) {}
+    /** Cloudflare's API, or another one for development (SERFEX_CLOUDFLARE_API). */
+    private readonly string $base;
+
+    public function __construct(private readonly string $token)
+    {
+        $this->base = rtrim((string) (config('serfex.cloudflare.api') ?: self::BASE), '/');
+    }
 
     public static function for(string $token): self
     {
@@ -66,7 +72,7 @@ class CloudflareApi
      */
     public function zoneCount(): int
     {
-        $res = $this->send(fn () => $this->http()->get(self::BASE.'/zones', ['per_page' => 5, 'page' => 1]));
+        $res = $this->send(fn () => $this->http()->get($this->base.'/zones', ['per_page' => 5, 'page' => 1]));
 
         return (int) ($res['result_info']['total_count'] ?? count($res['result'] ?? []));
     }
@@ -90,7 +96,7 @@ class CloudflareApi
      */
     public function createZone(string $accountId, string $name): array
     {
-        return $this->result(fn () => $this->http()->post(self::BASE.'/zones', [
+        return $this->result(fn () => $this->http()->post($this->base.'/zones', [
             'name' => $name,
             'account' => ['id' => $accountId],
             'type' => 'full',
@@ -104,7 +110,7 @@ class CloudflareApi
      */
     public function activationCheck(string $zoneId): void
     {
-        $this->result(fn () => $this->http()->put(self::BASE.'/zones/'.$zoneId.'/activation_check'));
+        $this->result(fn () => $this->http()->put($this->base.'/zones/'.$zoneId.'/activation_check'));
     }
 
     /**
@@ -125,7 +131,7 @@ class CloudflareApi
      */
     public function createRecord(string $zoneId, array $record): array
     {
-        return $this->result(fn () => $this->http()->post(self::BASE.'/zones/'.$zoneId.'/dns_records', $record));
+        return $this->result(fn () => $this->http()->post($this->base.'/zones/'.$zoneId.'/dns_records', $record));
     }
 
     /**
@@ -136,7 +142,7 @@ class CloudflareApi
      */
     public function updateRecord(string $zoneId, string $id, array $record): array
     {
-        return $this->result(fn () => $this->http()->put(self::BASE.'/zones/'.$zoneId.'/dns_records/'.$id, $record));
+        return $this->result(fn () => $this->http()->put($this->base.'/zones/'.$zoneId.'/dns_records/'.$id, $record));
     }
 
     /**
@@ -145,7 +151,7 @@ class CloudflareApi
     public function deleteRecord(string $zoneId, string $id): void
     {
         try {
-            $this->result(fn () => $this->http()->delete(self::BASE.'/zones/'.$zoneId.'/dns_records/'.$id));
+            $this->result(fn () => $this->http()->delete($this->base.'/zones/'.$zoneId.'/dns_records/'.$id));
         } catch (CloudflareException $e) {
             // Gone already is what was wanted.
             if ($e->status !== 404 && $e->getCode() !== 81044) {
@@ -169,7 +175,7 @@ class CloudflareApi
      */
     public function setSslMode(string $zoneId, string $mode): void
     {
-        $this->result(fn () => $this->http()->patch(self::BASE.'/zones/'.$zoneId.'/settings/ssl', ['value' => $mode]));
+        $this->result(fn () => $this->http()->patch($this->base.'/zones/'.$zoneId.'/settings/ssl', ['value' => $mode]));
     }
 
     /**
@@ -189,7 +195,7 @@ class CloudflareApi
      */
     public function setDnssec(string $zoneId, bool $on): array
     {
-        return $this->result(fn () => $this->http()->patch(self::BASE.'/zones/'.$zoneId.'/dnssec', ['status' => $on ? 'active' : 'disabled']));
+        return $this->result(fn () => $this->http()->patch($this->base.'/zones/'.$zoneId.'/dnssec', ['status' => $on ? 'active' : 'disabled']));
     }
 
     /**
@@ -202,7 +208,7 @@ class CloudflareApi
     public function purge(string $zoneId, array $hosts = []): void
     {
         $body = $hosts === [] ? ['purge_everything' => true] : ['hosts' => array_values($hosts)];
-        $this->result(fn () => $this->http()->post(self::BASE.'/zones/'.$zoneId.'/purge_cache', $body));
+        $this->result(fn () => $this->http()->post($this->base.'/zones/'.$zoneId.'/purge_cache', $body));
     }
 
     /**
@@ -213,7 +219,7 @@ class CloudflareApi
      */
     private function get(string $path, array $query = []): array
     {
-        return $this->result(fn () => $this->http()->get(self::BASE.$path, $query));
+        return $this->result(fn () => $this->http()->get($this->base.$path, $query));
     }
 
     /**
@@ -228,7 +234,7 @@ class CloudflareApi
     {
         $out = [];
         for ($page = 1; $page <= 50; $page++) {
-            $res = $this->send(fn () => $this->http()->get(self::BASE.$path, [...$query, 'per_page' => $path === '/accounts' ? 50 : 500, 'page' => $page]));
+            $res = $this->send(fn () => $this->http()->get($this->base.$path, [...$query, 'per_page' => $path === '/accounts' ? 50 : 500, 'page' => $page]));
             foreach ($res['result'] ?? [] as $row) {
                 $out[] = $row;
             }

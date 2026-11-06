@@ -180,7 +180,7 @@
                     </div>
                 </div>
                 @if ($admin && $heldBy === null && ($cloudflare !== null || $cloudflareAccounts->isNotEmpty()))
-                    @php $ns = implode(', ', app(\App\Services\Dns\DnsSettings::class)->nameservers()); @endphp
+                    @php $ns = implode(', ', array_map(fn ($n) => rtrim($n, '.'), app(\App\Services\Dns\DnsSettings::class)->nameservers())); @endphp
                     <fieldset>
                         <legend class="mb-1.5">{{ __('DNS') }}</legend>
                         <div class="space-y-2.5">
@@ -240,11 +240,10 @@
                             @else
                                 <ul class="divide-y divide-line">
                                     @foreach ($cloudflare['preview']['changes'] as $c)
-                                        <li class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-1.5 font-mono text-[12.5px]">
-                                            <span class="min-w-0 break-all sm:w-40">{{ $c['name'] }}</span>
-                                            <span class="w-14 text-muted">{{ $c['type'] }}</span>
-                                            <span class="min-w-0 break-all">
-                                                @if ($c['from'] !== [])<span class="text-muted line-through">{{ implode(', ', $c['from']) }}</span> → @else<span class="text-muted">{{ __('yeni') }}</span> → @endif{{ implode(', ', $c['to']) }}
+                                        <li class="py-2 font-mono text-[12.5px]">
+                                            <span class="flex flex-wrap items-baseline gap-x-2"><span class="break-all">{{ $c['name'] }}</span><span class="text-2xs text-muted">{{ str_replace('/', ' → ', $c['type']) === $c['type'] ? $c['type'] : '' }}</span></span>
+                                            <span class="mt-0.5 block break-all">
+                                                @if ($c['from'] !== [])<span class="text-muted line-through">{{ implode(', ', $c['from']) }}</span>@else<span class="text-muted">{{ __('yeni') }}</span>@endif → {{ implode(', ', $c['to']) }}
                                             </span>
                                         </li>
                                     @endforeach

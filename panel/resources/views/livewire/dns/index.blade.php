@@ -127,7 +127,7 @@
                             </td>
                             <td class="num px-3 py-3 text-right">{{ $zone->records_count }}</td>
                             <td class="px-3 py-3">
-                                <x-status-badge :status="$zone->status" :title="$zone->last_error" />
+                                <x-status-badge :status="$zone->status" :title="$zone->last_error" :label="$zone->atCloudflare() && $zone->status === \App\Enums\ZoneStatus::Active ? __('Cloudflare\'de') : null" />
                             </td>
                             @php $signed = $zone->atCloudflare() ? in_array($zone->cloudflare_info['dnssec']['status'] ?? null, ['active', 'pending'], true) : $zone->dnssec; @endphp
                             <td @class(['px-3 py-3', 'text-muted' => ! $signed])>{{ $signed ? __('Açık (DNSSEC)') : __('Kapalı (DNSSEC)') }}</td>

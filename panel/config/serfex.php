@@ -77,6 +77,11 @@ return [
     |
     */
 
+    'cloudflare' => [
+        // Cloudflare's v4 API; another address only for development.
+        'api' => env('SERFEX_CLOUDFLARE_API', 'https://api.cloudflare.com/client/v4'),
+    ],
+
     'ssl' => [
         'check_dns' => (bool) env('SERFEX_SSL_CHECK_DNS', true),
         // Let's Encrypt certificates are renewed this many days before expiry.
