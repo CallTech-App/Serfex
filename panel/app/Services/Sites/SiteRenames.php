@@ -435,6 +435,15 @@ class SiteRenames
         $this->restart($site, $notes);
         $this->dnsFor($site, $from, $old, $subdomains->pluck('name')->all(), $before['aliases'], $notes, create: $rename->undo_of_id === null);
         $this->mailFor($site, $from, $notes);
+        if ($site->copy_of_id !== null) {
+            // A staging copy's WordPress keeps its e-mail and WP-Cron to
+            // itself under the new name too.
+            try {
+                app(SiteCopies::class)->applyStaging($site);
+            } catch (AgentException) {
+                $notes[] = ['code' => 'staging_failed', 'subject' => $to];
+            }
+        }
         if ($before['certificate_id'] !== null && $before['certificate_id'] !== $site->certificate_id) {
             // The certificate of the old name is kept for a while, in case
             // the rename is undone soon.
@@ -652,6 +661,7 @@ class SiteRenames
             'mail_stays' => [__('Posta kutuları :subject adında kaldı; o adresler posta almaya devam ediyor.', $s), false],
             'mail_moved' => [__('E-posta (kutusu yoktu) yeni ada taşındı: :subject', $s), false],
             'www_taken' => [__('www. adı eklenmedi: :subject', $s), true],
+            'staging_failed' => [__('Hazırlık kopyasının e-posta ve WP-Cron kısıtı yeni ada göre yazılamadı; Siteyi kopyala sayfasından yeniden kaydedin.'), true],
             default => [(string) ($note['subject'] ?? ''), false],
         };
     }

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'cache', 'node_version', 'failed_action'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'copy_blocks_mail', 'copy_blocks_cron', 'cache', 'node_version', 'failed_action'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -74,6 +74,8 @@ class Site extends Model
             'denied_paths' => 'array',
             'error_pages' => 'array',
             'noindex' => 'boolean',
+            'copy_blocks_mail' => 'boolean',
+            'copy_blocks_cron' => 'boolean',
             'cache' => 'array',
         ];
     }

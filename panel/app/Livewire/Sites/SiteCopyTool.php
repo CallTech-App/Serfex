@@ -6,6 +6,7 @@ use App\Livewire\Attributes\ForCustomers;
 use App\Models\Database;
 use App\Models\Site;
 use App\Models\SiteCopy;
+use App\Models\WordPressInstall;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Backups\Backups;
@@ -38,6 +39,12 @@ class SiteCopyTool extends Component
 
     public bool $noindex = true;
 
+    /** The copy's WordPress sends no e-mail. */
+    public bool $blockMail = true;
+
+    /** The copy's WordPress runs no WP-Cron. */
+    public bool $blockCron = true;
+
     /** refresh or publish, while its confirmation is open. */
     public ?string $confirming = null;
 
@@ -53,6 +60,10 @@ class SiteCopyTool extends Component
         $this->siteId = $site->id;
         $this->domain = $copies->suggestedDomain($site);
         $this->noindex = $site->copy_of_id !== null ? $site->noindex : true;
+        if ($site->copy_of_id !== null) {
+            $this->blockMail = $site->copy_blocks_mail;
+            $this->blockCron = $site->copy_blocks_cron;
+        }
         $this->shownId = $this->runs($site)->first()?->id;
     }
 
@@ -79,7 +90,7 @@ class SiteCopyTool extends Component
 
             return;
         }
-        $run = $copies->create($site, $this->domain, $this->withDatabases, $this->noindex, auth()->user());
+        $run = $copies->create($site, $this->domain, $this->withDatabases, $this->noindex, auth()->user(), $this->blockMail, $this->blockCron);
         $this->shownId = $run->id;
         $this->dispatch('toast', message: __(':domain hazırlanıyor; dosyalar kopyalanınca açılır.', ['domain' => $run->domain]));
     }
@@ -164,6 +175,37 @@ class SiteCopyTool extends Component
         $this->saveNoindex($domains);
     }
 
+    /**
+     * Turns e-mail and WP-Cron on the copy's WordPress on or off.
+     */
+    public function saveStaging(SiteCopies $copies): void
+    {
+        $site = $this->site();
+        if ($site->copy_of_id === null || ($site->copy_blocks_mail === $this->blockMail && $site->copy_blocks_cron === $this->blockCron)) {
+            return;
+        }
+        $before = [$site->copy_blocks_mail, $site->copy_blocks_cron];
+        try {
+            $copies->setStaging($site, $this->blockMail, $this->blockCron);
+        } catch (AgentException $e) {
+            [$this->blockMail, $this->blockCron] = $before;
+            $this->dispatch('toast', message: $e->forPeople());
+
+            return;
+        }
+        $this->dispatch('toast',
+            message: __('Kopyanın WordPress ayarı kaydedildi.'),
+            source: $this->getId(),
+            undo: ['method' => 'undoStaging', 'args' => $before],
+        );
+    }
+
+    public function undoStaging(SiteCopies $copies, bool $mail, bool $cron): void
+    {
+        [$this->blockMail, $this->blockCron] = [$mail, $cron];
+        $this->saveStaging($copies);
+    }
+
     public function show(int $id): void
     {
         $this->shownId = $this->visibleRuns()->whereKey($id)->value('id');
@@ -226,6 +268,7 @@ class SiteCopyTool extends Component
             'site' => $site,
             'source' => $source,
             'isCopy' => $site->copy_of_id !== null,
+            'hasWordPress' => $site->wordpress?->status === WordPressInstall::ACTIVE,
             'copies' => $site->copies()->with('certificate')->orderBy('domain')->get(),
             'databases' => Database::where('site_id', $site->id)->orderBy('name')->get(),
             'runs' => $runs,

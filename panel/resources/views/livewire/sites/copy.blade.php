@@ -76,6 +76,9 @@
                         </span>
                     </label>
                 </div>
+                @if ($hasWordPress)
+                    @include('livewire.sites.partials.copy-staging', ['row' => $row, 'live' => true])
+                @endif
             </div>
         @else
             <form wire:submit="create" class="divide-y divide-line px-5 text-[13.5px]">
@@ -125,6 +128,9 @@
                         <p class="text-2xs text-muted">{{ __('E-posta, zamanlanmış görevler, FTP hesapları ve kuyruk işçileri kopyalanmaz.') }}</p>
                     </div>
                 </div>
+                @if ($hasWordPress)
+                    @include('livewire.sites.partials.copy-staging', ['row' => $row, 'live' => false])
+                @endif
                 <div class="{{ $row }}">
                     <div>
                         <p class="font-medium">{{ __('Arama motorları') }}</p>

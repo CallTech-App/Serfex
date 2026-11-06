@@ -678,6 +678,10 @@ func registerLaravel(srv *rpc.Server, svc services) {
 	handle(srv, "wordpress.autoupdate", func(ctx context.Context, p laravel.WPAutoUpdateSpec) (any, error) {
 		return l.WordPressAutoUpdate(ctx, p)
 	})
+	handle(srv, "wordpress.staging", func(ctx context.Context, p laravel.WPStagingSpec) (any, error) {
+		on, err := l.WordPressStaging(ctx, p)
+		return map[string]bool{"on": on}, err
+	})
 	handle(srv, "wordpress.harden", func(ctx context.Context, p laravel.WPHardenSpec) (any, error) { return l.WordPressHarden(ctx, p) })
 	handle(srv, "wordpress.detach", func(ctx context.Context, p laravel.App) (any, error) {
 		return map[string]bool{"detached": true}, l.WordPressDetach(ctx, p)

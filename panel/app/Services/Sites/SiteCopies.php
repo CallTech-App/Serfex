@@ -34,7 +34,9 @@ use RuntimeException;
  * days; a publish that fails is undone at once.
  *
  * Mail, scheduled tasks, FTP accounts and Laravel's queue workers are not
- * copied. A copy asks search engines to stay away until told otherwise.
+ * copied. A copy asks search engines to stay away until told otherwise. A
+ * copy's WordPress sends no e-mail and runs no WP-Cron until told
+ * otherwise (the agent's staging plugin, removed when it is published).
  */
 class SiteCopies
 {
@@ -130,9 +132,9 @@ class SiteCopies
     /**
      * Creates the copy site and queues the copy into it.
      */
-    public function create(Site $source, string $domain, bool $databases, bool $noindex, ?User $user): SiteCopy
+    public function create(Site $source, string $domain, bool $databases, bool $noindex, ?User $user, bool $blockMail = true, bool $blockCron = true): SiteCopy
     {
-        $copy = DB::transaction(function () use ($source, $domain, $noindex) {
+        $copy = DB::transaction(function () use ($source, $domain, $noindex, $blockMail, $blockCron) {
             return $source->systemUser->sites()->create([
                 'domain' => $domain,
                 'aliases' => [],
@@ -149,6 +151,8 @@ class SiteCopies
                 'node_version' => $source->node_version,
                 'preferred_host' => Site::PREFER_NONE,
                 'noindex' => $noindex,
+                'copy_blocks_mail' => $blockMail,
+                'copy_blocks_cron' => $blockCron,
                 'status' => SiteStatus::Provisioning,
             ]);
         });
@@ -259,7 +263,7 @@ class SiteCopies
             throw new RuntimeException(__('Kopya site oluşturulamadı: :last_error', ['last_error' => $copy->last_error]));
         }
         $pairs = in_array('databases', $run->parts, true) ? $this->copyDatabases($source, $copy) : [];
-        $result = $this->copy($run, $source, $copy, true, $pairs, $this->hostsInto($source, $copy), $copy->noindex ? '0' : '');
+        $result = $this->copy($run, $source, $copy, true, $pairs, $this->hostsInto($source, $copy), $copy->noindex ? '0' : '', self::staging($copy));
         // The copy's WordPress is managed like its source's.
         $install = $source->wordpress;
         if ($install !== null && $install->status === WordPressInstall::ACTIVE) {
@@ -271,7 +275,7 @@ class SiteCopies
     private function runRefresh(SiteCopy $run, Site $source, Site $copy): void
     {
         $pairs = in_array('databases', $run->parts, true) ? $this->copyDatabases($source, $copy) : [];
-        $result = $this->copy($run, $source, $copy, in_array('files', $run->parts, true), $pairs, $this->hostsInto($source, $copy), $copy->noindex ? '0' : '');
+        $result = $this->copy($run, $source, $copy, in_array('files', $run->parts, true), $pairs, $this->hostsInto($source, $copy), $copy->noindex ? '0' : '', self::staging($copy));
         $this->cache->purgeQuietly($copy);
         $this->finish($run, null, $result);
     }
@@ -297,8 +301,9 @@ class SiteCopies
                 }
             }
         }
-        // The live site keeps what it told search engines.
-        $result = $this->copy($run, $copy, $source, in_array('files', $run->parts, true), $pairs, $this->hostsBack($copy, $source), 'keep');
+        // The live site keeps what it told search engines, and sends its
+        // e-mail (no staging plugin).
+        $result = $this->copy($run, $copy, $source, in_array('files', $run->parts, true), $pairs, $this->hostsBack($copy, $source), 'keep', null);
         $this->cache->purgeQuietly($source);
         $this->finish($run, null, $result);
     }
@@ -308,11 +313,12 @@ class SiteCopies
      *
      * @param  list<array{server: string, from: string, to: string}>  $databases
      * @param  list<array{0: string, 1: string}>  $hosts
+     * @param  array{mail: bool, cron: bool}|null  $staging
      * @return array<string, mixed>
      *
      * @throws AgentException
      */
-    private function copy(SiteCopy $run, Site $from, Site $to, bool $files, array $databases, array $hosts, string $public): array
+    private function copy(SiteCopy $run, Site $from, Site $to, bool $files, array $databases, array $hosts, string $public, ?array $staging): array
     {
         if (! $files && $databases === []) {
             throw new RuntimeException(__('Kopyalanacak bir şey yok: kopyanın kaynağındaki veritabanlarıyla eşleşen veritabanı bulunmuyor.'));
@@ -328,7 +334,52 @@ class SiteCopies
             'hosts' => $hosts,
             'wordpress' => (string) $wordpress,
             'public' => $public,
+            'staging' => $staging,
         ], config('serfex.agent.backup_timeout'));
+    }
+
+    /**
+     * What a copy's WordPress keeps to itself, as the agent takes it.
+     *
+     * @return array{mail: bool, cron: bool}
+     */
+    public static function staging(Site $copy): array
+    {
+        return ['mail' => (bool) ($copy->copy_blocks_mail ?? true), 'cron' => (bool) ($copy->copy_blocks_cron ?? true)];
+    }
+
+    /**
+     * Turns e-mail and WP-Cron on a copy's WordPress on or off; the
+     * staging plugin follows at once.
+     *
+     * @throws AgentException the setting is left as it was
+     */
+    public function setStaging(Site $copy, bool $blockMail, bool $blockCron): void
+    {
+        $before = $copy->only('copy_blocks_mail', 'copy_blocks_cron');
+        $copy->update(['copy_blocks_mail' => $blockMail, 'copy_blocks_cron' => $blockCron]);
+        try {
+            $this->applyStaging($copy);
+        } catch (AgentException $e) {
+            $copy->update($before);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Puts the copy's staging plugin in line with its settings (after a
+     * change, or a new name).
+     *
+     * @throws AgentException
+     */
+    public function applyStaging(Site $copy): void
+    {
+        $install = $copy->wordpress()->first();
+        if ($copy->copy_of_id === null || $install === null || $install->status !== WordPressInstall::ACTIVE) {
+            return;
+        }
+        $this->agent->call('wordpress.staging', $install->target() + ['staging' => self::staging($copy)]);
     }
 
     /**
