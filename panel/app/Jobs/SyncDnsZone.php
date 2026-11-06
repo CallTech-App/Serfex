@@ -2,17 +2,23 @@
 
 namespace App\Jobs;
 
+use App\Enums\CertificateStatus;
 use App\Enums\ZoneStatus;
+use App\Models\Certificate;
 use App\Models\DnsZone;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Cloudflare\CloudflareException;
+use App\Services\Cloudflare\CloudflareSync;
+use App\Services\Ssl\Certificates;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 /**
- * Sends a zone's records to the agent so PowerDNS serves exactly them.
+ * Sends a zone's records to the agent so PowerDNS serves exactly them, or,
+ * for a zone at Cloudflare, syncs them with Cloudflare both ways.
  *
  * The job reads the zone when it runs, so several quick edits end in one
  * call with the latest state. A change made while a sync is running queues
@@ -47,6 +53,11 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
     {
         $zone = DnsZone::with('records')->find($this->zone->id);
         if ($zone === null || $zone->status === ZoneStatus::Deleting) {
+            return;
+        }
+        if ($zone->atCloudflare()) {
+            $this->syncCloudflare($zone, $agent);
+
             return;
         }
         $updatedAt = $zone->updated_at;
@@ -91,5 +102,48 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
             'synced_at' => now(),
             ...$signing,
         ]);
+    }
+
+    /**
+     * Sync with Cloudflare. The first time, this server's PowerDNS stops
+     * serving the zone: two servers must not answer for it differently.
+     */
+    private function syncCloudflare(DnsZone $zone, AgentClient $agent): void
+    {
+        $info = $zone->cloudflare_info ?? [];
+        $wasActive = ($info['status'] ?? null) === 'active';
+        if (empty($info['local_removed'])) {
+            try {
+                $agent->call('dns.zone.delete', ['zone' => $zone->name], config('serfex.agent.job_timeout'));
+                $info['local_removed'] = true;
+            } catch (AgentException $e) {
+                // Without a DNS server there is nothing to remove there.
+                $info['local_removed'] = $e->getCode() === self::NOT_SET_UP;
+            }
+            $zone->forceFill(['cloudflare_info' => $info])->saveQuietly();
+        }
+        try {
+            $done = app(CloudflareSync::class)->sync($zone);
+        } catch (CloudflareException $e) {
+            $zone->forceFill(['status' => ZoneStatus::Failed, 'last_error' => $e->getMessage()])->saveQuietly();
+
+            return;
+        }
+        // What this sync did, shown on the zone's page while it is news.
+        $info = $zone->cloudflare_info ?? [];
+        if (array_sum($done) > 0 || ! isset($info['last_change'])) {
+            $info['last_change'] = $done + ['at' => now()->toIso8601String()];
+        }
+        $zone->forceFill(['status' => ZoneStatus::Active, 'last_error' => null, 'synced_at' => now(), 'cloudflare_info' => $info])->saveQuietly();
+
+        // The registrar now lists Cloudflare's name servers: certificates
+        // waiting for that are asked for now, not at the next hourly try.
+        if (! $wasActive && ($info['status'] ?? null) === 'active') {
+            $waiting = Certificate::with('site')->where('status', CertificateStatus::WaitingDns)
+                ->whereHas('site', fn ($q) => $q->where('domain', $zone->name)->orWhere('domain', 'like', '%.'.$zone->name))->get();
+            foreach ($waiting as $certificate) {
+                app(Certificates::class)->reissue($certificate, auto: true);
+            }
+        }
     }
 }

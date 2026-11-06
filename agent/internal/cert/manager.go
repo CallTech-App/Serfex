@@ -17,6 +17,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/calltech-app/serfex/agent/internal/cloudflare"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/hostname"
 	"github.com/calltech-app/serfex/agent/internal/txn"
@@ -64,15 +65,23 @@ type Manager struct {
 	// Nginx serves the answer there: a reload that has just been requested
 	// takes a moment to reach the workers. Empty skips the check.
 	localWeb string
+	// cfBase is Cloudflare's API ("" with a simulated host: nothing is
+	// sent); cfLookup asks a name server for TXT values; cfWait bounds the
+	// wait for Cloudflare's name servers to give out an answer.
+	cfBase   string
+	cfLookup cloudflare.Lookup
+	cfWait   time.Duration
 	mu       sync.Mutex
 }
 
 // NewManager returns a Manager. dnsm publishes DNS-01 answers; issuer
 // talks to the certificate authority.
 func NewManager(h host.Host, dnsm ChallengeDNS, issuer Issuer) *Manager {
-	m := &Manager{h: h, dns: dnsm, issuer: issuer}
+	m := &Manager{h: h, dns: dnsm, issuer: issuer, cfLookup: cloudflare.LookupTXT, cfBase: cloudflare.API, cfWait: 90 * time.Second}
 	if _, sim := h.(*host.Simulator); !sim {
 		m.localWeb = "http://127.0.0.1"
+	} else {
+		m.cfBase = ""
 	}
 	return m
 }
@@ -85,9 +94,12 @@ type IssueSpec struct {
 	Names []string `json:"names"`
 	// Challenge is http-01 (default) or dns-01.
 	Challenge string `json:"challenge"`
-	// DNSZone is the zone on this server's DNS that holds every name, for
-	// dns-01.
+	// DNSZone is the zone that holds every name, for dns-01: on this
+	// server's DNS, or at Cloudflare when Cloudflare is set.
 	DNSZone string `json:"dns_zone"`
+	// Cloudflare, for a zone whose DNS is at Cloudflare: the answers are
+	// published there through its API.
+	Cloudflare *cloudflare.Zone `json:"cloudflare"`
 	// Email receives expiry notices from the certificate authority.
 	Email string `json:"email"`
 }
@@ -168,6 +180,14 @@ func (s *IssueSpec) validate() error {
 			return err
 		}
 	}
+	if s.Cloudflare != nil {
+		if s.Challenge != DNS01 {
+			return invalid("a Cloudflare zone is only used for %s validation", DNS01)
+		}
+		if err := s.Cloudflare.Valid(); err != nil {
+			return invalid("%s", err.Error())
+		}
+	}
 	if s.Email != "" && (!strings.Contains(s.Email, "@") || strings.ContainsAny(s.Email, " \t\r\n<>")) {
 		return invalid("email %q is not valid", s.Email)
 	}
@@ -189,7 +209,7 @@ func (m *Manager) Issue(ctx context.Context, spec IssueSpec) (Result, error) {
 			return Result{}, &OperationError{err}
 		}
 	}
-	chain, key, err := m.issuer.Obtain(ctx, Request{Names: spec.Names, Challenge: spec.Challenge, Email: spec.Email}, &solver{m: m, zone: spec.DNSZone})
+	chain, key, err := m.issuer.Obtain(ctx, Request{Names: spec.Names, Challenge: spec.Challenge, Email: spec.Email}, &solver{m: m, zone: spec.DNSZone, cf: spec.Cloudflare})
 	if err != nil {
 		return Result{}, &OperationError{err}
 	}
@@ -590,10 +610,13 @@ func (m *Manager) ensureWebroot() error {
 
 var tokenRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,255}$`)
 
-// solver publishes challenge answers on this server.
+// solver publishes challenge answers on this server, or at Cloudflare.
 type solver struct {
 	m    *Manager
 	zone string
+	cf   *cloudflare.Zone
+	// cfRecords are the TXT records added at Cloudflare, by name.
+	cfRecords map[string][]string
 }
 
 func (s *solver) PresentHTTP(ctx context.Context, name, token, keyAuth string) error {
@@ -659,6 +682,9 @@ func (s *solver) CleanupHTTP(token string) {
 }
 
 func (s *solver) PresentDNS(ctx context.Context, name string, values []string) error {
+	if s.cf != nil {
+		return s.presentCloudflare(ctx, name, values)
+	}
 	if s.zone == "" {
 		return errors.New("dns-01 validation needs a DNS zone on this server")
 	}
@@ -669,5 +695,44 @@ func (s *solver) PresentDNS(ctx context.Context, name string, values []string) e
 }
 
 func (s *solver) CleanupDNS(ctx context.Context, name string) {
+	if s.cf != nil {
+		s.cleanupCloudflare(ctx, name)
+		return
+	}
 	_ = s.m.dns.ClearChallenge(ctx, s.zone, name)
+}
+
+// presentCloudflare adds the answers as TXT records at Cloudflare and
+// waits until the zone's name servers give them out. With a simulated
+// host nothing is sent.
+func (s *solver) presentCloudflare(ctx context.Context, name string, values []string) error {
+	if s.m.cfBase == "" {
+		return nil
+	}
+	c := cloudflare.NewClient(s.cf.Token)
+	c.Base = s.m.cfBase
+	if s.cfRecords == nil {
+		s.cfRecords = map[string][]string{}
+	}
+	for _, v := range values {
+		id, err := c.AddTXT(ctx, s.cf.ZoneID, name, v)
+		if err != nil {
+			return fmt.Errorf("publishing %s at Cloudflare: %w", name, err)
+		}
+		s.cfRecords[name] = append(s.cfRecords[name], id)
+	}
+	cloudflare.Await(ctx, s.m.cfLookup, s.cf.Nameservers, name, values, s.m.cfWait)
+	return nil
+}
+
+func (s *solver) cleanupCloudflare(ctx context.Context, name string) {
+	if s.m.cfBase == "" {
+		return
+	}
+	c := cloudflare.NewClient(s.cf.Token)
+	c.Base = s.m.cfBase
+	for _, id := range s.cfRecords[name] {
+		_ = c.Delete(ctx, s.cf.ZoneID, id)
+	}
+	delete(s.cfRecords, name)
 }

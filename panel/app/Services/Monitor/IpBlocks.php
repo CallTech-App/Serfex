@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Ssl\DnsCheck;
 
 /**
  * Blocking addresses on the whole server (nftables, through the agent).
@@ -44,6 +45,15 @@ class IpBlocks
         }
         if ($source === 'ai' && ($minutes === null || $minutes > self::AI_MAX_MINUTES)) {
             throw new MonitorException(__('Serfex AI bir adresi en fazla 24 saat engelleyebilir.'));
+        }
+        // Every visitor of a proxied site comes from Cloudflare's addresses.
+        $base = explode('/', $address)[0];
+        $overlaps = DnsCheck::isCloudflare($base);
+        foreach (DnsCheck::CLOUDFLARE as $cidr) {
+            $overlaps = $overlaps || self::contains($address, explode('/', $cidr)[0]);
+        }
+        if ($overlaps) {
+            throw new MonitorException(__(':address Cloudflare\'in vekil adreslerinden; engellenirse Cloudflare üzerinden gelen bütün ziyaretçiler engellenir. Ziyaretçinin gerçek adresini engelleyin.', ['address' => $address]));
         }
         foreach ($protect as $own) {
             if ($own !== '' && self::contains($address, $own)) {

@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Hidden(['dnssec_key'])]
-#[Fillable(['site_id', 'name', 'status', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec', 'dnssec_key', 'dnssec_info', 'serial', 'last_error', 'synced_at'])]
+#[Fillable(['site_id', 'name', 'status', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec', 'dnssec_key', 'dnssec_info', 'serial', 'last_error', 'synced_at',
+    'cloudflare_account_id', 'cloudflare_zone_id', 'cloudflare_info', 'cloudflare_known_ids', 'cloudflare_synced_at'])]
 class DnsZone extends Model
 {
     /** @use HasFactory<DnsZoneFactory> */
@@ -35,7 +36,51 @@ class DnsZone extends Model
             'dnssec' => 'boolean',
             'dnssec_key' => 'encrypted',
             'dnssec_info' => 'array',
+            'cloudflare_info' => 'array',
+            'cloudflare_known_ids' => 'array',
+            'cloudflare_synced_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return BelongsTo<CloudflareAccount, $this>
+     */
+    public function cloudflareAccount(): BelongsTo
+    {
+        return $this->belongsTo(CloudflareAccount::class);
+    }
+
+    /**
+     * Whether the zone's DNS is at Cloudflare: its records are written
+     * there instead of to this server's PowerDNS.
+     */
+    public function atCloudflare(): bool
+    {
+        return $this->cloudflare_account_id !== null && $this->cloudflare_zone_id !== null;
+    }
+
+    /**
+     * Cloudflare's state of the zone: "active", or "pending" while the
+     * registrar still lists other name servers.
+     */
+    public function cloudflareStatus(): ?string
+    {
+        return $this->atCloudflare() ? ($this->cloudflare_info['status'] ?? null) : null;
+    }
+
+    /**
+     * The name servers visitors' resolvers are sent to: Cloudflare's for a
+     * zone there, the NS records otherwise.
+     *
+     * @return list<string> without the trailing dot
+     */
+    public function publicNameservers(): array
+    {
+        if ($this->atCloudflare()) {
+            return array_values($this->cloudflare_info['name_servers'] ?? []);
+        }
+
+        return array_map(fn ($ns) => rtrim($ns, '.'), $this->nameservers());
     }
 
     /**

@@ -17,6 +17,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/cron"
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/dns"
+	"github.com/calltech-app/serfex/agent/internal/edge"
 	"github.com/calltech-app/serfex/agent/internal/files"
 	"github.com/calltech-app/serfex/agent/internal/firewall"
 	"github.com/calltech-app/serfex/agent/internal/ftp"
@@ -91,6 +92,7 @@ type services struct {
 	laravel    *laravel.Manager
 	monitor    *monitor.Monitor
 	firewall   *firewall.Manager
+	edge       *edge.Manager
 	databases  *database.Manager
 	components *component.Manager
 	backups    *backup.Manager
@@ -541,7 +543,8 @@ func mapError(err error) error {
 	var logv *logrotate.ValidationError
 	var qv *quota.ValidationError
 	var tv *terminal.ValidationError
-	if errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var ev *edge.ValidationError
+	if errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -564,7 +567,8 @@ func mapError(err error) error {
 	var logop *logrotate.OperationError
 	var qop *quota.OperationError
 	var top *terminal.OperationError
-	if errors.As(err, &top) || errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var eop *edge.OperationError
+	if errors.As(err, &eop) || errors.As(err, &top) || errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -756,6 +760,9 @@ func registerMonitor(srv *rpc.Server, svc services) {
 		return map[string]bool{"removed": removed}, err
 	})
 	handle(srv, "firewall.list", func(context.Context, struct{}) (any, error) { return fw.List() })
+	// Cloudflare's ranges (visitors' own addresses in Nginx) and the
+	// blocks as Nginx deny lines.
+	handle(srv, "web.edge.apply", func(ctx context.Context, p edge.Spec) (any, error) { return svc.edge.Apply(ctx, p) })
 
 	handle(srv, "mail.queue", func(ctx context.Context, _ struct{}) (any, error) { return svc.mail.Queue(ctx) })
 	handle(srv, "mail.queue.flush", func(ctx context.Context, _ struct{}) (any, error) {

@@ -7,6 +7,7 @@ use App\Jobs\DeleteSite;
 use App\Livewire\Attributes\ForCustomers;
 use App\Livewire\Concerns\InstallsAppTemplate;
 use App\Models\BackupItem;
+use App\Models\CloudflareAccount;
 use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\Site;
@@ -16,11 +17,17 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 use App\Services\Backups\Restores;
+use App\Services\Cloudflare\CloudflareException;
+use App\Services\Cloudflare\CloudflareSettings;
+use App\Services\Cloudflare\CloudflareZones;
 use App\Services\Customers\Quotas;
+use App\Services\Dns\Zones;
 use App\Services\Php\PhpVersions;
 use App\Services\Sites\SiteCreator;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -72,6 +79,27 @@ class SiteIndex extends Component
     /** True once the user typed an account name; stops auto-suggesting. */
     public bool $userEdited = false;
 
+    /**
+     * Where the new site's DNS goes: "local" (this server), "cloudflare"
+     * (the zone found in a connected account) or "cloudflare-new" (added
+     * to a connected account). Only administrators choose.
+     */
+    public string $dns = 'local';
+
+    /** Visitors come through Cloudflare's proxy. */
+    public bool $proxied = true;
+
+    /** The account a new Cloudflare zone is added to. */
+    public string $cloudflareAccountId = '';
+
+    /**
+     * The zone a connected account has for the domain, with what Site
+     * ekle would change there.
+     *
+     * @var array{account_id: int, account: string, zone: array<string, mixed>, preview: ?array{zone: string, changes: list<array{name: string, type: string, from: list<string>, to: list<string>}>, kept: int}, error: ?string}|null
+     */
+    public ?array $cloudflare = null;
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -89,7 +117,8 @@ class SiteIndex extends Component
 
     public function openCreate(AgentClient $agent, Quotas $quotas): void
     {
-        $this->reset('domain', 'systemUser', 'phpVersion', 'address', 'agentError', 'userEdited', 'templateId', 'answers', 'uploads', 'adminName', 'adminEmail');
+        $this->reset('domain', 'systemUser', 'phpVersion', 'address', 'agentError', 'userEdited', 'templateId', 'answers', 'uploads', 'adminName', 'adminEmail', 'dns', 'cloudflare', 'cloudflareAccountId');
+        $this->proxied = app(CloudflareSettings::class)->proxySites();
         $this->resetValidation();
         $this->creating = true;
         $this->updatedCustomerId();
@@ -126,6 +155,64 @@ class SiteIndex extends Component
     {
         if (! $this->userEdited) {
             $this->systemUser = Hostnames::suggestUser(Hostnames::normalize($this->domain));
+        }
+        $this->lookUpCloudflare();
+    }
+
+    public function updatedAddress(): void
+    {
+        $this->lookUpCloudflare();
+    }
+
+    /**
+     * Look for the domain in the connected Cloudflare accounts, and what
+     * adding the site would change there. Answers are kept for a few
+     * minutes: the field asks again as the domain is typed.
+     */
+    public function lookUpCloudflare(): void
+    {
+        $was = $this->cloudflare !== null;
+        $this->cloudflare = null;
+        $domain = preg_replace('/^www\./', '', Hostnames::normalize($this->domain));
+        if (! auth()->user()->is_admin || ! Hostnames::isValidDomain($domain) || ! $this->cloudflareAccounts()->contains(fn ($a) => $a->status === CloudflareAccount::OK)
+            || app(Zones::class)->holding($domain) !== null) {
+            if ($was || ! in_array($this->dns, ['local', 'cloudflare-new'], true)) {
+                $this->dns = 'local';
+            }
+
+            return;
+        }
+        $www = $this->address !== 'only';
+        $found = Cache::remember('cloudflare-find:'.$domain, 300, function () use ($domain) {
+            $f = app(CloudflareZones::class)->find($domain);
+
+            return $f === null ? false : ['account_id' => $f['account']->id, 'zone' => $f['zone']];
+        });
+        $account = $found ? CloudflareAccount::find($found['account_id']) : null;
+        if ($account === null) {
+            if ($this->dns === 'cloudflare') {
+                $this->dns = 'local';
+            }
+
+            return;
+        }
+        $preview = null;
+        $error = null;
+        try {
+            $preview = Cache::remember('cloudflare-preview:'.$domain.':'.($www ? 'www' : 'bare'), 120,
+                fn () => app(CloudflareZones::class)->preview($account, $found['zone'], $domain, $www));
+        } catch (CloudflareException $e) {
+            $error = $e->getMessage();
+        }
+        $this->cloudflare = [
+            'account_id' => $account->id,
+            'account' => $found['zone']['account']['name'] ?? $account->label(),
+            'zone' => $found['zone'],
+            'preview' => $preview,
+            'error' => $error,
+        ];
+        if (! $was) {
+            $this->dns = 'cloudflare';
         }
     }
 
@@ -234,8 +321,21 @@ class SiteIndex extends Component
             return;
         }
 
+        $cloudflare = $this->cloudflareChoice();
+        if (is_string($cloudflare)) {
+            $this->addError('dns', $cloudflare);
+
+            return;
+        }
+
         $only = $this->address === 'only';
-        $site = $creator->create($this->domain, $this->systemUser, $this->phpVersion, ! $only, $customer, $owner, $only ? Site::PREFER_BARE : $this->address);
+        $site = $creator->create($this->domain, $this->systemUser, $this->phpVersion, ! $only, $customer, $owner, $only ? Site::PREFER_BARE : $this->address, $cloudflare);
+        if ($creator->dnsError !== null) {
+            session()->flash('toast', __('Site oluşturuluyor, ama DNS Cloudflare\'e yazılamadı; bu sunucuda tutuluyor. :error', ['error' => $creator->dnsError]));
+            $this->redirectRoute('dns.index', navigate: true);
+
+            return;
+        }
 
         // With an application: it is installed once the site is ready, and
         // its page shows that live.
@@ -253,6 +353,48 @@ class SiteIndex extends Component
             source: $this->getId(),
             undo: ['method' => 'undoCreate', 'args' => [$site->id]],
         );
+    }
+
+    /**
+     * The Cloudflare zone the site's DNS goes to, null for this server, or
+     * why it cannot.
+     *
+     * @return array{account: CloudflareAccount, zone: ?array<string, mixed>, proxied: bool}|string|null
+     */
+    private function cloudflareChoice(): array|string|null
+    {
+        if (! auth()->user()->is_admin || $this->dns === 'local') {
+            return null;
+        }
+        if ($this->dns === 'cloudflare') {
+            $account = $this->cloudflare !== null ? CloudflareAccount::find($this->cloudflare['account_id']) : null;
+
+            return $account !== null ? ['account' => $account, 'zone' => $this->cloudflare['zone'], 'proxied' => $this->proxied]
+                : __('Alan adı bağlı Cloudflare hesaplarında bulunamadı.');
+        }
+        $account = $this->cloudflareAccounts()->first(fn ($a) => (string) $a->id === $this->cloudflareAccountId && $a->status === CloudflareAccount::OK);
+
+        return $account !== null ? ['account' => $account, 'zone' => null, 'proxied' => $this->proxied]
+            : __('Alan adının ekleneceği Cloudflare hesabını seçin.');
+    }
+
+    /**
+     * The zone the typed domain's records would go to, if the panel has
+     * one already.
+     */
+    private function heldBy(): ?DnsZone
+    {
+        $domain = preg_replace('/^www\./', '', Hostnames::normalize($this->domain));
+
+        return Hostnames::isValidDomain($domain) ? app(Zones::class)->holding($domain) : null;
+    }
+
+    /**
+     * @return Collection<int, CloudflareAccount>
+     */
+    private function cloudflareAccounts(): Collection
+    {
+        return auth()->user()->is_admin ? CloudflareAccount::orderBy('name')->get() : collect();
     }
 
     /**
@@ -333,6 +475,8 @@ class SiteIndex extends Component
             'picked' => $picked = ($this->creating ? $this->pickedTemplate() : null),
             'summary' => $picked ? $this->templateSummary($picked, null) : '',
             'busy' => $sites->getCollection()->contains(fn (Site $s) => $s->status->isBusy()),
+            'cloudflareAccounts' => $this->creating ? $this->cloudflareAccounts()->where('status', CloudflareAccount::OK)->values() : collect(),
+            'heldBy' => $this->creating && $user->is_admin ? $this->heldBy() : null,
         ]);
     }
 

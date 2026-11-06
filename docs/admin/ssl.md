@@ -12,7 +12,11 @@ opens over plain http, and Serfex tries again every hour.
 
 - **Challenge**: through the web server (HTTP-01) by default. When the
   domain's DNS zone is on this server, Serfex can use a DNS record instead,
-  which also allows a **wildcard** certificate (`*.example.com`).
+  which also allows a **wildcard** certificate (`*.example.com`). When the
+  domain's DNS is at Cloudflare (see [DNS → Cloudflare](dns.md#cloudflare)),
+  Serfex always uses a DNS record written there, so certificates work
+  behind Cloudflare's proxy too; while Cloudflare waits for the domain's
+  name servers the certificate waits as well.
 - **Keys**: ECDSA P-256.
 - **Renewal**: 30 days before expiry, checked hourly
   (`serfex:ssl-renew`). A failed renewal keeps the old certificate in place

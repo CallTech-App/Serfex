@@ -51,6 +51,16 @@
                     </div>
                 @endif
             </div>
+            @if (($proxiable ?? false) && in_array($recordType, \App\Models\DnsRecord::PROXIABLE, true))
+                <label class="flex items-start gap-2.5">
+                    <input type="checkbox" wire:model.live="recordProxied" class="mt-0.5 size-4 accent-accent">
+                    <span><span class="block">{{ __('Cloudflare vekili üzerinden (turuncu bulut)') }}</span>
+                        <span class="block text-2xs text-muted">{{ __('Ziyaretçiler Cloudflare\'e gelir, sunucunun adresi gizlenir. Posta, FTP ve SSH adlarında kapalı kalmalı.') }}</span></span>
+                </label>
+            @endif
+            @if (($proxiable ?? false) && $recordProxied && in_array($recordType, \App\Models\DnsRecord::PROXIABLE, true))
+                <p class="text-2xs text-muted">{{ __('Vekil üzerindeki kayıtların TTL\'sini Cloudflare belirler (Otomatik).') }}</p>
+            @else
             <div>
                 <label for="recordTtl" class="mb-1.5 block">{{ __('TTL') }}</label>
                 <select id="recordTtl" wire:model.number="recordTtl" class="h-9 w-full rounded-md border border-line bg-surface px-2.5">
@@ -64,6 +74,7 @@
                     <p class="mt-1.5 text-2xs text-muted">{{ __('Aynı ana makine ve türdeki kayıtlar aynı TTL\'yi kullanır.') }}</p>
                 @enderror
             </div>
+            @endif
         </div>
         <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
             <button type="button" wire:click="$set('editingRecord', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>

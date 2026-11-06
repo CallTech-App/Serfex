@@ -34,6 +34,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/cron"
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/dns"
+	"github.com/calltech-app/serfex/agent/internal/edge"
 	"github.com/calltech-app/serfex/agent/internal/files"
 	"github.com/calltech-app/serfex/agent/internal/firewall"
 	"github.com/calltech-app/serfex/agent/internal/ftp"
@@ -192,6 +193,12 @@ func main() {
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
 	}
+	svc.edge = edge.NewManager(h, svc.firewall)
+	svc.firewall.Changed = func(ctx context.Context) {
+		if err := svc.edge.Sync(ctx); err != nil {
+			log.Error("writing blocked addresses for Nginx", "err", err)
+		}
+	}
 	svc.updates = update.NewManager(h, version.Version, runtime.GOARCH)
 	svc.updates.WebPort = svc.databases.WebPort
 	svc.updates.Web = func(ctx context.Context) (any, error) { return svc.databases.SetupPanelWeb(ctx) }
@@ -331,6 +338,9 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	// Rotation rules are rebuilt at once: sites set up by older agents
 	// had none.
 	go svc.logs.Run(ctx, log)
+	// Visitors behind Cloudflare: their own address in Nginx, and blocks
+	// that ran out leave its deny lines.
+	go svc.edge.Run(ctx, func(err error) { log.Error("writing Cloudflare and block settings for Nginx", "err", err) })
 	// SSH terminali: serfex-web passes the browser's WebSocket to this
 	// socket, next to the agent's own.
 	go func() {

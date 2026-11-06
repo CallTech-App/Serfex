@@ -179,6 +179,84 @@
                         @error('phpVersion') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
                     </div>
                 </div>
+                @if ($admin && $heldBy === null && ($cloudflare !== null || $cloudflareAccounts->isNotEmpty()))
+                    @php $ns = implode(', ', array_map(fn ($n) => rtrim($n, '.'), app(\App\Services\Dns\DnsSettings::class)->nameservers())); @endphp
+                    <fieldset>
+                        <legend class="mb-1.5">{{ __('DNS') }}</legend>
+                        <div class="space-y-2.5">
+                            @if ($cloudflare !== null)
+                                <label class="flex items-start gap-2.5">
+                                    <input type="radio" wire:model.live="dns" value="cloudflare" class="mt-0.5 size-4 accent-accent">
+                                    <span>
+                                        <span class="block">{{ __('Cloudflare') }} <span class="text-muted">· {{ __(':account hesabında bulundu', ['account' => $cloudflare['account']]) }}</span></span>
+                                        <span class="block text-2xs text-muted">{{ __('Kayıtlar Cloudflare\'e yazılır, mevcut kayıtlar korunur.') }} {{ ($cloudflare['zone']['status'] ?? '') === 'active' ? __('Alan adı Cloudflare\'de etkin.') : __('Cloudflare alan adının ad sunucularının değişmesini bekliyor.') }}</span>
+                                    </span>
+                                </label>
+                            @elseif ($cloudflareAccounts->contains(fn ($a) => $a->account_id !== null))
+                                <label class="flex items-start gap-2.5">
+                                    <input type="radio" wire:model.live="dns" value="cloudflare-new" class="mt-0.5 size-4 accent-accent">
+                                    <span>
+                                        <span class="block">{{ __('Cloudflare\'e ekle') }}</span>
+                                        <span class="block text-2xs text-muted">{{ __('Alan adı bağlı hesaplarda yok; seçtiğiniz hesaba eklenir. Ardından kayıt firmasında ad sunucuları Cloudflare\'inkiler yapılır.') }}</span>
+                                    </span>
+                                </label>
+                                @if ($dns === 'cloudflare-new')
+                                    <div class="pl-6">
+                                        <select wire:model="cloudflareAccountId" aria-label="{{ __('Cloudflare hesabı') }}" class="h-9 w-full rounded-md border border-line bg-surface px-2.5 text-[13.5px]">
+                                            <option value="">{{ __('Hesap seçin') }}</option>
+                                            @foreach ($cloudflareAccounts->filter(fn ($a) => $a->account_id !== null) as $a)
+                                                <option value="{{ $a->id }}">{{ $a->label() }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
+                            @endif
+                            @if ($dns !== 'local')
+                                <label class="ml-6 flex items-start gap-2.5">
+                                    <input type="checkbox" wire:model="proxied" class="mt-0.5 size-4 accent-accent">
+                                    <span>
+                                        <span class="block">{{ __('Ziyaretçiler Cloudflare üzerinden gelsin (vekil)') }}</span>
+                                        <span class="block text-2xs text-muted">{{ $address === 'only' ? __(':domain turuncu bulutla açılır. Posta kayıtları her zaman yalnızca DNS.', ['domain' => $bare]) : __(':domain ve www turuncu bulutla açılır. Posta kayıtları her zaman yalnızca DNS.', ['domain' => $bare]) }}</span>
+                                    </span>
+                                </label>
+                            @endif
+                            <label class="flex items-start gap-2.5">
+                                <input type="radio" wire:model.live="dns" value="local" class="mt-0.5 size-4 accent-accent">
+                                <span>
+                                    <span class="block">{{ __('Bu sunucunun DNS\'i') }}</span>
+                                    @if ($ns !== '')<span class="block text-2xs text-muted">{{ __('Alan adının ad sunucuları :ns olmalı.', ['ns' => $ns]) }}</span>@endif
+                                </span>
+                            </label>
+                        </div>
+                        @error('dns') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
+                    </fieldset>
+                    @if ($dns === 'cloudflare' && $cloudflare !== null)
+                        <div class="rounded-md bg-surface-2 p-3.5">
+                            <p class="mb-2 font-medium">{{ __('Cloudflare\'de değişecek kayıtlar') }}</p>
+                            @if ($cloudflare['error'])
+                                <p class="text-[13px] text-crit">{{ $cloudflare['error'] }}</p>
+                            @elseif ($cloudflare['preview']['changes'] === [])
+                                <p class="text-[13px] text-muted">{{ __('Hiçbiri: Cloudflare\'deki kayıtlar zaten bu sunucuyu gösteriyor.') }}</p>
+                            @else
+                                <ul class="divide-y divide-line">
+                                    @foreach ($cloudflare['preview']['changes'] as $c)
+                                        <li class="py-2 font-mono text-[12.5px]">
+                                            <span class="flex flex-wrap items-baseline gap-x-2"><span class="break-all">{{ $c['name'] }}</span><span class="text-2xs text-muted">{{ str_replace('/', ' → ', $c['type']) === $c['type'] ? $c['type'] : '' }}</span></span>
+                                            <span class="mt-0.5 block break-all">
+                                                @if ($c['from'] !== [])<span class="text-muted line-through">{{ implode(', ', $c['from']) }}</span>@else<span class="text-muted">{{ __('yeni') }}</span>@endif → {{ implode(', ', $c['to']) }}
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            @if (! $cloudflare['error'])
+                                <p class="mt-2 text-2xs text-muted">{{ $cloudflare['preview']['kept'] === 0 ? __('Cloudflare\'de başka kayıt yok.') : trans_choice('Diğer :count kayıt olduğu gibi kalır ve Serfex\'e alınır. Posta bu sunucuda açılırsa eksik posta kayıtları eklenir; olanlar değiştirilmez.', $cloudflare['preview']['kept'], ['count' => $cloudflare['preview']['kept']]) }}</p>
+                            @endif
+                        </div>
+                    @endif
+                @elseif ($admin && $heldBy !== null && $heldBy->atCloudflare())
+                    <p class="text-2xs text-muted">{{ __('DNS: kayıtlar :zone bölgesine yazılır; bölge Cloudflare\'de.', ['zone' => $heldBy->name]) }}</p>
+                @endif
                 @if ($templates->isNotEmpty())
                     <div>
                         <label for="templateId" class="mb-1.5 block">{{ __('Uygulama') }}</label>

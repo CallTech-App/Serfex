@@ -40,6 +40,7 @@ use App\Livewire\Customers\UsageReport;
 use App\Livewire\Databases\DatabaseIndex;
 use App\Livewire\Databases\DatabaseSettingsPage;
 use App\Livewire\Databases\DatabaseShow;
+use App\Livewire\Dns\CloudflarePage;
 use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Dns\ZoneIndex;
 use App\Livewire\Dns\ZoneShow;
@@ -201,6 +202,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
         Route::livewire('/ai/audit', AiAudit::class)->name('ai.audit');
         Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');
+        Route::livewire('/dns/cloudflare', CloudflarePage::class)->name('dns.cloudflare');
         Route::livewire('/mail/settings', MailSettingsPage::class)->name('mail.settings');
         Route::livewire('/ssl/settings', SslSettingsPage::class)->name('ssl.settings');
         Route::livewire('/databases/settings', DatabaseSettingsPage::class)->name('databases.settings');

@@ -183,7 +183,7 @@ class ZoneIndex extends Component
     public function render(): View
     {
         $zones = DnsZone::visibleTo(auth()->user())
-            ->with('site')
+            ->with('site', 'cloudflareAccount')
             ->withCount('records')
             ->when($this->search !== '', function ($q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';

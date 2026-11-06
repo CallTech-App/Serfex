@@ -10,6 +10,14 @@
         <x-site-header :site="$site" active="overview" :tool="__('Önbellek ve hız')" />
         <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <h1 class="text-[18px] font-semibold tracking-tight">{{ __('Önbellek ve hız') }}</h1>
+            <div class="flex flex-wrap gap-2">
+            @if ($cloudflare)
+                <button type="button" wire:click="purgeCloudflare" wire:loading.attr="disabled" class="{{ $btn }}">
+                    <x-icon name="cloud" />
+                    <span wire:loading.remove wire:target="purgeCloudflare">{{ __('Cloudflare önbelleğini temizle') }}</span>
+                    <span wire:loading wire:target="purgeCloudflare">{{ __('Temizleniyor…') }}</span>
+                </button>
+            @endif
             @if ($saved['page'])
                 <button type="button" wire:click="purge" wire:loading.attr="disabled" class="{{ $btn }}">
                     <x-icon name="trash-2" />
@@ -17,6 +25,7 @@
                     <span wire:loading wire:target="purge">{{ __('Temizleniyor…') }}</span>
                 </button>
             @endif
+            </div>
         </div>
         <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Sayfaları PHP\'yi çalıştırmadan gönderin, resimleri ve betikleri ziyaretçinin tarayıcısında tutun, metinleri sıkıştırın. Ayarlar kaydedilmeden önce web sunucusunda denenir.') }}</p>
     </div>

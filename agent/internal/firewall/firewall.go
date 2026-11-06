@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/calltech-app/serfex/agent/internal/cloudflare"
 	"github.com/calltech-app/serfex/agent/internal/host"
 )
 
@@ -101,6 +102,10 @@ type Manager struct {
 	// Protected returns addresses that must never be blocked (the
 	// server's own); loopback, unspecified and multicast always are.
 	Protected func() []netip.Addr
+	// Changed, when set, runs after the blocks changed (the edge package
+	// mirrors them into Nginx for visitors behind Cloudflare). Its
+	// failure does not undo the block.
+	Changed func(ctx context.Context)
 }
 
 // NewManager returns a Manager acting on h.
@@ -154,6 +159,11 @@ func (m *Manager) check(p netip.Prefix) error {
 			return invalid("%s cannot be blocked: it is a loopback, unspecified or multicast address", format(p))
 		}
 	}
+	// Visitors behind Cloudflare's proxy reach this server from
+	// Cloudflare's addresses: blocking one would block them all.
+	if r, ok := cloudflare.Overlaps(cloudflare.Ranges(m.h), p); ok {
+		return invalid("%s cannot be blocked: it is in Cloudflare's proxy range %s, which visitors of sites behind Cloudflare come from", format(p), r)
+	}
 	if m.Protected != nil {
 		for _, own := range m.Protected() {
 			if p.Contains(own.Unmap()) {
@@ -180,6 +190,8 @@ func (m *Manager) Block(ctx context.Context, spec Spec) (Block, error) {
 	if len(spec.Reason) > 200 {
 		return Block{}, invalid("reason is longer than 200 characters")
 	}
+	changed := false
+	defer m.notify(ctx, &changed) // runs after the lock is released
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -222,7 +234,15 @@ func (m *Manager) Block(ctx context.Context, spec Spec) (Block, error) {
 	if err := m.save(append(kept, b)); err != nil {
 		return Block{}, &OperationError{err}
 	}
+	changed = true
 	return b, nil
+}
+
+// notify runs Changed when *changed is set.
+func (m *Manager) notify(ctx context.Context, changed *bool) {
+	if *changed && m.Changed != nil {
+		m.Changed(context.WithoutCancel(ctx))
+	}
 }
 
 // Unblock removes a block; removing an address that is not blocked (or
@@ -234,6 +254,8 @@ func (m *Manager) Unblock(ctx context.Context, address string) (bool, error) {
 		return false, err
 	}
 	addr := format(p)
+	changed := false
+	defer m.notify(ctx, &changed) // runs after the lock is released
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -262,6 +284,7 @@ func (m *Manager) Unblock(ctx context.Context, address string) (bool, error) {
 	if err := m.save(kept); err != nil {
 		return false, &OperationError{err}
 	}
+	changed = found
 	return found, nil
 }
 

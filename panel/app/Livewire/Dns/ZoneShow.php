@@ -5,8 +5,14 @@ namespace App\Livewire\Dns;
 use App\Enums\ZoneStatus;
 use App\Jobs\SyncDnsZone;
 use App\Livewire\Attributes\ForCustomers;
+use App\Models\Certificate;
+use App\Models\CloudflareAccount;
 use App\Models\DnsRecord;
 use App\Models\DnsZone;
+use App\Models\Site;
+use App\Services\Cloudflare\CloudflareApi;
+use App\Services\Cloudflare\CloudflareException;
+use App\Services\Cloudflare\CloudflareZones;
 use App\Services\Dns\Zones;
 use App\Support\DnsRecords;
 use Illuminate\Contracts\View\View;
@@ -63,6 +69,27 @@ class ZoneShow extends Component
     /** Turning DNSSEC off waits for this confirmation. */
     public bool $confirmingDnssecOff = false;
 
+    /** Through Cloudflare's proxy, for the record being edited. */
+    public bool $recordProxied = false;
+
+    /** "DNS'i Cloudflare'e bağla" is open. */
+    public bool $connecting = false;
+
+    /**
+     * The zone found at Cloudflare and the comparison with its records.
+     *
+     * @var array{account_id: int, account: string, zone: array<string, mixed>, same: int, rows: list<array<string, mixed>>}|null
+     */
+    public ?array $connectPlan = null;
+
+    /** Row key => choice, for the comparison. @var array<string, string> */
+    public array $connectChoices = [];
+
+    public ?string $connectError = null;
+
+    /** "Bu sunucuya geri al" waits for this confirmation. */
+    public bool $confirmingDetach = false;
+
     /**
      * Takes the id rather than a bound model, like SiteShow: polling a zone
      * that was just deleted must not turn into a 404.
@@ -101,6 +128,7 @@ class ZoneShow extends Component
         $zone = $this->zone();
         if ($zone !== null) {
             $this->openRecordForm(defaultTtl: $zone->default_ttl);
+            $this->recordProxied = false;
         }
     }
 
@@ -109,6 +137,7 @@ class ZoneShow extends Component
         $record = $this->zone()?->records()->find($id);
         if ($record !== null) {
             $this->openRecordForm($record->id, $record->toRecord());
+            $this->recordProxied = (bool) $record->proxied;
         }
     }
 
@@ -130,12 +159,15 @@ class ZoneShow extends Component
         if ($this->conflictsWith($record, $others->map(fn (DnsRecord $r) => $r->toRecord()))) {
             return;
         }
-        if ($this->recordKey !== null && $record['name'] !== $this->originalName() && $this->isLastApexNs()) {
+        if (! $zone->atCloudflare() && $this->recordKey !== null && $record['name'] !== $this->originalName() && $this->isLastApexNs()) {
             $this->addError('recordName', __('Alan adının en az bir NS kaydı kalmalı.'));
 
             return;
         }
 
+        if ($zone->atCloudflare() && in_array($record['type'], DnsRecord::PROXIABLE, true)) {
+            $record['proxied'] = $this->recordProxied;
+        }
         $siblings = $others->where('name', $record['name'])->where('type', $record['type'])->where('ttl', '!=', $record['ttl']);
         $key = $this->recordKey;
         $token = $zones->change($zone, function (DnsZone $zone) use ($record, $key, $siblings) {
@@ -166,7 +198,7 @@ class ZoneShow extends Component
             return;
         }
         $apexNs = $zone->records()->where('name', '@')->where('type', 'NS');
-        if ((clone $apexNs)->whereKeyNot($this->selected)->doesntExist()) {
+        if (! $zone->atCloudflare() && (clone $apexNs)->whereKeyNot($this->selected)->doesntExist()) {
             $this->dispatch('toast', message: __('Alan adının en az bir NS kaydı kalmalı; NS kayıtlarının hepsi silinemez.'));
 
             return;
@@ -249,6 +281,163 @@ class ZoneShow extends Component
         $this->dnssec = true;
     }
 
+    /**
+     * Turn Cloudflare's proxy on or off for a record.
+     */
+    public function toggleProxy(int $id, Zones $zones): void
+    {
+        $zone = $this->zone();
+        $record = $zone?->records->find($id);
+        if ($zone === null || ! $zone->atCloudflare() || $record === null || ! $record->canBeProxied()) {
+            return;
+        }
+        $on = ! $record->proxied;
+        $token = $zones->change($zone, fn (DnsZone $zone) => $zone->records()->whereKey($id)->update(['proxied' => $on]));
+        $name = DnsRecords::fqdn($record->name, $zone->name);
+        $this->dispatch('toast', message: $on ? __(':name artık Cloudflare vekili üzerinden.', ['name' => $name]) : __(':name artık yalnızca DNS.', ['name' => $name]),
+            source: $this->getId(), undo: ['method' => 'undo', 'args' => [$token]]);
+    }
+
+    /**
+     * Ask Cloudflare to look at the name servers again and sync now.
+     */
+    public function syncNow(): void
+    {
+        $zone = $this->zone();
+        if ($zone === null || ! $zone->atCloudflare() || $zone->status === ZoneStatus::Deleting) {
+            return;
+        }
+        if ($zone->cloudflareStatus() === 'pending') {
+            try {
+                CloudflareApi::for($zone->cloudflareAccount->token)->activationCheck((string) $zone->cloudflare_zone_id);
+            } catch (CloudflareException) {
+                // Cloudflare allows it only now and then; the sync still runs.
+            }
+        }
+        $zone->update(['status' => ZoneStatus::Syncing, 'last_error' => null]);
+        SyncDnsZone::dispatch($zone);
+    }
+
+    public function strictSsl(CloudflareZones $cloudflare): void
+    {
+        $this->setSslMode('strict', $cloudflare);
+    }
+
+    public function setSslMode(string $mode, CloudflareZones $cloudflare): void
+    {
+        $zone = $this->zone();
+        if ($zone === null || ! $zone->atCloudflare() || ! auth()->user()->is_admin || ! in_array($mode, ['off', 'flexible', 'full', 'strict'], true)) {
+            return;
+        }
+        try {
+            $cloudflare->setSsl($zone, $mode);
+        } catch (CloudflareException $e) {
+            $this->dispatch('toast', message: $e->getMessage());
+
+            return;
+        }
+        $this->dispatch('toast', message: __('Cloudflare SSL modu: :mode.', ['mode' => self::sslLabel($mode)]));
+    }
+
+    public function setCloudflareDnssec(bool $on, CloudflareZones $cloudflare): void
+    {
+        $zone = $this->zone();
+        if ($zone === null || ! $zone->atCloudflare() || ! auth()->user()->is_admin) {
+            return;
+        }
+        try {
+            $cloudflare->setDnssec($zone, $on);
+        } catch (CloudflareException $e) {
+            $this->dispatch('toast', message: $e->getMessage());
+
+            return;
+        }
+        $this->dispatch('toast', message: $on ? __('Cloudflare DNSSEC\'i açıyor. DS kaydı birazdan aşağıda görünecek; kayıt firmanıza ekleyin.') : __('Cloudflare DNSSEC\'i kapatıyor.'));
+    }
+
+    /**
+     * Look for the zone in the connected accounts and compare its records
+     * there with the panel's.
+     */
+    public function openConnect(CloudflareZones $cloudflare): void
+    {
+        $zone = $this->zone();
+        if ($zone === null || $zone->atCloudflare() || ! auth()->user()->is_admin) {
+            return;
+        }
+        $this->reset('connectPlan', 'connectChoices', 'connectError');
+        $this->connecting = true;
+        $found = $cloudflare->find($zone->name);
+        if ($found === null || ($found['zone']['name'] ?? null) !== $zone->name) {
+            $this->connectError = CloudflareAccount::where('status', CloudflareAccount::OK)->exists()
+                ? __(':zone bağlı Cloudflare hesaplarında yok. Önce Cloudflare\'de ekleyin ya da alan adını gören bir hesap bağlayın.', ['zone' => $zone->name])
+                : __('Bağlı Cloudflare hesabı yok. Önce Alan Adları ve DNS → Cloudflare sayfasından bir hesap bağlayın.');
+
+            return;
+        }
+        try {
+            $remote = CloudflareApi::for($found['account']->token)->records((string) $found['zone']['id']);
+        } catch (CloudflareException $e) {
+            $this->connectError = $e->getMessage();
+
+            return;
+        }
+        $plan = $cloudflare->compare($zone->name, $zone->default_ttl, $zone->records->map(fn (DnsRecord $r) => $r->toRecord())->all(), $remote);
+        $this->connectPlan = [
+            'account_id' => $found['account']->id,
+            'account' => $found['account']->name,
+            'zone' => $found['zone'],
+            ...$plan,
+        ];
+        $this->connectChoices = array_column($plan['rows'], 'choice', 'key');
+    }
+
+    public function connectCloudflare(CloudflareZones $cloudflare): void
+    {
+        $zone = $this->zone();
+        $account = $this->connectPlan !== null ? CloudflareAccount::find($this->connectPlan['account_id']) : null;
+        if ($zone === null || $zone->atCloudflare() || $account === null || ! auth()->user()->is_admin) {
+            return;
+        }
+        try {
+            $cloudflare->attach($zone, $account, $this->connectPlan['zone'], $this->connectChoices);
+        } catch (CloudflareException $e) {
+            $this->connectError = $e->getMessage();
+
+            return;
+        }
+        $this->connecting = false;
+        $this->connectPlan = null;
+        $this->dispatch('toast', message: __(':zone DNS\'i Cloudflare\'e bağlandı; kayıtlar eşitleniyor.', ['zone' => $zone->name]),
+            source: $this->getId(), undo: ['method' => 'detachCloudflare', 'args' => []]);
+    }
+
+    /**
+     * Serve the zone from this server again.
+     */
+    public function detachCloudflare(CloudflareZones $cloudflare): void
+    {
+        $zone = $this->zone();
+        if ($zone === null || ! $zone->atCloudflare() || ! auth()->user()->is_admin) {
+            return;
+        }
+        $cloudflare->detach($zone);
+        $this->confirmingDetach = false;
+        $this->fillSettings();
+        $this->dispatch('toast', message: __(':zone yeniden bu sunucunun DNS\'inde. Kayıt firmasında ad sunucularını bu sunucununkiler yapın; Cloudflare\'deki kayıtlara dokunulmadı.', ['zone' => $zone->name]));
+    }
+
+    public static function sslLabel(?string $mode): string
+    {
+        return match ($mode) {
+            'strict' => __('Full (strict)'),
+            'full' => __('Full'),
+            'flexible' => __('Esnek (Flexible)'),
+            'off' => __('Kapalı'),
+            default => '—',
+        };
+    }
+
     public function undo(string $token, Zones $zones): void
     {
         if ($zones->undo($token) === null) {
@@ -286,12 +475,24 @@ class ZoneShow extends Component
         return view('livewire.dns.show', [
             'zone' => $zone,
             'records' => $records,
+            'canConnect' => ! $zone->atCloudflare() && auth()->user()->is_admin && CloudflareAccount::where('status', CloudflareAccount::OK)->exists(),
+            'certificate' => $zone->atCloudflare() ? $this->certificateOf($zone) : null,
         ])->title($zone->name.' · DNS · Serfex');
     }
 
     private function zone(): ?DnsZone
     {
-        return DnsZone::visibleTo(auth()->user())->with(['records', 'site'])->find($this->zoneId);
+        return DnsZone::visibleTo(auth()->user())->with(['records', 'site', 'cloudflareAccount'])->find($this->zoneId);
+    }
+
+    /**
+     * The certificate of the zone's site, for the Cloudflare summary.
+     */
+    private function certificateOf(DnsZone $zone): ?Certificate
+    {
+        $site = $zone->site ?? Site::where('domain', $zone->name)->orWhere('domain', 'like', '%.'.$zone->name)->orderByRaw('length(domain)')->first();
+
+        return $site?->certificate;
     }
 
     private function fillSettings(): void
