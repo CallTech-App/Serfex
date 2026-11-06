@@ -19,6 +19,9 @@ class Overview extends Section
     /** @var array<string, mixed>|null */
     public ?array $health = null;
 
+    /** When the health was last checked (H:i:s), shown under the result. */
+    public ?string $checkedAt = null;
+
     public function mount(int $appId): void
     {
         parent::mount($appId);
@@ -30,6 +33,7 @@ class Overview extends Section
         $app = $this->app();
         if ($app !== null) {
             $this->health = $this->agent('laravel.health', ['domain' => $app->site->domain, 'path' => $app->health_path]);
+            $this->checkedAt = now()->format('H:i:s');
         }
     }
 

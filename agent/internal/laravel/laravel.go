@@ -174,8 +174,8 @@ func NewManager(h host.Host) *Manager {
 		m.Fetch = func(context.Context, string, map[string]string, int64) ([]byte, error) {
 			return demoPackage(), nil
 		}
-		m.Health = func(context.Context, string, string) HealthResult {
-			return HealthResult{OK: true, Status: 200, Millis: 38}
+		m.Health = func(_ context.Context, domain, path string) HealthResult {
+			return HealthResult{OK: true, Status: 200, Millis: 38, URL: "https://" + domain + path}
 		}
 	}
 	return m

@@ -88,6 +88,11 @@ type HealthResult struct {
 	Status int    `json:"status"`
 	Millis int64  `json:"ms"`
 	Error  string `json:"error,omitempty"`
+	// URL is the address that answered, after redirects.
+	URL string `json:"url,omitempty"`
+	// Location is where a redirect that was not followed (to another
+	// site) points.
+	Location string `json:"location,omitempty"`
 }
 
 // DeployResult describes a finished deploy.
@@ -358,6 +363,9 @@ func (m *Manager) Deploy(ctx context.Context, spec DeploySpec) (res DeployResult
 			what := h.Error
 			if what == "" {
 				what = fmt.Sprintf("HTTP %d", h.Status)
+				if h.Location != "" {
+					what += " → " + h.Location
+				}
 			}
 			d.step("Sağlık kontrolü: GET %s → %s ✗", spec.Health.Path, what)
 			problem = "health check failed: " + what

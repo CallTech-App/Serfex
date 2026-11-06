@@ -174,6 +174,27 @@ class LaravelPagesTest extends TestCase
         Queue::assertPushed(ProvisionSite::class);
     }
 
+    public function test_health_shows_the_preferred_address_and_when_it_was_checked(): void
+    {
+        $app = $this->laravelApp();
+        $answers = [
+            ['ok' => true, 'status' => 200, 'ms' => 38, 'url' => 'https://www.api.hizlikargo.app/up'],
+            ['ok' => false, 'status' => 301, 'ms' => 4, 'url' => 'http://api.hizlikargo.app/up', 'location' => 'https://other.example/up'],
+        ];
+        $this->agent->shouldReceive('call')->with('laravel.health', Mockery::any(), Mockery::any())->andReturnUsing(function () use (&$answers) {
+            return array_shift($answers);
+        });
+
+        $page = Livewire::withoutLazyLoading()->test(Overview::class, ['appId' => $app->id])
+            ->assertSee('200 · 38 ms')
+            ->assertSee('https://www.api.hizlikargo.app/up')
+            ->assertSee('Kontrol ediliyor')
+            ->assertSee(now()->format('H:i'));
+        $page->call('checkHealth')
+            ->assertSee('301')
+            ->assertSee('Başka bir adrese yönlendiriyor: https://other.example/up');
+    }
+
     public function test_app_page_and_every_section_render(): void
     {
         $app = $this->laravelApp();

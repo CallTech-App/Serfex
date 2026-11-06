@@ -5903,5 +5903,8 @@
     "İşçi süreç": "Worker processes",
     "İşçilerin açık dosya sınırı da :files olur.": "The workers' open files limit becomes :files too.",
     "Şu an açık / en fazla": "Open now / at most",
-    "Açık bağlantı": "Open connections"
+    "Açık bağlantı": "Open connections",
+    ":time itibarıyla": "as of :time",
+    "Başka bir adrese yönlendiriyor: :location": "Redirects to another address: :location",
+    "Kontrol ediliyor…": "Checking…"
 }
