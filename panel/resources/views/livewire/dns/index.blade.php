@@ -14,9 +14,14 @@
             <p class="mt-1 text-[13px] text-muted">{{ __(':admin Kayıtlarını görmek için bir alan adına tıklayın.', ['admin' => $admin ? __('Sunucuda barındırılan alan adları.') : __('Sitelerinizin alan adları.')]) }}</p>
         </div>
         @if ($admin)
-            <a href="{{ route('dns.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
-                <x-icon name="settings" />{{ __('Sunucu DNS ayarları') }}
-            </a>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('dns.cloudflare') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                    <x-icon name="cloud" />{{ __('Cloudflare') }}
+                </a>
+                <a href="{{ route('dns.settings') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2">
+                    <x-icon name="settings" />{{ __('Sunucu DNS ayarları') }}
+                </a>
+            </div>
         @endif
     </div>
 
@@ -79,12 +84,13 @@
         </div>
 
         <div class="relative overflow-x-auto">
-            <table class="w-full min-w-[720px] text-[13.5px]">
+            <table class="w-full min-w-[860px] text-[13.5px]">
                 <thead>
                     <tr class="border-b border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
                         @if ($admin)<th class="w-10 py-2.5 pl-5"><span class="sr-only">{{ __('Seç') }}</span></th>@endif
                         <th @class(['py-2.5 font-medium', 'px-3' => $admin, 'pr-3 pl-5' => ! $admin])>{{ __('Alan adı') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('Site') }}</th>
+                        <th class="px-3 py-2.5 font-medium">{{ __('DNS') }}</th>
                         <th class="px-3 py-2.5 text-right font-medium">{{ __('Kayıt') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('DNS durumu') }}</th>
                         <th class="px-3 py-2.5 font-medium">{{ __('DNSSEC') }}</th>
@@ -109,16 +115,27 @@
                                     {{ __('Yalnızca DNS') }}
                                 @endif
                             </td>
+                            <td class="px-3 py-3 whitespace-nowrap">
+                                @if ($zone->atCloudflare())
+                                    <span class="inline-flex items-center gap-1.5"><x-icon name="cloud" class="size-3.5 text-[#f38020]" />{{ __('Cloudflare') }}@if ($admin && $zone->cloudflareAccount)<span class="text-muted">· {{ $zone->cloudflareAccount->name }}</span>@endif</span>
+                                    @if ($zone->cloudflareStatus() === 'pending')
+                                        <span class="ml-1 rounded-full bg-warn-soft px-2 py-0.5 text-2xs font-medium text-warn">{{ __('Ad sunucusu bekleniyor') }}</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">{{ __('Bu sunucu') }}</span>
+                                @endif
+                            </td>
                             <td class="num px-3 py-3 text-right">{{ $zone->records_count }}</td>
                             <td class="px-3 py-3">
                                 <x-status-badge :status="$zone->status" :title="$zone->last_error" />
                             </td>
-                            <td @class(['px-3 py-3', 'text-muted' => ! $zone->dnssec])>{{ $zone->dnssec ? __('Açık (DNSSEC)') : __('Kapalı (DNSSEC)') }}</td>
+                            @php $signed = $zone->atCloudflare() ? in_array($zone->cloudflare_info['dnssec']['status'] ?? null, ['active', 'pending'], true) : $zone->dnssec; @endphp
+                            <td @class(['px-3 py-3', 'text-muted' => ! $signed])>{{ $signed ? __('Açık (DNSSEC)') : __('Kapalı (DNSSEC)') }}</td>
                             <td class="num py-3 pr-5 pl-3 whitespace-nowrap text-muted">{{ \App\Support\When::dateTime($zone->updated_at) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $admin ? 7 : 6 }}" class="px-5 py-12 text-center">
+                            <td colspan="{{ $admin ? 8 : 7 }}" class="px-5 py-12 text-center">
                                 @if ($search !== '' || $filter !== '')
                                     <p class="text-muted">{{ __('Aramanızla eşleşen alan adı yok.') }}</p>
                                 @else

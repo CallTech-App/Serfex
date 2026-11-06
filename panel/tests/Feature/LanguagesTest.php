@@ -7,6 +7,7 @@ use App\Livewire\Account\AccountProfile;
 use App\Livewire\Settings\GeneralSettings;
 use App\Mail\PanelMail;
 use App\Models\Certificate;
+use App\Models\CloudflareAccount;
 use App\Models\Customer;
 use App\Models\Database;
 use App\Models\DnsZone;
@@ -259,12 +260,20 @@ class LanguagesTest extends TestCase
         $routes = ['dashboard', 'sites.index', 'dns.index', 'mail.index', 'databases.index', 'ssl.index', 'laravel.index', 'customers.index',
             'monitor.index', 'security.index', 'backups.index', 'services.index', 'components.index', 'ai.index', 'account.profile', 'account.security',
             'settings.general', 'settings.server', 'settings.notifications', 'settings.admins', 'settings.api', 'settings.audit', 'settings.updates',
-            'ai.settings', 'ai.audit', 'dns.settings', 'mail.settings', 'ssl.settings', 'databases.settings'];
+            'ai.settings', 'ai.audit', 'dns.settings', 'dns.cloudflare', 'mail.settings', 'ssl.settings', 'databases.settings'];
         $urls = array_map(fn ($route) => route($route), $routes);
         foreach (['sites.show', 'sites.ssl', 'sites.domains', 'sites.php', 'sites.cron', 'sites.errors', 'sites.stats', 'sites.files', 'sites.ftp',
             'sites.logs', 'sites.disk', 'sites.protect', 'sites.waf', 'sites.scan', 'sites.directives', 'sites.wordpress', 'sites.mail', 'sites.dns', 'sites.databases', 'sites.backups'] as $route) {
             $urls[] = route($route, $site);
         }
+        // A zone at Cloudflare, waiting for its name servers.
+        $account = CloudflareAccount::create(['name' => 'Acme', 'token' => str_repeat('a', 40), 'account_name' => 'Acme Ltd', 'zones_count' => 3, 'checks' => ['dns' => true, 'ssl' => false, 'create' => true]]);
+        $cfZone = DnsZone::factory()->create(['name' => 'shop.example', 'cloudflare_account_id' => $account->id, 'cloudflare_zone_id' => str_repeat('b', 32),
+            'cloudflare_info' => ['status' => 'pending', 'ssl' => 'flexible', 'name_servers' => ['ada.ns.cloudflare.com'], 'original_name_servers' => ['ns1.old.example'], 'dnssec' => ['status' => 'disabled'],
+                'last_change' => ['created' => 2, 'updated' => 1, 'deleted' => 0, 'imported' => 1, 'removed' => 0]]]);
+        $cfZone->records()->create(['name' => '@', 'type' => 'A', 'content' => '203.0.113.10', 'ttl' => 3600, 'proxied' => true]);
+        $urls[] = route('dns.show', $cfZone);
+        $urls[] = route('dns.show', ['zone' => $cfZone, 'tab' => 'settings']);
         array_push($urls, route('dns.show', $zone), route('mail.show', $mail), route('databases.show', $database), route('laravel.show', $app),
             route('customers.show', $customer), route('customers.usage', $customer));
         $blog = Site::factory()->create(['domain' => 'blog.example']);

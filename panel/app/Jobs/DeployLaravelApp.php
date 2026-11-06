@@ -8,12 +8,16 @@ use App\Models\LaravelApp;
 use App\Models\LaravelDeployment;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Cloudflare\CloudflareException;
+use App\Services\Cloudflare\CloudflareSettings;
+use App\Services\Cloudflare\CloudflareZones;
 use App\Services\Laravel\AppTemplates;
 use App\Services\Laravel\Backups;
 use App\Services\Laravel\LaravelApps;
 use App\Services\Laravel\Processes;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -106,6 +110,16 @@ class DeployLaravelApp implements ShouldQueue
             'finished_at' => now(),
         ])->save();
         $app->fill(['last_error' => null, 'install_env' => null])->save();
+
+        // Visitors behind Cloudflare see the new release, not cached pages.
+        if ($deployment->status === DeploymentStatus::Succeeded && $app->site !== null && app(CloudflareSettings::class)->purgeAfterDeploy()) {
+            try {
+                app(CloudflareZones::class)->purge($app->site);
+            } catch (CloudflareException $e) {
+                // Not at Cloudflare, or the token cannot purge: the release stands.
+                Log::info('Cloudflare cache not purged after deploy: '.$e->getMessage());
+            }
+        }
 
         // A new preview environment's empty database gets the seed data.
         if ($first && $app->isPreview() && $deployment->status === DeploymentStatus::Succeeded && $app->previewOf?->preview_seed) {

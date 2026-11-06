@@ -265,7 +265,7 @@ class CloudflareApi
         try {
             $response = $call();
         } catch (ConnectionException $e) {
-            throw new CloudflareException(__('Cloudflare\'a ulaşılamadı: :reason', ['reason' => $e->getMessage()]), 0, 0);
+            throw new CloudflareException(__('Cloudflare\'e ulaşılamadı: :reason', ['reason' => $e->getMessage()]), 0, 0);
         }
         $body = $response->json();
         if (! is_array($body) || ! ($body['success'] ?? false)) {

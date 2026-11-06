@@ -5,6 +5,8 @@ namespace App\Livewire\Sites;
 use App\Livewire\Attributes\ForCustomers;
 use App\Models\Site;
 use App\Services\Agent\AgentException;
+use App\Services\Cloudflare\CloudflareException;
+use App\Services\Cloudflare\CloudflareZones;
 use App\Services\Sites\SiteCache;
 use App\Services\Sites\SiteDomains;
 use App\Support\Num;
@@ -148,6 +150,21 @@ class SiteCaching extends Component
             : __('Önbellek zaten boştu.'));
     }
 
+    /**
+     * Purge the site's pages from Cloudflare's cache.
+     */
+    public function purgeCloudflare(CloudflareZones $cloudflare): void
+    {
+        try {
+            $cloudflare->purge($this->site());
+        } catch (CloudflareException $e) {
+            $this->dispatch('toast', message: __('Cloudflare önbelleği temizlenemedi: :error', ['error' => $e->getMessage()]));
+
+            return;
+        }
+        $this->dispatch('toast', message: __('Cloudflare önbelleği temizlendi; sayfalar birkaç saniye içinde yeniden alınır.'));
+    }
+
     public function render(SiteCache $cache): View
     {
         $site = $this->site();
@@ -158,6 +175,7 @@ class SiteCaching extends Component
             'saved' => $saved,
             'usage' => $saved['page'] ? $cache->usage($site) : null,
             'blocked' => SiteCache::pageCacheBlocked($site),
+            'cloudflare' => app(CloudflareZones::class)->zoneOf($site),
         ])->title(__('Önbellek ve hız · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

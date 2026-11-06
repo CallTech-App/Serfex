@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('account_id')->nullable();
             $table->string('account_name')->nullable();
             $table->unsignedInteger('zones_count')->default(0);
+            // What the last check found the token can do: key => true|false.
+            $table->json('checks')->nullable();
             // ok | invalid
             $table->string('status')->default('ok');
             $table->text('last_error')->nullable();

@@ -2,12 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Enums\CertificateStatus;
 use App\Enums\ZoneStatus;
+use App\Models\Certificate;
 use App\Models\DnsZone;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Cloudflare\CloudflareException;
 use App\Services\Cloudflare\CloudflareSync;
+use App\Services\Ssl\Certificates;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -108,6 +111,7 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
     private function syncCloudflare(DnsZone $zone, AgentClient $agent): void
     {
         $info = $zone->cloudflare_info ?? [];
+        $wasActive = ($info['status'] ?? null) === 'active';
         if (empty($info['local_removed'])) {
             try {
                 $agent->call('dns.zone.delete', ['zone' => $zone->name], config('serfex.agent.job_timeout'));
@@ -119,12 +123,27 @@ class SyncDnsZone implements ShouldBeUniqueUntilProcessing, ShouldQueue
             $zone->forceFill(['cloudflare_info' => $info])->saveQuietly();
         }
         try {
-            app(CloudflareSync::class)->sync($zone);
+            $done = app(CloudflareSync::class)->sync($zone);
         } catch (CloudflareException $e) {
             $zone->forceFill(['status' => ZoneStatus::Failed, 'last_error' => $e->getMessage()])->saveQuietly();
 
             return;
         }
-        $zone->forceFill(['status' => ZoneStatus::Active, 'last_error' => null, 'synced_at' => now()])->saveQuietly();
+        // What this sync did, shown on the zone's page while it is news.
+        $info = $zone->cloudflare_info ?? [];
+        if (array_sum($done) > 0 || ! isset($info['last_change'])) {
+            $info['last_change'] = $done + ['at' => now()->toIso8601String()];
+        }
+        $zone->forceFill(['status' => ZoneStatus::Active, 'last_error' => null, 'synced_at' => now(), 'cloudflare_info' => $info])->saveQuietly();
+
+        // The registrar now lists Cloudflare's name servers: certificates
+        // waiting for that are asked for now, not at the next hourly try.
+        if (! $wasActive && ($info['status'] ?? null) === 'active') {
+            $waiting = Certificate::with('site')->where('status', CertificateStatus::WaitingDns)
+                ->whereHas('site', fn ($q) => $q->where('domain', $zone->name)->orWhere('domain', 'like', '%.'.$zone->name))->get();
+            foreach ($waiting as $certificate) {
+                app(Certificates::class)->reissue($certificate, auto: true);
+            }
+        }
     }
 }

@@ -13,18 +13,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * and never shown again.
  */
 #[Hidden(['token'])]
-#[Fillable(['name', 'token', 'account_id', 'account_name', 'zones_count', 'status', 'last_error', 'checked_at'])]
+#[Fillable(['name', 'token', 'account_id', 'account_name', 'zones_count', 'checks', 'status', 'last_error', 'checked_at'])]
 class CloudflareAccount extends Model
 {
     public const OK = 'ok';
 
     public const INVALID = 'invalid';
 
+    /** What a check looks at, with its name. */
+    public const CHECKS = [
+        'dns' => 'DNS',
+        'ssl' => 'SSL modu',
+        'create' => 'Alan adı ekleme',
+    ];
+
     protected function casts(): array
     {
         return [
             'token' => 'encrypted',
             'zones_count' => 'integer',
+            'checks' => 'array',
             'checked_at' => 'datetime',
         ];
     }
@@ -38,10 +46,20 @@ class CloudflareAccount extends Model
     }
 
     /**
-     * Cloudflare's own account name, or the name given here.
+     * The name given here, with Cloudflare's account name when it differs.
      */
     public function label(): string
     {
-        return $this->name;
+        return $this->account_name !== null && $this->account_name !== $this->name ? $this->name.' ('.$this->account_name.')' : $this->name;
+    }
+
+    /**
+     * The names of what the token was found to be able to do.
+     *
+     * @return list<string>
+     */
+    public function abilities(): array
+    {
+        return array_values(array_map(fn ($k) => __(self::CHECKS[$k]), array_keys(array_filter($this->checks ?? []))));
     }
 }

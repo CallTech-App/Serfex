@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Services\Dns\DnsSettings;
 use App\Services\Dns\ZoneTemplate;
 use App\Support\DnsRecords;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -46,11 +47,28 @@ class CloudflareZones
             if ($status !== 'active') {
                 throw new CloudflareException(__('Anahtar etkin değil (:status).', ['status' => $status ?: '?']));
             }
-            $accounts = $api->accounts();
+            try {
+                $accounts = $api->accounts();
+            } catch (CloudflareException) {
+                $accounts = [];
+            }
+            $count = $api->zoneCount();
+            // Reading the SSL mode of a zone it sees shows the token has
+            // Zone Settings; adding zones needs an account it sees.
+            $ssl = false;
+            if ($count > 0) {
+                try {
+                    $first = $api->zones()[0] ?? null;
+                    $ssl = $first !== null && $api->sslMode((string) $first['id']) !== '';
+                } catch (CloudflareException) {
+                    $ssl = false;
+                }
+            }
             $account->fill([
                 'account_id' => $accounts[0]['id'] ?? null,
                 'account_name' => $accounts[0]['name'] ?? null,
-                'zones_count' => $api->zoneCount(),
+                'zones_count' => $count,
+                'checks' => ['dns' => $count > 0, 'ssl' => $ssl, 'create' => $accounts !== []],
                 'status' => CloudflareAccount::OK,
                 'last_error' => null,
                 'checked_at' => now(),
@@ -474,7 +492,7 @@ class CloudflareZones
                 ]);
                 if ($f['cf'] !== null) {
                     $r->cloudflare_id = (string) $f['cf']['id'];
-                    $r->cloudflare_modified_at = isset($f['cf']['modified_on']) ? \Illuminate\Support\Carbon::parse($f['cf']['modified_on']) : now();
+                    $r->cloudflare_modified_at = isset($f['cf']['modified_on']) ? Carbon::parse($f['cf']['modified_on']) : now();
                     $r->cloudflare_hash = CloudflareRecords::hash($r);
                 }
                 $r->save();

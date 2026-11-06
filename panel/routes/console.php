@@ -33,3 +33,5 @@ Schedule::command('serfex:stats-prune')->dailyAt('04:10')->withoutOverlapping();
 Schedule::command('serfex:wordpress-check')->dailyAt('05:20')->withoutOverlapping();
 Schedule::command('serfex:tuning-measure')->hourlyAt(7)->withoutOverlapping();
 Schedule::command('serfex:tuning')->everyMinute()->withoutOverlapping();
+Schedule::command('serfex:cloudflare-sync')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('serfex:cloudflare-ips')->weeklyOn(1, '04:50')->withoutOverlapping();
