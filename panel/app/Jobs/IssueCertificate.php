@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\CertificateStatus;
 use App\Models\Certificate;
+use App\Models\DnsZone;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Ssl\Certificates;
@@ -77,12 +78,31 @@ class IssueCertificate implements ShouldBeUnique, ShouldQueue
             $names = $pointing;
         }
 
+        // DNS validation at Cloudflare: the answers are written there with
+        // the zone's token. Until the registrar points at Cloudflare's name
+        // servers, Let's Encrypt would not find them.
+        $cloudflare = null;
+        $dnsZone = $certificate->challenge === 'dns-01' && $this->zone !== null ? DnsZone::with('cloudflareAccount')->where('name', $this->zone)->first() : null;
+        if ($dnsZone?->atCloudflare()) {
+            if ($dnsZone->cloudflareStatus() === 'pending') {
+                $this->markFailed($certificate, CertificateStatus::WaitingDns, __('Cloudflare bu alan adını bekliyor: kayıt firmasında ad sunucularını :ns yapın. Serfex her saat yeniden dener.', ['ns' => implode(', ', $dnsZone->publicNameservers())]));
+
+                return;
+            }
+            $cloudflare = [
+                'zone_id' => $dnsZone->cloudflare_zone_id,
+                'token' => $dnsZone->cloudflareAccount->token,
+                'nameservers' => $dnsZone->publicNameservers(),
+            ];
+        }
+
         try {
             $result = $agent->call('ssl.issue', array_filter([
                 'name' => $certificate->name,
                 'names' => $names,
                 'challenge' => $certificate->challenge ?? 'http-01',
                 'dns_zone' => $this->zone,
+                'cloudflare' => $cloudflare,
                 'email' => Certificates::email(),
             ]), config('serfex.agent.ssl_timeout'));
         } catch (AgentException $e) {
@@ -95,6 +115,11 @@ class IssueCertificate implements ShouldBeUnique, ShouldQueue
         $certificate->recordInstalled($result);
         if ($site->fresh()->certificate_id !== $certificate->id) {
             $certificates->use($site, $certificate);
+        }
+        // Cloudflare's SSL mode can be Full (strict) now.
+        $cfZone = $dnsZone ?? app(Certificates::class)->cloudflareZoneFor($site, $certificate->domains ?? []);
+        if ($cfZone?->atCloudflare()) {
+            SyncDnsZone::dispatch($cfZone);
         }
     }
 

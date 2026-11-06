@@ -5,6 +5,7 @@ namespace App\Services\Dns;
 use App\Enums\ZoneStatus;
 use App\Jobs\DeleteDnsZone;
 use App\Jobs\SyncDnsZone;
+use App\Models\CloudflareAccount;
 use App\Models\DnsRecord;
 use App\Models\DnsZone;
 use App\Models\Site;
@@ -235,6 +236,10 @@ class Zones
         if ($saved['zone']['site_id'] !== null && ! Site::whereKey($saved['zone']['site_id'])->exists()) {
             $saved['zone']['site_id'] = null;
         }
+        if (($saved['zone']['cloudflare_account_id'] ?? null) !== null && ! CloudflareAccount::whereKey($saved['zone']['cloudflare_account_id'])->exists()) {
+            $saved['zone']['cloudflare_account_id'] = null;
+            $saved['zone']['cloudflare_zone_id'] = null;
+        }
         $zone = DnsZone::find($saved['id']);
         if ($zone === null || $zone->status === ZoneStatus::Deleting) {
             if (DnsZone::where('name', $saved['zone']['name'])->whereKeyNot($saved['id'])->exists()) {
@@ -293,9 +298,12 @@ class Zones
         $token = Str::random(24);
         Cache::put('dns-undo:'.$token, [
             'id' => $zone->id,
-            'zone' => $zone->only(['name', 'site_id', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec']),
+            'zone' => $zone->only(['name', 'site_id', 'hostmaster', 'default_ttl', 'refresh', 'retry', 'expire', 'minimum', 'dnssec',
+                'cloudflare_account_id', 'cloudflare_zone_id', 'cloudflare_info', 'cloudflare_known_ids']),
             'dnssec_key' => $zone->getRawOriginal('dnssec_key'),
-            'records' => $zone->records()->get()->map(fn (DnsRecord $r) => $r->toRecord())->all(),
+            // The proxy choice and Cloudflare id come back too, so an Undo
+            // finds the same records at Cloudflare.
+            'records' => $zone->records()->get()->map(fn (DnsRecord $r) => [...$r->toRecord(), 'proxied' => $r->proxied, 'cloudflare_id' => $r->cloudflare_id])->all(),
         ], self::UNDO_SECONDS);
 
         return $token;

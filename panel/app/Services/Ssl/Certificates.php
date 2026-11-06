@@ -46,6 +46,9 @@ class Certificates
             $zone = $this->zoneFor($site->domain)
                 ?? throw new \InvalidArgumentException("{$site->domain} is not hosted on this server's DNS; wildcards need DNS validation.");
             $names = [$site->domain, '*.'.$site->domain];
+        } elseif (($cf = $this->cloudflareZoneFor($site, $names)) !== null) {
+            // At Cloudflare, DNS validation works behind the proxy too.
+            $zone = $cf;
         }
 
         // Reuse the current Let's Encrypt certificate, or a request that is
@@ -64,7 +67,7 @@ class Certificates
         };
         $certificate->fill([
             'domains' => $names,
-            'challenge' => $wildcard ? 'dns-01' : 'http-01',
+            'challenge' => $zone !== null ? 'dns-01' : 'http-01',
             'status' => CertificateStatus::Issuing,
             'last_error' => null,
         ])->save();
@@ -137,6 +140,11 @@ class Certificates
     public function reissue(Certificate $certificate, bool $auto = false): void
     {
         $zone = $certificate->challenge === 'dns-01' ? $this->zoneFor($certificate->site->domain) : null;
+        // A site whose DNS moved to Cloudflare renews with DNS validation.
+        if ($zone === null && ($cf = $this->cloudflareZoneFor($certificate->site, $certificate->domains ?? [])) !== null) {
+            $zone = $cf;
+            $certificate->challenge = 'dns-01';
+        }
         $certificate->update(['status' => CertificateStatus::Issuing, 'last_error' => null]);
         IssueCertificate::dispatch($certificate, auto: $auto, zone: $zone?->name);
     }
@@ -271,6 +279,29 @@ class Certificates
         $zone = DnsZone::where('name', $domain)->first() ?? $this->zones->parentZone($domain);
 
         return $zone !== null && $zone->status !== ZoneStatus::Deleting ? $zone : null;
+    }
+
+    /**
+     * The Cloudflare zone holding every one of $names, for DNS validation
+     * there; null when the site's DNS is not at Cloudflare or a name is
+     * outside the zone (an alias on another domain).
+     *
+     * @param  list<string>  $names
+     */
+    public function cloudflareZoneFor(Site $site, array $names): ?DnsZone
+    {
+        $zone = $this->zoneFor($site->domain);
+        if ($zone === null || ! $zone->atCloudflare() || $names === []) {
+            return null;
+        }
+        foreach ($names as $n) {
+            $base = str_starts_with($n, '*.') ? substr($n, 2) : $n;
+            if ($base !== $zone->name && ! str_ends_with($base, '.'.$zone->name)) {
+                return null;
+            }
+        }
+
+        return $zone;
     }
 
     /**

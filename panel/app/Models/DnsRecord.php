@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['dns_zone_id', 'name', 'type', 'content', 'priority', 'ttl'])]
+#[Fillable(['dns_zone_id', 'name', 'type', 'content', 'priority', 'ttl', 'proxied', 'cloudflare_id', 'cloudflare_hash', 'cloudflare_modified_at'])]
 class DnsRecord extends Model
 {
     protected function casts(): array
     {
-        return ['priority' => 'integer', 'ttl' => 'integer'];
+        return ['priority' => 'integer', 'ttl' => 'integer', 'proxied' => 'boolean', 'cloudflare_modified_at' => 'datetime'];
     }
 
     /**
@@ -31,6 +31,16 @@ class DnsRecord extends Model
         return in_array($this->type, DnsRecords::WITH_PRIORITY, true)
             ? ($this->priority ?? 0).' '.$this->content
             : $this->content;
+    }
+
+    /**
+     * Types Cloudflare's proxy can carry.
+     */
+    public const PROXIABLE = ['A', 'AAAA', 'CNAME'];
+
+    public function canBeProxied(): bool
+    {
+        return in_array($this->type, self::PROXIABLE, true);
     }
 
     /**

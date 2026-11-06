@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
+	"github.com/calltech-app/serfex/agent/internal/cloudflare"
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
@@ -588,6 +589,11 @@ func renderJails(m *Manager) []byte {
 		own := slices.Clone(m.Addresses())
 		slices.Sort(own)
 		ignore = append(ignore, slices.Compact(own)...)
+	}
+	// Cloudflare's proxy: banning one of its addresses would lock out
+	// every visitor of a site behind Cloudflare.
+	for _, r := range cloudflare.Ranges(m.h) {
+		ignore = append(ignore, r.String())
 	}
 	mail := m.exists("/usr/sbin/postfix") && m.exists("/usr/sbin/dovecot")
 	var b strings.Builder

@@ -37,6 +37,14 @@ class DeleteDnsZone implements ShouldQueue
             return;
         }
 
+        // A zone at Cloudflare is only forgotten here: Serfex never deletes
+        // anything there, and this server's DNS stopped serving it already.
+        if ($zone->atCloudflare() && ! empty($zone->cloudflare_info['local_removed'])) {
+            $zone->delete();
+
+            return;
+        }
+
         try {
             $agent->call('dns.zone.delete', ['zone' => $zone->name], config('serfex.agent.job_timeout'));
         } catch (AgentException $e) {
