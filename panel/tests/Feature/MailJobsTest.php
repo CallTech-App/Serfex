@@ -7,6 +7,7 @@ use App\Enums\MailDomainStatus;
 use App\Jobs\DeleteMailDomain;
 use App\Jobs\IssueMailCertificate;
 use App\Jobs\PurgeMailbox;
+use App\Jobs\ReapplyFirewall;
 use App\Jobs\SetupMailServer;
 use App\Jobs\SyncMailDomain;
 use App\Models\Certificate;
@@ -185,6 +186,8 @@ class MailJobsTest extends TestCase
         $this->assertSame(['mail.example.net'], $certificate->domains);
         $this->assertSame(CertificateStatus::Issuing, $certificate->status);
         Queue::assertPushed(IssueMailCertificate::class);
+        // The firewall's rules are written again so the mail ports open.
+        Queue::assertPushed(ReapplyFirewall::class);
     }
 
     public function test_setup_serves_snappymail_when_chosen(): void
@@ -214,6 +217,7 @@ class MailJobsTest extends TestCase
         $this->assertSame('failed', $server['state']);
         $this->assertSame('postfix check failed', $server['error']);
         Queue::assertNotPushed(IssueMailCertificate::class);
+        Queue::assertNotPushed(ReapplyFirewall::class);
     }
 
     public function test_certificate_switches_the_mail_server_to_it(): void

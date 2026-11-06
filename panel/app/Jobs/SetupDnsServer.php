@@ -40,6 +40,8 @@ class SetupDnsServer implements ShouldBeUnique, ShouldQueue
         }
 
         Setting::put('dns.server', ['state' => 'ready', 'version' => $result['version'] ?? null, 'at' => now()->toIso8601String()]);
+        // Opens port 53 when the firewall was on before DNS was.
+        ReapplyFirewall::dispatch();
 
         DnsZone::whereIn('status', [ZoneStatus::Failed, ZoneStatus::Syncing])->each(function (DnsZone $zone) {
             if ($zone->status === ZoneStatus::Failed) {
