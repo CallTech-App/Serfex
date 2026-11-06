@@ -10,9 +10,10 @@ use App\Support\Bytes;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Applies optimization suggestions to the database server and watches
- * them. A change goes through the agent's settings (written to Serfex's
- * tuning file and set on the running server, no restart). For the next
+ * Applies optimization suggestions and watches them. A change goes
+ * through Targets: the database server's settings (written to Serfex's
+ * tuning file and set on the running server, no restart) or PHP's
+ * (php.ini defaults or a site's pool; PHP-FPM reloads). For the next
  * WATCH_MINUTES the server is checked every minute; if it stopped, or the
  * machine started swapping or ran out of memory, the old values come back
  * by themselves. An applied change can be undone for UNDO_DAYS.
@@ -33,6 +34,7 @@ class Tuner
         private readonly SystemServices $services,
         private readonly Samples $samples,
         private readonly TuningSettings $settings,
+        private readonly Targets $targets,
     ) {}
 
     /**
@@ -48,7 +50,7 @@ class Tuner
         if ($this->active($unit, $suggestion['key']) !== null) {
             return __('Bu ayar için bekleyen bir değişiklik var.');
         }
-        $current = $this->services->settings($unit, 'database');
+        $current = $this->targets->current($unit, $suggestion['values']);
         if (is_string($current)) {
             return $current;
         }
@@ -56,7 +58,7 @@ class Tuner
             'unit' => $unit,
             'key' => $suggestion['key'],
             'title' => $suggestion['title_key'] ?? $suggestion['title'],
-            'from_values' => array_intersect_key($current, $suggestion['values']),
+            'from_values' => $current,
             'to_values' => $suggestion['values'],
             'from_label' => $suggestion['from_raw'] ?? $suggestion['from_label'],
             'to_label' => $suggestion['to_raw'] ?? $suggestion['to_label'],
@@ -205,19 +207,14 @@ class Tuner
     }
 
     /**
-     * Sets database settings, keeping every other one as it is.
+     * Sets the service's settings, keeping every other one as it is.
      *
      * @param  array<string, mixed>  $values
      * @return array<string, mixed>|string
      */
     private function set(string $unit, array $values): array|string
     {
-        $current = $this->services->settings($unit, 'database');
-        if (is_string($current)) {
-            return $current;
-        }
-
-        return $this->services->applySettings($unit, 'database', array_merge($current, $values));
+        return $this->targets->set($unit, $values);
     }
 
     /**

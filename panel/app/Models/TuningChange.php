@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\Tuning\MysqlAdvisor;
+use App\Services\Tuning\Labels;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A setting changed (or to be changed, or dismissed) from an optimization
- * suggestion. from_values and to_values are the agent's database
- * settings that differ, so the change can be undone exactly. The labels
+ * suggestion. from_values and to_values are the settings that differ
+ * (see Targets), so the change can be undone exactly. A change without a
+ * user was made by the automatic level. The labels
  * are stored language-neutral ("mb:4096") and read in the reader's
  * language.
  */
@@ -36,11 +37,21 @@ class TuningChange extends Model
     }
 
     /**
+     * The title, stored as its Turkish text, in the reader's language.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function title(): Attribute
+    {
+        return Attribute::get(fn (?string $value) => $value === null ? '' : __($value));
+    }
+
+    /**
      * @return Attribute<string, never>
      */
     protected function fromLabel(): Attribute
     {
-        return Attribute::get(fn (?string $value) => MysqlAdvisor::label($value));
+        return Attribute::get(fn (?string $value) => Labels::read($value));
     }
 
     /**
@@ -48,7 +59,7 @@ class TuningChange extends Model
      */
     protected function toLabel(): Attribute
     {
-        return Attribute::get(fn (?string $value) => MysqlAdvisor::label($value));
+        return Attribute::get(fn (?string $value) => Labels::read($value));
     }
 
     /**

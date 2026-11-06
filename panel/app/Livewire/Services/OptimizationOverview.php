@@ -42,8 +42,8 @@ class OptimizationOverview extends Component
             'windowStart' => __('pencere başlangıcı'), 'windowEnd' => __('pencere bitişi'), 'memoryPercent' => __('bellek sınırı'),
         ]);
         $settings->save($this->level, $this->windowStart, $this->windowEnd, (int) $this->memoryPercent);
-        foreach (Optimization::UNITS as $unit) {
-            Optimization::forgetCount($unit);
+        foreach (app(Optimization::class)->servers() as $s) {
+            Optimization::forgetCount($s['unit']);
         }
         $this->dispatch('toast', message: __('Optimizasyon ayarları kaydedildi.'));
     }
@@ -55,7 +55,21 @@ class OptimizationOverview extends Component
         foreach ($optimization->servers() as $s) {
             $report = $settings->enabled() ? $optimization->report($s['unit']) : null;
             $servers[] = ['unit' => $s['unit'], 'name' => $s['name'], 'report' => $report];
-            $budget ??= $report['budget'] ?? null;
+            $b = $report['budget'] ?? null;
+            if ($b === null) {
+                continue;
+            }
+            if ($budget === null) {
+                $budget = $b;
+
+                continue;
+            }
+            // Every service's suggestions take from the same budget.
+            foreach ($b['after'] as $part => $mb) {
+                $more = $mb - ($b['now'][$part] ?? 0);
+                $budget['after'][$part] = ($budget['after'][$part] ?? 0) + $more;
+                $budget['used_after'] += $more;
+            }
         }
 
         return view('livewire.services.optimization-overview', [

@@ -110,6 +110,7 @@ class AiNotes
     public function input(array $report, array $slow): array
     {
         return [
+            'service' => $report['service'] ?? 'mysql',
             'language' => app()->getLocale() === 'en' ? 'English' : 'Turkish',
             'measured_hours' => round((float) ($report['hours'] ?? 0), 1),
             'measurements' => array_map(fn ($c) => ['name' => $c[0], 'value' => $c[1], 'note' => $c[2]], $report['cells'] ?? []),
@@ -129,7 +130,7 @@ class AiNotes
     private function system(): string
     {
         return <<<'TXT'
-            You are Serfex AI inside Serfex, a web hosting control panel. You get measurements of the server's MySQL or MariaDB server, the tuning suggestions Serfex's rules made, and the statements that cost the most time. The server also runs PHP-FPM, Nginx and other services; memory is shared through the memory budget.
+            You are Serfex AI inside Serfex, a web hosting control panel. You get measurements of one service on the server, named in "service": a MySQL or MariaDB server (with the statements that cost the most time) or a PHP-FPM version (its OPcache and the sites' worker pools), and the tuning suggestions Serfex's rules made. The server runs other services too; memory is shared through the memory budget.
 
             Answer with one JSON object and nothing else:
             {"suggestions": {"<key>": {"value": <integer or null>, "text": "<why>"}}, "queries": {"<digest>": {"text": "<what makes it slow and the fix>", "code": "<Laravel migration or null>"}}}

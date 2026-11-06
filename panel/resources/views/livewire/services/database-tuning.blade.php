@@ -6,6 +6,7 @@
     $primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40';
     $readOnly = auth()->user()->isReadOnly();
     $windowLevel = $level === \App\Services\Tuning\TuningSettings::WINDOW;
+    $php = ($report['kind'] ?? null) === 'php';
 @endphp
 <div>
     @if ($error)
@@ -50,12 +51,15 @@
                     </div>
                 @endforeach
             </div>
+            @if ($report['notice'] ?? null)
+                <p class="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13px]"><x-icon name="triangle-alert" class="mt-0.5 text-warn" />{{ $report['notice'] }}</p>
+            @endif
             @if ($aiOn)
                 <p class="flex items-center gap-1.5 text-2xs text-muted"><x-icon name="sparkles" class="size-3.5 text-accent" />{{ __('Açıklamalar Serfex AI\'dan. Değerleri ölçüm kuralları hesaplar; Serfex AI yalnızca güvenli aralıktan seçer.') }}</p>
             @else
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-surface-2 px-3 py-2.5 text-[13px]">
                     <x-icon name="info" class="text-muted" />
-                    <span class="flex-1">{{ __('Öneriler ölçüm kurallarından. Yavaş sorguların hangi index\'le hızlanacağını yorumlaması için Serfex AI\'ı açın.') }}</span>
+                    <span class="flex-1">{{ $php ? __('Öneriler ölçüm kurallarından. Gerekçeleri bu sunucuya göre yazması için Serfex AI\'ı açın.') : __('Öneriler ölçüm kurallarından. Yavaş sorguların hangi index\'le hızlanacağını yorumlaması için Serfex AI\'ı açın.') }}</span>
                     @if (auth()->user()->isFullAdmin())
                         <a href="{{ route('ai.settings') }}" wire:navigate class="font-medium text-accent hover:underline">{{ __('Serfex AI ayarları') }}</a>
                     @endif
@@ -104,10 +108,16 @@
                             <p class="mt-2 text-[13px] leading-relaxed">{{ $card['why'] }}</p>
                         @endif
                         <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-muted">
-                            <span class="flex items-center gap-1"><x-icon name="zap" class="size-3.5" />{{ __('Kesintisiz uygulanır') }}</span>
+                            @if (($card['disruption'] ?? 'none') === 'reload')
+                                <span class="flex items-center gap-1"><x-icon name="refresh-cw" class="size-3.5" />{{ __('PHP-FPM yeniden yüklenir, istekler kesilmez') }}</span>
+                            @else
+                                <span class="flex items-center gap-1"><x-icon name="zap" class="size-3.5" />{{ __('Kesintisiz uygulanır') }}</span>
+                            @endif
                             <span>{{ __('Ölçüm: :measure', ['measure' => $card['measure']]) }}</span>
                             @if ($card['memory_mb'] > 0)
                                 <span>{{ __('Bellek: +:size', ['size' => Bytes::format($card['memory_mb'] << 20)]) }}</span>
+                            @elseif ($card['memory_mb'] < 0)
+                                <span>{{ __('Bellek: −:size', ['size' => Bytes::format(-$card['memory_mb'] << 20)]) }}</span>
                             @endif
                         </p>
                         @if ($card['blocked'] !== null)
@@ -167,7 +177,7 @@
             @foreach ($report['recent'] as $c)
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 text-[13.5px]" wire:key="recent-{{ $c->id }}">
                     <span class="min-w-0 flex-1">{{ $c->title }} <span class="font-mono text-[13px] text-muted">{{ $c->from_label }} → {{ $c->to_label }}</span></span>
-                    <span class="text-[13px] text-muted">{{ When::withTime($c->applied_at) }}@if ($c->user) · {{ $c->user->name }}@endif</span>
+                    <span class="text-[13px] text-muted">{{ When::withTime($c->applied_at) }} · {{ $c->user?->name ?? __('Serfex (otomatik)') }}</span>
                     @if (! $readOnly && $tuner->canUndo($c))
                         <button type="button" wire:click="undo({{ $c->id }})" wire:confirm="{{ __('Önceki değer (:value) geri yüklensin mi?', ['value' => $c->from_label]) }}" class="text-[13px] text-accent hover:underline">{{ __('Geri al') }}</button>
                     @endif
@@ -177,8 +187,12 @@
     @endif
 
     @if ($report !== null)
-        @include('livewire.services.partials.slow-queries', ['slow' => $report['slow'], 'showSite' => true])
-        <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Her değişiklik önce ayar dosyasına yazılır ve çalışan sunucuya yeniden başlatmadan uygulanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', ['minutes' => \App\Services\Tuning\Tuner::WATCH_MINUTES, 'days' => \App\Services\Tuning\Tuner::UNDO_DAYS]) }}</p>
+        @if ($php)
+            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('OPcache ayarları bu PHP sürümünün php.ini varsayılanlarına, işçi ayarları sitenin PHP ayarlarına yazılır; PHP-FPM yeniden yüklenir, süren istekler tamamlanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', ['minutes' => \App\Services\Tuning\Tuner::WATCH_MINUTES, 'days' => \App\Services\Tuning\Tuner::UNDO_DAYS]) }}</p>
+        @else
+            @include('livewire.services.partials.slow-queries', ['slow' => $report['slow'], 'showSite' => true])
+            <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Her değişiklik önce ayar dosyasına yazılır ve çalışan sunucuya yeniden başlatmadan uygulanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', ['minutes' => \App\Services\Tuning\Tuner::WATCH_MINUTES, 'days' => \App\Services\Tuning\Tuner::UNDO_DAYS]) }}</p>
+        @endif
     @endif
 
     <x-modal :title="$confirm['title'] ?? __('Uygula')" show="confirming" size="max-w-xl" close="$wire.set('confirming', null)">
@@ -189,7 +203,7 @@
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[160px_1fr]">
                     <dt class="text-muted">{{ __('Ayar') }}</dt><dd class="font-mono text-[13px]">{{ $confirm['setting'] }}</dd>
                     <dt class="text-muted">{{ __('Değişiklik') }}</dt><dd class="font-mono text-[13px]">{{ $confirm['from_label'] }} → {{ $confirm['to_label'] }}</dd>
-                    <dt class="text-muted">{{ __('Kesinti') }}</dt><dd>{{ __('Yok. Çalışan sunucuya yeniden başlatmadan uygulanır.') }}</dd>
+                    <dt class="text-muted">{{ __('Kesinti') }}</dt><dd>{{ ($confirm['disruption'] ?? 'none') === 'reload' ? __('Yok. PHP-FPM yeniden yüklenir: süren istekler tamamlanır, OPcache baştan dolar.') : __('Yok. Çalışan sunucuya yeniden başlatmadan uygulanır.') }}</dd>
                     @if ($confirm['memory_mb'] > 0)
                         <dt class="text-muted">{{ __('Bellek bütçesi') }}</dt>
                         <dd>{{ Bytes::format($budget['used'] << 20) }} → {{ Bytes::format(($budget['used'] + $confirm['memory_mb']) << 20) }} <span class="text-muted">/ {{ __(':size sınır', ['size' => Bytes::format($budget['limit'] << 20)]) }}</span></dd>

@@ -51,12 +51,12 @@ class ServiceShow extends Component
         if ($service === null && $services->list() !== null) {
             abort(404);
         }
-        $database = ($service['settings'] ?? null) === 'database' && in_array($unit, Optimization::UNITS, true);
-        if (! request()->has('tab') && $database) {
-            // A database server opens on its optimization suggestions.
+        $optimized = Optimization::supports($unit);
+        if (! request()->has('tab') && $optimized) {
+            // A database server or PHP version opens on its suggestions.
             $this->tab = 'recs';
         }
-        if (! array_key_exists($this->tab, self::TABS) || ($this->tab === 'settings' && empty($service['settings'])) || ($this->tab === 'recs' && ! $database)) {
+        if (! array_key_exists($this->tab, self::TABS) || ($this->tab === 'settings' && empty($service['settings'])) || ($this->tab === 'recs' && ! $optimized)) {
             $this->tab = 'log';
         }
         if (! empty($service['settings'])) {
@@ -251,10 +251,13 @@ class ServiceShow extends Component
             'logs' => $logs,
             'affects' => $services->affects($this->unit),
             'fields' => SystemServices::SETTINGS[$service['settings'] ?? ''] ?? [],
-            'tabs' => ($service['settings'] ?? null) === 'database' && in_array($this->unit, Optimization::UNITS, true)
-                ? ['recs' => __('Öneriler'), 'settings' => __('Ayarlar'), 'log' => __('Günlük')]
-                : (empty($service['settings']) ? [] : ['log' => __('Günlük'), 'settings' => __('Ayarlar')]),
-            'tuningCount' => $this->tab !== 'recs' && ($service['settings'] ?? null) === 'database' && in_array($this->unit, Optimization::UNITS, true) ? app(Optimization::class)->count($this->unit) : null,
+            'tabs' => match (true) {
+                Optimization::supports($this->unit) && ! empty($service['settings']) => ['recs' => __('Öneriler'), 'settings' => __('Ayarlar'), 'log' => __('Günlük')],
+                Optimization::supports($this->unit) => ['recs' => __('Öneriler'), 'log' => __('Günlük')],
+                empty($service['settings']) => [],
+                default => ['log' => __('Günlük'), 'settings' => __('Ayarlar')],
+            },
+            'tuningCount' => $this->tab !== 'recs' && Optimization::supports($this->unit) ? app(Optimization::class)->count($this->unit) : null,
             'tuningNotes' => $this->tab === 'settings' ? $this->tuningNotes($service) : [],
             'confirm' => $this->confirming && $service ? $services->confirmation($service, $this->confirming) : null,
         ])->title(__(':name · Hizmetler · Serfex', ['name' => __($service['name'] ?? $this->unit)]));

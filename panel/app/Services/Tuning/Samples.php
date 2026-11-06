@@ -5,11 +5,14 @@ namespace App\Services\Tuning;
 use App\Models\TuningSample;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 /**
- * Measurements of the database server, taken every hour (and on "Şimdi
- * ölç"). The server's counters run from its start, so what happened in a
- * period is the difference between two measurements of the same run.
+ * Measurements of the services optimization looks at (database server,
+ * PHP-FPM versions), taken every hour (and on "Şimdi ölç"). The counters
+ * run from the service's start, so what happened in a period is the
+ * difference between two measurements of the same run.
  */
 class Samples
 {
@@ -42,8 +45,7 @@ class Samples
      */
     public function since(TuningSample $latest, int $days = 7): ?TuningSample
     {
-        $uptime = (int) ($latest->data['status']['Uptime'] ?? 0);
-        $runStart = $latest->created_at->copy()->subSeconds($uptime);
+        $runStart = self::runStart($latest);
         $from = max($runStart, $latest->created_at->copy()->subDays($days));
 
         return TuningSample::where('unit', $latest->unit)
@@ -53,13 +55,28 @@ class Samples
     }
 
     /**
-     * The highest PHP-FPM memory seen in $days: what PHP takes at its
-     * busiest, which the memory budget keeps room for.
+     * When the measured run started: the database server's start, or
+     * PHP-FPM's (OPcache's) last start.
+     */
+    public static function runStart(TuningSample $sample): CarbonInterface
+    {
+        $data = $sample->data;
+        if (isset($data['status']['Uptime'])) {
+            return $sample->created_at->copy()->subSeconds((int) $data['status']['Uptime']);
+        }
+        $start = (int) ($data['opcache']['start_time'] ?? 0);
+
+        return $start > 0 ? Carbon::createFromTimestamp($start) : $sample->created_at->copy()->subDays(30);
+    }
+
+    /**
+     * The highest PHP-FPM memory seen in $days by any measurement: what
+     * PHP takes at its busiest, which the memory budget keeps room for.
      */
     public function peak(string $unit, string $group, int $days = 7): int
     {
         $max = 0;
-        TuningSample::where('unit', $unit)->where('created_at', '>=', now()->subDays($days))
+        TuningSample::where('created_at', '>=', now()->subDays($days))
             ->select(['id', 'data'])->lazyById(200)
             ->each(function (TuningSample $s) use (&$max, $group) {
                 $max = max($max, (int) ($s->data['processes_mb'][$group] ?? 0));

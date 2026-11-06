@@ -11,7 +11,8 @@ namespace App\Services\Tuning;
  */
 class MemoryBudget
 {
-    private int $reserved = 0;
+    /** @var array<string, int> MB reserved by suggestions, by part */
+    private array $reserved = [];
 
     /**
      * @param  array<string, int>  $parts  MB by part: system, mysql, php-fpm, cache
@@ -51,14 +52,14 @@ class MemoryBudget
     /** Room left for suggestions, after the ones reserved so far. */
     public function roomMB(): int
     {
-        return $this->limitMB() - $this->usedMB() - $this->reserved;
+        return $this->limitMB() - $this->usedMB() - array_sum($this->reserved);
     }
 
     /**
-     * Reserves room for a suggestion; returns null when it fits, or the
-     * MB missing.
+     * Reserves room for a suggestion of a part (mysql, php-fpm, cache);
+     * returns null when it fits, or the MB missing.
      */
-    public function reserve(int $mb): ?int
+    public function reserve(int $mb, string $part = 'mysql'): ?int
     {
         if ($mb <= 0) {
             return null;
@@ -66,7 +67,7 @@ class MemoryBudget
         if ($mb > $this->roomMB()) {
             return $mb - max(0, $this->roomMB());
         }
-        $this->reserved += $mb;
+        $this->reserved[$part] = ($this->reserved[$part] ?? 0) + $mb;
 
         return null;
     }
@@ -77,11 +78,13 @@ class MemoryBudget
     public function summary(): array
     {
         $after = $this->parts;
-        $after['mysql'] += $this->reserved;
+        foreach ($this->reserved as $part => $mb) {
+            $after[$part] = ($after[$part] ?? 0) + $mb;
+        }
 
         return [
             'total' => $this->totalMB, 'limit' => $this->limitMB(), 'percent' => $this->percent,
-            'now' => $this->parts, 'after' => $after, 'used' => $this->usedMB(), 'used_after' => $this->usedMB() + $this->reserved,
+            'now' => $this->parts, 'after' => $after, 'used' => $this->usedMB(), 'used_after' => $this->usedMB() + array_sum($this->reserved),
         ];
     }
 }

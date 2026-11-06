@@ -342,16 +342,7 @@ class MysqlAdvisor
      */
     public static function label(?string $raw): string
     {
-        return match (true) {
-            $raw === null => '',
-            $raw === 'off' => __('kapalı'),
-            (bool) preg_match('/^(mb|num|on):(\d+)$/', $raw, $m) => match ($m[1]) {
-                'mb' => Bytes::format((int) $m[2] << 20),
-                'num' => Num::format((int) $m[2]),
-                default => __('açık, :seconds sn', ['seconds' => (int) $m[2]]),
-            },
-            default => $raw,
-        };
+        return Labels::read($raw);
     }
 
     public static function roundUp(int $value, int $step): int
