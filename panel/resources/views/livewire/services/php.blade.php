@@ -14,7 +14,10 @@
         </nav>
         <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
             <h1 class="text-[22px] font-semibold tracking-tight">PHP {{ $version }}</h1>
-            <a href="{{ route('services.show', 'php'.$version.'-fpm') }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="server-cog" />{{ __('PHP-FPM hizmeti') }}</a>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('services.show', ['unit' => 'php'.$version.'-fpm', 'tab' => 'recs']) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="gauge" />{{ __('Optimizasyon önerileri') }}@if ($tuningCount)<span class="num rounded bg-surface-2 px-1.5 text-2xs leading-[18px] font-semibold text-muted">{{ $tuningCount }}</span>@endif</a>
+                <a href="{{ route('services.show', ['unit' => 'php'.$version.'-fpm', 'tab' => 'log']) }}" wire:navigate class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-surface-2"><x-icon name="server-cog" />{{ __('PHP-FPM hizmeti') }}</a>
+            </div>
         </div>
         <p class="mt-1 max-w-3xl text-[13px] text-muted">
             @if ($sites === [])

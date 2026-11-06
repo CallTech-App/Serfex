@@ -10,6 +10,9 @@ use App\Services\Agent\AgentException;
 use App\Services\Components\Components;
 use App\Services\Php\PhpVersions;
 use App\Services\System\SystemServices;
+use App\Services\Tuning\Optimization;
+use App\Services\Tuning\PhpAdvisor;
+use App\Services\Tuning\TuningSettings;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -104,6 +107,12 @@ class PhpVersionShow extends Component
         $before = $this->current;
         if (! $this->apply($agent, $php, $values)) {
             return;
+        }
+        // An OPcache value set by hand is not touched by optimization.
+        foreach (PhpAdvisor::INI_KEYS as $ini => $key) {
+            if (($values[$ini] ?? null) !== ($before[$ini] ?? null)) {
+                app(TuningSettings::class)->lock('php'.$this->version.'-fpm', $key, auth()->user());
+            }
         }
         $this->dispatch('toast',
             message: __('PHP :version yeni varsayılanlarla çalışıyor.', ['version' => $this->version]),
@@ -213,6 +222,7 @@ class PhpVersionShow extends Component
             'busy' => ComponentOperation::running()->exists(),
             'bodyLimit' => $bodyLimit !== null && $post !== null && $post > $bodyLimit ? (int) $bodyLimit : null,
             'confirm' => $this->confirming ? $this->confirmText() : null,
+            'tuningCount' => app(Optimization::class)->count('php'.$this->version.'-fpm'),
         ])->title(__('PHP :version · Hizmetler · Serfex', ['version' => $this->version]));
     }
 

@@ -23,6 +23,7 @@ import (
 // to see what happened in between.
 type Measurement struct {
 	Unit     string    `json:"unit"`
+	Kind     string    `json:"kind"`
 	TakenAt  time.Time `json:"taken_at"`
 	Version  string    `json:"version"`
 	CPUs     int       `json:"cpus"`
@@ -75,22 +76,33 @@ var measuredStatus = []string{
 // systemSchemas hold no customer data.
 const systemSchemas = "'mysql','sys','information_schema','performance_schema'"
 
-// Measure reads a running MySQL or MariaDB server.
-func (m *Manager) Measure(ctx context.Context, unit string) (Measurement, error) {
+// Measure reads a running service the panel makes optimization
+// suggestions for: a MySQL or MariaDB server (Measurement) or a PHP-FPM
+// version (PHPMeasurement).
+func (m *Manager) Measure(ctx context.Context, unit string) (any, error) {
 	d, st, err := m.find(ctx, unit)
 	if err != nil {
-		return Measurement{}, err
+		return nil, err
 	}
-	if d.settings != "database" {
-		return Measurement{}, invalid("%s is not a database server", d.name)
+	v := PHPVersionOf(unit)
+	if d.settings != "database" && v == "" {
+		return nil, invalid("%s is not measured for optimization", d.name)
 	}
 	if st.State != "active" && st.State != "reloading" {
-		return Measurement{}, invalid("%s is not running; start it first", d.name)
+		return nil, invalid("%s is not running; start it first", d.name)
 	}
+	if v != "" {
+		return m.measurePHP(ctx, unit, v)
+	}
+	return m.measureDatabase(ctx, unit)
+}
+
+// measureDatabase reads a running MySQL or MariaDB server.
+func (m *Manager) measureDatabase(ctx context.Context, unit string) (Measurement, error) {
 	if m.sim {
 		return demoMeasurement(unit, m.now()), nil
 	}
-	out := Measurement{Unit: unit, TakenAt: m.now().UTC(), Variables: map[string]string{}, Status: map[string]string{}}
+	out := Measurement{Unit: unit, Kind: "database", TakenAt: m.now().UTC(), Variables: map[string]string{}, Status: map[string]string{}}
 	out.MemoryMB, out.AvailableMB, out.SwapMB, out.SwapUsedMB = readMemory(m.h)
 	out.CPUs = countCPUs(m.h)
 	out.Disk = diskKind(m.h, "/var/lib/mysql")
@@ -268,6 +280,13 @@ func processMemory(h host.Host) map[string]int64 {
 		default:
 			continue
 		}
+		if group == "php-fpm" {
+			// Every worker maps OPcache's memory; count what is its own.
+			if pages, ok := privatePages(filepath.Join(dir, "statm")); ok {
+				out[group] += pages * page
+			}
+			continue
+		}
 		statm, err := os.ReadFile(filepath.Join(dir, "statm"))
 		if err != nil {
 			continue
@@ -289,7 +308,7 @@ func demoMeasurement(unit string, now time.Time) Measurement {
 	hours := float64(now.Unix()%(7*86400)) / 3600
 	grow := func(base, perHour float64) string { return strconv.FormatInt(int64(base+perHour*hours), 10) }
 	return Measurement{
-		Unit: unit, TakenAt: now.UTC(), Version: "8.4.7", CPUs: 8, MemoryMB: 32096, AvailableMB: 27400, SwapMB: 4096, SwapUsedMB: 0, Disk: "nvme",
+		Unit: unit, Kind: "database", TakenAt: now.UTC(), Version: "8.4.7", CPUs: 8, MemoryMB: 32096, AvailableMB: 27400, SwapMB: 4096, SwapUsedMB: 0, Disk: "nvme",
 		Variables: map[string]string{
 			"version": "8.4.7", "innodb_buffer_pool_size": "134217728", "max_connections": "151", "max_allowed_packet": "67108864",
 			"tmp_table_size": "16777216", "max_heap_table_size": "16777216", "table_open_cache": "4000", "innodb_io_capacity": "200",

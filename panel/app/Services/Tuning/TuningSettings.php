@@ -23,7 +23,17 @@ class TuningSettings
     /** What a person applies waits for the maintenance window. */
     public const WINDOW = 'window';
 
-    public const LEVELS = [self::OFF, self::SUGGEST, self::WINDOW];
+    /**
+     * Small changes (a number moved by at most AUTO_BAND either way, in
+     * the memory budget) are applied by themselves, one per service a
+     * day; those that reload a service wait for the maintenance window.
+     */
+    public const AUTO = 'auto';
+
+    public const LEVELS = [self::OFF, self::SUGGEST, self::WINDOW, self::AUTO];
+
+    /** The automatic level's band: half the current value. */
+    public const AUTO_BAND = 0.5;
 
     public const MEMORY_MIN = 50;
 

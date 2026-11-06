@@ -12,6 +12,8 @@ use App\Services\Components\Components;
 use App\Services\Laravel\PhpConstraint;
 use App\Services\Laravel\Processes;
 use App\Services\Php\PhpVersions;
+use App\Services\Tuning\Optimization;
+use App\Services\Tuning\TuningSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -124,6 +126,12 @@ class SitePhp extends Component
         }
         if (! $this->apply($site, $this->phpVersion, $this->webServer, $settings, $agent, $processes)) {
             return;
+        }
+        // Workers set by hand are not touched by optimization.
+        foreach (['pm' => 'fpm_pm:', 'max_children' => 'fpm_children:'] as $field => $key) {
+            if (($settings[$field] ?? null) != ($before[2][$field] ?? null)) {
+                app(TuningSettings::class)->lock(Optimization::SITE_LOCKS, $key.$site->id, auth()->user());
+            }
         }
         $this->dispatch('toast',
             message: __(':domain artık PHP :php_version ve :stack_label ile çalışıyor.', ['domain' => $site->domain, 'php_version' => $site->php_version, 'stack_label' => $site->stackLabel()]),

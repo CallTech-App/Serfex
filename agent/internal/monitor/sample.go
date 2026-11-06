@@ -59,6 +59,11 @@ type poolStatus struct {
 	MaxReached int `json:"max children reached"`
 	Accepted   int `json:"accepted conn"`
 	SlowReqs   int `json:"slow requests"`
+	// Since the pool started:
+	MaxActive      int    `json:"max active processes"`
+	MaxQueue       int    `json:"max listen queue"`
+	StartTime      int64  `json:"start time"`
+	ProcessManager string `json:"process manager"`
 }
 
 // dbConn is one connection to a database server.

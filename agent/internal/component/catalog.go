@@ -204,7 +204,7 @@ func phpComponent(v string) *component {
 			for _, p := range pools {
 				name := strings.TrimSuffix(filepath.Base(p), ".conf")
 				switch name {
-				case "www":
+				case "www", "serfex_probe":
 				case "serfex-webmail":
 					used = append(used, "webmail ("+m.webmailName()+")")
 				default:

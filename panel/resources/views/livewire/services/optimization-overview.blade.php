@@ -70,7 +70,7 @@
                             @elseif (! ($r['measured'] ?? true))
                                 <span class="text-muted">{{ __('Henüz ölçüm yok') }}</span>
                             @else
-                                {{ __(':count öneri', ['count' => $r['count']]) }} · {{ __(':count yavaş sorgu', ['count' => count($r['slow']['rows'])]) }}
+                                {{ __(':count öneri', ['count' => $r['count']]) }}@if (($r['kind'] ?? null) === 'database') · {{ __(':count yavaş sorgu', ['count' => count($r['slow']['rows'])]) }}@endif
                             @endif
                         </td>
                         <td class="px-3 py-2.5 text-[13px] text-muted">{{ isset($r['measured_at']) ? When::withTime($r['measured_at']) : '—' }}</td>
@@ -81,12 +81,12 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="px-5 py-4 text-[13px] text-muted">{{ __('Çalışan bir MySQL ya da MariaDB sunucusu yok.') }}</td></tr>
+                    <tr><td colspan="4" class="px-5 py-4 text-[13px] text-muted">{{ __('Çalışan bir MySQL, MariaDB ya da PHP-FPM yok.') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    <p class="border-t border-line px-5 py-2.5 text-2xs text-muted">{{ __('Şimdilik MySQL ve MariaDB inceleniyor. Ölçüm her saat yapılır.') }}</p>
+    <p class="border-t border-line px-5 py-2.5 text-2xs text-muted">{{ __('MySQL ya da MariaDB ile PHP-FPM (OPcache ve sitelerin işçileri) inceleniyor. Ölçüm her saat yapılır.') }}</p>
 
     <h2 class="flex h-12 items-center border-t border-b border-line px-5 text-[14.5px] font-semibold">{{ __('Optimizasyon ayarları') }}</h2>
     <form wire:submit="save" class="max-w-3xl px-5 py-2 text-[13.5px]">
@@ -98,6 +98,7 @@
                         TuningSettings::OFF => [__('Kapalı'), __('Ölçüm yapılmaz, öneri gösterilmez.')],
                         TuningSettings::SUGGEST => [__('Yalnızca öneri'), __('Öneriler Hizmetler\'de görünür; siz uygulayana kadar hiçbir şey değişmez.')],
                         TuningSettings::WINDOW => [__('Onayladıklarımı bakım penceresinde uygula'), __('Uygula dediğiniz değişiklik hemen değil, bakım penceresinde yapılır.')],
+                        TuningSettings::AUTO => [__('Küçük değişiklikleri kendiliğinden uygula'), __('Bir değeri en fazla %50 değiştiren ve bellek bütçesine sığan öneriler, hizmet başına günde en fazla bir tane, kendiliğinden uygulanır; PHP-FPM\'i yeniden yükleyenler bakım penceresini bekler. Büyük değişiklikler yine sizi bekler. Her biri 30 dakika gözlenir, 7 gün geri alınabilir.')],
                     ] as $value => [$label, $hint])
                         <label class="flex items-start gap-2.5">
                             <input type="radio" wire:model="level" value="{{ $value }}" @disabled($readOnly) class="mt-0.5 size-4 accent-accent">

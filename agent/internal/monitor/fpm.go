@@ -27,13 +27,36 @@ const (
 	fcgiResponder    = 1
 )
 
-// fetchPoolStatus asks a PHP-FPM status socket for the JSON status page,
-// speaking just enough FastCGI for one request.
+// fetchPoolStatus asks a PHP-FPM status socket for the JSON status page.
 func fetchPoolStatus(ctx context.Context, socket string) (poolStatus, error) {
+	body, err := FastCGI(ctx, socket, StatusPath, "json")
+	if err != nil {
+		return poolStatus{}, err
+	}
+	var st poolStatus
+	if err := json.Unmarshal(body, &st); err != nil {
+		return poolStatus{}, errors.New("PHP-FPM did not return a status page")
+	}
+	return st, nil
+}
+
+// PoolStatus is a PHP-FPM pool's status page. The counters run from the
+// pool's start (StartTime, Unix seconds).
+type PoolStatus = poolStatus
+
+// FetchPoolStatus reads a pool's status page from its status socket.
+func FetchPoolStatus(ctx context.Context, socket string) (PoolStatus, error) {
+	return fetchPoolStatus(ctx, socket)
+}
+
+// FastCGI runs one GET request for script on a PHP-FPM socket, speaking
+// just enough FastCGI for it, and returns the response body (without the
+// CGI headers).
+func FastCGI(ctx context.Context, socket, script, query string) ([]byte, error) {
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "unix", socket)
 	if err != nil {
-		return poolStatus{}, err
+		return nil, err
 	}
 	defer conn.Close()
 	deadline, ok := ctx.Deadline()
@@ -42,16 +65,20 @@ func fetchPoolStatus(ctx context.Context, socket string) (poolStatus, error) {
 	}
 	_ = conn.SetDeadline(deadline)
 
+	uri := script
+	if query != "" {
+		uri += "?" + query
+	}
 	var req bytes.Buffer
 	writeRecord(&req, fcgiBeginRequest, []byte{0, fcgiResponder, 0, 0, 0, 0, 0, 0})
 	var params bytes.Buffer
 	for _, kv := range [][2]string{
 		{"GATEWAY_INTERFACE", "CGI/1.1"},
 		{"REQUEST_METHOD", "GET"},
-		{"SCRIPT_NAME", StatusPath},
-		{"SCRIPT_FILENAME", StatusPath},
-		{"REQUEST_URI", StatusPath + "?json"},
-		{"QUERY_STRING", "json"},
+		{"SCRIPT_NAME", script},
+		{"SCRIPT_FILENAME", script},
+		{"REQUEST_URI", uri},
+		{"QUERY_STRING", query},
 		{"SERVER_PROTOCOL", "HTTP/1.1"},
 	} {
 		writeParam(&params, kv[0], kv[1])
@@ -60,7 +87,7 @@ func fetchPoolStatus(ctx context.Context, socket string) (poolStatus, error) {
 	writeRecord(&req, fcgiParams, nil)
 	writeRecord(&req, fcgiStdin, nil)
 	if _, err := conn.Write(req.Bytes()); err != nil {
-		return poolStatus{}, err
+		return nil, err
 	}
 
 	r := bufio.NewReader(conn)
@@ -68,19 +95,22 @@ func fetchPoolStatus(ctx context.Context, socket string) (poolStatus, error) {
 	for {
 		var h [8]byte
 		if _, err := io.ReadFull(r, h[:]); err != nil {
-			return poolStatus{}, fmt.Errorf("reading FastCGI response: %w", err)
+			return nil, fmt.Errorf("reading FastCGI response: %w", err)
 		}
 		n := int(binary.BigEndian.Uint16(h[4:6]))
 		pad := int(h[6])
 		body := make([]byte, n+pad)
 		if _, err := io.ReadFull(r, body); err != nil {
-			return poolStatus{}, err
+			return nil, err
 		}
 		switch h[1] {
 		case fcgiStdout:
+			if out.Len()+n > 4<<20 {
+				return nil, errors.New("FastCGI response too large")
+			}
 			out.Write(body[:n])
 		case fcgiEndRequest:
-			return parseStatusResponse(out.Bytes())
+			return responseBody(out.Bytes()), nil
 		}
 	}
 }
@@ -106,16 +136,12 @@ func writeParam(w *bytes.Buffer, k, v string) {
 	w.WriteString(v)
 }
 
-// parseStatusResponse reads the CGI response: headers, a blank line, JSON.
-func parseStatusResponse(b []byte) (poolStatus, error) {
+// responseBody drops a CGI response's headers.
+func responseBody(b []byte) []byte {
 	if i := bytes.Index(b, []byte("\r\n\r\n")); i >= 0 {
-		b = b[i+4:]
+		return b[i+4:]
 	} else if i := bytes.Index(b, []byte("\n\n")); i >= 0 {
-		b = b[i+2:]
+		return b[i+2:]
 	}
-	var st poolStatus
-	if err := json.Unmarshal(b, &st); err != nil {
-		return poolStatus{}, errors.New("PHP-FPM did not return a status page")
-	}
-	return st, nil
+	return b
 }

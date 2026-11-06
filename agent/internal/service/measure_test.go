@@ -79,10 +79,11 @@ func TestDynamicStatements(t *testing.T) {
 func TestMeasure(t *testing.T) {
 	m, _ := newTest(t, "/etc/mysql/mysql.conf.d/zz-serfex.cnf")
 	ctx := context.Background()
-	got, err := m.Measure(ctx, "mysql")
+	res, err := m.Measure(ctx, "mysql")
 	if err != nil {
 		t.Fatal(err)
 	}
+	got := res.(Measurement)
 	if got.MemoryMB == 0 || got.Variables["innodb_buffer_pool_size"] == "" || len(got.Digests) == 0 || got.Status["Uptime"] == "" {
 		t.Errorf("demo measurement: %+v", got)
 	}
@@ -128,3 +129,95 @@ func TestReadMemoryAndProcesses(t *testing.T) {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+func TestMeasurePHP(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	res, err := m.Measure(ctx, "php8.4-fpm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := res.(PHPMeasurement)
+	if got.Kind != "php" || got.Version != "8.4" || got.OPcache == nil || len(got.Pools) == 0 {
+		t.Errorf("demo measurement: %+v", got)
+	}
+	if PHPVersionOf("php8.4-fpm") != "8.4" || PHPVersionOf("mysql") != "" || PHPVersionOf("php8.4") != "" {
+		t.Error("PHPVersionOf")
+	}
+
+	// The probe pool: written once, checked, PHP-FPM reloaded once.
+	if err := m.ensureProbe(ctx, "8.4"); err != nil {
+		t.Fatal(err)
+	}
+	conf, _ := os.ReadFile(sim.Path(probePool("8.4")))
+	for _, want := range []string{"[serfex_probe]\n", "user = nobody\n", "listen = /run/php/serfex_probe-8.4.sock\n", "listen.mode = 0600\n", "php_admin_value[open_basedir] = /opt/serfex/php-probe/\n"} {
+		if !strings.Contains(string(conf), want) {
+			t.Errorf("probe pool lacks %q:\n%s", want, conf)
+		}
+	}
+	if b, _ := os.ReadFile(sim.Path(probeScript())); !strings.HasPrefix(string(b), "<?php // Managed by Serfex") {
+		t.Errorf("probe script:\n%s", b)
+	}
+	reloads := func() int {
+		n := 0
+		for _, c := range sim.Commands() {
+			if c.Name == "systemctl" && len(c.Args) == 2 && c.Args[0] == "reload" && c.Args[1] == "php8.4-fpm" {
+				n++
+			}
+		}
+		return n
+	}
+	if n := reloads(); n != 1 {
+		t.Errorf("reloads after writing: %d", n)
+	}
+	if err := m.ensureProbe(ctx, "8.4"); err != nil || reloads() != 1 {
+		t.Errorf("second ensure: %v, reloads %d", err, reloads())
+	}
+	// Sites' pools are read; webmail's and the probe's are not.
+	write := func(p, s string) {
+		_ = os.MkdirAll(filepath.Dir(sim.Path(p)), 0o755)
+		if err := os.WriteFile(sim.Path(p), []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("/etc/php/8.4/fpm/pool.d/a.com.conf", "; Managed by Serfex.\n[a.com]\npm = dynamic\npm.max_children = 12\npm.status_listen = /run/php/serfex-a.com.status.sock\n")
+	write("/etc/php/8.4/fpm/pool.d/serfex-webmail.conf", "; Managed by Serfex.\n[serfex-webmail]\npm = ondemand\npm.max_children = 20\n")
+	write("/etc/php/8.4/fpm/pool.d/b.com.conf", "[b.com]\npm.max_children = 5\npm.status_listen = /run/x.sock\n")
+	pools := readPools(sim, "8.4")
+	if len(pools) != 1 || pools[0].Domain != "a.com" || pools[0].PM != "dynamic" || pools[0].MaxChildren != 12 || pools[0].socket != "/run/php/serfex-a.com.status.sock" {
+		t.Errorf("pools: %+v", pools)
+	}
+	page := os.Getpagesize()
+	write("/proc/20/cmdline", "php-fpm: pool a.com\x00\x00")
+	write("/proc/20/statm", "100 "+itoa(70<<20/page)+" "+itoa(20<<20/page)+" 0 0 0 0\n")
+	write("/proc/21/cmdline", "php-fpm: pool a.com        ")
+	write("/proc/21/statm", "100 "+itoa(40<<20/page)+" "+itoa(10<<20/page)+" 0 0 0 0\n")
+	if mem := poolMemory(sim)["a.com"]; mem.workers != 2 || int(mem.mb+0.5) != 80 {
+		t.Errorf("pool memory: %+v", mem)
+	}
+}
+
+func TestParseOPcache(t *testing.T) {
+	body := `{"loaded":true,"status":{"opcache_enabled":true,"memory_usage":{"used_memory":125829120,"free_memory":2097152,"wasted_memory":6291456},
+		"interned_strings_usage":{"buffer_size":16777216,"used_memory":16357785,"free_memory":419431},
+		"opcache_statistics":{"num_cached_scripts":9840,"num_cached_keys":12210,"max_cached_keys":32531,"hits":48000000,"misses":90000,"start_time":1700000000,"oom_restarts":3,"hash_restarts":0,"manual_restarts":1}},
+		"directives":{"opcache.enable":true,"opcache.memory_consumption":134217728,"opcache.interned_strings_buffer":16,"opcache.max_accelerated_files":20000,"opcache.validate_timestamps":true,"opcache.revalidate_freq":2}}`
+	o, err := parseOPcache([]byte(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := OPcache{Loaded: true, Enabled: true, MemoryMB: 128, UsedMB: 120, FreeMB: 2, WastedMB: 6, StringsMB: 16, StringsUsedMB: 15.6, StringsFreeMB: 0.4,
+		MaxFiles: 20000, CachedScripts: 9840, CachedKeys: 12210, MaxCachedKeys: 32531, Hits: 48000000, Misses: 90000, OOMRestarts: 3, ManualRestarts: 1,
+		StartTime: 1700000000, ValidateTimestamps: true, RevalidateFreq: 2}
+	if *o != want {
+		t.Errorf("got  %+v\nwant %+v", *o, want)
+	}
+	// OPcache switched off: no status, the settings still read.
+	o, err = parseOPcache([]byte(`{"loaded":true,"status":null,"directives":{"opcache.enable":false,"opcache.memory_consumption":134217728}}`))
+	if err != nil || o.Enabled || o.MemoryMB != 128 {
+		t.Errorf("off: %+v %v", o, err)
+	}
+	if _, err := parseOPcache([]byte("<html>")); err == nil {
+		t.Error("garbage accepted")
+	}
+}

@@ -15,10 +15,11 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * Hizmetler → MySQL (or MariaDB) → Öneriler: what the last week's
- * measurements say, the suggestions with Apply, Apply tonight and
- * Dismiss, the changes being watched or rolled back, the settings that
- * are fine and the slow statements.
+ * Hizmetler → MySQL (or MariaDB, or a PHP-FPM version) → Öneriler: what
+ * the last week's measurements say, the suggestions with Apply, Apply
+ * tonight and Dismiss, the changes being watched or rolled back, the
+ * settings that are fine and, for the database server, the slow
+ * statements.
  */
 class DatabaseTuning extends Component
 {
@@ -35,7 +36,7 @@ class DatabaseTuning extends Component
 
     public function mount(string $unit): void
     {
-        abort_unless(in_array($unit, Optimization::UNITS, true), 404);
+        abort_unless(Optimization::supports($unit), 404);
         $this->unit = $unit;
     }
 
