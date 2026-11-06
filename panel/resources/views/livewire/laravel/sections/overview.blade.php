@@ -15,14 +15,26 @@
     <div class="grid grid-cols-2 border-b border-line text-[13px] xl:grid-cols-4 [&>div]:border-line [&>div]:p-4 [&>div:nth-child(-n+2)]:border-b xl:[&>div]:border-b-0 [&>div:nth-child(odd)]:border-r xl:[&>div:not(:last-child)]:border-r">
         <div>
             <p class="text-2xs text-muted"><x-t text="Sağlık (:health_path)"><x-slot:health_path><span class="font-mono">{{ $app->health_path }}</span></x-slot:health_path></x-t></p>
-            @if ($health === null)
-                <p class="mt-1 font-medium text-muted">{{ __('Bilinmiyor') }}</p>
-            @elseif ($health['ok'] ?? false)
-                <p class="mt-1 font-medium text-ok">{{ $health['status'] }} · {{ $health['ms'] }} ms</p>
-            @else
-                <p class="mt-1 font-medium text-crit">{{ ($health['status'] ?? 0) ? $health['status'] : ($health['error'] ?? __('Yanıt yok')) }}</p>
-            @endif
-            <button type="button" wire:click="checkHealth" class="text-2xs text-accent hover:underline">{{ __('Şimdi kontrol et') }}</button>
+            <div wire:loading.remove wire:target="checkHealth">
+                @if ($health === null)
+                    <p class="mt-1 font-medium text-muted">{{ __('Bilinmiyor') }}</p>
+                @elseif ($health['ok'] ?? false)
+                    <p class="mt-1 font-medium text-ok">{{ $health['status'] }} · {{ $health['ms'] }} ms</p>
+                @else
+                    <p class="mt-1 font-medium text-crit">{{ ($health['status'] ?? 0) ? $health['status'] : ($health['error'] ?? __('Yanıt yok')) }}</p>
+                    @if ($health['location'] ?? null)
+                        <p class="text-2xs text-muted">{{ __('Başka bir adrese yönlendiriyor: :location', ['location' => $health['location']]) }}</p>
+                    @endif
+                @endif
+                @if ($health && ($health['url'] ?? null) && parse_url($health['url'], PHP_URL_HOST) !== $app->site->domain)
+                    <p class="truncate font-mono text-2xs text-muted" title="{{ $health['url'] }}">{{ $health['url'] }}</p>
+                @endif
+                @if ($checkedAt)
+                    <p class="text-2xs text-muted">{{ __(':time itibarıyla', ['time' => $checkedAt]) }}</p>
+                @endif
+            </div>
+            <p class="mt-1 items-center gap-1.5 font-medium text-muted" wire:loading.flex wire:target="checkHealth"><x-icon name="loader-circle" class="size-3.5 animate-spin" />{{ __('Kontrol ediliyor…') }}</p>
+            <button type="button" wire:click="checkHealth" wire:loading.attr="disabled" wire:target="checkHealth" class="text-2xs text-accent hover:underline disabled:opacity-50">{{ __('Şimdi kontrol et') }}</button>
         </div>
         <div>
             <p class="text-2xs text-muted">{{ __('Yayındaki sürüm') }}</p>
