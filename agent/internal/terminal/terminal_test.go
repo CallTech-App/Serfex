@@ -210,7 +210,10 @@ func TestShellRunsAndResizes(t *testing.T) {
 	c.send(opText, []byte(`{"t":"resize","cols":132,"rows":40}`))
 	c.send(opBinary, []byte("stty size\r"))
 	c.until(t, "40 132")
-	// A large paste in one message.
+	// A large paste in one message. Wait for the prompt first: while a
+	// command runs the terminal is in canonical mode, where Linux keeps at
+	// most 4095 bytes of a line and drops the rest.
+	c.until(t, "$ ")
 	big := strings.Repeat("x", 70000)
 	c.send(opBinary, []byte("echo "+big+" | wc -c\r"))
 	c.until(t, "70001")
