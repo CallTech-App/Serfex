@@ -70,7 +70,13 @@
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
-                            <td class="py-3 pr-5 pl-3"><x-status-badge :status="$site->status" /></td>
+                            <td class="py-3 pr-5 pl-3">
+                                @if ($site->status === \App\Enums\SiteStatus::Active && $site->isDown())
+                                    <a href="{{ route('sites.show', $site) }}" wire:navigate title="{{ $site->uptime_error }}" class="inline-flex items-center gap-1.5 rounded-full bg-crit-soft px-2 py-0.5 text-2xs font-medium whitespace-nowrap text-crit"><i class="size-1.5 rounded-full bg-crit"></i>{{ __('Yanıt vermiyor') }}</a>
+                                @else
+                                    <x-status-badge :status="$site->status" />
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>

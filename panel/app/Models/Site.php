@@ -19,7 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'copy_blocks_mail', 'copy_blocks_cron', 'cache', 'node_version', 'failed_action'])]
+#[Fillable(['system_user_id', 'domain', 'aliases', 'php_version', 'document_root', 'web_root', 'certificate_id', 'https_redirect', 'web_server', 'status', 'last_error', 'provisioned_at', 'waf_mode', 'denied_paths', 'php_settings', 'error_pages', 'nginx_directives', 'apache_directives', 'disk_bytes', 'preferred_host', 'copy_of_id', 'noindex', 'copy_blocks_mail', 'copy_blocks_cron', 'cache', 'node_version', 'failed_action',
+    'uptime_enabled', 'uptime_path', 'uptime_state', 'uptime_failures', 'uptime_checked_at', 'uptime_since', 'uptime_ms', 'uptime_error', 'uptime_cause'])]
 class Site extends Model
 {
     /** @use HasFactory<SiteFactory> */
@@ -77,6 +78,9 @@ class Site extends Model
             'copy_blocks_mail' => 'boolean',
             'copy_blocks_cron' => 'boolean',
             'cache' => 'array',
+            'uptime_enabled' => 'boolean',
+            'uptime_checked_at' => 'datetime',
+            'uptime_since' => 'datetime',
         ];
     }
 
@@ -267,6 +271,22 @@ class Site extends Model
     public function cronJobs(): HasMany
     {
         return $this->hasMany(CronJob::class);
+    }
+
+    /**
+     * @return HasMany<SiteOutage, $this>
+     */
+    public function outages(): HasMany
+    {
+        return $this->hasMany(SiteOutage::class);
+    }
+
+    /**
+     * True while serfex:uptime finds the site not answering.
+     */
+    public function isDown(): bool
+    {
+        return $this->uptime_state === 'down';
     }
 
     /**

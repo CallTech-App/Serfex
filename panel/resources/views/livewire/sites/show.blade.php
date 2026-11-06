@@ -248,6 +248,10 @@
         </div>
     @endif
 
+    @if ($site->status === \App\Enums\SiteStatus::Active)
+        <livewire:sites.site-uptime :site-id="$site->id" :key="'uptime-'.$site->id" />
+    @endif
+
     {{-- Summary --}}
     @php $backupCell = $user->allows('backups') ? route('sites.backups', $site) : null; @endphp
     <section class="grid grid-cols-2 overflow-hidden rounded-xl border border-line bg-surface text-[13px] xl:grid-cols-4 [&>*]:min-w-0 [&>*]:border-line [&>*]:p-4 [&>*:nth-child(odd)]:border-r max-xl:[&>*:nth-child(-n+2)]:border-b xl:[&>*:not(:last-child)]:border-r">

@@ -26,15 +26,26 @@ operating system, hardware and uptime.
 ## Notifications
 
 Who hears about a problem when it starts and when it is over. Each problem is
-reported once. Serfex checks every 5 minutes, and you choose which kinds to
-hear about:
+reported once. Serfex checks every 5 minutes (a site that stops answering is
+reported as soon as it is found), and you choose which kinds to hear about:
 
 - SSL certificates that could not be obtained or renewed, or are about to expire;
 - backups that failed or did not start, and unreachable destinations;
 - a new Serfex release, or a failed update;
 - the server's disk 90% full, or a customer over their disk quota;
 - a customer over their monthly traffic (their sites keep running);
-- a stopped service such as Nginx, PHP-FPM, MySQL or the mail server.
+- a stopped service such as Nginx, PHP-FPM, MySQL or the mail server;
+- **sites**: a site that does not answer, or answers with a 5xx error, on two
+  checks in a row (about 2 minutes); see [Uptime](monitoring.md#uptime);
+- **deployments**: a Laravel or Git deployment that failed, or was rolled back
+  because of the health check (reported for 24 hours, or until a deployment
+  works);
+- **scheduled tasks**: a task, or a Laravel scheduler task, that failed 3
+  times in a row;
+- **queues and processes**: a queue worker or a process (Horizon, Reverb,
+  Octane, custom) that crashed 5 times in 10 minutes, or that systemd stopped
+  restarting. A worker that stops cleanly after `--max-jobs` or `--max-time`
+  is not a crash.
 
 Channels:
 

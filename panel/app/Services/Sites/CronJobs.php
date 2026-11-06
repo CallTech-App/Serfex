@@ -20,6 +20,9 @@ use Illuminate\Support\Carbon;
  */
 class CronJobs
 {
+    /** Failed runs in a row that are a problem (Bildirimler → Zamanlanmış görevler). */
+    public const FAILURES = 3;
+
     /** Time limits a task can have: seconds => label. */
     public const TIMEOUTS = [300 => '5 dakika', 900 => '15 dakika', 3600 => '1 saat', 21600 => '6 saat', 86400 => '24 saat'];
 
@@ -162,7 +165,7 @@ class CronJobs
         foreach ($sites as $site) {
             foreach ($site->cronJobs as $task) {
                 try {
-                    $runs = $this->runs($task->setRelation('site', $site), 1);
+                    $runs = $this->runs($task->setRelation('site', $site), self::FAILURES);
                 } catch (AgentException) {
                     continue;
                 }
@@ -171,8 +174,16 @@ class CronJobs
                     continue;
                 }
                 $at = Carbon::parse($last['started_at']);
-                if ($task->last_run_at === null || ! $task->last_run_at->eq($at) || $task->last_status !== $last['status']) {
-                    $task->update(['last_run_at' => $at, 'last_status' => $last['status']]);
+                // Runs in a row that failed, newest first.
+                $failed = 0;
+                foreach ($runs['runs'] as $run) {
+                    if (! in_array($run['status'], ['failed', 'timeout'], true)) {
+                        break;
+                    }
+                    $failed++;
+                }
+                if ($task->last_run_at === null || ! $task->last_run_at->eq($at) || $task->last_status !== $last['status'] || $task->failed_runs !== $failed) {
+                    $task->update(['last_run_at' => $at, 'last_status' => $last['status'], 'failed_runs' => $failed]);
                     $updated++;
                 }
             }

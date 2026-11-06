@@ -34,4 +34,7 @@ Schedule::command('serfex:wordpress-check')->dailyAt('05:20')->withoutOverlappin
 Schedule::command('serfex:tuning-measure')->hourlyAt(7)->withoutOverlapping();
 Schedule::command('serfex:tuning')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:cloudflare-sync')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('serfex:uptime')->everyMinute()->withoutOverlapping(5);
+Schedule::command('serfex:uptime --prune')->dailyAt('04:15')->withoutOverlapping();
+Schedule::command('serfex:laravel-watch')->everyMinute()->withoutOverlapping(5);
 Schedule::command('serfex:cloudflare-ips')->weeklyOn(1, '04:50')->withoutOverlapping();

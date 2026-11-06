@@ -121,6 +121,9 @@ type TaskRun struct {
 	At       string `json:"at"`
 	Duration string `json:"duration"`
 	OK       bool   `json:"ok"`
+	// Failures is how many runs in a row failed, up to the last one (0
+	// when the last run succeeded), as far back as the log tail reaches.
+	Failures int `json:"failures"`
 }
 
 // ApplySchedule writes the scheduler's units and starts or stops its timer.
@@ -232,7 +235,11 @@ func parseTaskRuns(log string) []TaskRun {
 		if _, ok := last[cmd]; !ok {
 			order = append(order, cmd)
 		}
-		last[cmd] = TaskRun{Command: cmd, At: g[1], Duration: strings.TrimSpace(g[3]), OK: g[4] == "DONE"}
+		run := TaskRun{Command: cmd, At: g[1], Duration: strings.TrimSpace(g[3]), OK: g[4] == "DONE"}
+		if !run.OK {
+			run.Failures = last[cmd].Failures + 1
+		}
+		last[cmd] = run
 	}
 	out := make([]TaskRun, 0, len(order))
 	for _, c := range order {
