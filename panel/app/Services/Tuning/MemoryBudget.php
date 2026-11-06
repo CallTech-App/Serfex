@@ -4,7 +4,7 @@ namespace App\Services\Tuning;
 
 /**
  * The memory the services sharing this machine may take together: the
- * operating system and Serfex, the database server, PHP-FPM at its
+ * operating system and Serfex, the database servers, PHP-FPM at its
  * busiest in the last 7 days, Redis and Memcached. Their total stays under
  * a share of RAM (80% unless changed); the rest is the file cache. A
  * suggestion that would go over it is not offered for applying.
@@ -15,7 +15,7 @@ class MemoryBudget
     private array $reserved = [];
 
     /**
-     * @param  array<string, int>  $parts  MB by part: system, mysql, php-fpm, cache
+     * @param  array<string, int>  $parts  MB by part: system, mysql, postgresql, php-fpm, cache
      */
     public function __construct(public readonly int $totalMB, public readonly int $percent, public readonly array $parts) {}
 
@@ -28,12 +28,14 @@ class MemoryBudget
         $total = (int) ($data['memory_mb'] ?? 0);
         $used = $total - (int) ($data['available_mb'] ?? $total);
         $mysql = (int) ($p['mysql'] ?? 0);
+        $pg = (int) ($p['postgresql'] ?? 0);
         $php = (int) ($p['php-fpm'] ?? 0);
         $cache = (int) ($p['redis'] ?? 0) + (int) ($p['memcached'] ?? 0);
 
         return new self($total, $percent, [
-            'system' => max(0, $used - $mysql - $php - $cache),
+            'system' => max(0, $used - $mysql - $pg - $php - $cache),
             'mysql' => $mysql,
+            'postgresql' => $pg,
             'php-fpm' => max($php, $phpPeakMB),
             'cache' => $cache,
         ]);

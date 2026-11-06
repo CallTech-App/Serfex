@@ -4,7 +4,6 @@ namespace App\Livewire\Services;
 
 use App\Models\TuningChange;
 use App\Services\System\SystemServices;
-use App\Services\Tuning\MysqlAdvisor;
 use App\Services\Tuning\Optimization;
 use App\Services\Tuning\Tuner;
 use App\Services\Tuning\TuningSettings;
@@ -136,7 +135,7 @@ class ServiceShow extends Component
             };
         }
         $before = $this->current;
-        if ($values == $before) {
+        if ($values == array_intersect_key($before, $values)) {
             $this->dispatch('toast', message: __('Değişiklik yok.'));
 
             return;
@@ -148,12 +147,10 @@ class ServiceShow extends Component
             return;
         }
         $this->settingsError = null;
-        if ($section === 'database') {
-            // A value a person set by hand is not touched by optimization.
-            foreach (MysqlAdvisor::FIELDS as $key => $field) {
-                if (($values[$field] ?? null) != ($before[$field] ?? null)) {
-                    app(TuningSettings::class)->lock($this->unit, $key, auth()->user());
-                }
+        // A value a person set by hand is not touched by optimization.
+        foreach (Optimization::fields($this->unit) as $key => $field) {
+            if (array_key_exists($field, $values) && $values[$field] != ($before[$field] ?? null)) {
+                app(TuningSettings::class)->lock($this->unit, $key, auth()->user());
             }
         }
         $this->useSettings($result);
@@ -185,7 +182,7 @@ class ServiceShow extends Component
 
     public function lockTuning(string $key, TuningSettings $settings): void
     {
-        if (isset(MysqlAdvisor::FIELDS[$key])) {
+        if (isset(Optimization::fields($this->unit)[$key])) {
             $settings->lock($this->unit, $key, auth()->user());
             $this->dispatch('toast', message: __('Ayar kilitlendi; optimizasyon ona öneri getirmeyecek.'));
         }
@@ -205,7 +202,7 @@ class ServiceShow extends Component
 
             return;
         }
-        $this->loadSettings($services, 'database');
+        $this->loadSettings($services, (string) ($services->find($this->unit)['settings'] ?? 'database'));
         $this->dispatch('toast', message: __('Önceki değer geri yüklendi.'));
     }
 
@@ -217,13 +214,14 @@ class ServiceShow extends Component
      */
     private function tuningNotes(?array $service): array
     {
-        if (($service['settings'] ?? null) !== 'database' || ! in_array($this->unit, Optimization::UNITS, true)) {
+        $fields = Optimization::fields($this->unit);
+        if (empty($service['settings']) || $fields === []) {
             return [];
         }
         $locked = app(TuningSettings::class)->locked($this->unit);
         $tuner = app(Tuner::class);
         $out = [];
-        foreach (MysqlAdvisor::FIELDS as $key => $field) {
+        foreach ($fields as $key => $field) {
             if (isset($locked[$key])) {
                 $out[$field] = ['key' => $key, 'locked' => $locked[$key]];
 

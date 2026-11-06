@@ -102,7 +102,7 @@ func (m *Manager) catalog() []def {
 	)
 	for _, c := range m.clusters() {
 		if c[1] == "main" {
-			defs = append(defs, def{unit: "postgresql@" + c[0] + "-main", name: "PostgreSQL " + c[0], group: GroupHosting, reload: true})
+			defs = append(defs, def{unit: "postgresql@" + c[0] + "-main", name: "PostgreSQL " + c[0], group: GroupHosting, reload: true, settings: "postgresql"})
 		}
 	}
 	defs = append(defs,
@@ -111,7 +111,7 @@ func (m *Manager) catalog() []def {
 		def{unit: "dovecot", name: "Dovecot (IMAP ve POP3)", group: GroupHosting, marker: "/usr/sbin/dovecot", test: []string{"doveconf", "-n"}, reload: true},
 		def{unit: "rspamd", name: "Rspamd (spam filtresi)", group: GroupHosting, marker: "/usr/bin/rspamd", test: []string{"rspamadm", "configtest"}, reload: true},
 		def{unit: "redis-server@serfex-mail", name: "Redis (posta)", group: GroupHosting, marker: "/etc/redis/serfex-mail.conf"},
-		def{unit: "memcached", name: "Memcached", group: GroupHosting, marker: "/usr/bin/memcached"},
+		def{unit: "memcached", name: "Memcached", group: GroupHosting, marker: "/usr/bin/memcached", settings: "memcached"},
 		def{unit: "supervisor", name: "Supervisor", group: GroupHosting, marker: "/usr/bin/supervisord", reload: true},
 		def{unit: "clamav-daemon", name: "ClamAV (virüs tarayıcı)", group: GroupHosting, marker: "/usr/sbin/clamd", reload: true},
 		def{unit: "clamav-freshclam", name: "ClamAV imza güncelleyici", group: GroupHosting, marker: "/usr/bin/freshclam"},

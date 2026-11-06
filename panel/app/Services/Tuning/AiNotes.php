@@ -130,7 +130,7 @@ class AiNotes
     private function system(): string
     {
         return <<<'TXT'
-            You are Serfex AI inside Serfex, a web hosting control panel. You get measurements of one service on the server, named in "service": a MySQL or MariaDB server (with the statements that cost the most time) or a PHP-FPM version (its OPcache and the sites' worker pools), and the tuning suggestions Serfex's rules made. The server runs other services too; memory is shared through the memory budget.
+            You are Serfex AI inside Serfex, a web hosting control panel. You get measurements of one service on the server, named in "service": a MySQL or MariaDB server (with the statements that cost the most time), a PHP-FPM version (its OPcache and the sites' worker pools), Nginx, the customers' PostgreSQL, Memcached or the sites' own Redis instances ("redis-sites"), and the tuning suggestions Serfex's rules made. The server runs other services too; memory is shared through the memory budget.
 
             Answer with one JSON object and nothing else:
             {"suggestions": {"<key>": {"value": <integer or null>, "text": "<why>"}}, "queries": {"<digest>": {"text": "<what makes it slow and the fix>", "code": "<Laravel migration or null>"}}}

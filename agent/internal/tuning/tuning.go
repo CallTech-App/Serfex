@@ -53,6 +53,9 @@ type Nginx struct {
 	// PHP post_max_size is larger gets its own limit.
 	ClientMaxBodyMB  int `json:"client_max_body_mb"`
 	KeepaliveTimeout int `json:"keepalive_timeout"`
+	// WorkerRlimitNofile is how many files (connections among them) a
+	// worker may open; 0 leaves the limit the service starts with.
+	WorkerRlimitNofile int `json:"worker_rlimit_nofile"`
 }
 
 // Database settings of the MySQL or MariaDB server customers use. The

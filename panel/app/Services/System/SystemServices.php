@@ -55,6 +55,16 @@ class SystemServices
             'max_request_workers' => ['Eşzamanlı istek sınırı', '', 25, 2000, 'Apache\'nin aynı anda işlediği istek sayısı; fazlası sırada bekler. Apache\'yi kullanan tüm siteler için toplam.'],
             'timeout' => ['İstek zaman aşımı', 'saniye', 10, 300, 'Yavaş bir istek en çok bu kadar beklenir. Nginx de Apache\'yi en çok 300 saniye bekler.'],
         ],
+        'postgresql' => [
+            'shared_buffers_mb' => ['Önbellek (shared_buffers)', 'MB', 16, 1048576, 'Sık okunan veri bellekte tutulur; sunucu belleğinin en fazla dörtte biri önerilir. Değişince PostgreSQL yeniden başlar.'],
+            'effective_cache_size_mb' => ['Planlayıcının bildiği bellek', 'MB', 64, 4194304, 'Bellek ayırmaz; sorgu planlayıcısına dosya önbelleğinin büyüklüğünü söyler. Sunucu belleğinin yarısı önerilir.'],
+            'work_mem_mb' => ['Sıralama belleği (work_mem)', 'MB', 1, 2048, 'Her sıralama ve birleştirme bu kadar bellek kullanabilir; aşan kısım diske geçici dosya olarak yazılır.'],
+            'maintenance_work_mem_mb' => ['Bakım belleği', 'MB', 16, 16384, 'VACUUM ve index oluşturma için.'],
+        ],
+        'memcached' => [
+            'memory_mb' => ['Bellek', 'MB', 16, 65536, 'Dolunca en eski kayıtlar atılır. Değişince Memcached yeniden başlar ve önbellek boşalır.'],
+            'max_connections' => ['En fazla bağlantı', '', 64, 65536, 'Aynı anda açık bağlantı sayısı.'],
+        ],
         'powerdns' => [
             'cache_ttl' => ['Yanıt önbelleği', 'saniye', 0, 86400, 'Aynı sorunun yanıtı bu süre bellekte tutulur; 0 önbelleği kapatır. Panelden yapılan kayıt değişiklikleri önbelleği hemen temizler.'],
             'negquery_cache_ttl' => ['Olumsuz yanıt önbelleği', 'saniye', 0, 86400, '"Böyle bir kayıt yok" yanıtları bu süre bellekte tutulur.'],
@@ -315,15 +325,13 @@ class SystemServices
      */
     public function applySettings(string $unit, string $section, array $values): array|string
     {
-        if ($section === 'database') {
-            // The page edits a few of the database settings; the ones set
-            // by optimization suggestions stay as they are.
-            $current = $this->settings($unit, $section);
-            if (is_string($current)) {
-                return $current;
-            }
-            $values = array_merge($current, $values);
+        // The page edits some of the settings; the ones only optimization
+        // suggestions set stay as they are.
+        $current = $this->settings($unit, $section);
+        if (is_string($current)) {
+            return $current;
         }
+        $values = array_merge($current, $values);
         try {
             $res = (array) $this->agent->call('service.settings.apply', ['unit' => $unit, $section => $values], 300);
         } catch (AgentException $e) {

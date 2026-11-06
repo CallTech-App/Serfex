@@ -2,6 +2,7 @@
 
 namespace App\Services\Tuning;
 
+use App\Models\LaravelApp;
 use App\Models\Site;
 use App\Models\TuningChange;
 use App\Models\TuningSample;
@@ -14,7 +15,8 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Everything the optimization screens show for one service (a database
- * server or a PHP-FPM version): the measurement summary, the suggestions
+ * server, a PHP-FPM version, Nginx, the customers' PostgreSQL, Memcached
+ * or the sites' Redis instances together): the measurement summary, the suggestions
  * with their state (new, scheduled, being watched, rolled back), the
  * settings left alone and why, the memory budget, the changes of the last
  * week and, for the database server, the slow statements, with Serfex
@@ -29,6 +31,12 @@ class Optimization
     /** Lock "unit" of the sites' PHP-FPM pools, whichever version they run. */
     public const SITE_LOCKS = 'php-sites';
 
+    /** The "unit" of the sites' own Redis instances, measured together. */
+    public const REDIS = 'redis-sites';
+
+    /** Order of the kinds on the overview. */
+    public const ORDER = ['database', 'php', 'postgresql', 'nginx', 'memcached', 'redis'];
+
     public function __construct(
         private readonly Samples $samples,
         private readonly MysqlAdvisor $advisor,
@@ -38,19 +46,98 @@ class Optimization
         private readonly AiNotes $ai,
         private readonly SystemServices $services,
         private readonly Tuner $tuner,
+        private readonly NginxAdvisor $nginx,
+        private readonly PostgresAdvisor $postgres,
+        private readonly MemcachedAdvisor $memcached,
+        private readonly RedisAdvisor $redis,
     ) {}
 
     /**
-     * What kind of service a unit is for optimization: database, php or
-     * null when optimization does not look at it.
+     * What kind of service a unit is for optimization: database, php,
+     * nginx, postgresql, memcached, redis or null when optimization does
+     * not look at it.
      */
     public static function kind(string $unit): ?string
     {
         return match (true) {
             in_array($unit, self::UNITS, true) => 'database',
             (bool) preg_match('/^php\d\.\d-fpm$/', $unit) => 'php',
+            $unit === 'nginx' => 'nginx',
+            (bool) preg_match('/^postgresql@\d+-main$/', $unit) => 'postgresql',
+            $unit === 'memcached' => 'memcached',
+            $unit === self::REDIS => 'redis',
             default => null,
         };
+    }
+
+    /**
+     * The settings (of Hizmetler → Ayarlar) each suggestion of a unit
+     * changes, for locks: suggestion key => setting.
+     *
+     * @return array<string, string>
+     */
+    public static function fields(string $unit): array
+    {
+        return match (self::kind($unit)) {
+            'database' => MysqlAdvisor::FIELDS,
+            'nginx' => NginxAdvisor::FIELDS,
+            'postgresql' => PostgresAdvisor::FIELDS,
+            'memcached' => MemcachedAdvisor::FIELDS,
+            default => [],
+        };
+    }
+
+    /**
+     * What applying a suggestion does to the service: none, reload (open
+     * requests finish) or restart (a few seconds without it).
+     */
+    public static function disruption(string $unit, string $key): string
+    {
+        return match (self::kind($unit)) {
+            'php', 'nginx' => 'reload',
+            'postgresql' => $key === 'pg_shared_buffers' ? 'restart' : 'reload',
+            'memcached' => 'restart',
+            default => 'none',
+        };
+    }
+
+    /**
+     * The disruption in words: short (on the card) or long (in the Apply
+     * dialog).
+     */
+    public static function disruptionText(string $unit, string $disruption, bool $long = false): string
+    {
+        $kind = self::kind($unit);
+
+        return match (true) {
+            $disruption === 'reload' && $kind === 'php' => $long ? __('Yok. PHP-FPM yeniden yüklenir: süren istekler tamamlanır, OPcache baştan dolar.') : __('PHP-FPM yeniden yüklenir, istekler kesilmez'),
+            $disruption === 'reload' && $kind === 'nginx' => $long ? __('Yok. Nginx yeniden yüklenir: açık bağlantılar tamamlanır.') : __('Nginx yeniden yüklenir, bağlantılar kesilmez'),
+            $disruption === 'reload' => $long ? __('Yok. PostgreSQL ayarlarını yeniden okur; açık bağlantılar sürer.') : __('PostgreSQL ayarlarını yeniden okur, bağlantılar kesilmez'),
+            $disruption === 'restart' && $kind === 'memcached' => $long ? __('Birkaç saniye. Memcached yeniden başlar ve önbellek boş başlar; siteler verileri yeniden hesaplar. Bakım penceresi önerilir.') : __('Memcached yeniden başlar, önbellek boşalır'),
+            $disruption === 'restart' => $long ? __('Birkaç saniye. PostgreSQL yeniden başlar; açık bağlantılar kesilir, uygulamalar yeniden bağlanır. Bakım penceresi önerilir.') : __('PostgreSQL yeniden başlar, birkaç saniye bağlantı kesilir'),
+            default => $long ? __('Yok. Çalışan sunucuya yeniden başlatmadan uygulanır.') : __('Kesintisiz uygulanır'),
+        };
+    }
+
+    /** The line under the suggestions: where changes go, how they are watched. */
+    public static function footer(string $unit): string
+    {
+        $watch = ['minutes' => Tuner::WATCH_MINUTES, 'days' => Tuner::UNDO_DAYS];
+
+        return match (self::kind($unit)) {
+            'php' => __('OPcache ayarları bu PHP sürümünün php.ini varsayılanlarına, işçi ayarları sitenin PHP ayarlarına yazılır; PHP-FPM yeniden yüklenir, süren istekler tamamlanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', $watch),
+            'nginx' => __('Değişiklikler Nginx ayarlarına yazılır, yapılandırma denenir ve Nginx yeniden yüklenir. Sonraki :minutes dakika gözlenir; hizmet durursa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', $watch),
+            'postgresql' => __('Değişiklikler PostgreSQL\'in Serfex ayar dosyasına (conf.d/zz-serfex-tuning.conf) yazılır ve PostgreSQL\'e denetletilir; önbellek değişikliği yeniden başlatma ister. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', $watch),
+            'memcached' => __('Değişiklikler /etc/memcached.conf dosyasına yazılır, Memcached yeniden başlar ve önbellek boş başlar. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', $watch),
+            'redis' => __('Her Laravel uygulamasının kendi Redis\'i vardır. Yeni bellek sınırı çalışan Redis\'e yeniden başlatmadan verilir ve ayar dosyasına yazılır. Sonraki :minutes dakika gözlenir; sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', $watch),
+            default => __('Her değişiklik önce ayar dosyasına yazılır ve çalışan sunucuya yeniden başlatmadan uygulanır. Sonraki :minutes dakika gözlenir; hizmet durursa ya da sunucu takas kullanmaya başlarsa eski değere kendiliğinden döner. Uygulananlar :days gün Geri al ile geri alınabilir.', $watch),
+        };
+    }
+
+    /** Where a unit's suggestions are shown. */
+    public static function url(string $unit): string
+    {
+        return $unit === self::REDIS ? route('services.redis') : route('services.show', ['unit' => $unit, 'tab' => 'recs']);
     }
 
     public static function supports(string $unit): bool
@@ -59,8 +146,9 @@ class Optimization
     }
 
     /**
-     * The running services optimization looks at: the database server
-     * first, then the PHP-FPM versions.
+     * The running services optimization looks at, in ORDER: the database
+     * server, the PHP-FPM versions, PostgreSQL, Nginx, Memcached and the
+     * sites' Redis instances (while a Laravel application has one).
      *
      * @return list<array<string, mixed>>
      */
@@ -68,7 +156,11 @@ class Optimization
     {
         $list = array_values(array_filter($this->services->list() ?? [], fn ($s) => self::supports($s['unit'])
             && in_array($s['state'] ?? '', ['active', 'reloading'], true)));
-        usort($list, fn ($a, $b) => [self::kind($a['unit']) === 'php', $a['unit']] <=> [self::kind($b['unit']) === 'php', $b['unit']]);
+        if (LaravelApp::whereNotNull('redis_port')->exists()) {
+            $list[] = ['unit' => self::REDIS, 'name' => __('Redis (site önbellekleri)'), 'state' => 'active'];
+        }
+        $rank = fn ($s) => [array_search(self::kind($s['unit']), self::ORDER, true), $s['unit']];
+        usort($list, fn ($a, $b) => $rank($a) <=> $rank($b));
 
         return $list;
     }
@@ -108,8 +200,8 @@ class Optimization
      * At the automatic level: applies one suggestion that stays in the
      * narrow band (a number changed by at most AUTO_BAND either way, in
      * the memory budget), at most one per service a day. Changes that
-     * need no reload are made now, the others in the maintenance window.
-     * A suggestion a person undid, or the server rolled back, in the last
+     * need no reload are made now, reloads in the maintenance window;
+     * changes that restart a service are left to people. A suggestion a person undid, or the server rolled back, in the last
      * week is left to people.
      */
     public function autoApply(string $unit): ?TuningChange
@@ -121,7 +213,8 @@ class Optimization
             return null;
         }
         foreach ($this->report($unit)['cards'] as $card) {
-            if ($card['state'] !== 'new' || $card['blocked'] !== null || ! self::inBand($card)) {
+            // A restart is never made by itself.
+            if ($card['state'] !== 'new' || $card['blocked'] !== null || ! self::inBand($card) || ($card['disruption'] ?? 'none') === 'restart') {
                 continue;
             }
             if (TuningChange::where('unit', $unit)->where('key', $card['key'])->whereIn('status', ['undone', 'rolled_back'])
@@ -177,7 +270,14 @@ class Optimization
         }
         $budget = MemoryBudget::from($latest->data, $this->settings->memoryPercent(), $this->samples->peak($unit, 'php-fpm'));
         $ai = $withAi && $this->ai->available() ? $this->ai->for($unit)['suggestions'] : [];
-        $advisor = self::kind($unit) === 'php' ? $this->php : $this->advisor;
+        $advisor = match (self::kind($unit)) {
+            'php' => $this->php,
+            'nginx' => $this->nginx,
+            'postgresql' => $this->postgres,
+            'memcached' => $this->memcached,
+            'redis' => $this->redis,
+            default => $this->advisor,
+        };
         $report = $advisor->analyze($latest, $this->samples->since($latest), $budget, $ai);
         $report['sample'] = $latest;
         $report['service'] = $unit;
@@ -194,7 +294,7 @@ class Optimization
     {
         $report = $this->analyze($unit);
         if ($report === null) {
-            return ['measured' => false, 'cards' => [], 'recent' => $this->recent($unit), 'slow' => $this->slowRows($unit), 'count' => 0, 'kind' => self::kind($unit)];
+            return ['measured' => false, 'cards' => [], 'recent' => $this->recent($unit), 'slow' => $this->slowRows($unit), 'count' => 0, 'kind' => self::kind($unit), 'footer' => self::footer($unit)];
         }
         /** @var TuningSample $sample */
         $sample = $report['sample'];
@@ -222,7 +322,7 @@ class Optimization
             if ($c->status === 'watching' || ($c->status === 'rolled_back' && $c->finished_at?->gt(now()->subDay()))) {
                 array_unshift($cards, ['state' => $c->status === 'watching' ? 'watching' : 'rolled', 'change' => $c, 'key' => $c->key,
                     'title' => $c->title, 'from_label' => $c->from_label, 'to_label' => $c->to_label, 'setting' => self::setting($c->key),
-                    'disruption' => self::kind($unit) === 'php' ? 'reload' : 'none']);
+                    'disruption' => self::disruption($unit, $c->key)]);
             }
         }
 
@@ -235,6 +335,7 @@ class Optimization
             'measured_at' => $sample->created_at,
             'machine' => $sample->data,
             'kind' => self::kind($unit),
+            'footer' => self::footer($unit),
         ];
     }
 
@@ -291,12 +392,18 @@ class Optimization
         if (preg_match('/^fpm_(children|pm):(\d+)$/', $key, $m)) {
             return ($m[1] === 'children' ? 'pm.max_children' : 'pm').' · '.(Site::whereKey((int) $m[2])->value('domain') ?? '—');
         }
+        if (preg_match('/^redis_memory:(\d+)$/', $key, $m)) {
+            return 'maxmemory · '.(LaravelApp::with('site')->find((int) $m[1])?->site?->domain ?? '—');
+        }
 
         return [
             'buffer_pool' => 'innodb_buffer_pool_size', 'tmp_table' => 'tmp_table_size, max_heap_table_size', 'max_connections' => 'max_connections',
             'table_open_cache' => 'table_open_cache', 'io_capacity' => 'innodb_io_capacity', 'slow_log' => 'slow_query_log, long_query_time',
             'opcache_enable' => 'opcache.enable', 'opcache_memory' => 'opcache.memory_consumption', 'opcache_strings' => 'opcache.interned_strings_buffer',
             'opcache_files' => 'opcache.max_accelerated_files',
+            'nginx_connections' => 'worker_connections', 'nginx_nofile' => 'worker_rlimit_nofile', 'nginx_workers' => 'worker_processes',
+            'pg_shared_buffers' => 'shared_buffers', 'pg_work_mem' => 'work_mem', 'pg_effective_cache' => 'effective_cache_size',
+            'pg_io' => 'random_page_cost, effective_io_concurrency', 'memcached_memory' => '-m', 'memcached_connections' => '-c',
         ][$key] ?? $key;
     }
 
