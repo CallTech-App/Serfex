@@ -71,7 +71,7 @@ serfex deploy -a api.ornek.com --wait
   bazında Nginx ya da Nginx arkasında Apache; yan yana PHP 8.1–8.5; alt alan
   adları, ek alan adları, tercih edilen adres (`www.` ile ya da `www.`
   olmadan), yönlendirmeler, hata sayfaları, dosya yöneticisi, FTP hesapları,
-  SSH erişimi (sitenin ana klasörüne kilitli SFTP ya da kabuk), zamanlanmış
+  SSH erişimi (sitenin ana klasörüne kilitli SFTP ya da kabuk; kabuk tarayıcıdaki terminalden de), zamanlanmış
   görevler, site bazında Composer ve Node.js sürümü, önbellek ve hız ayarları,
   trafik istatistikleri ve günlükler. Sunucuda olmayan bir adres "Bu adreste
   bir site yok" sayfasını görür, hiçbir zaman başka bir siteyi değil.
@@ -174,7 +174,6 @@ ayrıdır. Ayrıntılar: [Mimari](docs/architecture.md) (İngilizce).
 uygulaması barındırması için gereken her şeyi kapsar. Bilinen eksikler,
 sonraki sürümler için planlı:
 
-- tarayıcıda SSH terminali (panelde "Yakında" olarak görünür);
 - posta kutularının ayrı yedeği, CalDAV ve CardDAV;
 - Slack ve Telegram bildirimleri;
 - imzalı sürümler (sürümler bugün SHA-256 ile denetleniyor);

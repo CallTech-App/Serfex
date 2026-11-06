@@ -86,7 +86,10 @@
                 : ['git-branch', __('Git dağıtımı'), $site->gitRepository ? $site->gitRepository->repositoryName() : __('Bağlı değil'), route('sites.git', $site), $site->gitRepository ? null : 'muted'],
             ['file-warning', __('Hata sayfaları'), $site->error_pages ? __(':error_pages özel sayfa', ['error_pages' => count($site->error_pages)]) : __('Varsayılan'), route('sites.errors', $site)],
             ...($user->isFullAdmin() ? [['file-cog', __('Web sunucusu yönergeleri'), filled($site->nginx_directives) || filled($site->apache_directives) ? __('Özel satırlar var') : __('Yok'), route('sites.directives', $site), filled($site->nginx_directives) || filled($site->apache_directives) ? null : 'muted']] : []),
-            ['terminal', __('SSH terminali'), __('Yakında'), null, 'muted'],
+            ...($user->isFullAdmin() ? [$missing('ssh') ? ['terminal', __('SSH terminali'), $missing('ssh'), null, 'muted']
+                : ($site->systemUser->ssh_access === \App\Services\Files\SshAccess::SHELL
+                    ? ['terminal', __('SSH terminali'), __('Tarayıcıda kabuk'), route('sites.terminal', $site)]
+                    : ['terminal', __('SSH terminali'), __('Kabuk erişimi kapalı'), route('sites.terminal', $site), 'muted'])] : []),
         ]],
         ['apps', __('Uygulamalar'), 'blocks', null, [
             $wordpressTool,

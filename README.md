@@ -70,7 +70,7 @@ serfex deploy -a api.example.com --wait
   Apache behind Nginx, per site; PHP 8.1 to 8.5 side by side; subdomains,
   aliases, a preferred address (with or without `www.`), redirects, error
   pages, a file manager, FTP accounts, SSH access (SFTP locked to the site's
-  home folder, or a shell), cron jobs, Composer and a Node.js version per site,
+  home folder, or a shell, also as a terminal in the browser), cron jobs, Composer and a Node.js version per site,
   cache and speed settings, traffic statistics and logs. An address the server
   does not host gets a "No site at this address" page, never another site.
 - **Staging**: copy a site to `staging.<domain>` with its databases, hidden
@@ -172,7 +172,6 @@ PostgreSQL are kept apart from the ones customer sites use. Read
 0.1 covers everything a single server needs to host sites, mail and Laravel
 applications for paying customers. Known gaps, planned for later releases:
 
-- an SSH terminal in the browser (shown as "Soon" in the panel);
 - backing up mailboxes on their own, CalDAV and CardDAV;
 - Slack and Telegram notifications;
 - signed releases (releases are checked with SHA-256 today);

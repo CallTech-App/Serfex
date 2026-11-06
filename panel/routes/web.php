@@ -87,6 +87,7 @@ use App\Livewire\Sites\SiteScan;
 use App\Livewire\Sites\SiteShow;
 use App\Livewire\Sites\SiteSsh;
 use App\Livewire\Sites\SiteStatistics;
+use App\Livewire\Sites\SiteTerminal;
 use App\Livewire\Sites\SiteWaf;
 use App\Livewire\Sites\SiteWordPress;
 use App\Livewire\Ssl\SiteSsl;
@@ -156,6 +157,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::post('/sites/{site}/files/upload', [SiteFileController::class, 'upload'])->whereNumber('site')->name('sites.files.upload');
         Route::livewire('/sites/{site}/ftp', SiteFtp::class)->whereNumber('site')->name('sites.ftp');
         Route::livewire('/sites/{site}/ssh', SiteSsh::class)->whereNumber('site')->name('sites.ssh');
+        Route::livewire('/sites/{site}/terminal', SiteTerminal::class)->whereNumber('site')->name('sites.terminal');
         Route::livewire('/sites/{site}/connection-details', SiteConnection::class)->whereNumber('site')->name('sites.connection');
         Route::livewire('/sites/{site}/copy', SiteCopyTool::class)->whereNumber('site')->name('sites.copy');
         Route::livewire('/sites/{site}/cache', SiteCaching::class)->whereNumber('site')->name('sites.cache');

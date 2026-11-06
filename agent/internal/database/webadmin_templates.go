@@ -20,6 +20,8 @@ type webData struct {
 	// Panel serves the installed panel at / (see package panel).
 	Panel                             bool
 	PanelRoot, PanelSocket, PanelUser string
+	// TerminalSocket takes SSH terminali's WebSocket (package terminal).
+	TerminalSocket string
 	// NoIndex is the X-Robots-Tag value of every response.
 	NoIndex string
 }
@@ -137,6 +139,20 @@ http {
         }
         location ~ /\.(?!well-known) {
             deny all;
+        }
+
+        # SSH terminali: the browser's WebSocket goes to the agent, which
+        # lets it in only with a one-time ticket from the panel.
+        location = /terminal/socket {
+            proxy_pass http://unix:{{.TerminalSocket}};
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_buffering off;
+            proxy_read_timeout 1h;
+            proxy_send_timeout 1h;
         }
 {{- else}}
         location = / {

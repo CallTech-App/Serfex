@@ -55,3 +55,7 @@ if (window.Livewire) {
 } else {
     document.addEventListener('livewire:init', watchConnection);
 }
+
+// SSH terminali (xterm.js itself loads only when a terminal opens).
+import { webTerminal } from './terminal.js';
+document.addEventListener('alpine:init', () => window.Alpine.data('webTerminal', webTerminal));

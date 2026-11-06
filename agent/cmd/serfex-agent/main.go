@@ -50,6 +50,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/stats"
 	"github.com/calltech-app/serfex/agent/internal/system"
+	"github.com/calltech-app/serfex/agent/internal/terminal"
 	"github.com/calltech-app/serfex/agent/internal/update"
 	"github.com/calltech-app/serfex/agent/internal/version"
 )
@@ -180,6 +181,9 @@ func main() {
 	svc.system = system.NewManager(h)
 	svc.logs = logrotate.NewManager(h)
 	svc.quotas = quota.NewManager(h)
+	svc.terminal = terminal.NewManager(h)
+	svc.terminal.Demo = *dryRun
+	svc.terminal.Log = log
 	svc.log = log
 	svc.security = security.NewManager(h, svc.files)
 	svc.security.WebUser = *webUser
@@ -327,6 +331,14 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	// Rotation rules are rebuilt at once: sites set up by older agents
 	// had none.
 	go svc.logs.Run(ctx, log)
+	// SSH terminali: serfex-web passes the browser's WebSocket to this
+	// socket, next to the agent's own.
+	go func() {
+		sock := filepath.Join(filepath.Dir(socket), filepath.Base(terminal.Socket))
+		if err := svc.terminal.Listen(ctx, sock, database.WebUser); err != nil {
+			log.Error("terminal socket stopped", "err", err)
+		}
+	}()
 	go svc.monitor.Run(ctx)
 	go svc.databases.Run(ctx)
 	if svc.geoFile != "" {

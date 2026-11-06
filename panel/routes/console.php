@@ -16,6 +16,7 @@ Schedule::command('serfex:disk-quota')->everyFiveMinutes()->withoutOverlapping()
 Schedule::command('serfex:laravel-backups')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('serfex:components-check')->dailyAt('04:30')->withoutOverlapping();
 Schedule::command('serfex:monitor-record')->everyMinute()->withoutOverlapping();
+Schedule::command('serfex:terminal-sessions')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:backups')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('serfex:update-check')->dailyAt('04:30')->withoutOverlapping();
 Schedule::command('serfex:files-trash')->dailyAt('03:40')->withoutOverlapping();
