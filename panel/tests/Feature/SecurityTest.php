@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ReapplyFirewall;
 use App\Jobs\RunSecurityScan;
 use App\Livewire\Account\AccountSecurity;
 use App\Livewire\Monitor\LiveMonitor;
@@ -23,6 +24,7 @@ use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Ai\Tools;
 use App\Services\Customers\Customers;
+use App\Services\Mail\MailSettings;
 use App\Services\Security\Fail2ban;
 use App\Services\Security\Firewall;
 use App\Services\Security\Scans;
@@ -122,6 +124,34 @@ class SecurityTest extends TestCase
             ->assertHasErrors('rule.name')
             ->assertSee('panele şu anki bağlantınızı keserdi');
         $this->assertSame([], app(Firewall::class)->settings()['rules']);
+    }
+
+    public function test_mail_ports_open_when_mail_is_set_up_after_the_firewall(): void
+    {
+        // The setup wizard turns the firewall on before the mail server exists.
+        app(Firewall::class)->save(['enabled' => true, 'services' => [], 'rules' => []], '127.0.0.1');
+        $this->assertSame(['svc-panel', 'svc-web', 'svc-ssh'], array_column($this->agent->called('firewall.rules.apply')[0]['rules'], 'id'));
+
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String()]);
+        (new ReapplyFirewall)->handle(app(Firewall::class));
+
+        $apply = $this->agent->called('firewall.rules.apply')[1];
+        $this->assertTrue($apply['enabled']);
+        $this->assertSame(['svc-panel', 'svc-web', 'svc-ssh', 'svc-mail'], array_column($apply['rules'], 'id'));
+        $this->assertSame('25, 465, 587, 110, 995, 143, 993', $apply['rules'][3]['ports']);
+
+        // An administrator who closed the mail ports keeps them closed.
+        app(Firewall::class)->save(['enabled' => true, 'services' => ['mail' => false], 'rules' => []], '127.0.0.1');
+        (new ReapplyFirewall)->handle(app(Firewall::class));
+        $this->assertNotContains('svc-mail', array_column($this->agent->called('firewall.rules.apply')[3]['rules'], 'id'));
+    }
+
+    public function test_reapplying_leaves_a_firewall_that_is_off_alone(): void
+    {
+        app(MailSettings::class)->saveServer(['state' => 'ready', 'setup_at' => now()->toIso8601String()]);
+        (new ReapplyFirewall)->handle(app(Firewall::class));
+
+        $this->assertSame([], $this->agent->called('firewall.rules.apply'));
     }
 
     public function test_own_rules_are_checked_saved_deleted_and_restored(): void

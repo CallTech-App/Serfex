@@ -70,6 +70,8 @@ class SetupMailServer implements ShouldBeUnique, ShouldQueue
 
         $serverDns->apply($hostname);
         SyncMailSenders::dispatch();
+        // Opens the mail ports when the firewall was on before mail was.
+        ReapplyFirewall::dispatch();
 
         MailDomain::whereIn('status', [MailDomainStatus::Failed, MailDomainStatus::Syncing])->each(function (MailDomain $domain) {
             if ($domain->status === MailDomainStatus::Failed) {
