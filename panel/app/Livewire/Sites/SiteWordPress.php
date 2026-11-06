@@ -501,6 +501,10 @@ class SiteWordPress extends Component
             // WordPress sends with PHP's mail(), which this server refuses to sites.
             'mailHost' => $wp?->isActive() && app(MailEnv::class)->available() ? app(MailEnv::class)->host() : null,
             'smtpPlugin' => $wp ? MailEnv::wordpressSmtpPlugin($wp->items('plugins')) : null,
+            // Staging copies (Siteyi kopyala): this site's, or the live site of this copy.
+            'stagingOf' => $site->copy_of_id !== null ? $site->copyOf()->first() : null,
+            'stagingCopies' => $site->copy_of_id === null && $wp?->isActive() ? $site->copies()->orderBy('domain')->get() : collect(),
+            'canCopy' => $site->copy_of_id === null && $site->preview === null && ! auth()->user()->isReadOnly(),
         ])->title(__('WordPress · :domain · Serfex', ['domain' => $site->domain]));
     }
 }

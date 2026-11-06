@@ -78,6 +78,10 @@ type CopySpec struct {
 	// away, "1" welcome, "keep" what the target said before the copy,
 	// empty what the source said.
 	Public string `json:"public"`
+	// Staging is what a staging copy keeps to itself (e-mail, WP-Cron);
+	// nil removes the staging plugin, as when a copy is published onto
+	// its live site.
+	Staging *laravel.WPStaging `json:"staging"`
 }
 
 // CopyNote is something the copy could not do by itself. Code is one of
@@ -228,6 +232,20 @@ func (m *Manager) Copy(ctx context.Context, spec CopySpec) (res CopyResult, err 
 		fmt.Fprintf(log, "▸ %s\n", i18n.T(ctx, "WordPress yeni adresine göre düzenleniyor"))
 		if err := m.laravel.WPMove(ctx, laravel.WPMoveSpec{App: *wp, Replace: spec.Hosts, Public: public}, log); err != nil {
 			return CopyResult{}, fmt.Errorf("wordpress: %w", err)
+		}
+		on, err := m.laravel.WordPressStaging(ctx, laravel.WPStagingSpec{App: *wp, Staging: spec.Staging})
+		if err != nil {
+			return CopyResult{}, fmt.Errorf("wordpress: %w", err)
+		}
+		if on {
+			var what []string
+			if spec.Staging.Mail {
+				what = append(what, i18n.T(ctx, "e-posta gönderilmez"))
+			}
+			if spec.Staging.Cron {
+				what = append(what, i18n.T(ctx, "zamanlanmış görevler (WP-Cron) çalışmaz"))
+			}
+			fmt.Fprintln(log, "  "+i18n.T(ctx, "Hazırlık kopyası: %s", strings.Join(what, ", ")))
 		}
 	}
 	res.Millis = time.Since(start).Milliseconds()

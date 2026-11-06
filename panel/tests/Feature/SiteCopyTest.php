@@ -127,6 +127,8 @@ class SiteCopyTest extends TestCase
         $this->assertSame([['www.kahveatolyesi.com.tr', 'staging.kahveatolyesi.com.tr'], ['kahveatolyesi.com.tr', 'staging.kahveatolyesi.com.tr']], $spec['hosts']);
         $this->assertSame('public_html', $spec['wordpress']);
         $this->assertSame('0', $spec['public']);
+        // The copy's WordPress keeps e-mail and WP-Cron to itself.
+        $this->assertSame(['mail' => true, 'cron' => true], $spec['staging']);
         // The copy's site config asks search engines to stay away.
         $this->assertTrue(collect($this->agent->called('site.apply'))->contains(fn ($p) => $p['domain'] === $copy->domain && ($p['noindex'] ?? false)));
         $this->assertTrue($copy->wordpress()->exists());
@@ -203,6 +205,9 @@ class SiteCopyTest extends TestCase
         $this->assertSame([['server' => 'mysql', 'from' => 'kahve_shop_copy', 'to' => 'kahve_shop']], $spec['databases']);
         $this->assertSame([['staging.kahveatolyesi.com.tr', 'kahveatolyesi.com.tr']], $spec['hosts']);
         $this->assertSame('keep', $spec['public']);
+        // The live site sends its e-mail: the staging plugin goes.
+        $this->assertArrayHasKey('staging', $spec);
+        $this->assertNull($spec['staging']);
         // The backup ran before the copy.
         $methods = $this->agent->methods();
         $this->assertLessThan(array_keys($methods, 'site.copy')[1], array_search('backup.create', $methods, true));
@@ -265,5 +270,49 @@ class SiteCopyTest extends TestCase
             ->call('create')
             ->assertHasNoErrors();
         $this->assertTrue(Site::where('domain', 'staging.adapansiyon.com')->exists());
+    }
+
+    public function test_a_wordpress_copy_sends_no_mail_until_told_and_the_wordpress_page_shows_it(): void
+    {
+        WordPressInstall::create(['site_id' => $this->site->id, 'path' => 'public_html', 'status' => WordPressInstall::ACTIVE]);
+        $this->agent->answers['wordpress.staging'] = ['on' => true];
+
+        $this->get(route('sites.wordpress', $this->site))->assertOk()
+            ->assertSee('Hazırlık kopyası oluştur')
+            ->assertSee(route('sites.copy', $this->site));
+        Livewire::test(SiteCopyTool::class, ['site' => $this->site->id])
+            ->assertSee('E-posta gönderilmesin')
+            ->set('domain', 'staging.kahveatolyesi.com.tr')
+            ->set('blockCron', false)
+            ->call('create')
+            ->assertHasNoErrors();
+        $this->runQueued();
+        $copy = Site::where('domain', 'staging.kahveatolyesi.com.tr')->firstOrFail();
+        $this->assertTrue($copy->copy_blocks_mail);
+        $this->assertFalse($copy->copy_blocks_cron);
+        $this->assertSame(['mail' => true, 'cron' => false], $this->agent->called('site.copy')[0]['staging']);
+
+        $this->get(route('sites.wordpress', $this->site))->assertSee('staging.kahveatolyesi.com.tr')->assertSee('Yenile ya da aktar');
+        $this->get(route('sites.wordpress', $copy))->assertOk()
+            ->assertSee('sitesinin hazırlık kopyası', false)
+            ->assertSee('E-posta gönderilmez.');
+
+        // Turning e-mail on rewrites the plugin at once, with Undo.
+        Livewire::test(SiteCopyTool::class, ['site' => $copy->id])
+            ->assertSet('blockMail', true)
+            ->set('blockMail', false)
+            ->call('saveStaging')
+            ->assertDispatched('toast');
+        $this->assertFalse($copy->fresh()->copy_blocks_mail);
+        $call = $this->agent->called('wordpress.staging')[0];
+        $this->assertSame(['domain' => 'staging.kahveatolyesi.com.tr', 'user' => 'kahve', 'php_version' => '8.3', 'path' => 'public_html', 'staging' => ['mail' => false, 'cron' => false]], $call);
+
+        // A failure leaves the setting as it was.
+        $this->agent->answers['wordpress.staging'] = new AgentException('removing the staging plugin failed', AgentException::OPERATION_FAILED);
+        Livewire::test(SiteCopyTool::class, ['site' => $copy->id])
+            ->set('blockCron', true)
+            ->call('saveStaging')
+            ->assertSet('blockCron', false);
+        $this->assertFalse($copy->fresh()->copy_blocks_cron);
     }
 }

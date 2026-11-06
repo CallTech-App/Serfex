@@ -11,6 +11,7 @@ import (
 
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/site"
 )
 
@@ -68,6 +69,7 @@ func copySpec(run string) CopySpec {
 		Hosts:     [][2]string{{"www.magazaonline.com.tr", staging}, {domain, staging}},
 		WordPress: "public_html",
 		Public:    "0",
+		Staging:   &laravel.WPStaging{Mail: true, Cron: true},
 	}
 }
 
@@ -125,6 +127,9 @@ func TestCopyMakesAStagingCopy(t *testing.T) {
 	if live := simWP(t, sim, web+"/public_html"); live.Options["siteurl"] != "https://www.magazaonline.com.tr" || live.Options["blog_public"] != "1" {
 		t.Errorf("the live WordPress changed: %v", live.Options)
 	}
+	if php := read(t, sim, stagingWeb+"/public_html/wp-content/mu-plugins/serfex-staging.php"); !strings.Contains(php, "'staging.magazaonline.com.tr'") || !strings.Contains(php, "$blockMail = true;") {
+		t.Errorf("staging plugin:\n%s", php)
+	}
 	codes := []string{}
 	for _, n := range res.Notes {
 		codes = append(codes, n.Code+":"+n.Subject)
@@ -173,6 +178,10 @@ func TestPublishKeepsTheLiveSitesSearchSetting(t *testing.T) {
 	}
 	if got := read(t, sim, web+"/logs/php-error.log"); got != "live errors\n" {
 		t.Errorf("the live logs = %q", got)
+	}
+	// The live site sends its e-mail and runs its tasks.
+	if _, err := os.Stat(sim.Path(web + "/public_html/wp-content/mu-plugins/serfex-staging.php")); !errors.Is(err, os.ErrNotExist) {
+		t.Error("the staging plugin was published onto the live site")
 	}
 }
 
