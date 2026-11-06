@@ -32,6 +32,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/stats"
 	"github.com/calltech-app/serfex/agent/internal/system"
+	"github.com/calltech-app/serfex/agent/internal/terminal"
 	"github.com/calltech-app/serfex/agent/internal/update"
 	"github.com/calltech-app/serfex/agent/internal/version"
 )
@@ -74,6 +75,9 @@ const CodeConfigRejected = -32010
 // (lookup, connection or server error); trying again soon is safe.
 const CodeCAUnreachable = -32011
 
+// CodeTerminalLimit says the most terminal sessions are already open.
+const CodeTerminalLimit = -32013
+
 // CodeDatabaseUpgrading says the database server is being upgraded to a
 // new major version; its databases cannot be used until it is done.
 const CodeDatabaseUpgrading = -32012
@@ -100,6 +104,7 @@ type services struct {
 	system     *system.Manager
 	logs       *logrotate.Manager
 	quotas     *quota.Manager
+	terminal   *terminal.Manager
 	log        *slog.Logger
 	stats      *stats.Aggregator
 	statsFile  string
@@ -293,6 +298,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 	registerServices(srv, svc)
 	registerCron(srv, svc)
 	registerSettings(srv, svc)
+	registerTerminal(srv, svc)
 	srv.Handle("ssl.panel.get", func(context.Context, json.RawMessage) (any, error) {
 		res, err := svc.certs.GetPanel()
 		if err != nil {
@@ -501,6 +507,9 @@ func mapError(err error) error {
 	if errors.Is(err, security.ErrWAFNotInstalled) {
 		return &rpc.Error{Code: CodeWAFNotInstalled, Message: err.Error()}
 	}
+	if errors.Is(err, terminal.ErrLimit) {
+		return &rpc.Error{Code: CodeTerminalLimit, Message: err.Error()}
+	}
 	if errors.Is(err, update.ErrBusy) {
 		return &rpc.Error{Code: CodeUpdateBusy, Message: err.Error()}
 	}
@@ -531,7 +540,8 @@ func mapError(err error) error {
 	var sysv *system.ValidationError
 	var logv *logrotate.ValidationError
 	var qv *quota.ValidationError
-	if errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var tv *terminal.ValidationError
+	if errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -553,7 +563,8 @@ func mapError(err error) error {
 	var sysop *system.OperationError
 	var logop *logrotate.OperationError
 	var qop *quota.OperationError
-	if errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var top *terminal.OperationError
+	if errors.As(err, &top) || errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -960,7 +971,30 @@ func registerFiles(srv *rpc.Server, svc services) {
 		l, err := f.List()
 		return l, mapError(err)
 	})
-	handle(srv, "ssh.user.apply", func(ctx context.Context, p ftp.UserSpec) (any, error) { return f.ApplyUser(ctx, p) })
+	handle(srv, "ssh.user.apply", func(ctx context.Context, p ftp.UserSpec) (any, error) {
+		res, err := f.ApplyUser(ctx, p)
+		// Taking the shell away ends the account's browser terminals too.
+		if err == nil && svc.terminal != nil && (p.Access != ftp.AccessShell || p.Locked) {
+			svc.terminal.CloseUser(ctx, p.User)
+		}
+		return res, err
+	})
+}
+
+func registerTerminal(srv *rpc.Server, svc services) {
+	t := svc.terminal
+	handle(srv, "terminal.open", func(ctx context.Context, p terminal.OpenSpec) (any, error) { return t.Open(ctx, p) })
+	handle(srv, "terminal.list", func(ctx context.Context, _ struct{}) (any, error) { return t.List(ctx), nil })
+	handle(srv, "terminal.get", func(ctx context.Context, p struct {
+		ID string `json:"id"`
+	}) (any, error) {
+		return t.Get(ctx, p.ID)
+	})
+	handle(srv, "terminal.close", func(ctx context.Context, p struct {
+		ID string `json:"id"`
+	}) (any, error) {
+		return t.Close(ctx, p.ID)
+	})
 }
 
 func registerSecurity(srv *rpc.Server, svc services) {

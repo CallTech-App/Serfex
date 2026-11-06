@@ -20,6 +20,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/panel"
 	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/terminal"
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
@@ -465,7 +466,7 @@ func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool)
 		WWW: adminWWW, Logs: webLogs, Temp: webTemp, WebUser: WebUser, AdminUser: AdminUser,
 		PhpMyAdmin: mysql, Adminer: pg, Tokens: adminTokens, Sessions: adminSess, Tmp: adminTmp, TLSConf: cert.TLSConf,
 		Panel: withPanel, PanelRoot: panel.CurrentLink + "/panel/public", PanelSocket: panel.Socket, PanelUser: panel.User,
-		NoIndex: NoIndex,
+		NoIndex: NoIndex, TerminalSocket: terminal.Socket,
 	}
 	data.PanelCert, data.PanelKey = cert.PanelFiles()
 	data.PanelNames = m.panelNames(data.PanelCert, data.PanelKey)

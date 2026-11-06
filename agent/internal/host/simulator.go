@@ -174,6 +174,16 @@ unwrap:
 		err = s.chpasswd(inner.Stdin)
 	case "usermod":
 		err = s.usermod(inner.Args)
+	case "groupadd":
+		// groupadd [--system] NAME
+		if n := len(inner.Args); n > 0 {
+			err = s.addGroup(fmt.Sprintf("%s:x:990:", inner.Args[n-1]))
+		}
+	case "gpasswd":
+		// gpasswd --delete USER GROUP
+		if len(inner.Args) == 3 && inner.Args[0] == "--delete" {
+			err = s.setMember(inner.Args[2], inner.Args[1], false)
+		}
 	case "install":
 		err = s.install(inner.Args)
 	case "rm":
@@ -321,12 +331,25 @@ func (s *Simulator) chpasswd(stdin []byte) error {
 }
 
 // usermod --lock / --unlock change the "!" in front of a hash in
-// Root/etc/shadow; other options only get recorded.
+// Root/etc/shadow, --shell the passwd entry and --append --groups the
+// group's members; other options only get recorded.
 func (s *Simulator) usermod(args []string) error {
 	if len(args) == 0 {
 		return nil
 	}
 	name := args[len(args)-1]
+	if i := slices.Index(args, "--shell"); i >= 0 && i+1 < len(args)-1 {
+		if err := s.setShell(name, args[i+1]); err != nil {
+			return err
+		}
+	}
+	if i := slices.Index(args, "--groups"); i >= 0 && i+1 < len(args)-1 && slices.Contains(args, "--append") {
+		for _, g := range strings.Split(args[i+1], ",") {
+			if err := s.setMember(g, name, true); err != nil {
+				return err
+			}
+		}
+	}
 	switch {
 	case slices.Contains(args, "--lock"):
 		return s.setShadow(name, func(h string) string {
@@ -344,6 +367,55 @@ func (s *Simulator) usermod(args []string) error {
 		})
 	}
 	return nil
+}
+
+// setShell rewrites the shell of name in Root/etc/passwd.
+func (s *Simulator) setShell(name, shell string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return rewriteLines(s.Path("/etc/passwd"), func(f []string) []string {
+		if len(f) == 7 && f[0] == name {
+			f[6] = shell
+		}
+		return f
+	})
+}
+
+// setMember adds user to group in Root/etc/group, or takes it out.
+func (s *Simulator) setMember(group, user string, add bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return rewriteLines(s.Path("/etc/group"), func(f []string) []string {
+		if len(f) != 4 || f[0] != group {
+			return f
+		}
+		var members []string
+		for _, m := range strings.Split(f[3], ",") {
+			if m != "" && m != user {
+				members = append(members, m)
+			}
+		}
+		if add {
+			members = append(members, user)
+		}
+		f[3] = strings.Join(members, ",")
+		return f
+	})
+}
+
+// rewriteLines changes the colon-separated lines of an account file.
+func rewriteLines(path string, f func([]string) []string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = strings.Join(f(strings.Split(line, ":")), ":")
+		}
+	}
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
 }
 
 // setShadow rewrites the password field of name in Root/etc/shadow,

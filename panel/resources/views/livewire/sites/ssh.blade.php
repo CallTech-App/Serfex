@@ -16,7 +16,12 @@
         <x-site-header :site="$site" active="overview" :tool="__('SSH erişimi')" />
         <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <h1 class="text-[18px] font-semibold tracking-tight">{{ __('SSH erişimi') }}</h1>
-            <a href="{{ route('sites.ftp', $site) }}" wire:navigate class="{{ $btn }}"><x-icon name="hard-drive-upload" />{{ __('FTP hesapları') }}</a>
+            <div class="flex flex-wrap gap-2">
+                @if ($account->ssh_access === SshAccess::SHELL && auth()->user()->isFullAdmin())
+                    <a href="{{ route('sites.terminal', $site) }}" wire:navigate class="{{ $btn }}"><x-icon name="square-terminal" />{{ __('SSH terminali') }}</a>
+                @endif
+                <a href="{{ route('sites.ftp', $site) }}" wire:navigate class="{{ $btn }}"><x-icon name="hard-drive-upload" />{{ __('FTP hesapları') }}</a>
+            </div>
         </div>
         <p class="mt-1 max-w-3xl text-[13px] text-muted">
             <x-t text="Sitenin sistem kullanıcısı :user ile SSH anahtarı ya da parolayla bağlanılır. Yüklenen dosyalar sitenin kendi dosyaları gibi olur. Bir klasörü başkasına açmak için FTP hesabı daha uygundur."><x-slot:user><span class="font-mono text-fg">{{ $account->name }}</span></x-slot:user></x-t>
@@ -133,7 +138,7 @@
             </div>
         </div>
         <p class="border-t border-line px-5 py-3 text-2xs text-muted">
-            <x-t text="Art arda hatalı girişler Fail2ban ile engellenir. Tarayıcıdan terminal (SSH terminali) sonraki sürümde. Port :port, sunucu :host."><x-slot:port><span class="num font-mono">{{ $connection['port'] }}</span></x-slot:port><x-slot:host><span class="font-mono">{{ $connection['host'] }}</span></x-slot:host></x-t>
+            <x-t text="Art arda hatalı girişler Fail2ban ile engellenir. Port :port, sunucu :host."><x-slot:port><span class="num font-mono">{{ $connection['port'] }}</span></x-slot:port><x-slot:host><span class="font-mono">{{ $connection['host'] }}</span></x-slot:host></x-t>
         </p>
     </section>
 

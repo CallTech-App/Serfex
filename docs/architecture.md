@@ -49,9 +49,19 @@ of JSON-RPC 2.0. Errors use JSON-RPC codes plus Serfex's own:
 | -32010 | The web server refused the configuration (output included) |
 | -32011 | The certificate authority could not be reached |
 | -32012 | The database server is being upgraded to a new major version |
+| -32013 | The most browser terminals are already open |
 
 Messages are translated: the agent reads the request's language and answers
 in Turkish or English.
+
+The browser terminal (SSH terminali) is the one thing that is not JSON-RPC.
+`terminal.open` returns a ticket: a random token that works once, for 60
+seconds, from the address that asked. The browser opens a WebSocket on
+serfex-web's `/terminal/socket`, which Nginx passes to the agent's second
+socket, `/run/serfex-agent/terminal.sock` (group `serfex-web`). The agent then
+starts the site user's login shell on a pseudo-terminal as that user, only if
+the account is in `serfex-shell`, and ends it after 15 minutes without input,
+after 2 hours, or when the panel closes it.
 
 ### How the agent changes the server
 
@@ -82,7 +92,7 @@ in Turkish or English.
 | System | `system.ping`, `agent.info`, `system.info`, `system.addresses`, `system.hostname.set`, `system.timezone.set`, `system.timezones`, `usage.disk`, `logs.rotation.get`, `logs.rotation.set`, `quota.status`, `quota.enable`, `quota.report`, `quota.set` |
 | Sites | `site.apply`, `site.delete`, `site.logs`, `web.protect.apply`, `web.deny.apply` |
 | PHP | `php.versions`, `php.info`, `php.settings.apply`, `php.extension.set`, `php.restart` |
-| Files, SFTP and SSH | `files.*` (list, read, save, upload, move, copy, delete, chmod, compress, extract, search, trash…), `ftp.status`, `ftp.account.apply`, `ftp.account.delete`, `ftp.account.list`, `ssh.user.apply` |
+| Files, SFTP and SSH | `files.*` (list, read, save, upload, move, copy, delete, chmod, compress, extract, search, trash…), `ftp.status`, `ftp.account.apply`, `ftp.account.delete`, `ftp.account.list`, `ssh.user.apply`, `terminal.open`, `terminal.list`, `terminal.get`, `terminal.close` |
 | Scheduled tasks | `cron.apply`, `cron.remove`, `cron.run`, `cron.runs` |
 | DNS | `dns.status`, `dns.setup`, `dns.zone.apply`, `dns.zone.get`, `dns.zone.delete` |
 | Certificates | `ssl.issue`, `ssl.install`, `ssl.get`, `ssl.delete`, `ssl.panel.issue`, `ssl.panel.install`, `ssl.panel.get` |
