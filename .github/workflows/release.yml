@@ -4,8 +4,8 @@ name: Release
 # builds the release archives and the serfex command line for Linux and
 # macOS, and publishes them as a GitHub Release. "Run workflow" on main
 # with a version does the same and creates the tag itself.
-# Installed servers find it with their daily check (or "Şimdi denetle")
-# under Araçlar ve Ayarlar → Güncellemeler.
+# Installed servers find it with their daily check (or "Check now")
+# under Settings → Updates.
 on:
   push:
     tags: ['v*']
@@ -58,6 +58,18 @@ jobs:
           [[ $v =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::$tag is not a version tag (v1.2.3 or v1.2.3-beta.1)"; exit 1; }
           echo "VERSION=$v" >> "$GITHUB_ENV"
           echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      # Release notes are written in English (release-notes/README.md).
+      # ğ, ı, ş and İ never occur in English text, so they mark notes that
+      # were written in Turkish by mistake.
+      - name: Check the release notes
+        run: |
+          f=release-notes/$VERSION.md
+          [ -f "$f" ] || exit 0
+          if grep -nP '[ğĞıİşŞ]' "$f"; then
+            echo "::error file=$f::Release notes must be written in English (see release-notes/README.md)"
+            exit 1
+          fi
 
       - name: Agent tests
         working-directory: agent

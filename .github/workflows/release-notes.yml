@@ -1,0 +1,53 @@
+name: Release notes
+
+# Rewrites the text of releases that are already published from
+# release-notes/<version>.md on main, for example after a correction.
+# Archives and tags are not touched. Installed servers show the new text
+# at their next update check (Settings → Updates).
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: Versions to update, separated by spaces (for example 0.1.68 0.1.69). Empty updates every release that has a notes file.
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Update release text
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update the releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSIONS: ${{ inputs.versions }}
+        run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::Run this from main"; exit 1; }
+          if [ -n "$INPUT_VERSIONS" ]; then
+            versions=$INPUT_VERSIONS
+          else
+            versions=$(ls release-notes | sed -n 's/^\([0-9][0-9A-Za-z.-]*\)\.md$/\1/p' | sort -V)
+          fi
+          published=$(gh release list --limit 1000 --json tagName --jq '.[].tagName')
+          updated=0
+          for v in $versions; do
+            v=${v#v}
+            f=release-notes/$v.md
+            if [ ! -f "$f" ]; then
+              echo "::warning::$f does not exist, skipped"
+              continue
+            fi
+            if ! grep -qx "v$v" <<< "$published"; then
+              echo "v$v is not published, skipped"
+              continue
+            fi
+            gh release edit "v$v" --notes-file "$f" > /dev/null
+            echo "v$v updated"
+            updated=$((updated + 1))
+          done
+          echo "$updated release(s) updated" >> "$GITHUB_STEP_SUMMARY"
