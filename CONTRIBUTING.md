@@ -115,6 +115,9 @@ User documentation lives in [`docs/`](docs) in English, with Turkish
 versions in `docs/tr/` for installation, the customer guide and the command
 line. Update the relevant page in the same pull request as the change.
 
+Release notes (`release-notes/<version>.md`) are written in English too;
+see [`release-notes/README.md`](release-notes/README.md).
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the
