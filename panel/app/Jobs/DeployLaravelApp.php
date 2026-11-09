@@ -58,7 +58,9 @@ class DeployLaravelApp implements ShouldQueue
         if (! $first && $deployment->kind === 'deploy' && $app->backup_before_deploy) {
             $backup = $backups->createNow($app, ['database'], 'deploy', note: __('Dağıtım #:number öncesi', ['number' => $deployment->number]));
             if ($backup->status !== 'succeeded') {
-                $this->fail($app, $deployment, __('Dağıtım öncesi veritabanı yedeği alınamadı: :error', ['error' => $backup->error]));
+                $reason = rtrim(__('Dağıtım öncesi veritabanı yedeği alınamadı: :error', ['error' => trim((string) $backup->error)]));
+                $this->fail($app, $deployment, $reason.(str_ends_with($reason, '.') ? ' ' : '. ')
+                    .__('Dağıtım yapılmadı. Yedeksiz dağıtmak için Dağıtımlar\'daki "Her dağıtımdan önce veritabanını yedekle" kutusunu kaldırın.'));
 
                 return;
             }

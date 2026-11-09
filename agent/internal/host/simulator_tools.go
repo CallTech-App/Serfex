@@ -85,6 +85,12 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return string(b), err
 	case c.Name == "tar":
 		return s.tar(c, cwd)
+	case c.Name == "mysqldump" && len(args) == 1 && args[0] == "--version":
+		// MariaDB's client installs mariadb-dump next to mysqldump.
+		if _, err := os.Stat(s.Path("/usr/bin/mariadb-dump")); err == nil {
+			return "mysqldump from 11.8.3-MariaDB, client 10.19 for debian-linux-gnu (x86_64)\n", nil
+		}
+		return "mysqldump  Ver 8.4.6 for Linux on x86_64 (MySQL Community Server - GPL)\n", nil
 	case c.Name == "mysqldump" || c.Name == "pg_dump":
 		if c.Stdout != nil {
 			fmt.Fprintf(c.Stdout, "-- Simulated %s output\nCREATE TABLE users (id integer primary key, name text);\nINSERT INTO users VALUES (1, 'Serfex');\n", c.Name)

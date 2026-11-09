@@ -115,7 +115,7 @@
                         <td class="num px-3 py-3 whitespace-nowrap text-muted">{{ $d->durationLabel() ?? '…' }}</td>
                         <td class="px-3 py-3">
                             <x-status-badge :status="$d->status" />
-                            @if ($d->error)<p class="mt-1 max-w-xs truncate text-2xs text-muted" title="{{ $d->error }}">{{ $d->error }}</p>@endif
+                            @if ($d->error)<p class="mt-1 line-clamp-4 max-w-md text-2xs break-words text-muted" title="{{ $d->error }}">{{ $d->error }}</p>@endif
                         </td>
                         <td class="space-x-3 px-3 py-3 text-right whitespace-nowrap">
                             <button type="button" wire:click="showLog({{ $d->id }})" class="{{ $link }}">{{ __('Günlük') }}</button>
