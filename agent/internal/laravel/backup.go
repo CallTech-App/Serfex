@@ -414,11 +414,34 @@ func (m *Manager) dumpCommand(ctx context.Context, t Target, db DBConfig) (host.
 		if !m.sim && !m.exists("/usr/bin/mysqldump") {
 			return c, errors.New(i18n.T(ctx, "mysqldump kurulu değil (mysql-client)"))
 		}
-		c = m.cmd(t, "/", nil, "mysqldump", "--single-transaction", "--quick", "--routines", "--triggers", "--no-tablespaces",
-			"--host="+db.Host, "--port="+db.Port, "--user="+db.Username, "--", db.Database)
+		c = m.cmd(t, "/", nil, "mysqldump", m.mysqldumpArgs(ctx, db)...)
 		c.Env = []string{"MYSQL_PWD=" + db.Password}
 	}
 	return c, nil
+}
+
+// mysqldumpArgs dump one database with only the site user's own rights:
+// a consistent InnoDB snapshot (--single-transaction) and nothing that
+// needs RELOAD or FLUSH_TABLES. Option files are not read
+// (--no-defaults), so a [mysqldump] source-data or lock-all-tables there,
+// or in the site user's ~/.my.cnf, cannot add FLUSH TABLES WITH READ
+// LOCK. MySQL's mysqldump also takes that lock whenever the server runs
+// with gtid_mode=ON, unless --set-gtid-purged=OFF; the GTID line it
+// would write could not be restored by the site user anyway. MariaDB's
+// mysqldump has no such option and takes no lock for a plain
+// --single-transaction dump.
+func (m *Manager) mysqldumpArgs(ctx context.Context, db DBConfig) []string {
+	args := []string{"--no-defaults", "--single-transaction", "--quick", "--routines", "--triggers", "--no-tablespaces"}
+	if !m.mariadbDump(ctx) {
+		args = append(args, "--set-gtid-purged=OFF")
+	}
+	return append(args, "--host="+db.Host, "--port="+db.Port, "--user="+db.Username, "--", db.Database)
+}
+
+// mariadbDump reports whether mysqldump is MariaDB's (mariadb-dump).
+func (m *Manager) mariadbDump(ctx context.Context) bool {
+	out, _ := m.h.Run(ctx, host.Command{Name: "mysqldump", Args: []string{"--version"}})
+	return strings.Contains(out, "MariaDB")
 }
 
 // restoreCommand is mysql or psql reading a dump on standard input.

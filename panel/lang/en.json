@@ -1263,6 +1263,7 @@
     "Dağıtım yarıda kaldı.": "The deployment was interrupted.",
     "Dağıtım öncesi": "Before deployment",
     "Dağıtım öncesi veritabanı yedeği alınamadı: :error": "The pre-deployment database backup failed: :error",
+    "Dağıtım yapılmadı. Yedeksiz dağıtmak için Dağıtımlar'daki \"Her dağıtımdan önce veritabanını yedekle\" kutusunu kaldırın.": "Nothing was deployed. To deploy without a backup, untick \"Back up the database before every deployment\" under Deployments.",
     "Dağıtım, önizlemeler, komutlar ve Tinker, .env, kuyruklar, süreçler, yedek alma, bakım modu": "Deploys, previews, commands and Tinker, .env, queues, processes, taking backups, maintenance mode",
     "Dağıtımlar": "Deployments",
     "Dağıtımlar bölümündeki webhook adresine :app için pull request olaylarını da açın (GitHub: :part, GitLab: :part2) ve webhook'un gizli anahtarına (:secret) adresin sonundaki anahtarı yazın; imzasız pull request olayları kullanılmaz. Çatallardan (fork) gelen pull request'ler kurulmaz.": "For :app, also turn on pull request events for the webhook address in the Deployments section (GitHub: :part, GitLab: :part2) and set the webhook's secret (:secret) to the key at the end of the address; unsigned pull request events are not used. Pull requests from forks are not set up.",

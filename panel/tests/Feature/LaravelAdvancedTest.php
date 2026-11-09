@@ -338,6 +338,7 @@ class LaravelAdvancedTest extends TestCase
 
         $this->assertSame(DeploymentStatus::Failed, $deployment->fresh()->status);
         $this->assertStringContainsString('pg_dump hata verdi', $deployment->fresh()->error);
+        $this->assertStringContainsString('Her dağıtımdan önce veritabanını yedekle', $deployment->fresh()->error);
         $this->assertSame([], $this->agent->called('laravel.deploy'));
     }
 

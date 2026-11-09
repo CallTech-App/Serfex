@@ -270,6 +270,37 @@ func TestBackupAndRestore(t *testing.T) {
 	}
 }
 
+// MariaDB's mysqldump has no --set-gtid-purged and takes no lock for a
+// --single-transaction dump.
+func TestBackupDatabaseDumpMariaDB(t *testing.T) {
+	m, sim := deployed(t)
+	if err := os.WriteFile(sim.Path(appDir+"/shared/.env"), []byte("DB_CONNECTION=mariadb\nDB_DATABASE=kargo\nDB_USERNAME=kargo\nDB_PASSWORD=x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(sim.Path("/usr/bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sim.Path("/usr/bin/mariadb-dump"), nil, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Backup(context.Background(), BackupSpec{App: app, ID: "db", Parts: []string{"database"}}); err != nil {
+		t.Fatal(err)
+	}
+	dumped := false
+	for _, c := range sim.Commands() {
+		s := c.String()
+		if strings.Contains(s, "mysqldump --no-defaults --single-transaction ") {
+			dumped = true
+			if strings.Contains(s, "gtid") {
+				t.Errorf("MariaDB dump with a MySQL-only option: %s", s)
+			}
+		}
+	}
+	if !dumped {
+		t.Errorf("no dump: %s", commands(sim))
+	}
+}
+
 func TestBackupDatabaseDump(t *testing.T) {
 	m, sim := deployed(t)
 	env := "DB_CONNECTION=mysql\nDB_HOST=localhost\nDB_DATABASE=kargo\nDB_USERNAME=kargo\nDB_PASSWORD='s3cr et'\n"
@@ -283,6 +314,15 @@ func TestBackupDatabaseDump(t *testing.T) {
 	for _, c := range sim.Commands() {
 		s := c.String()
 		if strings.Contains(s, "mysqldump") {
+			if strings.HasSuffix(s, "mysqldump --version") {
+				continue
+			}
+			if !strings.Contains(s, " mysqldump --no-defaults --single-transaction ") {
+				t.Errorf("option files must not be read: %s", s)
+			}
+			if !strings.Contains(s, " --set-gtid-purged=OFF ") {
+				t.Errorf("MySQL dump without --set-gtid-purged=OFF needs RELOAD on a GTID server: %s", s)
+			}
 			if !strings.Contains(s, "--host=127.0.0.1 --port=3306 --user=kargo -- kargo") || strings.Contains(s, "s3cr") {
 				t.Errorf("dump command: %s", s)
 			}
