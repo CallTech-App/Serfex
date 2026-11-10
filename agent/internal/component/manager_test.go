@@ -445,6 +445,25 @@ func TestFail2banJails(t *testing.T) {
 	if jails := read(t, sim, jailConf); !strings.Contains(jails, "[dovecot]") || !strings.Contains(jails, "[postfix-sasl]") {
 		t.Errorf("mail jails missing after a repair:\n%s", jails)
 	}
+	if strings.Contains(read(t, sim, jailConf), "port = 22") {
+		t.Error("SSH on 22 changed the sshd jail")
+	}
+
+	// SSH moved: the sshd jail watches the new ports.
+	m.SSHPorts = func() []int { return []int{22} }
+	if st, _ := m.Fail2ban(context.Background()); !st.Current {
+		t.Error("SSH on 22 made the jails out of date")
+	}
+	m.SSHPorts = func() []int { return []int{2222, 22} }
+	if st, _ := m.Fail2ban(context.Background()); st.Current {
+		t.Error("jails current after SSH moved")
+	}
+	if _, err := m.Fail2banRefresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(read(t, sim, jailConf), "[sshd]\nenabled = true\nport = 2222,22\n") {
+		t.Errorf("sshd jail does not follow the port:\n%s", read(t, sim, jailConf))
+	}
 }
 
 func TestClamAVScansMail(t *testing.T) {

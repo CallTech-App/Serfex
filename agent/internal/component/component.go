@@ -114,6 +114,10 @@ type Manager struct {
 	// Addresses returns the server's own addresses, which Fail2ban never
 	// bans.
 	Addresses func() []string
+	// SSHPorts returns the ports Serfex set for SSH (Güvenlik > Giriş
+	// güvenliği), nil when it never changed them; the sshd jail watches
+	// those ports instead of 22.
+	SSHPorts func() []int
 	// Fail, when set, is asked before each step of an operation; an error
 	// makes the step fail (tests and the real-host test's rollback check).
 	Fail func(id, step string) error

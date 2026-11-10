@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -596,6 +597,18 @@ func renderJails(m *Manager) []byte {
 		ignore = append(ignore, r.String())
 	}
 	mail := m.exists("/usr/sbin/postfix") && m.exists("/usr/sbin/dovecot")
+	// SSH on its default port keeps the jail as it always was, so
+	// existing servers see no change.
+	sshPort := ""
+	if m.SSHPorts != nil {
+		if ports := m.SSHPorts(); len(ports) > 0 && !slices.Equal(ports, []int{22}) {
+			list := make([]string, len(ports))
+			for i, p := range ports {
+				list[i] = strconv.Itoa(p)
+			}
+			sshPort = "port = " + strings.Join(list, ",") + "\n"
+		}
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, `# %s. Manual changes are overwritten.
 # Serfex's jails. Bans use nftables (table inet f2b-table) and end on
@@ -612,7 +625,7 @@ ignoreip = %s
 
 [sshd]
 enabled = true
-
+%s
 # Logins to the Serfex panel: ten failures in 15 minutes close the
 # panel's port to that address for an hour.
 [serfex-panel]
@@ -622,7 +635,7 @@ port = %d
 maxretry = 10
 findtime = 15m
 bantime = 1h
-`, txn.Marker, strings.Join(ignore, " "), m.panelPort())
+`, txn.Marker, strings.Join(ignore, " "), sshPort, m.panelPort())
 	if mail {
 		b.WriteString(`
 [dovecot]

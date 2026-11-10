@@ -66,6 +66,11 @@ type Manager struct {
 	Now func() time.Time
 	// WebUser is the account Nginx runs as; it reads password files.
 	WebUser string
+
+	// dialSSH checks that sshd greets on an address and inUse that a
+	// port is taken; tests replace them.
+	dialSSH func(ctx context.Context, addr string) error
+	inUse   func(port int) bool
 }
 
 // NewManager returns a Manager acting on h.

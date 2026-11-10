@@ -189,6 +189,7 @@ func main() {
 	svc.security = security.NewManager(h, svc.files)
 	svc.security.WebUser = *webUser
 	svc.laravel.Snippet = svc.security.WriteSnippet
+	svc.components.SSHPorts = svc.security.ManagedSSHPorts
 	svc.firewall = firewall.NewManager(h)
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses

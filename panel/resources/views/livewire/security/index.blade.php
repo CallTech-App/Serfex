@@ -29,6 +29,23 @@
         </div>
     @endif
 
+    @if ($sshPortChange)
+        <div class="rounded-xl border border-line bg-warn-soft px-5 py-4 text-[13.5px]" role="alert">
+            <p class="flex items-start gap-3">
+                <x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />
+                <span class="flex-1 space-y-1.5">
+                    <span class="block"><x-t text="SSH şu an hem :from hem :to portunda açık. Yeni porttan bağlanmayı deneyin:"><x-slot:from><span class="num font-mono">{{ $sshPortChange['from'] }}</span></x-slot:from><x-slot:to><span class="num font-mono">{{ $sshPortChange['to'] }}</span></x-slot:to></x-t></span>
+                    <code class="block w-fit max-w-full overflow-x-auto rounded-md border border-line bg-surface px-2.5 py-1 font-mono text-[13px]">ssh -p {{ $sshPortChange['to'] }} {{ $sshUser }}{{ '@' }}{{ request()->getHost() }}</code>
+                    <span class="block text-muted">{{ __('Bağlanabildiyseniz eski portu kapatın. Bağlanamıyorsanız sunucunuzun önündeki güvenlik duvarında (sağlayıcınızın panelinde) yeni portu açın ya da vazgeçin. Açık SSH oturumlarınız kapanmaz; siz karar verene kadar iki port da açık kalır.') }}</span>
+                </span>
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2 pl-7">
+                <button type="button" wire:click="acceptSshPort" wire:loading.attr="disabled" class="{{ $primary }}">{{ __('Bağlandım, :from portunu kapat', ['from' => $sshPortChange['from']]) }}</button>
+                <button type="button" wire:click="revertSshPort" wire:loading.attr="disabled" class="{{ $btn }}">{{ __('Vazgeç, :from portunda kal', ['from' => $sshPortChange['from']]) }}</button>
+            </div>
+        </div>
+    @endif
+
     <section class="min-w-0 rounded-xl border border-line bg-surface">
         <div class="flex gap-5 overflow-x-auto border-b border-line px-5 text-[13.5px]" role="tablist">
             @foreach ($this::TABS as $key => $label)
@@ -300,6 +317,11 @@
                             <p class="pt-2 text-muted">{{ __('Sunucuda SSH sunucusu kurulu değil.') }}</p>
                         @else
                             <div class="grid items-center gap-x-4 gap-y-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                                <span>{{ __('Port') }}</span>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <span class="num font-mono text-[13px]">{{ implode(', ', $ssh['ports'] ?? [22]) }}</span>
+                                    <button type="button" wire:click="openSshPort" @disabled($sshPortChange) class="text-[13px] text-accent hover:underline disabled:opacity-40 disabled:no-underline">{{ __('Değiştir') }}</button>
+                                </div>
                                 <label for="rootLogin">{{ __('root girişi') }}</label>
                                 <select id="rootLogin" wire:model="rootLogin" class="{{ $field }} w-fit {{ $errors->has('rootLogin') ? 'border-crit' : 'border-line' }}">
                                     @foreach (Ssh::ROOT_LOGIN as $k => $l)
@@ -316,7 +338,6 @@
                                 <p class="mt-2 text-[13px] text-crit">{{ $message }}</p>
                             @enderror
                             <p class="mt-2 text-2xs text-muted">
-                                {{ __('Port :ports.', ['ports' => implode(', ', $ssh['ports'] ?? [22])]) }}
                                 @if ($ssh['key_accounts'] ?? [])
                                     <x-t text="SSH anahtarı olan yönetici hesapları: :key_accounts."><x-slot:key_accounts><span class="font-mono">{{ implode(', ', $ssh['key_accounts']) }}</span></x-slot:key_accounts></x-t>
                                 @else
@@ -331,6 +352,35 @@
             </div>
         @endif
     </section>
+
+    {{-- SSH portunu değiştir --}}
+    <x-modal :title="__('SSH portunu değiştir')" show="changingSshPort">
+        <form wire:submit="saveSshPort">
+            <h2 class="flex h-12 items-center border-b border-line px-5 text-[14.5px] font-semibold">{{ __('SSH portunu değiştir') }}</h2>
+            <div class="space-y-3 p-5 text-[13.5px]">
+                <div class="grid items-start gap-x-4 gap-y-1.5 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                    <label for="new-ssh-port" class="sm:pt-2">{{ __('Yeni port') }}</label>
+                    <div>
+                        <input id="new-ssh-port" wire:model="sshPort" inputmode="numeric" placeholder="2222" class="{{ $field }} num w-32 font-mono {{ $errors->has('sshPort') ? 'border-crit' : 'border-line' }}">
+                        @error('sshPort')
+                            <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p>
+                        @else
+                            <p class="mt-1.5 text-2xs text-muted">{{ __('22 ya da 1024 ile 65535 arasında boş bir port.') }}</p>
+                        @enderror
+                    </div>
+                </div>
+                <p class="text-[13px] text-muted">{{ __('SSH yeni portta da açılır; :port_now portu, siz yeni porttan bağlanıp eski portu kapatana kadar açık kalır. Güvenlik duvarı ve Fail2ban yeni portu kendiliğinden izler. Sunucunuzun önünde başka bir güvenlik duvarı varsa (sağlayıcınızın panelinde) yeni portu orada da açın.', ['port_now' => $sshPortNow]) }}</p>
+                <p class="text-[13px] text-muted">{{ __('FTP (SFTP) hesapları ve sitelerin SSH erişimi de yeni portu kullanır; bağlantı bilgileri site sayfalarında kendiliğinden güncellenir. Tarayıcıdaki SSH terminali etkilenmez.') }}</p>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+                <button type="button" wire:click="$set('changingSshPort', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                <button type="submit" wire:loading.attr="disabled" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="saveSshPort">{{ __('Yeni portu aç') }}</span>
+                    <span wire:loading wire:target="saveSshPort">{{ __('Uygulanıyor…') }}</span>
+                </button>
+            </div>
+        </form>
+    </x-modal>
 
     {{-- Güvenlik duvarını aç --}}
     <x-modal :title="__('Güvenlik duvarını aç')" show="confirmingFirewall">

@@ -73,6 +73,16 @@ setting. Findings can be ignored and reopen if they are seen again.
   turned off until an administrator has an SSH key. SFTP accounts always
   sign in with a password, and so do site users with SSH access that were
   given one (Sites → SSH access); Fail2ban's sshd jail covers them all.
+- **SSH port**: Port → Change opens SSH on the new port (22, or a free port
+  from 1024 to 65535) while the old one stays open. Try
+  `ssh -p NEW root@server`, then choose "Connected, close port 22" or
+  "Cancel, stay on port 22" in the notice at the top of the Security page;
+  until then both ports stay open, and open sessions are never cut. The
+  agent checks that sshd answers on every port after each step and puts the
+  previous configuration back when it does not. Serfex's firewall, the
+  Fail2ban sshd jail, ufw (when on) and the SFTP details on site pages
+  follow the port; a firewall at your hosting provider does not, so open the
+  new port there first.
 
 ## Per site
 

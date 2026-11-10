@@ -30,9 +30,9 @@ var notForPeople = map[string]bool{
 	"Cron (zamanlanmış görevler)": true, "Panel veritabanı (PostgreSQL ": true, "Panel iş kuyruğu": true,
 	"Panel zamanlayıcısı": true, "Panel yedekleme kuyruğu": true, "PostgreSQL (panel veritabanı)": true, "Diğer süreçler": true,
 	// Written into files on the server.
-	"; %s. Change these on the panel's Hizmetler → PHP sürümleri page.\n":          true,
-	"SSH hardening (Güvenlik > Giriş güvenliği). Read first, so these values win.": true,
-	"ModSecurity is not installed; install it from Yazılım Yönetimi first":         true,
+	"; %s. Change these on the panel's Hizmetler → PHP sürümleri page.\n":                   true,
+	"SSH hardening and port (Güvenlik > Giriş güvenliği). Read first, so these values win.": true,
+	"ModSecurity is not installed; install it from Yazılım Yönetimi first":                  true,
 	"Kapalı": true, "Yalnızca izle": true, "sunucu ayarı": true, "WAF of ": true, ": Kapalı": true,
 	"Korumalı alan": true, " nobody may fetch (Güvenlik taraması).": true, "Otomatik yanıt": true, " (geri yüklendi)": true,
 	`{"key":"5a4b3c2d1e0f9a8b","command":"reports:daily","description":"Günlük rapor","expression":"0 2 * * *","next":%q,"timezone":"UTC"}]`: true,
