@@ -92,6 +92,10 @@ class SecurityIndex extends Component
     /** The SSH form holds the server's values once read. */
     public bool $sshLoaded = false;
 
+    public bool $changingSshPort = false;
+
+    public string $sshPort = '';
+
     public function mount(TwoFactor $twoFactor): void
     {
         if (! array_key_exists($this->tab, self::TABS)) {
@@ -368,11 +372,103 @@ class SecurityIndex extends Component
         $this->passwordAuth = $passwordAuth;
     }
 
+    public function openSshPort(Ssh $ssh): void
+    {
+        $this->resetValidation('sshPort');
+        $this->sshPort = '';
+        $this->changingSshPort = $ssh->portChange() === null;
+    }
+
+    /**
+     * Opens SSH on the new port too; the old one stays open until the
+     * administrator has logged in through the new one.
+     */
+    public function saveSshPort(Ssh $ssh): void
+    {
+        $this->resetValidation('sshPort');
+        $port = trim($this->sshPort);
+        $problem = ctype_digit($port) ? $ssh->portProblem((int) $port) : __('Bir port numarası girin, örneğin 2222.');
+        if ($problem !== null) {
+            $this->addError('sshPort', $problem);
+
+            return;
+        }
+        try {
+            $ssh->changePort((int) $port);
+        } catch (AgentException $e) {
+            $this->addError('sshPort', Ssh::message($e));
+
+            return;
+        }
+        $this->changingSshPort = false;
+        $this->dispatch('toast', message: __('SSH :port portunda da açıldı. Yeni porttan bağlanmayı deneyin.', ['port' => $port]));
+    }
+
+    public function acceptSshPort(Ssh $ssh): void
+    {
+        $change = $ssh->portChange();
+        if ($change === null) {
+            return;
+        }
+        try {
+            $ssh->confirmPort();
+        } catch (AgentException $e) {
+            $this->refused = Ssh::message($e);
+
+            return;
+        }
+        $this->dispatch('toast', message: __('SSH artık yalnızca :to portunda.', ['to' => $change['to']]), source: $this->getId(), undo: ['method' => 'sshPortBack', 'args' => [(int) $change['from']]]);
+    }
+
+    public function revertSshPort(Ssh $ssh): void
+    {
+        $change = $ssh->portChange();
+        if ($change === null) {
+            return;
+        }
+        try {
+            $ssh->revertPort();
+        } catch (AgentException $e) {
+            $this->refused = Ssh::message($e);
+
+            return;
+        }
+        $this->dispatch('toast', message: __('Port değişikliğinden vazgeçildi; SSH :from portunda kaldı.', ['from' => $change['from']]));
+    }
+
+    /**
+     * Undo of a confirmed change: the old port opens again next to the
+     * new one, waiting to be confirmed or dropped like a new change.
+     */
+    public function sshPortBack(Ssh $ssh, int $port): void
+    {
+        if ($ssh->portChange() !== null || $ssh->portProblem($port) !== null) {
+            return;
+        }
+        try {
+            $ssh->changePort($port);
+        } catch (AgentException $e) {
+            $this->refused = Ssh::message($e);
+
+            return;
+        }
+        $this->dispatch('toast', message: __('SSH yeniden :port portunda da açıldı.', ['port' => $port]));
+    }
+
     // --- Render ------------------------------------------------------
+
+    /**
+     * Who the "ssh -p" hint logs in as: root, unless root may not log in.
+     */
+    private function sshUser(): string
+    {
+        return $this->rootLogin === 'no' ? __('kullanıcı') : 'root';
+    }
 
     public function render(Components $components): View
     {
-        $data = ['tab' => $this->tab];
+        $ssh = app(Ssh::class);
+        $data = ['tab' => $this->tab, 'sshPortChange' => $ssh->portChange(), 'sshPortNow' => $ssh->port(), 'sshUser' => $this->sshUser()];
         $error = null;
 
         match ($this->tab) {

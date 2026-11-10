@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -417,5 +418,96 @@ func TestSSH(t *testing.T) {
 	}
 	if read(t, sim, SSHConfig) != conf {
 		t.Fatal("not rolled back")
+	}
+}
+
+func TestSSHPorts(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	write(t, sim, "/usr/sbin/sshd", "", 0o755)
+	main := "Include /etc/ssh/sshd_config.d/*.conf\nPort 22\n#Port 2200\nX11Forwarding yes\nMatch User backup\n\tPort 9\n"
+	write(t, sim, SSHMainConfig, main, 0o644)
+	write(t, sim, "/etc/ssh/sshd_config.d/50-cloud-init.conf", "PasswordAuthentication yes\nport 22\n", 0o600)
+	inUse := map[int]bool{8443: true}
+	m.inUse = func(p int) bool { return inUse[p] }
+	var dialed []string
+	m.dialSSH = func(_ context.Context, addr string) error { dialed = append(dialed, addr); return nil }
+
+	for _, bad := range [][]int{{}, {80}, {22, 22}, {2222, 22, 2200}, {70000}} {
+		if _, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: bad}); err == nil {
+			t.Fatalf("%v accepted", bad)
+		}
+	}
+	if _, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{8443, 22}}); err == nil || !strings.Contains(err.Error(), "in use") {
+		t.Fatalf("a busy port: %v", err)
+	}
+
+	// Step one: the new port next to the old one.
+	st, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{2222, 22}})
+	if err != nil || !slices.Equal(st.Ports, []int{2222, 22}) {
+		t.Fatalf("both = %+v %v", st, err)
+	}
+	conf := read(t, sim, SSHConfig)
+	if !strings.Contains(conf, "Port 2222\nPort 22\n") || strings.Contains(conf, "PermitRootLogin") {
+		t.Fatalf("config:\n%s", conf)
+	}
+	if got := read(t, sim, SSHMainConfig); !strings.Contains(got, "\n#Port 22  # Serfex") || !strings.Contains(got, "#Port 2200\n") || !strings.Contains(got, "\tPort 9\n") {
+		t.Fatalf("main config:\n%s", got)
+	}
+	if got := read(t, sim, "/etc/ssh/sshd_config.d/50-cloud-init.conf"); !strings.Contains(got, "#port 22  # Serfex") {
+		t.Fatalf("drop-in:\n%s", got)
+	}
+	if !sim.Ran("sshd -t") || !sim.Ran("systemctl restart ssh.socket") || !slices.Contains(dialed, "[::1]:2222") {
+		t.Fatalf("not restarted or checked: %v", dialed)
+	}
+	if !slices.Equal(m.ManagedSSHPorts(), []int{2222, 22}) {
+		t.Fatalf("managed ports = %v", m.ManagedSSHPorts())
+	}
+
+	// Hardening keeps the ports, and the ports keep the hardening.
+	write(t, sim, "/root/.ssh/authorized_keys", "ssh-ed25519 AAAAC3Nz admin@laptop\n", 0o600)
+	if _, err := m.ApplySSH(ctx, SSHSettings{RootLogin: RootKey, PasswordAuth: false}); err != nil {
+		t.Fatal(err)
+	}
+	if st, err = m.SSH(ctx); err != nil || !slices.Equal(st.Ports, []int{2222, 22}) || st.PasswordAuth {
+		t.Fatalf("after hardening = %+v %v", st, err)
+	}
+
+	// sshd does not answer on the new port: everything goes back.
+	sshAnswerWait = time.Second
+	t.Cleanup(func() { sshAnswerWait = 15 * time.Second })
+	before := read(t, sim, SSHConfig)
+	m.dialSSH = func(_ context.Context, addr string) error {
+		if strings.HasSuffix(addr, ":2222") {
+			return nil
+		}
+		return errors.New("refused")
+	}
+	if _, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{2222, 40022}}); err == nil || !strings.Contains(err.Error(), "40022") {
+		t.Fatalf("no answer: %v", err)
+	}
+	if read(t, sim, SSHConfig) != before {
+		t.Fatal("not rolled back")
+	}
+
+	// Step two: only the new port.
+	m.dialSSH = func(context.Context, string) error { return nil }
+	st, err = m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{2222}})
+	if err != nil || !slices.Equal(st.Ports, []int{2222}) || st.RootLogin != RootKey {
+		t.Fatalf("new only = %+v %v", st, err)
+	}
+	if conf := read(t, sim, SSHConfig); !strings.Contains(conf, "PermitRootLogin prohibit-password\n") || !strings.Contains(conf, "Port 2222\n") || strings.Contains(conf, "Port 22\n") {
+		t.Fatalf("config:\n%s", conf)
+	}
+
+	// Without socket activation sshd is reloaded.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "systemctl is-active --quiet ssh.socket" {
+			return errors.New("inactive")
+		}
+		return nil
+	}
+	if _, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{22}}); err != nil || !sim.Ran("systemctl try-reload-or-restart ssh") {
+		t.Fatalf("back to 22: %v", err)
 	}
 }

@@ -225,6 +225,20 @@ func TestRealHost(t *testing.T) {
 		t.Fatalf("ssh status after hardening: %+v %v", st, err)
 	}
 
+	// --- SSH port: a second port, then back to 22 alone ---
+	if st, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{40022, 22}}); err != nil || len(st.Ports) != 2 || st.RootLogin != RootKey {
+		t.Fatalf("ssh on two ports: %+v %v", st, err)
+	}
+	if err := greets(ctx, "127.0.0.1:40022"); err != nil {
+		t.Fatalf("sshd does not answer on 40022: %v", err)
+	}
+	if _, err := m.ApplySSHPorts(ctx, SSHPortsSpec{Ports: []int{22}}); err != nil {
+		t.Fatal(err)
+	}
+	if greets(ctx, "127.0.0.1:40022") == nil || greets(ctx, "127.0.0.1:22") != nil {
+		t.Fatal("sshd is not back on 22 alone")
+	}
+
 	// --- Fail2ban ---
 	if _, err := comps.Install(ctx, component.OpSpec{ID: "fail2ban", Run: "rh-f2b"}); err != nil {
 		t.Fatalf("install fail2ban: %v", err)

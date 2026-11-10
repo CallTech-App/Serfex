@@ -58,11 +58,8 @@ func (m *Manager) SSH(ctx context.Context) (SSHStatus, error) {
 	if err != nil {
 		return st, &OperationError{fmt.Errorf("sshd -T: %s", lastLines(out, 2))}
 	}
-	if m.sim && !st.Managed {
-		out = "port 22\npermitrootlogin yes\npasswordauthentication yes\n"
-	} else if m.sim {
-		b, _ := os.ReadFile(m.h.Path(SSHConfig))
-		out = "port 22\n" + strings.ToLower(string(b))
+	if m.sim {
+		out = m.simEffective()
 	}
 	st.RootLogin, st.PasswordAuth = RootYes, true
 	sc := bufio.NewScanner(strings.NewReader(out))
@@ -113,11 +110,13 @@ func (m *Manager) ApplySSH(ctx context.Context, s SSHSettings) (SSHStatus, error
 	if !s.PasswordAuth {
 		pw = "no"
 	}
-	conf := header("SSH hardening (Güvenlik > Giriş güvenliği). Read first, so these values win.") +
-		"PermitRootLogin " + s.RootLogin + "\nPasswordAuthentication " + pw + "\nKbdInteractiveAuthentication " + pw + "\n"
-	err := t.RootDir("/etc/ssh/sshd_config.d", 0o755, 0, 0)
+	hardening := []string{"PermitRootLogin " + s.RootLogin, "PasswordAuthentication " + pw, "KbdInteractiveAuthentication " + pw}
+	_, ports, err := m.managedSSH()
 	if err == nil {
-		err = t.WriteFile(SSHConfig, []byte(conf))
+		err = t.RootDir("/etc/ssh/sshd_config.d", 0o755, 0, 0)
+	}
+	if err == nil {
+		err = t.WriteFile(SSHConfig, renderSSHConfig(hardening, ports))
 	}
 	if err == nil && t.Changed {
 		m.privsepDir()

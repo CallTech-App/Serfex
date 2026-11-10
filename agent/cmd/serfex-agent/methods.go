@@ -1023,6 +1023,15 @@ func registerSecurity(srv *rpc.Server, svc services) {
 	handle(srv, "scan.fix", func(ctx context.Context, p security.FixSpec) (any, error) { return sec.Fix(ctx, p) })
 	handle(srv, "ssh.status", func(ctx context.Context, _ struct{}) (any, error) { return sec.SSH(ctx) })
 	handle(srv, "ssh.apply", func(ctx context.Context, p security.SSHSettings) (any, error) { return sec.ApplySSH(ctx, p) })
+	// The sshd jail follows the new ports at once; when Fail2ban is busy
+	// the panel's minute check catches up.
+	handle(srv, "ssh.ports.apply", func(ctx context.Context, p security.SSHPortsSpec) (any, error) {
+		st, err := sec.ApplySSHPorts(ctx, p)
+		if err == nil {
+			_, _ = c.Fail2banSync(context.WithoutCancel(ctx))
+		}
+		return st, err
+	})
 
 	handle(srv, "firewall.rules", func(ctx context.Context, _ struct{}) (any, error) { return fw.Rules(ctx) })
 	handle(srv, "firewall.rules.apply", func(ctx context.Context, p firewall.RulesSpec) (any, error) { return fw.ApplyRules(ctx, p) })

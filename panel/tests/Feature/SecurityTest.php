@@ -28,9 +28,11 @@ use App\Services\Mail\MailSettings;
 use App\Services\Security\Fail2ban;
 use App\Services\Security\Firewall;
 use App\Services\Security\Scans;
+use App\Services\Security\Ssh;
 use App\Services\Security\TwoFactor;
 use App\Services\Setup\FirstRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
@@ -411,6 +413,61 @@ class SecurityTest extends TestCase
             ->call('saveSsh')
             ->assertHasErrors('rootLogin')
             ->assertSee('SSH anahtarı olan bir yönetici hesabı yok');
+    }
+
+    public function test_the_ssh_port_changes_in_two_steps_with_the_old_port_open_until_confirmed(): void
+    {
+        $ports = [22];
+        $this->agent->answers['ssh.status'] = function () use (&$ports) {
+            return ['installed' => true, 'root_login' => 'yes', 'password_auth' => true, 'ports' => $ports, 'managed' => true, 'key_accounts' => ['root']];
+        };
+        $this->agent->answers['ssh.ports.apply'] = function ($p) use (&$ports) {
+            $ports = $p['ports'];
+
+            return ['installed' => true, 'ports' => $ports];
+        };
+        Setting::put('security.firewall', ['enabled' => true, 'services' => [], 'rules' => []]);
+        Cache::put('serfex.ftp.port', 22);
+
+        $page = Livewire::test(SecurityIndex::class, ['tab' => 'login'])
+            ->call('openSshPort')->assertSet('changingSshPort', true);
+        foreach (['abc' => 'Bir port numarası', '80' => 'Port 22 ya da 1024', '22' => 'SSH zaten bu portta', '8443' => 'panelin portu', '3306' => 'veritabanı'] as $port => $error) {
+            $page->set('sshPort', (string) $port)->call('saveSshPort')->assertHasErrors('sshPort')->assertSee($error);
+        }
+        $this->assertSame([], $this->agent->called('ssh.ports.apply'));
+
+        // Step one: both ports; the firewall opens the new one.
+        $page->set('sshPort', '2222')->call('saveSshPort')
+            ->assertHasNoErrors()->assertSet('changingSshPort', false)
+            ->assertSee('SSH şu an hem')->assertSee('ssh -p 2222 root@');
+        $this->assertSame([['ports' => [2222, 22]]], $this->agent->called('ssh.ports.apply'));
+        $this->assertSame([2222, 22], app(Firewall::class)->sshPorts());
+        $this->assertSame('2222, 22', collect($this->agent->called('firewall.rules.apply'))->last()['rules'][2]['ports']);
+        $this->assertFalse(Cache::has('serfex.ftp.port'));
+        $this->assertEquals(['from' => 22, 'to' => 2222], array_intersect_key(app(Ssh::class)->portChange(), ['from' => 0, 'to' => 0]));
+        $page->call('openSshPort')->assertSet('changingSshPort', false);
+
+        // Step two: the old port closes, with Undo.
+        $page->call('acceptSshPort')
+            ->assertDispatched('toast', fn ($n, $p) => $p['undo'] === ['method' => 'sshPortBack', 'args' => [22]]);
+        $this->assertSame([2222], $this->agent->called('ssh.ports.apply')[1]['ports']);
+        $this->assertNull(app(Ssh::class)->portChange());
+        $this->assertSame([2222], app(Firewall::class)->sshPorts());
+        $this->assertSame(2222, app(Ssh::class)->port());
+
+        // Undo opens 22 again next to 2222; dropping the change keeps 2222.
+        $page->call('sshPortBack', 22);
+        $this->assertSame([22, 2222], $this->agent->called('ssh.ports.apply')[2]['ports']);
+        $page->call('revertSshPort');
+        $this->assertSame([2222], $this->agent->called('ssh.ports.apply')[3]['ports']);
+        $this->assertNull(app(Ssh::class)->portChange());
+
+        // The agent's refusal is shown and nothing is recorded.
+        $this->agent->answers['ssh.ports.apply'] = AgentException::rpcError('ssh.ports.apply', AgentException::INVALID_PARAMS, 'port 2200 is in use by another program');
+        Livewire::test(SecurityIndex::class, ['tab' => 'login'])
+            ->call('openSshPort')->set('sshPort', '2200')->call('saveSshPort')
+            ->assertHasErrors('sshPort')->assertSee('başka bir program kullanıyor');
+        $this->assertNull(app(Ssh::class)->portChange());
     }
 
     public function test_two_factor_setup_login_and_recovery_codes(): void
