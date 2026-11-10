@@ -829,6 +829,9 @@ func registerComponents(srv *rpc.Server, svc services) {
 	handle(srv, "component.remove-old", func(ctx context.Context, p component.OpSpec) (any, error) {
 		return c.RemoveOld(context.WithoutCancel(ctx), p)
 	})
+	handle(srv, "component.revert", func(ctx context.Context, p component.OpSpec) (any, error) {
+		return c.Revert(context.WithoutCancel(ctx), p)
+	})
 	handle(srv, "component.configure", func(ctx context.Context, p component.ConfigureSpec) (any, error) {
 		return c.Configure(context.WithoutCancel(ctx), p)
 	})

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +37,8 @@ const (
 	resolvedUplink = "/run/systemd/resolve/resolv.conf"
 )
 
-// Packages are the Ubuntu packages Setup installs.
+// Packages are the packages Setup installs, from PowerDNS's archive or
+// Ubuntu's (install).
 var Packages = []string{"pdns-server", "pdns-backend-lmdb"}
 
 var configTmpl = template.Must(template.New("pdns").Parse(`# {{.Marker}}. Manual changes are overwritten.
@@ -103,6 +105,13 @@ func (m *Manager) Status(ctx context.Context) Status {
 	}
 	st.Running, st.Version = true, v
 	return st
+}
+
+// Configured reports whether Setup has written the instance's
+// configuration.
+func (m *Manager) Configured() bool {
+	_, err := m.readConfig()
+	return err == nil
 }
 
 // SetupResult describes what Setup did.
@@ -229,19 +238,39 @@ func (m *Manager) Setup(ctx context.Context) (res SetupResult, err error) {
 	if err != nil {
 		return SetupResult{}, err
 	}
+	if m.sim {
+		// PowerDNS creates its database when it starts.
+		if f, err := os.OpenFile(m.h.Path(lmdbDir+"/"+lmdbName), os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
+			f.Close()
+		}
+	}
 	res.Version = v
 	return res, nil
 }
 
-// install installs the PowerDNS packages, refreshing the package lists
-// once if the first attempt fails.
+// install installs PowerDNS: the Series from PowerDNS's own archive or,
+// when that archive cannot be read, Ubuntu's version, which the Software
+// page then offers to upgrade (Upgrade).
 func (m *Manager) install(ctx context.Context) error {
-	env := []string{"DEBIAN_FRONTEND=noninteractive"}
-	inst := host.Command{Name: "apt-get", Args: append([]string{"install", "-y", "-q", "--no-install-recommends"}, Packages...), Env: env}
+	t := txn.New(m.h)
+	if err := m.addArchive(ctx, t, io.Discard); err == nil {
+		if err := m.aptInstall(ctx); err == nil {
+			return nil
+		}
+	}
+	_ = t.Rollback(context.WithoutCancel(ctx))
+	return m.aptInstall(ctx)
+}
+
+// aptInstall installs the PowerDNS packages, refreshing the package lists
+// once if the first attempt fails.
+func (m *Manager) aptInstall(ctx context.Context) error {
+	inst := host.Command{Name: "apt-get", Args: append([]string{"install", "-y", "-q", "--no-install-recommends"}, Packages...), Env: aptEnv}
+	defer m.simInstalled()
 	if _, err := m.h.Run(ctx, inst); err == nil {
 		return nil
 	}
-	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: env}); err != nil {
+	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv}); err != nil {
 		return fmt.Errorf("installing PowerDNS: %w", err)
 	}
 	if _, err := m.h.Run(ctx, inst); err != nil {

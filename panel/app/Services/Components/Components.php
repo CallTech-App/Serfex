@@ -3,9 +3,11 @@
 namespace App\Services\Components;
 
 use App\Jobs\RunComponentOperation;
+use App\Jobs\SyncDnsZone;
 use App\Models\ComponentOperation;
 use App\Models\Database;
 use App\Models\DatabaseUser;
+use App\Models\DnsZone;
 use App\Models\LaravelApp;
 use App\Models\Mailbox;
 use App\Models\PanelUpdate;
@@ -64,6 +66,7 @@ class Components
         'python' => ['Python 3', 'pip, venv ve derleme başlıkları', 'other', 'Çalışma ortamları'],
         'roundcube' => ['Roundcube', 'Varsayılan webmail, Ubuntu paketi', 'other', 'E-posta'],
         'snappymail' => ['SnappyMail', 'Hafif ve hızlı webmail, GitHub sürümü', 'other', 'E-posta'],
+        'powerdns' => ['PowerDNS', 'Alan adlarınızın yetkili DNS sunucusu', 'other', 'DNS'],
         'fail2ban' => ['Fail2ban', 'SSH ve posta girişlerine kaba kuvvet saldırılarını engeller', 'other', 'Güvenlik'],
         'modsecurity' => ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP CRS kuralları)', 'other', 'Güvenlik'],
         'clamav' => ['ClamAV', 'Gelen ve giden postada virüs taraması', 'other', 'Güvenlik'],
@@ -112,9 +115,31 @@ class Components
         if ($installed !== $this->installed()) {
             Setting::put('components.installed', $installed);
         }
+        if ($this->list['powerdns']['installed'] ?? false) {
+            $this->syncDnsServer($this->list['powerdns']);
+        }
         $this->settleAll();
 
         return $this->list;
+    }
+
+    /**
+     * Keeps the PowerDNS version the DNS settings page shows, and the
+     * upgrade it can have, as the agent last reported them.
+     *
+     * @param  array<string, mixed>  $status
+     */
+    private function syncDnsServer(array $status): void
+    {
+        $server = Setting::get('dns.server', []);
+        if (($server['state'] ?? null) !== 'ready') {
+            return;
+        }
+        $version = Str::before((string) self::shortVersion($status['version'] ?? null), '-') ?: null;
+        $upgrade = isset($status['upgrade']['to']) ? (string) $status['upgrade']['to'] : null;
+        if (($server['version'] ?? null) !== $version || ($server['upgrade'] ?? null) !== $upgrade) {
+            Setting::put('dns.server', ['version' => $version, 'upgrade' => $upgrade] + $server);
+        }
     }
 
     /**
@@ -180,6 +205,15 @@ class Components
             // checked by the agent.
             Cache::forget(SystemPackages::SUMMARY_KEY);
             $this->databases->status();
+
+            return;
+        }
+        if ($op->component === 'powerdns') {
+            if ($op->action === 'revert' && $op->status === 'succeeded') {
+                // The database from before the upgrade is back; the panel
+                // writes every zone again so later changes stay.
+                DnsZone::query()->each(fn (DnsZone $zone) => SyncDnsZone::dispatch($zone));
+            }
 
             return;
         }
@@ -267,7 +301,7 @@ class Components
             $ids[] = 'node'.$line;
         }
 
-        return [...$ids, 'composer', 'python', 'roundcube', 'snappymail', 'fail2ban', 'modsecurity', 'clamav'];
+        return [...$ids, 'composer', 'python', 'roundcube', 'snappymail', 'powerdns', 'fail2ban', 'modsecurity', 'clamav'];
     }
 
     /**
@@ -333,6 +367,7 @@ class Components
                 'update', 'packages' => __(':name güncelleniyor.', ['name' => $name]),
                 'upgrade' => __(':name sürümüne yükseltiliyor.', ['name' => $name]),
                 'remove', 'ext-remove', 'remove-old' => __(':name kaldırılıyor.', ['name' => $name]),
+                'revert' => __(':name sürümüne dönülüyor.', ['name' => $name]),
                 default => __(':name kuruluyor.', ['name' => $name]),
             };
 
@@ -398,7 +433,7 @@ class Components
     {
         $status ??= $this->statuses()[$id] ?? [];
         if ($status['required'] ?? null) {
-            return __('Gerekli. Serfex tüm sitelerde Nginx kullanır.');
+            return $id === 'powerdns' ? __('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.') : __('Gerekli. Serfex tüm sitelerde Nginx kullanır.');
         }
         if ($kept = $status['kept'] ?? null) {
             return __('Yükseltmeden kalan :name önce kaldırılmalı.', ['name' => self::releaseName($id, (string) $kept['from'])]);
@@ -424,15 +459,15 @@ class Components
 
     /**
      * Starts installing, updating or removing a component in the
-     * background; for a database server also upgrading it to a newer
-     * major version ($version, the one offered) and removing the old
-     * version an upgrade kept. Returns the operation, or the reason it
-     * cannot start.
+     * background; for a database server and PowerDNS also upgrading it to
+     * a newer major version ($version, the one offered) and removing the
+     * old version an upgrade kept, for PowerDNS going back to it. Returns
+     * the operation, or the reason it cannot start.
      */
     public function start(string $id, string $action, ?User $user, ?string $version = null): ComponentOperation|string
     {
-        $database = in_array($id, ['mysql', 'mariadb', 'postgresql'], true);
-        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove', ...($database ? ['upgrade', 'remove-old'] : [])], true)) {
+        $upgradable = in_array($id, ['mysql', 'mariadb', 'postgresql', 'powerdns'], true);
+        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove', ...($upgradable ? ['upgrade', 'remove-old'] : []), ...($id === 'powerdns' ? ['revert'] : [])], true)) {
             return __('Bu bileşen buradan yönetilemiyor.');
         }
         // Read first: it also closes operations whose job is gone.
@@ -462,7 +497,7 @@ class Components
         if ($action === 'upgrade' && ($refusal = $this->upgradeRefusal($id, $status, $version)) !== null) {
             return $refusal;
         }
-        if ($action === 'remove-old') {
+        if ($action === 'remove-old' || $action === 'revert') {
             if (! isset($status['kept']['from'])) {
                 return __('Yükseltmeden kalan eski sürüm yok.');
             }
@@ -547,6 +582,7 @@ class Components
             str_contains($from, '/ondrej/php') => 'ppa:ondrej/php',
             str_starts_with($from, 'repo.mysql.com') => __('MySQL deposu (repo.mysql.com)'),
             str_starts_with($from, 'dlm.mariadb.com') => __('MariaDB deposu (dlm.mariadb.com)'),
+            str_starts_with($from, 'repo.powerdns.com') => __('PowerDNS deposu (repo.powerdns.com)'),
             default => Str::before($from, '/'),
         };
     }
@@ -560,6 +596,7 @@ class Components
             'mysql' => "MySQL {$major} LTS",
             'mariadb' => "MariaDB {$major} LTS",
             'postgresql' => "PostgreSQL {$major}",
+            'powerdns' => "PowerDNS {$major}",
             default => $major,
         };
     }
@@ -612,6 +649,9 @@ class Components
      */
     public function installRefusal(string $id, array $statuses): ?string
     {
+        if ($id === 'powerdns') {
+            return __('DNS sunucusu kurulduğunda burada görünür; Alan Adları ve DNS sayfasından kurulur.');
+        }
         $other = ['mysql' => 'mariadb', 'mariadb' => 'mysql'][$id] ?? null;
         if ($other !== null && ($statuses[$other]['installed'] ?? false)) {
             return __(':name kurulu; :name2 onunla aynı anda kurulamaz.', ['name' => $this->name($other), 'name2' => $this->name($id)]);
@@ -660,6 +700,8 @@ class Components
             'choices' => $installed ? [] : self::choices($id, $status['choices'] ?? []),
             'upgrade' => $installed && isset($status['upgrade']['to']) ? ['from' => (string) $status['upgrade']['from'], 'to' => (string) $status['upgrade']['to'], 'name' => self::releaseName($id, (string) $status['upgrade']['to'])] : null,
             'kept' => $installed && isset($status['kept']['from']) ? ['from' => (string) $status['kept']['from'], 'name' => self::releaseName($id, (string) $status['kept']['from']), 'until' => $status['kept']['until'] ?? null] : null,
+            // PowerDNS can go back to the version its upgrade kept.
+            'revertible' => $id === 'powerdns' && $installed && isset($status['kept']['from']),
             'running' => (bool) ($status['running'] ?? false),
             'units' => $status['units'] ?? [],
             'busy' => $busy,
@@ -707,6 +749,7 @@ class Components
             'fail2ban' => $this->mail->isSetUp() ? __('SSH ve posta girişleri') : __('SSH girişleri'),
             'modsecurity' => ($status['settings']['mode'] ?? 'detect') === 'block' ? __('Engelleme kipinde · seviye :level', ['level' => $status['settings']['paranoia'] ?? 1]) : __('Yalnızca izleme · seviye :level', ['level' => $status['settings']['paranoia'] ?? 1]),
             'clamav' => __('Posta taraması (Rspamd)'),
+            'powerdns' => trans_choice(':count bölge', DnsZone::count()),
             default => __('Kurulu'),
         };
     }

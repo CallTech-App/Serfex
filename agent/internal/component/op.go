@@ -15,6 +15,7 @@ import (
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
 	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
 	"github.com/calltech-app/serfex/agent/internal/txn"
@@ -533,9 +534,17 @@ func (o *op) update() (err error) {
 	return o.finish(true)
 }
 
-// upgrade moves a database server to its next major version; the
-// database package checks, backs up, verifies and rolls back.
+// upgrade moves a database server to its next major version, or PowerDNS
+// to the series Serfex offers; the database and dns packages check, back
+// up, verify and roll back.
 func (o *op) upgrade() error {
+	if o.c.id == "powerdns" {
+		if !o.c.isInstalled(o.m) {
+			return invalid("%s is not installed", o.c.id)
+		}
+		_, err := o.m.DNS.Upgrade(o.ctx, dns.UpgradeSpec{Log: o.w, Fail: o.failpoint})
+		return err
+	}
 	if o.c.choices == nil {
 		return invalid("%s has no major versions to upgrade to", o.c.id)
 	}
@@ -546,12 +555,23 @@ func (o *op) upgrade() error {
 	return err
 }
 
-// removeOld deletes the old version a database server's upgrade kept.
+// removeOld deletes the old version an upgrade kept.
 func (o *op) removeOld() error {
+	if o.c.id == "powerdns" {
+		return o.m.DNS.RemoveOld(o.ctx, o.w)
+	}
 	if o.c.choices == nil {
 		return invalid("%s keeps no old versions", o.c.id)
 	}
 	return o.m.db.RemoveOld(o.ctx, o.c.id, o.w)
+}
+
+// revert goes back to the version PowerDNS's upgrade kept.
+func (o *op) revert() error {
+	if o.c.id != "powerdns" {
+		return invalid("%s cannot go back to an older version", o.c.id)
+	}
+	return o.m.DNS.Revert(o.ctx, dns.UpgradeSpec{Log: o.w, Fail: o.failpoint})
 }
 
 // packageInstalled asks dpkg whether a package is installed.
@@ -580,6 +600,9 @@ func (m *Manager) versions(ctx context.Context, pkgs []string) map[string]string
 				if v := database.SimVersion(m.h, product); v != "" {
 					out[p] = v
 				}
+			}
+			if p == "pdns-server" && m.DNS != nil {
+				out[p] = m.DNS.PackageVersion(ctx)
 			}
 		}
 		return out

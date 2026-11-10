@@ -24,7 +24,7 @@ lists every method by area.
 | `usage.disk` | `users` | disk space used by each account's home directory, `{"<user>": {"bytes", "files", "sites": {"<domain>": bytes}}}` (`sites`: the part in each site's folder `web/<domain>`); hard links count once, symbolic links are not followed |
 | `system.addresses` | | the server's public addresses, `{"ipv4": [...], "ipv6": [...]}` |
 | `dns.status` | | `installed`, `configured`, `running`, `version` of the DNS server |
-| `dns.setup` | | installs PowerDNS if missing, configures and starts it; returns `installed`, `changed`, `version` |
+| `dns.setup` | | installs PowerDNS if missing (5.1 from PowerDNS's archive, Ubuntu's when that cannot be read), configures and starts it; returns `installed`, `changed`, `version` |
 | `dns.zone.apply` | `zone`, `soa`, `records` | makes the zone serve exactly these records; returns `serial`, `created`, `changed` |
 | `dns.zone.get` | `zone` | the records being served, with `serial` and `soa` |
 | `dns.zone.delete` | `zone` | removes the zone; returns `deleted` |
@@ -90,12 +90,13 @@ lists every method by area.
 | `db.extension.list` | `server` (`postgresql`), `database` | the offered PostgreSQL extensions (`vector`) with `enabled`, the created `version` and the packaged `available` version |
 | `db.extension.set` | `server` (`postgresql`), `database`, `name`, `enabled` | creates the extension in the database as the superuser, installing its package (`postgresql-<v>-pgvector`) when missing, or drops it; dropping one that columns or indexes use is refused |
 | `db.list` | `server` | the customer databases with `size` and `tables`, and the users with their remote `hosts` |
-| `component.list` | | every optional component (`id`, `installed`, `version`, `latest` when an update is available, `running`, `units`, `busy`, `used_by`, `required`, `settings`, `default`; database servers also `choices`, `upgrade` (`from`, `to`) and `kept` (`from`, `to`, `old`, `dump`, `until`)) and `checked_at` |
+| `component.list` | | every optional component (`id`, `installed`, `version`, `latest` when an update is available, `running`, `units`, `busy`, `used_by`, `required`, `settings`, `default`; database servers also `choices`, `upgrade` (`from`, `to`) and `kept` (`from`, `to`, `old`, `dump`, `until`); `powerdns` has `upgrade` and `kept` too) and `checked_at` |
 | `component.check` | | refreshes the package lists and the newest Node.js and Composer versions, then lists like `component.list` |
 | `component.install` | `id`, `run`, `port` (database servers: the web manager's port) | installs or repairs a component, writing each step to the run log; a failed install is rolled back. Returns `action`, `status` |
 | `component.update` | `id`, `run` | installs the newest version; the previous configuration comes back if the service does not start |
-| `component.upgrade` | `id`, `run`, `version` (the major version in `upgrade.to`) | upgrades a customers' database server to a newer major version Serfex allows (PostgreSQL to the newest, MySQL and MariaDB one LTS at a time): disk check, maintenance mode, a full dump with row counts, the new version (PostgreSQL: `pg_upgradecluster` copy mode beside the old cluster; MySQL/MariaDB: in place after a cold copy of the data directory, old packages saved), every database, user and row count checked; any failure puts the old version back. The old cluster or data directory is kept for 7 days (`kept`); database calls on that server get `-32012` meanwhile |
+| `component.upgrade` | `id`, `run`, `version` (the major version in `upgrade.to`) | `powerdns`: moves PowerDNS to the series Serfex installs (5.1) from PowerDNS's archive, keeping the old packages, a copy of the LMDB database taken with PowerDNS stopped and every zone; zones, record sets and DNSSEC keys are compared and the server must answer over port 53, or the old version comes back; kept 7 days for `component.revert`. Otherwise upgrades a customers' database server to a newer major version Serfex allows (PostgreSQL to the newest, MySQL and MariaDB one LTS at a time): disk check, maintenance mode, a full dump with row counts, the new version (PostgreSQL: `pg_upgradecluster` copy mode beside the old cluster; MySQL/MariaDB: in place after a cold copy of the data directory, old packages saved), every database, user and row count checked; any failure puts the old version back. The old cluster or data directory is kept for 7 days (`kept`); database calls on that server get `-32012` meanwhile |
 | `component.remove-old` | `id`, `run` | deletes the old version an upgrade kept (PostgreSQL's packages only when no other cluster uses them); the dumps stay 30 days |
+| `component.revert` | `id` (`powerdns`), `run` | goes back to the PowerDNS version an upgrade kept: its packages and the database copied before the upgrade; the panel then writes every zone again |
 | `component.remove` | `id`, `run` | archives the configuration, stops and purges the component; refused with `-32004` while something uses it |
 | `component.configure` | `id`, `settings` (`modsecurity_mode`: `detect` or `block`, `modsecurity_paranoia`: 1-4) | applies new settings; the previous ones come back if Nginx refuses them |
 | `component.run.read` | `run`, `offset` | the next part of an operation's log: `data`, `offset`, `size`, `done` |
@@ -195,6 +196,19 @@ pdns@serfex.service              the instance; the stock pdns.service is disable
   `pdns_server --config=check` and waits for the API. If PowerDNS does not
   come up, the configuration changes are rolled back; installed packages stay.
 - Zone transfers are refused (`disable-axfr=yes`); secondary servers come later.
+- PowerDNS comes from PowerDNS's own archive (`repo.powerdns.com`, suite
+  `<codename>-auth-51`, key `FD380FBB` checked with gpg, `pdns-*` pinned to
+  it at priority 600): Ubuntu 24.04 ships 4.8.3, end of life since June
+  2026. When the archive cannot be read at setup, Ubuntu's package is
+  installed and `component.upgrade` (`powerdns`) offers the move later.
+
+```
+/etc/apt/sources.list.d/serfex-powerdns.sources   PowerDNS's archive
+/etc/apt/preferences.d/serfex-powerdns            the pin
+/etc/apt/keyrings/serfex-powerdns.asc             its signing key
+/var/lib/serfex/powerdns/upgrade/<time>/          kept by an upgrade: old .debs, LMDB copy, zones.json
+/var/lib/serfex/powerdns/kept.json                what is kept, until when (7 days)
+```
 
 ## Certificates
 

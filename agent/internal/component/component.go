@@ -39,6 +39,7 @@ import (
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
 	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
@@ -111,6 +112,8 @@ type Manager struct {
 
 	// PHP writes the php.ini defaults of a newly installed PHP version.
 	PHP *php.Manager
+	// DNS is the DNS server, listed as PowerDNS; nil leaves it out.
+	DNS *dns.Manager
 	// Addresses returns the server's own addresses, which Fail2ban never
 	// bans.
 	Addresses func() []string
@@ -273,6 +276,12 @@ func (m *Manager) List(ctx context.Context) List {
 				s.Upgrade = m.db.Offer(id, s.Version)
 				s.Kept = m.db.KeptVersion(id)
 			}
+			if id == "powerdns" {
+				s.Kept = m.dnsKept()
+				if s.Kept == nil {
+					s.Upgrade = m.dnsOffer(s.Version)
+				}
+			}
 		} else {
 			var cand aptcache.Candidate
 			switch {
@@ -315,6 +324,9 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 	// Old database server versions kept after an upgrade go when their
 	// time is up.
 	m.db.PruneKept(ctx, nil)
+	if m.DNS != nil {
+		m.DNS.PruneKept(ctx)
+	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv}); err != nil {
 		m.op.Unlock()
 		return List{}, opError(fmt.Errorf("apt-get update failed: %w", err))
@@ -426,6 +438,11 @@ func (m *Manager) RemoveOld(ctx context.Context, spec OpSpec) (Result, error) {
 	return m.operate(ctx, spec, "remove-old")
 }
 
+// Revert goes back to the version an upgrade kept (PowerDNS only).
+func (m *Manager) Revert(ctx context.Context, spec OpSpec) (Result, error) {
+	return m.operate(ctx, spec, "revert")
+}
+
 func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Result, error) {
 	c, err := m.get(spec.ID)
 	if err != nil {
@@ -463,6 +480,8 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		err = o.upgrade()
 	case "remove-old":
 		err = o.removeOld()
+	case "revert":
+		err = o.revert()
 	default:
 		err = o.update()
 	}
@@ -470,7 +489,7 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		fmt.Fprintf(w, "✗ %s\n", lastLine(err.Error()))
 		return Result{}, opError(err)
 	}
-	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi", "upgrade": "Yükseltildi", "remove-old": "Eski sürüm kaldırıldı"}[action]))
+	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi", "upgrade": "Yükseltildi", "remove-old": "Eski sürüm kaldırıldı", "revert": "Eski sürüme dönüldü"}[action]))
 	for _, s := range m.List(ctx).Components {
 		if s.ID == c.id {
 			return Result{Action: action, Status: s}, nil

@@ -5,6 +5,7 @@ namespace App\Livewire\Components;
 use App\Jobs\SetupMailServer;
 use App\Models\ComponentOperation;
 use App\Models\Database;
+use App\Models\DnsZone;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Services\Agent\AgentClient;
@@ -15,6 +16,7 @@ use App\Services\Components\SystemPackages;
 use App\Services\Databases\DatabaseServers;
 use App\Services\Mail\MailSettings;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -79,12 +81,12 @@ class ComponentIndex extends Component
     }
 
     /**
-     * Opens the confirmation for install, update, remove, upgrade or
-     * remove-old.
+     * Opens the confirmation for install, update, remove, upgrade,
+     * remove-old or (PowerDNS) revert.
      */
     public function ask(string $id, string $action, Components $components): void
     {
-        if ((! $components->operable($id) && ! array_key_exists($id, MailSettings::WEBMAIL_APPS)) || ! in_array($action, ['install', 'update', 'remove', 'upgrade', 'remove-old'], true)) {
+        if ((! $components->operable($id) && ! array_key_exists($id, MailSettings::WEBMAIL_APPS)) || ! in_array($action, ['install', 'update', 'remove', 'upgrade', 'remove-old', 'revert'], true)) {
             return;
         }
         $this->confirming = ['id' => $id, 'action' => $action];
@@ -341,6 +343,26 @@ class ComponentIndex extends Component
     private function upgradeText(string $id, array $row): array
     {
         $upgrade = $row['upgrade'] ?? ['from' => '', 'to' => '', 'name' => ''];
+        if ($id === 'powerdns') {
+            $zones = DnsZone::count();
+
+            return [
+                'title' => __(':name sürümüne yükseltilsin mi?', ['name' => $upgrade['name']]),
+                'text' => __('Serfex PowerDNS\'in kendi paket deposunu ekler, eski sürümün paketlerini ve bütün bölgeleri kaydeder. DNS sunucusunu durdurup veritabanının kopyasını alır, yeni sürümü kurar ve başlatır. Ardından her bölgeyi, kaydı ve DNSSEC anahtarını yükseltmeden öncekiyle karşılaştırır ve sunucunun sorgulara yanıt verdiğini denetler. Bir adım başarısız olursa eski sürüm ve veritabanı geri yüklenir.'),
+                'button' => __('Yükselt'),
+                'danger' => false,
+                'upgrade' => [
+                    'from' => 'PowerDNS '.($row['version'] ? Str::before($row['version'], '-') : $upgrade['from']),
+                    'to' => $upgrade['name'],
+                    'items' => [
+                        [__('Bölgeler'), $zones ? __(':n bölge kaydedilip denetlenecek', ['n' => $zones]) : __('Henüz bölge yok')],
+                        [__('Kesinti'), __('DNS sunucusu yaklaşık bir dakika yanıt vermez. Çözümleyiciler önbellekteki yanıtları vermeye devam eder; siteler ve e-posta etkilenmez.')],
+                        [__('Eski sürüm'), __('Eski paketler ve veritabanının kopyası 7 gün saklanır. Bu sürede bu sayfadan eski sürüme dönebilirsiniz; sonra kendiliğinden silinir.')],
+                    ],
+                    'note' => __('PowerDNS 5 veritabanını yeni biçime geçirir; eski sürüm bu veritabanını okuyamaz. Bu yüzden eski sürüme dönüşte yükseltme öncesi kopya kullanılır ve panel bütün bölgeleri yeniden yazar.'),
+                ],
+            ];
+        }
         $server = $id === 'postgresql' ? DatabaseServers::POSTGRESQL : DatabaseServers::MYSQL;
         $databases = Database::where('server', $server)->count();
 
@@ -352,14 +374,17 @@ class ComponentIndex extends Component
             'upgrade' => [
                 'from' => Components::releaseName($id, $upgrade['from']),
                 'to' => $upgrade['name'],
-                'databases' => $databases,
-                'downtime' => $id === 'postgresql'
-                    ? __('Yükseltme boyunca siteler veritabanlarına bağlanamaz. Süre veri boyutuna bağlıdır: birkaç GB için genellikle birkaç dakika.')
-                    : __('Döküm alınırken veritabanları salt okunurdur, yeni sürüm kurulurken bağlantı kesilir. Süre veri boyutuna bağlıdır: birkaç GB için genellikle birkaç dakika.'),
-                'kept' => ($id === 'postgresql'
-                    ? __('Eski küme durdurulmuş olarak 7 gün saklanır, sonra kendiliğinden silinir; daha önce bu sayfadan kaldırabilirsiniz.')
-                    : __('Eski veri klasörünün kopyası ve eski paketler 7 gün saklanır, sonra kendiliğinden silinir; daha önce bu sayfadan kaldırabilirsiniz.'))
-                    .' '.__('Yükseltme öncesi döküm 30 gün saklanır.'),
+                'items' => [
+                    [__('Veritabanları'), $databases ? __(':n veritabanı yedeklenip denetlenecek', ['n' => $databases]) : __('Henüz veritabanı yok')],
+                    [__('Kesinti'), $id === 'postgresql'
+                        ? __('Yükseltme boyunca siteler veritabanlarına bağlanamaz. Süre veri boyutuna bağlıdır: birkaç GB için genellikle birkaç dakika.')
+                        : __('Döküm alınırken veritabanları salt okunurdur, yeni sürüm kurulurken bağlantı kesilir. Süre veri boyutuna bağlıdır: birkaç GB için genellikle birkaç dakika.')],
+                    [__('Eski sürüm'), ($id === 'postgresql'
+                        ? __('Eski küme durdurulmuş olarak 7 gün saklanır, sonra kendiliğinden silinir; daha önce bu sayfadan kaldırabilirsiniz.')
+                        : __('Eski veri klasörünün kopyası ve eski paketler 7 gün saklanır, sonra kendiliğinden silinir; daha önce bu sayfadan kaldırabilirsiniz.'))
+                        .' '.__('Yükseltme öncesi döküm 30 gün saklanır.')],
+                ],
+                'note' => __('Müşteriler veritabanı sayfalarında yükseltme sürdüğünü görür. Yükseltmeyi site trafiğinin az olduğu bir saatte başlatın.'),
             ],
         ];
     }
@@ -421,11 +446,19 @@ class ComponentIndex extends Component
 
         return match ($action) {
             'upgrade' => $this->upgradeText($id, $row),
+            'revert' => [
+                'title' => __(':name sürümüne dönülsün mü?', ['name' => $row['kept']['name'] ?? $name]),
+                'text' => __('DNS sunucusu durdurulur, eski paketler ve yükseltmeden önce alınan veritabanı kopyası geri yüklenir. Ardından panel bütün bölgeleri yeniden yazar; yükseltmeden sonra yaptığınız değişiklikler korunur. DNS sunucusu yaklaşık bir dakika yanıt vermez.'),
+                'button' => __('Eski sürüme dön'),
+                'danger' => false,
+            ],
             'remove-old' => [
                 'title' => __(':name silinsin mi?', ['name' => $row['kept']['name'] ?? $name]),
-                'text' => ($id === 'postgresql'
-                    ? __('Yükseltmeden kalan durdurulmuş eski küme silinir. Panelin kendi PostgreSQL\'i ve onun kullandığı paketler etkilenmez.')
-                    : __('Yükseltmeden kalan eski veri klasörünün kopyası ve saklanan eski paketler silinir.'))
+                'text' => $id === 'powerdns'
+                    ? __('Yükseltmeden kalan eski paketler ve veritabanının kopyası silinir. Bundan sonra eski sürüme dönülemez.')
+                    : ($id === 'postgresql'
+                        ? __('Yükseltmeden kalan durdurulmuş eski küme silinir. Panelin kendi PostgreSQL\'i ve onun kullandığı paketler etkilenmez.')
+                        : __('Yükseltmeden kalan eski veri klasörünün kopyası ve saklanan eski paketler silinir.'))
                     .' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
                 'button' => __('Eski sürümü kaldır'),
                 'danger' => true,

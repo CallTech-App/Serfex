@@ -53,17 +53,29 @@ type Manager struct {
 	// challenges are the ACME TXT record sets published by SetChallenge
 	// and not yet cleared; ApplyZone leaves them in place.
 	challenges map[string]bool
+	// sim is set on a simulated host: package versions are invented and
+	// nothing is downloaded.
+	sim bool
+	// Fetch downloads PowerDNS's archive key; nil uses HTTPS (tests set
+	// it).
+	Fetch func(ctx context.Context, url string) ([]byte, error)
+	// query asks the DNS server for a zone's SOA record over UDP; nil
+	// skips that check (simulated backends answer no queries).
+	query func(ctx context.Context, zone string) error
+	now   func() time.Time
 }
 
 // NewManager returns a Manager that talks to PowerDNS over its HTTP API.
 func NewManager(h host.Host) *Manager {
-	return &Manager{h: h, newBackend: func(c APIConfig) Backend { return NewAPI(c) }, apiWait: 30 * time.Second}
+	_, sim := h.(*host.Simulator)
+	return &Manager{h: h, newBackend: func(c APIConfig) Backend { return NewAPI(c) }, apiWait: 30 * time.Second, sim: sim, query: querySOA, now: time.Now}
 }
 
 // NewSimulatedManager returns a Manager whose zones live in b; used by
 // tests and dry runs.
 func NewSimulatedManager(h host.Host, b Backend) *Manager {
-	return &Manager{h: h, newBackend: func(APIConfig) Backend { return b }, apiWait: time.Second}
+	_, sim := h.(*host.Simulator)
+	return &Manager{h: h, newBackend: func(APIConfig) Backend { return b }, apiWait: time.Second, sim: sim, now: time.Now}
 }
 
 // backend returns the zone store, or ErrNotSetUp.

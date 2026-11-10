@@ -83,6 +83,7 @@ func catalog() []*component {
 			check:    func(o *op) error { _, err := o.run(host.Command{Name: "nginx", Args: []string{"-t"}}); return err },
 		},
 		apache(),
+		powerdns(),
 		{
 			id: "redis", packages: []string{"redis-server", "redis-tools"}, versionPkg: "redis-server",
 			extra:     func(m *Manager) []string { return m.phpExt("redis") },

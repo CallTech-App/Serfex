@@ -17,6 +17,9 @@
         @if ($r['latest'])
             <button type="button" wire:click="ask('{{ $r['id'] }}', 'update')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Güncelle') }}</button>
         @endif
+        @if ($r['revertible'] ?? false)
+            <button type="button" wire:click="ask('{{ $r['id'] }}', 'revert')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Eski sürüme dön') }}</button>
+        @endif
         @if ($r['kept'] ?? null)
             <button type="button" wire:click="ask('{{ $r['id'] }}', 'remove-old')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="text-[13px] text-muted hover:text-crit disabled:opacity-40">{{ __('Eski sürümü kaldır') }}</button>
         @elseif ($r['upgrade'] ?? null)

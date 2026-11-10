@@ -700,6 +700,10 @@ func (o *op) afterUpgrade() (err error) {
 		_, err := m.db.Install(o.ctx, database.InstallSpec{Product: c.id, Log: o.w})
 		return err
 	}
+	if c.id == "powerdns" {
+		// apt does not restart the Serfex instance (pdns@serfex).
+		return m.DNS.Restart(o.ctx, o.w)
+	}
 	if c.install != nil || c.update != nil {
 		// Not apt's (Node.js, Composer).
 		return nil

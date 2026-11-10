@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/php"
@@ -778,5 +779,65 @@ func TestDatabaseServerUpgrade(t *testing.T) {
 	}
 	if _, err := m.RemoveOld(ctx, OpSpec{ID: "mysql", Run: "o2"}); err == nil {
 		t.Error("removed an old version twice")
+	}
+}
+
+func TestPowerDNSUpgradeAndRevert(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if s := status(t, m, "powerdns"); s.Installed {
+		t.Fatalf("listed before the DNS setup: %+v", s)
+	}
+	m.DNS = dns.NewSimulatedManager(sim, dns.NewMemory())
+	// PowerDNS's archive was out of reach at setup: Ubuntu's 4.8.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "apt-get update -q" {
+			return errors.New("unreachable")
+		}
+		return nil
+	}
+	if _, err := m.DNS.Setup(ctx); err != nil {
+		t.Fatal(err)
+	}
+	sim.Fail = nil
+	s := status(t, m, "powerdns")
+	if !s.Installed || s.Version != "4.8.3-4build3" || s.Upgrade == nil || s.Upgrade.From != "4.8" || s.Upgrade.To != dns.Series || s.Required == "" {
+		t.Fatalf("before: %+v upgrade %+v", s, s.Upgrade)
+	}
+	if _, err := m.Remove(ctx, OpSpec{ID: "powerdns", Run: "x"}); err == nil {
+		t.Error("removed PowerDNS")
+	}
+	if _, err := m.Revert(ctx, OpSpec{ID: "powerdns", Run: "r0"}); err == nil {
+		t.Error("reverted with nothing kept")
+	}
+	res, err := m.Upgrade(ctx, OpSpec{ID: "powerdns", Run: "u"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if !strings.HasPrefix(res.Status.Version, dns.Series+".") || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "4.8.3" {
+		t.Errorf("after: %+v kept %+v", res.Status, res.Status.Kept)
+	}
+	if chunk, _ := m.ReadRun("u", 0); !strings.Contains(chunk.Data, "▸ PowerDNS paket deposu ekleniyor") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	res, err = m.Revert(ctx, OpSpec{ID: "powerdns", Run: "r"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/r.log"))
+	}
+	if res.Status.Version != "4.8.3-4build3" || res.Status.Kept != nil || res.Status.Upgrade == nil {
+		t.Errorf("after revert: %+v", res.Status)
+	}
+	if chunk, _ := m.ReadRun("r", 0); !strings.HasSuffix(chunk.Data, "✓ Eski sürüme dönüldü\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	// Upgraded again, the old version can be removed.
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "powerdns", Run: "u2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "powerdns", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "powerdns"); s.Kept != nil || s.Upgrade != nil {
+		t.Errorf("after removing the old version: %+v", s)
 	}
 }

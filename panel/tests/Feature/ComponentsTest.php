@@ -8,8 +8,10 @@ use App\Jobs\RemoveLaravelApp;
 use App\Jobs\RunComponentOperation;
 use App\Jobs\SetupDatabaseServers;
 use App\Jobs\SetupMailServer;
+use App\Jobs\SyncDnsZone;
 use App\Livewire\Components\ComponentIndex;
 use App\Livewire\Databases\DatabaseIndex;
+use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Laravel\Sections\Environment;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SitePhp;
@@ -17,6 +19,7 @@ use App\Models\Backup;
 use App\Models\ComponentOperation;
 use App\Models\Customer;
 use App\Models\Database;
+use App\Models\DnsZone;
 use App\Models\LaravelApp;
 use App\Models\LaravelProcess;
 use App\Models\Setting;
@@ -272,6 +275,69 @@ class ComponentsTest extends TestCase
         Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
         (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
         $this->assertSame([['id' => 'postgresql', 'run' => $op->run, 'port' => 8443]], $this->agent->called('component.remove-old'));
+    }
+
+    public function test_powerdns_upgrades_with_undo_for_a_week(): void
+    {
+        Setting::put('dns.server', ['state' => 'ready', 'version' => '4.8.3', 'at' => now()->toIso8601String()]);
+        DnsZone::factory()->create(['name' => 'kahveatolyesi.com.tr']);
+        DnsZone::factory()->create(['name' => 'ornek.com.tr']);
+        $this->components['powerdns'] = ['id' => 'powerdns', 'installed' => true, 'version' => '4.8.3-4build3', 'running' => true, 'units' => ['pdns@serfex'],
+            'required' => 'the domains\' DNS server', 'upgrade' => ['from' => '4.8', 'to' => '5.1']];
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('PowerDNS')
+            ->assertSee('2 bölge')
+            ->assertSee('PowerDNS 5.1 sürümüne yükseltilebilir')
+            ->assertSee('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.')
+            ->call('ask', 'powerdns', 'upgrade')
+            ->assertSee('PowerDNS 5.1 sürümüne yükseltilsin mi?')
+            ->assertSee('PowerDNS 4.8.3')
+            ->assertSee('2 bölge kaydedilip denetlenecek')
+            ->assertSee('DNS sunucusu yaklaşık bir dakika yanıt vermez');
+        // The DNS settings page shows the version and the offer.
+        $this->assertSame(['5.1', '4.8.3'], [Setting::get('dns.server')['upgrade'], Setting::get('dns.server')['version']]);
+        // ...also when Software Management has not been opened since.
+        Setting::put('dns.server', ['state' => 'ready', 'version' => '4.8.3', 'at' => now()->toIso8601String()]);
+        Livewire::test(DnsSettingsPage::class)
+            ->assertSee('PowerDNS 4.8.3')
+            ->assertSee('Yazılım Yönetimi');
+        $this->assertSame('5.1', Setting::get('dns.server')['upgrade']);
+
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['powerdns', 'upgrade', '5.1'], [$op->component, $op->action, $op->detail]);
+        // A minute or two: the default queue.
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'powerdns', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+
+        // Upgraded: going back is offered for the week the old version is kept.
+        $this->components['powerdns'] = ['id' => 'powerdns', 'installed' => true, 'version' => '5.1.5-1pdns.noble', 'running' => true, 'units' => ['pdns@serfex'],
+            'required' => 'the domains\' DNS server', 'kept' => ['product' => 'powerdns', 'from' => '4.8.3', 'to' => '5.1.5', 'until' => '2026-11-17T22:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('5.1.5-1pdns.noble')
+            ->assertSee('PowerDNS 4.8.3 17.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Eski sürüme dön')
+            ->assertSee('Eski sürümü kaldır')
+            ->assertDontSee('Sürümü yükselt');
+        $this->assertSame(['5.1.5', null], [Setting::get('dns.server')['version'], Setting::get('dns.server')['upgrade']]);
+        $page->call('ask', 'powerdns', 'revert')
+            ->assertSee('PowerDNS 4.8.3 sürümüne dönülsün mü?')
+            ->assertSee('yükseltmeden sonra yaptığınız değişiklikler korunur')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['powerdns', 'revert', '4.8.3'], [$op->component, $op->action, $op->detail]);
+        $this->agent->answers['component.revert'] = ['action' => 'revert', 'status' => []];
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'powerdns', 'run' => $op->run]], $this->agent->called('component.revert'));
+        // The database from before the upgrade is back: every zone is written again.
+        Queue::assertPushed(SyncDnsZone::class, 2);
+
+        // Only PowerDNS goes back; it cannot be installed or removed here.
+        $this->assertSame('Bu bileşen buradan yönetilemiyor.', app(Components::class)->start('mysql', 'revert', null));
+        $this->assertSame('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.', app(Components::class)->start('powerdns', 'remove', null));
     }
 
     public function test_upgrade_waits_for_backups_and_a_running_server(): void
