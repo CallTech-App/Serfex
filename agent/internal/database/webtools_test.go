@@ -455,20 +455,37 @@ func TestToolOffer(t *testing.T) {
 
 // The sign-in page for Adminer (adminerPHP), run by PHP with a stand-in
 // for each Adminer: a class with the signatures of Adminer 6.3.0's
-// (namespaced, typed) or of Ubuntu's 4.8.1, and the bootstrap's call of
-// adminer_object(). The stand-in prints what Adminer would get.
+// sources (namespaced, typed), of its release file (namespaced, the types
+// stripped by compile.php, which is what serfex-web serves) or of
+// Ubuntu's 4.8.1, and the bootstrap's call of adminer_object(). The
+// stand-in prints what Adminer would get.
 func TestAdminerSignInPage(t *testing.T) {
 	php, err := exec.LookPath("php")
 	if err != nil {
 		t.Skip("php is not installed")
 	}
-	stubs := map[bool]string{
-		false: `<?php
+	adminer6 := func(class string) string {
+		return `<?php
 namespace Adminer;
 
 function get_password() { return 'session-password'; }
 
-class Adminer {
+` + class + `
+
+Adminer::$instance = (function_exists('adminer_object') ? adminer_object() : new Adminer);
+$a = Adminer::$instance;
+ob_start();
+$a->loginForm();
+echo json_encode(array('class' => get_class($a), 'name' => $a->name(), 'credentials' => $a->credentials(), 'permanent' => $a->permanentLogin(true),
+	'verify' => $a->verifyLoginToken(), 'manifest' => $a->manifest(), 'form' => ob_get_clean(), 'post' => $_POST, 'get' => $_GET, 'uri' => $_SERVER['REQUEST_URI']));
+`
+	}
+	stubs := []struct {
+		name   string
+		ubuntu bool
+		stub   string
+	}{
+		{"Adminer 6.3.0 sources", false, adminer6(`class Adminer {
 	static $instance;
 	public string $error = '';
 	function name(): string { return 'Adminer'; }
@@ -477,16 +494,21 @@ class Adminer {
 	function verifyLoginToken(): bool { return true; }
 	function manifest(): array { return array('name' => 'Adminer'); }
 	function loginForm(): void { echo 'form'; }
-}
-
-Adminer::$instance = (function_exists('adminer_object') ? adminer_object() : new Adminer);
-$a = Adminer::$instance;
-ob_start();
-$a->loginForm();
-echo json_encode(array('class' => get_class($a), 'name' => $a->name(), 'credentials' => $a->credentials(), 'permanent' => $a->permanentLogin(true),
-	'verify' => $a->verifyLoginToken(), 'manifest' => $a->manifest(), 'form' => ob_get_clean(), 'post' => $_POST, 'get' => $_GET, 'uri' => $_SERVER['REQUEST_URI']));
-`,
-		true: `<?php
+}`)},
+		// adminer-6.3.0.php, as released: compile.php drops the types
+		// (Adminer runs on PHP 5.4+), so an override may not add a
+		// parameter type.
+		{"Adminer 6.3.0 release", false, adminer6(`class Adminer {
+	static $instance;
+	public $error = '';
+	function name() { return 'Adminer'; }
+	function credentials() { return array('', $_GET["username"], get_password()); }
+	function permanentLogin($create = false) { return 'key'; }
+	function verifyLoginToken() { return true; }
+	function manifest() { return array('name' => 'Adminer'); }
+	function loginForm() { echo 'form'; }
+}`)},
+		{"Ubuntu's Adminer 4.8.1", true, `<?php
 function get_password() { return 'session-password'; }
 
 class Adminer {
@@ -502,7 +524,7 @@ ob_start();
 $adminer->loginForm();
 echo json_encode(array('class' => get_class($adminer), 'name' => $adminer->name(), 'credentials' => $adminer->credentials(), 'permanent' => $adminer->permanentLogin(true),
 	'verify' => null, 'manifest' => null, 'form' => ob_get_clean(), 'post' => $_POST, 'get' => $_GET, 'uri' => $_SERVER['REQUEST_URI']));
-`,
+`},
 	}
 	type result struct {
 		Class       string
@@ -515,7 +537,8 @@ echo json_encode(array('class' => get_class($adminer), 'name' => $adminer->name(
 		Post, Get   json.RawMessage
 		URI         string
 	}
-	for ubuntu, stub := range stubs {
+	for _, c := range stubs {
+		ubuntu, stub, name := c.ubuntu, c.stub, c.name
 		dir := t.TempDir()
 		tokens := filepath.Join(dir, "tokens")
 		if err := os.Mkdir(tokens, 0o700); err != nil {
@@ -546,7 +569,7 @@ include __DIR__ . '/adminer.php';
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			if err := cmd.Run(); err != nil {
-				t.Fatalf("ubuntu=%v %v: %v\n%s%s", ubuntu, get, err, stdout.String(), stderr.String())
+				t.Fatalf("%s %v: %v\n%s%s", name, get, err, stdout.String(), stderr.String())
 			}
 			return stdout.String(), stderr.String()
 		}
@@ -555,10 +578,10 @@ include __DIR__ . '/adminer.php';
 			out, errs := open(get)
 			var r result
 			if errs != "" || json.Unmarshal([]byte(out), &r) != nil {
-				t.Fatalf("ubuntu=%v %v:\n%s\n%s", ubuntu, get, out, errs)
+				t.Fatalf("%s %v:\n%s\n%s", name, get, out, errs)
 			}
 			if r.Class != "SerfexAdminer" || r.Name != "Serfex" || r.Permanent != "" || !strings.Contains(r.Form, adminerExpired) {
-				t.Errorf("ubuntu=%v: %+v", ubuntu, r)
+				t.Errorf("%s: %+v", name, r)
 			}
 			return r
 		}
@@ -568,26 +591,26 @@ include __DIR__ . '/adminer.php';
 		r := adminer(map[string]string{"serfex_token": token})
 		var post struct{ Auth map[string]string }
 		if err := json.Unmarshal(r.Post, &post); err != nil {
-			t.Fatalf("ubuntu=%v: %s", ubuntu, r.Post)
+			t.Fatalf("%s: %s", name, r.Post)
 		}
 		if a := post.Auth; a["driver"] != "pgsql" || a["server"] != "127.0.0.1" || a["username"] != "serfex-s-0a1b2c" || a["password"] != "secret" || a["db"] != "acme_shop" || a["permanent"] != "" {
-			t.Errorf("ubuntu=%v: sign-in %s", ubuntu, r.Post)
+			t.Errorf("%s: sign-in %s", name, r.Post)
 		}
 		if string(r.Get) != "[]" || r.URI != "/adminer/" {
-			t.Errorf("ubuntu=%v: the link stays in %s %q", ubuntu, r.Get, r.URI)
+			t.Errorf("%s: the link stays in %s %q", name, r.Get, r.URI)
 		}
 		if !ubuntu && (r.Verify == nil || *r.Verify || len(r.Manifest) != 0) {
-			t.Errorf("Adminer 6: verifyLoginToken %v, manifest %v", r.Verify, r.Manifest)
+			t.Errorf("%s: verifyLoginToken %v, manifest %v", name, r.Verify, r.Manifest)
 		}
 
 		// Afterwards Adminer connects only to this server's PostgreSQL,
 		// and a sign-in form posted from elsewhere needs a CSRF token.
 		r = adminer(map[string]string{"pgsql": "db.example.org", "username": "serfex-s-0a1b2c"})
 		if strings.Join(r.Credentials, " ") != "127.0.0.1 serfex-s-0a1b2c session-password" {
-			t.Errorf("ubuntu=%v: credentials %v", ubuntu, r.Credentials)
+			t.Errorf("%s: credentials %v", name, r.Credentials)
 		}
 		if !ubuntu && (r.Verify == nil || !*r.Verify) {
-			t.Error("Adminer 6: a sign-in without the link skips the CSRF token")
+			t.Errorf("%s: a sign-in without the link skips the CSRF token", name)
 		}
 
 		for _, c := range []struct {
@@ -601,7 +624,7 @@ include __DIR__ . '/adminer.php';
 			{map[string]string{"sqlite": "", "username": ""}, "Desteklenmiyor"},
 		} {
 			if out, errs := open(c.get); !strings.Contains(out, c.page) || errs != "" {
-				t.Errorf("ubuntu=%v %v:\n%s\n%s", ubuntu, c.get, out, errs)
+				t.Errorf("%s %v:\n%s\n%s", name, c.get, out, errs)
 			}
 		}
 	}
