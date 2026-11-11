@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/pinned"
 )
 
 // crsArchive is a release archive with these files under its top
@@ -48,7 +49,7 @@ func withRelease(t *testing.T, m *Manager, data []byte) {
 	t.Helper()
 	sum := sha256.Sum256(data)
 	old := CRS
-	CRS = crsRelease{Version: "9.9.0", URL: "https://example.org/coreruleset-9.9.0-minimal.tar.gz", SHA256: hex.EncodeToString(sum[:])}
+	CRS = pinned.Release{Version: "9.9.0", URL: "https://example.org/coreruleset-9.9.0-minimal.tar.gz", SHA256: hex.EncodeToString(sum[:])}
 	t.Cleanup(func() { CRS = old })
 	m.Download = func(_ context.Context, url string) ([]byte, error) {
 		if url != CRS.URL {

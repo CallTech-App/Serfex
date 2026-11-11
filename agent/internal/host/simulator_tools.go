@@ -85,6 +85,8 @@ func (s *Simulator) runTool(c Command, cwd string, env map[string]string) (strin
 		return string(b), err
 	case c.Name == "tar":
 		return s.tar(c, cwd)
+	case c.Name == "xz":
+		return s.xz(c)
 	case c.Name == "mysqldump" && len(args) == 1 && args[0] == "--version":
 		// MariaDB's client installs mariadb-dump next to mysqldump.
 		if _, err := os.Stat(s.Path("/usr/bin/mariadb-dump")); err == nil {
@@ -643,6 +645,25 @@ func (s *Simulator) tar(c Command, cwd string) (string, error) {
 		return stderr.String(), err
 	}
 	return stderr.String(), nil
+}
+
+// xz runs the real xz to decompress its input to Stdout (a release
+// archive); it reads and writes no files.
+func (s *Simulator) xz(c Command) (string, error) {
+	if len(c.Args) != 1 || c.Args[0] != "-dc" {
+		return "", fmt.Errorf("xz: unsupported arguments %v", c.Args)
+	}
+	cmd := exec.Command("xz", "-dc")
+	cmd.Stdin, cmd.Stdout = c.Input, c.Stdout
+	if c.Input == nil {
+		cmd.Stdin = bytes.NewReader(c.Stdin)
+	}
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return stderr.String(), fmt.Errorf("xz: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return "", nil
 }
 
 // aptCache answers "apt-cache [-o OPT]... pkgnames postgresql-" and

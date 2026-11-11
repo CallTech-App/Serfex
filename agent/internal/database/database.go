@@ -24,6 +24,7 @@
 //	/etc/serfex/databases/upgrade.json        the old versions kept after major-version upgrades
 //	/etc/serfex/web/                          serfex-web (Nginx) and serfex-php (PHP-FPM): Serfex's own web stack
 //	/var/lib/serfex/dbadmin/                  the manager's sign-in pages, sessions and temporary files
+//	/opt/serfex/phpmyadmin/, /opt/serfex/adminer/  the tools' releases (see webtools.go)
 //
 // The panel keeps databases, users and grants in its own database and
 // sends them here. Users are applied whole (password, hosts, grants), so
@@ -44,6 +45,7 @@ import (
 	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/pinned"
 )
 
 const (
@@ -186,6 +188,11 @@ type state struct {
 	// WebPorts are the ports serfex-web listens on, the primary first
 	// (panel.web.ports); empty means Manager's port, else DefaultPort.
 	WebPorts []int `json:"web_ports,omitempty"`
+	// Tools are the phpMyAdmin and Adminer releases serfex-web serves
+	// ("" for Ubuntu's packages), ToolsNote why the last setup left one
+	// where it was.
+	Tools     tools  `json:"tools"`
+	ToolsNote string `json:"tools_note,omitempty"`
 }
 
 func key(server, name string) string { return server + "/" + name }
@@ -205,6 +212,12 @@ type Manager struct {
 	// Fetch, when set, replaces downloading apt archives' signing keys
 	// (nil for a missing one), for tests.
 	Fetch func(ctx context.Context, url string) ([]byte, error)
+	// Download fetches the releases of phpMyAdmin and Adminer; nil in a
+	// dry run, which writes stand-ins.
+	Download func(ctx context.Context, url string) ([]byte, error)
+	// checkTools, when set, replaces checking that serfex-web serves the
+	// tools, for tests.
+	checkTools func(ctx context.Context, port int, c webCheck) error
 	// FreeSpace, when set, replaces reading the device and the free bytes
 	// of the file system holding a directory, for tests.
 	FreeSpace func(dir string) (uint64, int64, error)
@@ -217,7 +230,7 @@ type Manager struct {
 
 // NewManager returns a Manager for the real servers.
 func NewManager(h host.Host) *Manager {
-	return &Manager{h: h, now: time.Now, engines: map[string]engine{
+	return &Manager{h: h, now: time.Now, Download: pinned.Download, engines: map[string]engine{
 		MySQL:      &mysqlEngine{h: h},
 		PostgreSQL: &pgEngine{h: h},
 	}}
@@ -227,6 +240,7 @@ func NewManager(h host.Host) *Manager {
 // users in a file under the host's root, for dry runs.
 func NewSimulated(h host.Host) *Manager {
 	m := NewManager(h)
+	m.Download = nil
 	for name := range m.engines {
 		m.engines[name] = &simEngine{h: h, server: name}
 	}

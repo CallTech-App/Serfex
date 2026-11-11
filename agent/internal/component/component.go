@@ -47,6 +47,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/php"
+	"github.com/calltech-app/serfex/agent/internal/pinned"
 	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
@@ -144,7 +145,7 @@ func NewManager(h host.Host, sites *site.Manager, db *database.Manager, l *larav
 	_, sim := h.(*host.Simulator)
 	m := &Manager{h: h, sim: sim, sites: sites, db: db, laravel: l, busy: map[string]string{}, now: time.Now}
 	if !sim {
-		m.Download = download
+		m.Download = pinned.Download
 	}
 	m.comps = map[string]*component{}
 	for _, c := range catalog() {

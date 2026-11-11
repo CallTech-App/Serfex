@@ -296,7 +296,11 @@ func databaseComponent(product string) *component {
 				return err
 			}
 			o.step("Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor")
-			_, err := o.m.db.SetupManager(o.ctx, database.ManagerSpec{Port: o.port})
+			ms, err := o.m.db.SetupManager(o.ctx, database.ManagerSpec{Port: o.port})
+			if err == nil && ms.Note != "" {
+				// A tool stays on Ubuntu's package; the install went on.
+				fmt.Fprintln(o.w, "  "+ms.Note)
+			}
 			return err
 		},
 		remove: func(o *op) error {

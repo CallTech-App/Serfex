@@ -87,7 +87,7 @@ func (m *Manager) SetWebPorts(ctx context.Context, spec WebPortsSpec) (WebPorts,
 		if st.Manager == nil {
 			mysql, pg = false, false
 		}
-		if _, err := m.applyWeb(ctx, ports, mysql, pg); err != nil {
+		if _, err := m.applyWeb(ctx, ports, mysql, pg, m.served(st), webCheck{}); err != nil {
 			return WebPorts{}, err
 		}
 	}

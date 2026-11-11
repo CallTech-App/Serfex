@@ -11,6 +11,13 @@ PostgreSQL. You install them from the panel when you need them.
 - **PostgreSQL**, alongside either of them.
 - The **web database manager**: phpMyAdmin for MySQL and MariaDB, Adminer for
   PostgreSQL, served by the panel's own web server on the panel port (8443).
+  Both come from their makers' releases (phpMyAdmin 5.2.3, Adminer 6.3.0),
+  checked against the checksum Serfex was released with. Ubuntu's packages
+  are older (phpMyAdmin 5.2.1 has two XSS issues fixed in 5.2.2). After a
+  Serfex update that brings a newer release, the panel moves the tools to it
+  in the background, checks that they open and goes back to the previous
+  ones if they do not; Database servers shows the versions in use and, if a
+  tool stayed behind, why.
 
 ### Supported versions
 

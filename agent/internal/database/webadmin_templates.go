@@ -15,8 +15,13 @@ type webData struct {
 	Socket, WWW, Logs, Temp string
 	WebUser, AdminUser, PHP string
 	PhpMyAdmin, Adminer     bool
-	Tokens, Sessions, Tmp   string
-	Secret                  string
+	// PMARoot is the directory holding phpMyAdmin's, AdminerFile
+	// Adminer; AdminerUbuntu is true for Ubuntu's Adminer 4.8, whose
+	// class has no namespace and no types.
+	PMARoot, AdminerFile  string
+	AdminerUbuntu         bool
+	Tokens, Sessions, Tmp string
+	Secret                string
 	// Panel serves the installed panel at / (see package panel).
 	Panel                             bool
 	PanelRoot, PanelSocket, PanelUser string
@@ -168,13 +173,13 @@ http {
             fastcgi_pass unix:{{.Socket}};
         }
         location ^~ /phpmyadmin/ {
-            root /usr/share;
+            root {{.PMARoot}};
             index index.php;
             add_header X-Frame-Options SAMEORIGIN always;
             add_header X-Content-Type-Options nosniff always;
             add_header Referrer-Policy same-origin always;
             add_header X-Robots-Tag "{{$.NoIndex}}" always;
-            location ~ ^/phpmyadmin/(libraries|templates|setup|sql|vendor|doc)/ {
+            location ~ ^/phpmyadmin/(libraries|templates|setup|sql|vendor|doc|locale|examples|tmp)/ {
                 deny all;
             }
             location ~ \.php$ {
@@ -224,7 +229,7 @@ request_terminate_timeout = 600s
 php_admin_value[session.save_path] = {{.Sessions}}
 php_admin_value[upload_tmp_dir] = {{.Tmp}}
 php_admin_value[sys_temp_dir] = {{.Tmp}}
-php_admin_value[open_basedir] = /usr/share/phpmyadmin/:/usr/share/adminer/:/usr/share/php/:/usr/share/javascript/:/usr/share/doc/phpmyadmin/:/etc/phpmyadmin/:/var/lib/phpmyadmin/:{{.WWW}}/:{{.Tokens}}/:{{.Sessions}}/:{{.Tmp}}/
+php_admin_value[open_basedir] = /opt/serfex/phpmyadmin/:/opt/serfex/adminer/:/usr/share/phpmyadmin/:/usr/share/adminer/:/usr/share/php/:/usr/share/javascript/:/usr/share/doc/phpmyadmin/:/etc/phpmyadmin/:/var/lib/phpmyadmin/:{{.WWW}}/:{{.Tokens}}/:{{.Sessions}}/:{{.Tmp}}/
 php_admin_value[upload_max_filesize] = 256M
 php_admin_value[post_max_size] = 256M
 php_admin_value[memory_limit] = 512M
@@ -424,12 +429,15 @@ if (isset($_GET['serfex_token'])) {
         'db' => $data['database'],
         'permanent' => '',
     ]];
+    $GLOBALS['serfex_signin'] = true;
 } elseif (!isset($_GET['pgsql']) && !isset($_GET['file'])) {
     serfex_page('Oturum yok', 'Adminer\'ı Serfex panelinde Veritabanları sayfasından açın.');
 }
 
 function adminer_object()
 {
+{{- if .AdminerUbuntu}}
+    // Ubuntu's Adminer 4.8.
     class SerfexAdminer extends Adminer
     {
         public function name()
@@ -449,12 +457,49 @@ function adminer_object()
 
         public function loginForm()
         {
-            echo '<p>Oturumun süresi doldu. Adminer\'ı Serfex panelinde Veritabanları sayfasından yeniden açın.</p>';
+            echo '<p id="serfex-expired">Oturumun süresi doldu. Adminer\'ı Serfex panelinde Veritabanları sayfasından yeniden açın.</p>';
         }
     }
+{{- else}}
+    class SerfexAdminer extends \Adminer\Adminer
+    {
+        public function name(): string
+        {
+            return 'Serfex';
+        }
+
+        public function credentials(): array
+        {
+            return ['127.0.0.1', $_GET['username'] ?? '', \Adminer\get_password()];
+        }
+
+        public function permanentLogin(bool $create = false): string
+        {
+            return '';
+        }
+
+        // The sign-in made from a one-time link above has no CSRF token:
+        // the link was the secret. Any other sign-in needs one.
+        public function verifyLoginToken(): bool
+        {
+            return empty($GLOBALS['serfex_signin']);
+        }
+
+        // Serfex opens Adminer; it is not an app of its own.
+        public function manifest(): array
+        {
+            return [];
+        }
+
+        public function loginForm(): void
+        {
+            echo '<p id="serfex-expired">Oturumun süresi doldu. Adminer\'ı Serfex panelinde Veritabanları sayfasından yeniden açın.</p>';
+        }
+    }
+{{- end}}
 
     return new SerfexAdminer();
 }
 
-include '/usr/share/adminer/adminer.php';
+include '{{.AdminerFile}}';
 `))

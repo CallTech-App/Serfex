@@ -79,9 +79,9 @@ lists every method by area.
 | `mail.queue` | | Postfix's queue: counts, messages grouped by sender domain, the oldest 200 messages |
 | `mail.queue.flush` | | retries every deferred message now |
 | `mail.queue.hold` / `mail.queue.release` | `domain` | holds a sender domain's queued messages (those being delivered right now finish their attempt) or releases them (`""` for bounces); returns `messages` |
-| `db.status` | | per server (`mysql`, `postgresql`): `installed`, `product`, `running`, `version`, `remote`, `upgrading` (during `component.upgrade`); and the web manager's `manager` (`configured`, `port`, `phpmyadmin`, `adminer`) |
+| `db.status` | | per server (`mysql`, `postgresql`): `installed`, `product`, `running`, `version`, `remote`, `upgrading` (during `component.upgrade`); and the web manager's `manager` (`configured`, `port`, `phpmyadmin`, `adminer`, `phpmyadmin_version` and `adminer_version` of the releases served or empty for Ubuntu's packages, `note` when the last setup left a tool where it was) |
 | `db.server.install` | `product` (`mysql`, `mariadb` or `postgresql`) | installs the server if missing, configures and starts it; a failed fresh install is removed again. MySQL and MariaDB exclude each other. Returns `server`, `product`, `installed`, `version` |
-| `db.manager.setup` | `port` | installs phpMyAdmin and/or Adminer for the installed servers and serves them from `serfex-web` on `port` (default 8443) |
+| `db.manager.setup` | `port` | installs phpMyAdmin and/or Adminer for the installed servers and serves them from `serfex-web` on `port` (default 8443): the releases Serfex pins (phpMyAdmin 5.2.3, Adminer 6.3.0), checked against their SHA-256 and seen working on `serfex-web` before Ubuntu's packages are purged; a release that cannot be downloaded or does not work leaves the tool where it was (Ubuntu's package on a new server) and says so in `note` |
 | `db.manager.login` | `server`, `database` | a one-time `path` on the manager's `port` (valid one minute) that opens the database with a temporary user (removed after four hours) |
 | `db.database.create` | `server`, `name`, `site` | creates an empty UTF-8 database; `site` maps it to a site in live monitoring |
 | `db.database.delete` | `server`, `name`, `backup` | with `backup` dumps it to a gzip file first (nothing is deleted if that fails); returns `deleted`, `backup`, `backup_size` |
@@ -592,6 +592,17 @@ The panel's own database is separate and never touched by `db.*`.
   (`/adminer/`, PostgreSQL on this server only) PostgreSQL. It uses a
   self-signed certificate until the panel's own certificate exists, then
   that one.
+- phpMyAdmin and Adminer come from their makers' releases, pinned by
+  version and SHA-256 (`internal/database/webtools.go`):
+  `/opt/serfex/phpmyadmin/<version>/phpmyadmin/` (its settings in
+  `config.inc.php` there, `root:serfex-dbadmin` 0640) and
+  `/opt/serfex/adminer/<version>/adminer.php`. Ubuntu 24.04 keeps
+  phpMyAdmin at 5.2.1 and Adminer at 4.8.1. `db.manager.setup` moves to a
+  new release only after `serfex-web` serves it (phpMyAdmin sends a
+  browser without a session to Serfex's sign-in, Adminer shows Serfex's
+  expired-session page); otherwise the configuration is rolled back. An
+  update never downloads them: the panel's `UpdateDatabaseManager` job
+  runs `db.manager.setup` after the update that pins a new release.
 
 ```sh
 sudo SERFEX_DB_PRODUCT=mariadb go test -tags realhost -run TestRealHost ./internal/database

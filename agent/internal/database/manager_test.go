@@ -293,7 +293,7 @@ func TestManagerSetupAndLogin(t *testing.T) {
 		"fastcgi_pass unix:/run/serfex-php/dbadmin.sock;", "location = /adminer/", "ssl_certificate /etc/serfex/web/tls/fullchain.pem;")
 	contains(t, "php-fpm", read(t, sim, phpConf), "user = serfex-dbadmin", "listen.owner = serfex-web", "php_admin_value[session.save_path] = /var/lib/serfex/dbadmin/sessions")
 	contains(t, "units", read(t, sim, webUnitFile)+read(t, sim, phpUnitFile), "ExecStart=/usr/sbin/nginx -c /etc/serfex/web/nginx.conf", "ExecStart=/usr/sbin/php-fpm8.3 --nodaemonize")
-	pma := read(t, sim, pmaConf)
+	pma := read(t, sim, pmaConfFile(PhpMyAdminRelease.Version))
 	contains(t, "phpMyAdmin", pma, "'auth_type'] = 'signon'", "SignonSession'] = 'SerfexSignon'", "AllowRoot'] = false")
 	contains(t, "pages", read(t, sim, adminWWW+"/adminer.php")+read(t, sim, adminWWW+"/phpmyadmin-sso.php"), "'server' => '127.0.0.1'", "PMA_single_signon_user")
 	if !sim.Ran("systemctl enable serfex-php serfex-web") || !sim.Ran("nginx -t -q -c /etc/serfex/web/nginx.conf") {
@@ -305,7 +305,7 @@ func TestManagerSetupAndLogin(t *testing.T) {
 	if _, err := m.SetupManager(ctx, ManagerSpec{}); err != nil {
 		t.Fatal(err)
 	}
-	if read(t, sim, pmaConf) != pma {
+	if read(t, sim, pmaConfFile(PhpMyAdminRelease.Version)) != pma {
 		t.Error("phpMyAdmin's configuration changed on a repeated setup")
 	}
 	for _, c := range sim.Commands()[before:] {
@@ -527,7 +527,8 @@ func TestPanelWeb(t *testing.T) {
 		t.Errorf("manager PHP %s", ms.PHPVersion)
 	}
 	contains(t, "nginx", read(t, sim, webConf), "root /opt/serfex/current/panel/public;", "location = /phpmyadmin/serfex-sso.php")
-	if !sim.Ran("apt-get install -y -q --no-install-recommends nginx php8.5-fpm php8.5-mbstring php8.5-xml php8.5-mysql phpmyadmin") {
+	// phpMyAdmin is the release Serfex pins, not Ubuntu's package.
+	if !sim.Ran("apt-get install -y -q --no-install-recommends nginx php8.5-fpm php8.5-mbstring php8.5-xml php8.5-mysql") {
 		t.Errorf("commands: %v", sim.Commands())
 	}
 	if m.WebPort() != DefaultPort {

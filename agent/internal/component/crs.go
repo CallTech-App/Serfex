@@ -1,19 +1,15 @@
 package component
 
 import (
-	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,6 +19,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
+	"github.com/calltech-app/serfex/agent/internal/pinned"
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
@@ -35,16 +32,11 @@ import (
 // yükselt"); for crsKeepFor afterwards the rules before can be gone back
 // to, then Ubuntu's package is purged.
 
-// crsRelease is a CRS release: its minimal archive and SHA-256.
-type crsRelease struct {
-	Version, URL, SHA256 string
-}
-
-// CRS is the release Serfex installs. 4.25 is CRS's long-term release
+// CRS is the release Serfex installs (its minimal archive). 4.25 is CRS's long-term release
 // line; 4.25.1 and newer need libmodsecurity 3.0.16 (their rule 901181
 // does not load in Ubuntu 24.04's 3.0.12), so Serfex stays on 4.25.0
 // until it brings that engine. A new release comes with a Serfex release.
-var CRS = crsRelease{
+var CRS = pinned.Release{
 	Version: "4.25.0",
 	URL:     "https://github.com/coreruleset/coreruleset/releases/download/v4.25.0/coreruleset-4.25.0-minimal.tar.gz",
 	SHA256:  "409a0da1f4daed0719150fcee5173c351e08ffa33b5b2f8936f30968b3ad4ff0",
@@ -119,7 +111,7 @@ func crsOffer(version string) *database.UpgradeOffer {
 // fetchCRS downloads release r, checks its SHA-256 and unpacks it under
 // crsRoot, unless it is there already. A dry run without a Download
 // writes a stand-in.
-func (m *Manager) fetchCRS(ctx context.Context, r crsRelease) error {
+func (m *Manager) fetchCRS(ctx context.Context, r pinned.Release) error {
 	if m.crsUnpacked(r.Version) {
 		return nil
 	}
@@ -129,12 +121,9 @@ func (m *Manager) fetchCRS(ctx context.Context, r crsRelease) error {
 		}
 		return m.simCRS(r.Version)
 	}
-	data, err := m.Download(ctx, r.URL)
+	data, err := r.Fetch(ctx, m.Download)
 	if err != nil {
 		return err
-	}
-	if sum := sha256.Sum256(data); hex.EncodeToString(sum[:]) != r.SHA256 {
-		return fmt.Errorf("%s has SHA-256 %x, not %s", r.URL, sum, r.SHA256)
 	}
 	return m.unpackCRS(data, r.Version)
 }
@@ -152,60 +141,8 @@ func (m *Manager) unpackCRS(data []byte, version string) error {
 	if err != nil {
 		return err
 	}
-	tr := tar.NewReader(gz)
-	var total int64
-	top := ""
-	for {
-		hdr, err := tr.Next()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		// "coreruleset-4.25.0/rules/x.conf" is rules/x.conf; every entry
-		// is under that one directory.
-		name := path.Clean(strings.TrimPrefix(hdr.Name, "./"))
-		if name == ".." || strings.HasPrefix(name, "../") || path.IsAbs(name) {
-			return fmt.Errorf("%q in the archive points outside it", hdr.Name)
-		}
-		dir, rel, _ := strings.Cut(name, "/")
-		if top == "" {
-			top = dir
-		} else if dir != top {
-			return fmt.Errorf("%q in the archive is outside its directory %s", hdr.Name, top)
-		}
-		if rel == "" {
-			continue
-		}
-		dst := filepath.Join(tmp, filepath.FromSlash(rel))
-		if !strings.HasPrefix(dst, tmp+string(os.PathSeparator)) {
-			return fmt.Errorf("%q in the archive points outside it", hdr.Name)
-		}
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(dst, 0o755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if total += hdr.Size; total > crsMaxSize {
-				return errors.New("the archive unpacks to more than 64 MB")
-			}
-			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-				return err
-			}
-			f, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-			if err != nil {
-				return err
-			}
-			_, err = io.Copy(f, io.LimitReader(tr, hdr.Size))
-			if cerr := f.Close(); err == nil {
-				err = cerr
-			}
-			if err != nil {
-				return err
-			}
-		}
+	if err := pinned.UnpackTar(gz, tmp, crsMaxSize); err != nil {
+		return err
 	}
 	if _, err := os.Stat(filepath.Join(tmp, "rules", "REQUEST-901-INITIALIZATION.conf")); err != nil {
 		return errors.New("the archive holds no CRS rules")
@@ -457,24 +394,4 @@ func (m *Manager) wafServes(ctx context.Context) error {
 		return fmt.Errorf("a plain request gets HTTP %d with the new rules", res.StatusCode)
 	}
 	return nil
-}
-
-// download fetches a release archive.
-func download(ctx context.Context, url string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "serfex-agent")
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: %s", url, res.Status)
-	}
-	return io.ReadAll(io.LimitReader(res.Body, 32<<20))
 }
