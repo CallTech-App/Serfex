@@ -340,4 +340,11 @@ var english = map[string]string{
 	"Rspamd %s ayarlarla denetleniyor ve başlatılıyor":                                        "Checking the settings with Rspamd %s and starting it",
 	"Rspamd paket deposu kaldırılıyor":                                                        "Removing Rspamd's package archive",
 	"Rspamd %s ve yükseltme öncesi ayarları geri yükleniyor":                                  "Restoring Rspamd %s and its settings from before the upgrade",
+	"OWASP CRS %s indiriliyor ve doğrulanıyor":                                                "Downloading and verifying OWASP CRS %s",
+	"CRS %s indirilemedi (%v); Ubuntu'nun kuralları kuruluyor":                                "CRS %s could not be downloaded (%v); installing Ubuntu's rules",
+	"Kurallar CRS %s ile değiştiriliyor":                                                      "Replacing the rules with CRS %s",
+	"Sitelerin yanıt verdiği denetleniyor":                                                    "Checking that sites answer",
+	"Önceki kurallara dönülüyor":                                                              "Going back to the previous rules",
+	"CRS %s kurallarına dönülüyor":                                                            "Going back to the CRS %s rules",
+	"Ubuntu'nun CRS paketi kaldırılıyor: %s":                                                  "Removing Ubuntu's CRS package: %s",
 }

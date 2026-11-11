@@ -52,8 +52,11 @@ type component struct {
 	// probe allows reading archives apt does not list yet. Components
 	// without them or versionPkg tell what an install brings by latest,
 	// from the address in from (Node.js, Composer).
-	choices       func(ctx context.Context, m *Manager, probe bool) []database.Release
-	from          string
+	choices func(ctx context.Context, m *Manager, probe bool) []database.Release
+	from    string
+	// release is what an install brings when Serfex pins it instead of
+	// apt choosing (ModSecurity's rules), from the address in from.
+	release       string
 	inUse         func(m *Manager) []string
 	isDefault     func(m *Manager) bool
 	settings      func(m *Manager) map[string]any

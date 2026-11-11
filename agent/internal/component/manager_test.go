@@ -376,9 +376,16 @@ func TestModSecuritySettings(t *testing.T) {
 	if _, err := m.Install(context.Background(), OpSpec{ID: "modsecurity", Run: "m"}); err != nil {
 		t.Fatal(err)
 	}
+	// A new install has CRS's own release (a dry run's stand-in here).
 	main := read(t, sim, modsecMain)
-	if !strings.Contains(main, "SecRuleEngine DetectionOnly") || !strings.Contains(main, "Include /usr/share/modsecurity-crs/rules/*.conf") {
+	if !strings.Contains(main, "SecRuleEngine DetectionOnly") || !strings.Contains(main, "Include /opt/serfex/crs/"+CRS.Version+"/rules/*.conf") {
 		t.Errorf("main.conf:\n%s", main)
+	}
+	if st := status(t, m, "modsecurity"); st.Version != CRS.Version || st.Upgrade != nil {
+		t.Errorf("status = %+v", st)
+	}
+	if ran(sim, "apt-get install -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold libnginx-mod-http-modsecurity modsecurity-crs") {
+		t.Error("Ubuntu's rules were installed too")
 	}
 	if !strings.Contains(read(t, sim, modsecNginx), "modsecurity_rules_file /etc/serfex/modsecurity/main.conf;") {
 		t.Error("nginx does not load the rules")
@@ -393,7 +400,7 @@ func TestModSecuritySettings(t *testing.T) {
 	if s.Settings["mode"] != "block" || s.Settings["paranoia"] != 2 {
 		t.Errorf("settings = %v", s.Settings)
 	}
-	if !strings.Contains(read(t, sim, modsecMain), "SecRuleEngine On") || !strings.Contains(read(t, sim, modsecCRS), "tx.paranoia_level=2") {
+	if !strings.Contains(read(t, sim, modsecMain), "SecRuleEngine On") || !strings.Contains(read(t, sim, modsecCRS), "tx.blocking_paranoia_level=2") || !strings.Contains(read(t, sim, modsecCRS), "tx.crs_setup_version=4250") {
 		t.Error("new settings not written")
 	}
 	// Nginx refusing them puts the old ones back.

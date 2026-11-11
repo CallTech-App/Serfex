@@ -175,7 +175,11 @@ type Events struct {
 }
 
 // The CRS rules that only add up scores: shown as the score, not as hits.
-var scoringRules = map[int]bool{949110: true, 959100: true, 980130: true, 980140: true, 980170: true}
+// 949111 and 959101 are CRS 4's early blocking (in phase 1 and 3).
+var scoringRules = map[int]bool{949110: true, 949111: true, 959100: true, 959101: true, 980130: true, 980140: true, 980170: true}
+
+// blockingRules are the scoring rules that refuse a request.
+var blockingRules = map[int]bool{949110: true, 949111: true, 959100: true, 959101: true}
 
 // maxRead is how much of the end of the log is read.
 const maxRead = 16 << 20
@@ -322,7 +326,7 @@ func parseEvent(line []byte) (Event, bool) {
 	for _, msg := range tx.Messages {
 		id, _ := strconv.Atoi(msg.Details.RuleID)
 		if scoringRules[id] {
-			anomaly = anomaly || id == 949110 || id == 959100
+			anomaly = anomaly || blockingRules[id]
 			if m := scoreRe.FindStringSubmatch(msg.Message); m != nil {
 				if n, _ := strconv.Atoi(m[1]); n > e.Score {
 					e.Score = n

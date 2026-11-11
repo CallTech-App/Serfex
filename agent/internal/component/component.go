@@ -21,7 +21,9 @@
 //	/var/lib/serfex/components/runs/<run>.log   operation logs, kept 90 days
 //	/var/lib/serfex/components/latest.json      newest Node.js and Composer versions, from component.check
 //	/var/lib/serfex/backups/components/         configuration archived before a removal
-//	/etc/serfex/components.json                 settings (ModSecurity mode and paranoia level)
+//	/var/lib/serfex/components/crs-kept.json    the ModSecurity rules an upgrade keeps, until when
+//	/etc/serfex/components.json                 settings (ModSecurity mode, paranoia level and rules)
+//	/opt/serfex/crs/<version>/                  OWASP Core Rule Set releases
 package component
 
 import (
@@ -125,6 +127,9 @@ type Manager struct {
 	// güvenliği), nil when it never changed them; the sshd jail watches
 	// those ports instead of 22.
 	SSHPorts func() []int
+	// Download fetches a release archive (ModSecurity's rules); nil on
+	// a dry run, which writes stand-ins.
+	Download func(ctx context.Context, url string) ([]byte, error)
 	// Fail, when set, is asked before each step of an operation; an error
 	// makes the step fail (tests and the real-host test's rollback check).
 	Fail func(id, step string) error
@@ -138,6 +143,9 @@ type Manager struct {
 func NewManager(h host.Host, sites *site.Manager, db *database.Manager, l *laravel.Manager) *Manager {
 	_, sim := h.(*host.Simulator)
 	m := &Manager{h: h, sim: sim, sites: sites, db: db, laravel: l, busy: map[string]string{}, now: time.Now}
+	if !sim {
+		m.Download = download
+	}
 	m.comps = map[string]*component{}
 	for _, c := range catalog() {
 		m.comps[c.id] = c
@@ -289,6 +297,8 @@ func (m *Manager) List(ctx context.Context) List {
 		} else {
 			var cand aptcache.Candidate
 			switch {
+			case c.release != "":
+				cand = aptcache.Candidate{Version: c.release, From: c.from}
 			case c.choices != nil:
 				// Archives apt does not list were read by the last check.
 				s.Choices = c.choices(ctx, m, false)
@@ -589,6 +599,9 @@ type Settings struct {
 	// ModSecurityParanoia is the CRS paranoia level, 1 (few false
 	// positives) to 4.
 	ModSecurityParanoia int `json:"modsecurity_paranoia"`
+	// CRS is the Core Rule Set release in use under /opt/serfex/crs, ""
+	// for Ubuntu's package. Only installs and upgrades change it.
+	CRS string `json:"crs,omitempty"`
 }
 
 func (m *Manager) loadSettings() Settings {
