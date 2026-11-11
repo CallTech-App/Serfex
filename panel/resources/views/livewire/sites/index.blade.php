@@ -41,6 +41,7 @@
                                 {{ __('Trafik (bu ay)') }}@if ($sort === 'traffic')<x-icon name="arrow-down" class="size-3" />@endif
                             </button>
                         </th>
+                        <th class="px-3 py-2.5 text-right font-medium" title="{{ __('Web dosyaları, e-posta, veritabanları ve uygulama yedekleri; her 30 dakikada ölçülür') }}">{{ __('Disk') }}</th>
                         <th class="py-2.5 pr-5 pl-3 font-medium">{{ __('Durum') }}</th>
                     </tr>
                 </thead>
@@ -70,6 +71,13 @@
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
+                            <td class="px-3 py-3 text-right whitespace-nowrap num">
+                                @if (($disk[$site->id] ?? null) !== null)
+                                    <a href="{{ route('sites.disk', $site) }}" wire:navigate class="hover:text-accent">{{ \App\Support\Bytes::format($disk[$site->id]) }}</a>
+                                @else
+                                    <span class="text-muted" title="{{ __('Henüz ölçülmedi') }}">—</span>
+                                @endif
+                            </td>
                             <td class="py-3 pr-5 pl-3">
                                 @if ($site->status === \App\Enums\SiteStatus::Active && $site->isDown())
                                     <a href="{{ route('sites.show', $site) }}" wire:navigate title="{{ $site->uptime_error }}" class="inline-flex items-center gap-1.5 rounded-full bg-crit-soft px-2 py-0.5 text-2xs font-medium whitespace-nowrap text-crit"><i class="size-1.5 rounded-full bg-crit"></i>{{ __('Yanıt vermiyor') }}</a>
@@ -80,7 +88,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $admin ? 6 : 5 }}" class="px-5 py-12 text-center">
+                            <td colspan="{{ $admin ? 7 : 6 }}" class="px-5 py-12 text-center">
                                 @if ($search !== '')
                                     <p class="text-muted">{{ __('Aramanızla eşleşen site yok.') }}</p>
                                 @else
@@ -97,6 +105,7 @@
         @if ($sites->total() > 0)
             <div class="flex items-center gap-3 border-t border-line px-5 py-3 text-2xs text-muted num">
                 <span>{{ __(':sites–:sites2 / :sites3 site', ['sites' => $sites->firstItem(), 'sites2' => $sites->lastItem(), 'sites3' => $sites->total()]) }}</span>
+                <span title="{{ __('Listelenen sitelerin tümü; arama yaparken yalnızca eşleşenler') }}">{{ __('Toplam disk') }} <span class="font-medium text-fg">{{ \App\Support\Bytes::format($diskTotal) }}</span></span>
                 @if ($sites->hasPages())
                     <span class="ml-auto flex items-center gap-1">
                         <button type="button" wire:click="previousPage" @disabled($sites->onFirstPage()) class="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg hover:bg-surface-2 disabled:opacity-40">{{ __('Önceki') }}</button>

@@ -7,12 +7,15 @@ use App\Jobs\DeleteSite;
 use App\Jobs\ProvisionSite;
 use App\Jobs\SyncDnsZone;
 use App\Livewire\Sites\SiteIndex;
+use App\Models\Database;
 use App\Models\DnsZone;
+use App\Models\Mailbox;
 use App\Models\Site;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Stats\DiskBreakdown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -68,6 +71,29 @@ class SiteIndexTest extends TestCase
             ->set('search', 'klinik')
             ->assertSee('example.org')
             ->assertDontSee('kahveatolyesi.com.tr');
+    }
+
+    public function test_shows_what_the_sites_take_on_disk_and_their_total(): void
+    {
+        $mb = 1024 * 1024;
+        $shop = Site::factory()->create(['domain' => 'kahveatolyesi.com.tr', 'disk_bytes' => 300 * $mb]);
+        Database::factory()->forSite($shop)->create(['size_bytes' => 200 * $mb]);
+        Database::factory()->forSite($shop, 'old')->create(['size_bytes' => 999 * $mb])->delete();
+        $mailbox = Mailbox::factory()->create(['usage_bytes' => 24 * $mb]);
+        $mailbox->domain->update(['site_id' => $shop->id]);
+        Site::factory()->create(['domain' => 'klinikmavi.com', 'disk_bytes' => 1000 * $mb]);
+        Site::factory()->provisioning()->create(['domain' => 'example.org', 'disk_bytes' => null]);
+
+        $this->assertSame([$shop->id => 524 * $mb], app(DiskBreakdown::class)->siteTotals([$shop->id]));
+        $this->assertSame(app(DiskBreakdown::class)->site($shop)['total'], 524 * $mb);
+
+        Livewire::test(SiteIndex::class)
+            ->assertSeeInOrder(['kahveatolyesi.com.tr', '524 MB', 'klinikmavi.com', '1.000 MB'])
+            ->assertSee(route('sites.disk', $shop))
+            ->assertSee('Henüz ölçülmedi')
+            ->assertSeeInOrder(['Toplam disk', '1,5 GB'])
+            ->set('search', 'kahve')
+            ->assertSeeInOrder(['Toplam disk', '524 MB']);
     }
 
     public function test_creates_a_site_and_queues_provisioning(): void

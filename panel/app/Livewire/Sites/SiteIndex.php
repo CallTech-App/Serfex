@@ -24,6 +24,7 @@ use App\Services\Customers\Quotas;
 use App\Services\Dns\Zones;
 use App\Services\Php\PhpVersions;
 use App\Services\Sites\SiteCreator;
+use App\Services\Stats\DiskBreakdown;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -451,25 +452,31 @@ class SiteIndex extends Component
         $this->dispatch('toast', message: is_string($result) ? $result : __(':domain yedekten geri yükleniyor; ilerlemesi Yedekler sayfasında.', ['domain' => $item->name]));
     }
 
-    public function render(): View
+    public function render(DiskBreakdown $breakdown): View
     {
         $user = auth()->user();
-        $sites = Site::visibleTo($user)
-            ->with('systemUser.customer', 'preview')
+        $listed = Site::visibleTo($user)
             ->when($this->search !== '', fn ($q) => $q->where(function ($q) {
                 $term = '%'.str_replace(['%', '_'], ['\%', '\_'], mb_strtolower($this->search)).'%';
                 $q->where('domain', 'like', $term)
                     ->orWhereHas('systemUser', fn ($u) => $u->where('name', 'like', $term));
-            }))
+            }));
+        $sites = (clone $listed)
+            ->with('systemUser.customer', 'preview')
             ->when($this->sort === 'traffic', fn ($q) => $q->orderByRaw('coalesce((select bytes from site_traffic where site_traffic.site_id = sites.id and month = ?), 0) desc',
                 [now(config('serfex.timezone'))->startOfMonth()->toDateString()]))
             ->orderBy('domain')
             ->paginate(25);
         $traffic = SiteTraffic::whereIn('site_id', $sites->pluck('id'))->where('month', now(config('serfex.timezone'))->startOfMonth()->toDateString())->pluck('bytes', 'site_id');
+        // What the sites take on disk (as on each site's Disk usage page),
+        // and all the sites listed together, on every page.
+        $disk = $breakdown->siteTotals($listed->pluck('id'));
 
         return view('livewire.sites.index', [
             'sites' => $sites,
             'traffic' => $traffic,
+            'disk' => $disk,
+            'diskTotal' => array_sum($disk),
             'customers' => $user->is_admin && $this->creating ? Customer::orderByRaw('lower(coalesce(company, name))')->get(['id', 'company', 'name']) : collect(),
             'templates' => $this->creating ? $this->installableTemplates() : collect(),
             'picked' => $picked = ($this->creating ? $this->pickedTemplate() : null),
