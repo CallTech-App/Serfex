@@ -91,10 +91,38 @@ type ManagerStatus struct {
 	// for Ubuntu's packages.
 	PhpMyAdminVersion string `json:"phpmyadmin_version,omitempty"`
 	AdminerVersion    string `json:"adminer_version,omitempty"`
+	// PhpMyAdminUpgrade and AdminerUpgrade are the releases the Software
+	// page offers to upgrade them to, "" for none.
+	PhpMyAdminUpgrade string `json:"phpmyadmin_upgrade,omitempty"`
+	AdminerUpgrade    string `json:"adminer_upgrade,omitempty"`
 	PHPVersion        string `json:"php_version,omitempty"`
-	// Note says why the last setup left a tool on Ubuntu's package or
-	// the release before.
+	// Note says why the setup gave a tool Ubuntu's package instead of
+	// its release.
 	Note string `json:"note,omitempty"`
+}
+
+// withTools adds to res what it says about the tools serfex-web serves
+// (tl): their releases, upgrades and notes.
+func (res ManagerStatus) withTools(st *state, tl tools) ManagerStatus {
+	var notes []string
+	for _, t := range []struct {
+		tool            string
+		on              bool
+		version, offers *string
+	}{
+		{ToolPhpMyAdmin, res.PhpMyAdmin, &res.PhpMyAdminVersion, &res.PhpMyAdminUpgrade},
+		{ToolAdminer, res.Adminer, &res.AdminerVersion, &res.AdminerUpgrade},
+	} {
+		if !t.on {
+			continue
+		}
+		*t.version, *t.offers = tl.get(t.tool), toolUpgrade(st, t.tool, tl.get(t.tool))
+		if n := st.ToolNotes[t.tool]; n != "" {
+			notes = append(notes, n)
+		}
+	}
+	res.Note = strings.Join(notes, "; ")
+	return res
 }
 
 func (m *Manager) managerStatus(context.Context) ManagerStatus {
@@ -103,21 +131,13 @@ func (m *Manager) managerStatus(context.Context) ManagerStatus {
 		return ManagerStatus{}
 	}
 	tl := m.served(st)
-	res := ManagerStatus{
+	return ManagerStatus{
 		Configured: true,
 		Port:       m.webPort(st),
 		PhpMyAdmin: m.exists(pmaDir(tl.PhpMyAdmin)+"/index.php") && m.exists(phpConf),
 		Adminer:    m.exists(adminerFile(tl.Adminer)) && m.exists(phpConf),
 		PHPVersion: m.adminPHP(),
-		Note:       st.ToolsNote,
-	}
-	if res.PhpMyAdmin {
-		res.PhpMyAdminVersion = tl.PhpMyAdmin
-	}
-	if res.Adminer {
-		res.AdminerVersion = tl.Adminer
-	}
-	return res
+	}.withTools(st, tl)
 }
 
 // adminPHP is the PHP version serfex-php runs (from its unit), if any.
@@ -136,10 +156,10 @@ func (m *Manager) adminPHP() string {
 // SetupManager installs phpMyAdmin (when MySQL or MariaDB is installed)
 // and Adminer (when PostgreSQL is), and runs them on serfex-web and
 // serfex-php. Running it again after a server is installed adds that
-// server's tool, and moves the tools to the releases Serfex pins (see
-// webtools.go). Configuration changes are rolled back if a service
-// rejects them; a release serfex-web does not serve leaves the tool
-// where it was.
+// server's tool. A tool it adds gets the release Serfex pins, or Ubuntu's
+// package when serfex-web does not serve the release; the tools served
+// already stay where they are (see webtools.go). Configuration changes
+// are rolled back if a service rejects them.
 func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res ManagerStatus, err error) {
 	if spec.Port != 0 && (spec.Port < 1 || spec.Port > 65535 || spec.Port == 80 || spec.Port == 443) {
 		return ManagerStatus{}, invalid("port must be between 1 and 65535, and not 80 or 443 (the sites' ports)")
@@ -160,26 +180,43 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if spec.Port != 0 {
 		ports = []int{spec.Port}
 	}
+	// The tools serfex-web has already stay on their release or Ubuntu's
+	// package: the Software page upgrades them (UpgradeTool).
 	cur := m.served(st)
-	want, notes := m.fetchTools(ctx, cur, mysql, pg)
-	check := webCheck{phpMyAdmin: mysql && want.PhpMyAdmin != cur.PhpMyAdmin, adminer: pg && want.Adminer != cur.Adminer}
+	var add []string
+	if mysql && !m.present(cur, ToolPhpMyAdmin) {
+		add = append(add, ToolPhpMyAdmin)
+	}
+	if pg && !m.present(cur, ToolAdminer) {
+		add = append(add, ToolAdminer)
+	}
+	want, notes := m.fetchTools(ctx, cur, add)
+	check := webCheck{phpMyAdmin: want.PhpMyAdmin != cur.PhpMyAdmin, adminer: want.Adminer != cur.Adminer}
 	php, err := m.applyWeb(ctx, ports, mysql, pg, want, check)
 	if err != nil && check.any() {
-		// The tools stay where they were; the setup goes on with them.
-		notes = append(notes, fmt.Sprintf("serfex-web did not serve the new release (%v), so the one before stays", err))
+		// The new tools get Ubuntu's packages; the setup goes on.
+		for _, tool := range add {
+			if want.get(tool) != cur.get(tool) {
+				notes[tool] = fmt.Sprintf("serfex-web did not serve %s %s (%v), so Ubuntu's package serves it", toolName(tool), want.get(tool), err)
+			}
+		}
 		want = cur
 		php, err = m.applyWeb(ctx, ports, mysql, pg, want, webCheck{})
 	}
 	if err != nil {
 		return ManagerStatus{}, err
 	}
-	if want != cur {
-		if err := m.purgeUbuntuTools(ctx, want); err != nil {
-			notes = append(notes, fmt.Sprintf("Ubuntu's phpMyAdmin or Adminer package could not be removed: %v", err))
+	m.pruneTools(want, st.ToolsKept)
+	st.Tools = want
+	for _, tool := range add {
+		delete(st.ToolNotes, tool)
+		if notes[tool] != "" {
+			if st.ToolNotes == nil {
+				st.ToolNotes = map[string]string{}
+			}
+			st.ToolNotes[tool] = notes[tool]
 		}
 	}
-	m.pruneTools(want)
-	st.Tools, st.ToolsNote = want, strings.Join(notes, "; ")
 	st.Manager = &ManagerSpec{Port: ports[0]}
 	if spec.Port != 0 {
 		st.WebPorts = ports
@@ -187,14 +224,7 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if err := m.saveState(st); err != nil {
 		return ManagerStatus{}, err
 	}
-	res = ManagerStatus{Configured: true, Port: ports[0], PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php, Note: st.ToolsNote}
-	if mysql {
-		res.PhpMyAdminVersion = want.PhpMyAdmin
-	}
-	if pg {
-		res.AdminerVersion = want.Adminer
-	}
-	return res, nil
+	return ManagerStatus{Configured: true, Port: ports[0], PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}.withTools(st, want), nil
 }
 
 // WebStatus describes serfex-web as the panel uses it.

@@ -97,15 +97,6 @@
                             </tr>
                         @endforeach
                     @endforeach
-                    @if ($tab === 'databases' && $manager !== null)
-                        <tr class="hover:bg-surface-2/60">
-                            <td class="py-3 pr-3 pl-5"><span class="font-medium">{{ __('phpMyAdmin ve Adminer') }}</span><span class="mt-0.5 block text-2xs text-muted">{{ __('Tarayıcıdan yönetim, veritabanı sunucusuyla birlikte kurulur') }}</span></td>
-                            <td class="hidden px-3 py-3 font-mono text-[13px] text-muted sm:table-cell">{{ __('port :manager_port', ['manager_port' => $managerPort]) }}</td>
-                            <td class="px-3 py-3"><x-status-badge :status="($manager['configured'] ?? false) ? new Badge(__('Kurulu'), 'ok') : new Badge(__('Kurulu değil'), 'muted')" /></td>
-                            <td class="hidden px-3 py-3 text-[13px] text-muted md:table-cell">{{ __('Veritabanı sayfalarında') }}</td>
-                            <td class="hidden py-3 pr-5 pl-3 text-right sm:table-cell"><a href="{{ route('databases.settings') }}" wire:navigate class="{{ $link }}">{{ __('Ayarlar') }}</a></td>
-                        </tr>
-                    @endif
                 </tbody>
             </table>
         </div>

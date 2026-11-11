@@ -85,6 +85,8 @@ func catalog() []*component {
 		apache(),
 		powerdns(),
 		rspamd(),
+		webTool(database.ToolPhpMyAdmin),
+		webTool(database.ToolAdminer),
 		{
 			id: "redis", packages: []string{"redis-server", "redis-tools"}, versionPkg: "redis-server",
 			extra:     func(m *Manager) []string { return m.phpExt("redis") },
@@ -965,6 +967,7 @@ var simVersions = map[string]string{
 	"php8.3-fpm": "8.3.6-0ubuntu0.24.04.5", "php8.4-fpm": "8.4.13-1+ubuntu24.04.1+deb.sury.org+1",
 	"php8.5-fpm":   "8.5.0-1+ubuntu24.04.1+deb.sury.org+1",
 	"mysql-server": "8.0.43-0ubuntu0.24.04.2", "mariadb-server": "1:10.11.13-0ubuntu0.24.04.1",
+	"phpmyadmin": "4:5.2.1+dfsg-3", "adminer": "4.8.1-1",
 	"postgresql-16": "16.10-0ubuntu0.24.04.1", "postgresql-18": "18.1-1.pgdg24.04+2",
 }
 

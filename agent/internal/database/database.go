@@ -189,10 +189,12 @@ type state struct {
 	// (panel.web.ports); empty means Manager's port, else DefaultPort.
 	WebPorts []int `json:"web_ports,omitempty"`
 	// Tools are the phpMyAdmin and Adminer releases serfex-web serves
-	// ("" for Ubuntu's packages), ToolsNote why the last setup left one
-	// where it was.
-	Tools     tools  `json:"tools"`
-	ToolsNote string `json:"tools_note,omitempty"`
+	// ("" for Ubuntu's packages). ToolNotes say why the setup gave a tool
+	// Ubuntu's package instead, ToolsKept what the last upgrade of a tool
+	// keeps; both by tool (webtools.go).
+	Tools     tools               `json:"tools"`
+	ToolNotes map[string]string   `json:"tool_notes,omitempty"`
+	ToolsKept map[string]toolKept `json:"tools_kept,omitempty"`
 }
 
 func key(server, name string) string { return server + "/" + name }

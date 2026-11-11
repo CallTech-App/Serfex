@@ -71,6 +71,11 @@
                                 @if (($manager['note'] ?? '') !== '')
                                     <span class="mt-1.5 block text-2xs text-warn">{{ $manager['note'] }}</span>
                                 @endif
+                                @foreach (['phpmyadmin' => 'phpMyAdmin', 'adminer' => 'Adminer'] as $tool => $toolName)
+                                    @if (($manager[$tool.'_upgrade'] ?? '') !== '')
+                                        <span class="mt-1.5 block text-2xs text-muted"><x-t text=":version sürümüne :link sayfasından yükseltilebilir."><x-slot:version>{{ $toolName }} {{ $manager[$tool.'_upgrade'] }}</x-slot:version><x-slot:link><a href="{{ route('components.index', ['tab' => 'databases']) }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></span>
+                                    @endif
+                                @endforeach
                             @else
                                 <span class="text-muted">{{ __('Henüz kurulmadı.') }}</span>
                             @endif

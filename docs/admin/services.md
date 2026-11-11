@@ -96,7 +96,7 @@ the workers pick up new PHP binaries on their hourly restart.
 | Tab | Components |
 |-----|------------|
 | Web server | Nginx (always in front), Apache (behind Nginx on 127.0.0.1:7080 for sites that choose it), and the default stack for new sites |
-| Database servers | MySQL or MariaDB, PostgreSQL, phpMyAdmin and Adminer |
+| Database servers | MySQL or MariaDB, PostgreSQL; phpMyAdmin and Adminer (the web database manager) come with them and are listed for their version and upgrade |
 | Other components | Redis, Memcached, Supervisor, Node.js (22, 24, 26 from nodejs.org in `/opt/serfex/node`), Composer, Python, Fail2ban, ModSecurity, ClamAV; Roundcube or SnappyMail is chosen under Email settings; Rspamd and PowerDNS are set up on the Email and DNS pages and listed here for their version, updates and upgrade |
 | Ubuntu updates | Ubuntu's own packages with a newer version, the restart they ask for and the automatic security updates (see below) |
 
@@ -108,11 +108,12 @@ Notes:
 - **ModSecurity** starts in *Monitor only* mode with paranoia level 1; change
   it under its settings or Security → WAF. Its rules are OWASP CRS 4.25.0
   (see [Security](security.md#web-application-firewall-waf)).
-- **PowerDNS, Rspamd and ModSecurity's rules** come from their makers in a
-  version Serfex chooses. When a Serfex release moves to a newer one,
-  **Upgrade version** checks it and puts the old one back on failure, and
-  **Go back to old version** stays offered for 7 days (see
-  [DNS](dns.md#powerdns-version) and [Email](mail.md#rspamd-version)).
+- **PowerDNS, Rspamd, ModSecurity's rules, phpMyAdmin and Adminer** come
+  from their makers in a version Serfex chooses. When a Serfex release moves
+  to a newer one, **Upgrade version** checks it and puts the old one back on
+  failure, and **Go back to old version** stays offered for 7 days (see
+  [DNS](dns.md#powerdns-version), [Email](mail.md#rspamd-version) and
+  [Databases](databases.md#database-servers)).
 - **ClamAV** scans incoming mail through Rspamd (infected mail is rejected)
   and is used by the security scan.
 - **Fail2ban** keeps its jails in step with the server by itself: the mail

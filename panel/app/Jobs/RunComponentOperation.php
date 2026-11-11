@@ -20,8 +20,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * Upgrading a database server to a new major version dumps every
  * database first and can run for hours: it goes to the "backups" queue,
  * so it never runs next to a backup or restore. The upgrades of PowerDNS,
- * Rspamd and ModSecurity's rules take a minute or two and stay on the
- * default queue.
+ * Rspamd, ModSecurity's rules, phpMyAdmin and Adminer take a minute or two
+ * and stay on the default queue.
  */
 class RunComponentOperation implements ShouldQueue
 {

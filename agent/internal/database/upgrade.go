@@ -1390,7 +1390,8 @@ func (m *Manager) keeps(dir string) bool {
 	return false
 }
 
-// PruneKept removes old versions kept longer than UpgradeKeep.
+// PruneKept removes old versions kept longer than UpgradeKeep, and the
+// phpMyAdmin or Adminer an upgrade kept longer than toolsKeepFor.
 func (m *Manager) PruneKept(ctx context.Context, log io.Writer) {
 	if log == nil {
 		log = io.Discard
@@ -1412,4 +1413,5 @@ func (m *Manager) PruneKept(ctx context.Context, log io.Writer) {
 	if changed {
 		_ = m.saveKept(kept)
 	}
+	m.pruneToolsKept(ctx)
 }

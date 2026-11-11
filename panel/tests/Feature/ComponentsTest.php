@@ -64,6 +64,8 @@ class ComponentsTest extends TestCase
             'mysql' => ['id' => 'mysql', 'installed' => true, 'version' => '8.0.43', 'running' => true, 'units' => ['mysql']],
             'mariadb' => ['id' => 'mariadb', 'installed' => false, 'running' => false],
             'postgresql' => ['id' => 'postgresql', 'installed' => false, 'running' => false],
+            'phpmyadmin' => ['id' => 'phpmyadmin', 'installed' => true, 'version' => '5.2.3', 'running' => true, 'required' => 'the web manager of MySQL and MariaDB'],
+            'adminer' => ['id' => 'adminer', 'installed' => false, 'running' => false, 'candidate' => '6.3.0', 'candidate_from' => 'github.com/vrana/adminer', 'required' => 'the web manager of PostgreSQL'],
             'redis' => ['id' => 'redis', 'installed' => true, 'version' => '7.0.15', 'running' => true],
             'memcached' => ['id' => 'memcached', 'installed' => false, 'running' => false],
             'node24' => ['id' => 'node24', 'installed' => true, 'version' => '24.10.0', 'running' => true, 'default' => true],
@@ -128,7 +130,10 @@ class ComponentsTest extends TestCase
         Livewire::test(ComponentIndex::class)->set('tab', 'databases')
             ->assertSee('MySQL')
             ->assertSee('MySQL kurulu; MariaDB onunla aynı anda kurulamaz.')
-            ->assertSee('phpMyAdmin ve Adminer');
+            ->assertSee('Web veritabanı yöneticisi')
+            ->assertSee('MySQL ve MariaDB için tarayıcıdan yönetim')
+            ->assertSee('Veritabanı sayfalarında')
+            ->assertSee('PostgreSQL kurulduğunda onunla birlikte gelir.');
     }
 
     public function test_install_runs_in_the_background_with_its_log(): void
@@ -394,6 +399,54 @@ class ComponentsTest extends TestCase
         $this->assertSame([['id' => 'rspamd', 'run' => $op->run]], $this->agent->called('component.revert'));
         Queue::assertNotPushed(SyncDnsZone::class);
         $this->assertSame('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.', app(Components::class)->start('rspamd', 'remove', null));
+    }
+
+    public function test_database_tools_upgrade_with_undo_for_a_week(): void
+    {
+        // Servers set up before 0.1.72 serve Ubuntu's phpMyAdmin; Adminer
+        // comes with PostgreSQL.
+        $this->components['phpmyadmin'] = ['id' => 'phpmyadmin', 'installed' => true, 'version' => '4:5.2.1+dfsg-3', 'running' => true,
+            'required' => 'the web manager of MySQL and MariaDB', 'upgrade' => ['from' => '5.2.1', 'to' => '5.2.3']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
+            ->assertSee('phpMyAdmin 5.2.3 sürümüne yükseltilebilir')
+            ->assertSee('Veritabanı sunucusuyla birlikte kurulur ve kaldırılır.')
+            ->assertSee('Adminer sürümü (GitHub)')
+            ->call('ask', 'phpmyadmin', 'upgrade')
+            ->assertSee('phpMyAdmin 5.2.3 sürümüne yükseltilsin mi?')
+            ->assertSee('phpMyAdmin 5.2.1')
+            ->assertSee('SHA-256')
+            ->assertSee('5.2.2\'de kapatılan iki XSS açığı')
+            ->assertSee('panel bir iki saniye yanıt vermeyebilir');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['phpmyadmin', 'upgrade', '5.2.3'], [$op->component, $op->action, $op->detail]);
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'phpmyadmin', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+        foreach ([['phpmyadmin', 'install'], ['phpmyadmin', 'update'], ['phpmyadmin', 'remove'], ['adminer', 'install']] as [$id, $action]) {
+            $this->assertSame('Bu bileşen buradan yönetilemiyor.', app(Components::class)->start($id, $action, null));
+        }
+
+        // Upgraded: going back is offered for the week Ubuntu's package is kept.
+        $this->components['phpmyadmin'] = ['id' => 'phpmyadmin', 'installed' => true, 'version' => '5.2.3', 'running' => true,
+            'required' => 'the web manager of MySQL and MariaDB', 'kept' => ['product' => 'phpmyadmin', 'from' => '5.2.1', 'to' => '5.2.3', 'until' => '2026-11-18T12:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
+            ->assertSee('phpMyAdmin 5.2.1 18.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Eski sürüme dön')
+            ->assertDontSee('Sürümü yükselt')
+            ->call('ask', 'phpmyadmin', 'remove-old')
+            ->assertSee('phpMyAdmin 5.2.1 silinsin mi?')
+            ->assertSee('Yükseltmeden kalan önceki sürüm kaldırılır.')
+            ->call('ask', 'phpmyadmin', 'revert')
+            ->assertSee('phpMyAdmin 5.2.1 sürümüne dönülsün mü?')
+            ->assertSee('Veritabanlarına dokunulmaz.')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['phpmyadmin', 'revert', '5.2.1'], [$op->component, $op->action, $op->detail]);
+        $this->agent->answers['component.revert'] = ['action' => 'revert', 'status' => []];
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'phpmyadmin', 'run' => $op->run]], $this->agent->called('component.revert'));
     }
 
     public function test_modsecurity_rules_upgrade_with_undo_for_a_week(): void

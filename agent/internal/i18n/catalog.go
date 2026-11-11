@@ -347,4 +347,9 @@ var english = map[string]string{
 	"Önceki kurallara dönülüyor":                                                              "Going back to the previous rules",
 	"CRS %s kurallarına dönülüyor":                                                            "Going back to the CRS %s rules",
 	"Ubuntu'nun CRS paketi kaldırılıyor: %s":                                                  "Removing Ubuntu's CRS package: %s",
+	"%s %s indiriliyor ve doğrulanıyor":                                                       "Downloading and verifying %s %s",
+	"Serfex'in web sunucusu %s %s ile yeniden başlatılıyor":                                   "Restarting Serfex's web server with %s %s",
+	"Önceki sürüme dönülüyor":                                                                 "Going back to the version before",
+	"%s %s sürümüne dönülüyor":                                                                "Going back to %s %s",
+	"Ubuntu'nun %s paketi kaldırılıyor":                                                       "Removing Ubuntu's %s package",
 }

@@ -13,6 +13,8 @@
             <button type="button" wire:click="openSettings" @disabled($busy) class="{{ $link }}">{{ __('Ayarlar') }}</button>
         @elseif ($r['mail'] ?? false)
             <a href="{{ route('mail.settings') }}" wire:navigate class="{{ $link }}">{{ __('E-posta ayarları') }}</a>
+        @elseif ($r['databases'] ?? false)
+            <a href="{{ route('databases.settings') }}" wire:navigate class="{{ $link }}">{{ __('Ayarlar') }}</a>
         @endif
         @if ($r['latest'])
             <button type="button" wire:click="ask('{{ $r['id'] }}', 'update')" @disabled($busy) title="{{ $blocker['text'] ?? '' }}" class="{{ $link }}">{{ __('Güncelle') }}</button>

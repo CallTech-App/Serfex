@@ -59,6 +59,8 @@ class Components
         'mysql' => ['MySQL', 'Varsayılan veritabanı sunucusu', 'databases', null],
         'mariadb' => ['MariaDB', 'MySQL ile uyumlu alternatif', 'databases', null],
         'postgresql' => ['PostgreSQL', 'MySQL ile birlikte kurulabilir; Laravel ve Django için', 'databases', null],
+        'phpmyadmin' => ['phpMyAdmin', 'MySQL ve MariaDB için tarayıcıdan yönetim', 'databases', 'Web veritabanı yöneticisi'],
+        'adminer' => ['Adminer', 'PostgreSQL için tarayıcıdan yönetim', 'databases', 'Web veritabanı yöneticisi'],
         'redis' => ['Redis', 'Laravel önbelleği, oturumları ve kuyrukları; her uygulamaya ayrı örnek', 'other', 'Önbellek ve kuyruk'],
         'memcached' => ['Memcached', 'Basit nesne önbelleği, PHP eklentisiyle', 'other', 'Önbellek ve kuyruk'],
         'supervisor' => ['Supervisor', 'Kendi süreçlerinizi çalışır tutar (Laravel işçileri systemd ile çalışır)', 'other', 'Önbellek ve kuyruk'],
@@ -75,10 +77,16 @@ class Components
 
     /**
      * Components with release series of their own, not database servers:
-     * upgraded to the series Serfex brings and, for a week after, taken
-     * back to the version the upgrade kept.
+     * upgraded to the series or release Serfex brings and, for a week
+     * after, taken back to the version the upgrade kept.
      */
-    public const SERIES = ['powerdns', 'rspamd', 'modsecurity'];
+    public const SERIES = ['powerdns', 'rspamd', 'modsecurity', 'phpmyadmin', 'adminer'];
+
+    /**
+     * The web database manager's tools: they come and go with the
+     * database servers (Veritabanları), here they are only upgraded.
+     */
+    public const DATABASE_TOOLS = ['phpmyadmin', 'adminer'];
 
     /** @var array<string, array<string, mixed>>|null component.list by id */
     private ?array $list = null;
@@ -304,7 +312,7 @@ class Components
         foreach (self::PHP_VERSIONS as $v) {
             $ids[] = 'php'.$v;
         }
-        array_push($ids, 'mysql', 'mariadb', 'postgresql', 'redis', 'memcached', 'supervisor');
+        array_push($ids, 'mysql', 'mariadb', 'postgresql', 'phpmyadmin', 'adminer', 'redis', 'memcached', 'supervisor');
         foreach (self::NODE_LINES as $line) {
             $ids[] = 'node'.$line;
         }
@@ -444,6 +452,7 @@ class Components
             return match ($id) {
                 'powerdns' => __('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.'),
                 'rspamd' => __('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.'),
+                'phpmyadmin', 'adminer' => __('Veritabanı sunucusuyla birlikte kurulur ve kaldırılır.'),
                 default => __('Gerekli. Serfex tüm sitelerde Nginx kullanır.'),
             };
         }
@@ -457,7 +466,7 @@ class Components
         $list = count($used) > 2 ? __(':used ve :used2 diğeri', ['used' => implode(', ', array_slice($used, 0, 2)), 'used2' => (count($used) - 2)]) : implode(', ', $used);
         $hint = match (true) {
             $id === 'apache' => __('Önce bu siteleri PHP ve Web Sunucusu sayfasından Nginx + PHP-FPM\'e alın.'),
-            str_starts_with($id, 'php') => __('Önce bu siteleri başka bir PHP sürümüne alın.'),
+            (bool) preg_match('/^php\d/', $id) => __('Önce bu siteleri başka bir PHP sürümüne alın.'),
             in_array($id, ['mysql', 'mariadb', 'postgresql'], true) => __('Önce veritabanlarını ve kullanıcılarını silin.'),
             $id === 'redis' => __('Önce uygulamaların Redis bağlantısını kaldırın.'),
             $id === 'composer' => __('Laravel dağıtımları için gerekli.'),
@@ -481,7 +490,9 @@ class Components
     {
         $series = in_array($id, self::SERIES, true);
         $upgradable = $series || in_array($id, ['mysql', 'mariadb', 'postgresql'], true);
-        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove', ...($upgradable ? ['upgrade', 'remove-old'] : []), ...($series ? ['revert'] : [])], true)) {
+        // The database tools come and go with their database server.
+        $basic = in_array($id, self::DATABASE_TOOLS, true) ? [] : ['install', 'update', 'remove'];
+        if (! $this->operable($id) || ! in_array($action, [...$basic, ...($upgradable ? ['upgrade', 'remove-old'] : []), ...($series ? ['revert'] : [])], true)) {
             return __('Bu bileşen buradan yönetilemiyor.');
         }
         // Read first: it also closes operations whose job is gone.
@@ -599,6 +610,8 @@ class Components
             str_starts_with($from, 'repo.powerdns.com') => __('PowerDNS deposu (repo.powerdns.com)'),
             str_starts_with($from, 'rspamd.com') => __('Rspamd deposu (rspamd.com)'),
             str_starts_with($from, 'github.com/coreruleset/') => __('OWASP CRS sürümü (GitHub)'),
+            str_starts_with($from, 'files.phpmyadmin.net') => __('phpMyAdmin sürümü (phpmyadmin.net)'),
+            str_starts_with($from, 'github.com/vrana/adminer') => __('Adminer sürümü (GitHub)'),
             default => Str::before($from, '/'),
         };
     }
@@ -606,7 +619,7 @@ class Components
     /**
      * "MySQL 8.4 LTS", "PostgreSQL 18", "OWASP CRS 4.25.0": a database
      * server's major version, a SERIES component's release series (for
-     * ModSecurity its rules' release).
+     * ModSecurity its rules' release, for phpMyAdmin and Adminer theirs).
      */
     public static function releaseName(string $id, string $major): string
     {
@@ -617,6 +630,8 @@ class Components
             'powerdns' => "PowerDNS {$major}",
             'rspamd' => "Rspamd {$major}",
             'modsecurity' => "OWASP CRS {$major}",
+            'phpmyadmin' => "phpMyAdmin {$major}",
+            'adminer' => "Adminer {$major}",
             default => $major,
         };
     }
@@ -674,6 +689,12 @@ class Components
         }
         if ($id === 'rspamd') {
             return __('E-posta sunucusu kurulduğunda burada görünür; E-posta sayfasından kurulur.');
+        }
+        if ($id === 'phpmyadmin') {
+            return __('MySQL ya da MariaDB kurulduğunda onunla birlikte gelir.');
+        }
+        if ($id === 'adminer') {
+            return __('PostgreSQL kurulduğunda onunla birlikte gelir.');
         }
         $other = ['mysql' => 'mariadb', 'mariadb' => 'mysql'][$id] ?? null;
         if ($other !== null && ($statuses[$other]['installed'] ?? false)) {
@@ -734,8 +755,10 @@ class Components
             'settings' => $status['settings'] ?? null,
             'usage' => $installed ? $this->usage($id, $users, $status) : '—',
             'refusal' => $installed ? $this->removalRefusal($id, $status) : $this->installRefusal($id, $statuses),
-            // Rspamd is the mail server's: its row links there.
+            // Rspamd is the mail server's: its row links there; the
+            // database tools' rows link to Database servers.
             'mail' => $id === 'rspamd',
+            'databases' => in_array($id, self::DATABASE_TOOLS, true),
         ];
     }
 
@@ -751,7 +774,7 @@ class Components
         if ($id === 'nginx') {
             return __(':value site', ['value' => Site::count()]);
         }
-        if ($id === 'apache' || str_starts_with($id, 'php')) {
+        if ($id === 'apache' || preg_match('/^php\d/', $id)) {
             $n = $id === 'apache' ? count($users) : Site::where('php_version', substr($id, 3))->count();
             $extra = array_values(array_filter($agent, fn ($u) => ! str_contains($u, '.') || str_contains($u, ' ')));
 
@@ -771,6 +794,9 @@ class Components
             $mailboxes = Mailbox::count();
 
             return $mailboxes ? __(':mailboxes posta kutusu', ['mailboxes' => $mailboxes]) : __('Henüz posta kutusu yok');
+        }
+        if (in_array($id, self::DATABASE_TOOLS, true)) {
+            return __('Veritabanı sayfalarında');
         }
 
         return match ($id) {

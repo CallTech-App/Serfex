@@ -285,7 +285,7 @@ class ComponentIndex extends Component
         }
     }
 
-    public function render(Components $components, DatabaseServers $databases, SystemPackages $packages): View
+    public function render(Components $components, SystemPackages $packages): View
     {
         $error = null;
         $groups = $components->rows($this->tab, $error);
@@ -313,10 +313,6 @@ class ComponentIndex extends Component
         $this->agentError = $groups === null ? ($error ? __('Sunucu ajanı hata verdi: :error', ['error' => $error]) : __('Sunucu ajanına ulaşılamıyor. Sunucuda "systemctl status serfex-agent" ile kontrol edin.')) : null;
         $operation = $this->operationId ? ComponentOperation::find($this->operationId) : null;
         $blocker = $components->blocker();
-        $manager = null;
-        if ($this->tab === 'databases' && $groups !== null) {
-            $manager = $databases->status()['manager'] ?? null;
-        }
 
         return view('livewire.components.index', [
             'groups' => $groups ?? [],
@@ -327,8 +323,6 @@ class ComponentIndex extends Component
             'checkedAt' => $system['checked_at'] ?? $components->checkedAt(),
             'system' => $system,
             'apacheInstalled' => $components->isInstalled('apache'),
-            'manager' => $manager,
-            'managerPort' => $databases->managerPort(),
             'confirm' => $this->confirming ? $this->confirmText($components, $this->confirming['id'], $this->confirming['action']) : null,
         ]);
     }
@@ -378,8 +372,8 @@ class ComponentIndex extends Component
     }
 
     /**
-     * What the upgrade of PowerDNS, Rspamd or ModSecurity's rules does,
-     * what people notice and what is kept.
+     * What the upgrade of PowerDNS, Rspamd, ModSecurity's rules, phpMyAdmin
+     * or Adminer does, what people notice and what is kept.
      *
      * @param  array<string, mixed>  $row
      * @param  array{from: string, to: string, name: string}  $upgrade
@@ -417,6 +411,27 @@ class ComponentIndex extends Component
                         [__('Eski sürüm'), __('Eski paket ve ayarlar 7 gün saklanır. Bu sürede bu sayfadan eski sürüme dönebilirsiniz; sonra kendiliğinden silinir.')],
                     ],
                     'note' => __('Yeni sürüm kendi kurallarını ve puanlarını getirir. İlk günlerde spam klasörüne düşen ve gelen kutusuna kaçan postalara göz atın.'),
+                ],
+            ];
+        }
+        if (in_array($id, Components::DATABASE_TOOLS, true)) {
+            $version = $row['version'] ? Str::before($row['version'], '-') : $upgrade['from'];
+
+            return [
+                'text' => $id === 'phpmyadmin'
+                    ? __('Serfex :name sürümünü phpMyAdmin\'in sitesinden indirir ve SHA-256 özetini denetler. Ardından Serfex\'in web sunucusunu yeni sürümle yeniden başlatır ve phpMyAdmin\'in açıldığını denetler. Denetim geçmezse önceki sürüm kullanılmaya devam eder.', ['name' => $upgrade['name']])
+                    : __('Serfex :name sürümünü Adminer\'ın GitHub sayfasından indirir ve SHA-256 özetini denetler. Ardından Serfex\'in web sunucusunu yeni sürümle yeniden başlatır ve Adminer\'ın açıldığını denetler. Denetim geçmezse önceki sürüm kullanılmaya devam eder.', ['name' => $upgrade['name']]),
+                'upgrade' => [
+                    'from' => $from,
+                    'to' => $upgrade['name'],
+                    'items' => [
+                        [__('Kullanım'), $id === 'phpmyadmin' ? __('Panelden "phpMyAdmin\'de aç" eskisi gibi çalışır.') : __('Panelden "Adminer\'da aç" eskisi gibi çalışır.')],
+                        [__('Kesinti'), __('Serfex\'in web sunucusu yeniden başlar; panel bir iki saniye yanıt vermeyebilir. Siteler etkilenmez.')],
+                        [__('Eski sürüm'), __('Önceki sürüm 7 gün kurulu kalır. Bu sürede bu sayfadan ona dönebilirsiniz; sonra kendiliğinden kaldırılır.')],
+                    ],
+                    'note' => $id === 'phpmyadmin' && version_compare($version, '5.2.2', '<')
+                        ? __('phpMyAdmin :version sürümünde 5.2.2\'de kapatılan iki XSS açığı var; yükseltme bunları kapatır. Veritabanlarına dokunulmaz.', ['version' => $version])
+                        : __('Veritabanlarına dokunulmaz; yalnızca yönetim aracı değişir.'),
                 ],
             ];
         }
@@ -500,6 +515,7 @@ class ComponentIndex extends Component
                 'text' => match ($id) {
                     'rspamd' => __('Rspamd\'in eski paketi ve yükseltmeden önceki ayarları geri yüklenir; Serfex\'in yükseltmeden sonra yazdığı DKIM ve spam ayarları korunur. Yaklaşık bir dakika boyunca posta spam denetimi ve DKIM imzası olmadan iletilir.'),
                     'modsecurity' => __('ModSecurity önceki kurallara döner ve Nginx ayarları yeniden yükler; siteler kesintisiz çalışır. Kip, seviye ve site istisnaları olduğu gibi kalır.'),
+                    'phpmyadmin', 'adminer' => __('Serfex\'in web sunucusu önceki sürümle yeniden başlatılır ve açıldığı denetlenir; panel bir iki saniye yanıt vermeyebilir. Veritabanlarına dokunulmaz.'),
                     default => __('DNS sunucusu durdurulur, eski paketler ve yükseltmeden önce alınan veritabanı kopyası geri yüklenir. Ardından panel bütün bölgeleri yeniden yazar; yükseltmeden sonra yaptığınız değişiklikler korunur. DNS sunucusu yaklaşık bir dakika yanıt vermez.'),
                 },
                 'button' => __('Eski sürüme dön'),
@@ -511,6 +527,7 @@ class ComponentIndex extends Component
                     'powerdns' => __('Yükseltmeden kalan eski paketler ve veritabanının kopyası silinir. Bundan sonra eski sürüme dönülemez.'),
                     'rspamd' => __('Yükseltmeden kalan eski paket ve ayarların kopyası silinir. Bundan sonra eski sürüme dönülemez.'),
                     'modsecurity' => __('Yükseltmeden kalan önceki kurallar kaldırılır. Bundan sonra onlara dönülemez.'),
+                    'phpmyadmin', 'adminer' => __('Yükseltmeden kalan önceki sürüm kaldırılır. Bundan sonra ona dönülemez.'),
                     'postgresql' => __('Yükseltmeden kalan durdurulmuş eski küme silinir. Panelin kendi PostgreSQL\'i ve onun kullandığı paketler etkilenmez.').' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
                     default => __('Yükseltmeden kalan eski veri klasörünün kopyası ve saklanan eski paketler silinir.').' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
                 },

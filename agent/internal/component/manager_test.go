@@ -911,3 +911,64 @@ func TestRspamdUpgradeAndRevert(t *testing.T) {
 		t.Error("reverted Nginx")
 	}
 }
+
+func TestWebToolsUpgradeAndRevert(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if s := status(t, m, "phpmyadmin"); s.Installed || s.Candidate != database.PhpMyAdminRelease.Version || s.CandidateFrom != "files.phpmyadmin.net" {
+		t.Fatalf("listed without a database server: %+v", s)
+	}
+	// The releases were out of reach when MySQL came: Ubuntu's packages.
+	m.db.Download = func(context.Context, string) ([]byte, error) { return nil, errors.New("unreachable") }
+	if _, err := m.Install(ctx, OpSpec{ID: "mysql", Run: "d1", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	m.db.Download = nil
+	s := status(t, m, "phpmyadmin")
+	if !s.Installed || s.Version != "4:5.2.1+dfsg-3" || s.Upgrade == nil || s.Upgrade.From != "5.2.1" || s.Upgrade.To != database.PhpMyAdminRelease.Version || s.Required == "" || !s.Running {
+		t.Fatalf("before: %+v upgrade %+v", s, s.Upgrade)
+	}
+	if s := status(t, m, "adminer"); s.Installed {
+		t.Errorf("Adminer without PostgreSQL: %+v", s)
+	}
+	for _, f := range []func(context.Context, OpSpec) (Result, error){m.Install, m.Remove, m.Update} {
+		if _, err := f(ctx, OpSpec{ID: "phpmyadmin", Run: "x"}); err == nil {
+			t.Error("phpMyAdmin was installed, removed or updated apart from MySQL")
+		}
+	}
+
+	res, err := m.Upgrade(ctx, OpSpec{ID: "phpmyadmin", Run: "u"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if res.Status.Version != database.PhpMyAdminRelease.Version || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "5.2.1" {
+		t.Errorf("after: %+v kept %+v", res.Status, res.Status.Kept)
+	}
+	if chunk, _ := m.ReadRun("u", 0); !strings.Contains(chunk.Data, "▸ phpMyAdmin "+database.PhpMyAdminRelease.Version+" indiriliyor ve doğrulanıyor") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	res, err = m.Revert(ctx, OpSpec{ID: "phpmyadmin", Run: "r"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/r.log"))
+	}
+	if res.Status.Version != "4:5.2.1+dfsg-3" || res.Status.Kept != nil || res.Status.Upgrade == nil {
+		t.Errorf("after revert: %+v", res.Status)
+	}
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "phpmyadmin", Run: "u2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "phpmyadmin", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "phpmyadmin"); s.Kept != nil || s.Upgrade != nil || !ran(sim, "apt-get purge -y -q phpmyadmin") {
+		t.Errorf("after removing the old version: %+v", s)
+	}
+
+	// PostgreSQL brings Adminer's release at once.
+	if _, err := m.Install(ctx, OpSpec{ID: "postgresql", Run: "d2", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "adminer"); !s.Installed || s.Version != database.AdminerRelease.Version || s.Upgrade != nil || s.Kept != nil {
+		t.Errorf("adminer: %+v", s)
+	}
+}

@@ -7,7 +7,6 @@ use App\Jobs\PurgeDatabase;
 use App\Jobs\PurgeDatabaseUser;
 use App\Jobs\SetupDatabaseServers;
 use App\Jobs\SyncDatabaseUsers;
-use App\Jobs\UpdateDatabaseManager;
 use App\Livewire\Databases\DatabaseIndex;
 use App\Livewire\Databases\DatabaseSettingsPage;
 use App\Livewire\Databases\DatabaseShow;
@@ -512,43 +511,22 @@ class DatabasesTest extends TestCase
         Queue::assertPushed(SetupDatabaseServers::class, fn ($job) => $job->products === ['mysql', 'postgresql']);
     }
 
-    public function test_settings_show_the_tools_releases_and_why_one_stayed_behind(): void
+    public function test_settings_show_the_tools_releases_why_one_stayed_behind_and_its_upgrade(): void
     {
         $status = self::dbStatus(postgres: true);
         $status['manager'] = [...$status['manager'], 'adminer' => true, 'phpmyadmin_version' => '5.2.3', 'adminer_version' => '6.3.0'];
         $this->agent->answers['db.status'] = $status;
-        Livewire::test(DatabaseSettingsPage::class)->assertSee('phpMyAdmin 5.2.3, Adminer 6.3.0');
+        Livewire::test(DatabaseSettingsPage::class)
+            ->assertSee('phpMyAdmin 5.2.3, Adminer 6.3.0')
+            ->assertDontSee('yükseltilebilir');
 
-        $status['manager'] = [...$status['manager'], 'phpmyadmin_version' => '', 'note' => 'phpMyAdmin 5.2.3 could not be downloaded: connection timed out'];
+        $status['manager'] = [...$status['manager'], 'phpmyadmin_version' => '', 'phpmyadmin_upgrade' => '5.2.3', 'note' => 'phpMyAdmin 5.2.3 could not be downloaded: connection timed out'];
         $this->agent->answers['db.status'] = $status;
         $this->app->forgetInstance(DatabaseServers::class);
         Livewire::test(DatabaseSettingsPage::class)
             ->assertSee('phpMyAdmin (Ubuntu paketi), Adminer 6.3.0')
-            ->assertSee('phpMyAdmin 5.2.3 could not be downloaded: connection timed out');
-    }
-
-    public function test_the_update_moves_the_tools_to_their_releases_in_the_background(): void
-    {
-        $migration = require database_path('migrations/2026_11_11_000010_update_database_manager.php');
-        $migration->up();
-        Queue::assertPushed(UpdateDatabaseManager::class, fn ($job) => $job->delay !== null);
-
-        $this->agent->answers['db.manager.setup'] = ['configured' => true, 'phpmyadmin_version' => '5.2.3'];
-        (new UpdateDatabaseManager)->handle($this->agent, app(DatabaseServers::class));
-        $this->assertSame([['port' => 8443]], $this->agent->called('db.manager.setup'));
-
-        // A server without the manager, or without database servers, is
-        // left alone.
-        $this->agent->answers['db.status'] = self::dbStatus(manager: false);
-        $this->app->forgetInstance(DatabaseServers::class);
-        (new UpdateDatabaseManager)->handle($this->agent, app(DatabaseServers::class));
-        $this->assertCount(1, $this->agent->called('db.manager.setup'));
-
-        Queue::fake();
-        Setting::put('databases.products', []);
-        $this->app->forgetInstance(DatabaseServers::class);
-        $migration->up();
-        Queue::assertNotPushed(UpdateDatabaseManager::class);
+            ->assertSee('phpMyAdmin 5.2.3 could not be downloaded: connection timed out')
+            ->assertSeeHtml('phpMyAdmin 5.2.3 sürümüne <a href="'.route('components.index', ['tab' => 'databases']).'"');
     }
 
     public function test_remote_hosts_are_checked_like_the_agent_does(): void

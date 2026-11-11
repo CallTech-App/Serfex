@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/pinned"
@@ -199,54 +200,132 @@ func ubuntuTools(t *testing.T, m *Manager, rel *toolReleases) string {
 	return string(data)
 }
 
-func TestToolsMoveFromUbuntusPackages(t *testing.T) {
+// pmaSecret is phpMyAdmin's cookie key in its settings.
+func pmaSecret(conf string) string {
+	_, rest, _ := strings.Cut(conf, "sodium_hex2bin('")
+	s, _, _ := strings.Cut(rest, "'")
+	return s
+}
+
+func TestToolsUpgradeFromUbuntusPackages(t *testing.T) {
 	m, sim := newSim(t)
 	ctx := context.Background()
 	rel := withToolReleases(t, m)
-	m.checkTools = func(context.Context, int, webCheck) error { return nil }
+	var checked []webCheck
+	m.checkTools = func(_ context.Context, _ int, c webCheck) error {
+		checked = append(checked, c)
+		return nil
+	}
 	bothServers(t, m)
 	ubuntuConf := ubuntuTools(t, m, rel)
 	contains(t, "nginx", read(t, sim, webConf), "root /usr/share;")
 	contains(t, "Adminer", read(t, sim, adminWWW+"/adminer.php"), "class SerfexAdminer extends Adminer\n", "include '/usr/share/adminer/adminer.php';")
-	if st := m.managerStatus(ctx); st.PhpMyAdminVersion != "" || !st.PhpMyAdmin || st.Note == "" {
+	if st := m.managerStatus(ctx); st.PhpMyAdminVersion != "" || !st.PhpMyAdmin || st.PhpMyAdminUpgrade != "9.9.0" || st.AdminerUpgrade != "9.9.0" || st.Note == "" {
 		t.Errorf("status %+v", st)
 	}
+	if tl := m.Tool(ToolPhpMyAdmin); !tl.Served || tl.Release != "" {
+		t.Errorf("phpMyAdmin %+v", tl)
+	}
 
-	// An update keeps them there: it never downloads.
+	// Neither an update nor setting the manager up again moves them.
 	m.Download = func(context.Context, string) ([]byte, error) {
-		t.Error("SetupPanelWeb downloaded")
+		t.Error("downloaded")
 		return nil, errors.New("no")
 	}
 	installPanel(t, m)
 	if _, err := m.SetupPanelWeb(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if res, err := m.SetupManager(ctx, ManagerSpec{}); err != nil || res.PhpMyAdminVersion != "" || res.AdminerVersion != "" || res.PhpMyAdminUpgrade != "9.9.0" {
+		t.Fatalf("setup again: %+v %v", res, err)
+	}
 	contains(t, "nginx", read(t, sim, webConf), "root /usr/share;")
+	if len(checked) != 0 {
+		t.Errorf("checks %+v", checked)
+	}
 
-	// db.manager.setup moves them, keeping phpMyAdmin's secret, and
-	// purges Ubuntu's packages.
+	// The Software page moves phpMyAdmin, keeping its secret and Ubuntu's
+	// package for a week.
 	withToolReleases(t, m)
-	res, err := m.SetupManager(ctx, ManagerSpec{})
-	if err != nil {
+	var log bytes.Buffer
+	if err := m.UpgradeTool(ctx, ToolSpec{Tool: ToolPhpMyAdmin, From: "4:5.2.1+dfsg-3", Log: &log}); err != nil {
 		t.Fatal(err)
 	}
-	if res.PhpMyAdminVersion != "9.9.0" || res.AdminerVersion != "9.9.0" || res.Note != "" {
-		t.Errorf("setup %+v", res)
-	}
-	secret := func(conf string) string {
-		_, rest, _ := strings.Cut(conf, "sodium_hex2bin('")
-		s, _, _ := strings.Cut(rest, "'")
-		return s
-	}
-	if s := secret(read(t, sim, pmaConfFile("9.9.0"))); s == "" || s != secret(ubuntuConf) {
-		t.Errorf("phpMyAdmin's secret %q, before %q", s, secret(ubuntuConf))
-	}
-	if !sim.Ran("apt-get purge -y -q phpmyadmin adminer") || m.exists(pmaIndex) || m.exists(adminerIndex) || m.exists(pmaConf) {
-		t.Error("Ubuntu's packages were not purged")
+	contains(t, "log", log.String(), "▸ phpMyAdmin 9.9.0 indiriliyor ve doğrulanıyor\n", "▸ Serfex'in web sunucusu phpMyAdmin 9.9.0 ile yeniden başlatılıyor\n")
+	if len(checked) != 1 || checked[0] != (webCheck{phpMyAdmin: true}) {
+		t.Errorf("checks %+v", checked)
 	}
 	contains(t, "nginx", read(t, sim, webConf), "root /opt/serfex/phpmyadmin/9.9.0;")
-	if st := m.managerStatus(ctx); st.PhpMyAdminVersion != "9.9.0" || st.AdminerVersion != "9.9.0" || st.Note != "" {
+	if s := pmaSecret(read(t, sim, pmaConfFile("9.9.0"))); s == "" || s != pmaSecret(ubuntuConf) {
+		t.Errorf("phpMyAdmin's secret %q, before %q", s, pmaSecret(ubuntuConf))
+	}
+	if sim.Ran("apt-get purge") || !m.exists(pmaIndex) || !m.exists(pmaConf) {
+		t.Error("Ubuntu's phpMyAdmin went")
+	}
+	k := m.ToolKept(ToolPhpMyAdmin)
+	if k == nil || k.Product != ToolPhpMyAdmin || k.From != "5.2.1" || k.To != "9.9.0" || !k.Until.Equal(k.Upgraded.Add(toolsKeepFor)) {
+		t.Errorf("kept %+v", k)
+	}
+	st := m.managerStatus(ctx)
+	if st.PhpMyAdminVersion != "9.9.0" || st.PhpMyAdminUpgrade != "" || st.AdminerVersion != "" || st.AdminerUpgrade != "9.9.0" || strings.Contains(st.Note, "phpMyAdmin") || !strings.Contains(st.Note, "Adminer 9.9.0 could not be downloaded") {
 		t.Errorf("status %+v", st)
+	}
+	if err := m.UpgradeTool(ctx, ToolSpec{Tool: ToolPhpMyAdmin}); err == nil {
+		t.Error("upgraded again while the one before is kept")
+	}
+
+	// Going back serves Ubuntu's package again, checked, and deletes the
+	// release.
+	log.Reset()
+	if err := m.RevertTool(ctx, ToolSpec{Tool: ToolPhpMyAdmin, Log: &log}); err != nil {
+		t.Fatal(err)
+	}
+	contains(t, "log", log.String(), "▸ phpMyAdmin 5.2.1 sürümüne dönülüyor\n")
+	if len(checked) != 2 || checked[1] != (webCheck{phpMyAdmin: true}) {
+		t.Errorf("checks %+v", checked)
+	}
+	contains(t, "nginx", read(t, sim, webConf), "root /usr/share;")
+	if m.exists(pmaRoot+"/9.9.0") || m.ToolKept(ToolPhpMyAdmin) != nil || pmaSecret(read(t, sim, pmaConf)) != pmaSecret(ubuntuConf) {
+		t.Error("the release stayed, the kept one is still recorded or the secret changed")
+	}
+	if err := m.RevertTool(ctx, ToolSpec{Tool: ToolPhpMyAdmin}); err == nil {
+		t.Error("went back twice")
+	}
+
+	// Both move again. Adminer lets Ubuntu's package go at once,
+	// phpMyAdmin after the week (PruneKept, every night).
+	for _, tool := range []string{ToolPhpMyAdmin, ToolAdminer} {
+		if err := m.UpgradeTool(ctx, ToolSpec{Tool: tool}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if k := m.ToolKept(ToolAdminer); k == nil || k.From != "Ubuntu" {
+		t.Errorf("Adminer kept %+v", k)
+	}
+	contains(t, "Adminer", read(t, sim, adminWWW+"/adminer.php"), "include '/opt/serfex/adminer/9.9.0/adminer.php';")
+	if err := m.RemoveOldTool(ctx, ToolAdminer, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !sim.Ran("apt-get purge -y -q adminer") || m.exists(adminerIndex) || m.ToolKept(ToolAdminer) != nil || !m.exists(pmaIndex) {
+		t.Error("Ubuntu's Adminer, and only it, should have gone")
+	}
+	if err := m.RemoveOldTool(ctx, ToolAdminer, nil); err == nil {
+		t.Error("removed the old Adminer twice")
+	}
+	m.PruneKept(ctx, nil)
+	if !m.exists(pmaIndex) || m.ToolKept(ToolPhpMyAdmin) == nil {
+		t.Error("phpMyAdmin's week was cut short")
+	}
+	m.now = func() time.Time { return time.Now().Add(toolsKeepFor + time.Hour) }
+	m.PruneKept(ctx, nil)
+	if !sim.Ran("apt-get purge -y -q phpmyadmin") || m.exists(pmaIndex) || m.exists(pmaConf) || m.ToolKept(ToolPhpMyAdmin) != nil {
+		t.Error("Ubuntu's phpMyAdmin stayed after its week")
+	}
+	if st := m.managerStatus(ctx); st.PhpMyAdminVersion != "9.9.0" || st.AdminerVersion != "9.9.0" || st.PhpMyAdminUpgrade != "" || st.AdminerUpgrade != "" || st.Note != "" {
+		t.Errorf("status %+v", st)
+	}
+	if err := m.UpgradeTool(ctx, ToolSpec{Tool: ToolAdminer}); err == nil {
+		t.Error("upgraded to the release served")
 	}
 
 	// A release whose files went missing is served from Ubuntu's
@@ -271,53 +350,106 @@ func TestToolsStayWhereTheReleaseDoesNotServe(t *testing.T) {
 	m, sim := newSim(t)
 	ctx := context.Background()
 	rel := withToolReleases(t, m)
-	bothServers(t, m)
-	ubuntuTools(t, m, rel)
-	before := map[string]string{}
-	for _, f := range []string{webConf, phpConf, pmaConf, adminWWW + "/adminer.php"} {
-		before[f] = read(t, sim, f)
-	}
-
 	m.checkTools = func(_ context.Context, _ int, c webCheck) error {
 		if c.phpMyAdmin {
 			return errors.New("phpMyAdmin answers HTTP 500")
 		}
 		return nil
 	}
+	// A new server whose phpMyAdmin release does not work here gets
+	// Ubuntu's packages, and the reason.
+	bothServers(t, m)
 	res, err := m.SetupManager(ctx, ManagerSpec{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.PhpMyAdminVersion != "" || res.AdminerVersion != "" || !strings.Contains(res.Note, "serfex-web did not serve the new release (phpMyAdmin answers HTTP 500)") {
+	if res.PhpMyAdminVersion != "" || res.AdminerVersion != "" || !strings.Contains(res.Note, "serfex-web did not serve phpMyAdmin 9.9.0 (phpMyAdmin answers HTTP 500), so Ubuntu's package serves it") {
 		t.Errorf("setup %+v", res)
 	}
-	for f, want := range before {
-		if got := read(t, sim, f); got != want {
-			t.Errorf("%s changed:\n%s", f, got)
+	if !m.exists(pmaIndex) || !m.exists(adminerIndex) || m.exists(pmaRoot+"/9.9.0") || m.exists(adminerRoot+"/9.9.0") {
+		t.Error("Ubuntu's packages should serve, without the releases")
+	}
+
+	// An upgrade on the Software page that does not serve changes
+	// nothing.
+	before := map[string]string{}
+	for _, f := range []string{webConf, phpConf, pmaConf, adminWWW + "/adminer.php"} {
+		before[f] = read(t, sim, f)
+	}
+	unchanged := func(what string) {
+		t.Helper()
+		for f, want := range before {
+			if got := read(t, sim, f); got != want {
+				t.Errorf("%s: %s changed:\n%s", what, f, got)
+			}
+		}
+		if m.exists(pmaRoot+"/9.9.0") || m.exists(adminerRoot+"/9.9.0") || m.ToolKept(ToolPhpMyAdmin) != nil || m.ToolKept(ToolAdminer) != nil || sim.Ran("apt-get purge") {
+			t.Errorf("%s: a release, a kept version or a purge stayed", what)
 		}
 	}
-	if sim.Ran("apt-get purge -y -q phpmyadmin adminer") || !m.exists(pmaIndex) || !m.exists(adminerIndex) {
-		t.Error("Ubuntu's packages went")
+	var log bytes.Buffer
+	err = m.UpgradeTool(ctx, ToolSpec{Tool: ToolPhpMyAdmin, From: "4:5.2.1+dfsg-3", Log: &log})
+	if err == nil || !strings.Contains(err.Error(), "phpMyAdmin answers HTTP 500") {
+		t.Fatalf("upgrade: %v", err)
 	}
-	if m.exists(pmaRoot+"/9.9.0") || m.exists(adminerRoot+"/9.9.0") {
-		t.Error("the releases not served were kept")
-	}
-	if st := m.managerStatus(ctx); !strings.Contains(st.Note, "did not serve") {
+	contains(t, "log", log.String(), "↺ Önceki sürüme dönülüyor\n")
+	unchanged("serfex-web did not serve it")
+	if st := m.managerStatus(ctx); st.PhpMyAdminUpgrade != "9.9.0" || !strings.Contains(st.Note, "HTTP 500") {
 		t.Errorf("status %+v", st)
 	}
 
+	// A step failing after serfex-web served it goes back the same way.
+	m.checkTools = func(context.Context, int, webCheck) error { return nil }
+	err = m.UpgradeTool(ctx, ToolSpec{Tool: ToolAdminer, Fail: func(step string) error {
+		if step == "check" {
+			return errors.New("broken")
+		}
+		return nil
+	}})
+	if err == nil || !strings.Contains(err.Error(), "broken") {
+		t.Fatalf("upgrade: %v", err)
+	}
+	unchanged("a failed step")
+
 	// A file that is not the pinned one is never served.
-	m.checkTools = nil
 	rel.files[PhpMyAdminRelease.URL] = []byte("not phpMyAdmin")
-	res, err = m.SetupManager(ctx, ManagerSpec{})
-	if err != nil {
+	if err := m.UpgradeTool(ctx, ToolSpec{Tool: ToolPhpMyAdmin}); err == nil || !strings.Contains(err.Error(), "has SHA-256") {
+		t.Errorf("upgrade: %v", err)
+	}
+	unchanged("a wrong file")
+
+	// Going back needs what was kept.
+	if err := m.UpgradeTool(ctx, ToolSpec{Tool: ToolAdminer}); err != nil {
 		t.Fatal(err)
 	}
-	if res.PhpMyAdminVersion != "" || res.AdminerVersion != "9.9.0" || !strings.Contains(res.Note, "has SHA-256") {
-		t.Errorf("setup %+v", res)
+	if err := os.Remove(sim.Path(adminerIndex)); err != nil {
+		t.Fatal(err)
 	}
-	if !sim.Ran("apt-get purge -y -q adminer") || !m.exists(pmaIndex) {
-		t.Error("only Ubuntu's Adminer should go")
+	if err := m.RevertTool(ctx, ToolSpec{Tool: ToolAdminer}); err == nil || !strings.Contains(err.Error(), "Ubuntu's adminer package is no longer installed") {
+		t.Errorf("revert: %v", err)
+	}
+	if k := m.ToolKept(ToolAdminer); k == nil {
+		t.Error("the failed revert dropped the kept version")
+	}
+}
+
+func TestToolOffer(t *testing.T) {
+	for _, c := range []struct {
+		tool, version, from string
+		offer               bool
+	}{
+		{ToolPhpMyAdmin, "4:5.2.1+dfsg-3", "5.2.1", true},
+		{ToolPhpMyAdmin, PhpMyAdminRelease.Version, "", false},
+		{ToolPhpMyAdmin, "9.0.0", "", false},
+		{ToolAdminer, "4.8.1-1", "4.8.1", true},
+		{ToolAdminer, "6.2.9", "6.2.9", true},
+		{ToolAdminer, "", "", false},
+		{"pgadmin", "1.0", "", false},
+	} {
+		o := ToolOffer(c.tool, c.version)
+		if (o != nil) != c.offer || (o != nil && (o.From != c.from || o.To == "")) {
+			t.Errorf("ToolOffer(%s, %s) = %+v", c.tool, c.version, o)
+		}
 	}
 }
 
