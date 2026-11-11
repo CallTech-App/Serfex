@@ -52,6 +52,36 @@ class DiskBreakdown
     }
 
     /**
+     * What each site takes in all, the same sum as site()'s total, for many
+     * sites at once (the Sites list): site id => bytes, null for a site
+     * never measured that holds nothing else counted.
+     *
+     * @param  iterable<int>  $siteIds
+     * @return array<int, ?int>
+     */
+    public function siteTotals(iterable $siteIds): array
+    {
+        $ids = collect($siteIds)->map(fn ($id) => (int) $id)->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+        $sum = fn ($query, string $site, string $bytes) => $query->whereIn($site, $ids)->groupBy($site)
+            ->selectRaw("{$site} as site_id, sum({$bytes}) as bytes")->pluck('bytes', 'site_id');
+        $others = [
+            $sum(Mailbox::join('mail_domains', 'mail_domains.id', '=', 'mailboxes.mail_domain_id'), 'mail_domains.site_id', 'mailboxes.usage_bytes'),
+            $sum(Database::query(), 'site_id', 'size_bytes'),
+            $sum(LaravelBackup::join('laravel_apps', 'laravel_apps.id', '=', 'laravel_backups.laravel_app_id'), 'laravel_apps.site_id', 'laravel_backups.size'),
+        ];
+        $totals = [];
+        foreach (Site::whereIn('id', $ids)->pluck('disk_bytes', 'id') as $id => $web) {
+            $rest = array_sum(array_map(fn ($part) => (int) ($part[$id] ?? 0), $others));
+            $totals[$id] = $web === null && $rest === 0 ? null : (int) $web + $rest;
+        }
+
+        return $totals;
+    }
+
+    /**
      * A customer's parts (adding up to the disk quota's usage) and the same
      * parts for each of their sites.
      *
