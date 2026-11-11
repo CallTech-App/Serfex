@@ -13,6 +13,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/php"
 	"github.com/calltech-app/serfex/agent/internal/site"
 )
@@ -839,5 +840,67 @@ func TestPowerDNSUpgradeAndRevert(t *testing.T) {
 	}
 	if s := status(t, m, "powerdns"); s.Kept != nil || s.Upgrade != nil {
 		t.Errorf("after removing the old version: %+v", s)
+	}
+}
+
+func TestRspamdUpgradeAndRevert(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if s := status(t, m, "rspamd"); s.Installed {
+		t.Fatalf("listed without a mail server: %+v", s)
+	}
+	m.Mail = mail.NewManager(sim, "www-data")
+	// Rspamd's archive was out of reach at setup: Ubuntu's 3.8.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "apt-get update -q" {
+			return errors.New("unreachable")
+		}
+		return nil
+	}
+	if _, err := m.Mail.Setup(ctx, mail.SetupSpec{Hostname: "mail.example.net"}); err != nil {
+		t.Fatal(err)
+	}
+	sim.Fail = nil
+	s := status(t, m, "rspamd")
+	if !s.Installed || s.Version != "3.8.1-1ubuntu3" || s.Upgrade == nil || s.Upgrade.From != "3.8" || s.Upgrade.To != mail.RspamdSeries || s.Required == "" || len(s.Units) != 1 {
+		t.Fatalf("before: %+v upgrade %+v", s, s.Upgrade)
+	}
+	if _, err := m.Remove(ctx, OpSpec{ID: "rspamd", Run: "x"}); err == nil {
+		t.Error("removed Rspamd")
+	}
+	if _, err := m.Install(ctx, OpSpec{ID: "rspamd", Run: "i"}); err == nil {
+		t.Error("installed Rspamd apart from the mail server")
+	}
+	res, err := m.Upgrade(ctx, OpSpec{ID: "rspamd", Run: "u"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if !mail.RspamdCurrent(res.Status.Version) || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "3.8.1" || res.Status.Kept.Product != "rspamd" {
+		t.Errorf("after: %+v kept %+v", res.Status, res.Status.Kept)
+	}
+	if chunk, _ := m.ReadRun("u", 0); !strings.Contains(chunk.Data, "▸ Rspamd paket deposu ekleniyor (rspamd.com)") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	if _, err := m.Update(ctx, OpSpec{ID: "rspamd", Run: "up"}); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	res, err = m.Revert(ctx, OpSpec{ID: "rspamd", Run: "r"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/r.log"))
+	}
+	if res.Status.Version != "3.8.1-1ubuntu3" || res.Status.Kept != nil || res.Status.Upgrade == nil {
+		t.Errorf("after revert: %+v", res.Status)
+	}
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "rspamd", Run: "u2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "rspamd", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "rspamd"); s.Kept != nil || s.Upgrade != nil {
+		t.Errorf("after removing the old version: %+v", s)
+	}
+	if _, err := m.Revert(ctx, OpSpec{ID: "nginx", Run: "n"}); err == nil {
+		t.Error("reverted Nginx")
 	}
 }

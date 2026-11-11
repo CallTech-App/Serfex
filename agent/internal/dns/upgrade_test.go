@@ -123,7 +123,7 @@ func TestUpgradeKeepsTheOldVersionAndVerifies(t *testing.T) {
 	var order []string
 	for _, c := range sim.Commands() {
 		switch s := c.String(); {
-		case strings.Contains(s, "apt-get download -q pdns-server="+simUbuntuVersion+" pdns-backend-lmdb="+simUbuntuVersion):
+		case strings.Contains(s, "apt-get download -q pdns-backend-lmdb="+simUbuntuVersion+" pdns-server="+simUbuntuVersion):
 			order = append(order, "download")
 		case s == "systemctl stop pdns@serfex":
 			order = append(order, "stop")

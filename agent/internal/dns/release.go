@@ -1,19 +1,15 @@
 package dns
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
-	"github.com/calltech-app/serfex/agent/internal/host"
+	"github.com/calltech-app/serfex/agent/internal/aptrepo"
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
 
@@ -25,50 +21,35 @@ import (
 // has been tested, never by PowerDNS publishing it.
 const Series = "5.1"
 
-const (
-	archiveURI     = "https://repo.powerdns.com/ubuntu"
-	archiveHost    = "repo.powerdns.com"
-	archiveSources = "/etc/apt/sources.list.d/serfex-powerdns.sources"
-	archivePin     = "/etc/apt/preferences.d/serfex-powerdns"
-	archiveKeyring = "/etc/apt/keyrings/serfex-powerdns.asc"
-	// archiveKeyURL is the signing key of the 5.x stable series; its
-	// fingerprint must end in archiveKeyID.
-	archiveKeyURL = "https://repo.powerdns.com/FD380FBB-pub.asc"
-	archiveKeyID  = "FD380FBB"
+// archive is PowerDNS's own apt archive. Its signing key is the one of the
+// 5.x stable series.
+var archive = aptrepo.Archive{
+	Name: "serfex-powerdns", Title: "PowerDNS Authoritative Server " + Series + " for Serfex's DNS server",
+	URI: "https://repo.powerdns.com/ubuntu", Host: "repo.powerdns.com", Component: "main",
+	KeyURL: "https://repo.powerdns.com/FD380FBB-pub.asc", Fingerprint: "9FAAA5577E8FCF62093D036C1B0C6205FD380FBB",
+	Packages: "pdns-*", Why: "PowerDNS packages come from PowerDNS's own archive, never Ubuntu's.",
+}
+
+// The archive's files.
+var (
+	archiveSources = archive.Sources()
+	archivePin     = archive.Pin()
+	archiveKeyring = archive.Keyring()
 )
 
-var aptEnv = []string{"DEBIAN_FRONTEND=noninteractive", "LC_ALL=C"}
+var aptEnv = aptrepo.Env
 
 // suite is the archive's suite for this Ubuntu release: "noble-auth-51".
 func (m *Manager) suite() (string, error) {
-	b, err := os.ReadFile(m.h.Path("/etc/os-release"))
+	codename, err := aptrepo.Codename(m.h)
 	if err != nil {
 		return "", err
 	}
-	for _, line := range strings.Split(string(b), "\n") {
-		if v, ok := strings.CutPrefix(line, "VERSION_CODENAME="); ok {
-			if v = strings.Trim(strings.TrimSpace(v), `"'`); v != "" {
-				return v + "-auth-" + strings.ReplaceAll(Series, ".", ""), nil
-			}
-		}
-	}
-	return "", errors.New("the Ubuntu release's codename is unknown")
+	return codename + "-auth-" + strings.ReplaceAll(Series, ".", ""), nil
 }
-
-func archiveSource(suite string) []byte {
-	return []byte(fmt.Sprintf("# %s. PowerDNS Authoritative Server %s for Serfex's DNS server.\nTypes: deb\nURIs: %s\nSuites: %s\nComponents: main\nSigned-By: %s\n",
-		txn.Marker, Series, archiveURI, suite, archiveKeyring))
-}
-
-// archivePinning makes apt take PowerDNS's packages from PowerDNS's
-// archive only, even when Ubuntu's has a higher version number.
-var archivePinning = []byte("Explanation: " + txn.Marker + ".\nExplanation: PowerDNS packages come from PowerDNS's own archive, never Ubuntu's.\nPackage: pdns-*\nPin: origin " + archiveHost + "\nPin-Priority: 600\n")
 
 // archiveListed reports whether apt reads PowerDNS's archive.
-func (m *Manager) archiveListed() bool {
-	_, err := os.Stat(m.h.Path(archiveSources))
-	return err == nil
-}
+func (m *Manager) archiveListed() bool { return archive.Listed(m.h) }
 
 // addArchive lists PowerDNS's archive for apt, pinned, refreshes the
 // package lists and checks apt would install the Series from it. Undoing
@@ -78,46 +59,23 @@ func (m *Manager) addArchive(ctx context.Context, t *txn.Tx, log io.Writer) erro
 	if err != nil {
 		return err
 	}
-	key, err := m.fetchKey(ctx)
+	key, err := archive.FetchKey(ctx, m.h, m.Fetch, m.sim)
 	if err != nil {
 		return err
 	}
-	update := host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv, Stream: log}
-	// Undone last: the lists are refreshed once the files are gone.
-	t.OnUndo(func(ctx context.Context) error {
-		_, err := m.h.Run(ctx, update)
+	if err := archive.Add(ctx, m.h, t, suite, key, log); err != nil {
 		return err
-	})
-	for _, d := range []string{filepath.Dir(archiveKeyring), filepath.Dir(archiveSources), filepath.Dir(archivePin)} {
-		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
-			return err
-		}
-	}
-	if err := t.WriteOwned(archiveKeyring, key, 0o644, 0, 0); err != nil {
-		return err
-	}
-	if err := t.WriteOwned(archivePin, archivePinning, 0o644, 0, 0); err != nil {
-		return err
-	}
-	if err := t.WriteOwned(archiveSources, archiveSource(suite), 0o644, 0, 0); err != nil {
-		return err
-	}
-	// apt only warns about a list it could not fetch; the candidate below
-	// tells whether this one came.
-	if _, err := m.h.Run(ctx, update); err != nil {
-		return fmt.Errorf("apt-get update: %w", err)
 	}
 	c := m.candidate(ctx)
-	if !OfSeries(c.Version) || !strings.HasPrefix(c.From, archiveHost) {
-		return fmt.Errorf("apt offers pdns-server %q from %q, not %s from %s; is %s reachable?", c.Version, c.From, Series, archiveHost, archiveHost)
+	if !OfSeries(c.Version) || !archive.Provides(c) {
+		return fmt.Errorf("apt offers pdns-server %q from %q, not %s from %s; is %s reachable?", c.Version, c.From, Series, archive.Host, archive.Host)
 	}
 	return nil
 }
 
 // candidate is the pdns-server apt would install.
 func (m *Manager) candidate(ctx context.Context) aptcache.Candidate {
-	out, _ := m.h.Run(ctx, host.Command{Name: "apt-cache", Args: []string{"policy", "pdns-server"}, Env: []string{"LC_ALL=C"}})
-	return aptcache.Policy(out)["pdns-server"]
+	return aptrepo.Candidate(ctx, m.h, "pdns-server")
 }
 
 // OfSeries reports whether a pdns-server package version belongs to the
@@ -125,54 +83,6 @@ func (m *Manager) candidate(ctx context.Context) aptcache.Candidate {
 func OfSeries(version string) bool {
 	v := aptcache.Upstream(version)
 	return v == Series || strings.HasPrefix(v, Series+".")
-}
-
-// fetchKey downloads the archive's signing key and checks it is the one
-// expected.
-func (m *Manager) fetchKey(ctx context.Context) ([]byte, error) {
-	if m.sim {
-		return []byte("simulated key from " + archiveKeyURL + "\n"), nil
-	}
-	fetch := m.Fetch
-	if fetch == nil {
-		fetch = httpFetch
-	}
-	key, err := fetch(ctx, archiveKeyURL)
-	if err != nil {
-		return nil, err
-	}
-	if !bytes.HasPrefix(bytes.TrimSpace(key), []byte("-----BEGIN PGP PUBLIC KEY BLOCK-----")) {
-		return nil, fmt.Errorf("%s is not a PGP public key", archiveKeyURL)
-	}
-	out, err := m.h.Run(ctx, host.Command{Name: "gpg", Args: []string{"--batch", "--with-colons", "--show-keys"}, Stdin: key})
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", archiveKeyURL, err)
-	}
-	for _, line := range strings.Split(out, "\n") {
-		if f := strings.Split(line, ":"); len(f) > 9 && f[0] == "fpr" && strings.HasSuffix(strings.ToUpper(f[9]), archiveKeyID) {
-			return key, nil
-		}
-	}
-	return nil, fmt.Errorf("%s is not the PowerDNS key %s", archiveKeyURL, archiveKeyID)
-}
-
-// httpFetch downloads a small file.
-func httpFetch(ctx context.Context, url string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: %s", url, res.Status)
-	}
-	return io.ReadAll(io.LimitReader(res.Body, 1<<20))
 }
 
 // PackageVersion is the installed pdns-server package version, "" when it
@@ -192,11 +102,7 @@ func (m *Manager) packageVersion(ctx context.Context, pkg string) string {
 		}
 		return simUbuntuVersion
 	}
-	out, err := m.h.Run(ctx, host.Command{Name: "dpkg-query", Args: []string{"-W", "-f=${db:Status-Status} ${Version}", pkg}})
-	if status, v, ok := strings.Cut(strings.TrimSpace(out), " "); err == nil && ok && status == "installed" {
-		return v
-	}
-	return ""
+	return aptrepo.PackageVersion(ctx, m.h, pkg)
 }
 
 // The versions a dry run reports, and where it notes the installed one.

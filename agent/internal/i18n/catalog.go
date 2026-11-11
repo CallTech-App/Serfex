@@ -333,4 +333,11 @@ var english = map[string]string{
 	"PowerDNS %s ve yükseltme öncesi veritabanı geri yükleniyor":                              "Restoring PowerDNS %s and the database from before the upgrade",
 	"Panel bölgeleri yeniden yazacak; yükseltmeden sonra yapılan değişiklikler korunur":       "The panel writes the zones again, so changes made since the upgrade stay",
 	"Saklanan eski sürüm siliniyor: %s":                                                       "Deleting the kept old version: %s",
+	"Rspamd'in son sürümü kuruluyor":                                                          "Installing Rspamd's newest release",
+	"Rspamd paket deposu ekleniyor (%s)":                                                      "Adding Rspamd's package archive (%s)",
+	"Eski sürümün paketi ve ayarları saklanıyor (%s)":                                         "Keeping the old version's package and settings (%s)",
+	"Rspamd %s kuruluyor":                                                                     "Installing Rspamd %s",
+	"Rspamd %s ayarlarla denetleniyor ve başlatılıyor":                                        "Checking the settings with Rspamd %s and starting it",
+	"Rspamd paket deposu kaldırılıyor":                                                        "Removing Rspamd's package archive",
+	"Rspamd %s ve yükseltme öncesi ayarları geri yükleniyor":                                  "Restoring Rspamd %s and its settings from before the upgrade",
 }

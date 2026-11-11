@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -18,6 +19,9 @@ import (
 const (
 	rspamdOldWorkers = 20 * time.Second
 	rspamdListening  = 30 * time.Second
+	// rspamdStarting is how long a new Rspamd version may take to answer
+	// before it counts as failed (rspamdUp).
+	rspamdStarting = 60 * time.Second
 )
 
 // reloadRspamd reloads Rspamd and waits until the workers that ran the
@@ -57,6 +61,27 @@ func (m *Manager) waitRspamd(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// rspamdUp waits until Rspamd's milter accepts connections and fails when
+// it does not within rspamdStarting: a version that cannot run is put
+// back.
+func (m *Manager) rspamdUp(ctx context.Context) error {
+	if m.sim {
+		return nil
+	}
+	for end := time.Now().Add(rspamdStarting); ; {
+		if c, err := net.DialTimeout("tcp", milterAddr, time.Second); err == nil {
+			c.Close()
+			return nil
+		}
+		if time.Now().After(end) {
+			return fmt.Errorf("Rspamd's milter (%s) did not answer within %s (see journalctl -u rspamd)", milterAddr, rspamdStarting)
+		}
+		if err := pause(ctx); err != nil {
+			return err
+		}
+	}
 }
 
 func pause(ctx context.Context) error {

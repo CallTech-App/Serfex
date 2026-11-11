@@ -84,6 +84,7 @@ func catalog() []*component {
 		},
 		apache(),
 		powerdns(),
+		rspamd(),
 		{
 			id: "redis", packages: []string{"redis-server", "redis-tools"}, versionPkg: "redis-server",
 			extra:     func(m *Manager) []string { return m.phpExt("redis") },

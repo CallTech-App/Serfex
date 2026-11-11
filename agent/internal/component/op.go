@@ -15,7 +15,6 @@ import (
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
 	"github.com/calltech-app/serfex/agent/internal/database"
-	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
 	"github.com/calltech-app/serfex/agent/internal/txn"
@@ -71,6 +70,8 @@ type component struct {
 	install func(o *op) error
 	remove  func(o *op) error
 	update  func(o *op) error
+	// series upgrades a component with release series of its own.
+	series *series
 }
 
 func (c *component) isInstalled(m *Manager) bool {
@@ -534,22 +535,18 @@ func (o *op) update() (err error) {
 	return o.finish(true)
 }
 
-// upgrade moves a database server to its next major version, or PowerDNS
-// to the series Serfex offers; the database and dns packages check, back
-// up, verify and roll back.
+// upgrade moves a database server to its next major version, or another
+// component to the series Serfex offers; the packages that run them
+// check, back up, verify and roll back.
 func (o *op) upgrade() error {
-	if o.c.id == "powerdns" {
-		if !o.c.isInstalled(o.m) {
-			return invalid("%s is not installed", o.c.id)
-		}
-		_, err := o.m.DNS.Upgrade(o.ctx, dns.UpgradeSpec{Log: o.w, Fail: o.failpoint})
-		return err
-	}
-	if o.c.choices == nil {
+	if o.c.choices == nil && o.c.series == nil {
 		return invalid("%s has no major versions to upgrade to", o.c.id)
 	}
 	if !o.c.isInstalled(o.m) {
 		return invalid("%s is not installed", o.c.id)
+	}
+	if o.c.series != nil {
+		return o.c.series.upgrade(o)
 	}
 	_, err := o.m.db.Upgrade(o.ctx, database.UpgradeSpec{Product: o.c.id, To: o.version, Log: o.w, Fail: o.failpoint})
 	return err
@@ -557,8 +554,8 @@ func (o *op) upgrade() error {
 
 // removeOld deletes the old version an upgrade kept.
 func (o *op) removeOld() error {
-	if o.c.id == "powerdns" {
-		return o.m.DNS.RemoveOld(o.ctx, o.w)
+	if o.c.series != nil {
+		return o.c.series.removeOld(o)
 	}
 	if o.c.choices == nil {
 		return invalid("%s keeps no old versions", o.c.id)
@@ -566,12 +563,13 @@ func (o *op) removeOld() error {
 	return o.m.db.RemoveOld(o.ctx, o.c.id, o.w)
 }
 
-// revert goes back to the version PowerDNS's upgrade kept.
+// revert goes back to the version an upgrade kept (not for database
+// servers: their data would lose what changed since).
 func (o *op) revert() error {
-	if o.c.id != "powerdns" {
+	if o.c.series == nil || o.c.series.revert == nil {
 		return invalid("%s cannot go back to an older version", o.c.id)
 	}
-	return o.m.DNS.Revert(o.ctx, dns.UpgradeSpec{Log: o.w, Fail: o.failpoint})
+	return o.c.series.revert(o)
 }
 
 // packageInstalled asks dpkg whether a package is installed.
@@ -603,6 +601,9 @@ func (m *Manager) versions(ctx context.Context, pkgs []string) map[string]string
 			}
 			if p == "pdns-server" && m.DNS != nil {
 				out[p] = m.DNS.PackageVersion(ctx)
+			}
+			if p == "rspamd" && m.Mail != nil {
+				out[p] = m.Mail.RspamdVersion(ctx)
 			}
 		}
 		return out

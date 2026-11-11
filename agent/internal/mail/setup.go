@@ -289,7 +289,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 		if roundcube {
 			packages = append(packages, WebmailPackages...)
 		}
-		if err := m.install(ctx, "the mail server", packages); err != nil {
+		if err := m.installMail(ctx, "the mail server", packages); err != nil {
 			return SetupResult{}, err
 		}
 		res.Installed = true

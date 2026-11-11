@@ -43,7 +43,7 @@ func (h upgradeHost) Run(ctx context.Context, c host.Command) (string, error) {
 		}
 		return fmt.Sprintf("pdns-server:\n  Installed: 4.8.3-4build3\n  Candidate: %s\n  Version table:\n     %s 600\n        600 %s amd64 Packages\n", v, v, from), nil
 	case strings.HasPrefix(s, "gpg --batch --with-colons --show-keys"):
-		return "fpr:::::::::00000000000000000000000000000000FD380FBB:\n", nil
+		return "pub:-:4096:1:1C5EE990D2E71575:1433861228:::-:::scSC::::::23::0:\nfpr:::::::::" + archive.Fingerprint + ":\n", nil
 	case strings.HasPrefix(s, "dpkg-query -W -f=${db:Status-Status} ${Version}") && *h.swapped:
 		return "installed 5.1.5-1pdns.noble", nil
 	case strings.HasPrefix(s, "apt-get install -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef"):

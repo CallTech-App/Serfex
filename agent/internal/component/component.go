@@ -43,6 +43,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/php"
 	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/txn"
@@ -114,6 +115,9 @@ type Manager struct {
 	PHP *php.Manager
 	// DNS is the DNS server, listed as PowerDNS; nil leaves it out.
 	DNS *dns.Manager
+	// Mail is the mail server, whose spam filter is listed as Rspamd;
+	// nil leaves it out.
+	Mail *mail.Manager
 	// Addresses returns the server's own addresses, which Fail2ban never
 	// bans.
 	Addresses func() []string
@@ -276,10 +280,10 @@ func (m *Manager) List(ctx context.Context) List {
 				s.Upgrade = m.db.Offer(id, s.Version)
 				s.Kept = m.db.KeptVersion(id)
 			}
-			if id == "powerdns" {
-				s.Kept = m.dnsKept()
+			if c.series != nil {
+				s.Kept = c.series.kept(m)
 				if s.Kept == nil {
-					s.Upgrade = m.dnsOffer(s.Version)
+					s.Upgrade = c.series.offer(ctx, m, s.Version)
 				}
 			}
 		} else {
@@ -324,8 +328,10 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 	// Old database server versions kept after an upgrade go when their
 	// time is up.
 	m.db.PruneKept(ctx, nil)
-	if m.DNS != nil {
-		m.DNS.PruneKept(ctx)
+	for _, c := range m.comps {
+		if c.series != nil && c.isInstalled(m) {
+			c.series.prune(ctx, m)
+		}
 	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv}); err != nil {
 		m.op.Unlock()
@@ -438,7 +444,8 @@ func (m *Manager) RemoveOld(ctx context.Context, spec OpSpec) (Result, error) {
 	return m.operate(ctx, spec, "remove-old")
 }
 
-// Revert goes back to the version an upgrade kept (PowerDNS only).
+// Revert goes back to the version an upgrade kept (PowerDNS, Rspamd and
+// ModSecurity's rules).
 func (m *Manager) Revert(ctx context.Context, spec OpSpec) (Result, error) {
 	return m.operate(ctx, spec, "revert")
 }

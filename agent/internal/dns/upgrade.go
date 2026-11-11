@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
+	"github.com/calltech-app/serfex/agent/internal/aptrepo"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
 	"github.com/calltech-app/serfex/agent/internal/txn"
@@ -210,7 +211,7 @@ func (m *Manager) Upgrade(ctx context.Context, spec UpgradeSpec) (kept *Kept, er
 	// 1. PowerDNS's archive. Nothing has changed yet when this fails.
 	t := txn.New(m.h)
 	suite, _ := m.suite()
-	u.step("PowerDNS paket deposu ekleniyor (%s, %s)", archiveHost, suite)
+	u.step("PowerDNS paket deposu ekleniyor (%s, %s)", archive.Host, suite)
 	err = u.failpoint("archive")
 	if err == nil {
 		err = m.addArchive(ctx, t, spec.Log)
@@ -317,28 +318,11 @@ func (u *upgrader) rollbackArchive(t *txn.Tx) {
 // saveDebs downloads the installed packages' files, so the old version
 // can be put back without Ubuntu's archive.
 func (u *upgrader) saveDebs() error {
-	var args []string
+	versions := map[string]string{}
 	for _, p := range Packages {
-		v := u.m.packageVersion(u.ctx, p)
-		if v == "" {
-			return fmt.Errorf("%s is not installed", p)
-		}
-		args = append(args, p+"="+v)
+		versions[p] = u.m.packageVersion(u.ctx, p)
 	}
-	dir := u.dir + "/packages"
-	if _, err := u.run(host.Command{Name: "env", Args: append([]string{"-C", dir, "apt-get", "download", "-q"}, args...), Env: aptEnv}); err != nil {
-		return err
-	}
-	if u.m.sim {
-		for _, p := range Packages {
-			_ = os.WriteFile(u.m.h.Path(dir+"/"+p+"_"+simUbuntuVersion+"_amd64.deb"), nil, 0o644)
-		}
-	}
-	debs, _ := filepath.Glob(u.m.h.Path(dir + "/*.deb"))
-	if len(debs) != len(Packages) {
-		return fmt.Errorf("apt-get download left %d package files, want %d", len(debs), len(Packages))
-	}
-	return nil
+	return aptrepo.SaveDebs(u.ctx, u.m.h, u.dir+"/packages", versions, u.spec.Log)
 }
 
 // installPackages installs the Series from PowerDNS's archive; the
@@ -372,22 +356,8 @@ func (u *upgrader) restore(t *txn.Tx) error {
 	ctx := context.WithoutCancel(u.ctx)
 	m := u.m
 	_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"stop", unit}})
-	debs, _ := filepath.Glob(m.h.Path(u.dir + "/packages/*.deb"))
-	if len(debs) == 0 {
-		return fmt.Errorf("no old packages in %s", u.dir+"/packages")
-	}
-	// dpkg installs exactly these files, also when apt could fetch the
-	// same version again.
-	args := []string{"--force-confdef", "--force-confold", "-i"}
-	for _, d := range debs {
-		// dpkg takes a path; on a simulated host it is under its root.
-		rel, _ := filepath.Rel(m.h.Path("/"), d)
-		args = append(args, "/"+rel)
-	}
-	if _, err := m.h.Run(ctx, host.Command{Name: "dpkg", Args: args, Env: aptEnv, Stream: u.spec.Log}); err != nil {
-		return fmt.Errorf("installing the old packages: %w", err)
-	}
-	_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", "pdns.service"}})
+	// PowerDNS's archive goes first: a dependency apt removed meanwhile
+	// comes from Ubuntu's.
 	if t != nil {
 		if err := t.Rollback(ctx); err != nil {
 			return err
@@ -395,6 +365,10 @@ func (u *upgrader) restore(t *txn.Tx) error {
 	} else if err := m.dropArchive(ctx); err != nil {
 		return err
 	}
+	if err := aptrepo.InstallDebs(ctx, m.h, u.dir+"/packages", u.spec.Log); err != nil {
+		return fmt.Errorf("installing the old packages: %w", err)
+	}
+	_, _ = m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"disable", "--now", "pdns.service"}})
 	m.simInstalled()
 	if _, err := os.Stat(m.h.Path(u.dir + "/lmdb/" + lmdbName)); err != nil {
 		return fmt.Errorf("no database copy in %s", u.dir+"/lmdb")
@@ -414,13 +388,7 @@ func (u *upgrader) restore(t *txn.Tx) error {
 
 // dropArchive takes PowerDNS's archive out of apt.
 func (m *Manager) dropArchive(ctx context.Context) error {
-	for _, f := range []string{archiveSources, archivePin, archiveKeyring} {
-		if err := os.Remove(m.h.Path(f)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-	}
-	_, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv})
-	return err
+	return archive.Drop(ctx, m.h, nil)
 }
 
 // Revert puts back the version an upgrade kept: its packages and its
