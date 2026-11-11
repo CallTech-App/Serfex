@@ -82,7 +82,7 @@ class ComponentIndex extends Component
 
     /**
      * Opens the confirmation for install, update, remove, upgrade,
-     * remove-old or (PowerDNS) revert.
+     * remove-old or revert.
      */
     public function ask(string $id, string $action, Components $components): void
     {
@@ -343,24 +343,12 @@ class ComponentIndex extends Component
     private function upgradeText(string $id, array $row): array
     {
         $upgrade = $row['upgrade'] ?? ['from' => '', 'to' => '', 'name' => ''];
-        if ($id === 'powerdns') {
-            $zones = DnsZone::count();
-
+        if (in_array($id, Components::SERIES, true)) {
             return [
                 'title' => __(':name sürümüne yükseltilsin mi?', ['name' => $upgrade['name']]),
-                'text' => __('Serfex PowerDNS\'in kendi paket deposunu ekler, eski sürümün paketlerini ve bütün bölgeleri kaydeder. DNS sunucusunu durdurup veritabanının kopyasını alır, yeni sürümü kurar ve başlatır. Ardından her bölgeyi, kaydı ve DNSSEC anahtarını yükseltmeden öncekiyle karşılaştırır ve sunucunun sorgulara yanıt verdiğini denetler. Bir adım başarısız olursa eski sürüm ve veritabanı geri yüklenir.'),
                 'button' => __('Yükselt'),
                 'danger' => false,
-                'upgrade' => [
-                    'from' => 'PowerDNS '.($row['version'] ? Str::before($row['version'], '-') : $upgrade['from']),
-                    'to' => $upgrade['name'],
-                    'items' => [
-                        [__('Bölgeler'), $zones ? __(':n bölge kaydedilip denetlenecek', ['n' => $zones]) : __('Henüz bölge yok')],
-                        [__('Kesinti'), __('DNS sunucusu yaklaşık bir dakika yanıt vermez. Çözümleyiciler önbellekteki yanıtları vermeye devam eder; siteler ve e-posta etkilenmez.')],
-                        [__('Eski sürüm'), __('Eski paketler ve veritabanının kopyası 7 gün saklanır. Bu sürede bu sayfadan eski sürüme dönebilirsiniz; sonra kendiliğinden silinir.')],
-                    ],
-                    'note' => __('PowerDNS 5 veritabanını yeni biçime geçirir; eski sürüm bu veritabanını okuyamaz. Bu yüzden eski sürüme dönüşte yükseltme öncesi kopya kullanılır ve panel bütün bölgeleri yeniden yazar.'),
-                ],
+                ...$this->seriesUpgradeText($id, $row, $upgrade),
             ];
         }
         $server = $id === 'postgresql' ? DatabaseServers::POSTGRESQL : DatabaseServers::MYSQL;
@@ -385,6 +373,67 @@ class ComponentIndex extends Component
                         .' '.__('Yükseltme öncesi döküm 30 gün saklanır.')],
                 ],
                 'note' => __('Müşteriler veritabanı sayfalarında yükseltme sürdüğünü görür. Yükseltmeyi site trafiğinin az olduğu bir saatte başlatın.'),
+            ],
+        ];
+    }
+
+    /**
+     * What the upgrade of PowerDNS, Rspamd or ModSecurity's rules does,
+     * what people notice and what is kept.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array{from: string, to: string, name: string}  $upgrade
+     * @return array{text: string, upgrade: array<string, mixed>}
+     */
+    private function seriesUpgradeText(string $id, array $row, array $upgrade): array
+    {
+        $from = Components::releaseName($id, $row['version'] ? Str::before($row['version'], '-') : $upgrade['from']);
+        if ($id === 'powerdns') {
+            $zones = DnsZone::count();
+
+            return [
+                'text' => __('Serfex PowerDNS\'in kendi paket deposunu ekler, eski sürümün paketlerini ve bütün bölgeleri kaydeder. DNS sunucusunu durdurup veritabanının kopyasını alır, yeni sürümü kurar ve başlatır. Ardından her bölgeyi, kaydı ve DNSSEC anahtarını yükseltmeden öncekiyle karşılaştırır ve sunucunun sorgulara yanıt verdiğini denetler. Bir adım başarısız olursa eski sürüm ve veritabanı geri yüklenir.'),
+                'upgrade' => [
+                    'from' => $from,
+                    'to' => $upgrade['name'],
+                    'items' => [
+                        [__('Bölgeler'), $zones ? __(':n bölge kaydedilip denetlenecek', ['n' => $zones]) : __('Henüz bölge yok')],
+                        [__('Kesinti'), __('DNS sunucusu yaklaşık bir dakika yanıt vermez. Çözümleyiciler önbellekteki yanıtları vermeye devam eder; siteler ve e-posta etkilenmez.')],
+                        [__('Eski sürüm'), __('Eski paketler ve veritabanının kopyası 7 gün saklanır. Bu sürede bu sayfadan eski sürüme dönebilirsiniz; sonra kendiliğinden silinir.')],
+                    ],
+                    'note' => __('PowerDNS 5 veritabanını yeni biçime geçirir; eski sürüm bu veritabanını okuyamaz. Bu yüzden eski sürüme dönüşte yükseltme öncesi kopya kullanılır ve panel bütün bölgeleri yeniden yazar.'),
+                ],
+            ];
+        }
+        if ($id === 'rspamd') {
+            return [
+                'text' => __('Serfex Rspamd\'in kendi paket deposunu ekler, eski sürümün paketini ve /etc/rspamd ayarlarını kaydeder. Ardından yeni sürümü kurar, ayarları onunla denetler ve posta sunucusunun Rspamd\'e bağlanabildiğini denetler. Bir adım başarısız olursa eski sürüm ve ayarları geri yüklenir.'),
+                'upgrade' => [
+                    'from' => $from,
+                    'to' => $upgrade['name'],
+                    'items' => [
+                        [__('Ayarlar'), __('DKIM anahtarları ve spam ayarları olduğu gibi kalır; yeni sürüm onlarla denetlenir.')],
+                        [__('Kesinti'), __('Kurulum sırasında yaklaşık bir dakika boyunca posta spam denetimi ve DKIM imzası olmadan iletilir. Posta kaybolmaz.')],
+                        [__('Eski sürüm'), __('Eski paket ve ayarlar 7 gün saklanır. Bu sürede bu sayfadan eski sürüme dönebilirsiniz; sonra kendiliğinden silinir.')],
+                    ],
+                    'note' => __('Yeni sürüm kendi kurallarını ve puanlarını getirir. İlk günlerde spam klasörüne düşen ve gelen kutusuna kaçan postalara göz atın.'),
+                ],
+            ];
+        }
+        $block = ($row['settings']['mode'] ?? 'detect') === 'block';
+        $blocking = Site::where(fn ($q) => $q->where('waf_mode', 'block')->when($block, fn ($q) => $q->orWhereNull('waf_mode')))->count();
+
+        return [
+            'text' => __('Serfex :name sürümünü projenin GitHub sayfasından indirir ve SHA-256 özetini denetler. Ardından Nginx\'in yeni kuralları kabul ettiğini ve sitelerin sıradan bir isteğe yanıt verdiğini denetler. Bir adım başarısız olursa önceki kurallara dönülür.', ['name' => $upgrade['name']]),
+            'upgrade' => [
+                'from' => $from,
+                'to' => $upgrade['name'],
+                'items' => [
+                    [__('Siteler'), $blocking ? __(':n site engelleme kipinde. Yeni kurallar bazı istekleri öncekilerden farklı değerlendirebilir.', ['n' => $blocking]) : __('Engelleme kipinde site yok; yeni kurallar yalnızca kayıt tutar.')],
+                    [__('Kesinti'), __('Yok. Nginx ayarları yeniden yükler; açık bağlantılar kesilmez.')],
+                    [__('Eski sürüm'), __('Önceki kurallar 7 gün kurulu kalır. Bu sürede bu sayfadan onlara dönebilirsiniz; sonra kendiliğinden kaldırılır.')],
+                ],
+                'note' => __('İlk günlerde Güvenlik sayfasındaki WAF olaylarına göz atın; meşru bir isteği engelleyen kural için siteye istisna ekleyebilirsiniz. Kip, seviye ve site istisnaları olduğu gibi kalır.'),
             ],
         ];
     }
@@ -448,18 +497,23 @@ class ComponentIndex extends Component
             'upgrade' => $this->upgradeText($id, $row),
             'revert' => [
                 'title' => __(':name sürümüne dönülsün mü?', ['name' => $row['kept']['name'] ?? $name]),
-                'text' => __('DNS sunucusu durdurulur, eski paketler ve yükseltmeden önce alınan veritabanı kopyası geri yüklenir. Ardından panel bütün bölgeleri yeniden yazar; yükseltmeden sonra yaptığınız değişiklikler korunur. DNS sunucusu yaklaşık bir dakika yanıt vermez.'),
+                'text' => match ($id) {
+                    'rspamd' => __('Rspamd\'in eski paketi ve yükseltmeden önceki ayarları geri yüklenir; Serfex\'in yükseltmeden sonra yazdığı DKIM ve spam ayarları korunur. Yaklaşık bir dakika boyunca posta spam denetimi ve DKIM imzası olmadan iletilir.'),
+                    'modsecurity' => __('ModSecurity önceki kurallara döner ve Nginx ayarları yeniden yükler; siteler kesintisiz çalışır. Kip, seviye ve site istisnaları olduğu gibi kalır.'),
+                    default => __('DNS sunucusu durdurulur, eski paketler ve yükseltmeden önce alınan veritabanı kopyası geri yüklenir. Ardından panel bütün bölgeleri yeniden yazar; yükseltmeden sonra yaptığınız değişiklikler korunur. DNS sunucusu yaklaşık bir dakika yanıt vermez.'),
+                },
                 'button' => __('Eski sürüme dön'),
                 'danger' => false,
             ],
             'remove-old' => [
                 'title' => __(':name silinsin mi?', ['name' => $row['kept']['name'] ?? $name]),
-                'text' => $id === 'powerdns'
-                    ? __('Yükseltmeden kalan eski paketler ve veritabanının kopyası silinir. Bundan sonra eski sürüme dönülemez.')
-                    : ($id === 'postgresql'
-                        ? __('Yükseltmeden kalan durdurulmuş eski küme silinir. Panelin kendi PostgreSQL\'i ve onun kullandığı paketler etkilenmez.')
-                        : __('Yükseltmeden kalan eski veri klasörünün kopyası ve saklanan eski paketler silinir.'))
-                    .' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
+                'text' => match ($id) {
+                    'powerdns' => __('Yükseltmeden kalan eski paketler ve veritabanının kopyası silinir. Bundan sonra eski sürüme dönülemez.'),
+                    'rspamd' => __('Yükseltmeden kalan eski paket ve ayarların kopyası silinir. Bundan sonra eski sürüme dönülemez.'),
+                    'modsecurity' => __('Yükseltmeden kalan önceki kurallar kaldırılır. Bundan sonra onlara dönülemez.'),
+                    'postgresql' => __('Yükseltmeden kalan durdurulmuş eski küme silinir. Panelin kendi PostgreSQL\'i ve onun kullandığı paketler etkilenmez.').' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
+                    default => __('Yükseltmeden kalan eski veri klasörünün kopyası ve saklanan eski paketler silinir.').' '.__('Bundan sonra eski sürüme dönülemez. Yükseltmeden önce alınan döküm yükseltmeden sonra 30 gün saklanır.'),
+                },
                 'button' => __('Eski sürümü kaldır'),
                 'danger' => true,
             ],

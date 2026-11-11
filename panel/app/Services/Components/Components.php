@@ -64,6 +64,7 @@ class Components
         'supervisor' => ['Supervisor', 'Kendi süreçlerinizi çalışır tutar (Laravel işçileri systemd ile çalışır)', 'other', 'Önbellek ve kuyruk'],
         'composer' => ['Composer', 'PHP paket yöneticisi', 'other', 'Çalışma ortamları'],
         'python' => ['Python 3', 'pip, venv ve derleme başlıkları', 'other', 'Çalışma ortamları'],
+        'rspamd' => ['Rspamd', 'Spam filtresi ve DKIM imzası', 'other', 'E-posta'],
         'roundcube' => ['Roundcube', 'Varsayılan webmail, Ubuntu paketi', 'other', 'E-posta'],
         'snappymail' => ['SnappyMail', 'Hafif ve hızlı webmail, GitHub sürümü', 'other', 'E-posta'],
         'powerdns' => ['PowerDNS', 'Alan adlarınızın yetkili DNS sunucusu', 'other', 'DNS'],
@@ -71,6 +72,13 @@ class Components
         'modsecurity' => ['ModSecurity', 'Web uygulaması güvenlik duvarı (OWASP CRS kuralları)', 'other', 'Güvenlik'],
         'clamav' => ['ClamAV', 'Gelen ve giden postada virüs taraması', 'other', 'Güvenlik'],
     ];
+
+    /**
+     * Components with release series of their own, not database servers:
+     * upgraded to the series Serfex brings and, for a week after, taken
+     * back to the version the upgrade kept.
+     */
+    public const SERIES = ['powerdns', 'rspamd', 'modsecurity'];
 
     /** @var array<string, array<string, mixed>>|null component.list by id */
     private ?array $list = null;
@@ -301,7 +309,7 @@ class Components
             $ids[] = 'node'.$line;
         }
 
-        return [...$ids, 'composer', 'python', 'roundcube', 'snappymail', 'powerdns', 'fail2ban', 'modsecurity', 'clamav'];
+        return [...$ids, 'composer', 'python', 'rspamd', 'roundcube', 'snappymail', 'powerdns', 'fail2ban', 'modsecurity', 'clamav'];
     }
 
     /**
@@ -433,7 +441,11 @@ class Components
     {
         $status ??= $this->statuses()[$id] ?? [];
         if ($status['required'] ?? null) {
-            return $id === 'powerdns' ? __('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.') : __('Gerekli. Serfex tüm sitelerde Nginx kullanır.');
+            return match ($id) {
+                'powerdns' => __('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.'),
+                'rspamd' => __('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.'),
+                default => __('Gerekli. Serfex tüm sitelerde Nginx kullanır.'),
+            };
         }
         if ($kept = $status['kept'] ?? null) {
             return __('Yükseltmeden kalan :name önce kaldırılmalı.', ['name' => self::releaseName($id, (string) $kept['from'])]);
@@ -459,15 +471,17 @@ class Components
 
     /**
      * Starts installing, updating or removing a component in the
-     * background; for a database server and PowerDNS also upgrading it to
-     * a newer major version ($version, the one offered) and removing the
-     * old version an upgrade kept, for PowerDNS going back to it. Returns
-     * the operation, or the reason it cannot start.
+     * background; for a database server and the SERIES components also
+     * upgrading it to a newer version ($version, the one offered) and
+     * removing the old version an upgrade kept, for the SERIES components
+     * going back to it. Returns the operation, or the reason it cannot
+     * start.
      */
     public function start(string $id, string $action, ?User $user, ?string $version = null): ComponentOperation|string
     {
-        $upgradable = in_array($id, ['mysql', 'mariadb', 'postgresql', 'powerdns'], true);
-        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove', ...($upgradable ? ['upgrade', 'remove-old'] : []), ...($id === 'powerdns' ? ['revert'] : [])], true)) {
+        $series = in_array($id, self::SERIES, true);
+        $upgradable = $series || in_array($id, ['mysql', 'mariadb', 'postgresql'], true);
+        if (! $this->operable($id) || ! in_array($action, ['install', 'update', 'remove', ...($upgradable ? ['upgrade', 'remove-old'] : []), ...($series ? ['revert'] : [])], true)) {
             return __('Bu bileşen buradan yönetilemiyor.');
         }
         // Read first: it also closes operations whose job is gone.
@@ -583,12 +597,16 @@ class Components
             str_starts_with($from, 'repo.mysql.com') => __('MySQL deposu (repo.mysql.com)'),
             str_starts_with($from, 'dlm.mariadb.com') => __('MariaDB deposu (dlm.mariadb.com)'),
             str_starts_with($from, 'repo.powerdns.com') => __('PowerDNS deposu (repo.powerdns.com)'),
+            str_starts_with($from, 'rspamd.com') => __('Rspamd deposu (rspamd.com)'),
+            str_starts_with($from, 'github.com/coreruleset/') => __('OWASP CRS sürümü (GitHub)'),
             default => Str::before($from, '/'),
         };
     }
 
     /**
-     * "MySQL 8.4 LTS", "PostgreSQL 18": a database server's major version.
+     * "MySQL 8.4 LTS", "PostgreSQL 18", "OWASP CRS 4.25.0": a database
+     * server's major version, a SERIES component's release series (for
+     * ModSecurity its rules' release).
      */
     public static function releaseName(string $id, string $major): string
     {
@@ -597,6 +615,8 @@ class Components
             'mariadb' => "MariaDB {$major} LTS",
             'postgresql' => "PostgreSQL {$major}",
             'powerdns' => "PowerDNS {$major}",
+            'rspamd' => "Rspamd {$major}",
+            'modsecurity' => "OWASP CRS {$major}",
             default => $major,
         };
     }
@@ -652,6 +672,9 @@ class Components
         if ($id === 'powerdns') {
             return __('DNS sunucusu kurulduğunda burada görünür; Alan Adları ve DNS sayfasından kurulur.');
         }
+        if ($id === 'rspamd') {
+            return __('E-posta sunucusu kurulduğunda burada görünür; E-posta sayfasından kurulur.');
+        }
         $other = ['mysql' => 'mariadb', 'mariadb' => 'mysql'][$id] ?? null;
         if ($other !== null && ($statuses[$other]['installed'] ?? false)) {
             return __(':name kurulu; :name2 onunla aynı anda kurulamaz.', ['name' => $this->name($other), 'name2' => $this->name($id)]);
@@ -700,8 +723,9 @@ class Components
             'choices' => $installed ? [] : self::choices($id, $status['choices'] ?? []),
             'upgrade' => $installed && isset($status['upgrade']['to']) ? ['from' => (string) $status['upgrade']['from'], 'to' => (string) $status['upgrade']['to'], 'name' => self::releaseName($id, (string) $status['upgrade']['to'])] : null,
             'kept' => $installed && isset($status['kept']['from']) ? ['from' => (string) $status['kept']['from'], 'name' => self::releaseName($id, (string) $status['kept']['from']), 'until' => $status['kept']['until'] ?? null] : null,
-            // PowerDNS can go back to the version its upgrade kept.
-            'revertible' => $id === 'powerdns' && $installed && isset($status['kept']['from']),
+            // The SERIES components can go back to the version their
+            // upgrade kept.
+            'revertible' => in_array($id, self::SERIES, true) && $installed && isset($status['kept']['from']),
             'running' => (bool) ($status['running'] ?? false),
             'units' => $status['units'] ?? [],
             'busy' => $busy,
@@ -710,6 +734,8 @@ class Components
             'settings' => $status['settings'] ?? null,
             'usage' => $installed ? $this->usage($id, $users, $status) : '—',
             'refusal' => $installed ? $this->removalRefusal($id, $status) : $this->installRefusal($id, $statuses),
+            // Rspamd is the mail server's: its row links there.
+            'mail' => $id === 'rspamd',
         ];
     }
 
@@ -740,6 +766,11 @@ class Components
         }
         if (str_starts_with($id, 'node')) {
             return ($status['default'] ?? false) ? __('Derlemelerde kullanılıyor') : __('Yedek sürüm');
+        }
+        if ($id === 'rspamd') {
+            $mailboxes = Mailbox::count();
+
+            return $mailboxes ? __(':mailboxes posta kutusu', ['mailboxes' => $mailboxes]) : __('Henüz posta kutusu yok');
         }
 
         return match ($id) {

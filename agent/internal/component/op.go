@@ -55,7 +55,8 @@ type component struct {
 	choices func(ctx context.Context, m *Manager, probe bool) []database.Release
 	from    string
 	// release is what an install brings when Serfex pins it instead of
-	// apt choosing (ModSecurity's rules), from the address in from.
+	// apt choosing (ModSecurity's rules; the series of PowerDNS and
+	// Rspamd, which other setups install), from the address in from.
 	release       string
 	inUse         func(m *Manager) []string
 	isDefault     func(m *Manager) bool

@@ -1,7 +1,7 @@
 <?php
 
 use App\Jobs\UpdateDatabaseManager;
-use App\Services\Databases\DatabaseServers;
+use App\Models\Setting;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
@@ -15,7 +15,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (app(DatabaseServers::class)->products() !== []) {
+        // The database servers the panel last saw, read without resolving
+        // DatabaseServers, which would keep its agent client and cache for
+        // the rest of the process.
+        if (Setting::get('databases.products', []) !== []) {
             UpdateDatabaseManager::dispatch()->delay(now()->addMinutes(3));
         }
     }

@@ -17,6 +17,8 @@ func powerdns() *component {
 	return &component{
 		id: "powerdns", versionPkg: "pdns-server",
 		required: "the domains' DNS server; it is set up on the Server DNS settings page",
+		// What the DNS setup installs, shown before it has run.
+		release: dns.Series, from: "repo.powerdns.com",
 		installed: func(m *Manager) bool {
 			return m.DNS != nil && m.DNS.Configured() && m.DNS.PackageVersion(context.Background()) != ""
 		},
@@ -63,6 +65,8 @@ func rspamd() *component {
 	return &component{
 		id: "rspamd", versionPkg: "rspamd",
 		required: "the mail server's spam filter; it is set up on the Mail server page",
+		// What the mail server setup installs, shown before it has run.
+		release: mail.RspamdSeries, from: "rspamd.com",
 		installed: func(m *Manager) bool {
 			return m.Mail != nil && m.Mail.Configured() && m.Mail.RspamdVersion(context.Background()) != ""
 		},

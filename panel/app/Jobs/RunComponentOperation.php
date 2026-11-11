@@ -19,8 +19,9 @@ use Illuminate\Foundation\Queue\Queueable;
  *
  * Upgrading a database server to a new major version dumps every
  * database first and can run for hours: it goes to the "backups" queue,
- * so it never runs next to a backup or restore. PowerDNS's upgrade takes a
- * minute or two and stays on the default queue.
+ * so it never runs next to a backup or restore. The upgrades of PowerDNS,
+ * Rspamd and ModSecurity's rules take a minute or two and stay on the
+ * default queue.
  */
 class RunComponentOperation implements ShouldQueue
 {
@@ -32,7 +33,7 @@ class RunComponentOperation implements ShouldQueue
 
     public function __construct(public ComponentOperation $operation)
     {
-        if ($operation->action === 'upgrade' && $operation->component !== 'powerdns') {
+        if ($operation->action === 'upgrade' && ! in_array($operation->component, Components::SERIES, true)) {
             $this->timeout = 43400;
             $this->onConnection('backups')->onQueue('backups');
         }

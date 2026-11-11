@@ -335,9 +335,105 @@ class ComponentsTest extends TestCase
         // The database from before the upgrade is back: every zone is written again.
         Queue::assertPushed(SyncDnsZone::class, 2);
 
-        // Only PowerDNS goes back; it cannot be installed or removed here.
+        // Database servers do not go back; PowerDNS cannot be removed here.
         $this->assertSame('Bu bileşen buradan yönetilemiyor.', app(Components::class)->start('mysql', 'revert', null));
         $this->assertSame('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.', app(Components::class)->start('powerdns', 'remove', null));
+    }
+
+    public function test_rspamd_upgrades_with_undo_for_a_week(): void
+    {
+        // Before the mail server is set up: what its setup brings.
+        $this->components['rspamd'] = ['id' => 'rspamd', 'installed' => false, 'running' => false, 'candidate' => '4.2', 'candidate_from' => 'rspamd.com',
+            'required' => 'the mail server\'s spam filter'];
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('Spam filtresi ve DKIM imzası')
+            ->assertSee('Rspamd deposu (rspamd.com)')
+            ->assertSee('E-posta sunucusu kurulduğunda burada görünür')
+            ->assertSee('E-postaya git');
+        $this->assertSame('E-posta sunucusu kurulduğunda burada görünür; E-posta sayfasından kurulur.', app(Components::class)->start('rspamd', 'install', null));
+
+        $this->components['rspamd'] = ['id' => 'rspamd', 'installed' => true, 'version' => '3.8.1-1ubuntu3', 'running' => true, 'units' => ['rspamd'],
+            'required' => 'the mail server\'s spam filter', 'upgrade' => ['from' => '3.8', 'to' => '4.2']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('Rspamd 4.2 sürümüne yükseltilebilir')
+            ->assertSee('Henüz posta kutusu yok')
+            ->assertSee('E-posta ayarları')
+            ->assertSee('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.')
+            ->call('ask', 'rspamd', 'upgrade')
+            ->assertSee('Rspamd 4.2 sürümüne yükseltilsin mi?')
+            ->assertSee('Rspamd 3.8.1')
+            ->assertSee('/etc/rspamd')
+            ->assertSee('yaklaşık bir dakika boyunca posta spam denetimi ve DKIM imzası olmadan iletilir');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['rspamd', 'upgrade', '4.2'], [$op->component, $op->action, $op->detail]);
+        // A minute or two: the default queue.
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'rspamd', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+
+        // Upgraded: going back is offered for the week the old version is kept.
+        $this->components['rspamd'] = ['id' => 'rspamd', 'installed' => true, 'version' => '4.2.3-1~50bde75~noble', 'running' => true, 'units' => ['rspamd'],
+            'required' => 'the mail server\'s spam filter', 'kept' => ['product' => 'rspamd', 'from' => '3.8.1', 'to' => '4.2.3', 'until' => '2026-11-17T22:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('Rspamd 3.8.1 17.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Eski sürüme dön')
+            ->assertDontSee('Sürümü yükselt')
+            ->call('ask', 'rspamd', 'remove-old')
+            ->assertSee('Rspamd 3.8.1 silinsin mi?')
+            ->assertSee('eski paket ve ayarların kopyası silinir')
+            ->call('ask', 'rspamd', 'revert')
+            ->assertSee('Rspamd 3.8.1 sürümüne dönülsün mü?')
+            ->assertSee('DKIM ve spam ayarları korunur')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['rspamd', 'revert', '3.8.1'], [$op->component, $op->action, $op->detail]);
+        $this->agent->answers['component.revert'] = ['action' => 'revert', 'status' => []];
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'rspamd', 'run' => $op->run]], $this->agent->called('component.revert'));
+        Queue::assertNotPushed(SyncDnsZone::class);
+        $this->assertSame('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.', app(Components::class)->start('rspamd', 'remove', null));
+    }
+
+    public function test_modsecurity_rules_upgrade_with_undo_for_a_week(): void
+    {
+        // One site meets the server's blocking mode, one has the WAF off.
+        $this->site();
+        Site::factory()->create(['domain' => 'ornek.com.tr', 'status' => 'active', 'waf_mode' => 'off']);
+        $this->components['modsecurity'] = ['id' => 'modsecurity', 'installed' => true, 'version' => '3.3.5-2', 'running' => true,
+            'settings' => ['mode' => 'block', 'paranoia' => 1], 'upgrade' => ['from' => '3.3.5', 'to' => '4.25.0']];
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('OWASP CRS 4.25.0 sürümüne yükseltilebilir')
+            ->call('ask', 'modsecurity', 'upgrade')
+            ->assertSee('OWASP CRS 4.25.0 sürümüne yükseltilsin mi?')
+            ->assertSee('OWASP CRS 3.3.5')
+            ->assertSee('SHA-256')
+            ->assertSee('1 site engelleme kipinde')
+            ->assertSee('Kip, seviye ve site istisnaları olduğu gibi kalır');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['modsecurity', 'upgrade', '4.25.0'], [$op->component, $op->action, $op->detail]);
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'modsecurity', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+
+        $this->components['modsecurity'] = ['id' => 'modsecurity', 'installed' => true, 'version' => '4.25.0', 'running' => true,
+            'settings' => ['mode' => 'block', 'paranoia' => 1], 'kept' => ['product' => 'modsecurity', 'from' => '3.3.5', 'to' => '4.25.0', 'until' => '2026-11-17T22:00:00Z']];
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('OWASP CRS 3.3.5 17.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Engelleme kipinde · seviye 1')
+            ->call('ask', 'modsecurity', 'remove-old')
+            ->assertSee('OWASP CRS 3.3.5 silinsin mi?')
+            ->assertSee('Yükseltmeden kalan önceki kurallar kaldırılır')
+            ->call('ask', 'modsecurity', 'revert')
+            ->assertSee('OWASP CRS 3.3.5 sürümüne dönülsün mü?')
+            ->assertSee('ModSecurity önceki kurallara döner')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['modsecurity', 'revert', '3.3.5'], [$op->component, $op->action, $op->detail]);
     }
 
     public function test_upgrade_waits_for_backups_and_a_running_server(): void

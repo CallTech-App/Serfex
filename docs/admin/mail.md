@@ -107,6 +107,33 @@ Live Monitor → **Mail queue** shows Postfix's queue grouped by sender domain.
 sends spam) until you **Release** them; **Retry the queue now** retries
 deferred messages.
 
+## Rspamd version
+
+Serfex installs Rspamd 4 from Rspamd's own archive (`rspamd.com/apt-stable`,
+pinned so that the `rspamd` packages stay on major version 4). Ubuntu
+24.04's own package is 3.8.1, which Rspamd no longer updates. If the
+archive cannot be reached during setup, Ubuntu's version is installed and
+the upgrade below is offered.
+
+Servers whose mail server was set up before Serfex 0.1.72 run Ubuntu's
+3.8.1. **Software → Other components → Rspamd → Upgrade version** moves them
+to Rspamd 4:
+
+1. Rspamd's archive is added; if it cannot be read, nothing else changes.
+2. The installed 3.8 package is downloaded and kept, and `/etc/rspamd` is
+   copied.
+3. The new version is installed with the configuration files left as they
+   are; `rspamadm configtest` must accept the configuration and Rspamd's
+   milter must answer within a minute.
+4. Any failure puts the 3.8 package and `/etc/rspamd` back.
+
+While Rspamd is replaced, Postfix passes mail on without spam checks or
+DKIM signatures (for about a minute); no mail is lost. DKIM keys and spam
+settings stay. For 7 days **Go back to old version** puts 3.8 and the copied
+settings back, keeping what Serfex wrote to `local.d` and `override.d`
+since; **Remove old version** deletes the copies earlier. Later 4.x releases
+then show as updates on the same page.
+
 ## Suspended customers
 
 A suspended customer's domains defer incoming mail with a temporary error
