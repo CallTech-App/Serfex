@@ -461,6 +461,9 @@ function adminer_object()
         }
     }
 {{- else}}
+    // Adminer 5 and later. The release file has its types stripped
+    // (compile.php keeps it running on PHP 5.4), its sources have them:
+    // the parameters stay untyped to fit both; return types may be added.
     class SerfexAdminer extends \Adminer\Adminer
     {
         public function name(): string
@@ -473,7 +476,7 @@ function adminer_object()
             return ['127.0.0.1', $_GET['username'] ?? '', \Adminer\get_password()];
         }
 
-        public function permanentLogin(bool $create = false): string
+        public function permanentLogin($create = false): string
         {
             return '';
         }
