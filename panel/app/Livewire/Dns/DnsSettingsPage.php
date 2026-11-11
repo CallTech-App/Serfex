@@ -6,6 +6,7 @@ use App\Models\DnsZone;
 use App\Models\Setting;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Components\Components;
 use App\Services\Dns\DnsSettings;
 use App\Services\Dns\NameserverIps;
 use App\Services\Dns\Secondaries;
@@ -72,8 +73,13 @@ class DnsSettingsPage extends Component
      */
     public ?array $secondaryState = null;
 
-    public function mount(DnsSettings $settings, ZoneTemplate $template, AgentClient $agent, Secondaries $secondaries): void
+    public function mount(DnsSettings $settings, ZoneTemplate $template, AgentClient $agent, Secondaries $secondaries, Components $components): void
     {
+        // The PowerDNS version and the upgrade it can have, as the agent
+        // reports them now, not only when Software Management was last open.
+        if ((Setting::get('dns.server', [])['state'] ?? null) === 'ready') {
+            $components->statuses();
+        }
         $this->useSecondaries($secondaries->get());
         $template->detectAddresses();
         $this->nameservers = implode(', ', $settings->nameservers());

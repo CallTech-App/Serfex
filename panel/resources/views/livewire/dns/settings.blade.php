@@ -86,6 +86,9 @@
                     <p>
                         @if (($server['state'] ?? null) === 'ready')
                             PowerDNS {{ $server['version'] ?? '' }} · <span class="text-ok">{{ __('çalışıyor') }}</span>
+                            @if ($server['upgrade'] ?? null)
+                                <span class="mt-0.5 block text-2xs text-muted"><x-t text=":version sürümüne :link sayfasından yükseltilebilir."><x-slot:version>PowerDNS {{ $server['upgrade'] }}</x-slot:version><x-slot:link><a href="{{ route('components.index', ['tab' => 'other']) }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></span>
+                            @endif
                         @else
                             <x-t text="Durumu ve kurulumu :link sayfasında."><x-slot:link><a href="{{ route('dns.index') }}" wire:navigate class="text-accent hover:underline">{{ __('Alan Adları ve DNS') }}</a></x-slot:link></x-t>
                         @endif

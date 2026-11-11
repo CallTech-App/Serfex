@@ -105,6 +105,36 @@ server's main address; a secondary that only accepts the primary address it
 was given needs that same address. Another Serfex server cannot act as a
 secondary yet.
 
+## PowerDNS version
+
+Serfex installs PowerDNS Authoritative 5.1 from PowerDNS's own archive
+(`repo.powerdns.com`, suite `<codename>-auth-51`, pinned so that `pdns-*`
+packages never come from Ubuntu). Ubuntu 24.04's own package is 4.8.3,
+which PowerDNS stopped supporting in June 2026. If the archive cannot be
+reached during setup, Ubuntu's version is installed and the upgrade below
+is offered.
+
+Servers set up before Serfex 0.1.72 run Ubuntu's 4.8.3. **Software → Other
+components → PowerDNS → Upgrade version** moves them to 5.1:
+
+1. PowerDNS's archive is added; if it cannot be read, nothing else changes.
+2. The installed 4.8 packages are downloaded and kept, and every zone,
+   record set and DNSSEC key is saved as the API shows it.
+3. PowerDNS stops and its LMDB database is copied. PowerDNS 5 moves the
+   database to a new format when it starts, and 4.x cannot read it again,
+   so this copy is what going back uses.
+4. 5.1 is installed and started; every zone, record set (the catalog
+   zone's SOA aside) and DNSSEC key is compared with step 2, and the server
+   must answer the SOA of the first zones on port 53.
+5. Any failure puts the 4.8 packages and the copied database back.
+
+The DNS server does not answer for about a minute. DNSSEC keys stay the
+same, so the DS records at registrars stay valid. For 7 days **Go back to
+old version** puts 4.8 and the copied database back and the panel writes
+every zone again, so changes made after the upgrade stay; **Remove old
+version** deletes the copies earlier. Point releases (5.1.x) then show as
+updates on the same page.
+
 ## Cloudflare
 
 Domains whose DNS is at Cloudflare are managed in Serfex like any other

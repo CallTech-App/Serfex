@@ -28,7 +28,7 @@ import (
 // Nginx and PHP-FPM processes with their own configuration, accounts and
 // systemd units, on a port of their own. Customers' sites, PHP versions
 // and pools never serve it. phpMyAdmin serves MySQL and MariaDB, Adminer
-// PostgreSQL.
+// PostgreSQL; both come from their makers' releases (webtools.go).
 const (
 	// WebUnit is Serfex's own web server (also the panel's, see cert.PanelUnit).
 	WebUnit = cert.PanelUnit
@@ -60,10 +60,13 @@ const (
 	adminSess   = adminDir + "/sessions"
 	adminTmp    = adminDir + "/tmp"
 	phpSocket   = "/run/serfex-php/dbadmin.sock"
+	// pmaConf holds Serfex's settings for Ubuntu's phpMyAdmin.
 	pmaConf     = "/etc/phpmyadmin/conf.d/serfex.php"
 	webUnitFile = "/etc/systemd/system/" + WebUnit + ".service"
 	phpUnitFile = "/etc/systemd/system/" + PHPUnit + ".service"
 
+	// Ubuntu's phpMyAdmin and Adminer, where the releases could not be
+	// downloaded and on servers set up before Serfex served those.
 	pmaIndex     = "/usr/share/phpmyadmin/index.php"
 	adminerIndex = "/usr/share/adminer/adminer.php"
 )
@@ -80,11 +83,46 @@ type ManagerSpec struct {
 // ManagerStatus describes the web manager.
 type ManagerStatus struct {
 	// Configured is true once db.manager.setup ran.
-	Configured bool   `json:"configured"`
-	Port       int    `json:"port,omitempty"`
-	PhpMyAdmin bool   `json:"phpmyadmin"`
-	Adminer    bool   `json:"adminer"`
-	PHPVersion string `json:"php_version,omitempty"`
+	Configured bool `json:"configured"`
+	Port       int  `json:"port,omitempty"`
+	PhpMyAdmin bool `json:"phpmyadmin"`
+	Adminer    bool `json:"adminer"`
+	// PhpMyAdminVersion and AdminerVersion are the releases served, ""
+	// for Ubuntu's packages.
+	PhpMyAdminVersion string `json:"phpmyadmin_version,omitempty"`
+	AdminerVersion    string `json:"adminer_version,omitempty"`
+	// PhpMyAdminUpgrade and AdminerUpgrade are the releases the Software
+	// page offers to upgrade them to, "" for none.
+	PhpMyAdminUpgrade string `json:"phpmyadmin_upgrade,omitempty"`
+	AdminerUpgrade    string `json:"adminer_upgrade,omitempty"`
+	PHPVersion        string `json:"php_version,omitempty"`
+	// Note says why the setup gave a tool Ubuntu's package instead of
+	// its release.
+	Note string `json:"note,omitempty"`
+}
+
+// withTools adds to res what it says about the tools serfex-web serves
+// (tl): their releases, upgrades and notes.
+func (res ManagerStatus) withTools(st *state, tl tools) ManagerStatus {
+	var notes []string
+	for _, t := range []struct {
+		tool            string
+		on              bool
+		version, offers *string
+	}{
+		{ToolPhpMyAdmin, res.PhpMyAdmin, &res.PhpMyAdminVersion, &res.PhpMyAdminUpgrade},
+		{ToolAdminer, res.Adminer, &res.AdminerVersion, &res.AdminerUpgrade},
+	} {
+		if !t.on {
+			continue
+		}
+		*t.version, *t.offers = tl.get(t.tool), toolUpgrade(st, t.tool, tl.get(t.tool))
+		if n := st.ToolNotes[t.tool]; n != "" {
+			notes = append(notes, n)
+		}
+	}
+	res.Note = strings.Join(notes, "; ")
+	return res
 }
 
 func (m *Manager) managerStatus(context.Context) ManagerStatus {
@@ -92,13 +130,14 @@ func (m *Manager) managerStatus(context.Context) ManagerStatus {
 	if err != nil || st.Manager == nil {
 		return ManagerStatus{}
 	}
+	tl := m.served(st)
 	return ManagerStatus{
 		Configured: true,
 		Port:       m.webPort(st),
-		PhpMyAdmin: m.exists(pmaIndex) && m.exists(phpConf),
-		Adminer:    m.exists(adminerIndex) && m.exists(phpConf),
+		PhpMyAdmin: m.exists(pmaDir(tl.PhpMyAdmin)+"/index.php") && m.exists(phpConf),
+		Adminer:    m.exists(adminerFile(tl.Adminer)) && m.exists(phpConf),
 		PHPVersion: m.adminPHP(),
-	}
+	}.withTools(st, tl)
 }
 
 // adminPHP is the PHP version serfex-php runs (from its unit), if any.
@@ -117,8 +156,10 @@ func (m *Manager) adminPHP() string {
 // SetupManager installs phpMyAdmin (when MySQL or MariaDB is installed)
 // and Adminer (when PostgreSQL is), and runs them on serfex-web and
 // serfex-php. Running it again after a server is installed adds that
-// server's tool. Configuration changes are rolled back if a service
-// rejects them.
+// server's tool. A tool it adds gets the release Serfex pins, or Ubuntu's
+// package when serfex-web does not serve the release; the tools served
+// already stay where they are (see webtools.go). Configuration changes
+// are rolled back if a service rejects them.
 func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res ManagerStatus, err error) {
 	if spec.Port != 0 && (spec.Port < 1 || spec.Port > 65535 || spec.Port == 80 || spec.Port == 443) {
 		return ManagerStatus{}, invalid("port must be between 1 and 65535, and not 80 or 443 (the sites' ports)")
@@ -139,9 +180,42 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if spec.Port != 0 {
 		ports = []int{spec.Port}
 	}
-	php, err := m.applyWeb(ctx, ports, mysql, pg)
+	// The tools serfex-web has already stay on their release or Ubuntu's
+	// package: the Software page upgrades them (UpgradeTool).
+	cur := m.served(st)
+	var add []string
+	if mysql && !m.present(cur, ToolPhpMyAdmin) {
+		add = append(add, ToolPhpMyAdmin)
+	}
+	if pg && !m.present(cur, ToolAdminer) {
+		add = append(add, ToolAdminer)
+	}
+	want, notes := m.fetchTools(ctx, cur, add)
+	check := webCheck{phpMyAdmin: want.PhpMyAdmin != cur.PhpMyAdmin, adminer: want.Adminer != cur.Adminer}
+	php, err := m.applyWeb(ctx, ports, mysql, pg, want, check)
+	if err != nil && check.any() {
+		// The new tools get Ubuntu's packages; the setup goes on.
+		for _, tool := range add {
+			if want.get(tool) != cur.get(tool) {
+				notes[tool] = fmt.Sprintf("serfex-web did not serve %s %s (%v), so Ubuntu's package serves it", toolName(tool), want.get(tool), err)
+			}
+		}
+		want = cur
+		php, err = m.applyWeb(ctx, ports, mysql, pg, want, webCheck{})
+	}
 	if err != nil {
 		return ManagerStatus{}, err
+	}
+	m.pruneTools(want, st.ToolsKept)
+	st.Tools = want
+	for _, tool := range add {
+		delete(st.ToolNotes, tool)
+		if notes[tool] != "" {
+			if st.ToolNotes == nil {
+				st.ToolNotes = map[string]string{}
+			}
+			st.ToolNotes[tool] = notes[tool]
+		}
 	}
 	st.Manager = &ManagerSpec{Port: ports[0]}
 	if spec.Port != 0 {
@@ -150,7 +224,7 @@ func (m *Manager) SetupManager(ctx context.Context, spec ManagerSpec) (res Manag
 	if err := m.saveState(st); err != nil {
 		return ManagerStatus{}, err
 	}
-	return ManagerStatus{Configured: true, Port: ports[0], PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}, nil
+	return ManagerStatus{Configured: true, Port: ports[0], PhpMyAdmin: mysql, Adminer: pg, PHPVersion: php}.withTools(st, want), nil
 }
 
 // WebStatus describes serfex-web as the panel uses it.
@@ -181,10 +255,19 @@ func (m *Manager) SetupPanelWeb(ctx context.Context) (WebStatus, error) {
 		// Without a manager the tools stay off until db.manager.setup.
 		mysql, pg = false, false
 	}
+	// The tools stay on the releases they are on: an update never waits
+	// for a download (db.manager.setup moves them).
 	ports := m.webPorts(st)
-	php, err := m.applyWeb(ctx, ports, mysql, pg)
+	tl := m.served(st)
+	php, err := m.applyWeb(ctx, ports, mysql, pg, tl, webCheck{})
 	if err != nil {
 		return WebStatus{}, err
+	}
+	if tl != st.Tools {
+		st.Tools = tl
+		if err := m.saveState(st); err != nil {
+			return WebStatus{}, opError(err)
+		}
 	}
 	return WebStatus{Port: ports[0], Ports: ports, PHPVersion: php, Panel: true}, nil
 }
@@ -213,10 +296,11 @@ func (m *Manager) webPorts(st *state) []int {
 }
 
 // applyWeb writes serfex-web's and serfex-php's configuration for the
-// tools asked for and, when installed, the panel, then (re)starts what
-// changed. serfex-web listens on every port of ports. Called with m.mu
-// held.
-func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (php string, err error) {
+// tools asked for (on the releases of tl) and, when installed, the
+// panel, then (re)starts what changed and checks that serfex-web serves
+// the tools of check. serfex-web listens on every port of ports. Called
+// with m.mu held.
+func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool, tl tools, check webCheck) (php string, err error) {
 	cfg, withPanel := panel.Load(m.h)
 	withPanel = withPanel && panel.Installed(m.h)
 
@@ -259,25 +343,38 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		packages = []string{"nginx", "php-fpm", "php-mbstring", "php-xml"}
 	}
 	if mysql {
-		packages = append(packages, "phpmyadmin")
+		if tl.PhpMyAdmin == "" {
+			packages = append(packages, "phpmyadmin")
+			markers = append(markers, pmaIndex)
+		}
 		if !withPanel {
 			packages = append(packages, "php-mysql")
 		}
-		markers = append(markers, pmaIndex)
 	}
 	if pg {
-		packages = append(packages, "adminer")
+		if tl.Adminer == "" {
+			packages = append(packages, "adminer")
+			markers = append(markers, adminerIndex)
+		}
 		if !withPanel {
 			packages = append(packages, "php-pgsql")
 		}
-		markers = append(markers, adminerIndex)
 	}
 	missing := !m.exists("/usr/sbin/nginx")
 	for _, f := range markers {
 		missing = missing || !m.exists(f)
 	}
+	if !withPanel && !missing {
+		// Ubuntu's PHP-FPM, with the extensions the tools need.
+		_, err := m.pickPHP(mysql, pg)
+		missing = err != nil
+	}
 	if missing {
-		if err := installPackages(ctx, m.h, packages, pmaPreseed, nil); err != nil {
+		preseed := ""
+		if slices.Contains(packages, "phpmyadmin") {
+			preseed = pmaPreseed
+		}
+		if err := installPackages(ctx, m.h, packages, preseed, nil); err != nil {
 			return "", err
 		}
 	}
@@ -318,7 +415,7 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		}
 	}
 
-	data, err := m.webConfData(t, ports, mysql, pg, withPanel)
+	data, err := m.webConfData(t, ports, mysql, pg, withPanel, tl)
 	if err != nil {
 		return "", err
 	}
@@ -367,12 +464,12 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 			}
 		}
 		if mysql {
-			secret, err := m.blowfishSecret()
+			secret, err := m.blowfishSecret(tl.PhpMyAdmin)
 			if err != nil {
 				return err
 			}
 			data.Secret = secret
-			return t.WriteFileMode(pmaConf, render(pmaConfTmpl, data), 0o640, 0, admin.GID)
+			return t.WriteFileMode(pmaConfFile(tl.PhpMyAdmin), render(pmaConfTmpl, data), 0o640, 0, admin.GID)
 		}
 		return nil
 	}); err != nil {
@@ -403,6 +500,11 @@ func (m *Manager) applyWeb(ctx context.Context, ports []int, mysql, pg bool) (ph
 		}
 		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{verb, u}}); err != nil {
 			return "", fmt.Errorf("%s did not start (see journalctl -u %s): %w", u, u, err)
+		}
+	}
+	if check.any() {
+		if err := m.toolsServe(ctx, ports[0], check); err != nil {
+			return "", err
 		}
 	}
 	return php, nil
@@ -456,7 +558,7 @@ func phpLess(a, b string) bool {
 }
 
 // webConfData is what serfex-web's configuration is made from.
-func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool) (webData, error) {
+func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool, tl tools) (webData, error) {
 	certFile, keyFile, err := m.webTLS(t)
 	if err != nil {
 		return webData{}, err
@@ -467,6 +569,7 @@ func (m *Manager) webConfData(t *txn.Tx, ports []int, mysql, pg, withPanel bool)
 		PhpMyAdmin: mysql, Adminer: pg, Tokens: adminTokens, Sessions: adminSess, Tmp: adminTmp, TLSConf: cert.TLSConf,
 		Panel: withPanel, PanelRoot: panel.CurrentLink + "/panel/public", PanelSocket: panel.Socket, PanelUser: panel.User,
 		NoIndex: NoIndex, TerminalSocket: terminal.Socket,
+		PMARoot: pmaWebRoot(tl.PhpMyAdmin), AdminerFile: adminerFile(tl.Adminer), AdminerUbuntu: tl.Adminer == "",
 	}
 	data.PanelCert, data.PanelKey = cert.PanelFiles()
 	data.PanelNames = m.panelNames(data.PanelCert, data.PanelKey)
@@ -562,7 +665,7 @@ func (m *Manager) PanelCertificateChanged(ctx context.Context) error {
 	_, withPanel := panel.Load(m.h)
 	withPanel = withPanel && panel.Installed(m.h)
 	t := txn.New(m.h)
-	data, err := m.webConfData(t, m.webPorts(st), mysql, pg, withPanel)
+	data, err := m.webConfData(t, m.webPorts(st), mysql, pg, withPanel, m.served(st))
 	if err == nil {
 		err = t.WriteFile(webConf, render(webConfTmpl, data))
 	}
@@ -577,9 +680,20 @@ func (m *Manager) PanelCertificateChanged(ctx context.Context) error {
 	return nil
 }
 
-// blowfishSecret keeps phpMyAdmin's cookie encryption key across setups.
-func (m *Manager) blowfishSecret() (string, error) {
-	if data, err := os.ReadFile(m.h.Path(pmaConf)); err == nil {
+// blowfishSecret keeps phpMyAdmin's cookie encryption key across setups
+// and releases: the one in the settings of release version, else of
+// another release or Ubuntu's package, else a new one.
+func (m *Manager) blowfishSecret(version string) (string, error) {
+	files := []string{pmaConfFile(version)}
+	others, _ := filepath.Glob(m.h.Path(pmaRoot + "/*/phpmyadmin/config.inc.php"))
+	for _, f := range others {
+		files = append(files, pmaRoot+strings.TrimPrefix(f, m.h.Path(pmaRoot)))
+	}
+	for _, f := range append(files, pmaConf) {
+		data, err := os.ReadFile(m.h.Path(f))
+		if err != nil {
+			continue
+		}
 		for _, line := range strings.Split(string(data), "\n") {
 			if rest, ok := strings.CutPrefix(line, "$cfg['blowfish_secret'] = sodium_hex2bin('"); ok {
 				if s, _, ok := strings.Cut(rest, "'"); ok && len(s) == 64 {
@@ -653,9 +767,10 @@ func (m *Manager) Login(ctx context.Context, spec LoginSpec) (Login, error) {
 	if st.Manager == nil {
 		return Login{}, invalid("the database manager is not set up")
 	}
-	tool, page, ready := "phpmyadmin", "/phpmyadmin/serfex-sso.php?token=", m.exists(pmaIndex)
+	tl := m.served(st)
+	tool, page, ready := "phpmyadmin", "/phpmyadmin/serfex-sso.php?token=", m.exists(pmaDir(tl.PhpMyAdmin)+"/index.php")
 	if spec.Server == PostgreSQL {
-		tool, page, ready = "adminer", "/adminer/?serfex_token=", m.exists(adminerIndex)
+		tool, page, ready = "adminer", "/adminer/?serfex_token=", m.exists(adminerFile(tl.Adminer))
 	}
 	if !ready {
 		return Login{}, invalid("%s is not installed; set the database manager up again", tool)

@@ -83,6 +83,10 @@ func catalog() []*component {
 			check:    func(o *op) error { _, err := o.run(host.Command{Name: "nginx", Args: []string{"-t"}}); return err },
 		},
 		apache(),
+		powerdns(),
+		rspamd(),
+		webTool(database.ToolPhpMyAdmin),
+		webTool(database.ToolAdminer),
 		{
 			id: "redis", packages: []string{"redis-server", "redis-tools"}, versionPkg: "redis-server",
 			extra:     func(m *Manager) []string { return m.phpExt("redis") },
@@ -294,7 +298,11 @@ func databaseComponent(product string) *component {
 				return err
 			}
 			o.step("Web yöneticisi (phpMyAdmin, Adminer) hazırlanıyor")
-			_, err := o.m.db.SetupManager(o.ctx, database.ManagerSpec{Port: o.port})
+			ms, err := o.m.db.SetupManager(o.ctx, database.ManagerSpec{Port: o.port})
+			if err == nil && ms.Note != "" {
+				// A tool stays on Ubuntu's package; the install went on.
+				fmt.Fprintln(o.w, "  "+ms.Note)
+			}
 			return err
 		},
 		remove: func(o *op) error {
@@ -691,9 +699,38 @@ var modsecRotate = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
 
 func modsecurity() *component {
 	return &component{
-		id: "modsecurity", packages: []string{"libnginx-mod-http-modsecurity", "modsecurity-crs"}, versionPkg: "modsecurity-crs",
+		id: "modsecurity", packages: []string{"libnginx-mod-http-modsecurity"},
+		// Ubuntu's rules where CRS's own release is not in use.
+		extra: func(m *Manager) []string {
+			if m.loadSettings().CRS == "" {
+				return []string{crsPackage}
+			}
+			return nil
+		},
+		purge: func(*Manager) []string { return []string{"libnginx-mod-http-modsecurity", crsPackage} },
+		// The version shown is the rules'.
+		version: func(ctx context.Context, m *Manager) string { return m.crsVersion(ctx) },
+		release: CRS.Version, from: crsFrom,
 		installed: func(m *Manager) bool { return m.exists(modsecModule) && m.exists(modsecNginx) },
 		backup:    []string{modsecDir},
+		// A new install gets CRS's own release, Ubuntu's rules when it
+		// cannot be downloaded; a repair keeps the rules in use.
+		beforeInstall: func(o *op) error {
+			if o.c.isInstalled(o.m) {
+				return nil
+			}
+			s := o.m.loadSettings()
+			s.CRS = ""
+			o.step("OWASP CRS %s indiriliyor ve doğrulanıyor", CRS.Version)
+			if err := o.m.fetchCRS(o.ctx, CRS); err != nil {
+				fmt.Fprintf(o.w, "  %s\n", i18n.T(o.ctx, "CRS %s indirilemedi (%v); Ubuntu'nun kuralları kuruluyor", CRS.Version, err))
+			} else {
+				s.CRS = CRS.Version
+				o.m.pruneCRS(CRS.Version)
+			}
+			return o.m.writeSettings(o.t, s)
+		},
+		series: crsSeries(),
 		settings: func(m *Manager) map[string]any {
 			s := m.loadSettings()
 			return map[string]any{"mode": s.ModSecurityMode, "paranoia": s.ModSecurityParanoia}
@@ -741,6 +778,10 @@ func modsecurity() *component {
 			if err := o.t.RemoveFile(modsecNginx); err != nil {
 				return err
 			}
+			// Ubuntu's rules are purged along with the module.
+			if err := o.m.saveCRSKept(nil); err != nil {
+				return err
+			}
 			return reloadNginx(o)
 		},
 	}
@@ -772,6 +813,7 @@ func writeModsec(o *op, s Settings) error {
 	if s.ModSecurityMode == "block" {
 		engine = "On"
 	}
+	rules := crsRules(s)
 	main := fmt.Sprintf(`# %s. Manual changes are overwritten.
 # ModSecurity with the OWASP Core Rule Set, for every site.
 # Server mode: Güvenlik > WAF; a site can have its own (package security).
@@ -790,14 +832,25 @@ SecTmpDir /tmp/
 SecDataDir /tmp/
 Include %s
 Include %s/*.conf
-`, txn.Marker, engine, ModSecurityLog, modsecCRS, modsecCRSRule)
+`, txn.Marker, engine, ModSecurityLog, modsecCRS, rules)
 	crs := fmt.Sprintf(`# %s. Manual changes are overwritten.
-# OWASP CRS settings: anomaly scoring, paranoia level %d.
+# OWASP CRS 3.3 (Ubuntu's) settings: anomaly scoring, paranoia level %d.
 SecDefaultAction "phase:1,log,auditlog,pass"
 SecDefaultAction "phase:2,log,auditlog,pass"
 SecAction "id:900000,phase:1,nolog,pass,t:none,setvar:tx.paranoia_level=%d"
 SecAction "id:900990,phase:1,nolog,pass,t:none,setvar:tx.crs_setup_version=335"
 `, txn.Marker, s.ModSecurityParanoia, s.ModSecurityParanoia)
+	if s.CRS != "" {
+		// CRS 4 names the level that blocks blocking_paranoia_level, and
+		// refuses every request without crs_setup_version.
+		crs = fmt.Sprintf(`# %s. Manual changes are overwritten.
+# OWASP CRS %s settings: anomaly scoring, paranoia level %d.
+SecDefaultAction "phase:1,log,auditlog,pass"
+SecDefaultAction "phase:2,log,auditlog,pass"
+SecAction "id:900000,phase:1,nolog,pass,t:none,setvar:tx.blocking_paranoia_level=%d"
+SecAction "id:900990,phase:1,nolog,pass,t:none,setvar:tx.crs_setup_version=%s"
+`, txn.Marker, s.CRS, s.ModSecurityParanoia, s.ModSecurityParanoia, strings.ReplaceAll(s.CRS, ".", ""))
+	}
 	nginx := fmt.Sprintf(`# %s. Manual changes are overwritten.
 modsecurity on;
 modsecurity_rules_file %s;
@@ -914,6 +967,7 @@ var simVersions = map[string]string{
 	"php8.3-fpm": "8.3.6-0ubuntu0.24.04.5", "php8.4-fpm": "8.4.13-1+ubuntu24.04.1+deb.sury.org+1",
 	"php8.5-fpm":   "8.5.0-1+ubuntu24.04.1+deb.sury.org+1",
 	"mysql-server": "8.0.43-0ubuntu0.24.04.2", "mariadb-server": "1:10.11.13-0ubuntu0.24.04.1",
+	"phpmyadmin": "4:5.2.1+dfsg-3", "adminer": "4.8.1-1",
 	"postgresql-16": "16.10-0ubuntu0.24.04.1", "postgresql-18": "18.1-1.pgdg24.04+2",
 }
 

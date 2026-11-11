@@ -97,7 +97,7 @@ func TestRealHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(res.Version, "4.") {
+	if res.Version == "" {
 		t.Fatalf("setup = %+v", res)
 	}
 	t.Logf("PowerDNS %s, installed now: %v", res.Version, res.Installed)

@@ -511,6 +511,24 @@ class DatabasesTest extends TestCase
         Queue::assertPushed(SetupDatabaseServers::class, fn ($job) => $job->products === ['mysql', 'postgresql']);
     }
 
+    public function test_settings_show_the_tools_releases_why_one_stayed_behind_and_its_upgrade(): void
+    {
+        $status = self::dbStatus(postgres: true);
+        $status['manager'] = [...$status['manager'], 'adminer' => true, 'phpmyadmin_version' => '5.2.3', 'adminer_version' => '6.3.0'];
+        $this->agent->answers['db.status'] = $status;
+        Livewire::test(DatabaseSettingsPage::class)
+            ->assertSee('phpMyAdmin 5.2.3, Adminer 6.3.0')
+            ->assertDontSee('yükseltilebilir');
+
+        $status['manager'] = [...$status['manager'], 'phpmyadmin_version' => '', 'phpmyadmin_upgrade' => '5.2.3', 'note' => 'phpMyAdmin 5.2.3 could not be downloaded: connection timed out'];
+        $this->agent->answers['db.status'] = $status;
+        $this->app->forgetInstance(DatabaseServers::class);
+        Livewire::test(DatabaseSettingsPage::class)
+            ->assertSee('phpMyAdmin (Ubuntu paketi), Adminer 6.3.0')
+            ->assertSee('phpMyAdmin 5.2.3 could not be downloaded: connection timed out')
+            ->assertSeeHtml('phpMyAdmin 5.2.3 sürümüne <a href="'.route('components.index', ['tab' => 'databases']).'"');
+    }
+
     public function test_remote_hosts_are_checked_like_the_agent_does(): void
     {
         foreach (['%', '78.186.44.12', '10.8.0.%', '10.%', '88.247.120.0/28', '2001:db8::1'] as $ok) {

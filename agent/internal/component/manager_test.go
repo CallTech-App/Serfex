@@ -10,8 +10,10 @@ import (
 	"testing"
 
 	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/php"
 	"github.com/calltech-app/serfex/agent/internal/site"
 )
@@ -374,9 +376,16 @@ func TestModSecuritySettings(t *testing.T) {
 	if _, err := m.Install(context.Background(), OpSpec{ID: "modsecurity", Run: "m"}); err != nil {
 		t.Fatal(err)
 	}
+	// A new install has CRS's own release (a dry run's stand-in here).
 	main := read(t, sim, modsecMain)
-	if !strings.Contains(main, "SecRuleEngine DetectionOnly") || !strings.Contains(main, "Include /usr/share/modsecurity-crs/rules/*.conf") {
+	if !strings.Contains(main, "SecRuleEngine DetectionOnly") || !strings.Contains(main, "Include /opt/serfex/crs/"+CRS.Version+"/rules/*.conf") {
 		t.Errorf("main.conf:\n%s", main)
+	}
+	if st := status(t, m, "modsecurity"); st.Version != CRS.Version || st.Upgrade != nil {
+		t.Errorf("status = %+v", st)
+	}
+	if ran(sim, "apt-get install -y -q --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold libnginx-mod-http-modsecurity modsecurity-crs") {
+		t.Error("Ubuntu's rules were installed too")
 	}
 	if !strings.Contains(read(t, sim, modsecNginx), "modsecurity_rules_file /etc/serfex/modsecurity/main.conf;") {
 		t.Error("nginx does not load the rules")
@@ -391,7 +400,7 @@ func TestModSecuritySettings(t *testing.T) {
 	if s.Settings["mode"] != "block" || s.Settings["paranoia"] != 2 {
 		t.Errorf("settings = %v", s.Settings)
 	}
-	if !strings.Contains(read(t, sim, modsecMain), "SecRuleEngine On") || !strings.Contains(read(t, sim, modsecCRS), "tx.paranoia_level=2") {
+	if !strings.Contains(read(t, sim, modsecMain), "SecRuleEngine On") || !strings.Contains(read(t, sim, modsecCRS), "tx.blocking_paranoia_level=2") || !strings.Contains(read(t, sim, modsecCRS), "tx.crs_setup_version=4250") {
 		t.Error("new settings not written")
 	}
 	// Nginx refusing them puts the old ones back.
@@ -778,5 +787,188 @@ func TestDatabaseServerUpgrade(t *testing.T) {
 	}
 	if _, err := m.RemoveOld(ctx, OpSpec{ID: "mysql", Run: "o2"}); err == nil {
 		t.Error("removed an old version twice")
+	}
+}
+
+func TestPowerDNSUpgradeAndRevert(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if s := status(t, m, "powerdns"); s.Installed {
+		t.Fatalf("listed before the DNS setup: %+v", s)
+	}
+	m.DNS = dns.NewSimulatedManager(sim, dns.NewMemory())
+	// PowerDNS's archive was out of reach at setup: Ubuntu's 4.8.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "apt-get update -q" {
+			return errors.New("unreachable")
+		}
+		return nil
+	}
+	if _, err := m.DNS.Setup(ctx); err != nil {
+		t.Fatal(err)
+	}
+	sim.Fail = nil
+	s := status(t, m, "powerdns")
+	if !s.Installed || s.Version != "4.8.3-4build3" || s.Upgrade == nil || s.Upgrade.From != "4.8" || s.Upgrade.To != dns.Series || s.Required == "" {
+		t.Fatalf("before: %+v upgrade %+v", s, s.Upgrade)
+	}
+	if _, err := m.Remove(ctx, OpSpec{ID: "powerdns", Run: "x"}); err == nil {
+		t.Error("removed PowerDNS")
+	}
+	if _, err := m.Revert(ctx, OpSpec{ID: "powerdns", Run: "r0"}); err == nil {
+		t.Error("reverted with nothing kept")
+	}
+	res, err := m.Upgrade(ctx, OpSpec{ID: "powerdns", Run: "u"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if !strings.HasPrefix(res.Status.Version, dns.Series+".") || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "4.8.3" {
+		t.Errorf("after: %+v kept %+v", res.Status, res.Status.Kept)
+	}
+	if chunk, _ := m.ReadRun("u", 0); !strings.Contains(chunk.Data, "▸ PowerDNS paket deposu ekleniyor") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	res, err = m.Revert(ctx, OpSpec{ID: "powerdns", Run: "r"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/r.log"))
+	}
+	if res.Status.Version != "4.8.3-4build3" || res.Status.Kept != nil || res.Status.Upgrade == nil {
+		t.Errorf("after revert: %+v", res.Status)
+	}
+	if chunk, _ := m.ReadRun("r", 0); !strings.HasSuffix(chunk.Data, "✓ Eski sürüme dönüldü\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	// Upgraded again, the old version can be removed.
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "powerdns", Run: "u2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "powerdns", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "powerdns"); s.Kept != nil || s.Upgrade != nil {
+		t.Errorf("after removing the old version: %+v", s)
+	}
+}
+
+func TestRspamdUpgradeAndRevert(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if s := status(t, m, "rspamd"); s.Installed {
+		t.Fatalf("listed without a mail server: %+v", s)
+	}
+	m.Mail = mail.NewManager(sim, "www-data")
+	// Rspamd's archive was out of reach at setup: Ubuntu's 3.8.
+	sim.Fail = func(c host.Command) error {
+		if c.String() == "apt-get update -q" {
+			return errors.New("unreachable")
+		}
+		return nil
+	}
+	if _, err := m.Mail.Setup(ctx, mail.SetupSpec{Hostname: "mail.example.net"}); err != nil {
+		t.Fatal(err)
+	}
+	sim.Fail = nil
+	s := status(t, m, "rspamd")
+	if !s.Installed || s.Version != "3.8.1-1ubuntu3" || s.Upgrade == nil || s.Upgrade.From != "3.8" || s.Upgrade.To != mail.RspamdSeries || s.Required == "" || len(s.Units) != 1 {
+		t.Fatalf("before: %+v upgrade %+v", s, s.Upgrade)
+	}
+	if _, err := m.Remove(ctx, OpSpec{ID: "rspamd", Run: "x"}); err == nil {
+		t.Error("removed Rspamd")
+	}
+	if _, err := m.Install(ctx, OpSpec{ID: "rspamd", Run: "i"}); err == nil {
+		t.Error("installed Rspamd apart from the mail server")
+	}
+	res, err := m.Upgrade(ctx, OpSpec{ID: "rspamd", Run: "u"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if !mail.RspamdCurrent(res.Status.Version) || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "3.8.1" || res.Status.Kept.Product != "rspamd" {
+		t.Errorf("after: %+v kept %+v", res.Status, res.Status.Kept)
+	}
+	if chunk, _ := m.ReadRun("u", 0); !strings.Contains(chunk.Data, "▸ Rspamd paket deposu ekleniyor (rspamd.com)") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	if _, err := m.Update(ctx, OpSpec{ID: "rspamd", Run: "up"}); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	res, err = m.Revert(ctx, OpSpec{ID: "rspamd", Run: "r"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/r.log"))
+	}
+	if res.Status.Version != "3.8.1-1ubuntu3" || res.Status.Kept != nil || res.Status.Upgrade == nil {
+		t.Errorf("after revert: %+v", res.Status)
+	}
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "rspamd", Run: "u2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "rspamd", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "rspamd"); s.Kept != nil || s.Upgrade != nil {
+		t.Errorf("after removing the old version: %+v", s)
+	}
+	if _, err := m.Revert(ctx, OpSpec{ID: "nginx", Run: "n"}); err == nil {
+		t.Error("reverted Nginx")
+	}
+}
+
+func TestWebToolsUpgradeAndRevert(t *testing.T) {
+	ctx := context.Background()
+	m, sim, _ := newTest(t)
+	if s := status(t, m, "phpmyadmin"); s.Installed || s.Candidate != database.PhpMyAdminRelease.Version || s.CandidateFrom != "files.phpmyadmin.net" {
+		t.Fatalf("listed without a database server: %+v", s)
+	}
+	// The releases were out of reach when MySQL came: Ubuntu's packages.
+	m.db.Download = func(context.Context, string) ([]byte, error) { return nil, errors.New("unreachable") }
+	if _, err := m.Install(ctx, OpSpec{ID: "mysql", Run: "d1", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	m.db.Download = nil
+	s := status(t, m, "phpmyadmin")
+	if !s.Installed || s.Version != "4:5.2.1+dfsg-3" || s.Upgrade == nil || s.Upgrade.From != "5.2.1" || s.Upgrade.To != database.PhpMyAdminRelease.Version || s.Required == "" || !s.Running {
+		t.Fatalf("before: %+v upgrade %+v", s, s.Upgrade)
+	}
+	if s := status(t, m, "adminer"); s.Installed {
+		t.Errorf("Adminer without PostgreSQL: %+v", s)
+	}
+	for _, f := range []func(context.Context, OpSpec) (Result, error){m.Install, m.Remove, m.Update} {
+		if _, err := f(ctx, OpSpec{ID: "phpmyadmin", Run: "x"}); err == nil {
+			t.Error("phpMyAdmin was installed, removed or updated apart from MySQL")
+		}
+	}
+
+	res, err := m.Upgrade(ctx, OpSpec{ID: "phpmyadmin", Run: "u"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/u.log"))
+	}
+	if res.Status.Version != database.PhpMyAdminRelease.Version || res.Status.Upgrade != nil || res.Status.Kept == nil || res.Status.Kept.From != "5.2.1" {
+		t.Errorf("after: %+v kept %+v", res.Status, res.Status.Kept)
+	}
+	if chunk, _ := m.ReadRun("u", 0); !strings.Contains(chunk.Data, "▸ phpMyAdmin "+database.PhpMyAdminRelease.Version+" indiriliyor ve doğrulanıyor") || !strings.HasSuffix(chunk.Data, "✓ Yükseltildi\n") {
+		t.Errorf("run log:\n%s", chunk.Data)
+	}
+	res, err = m.Revert(ctx, OpSpec{ID: "phpmyadmin", Run: "r"})
+	if err != nil {
+		t.Fatalf("%v\n%s", err, read(t, sim, runDir+"/r.log"))
+	}
+	if res.Status.Version != "4:5.2.1+dfsg-3" || res.Status.Kept != nil || res.Status.Upgrade == nil {
+		t.Errorf("after revert: %+v", res.Status)
+	}
+	if _, err := m.Upgrade(ctx, OpSpec{ID: "phpmyadmin", Run: "u2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.RemoveOld(ctx, OpSpec{ID: "phpmyadmin", Run: "o"}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "phpmyadmin"); s.Kept != nil || s.Upgrade != nil || !ran(sim, "apt-get purge -y -q phpmyadmin") {
+		t.Errorf("after removing the old version: %+v", s)
+	}
+
+	// PostgreSQL brings Adminer's release at once.
+	if _, err := m.Install(ctx, OpSpec{ID: "postgresql", Run: "d2", Port: 8443}); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(t, m, "adminer"); !s.Installed || s.Version != database.AdminerRelease.Version || s.Upgrade != nil || s.Kept != nil {
+		t.Errorf("adminer: %+v", s)
 	}
 }

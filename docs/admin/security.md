@@ -32,6 +32,21 @@ Apache. Install it from Software first.
   rule exceptions (a rule off for the whole site or under a path): site →
   Security → Web application firewall.
 
+The rules are OWASP CRS 4.25.0, from the project's GitHub release, checked
+against its SHA-256 and unpacked under `/opt/serfex/crs`; if the download
+fails, Ubuntu's CRS 3.3.5 package is installed instead. 4.25 is CRS's
+long-term release line, but 4.25.1 and newer need libmodsecurity 3.0.16 and
+do not load in Ubuntu 24.04's 3.0.12, so Serfex stays on 4.25.0 for now.
+
+Servers that installed ModSecurity before Serfex 0.1.72 run Ubuntu's 3.3.5.
+**Software → Other components → ModSecurity → Upgrade version** moves them
+to 4.25.0: Nginx must accept the new rules and a plain request must still
+get through, or the previous rules come back. The mode, paranoia level and
+site exceptions stay. CRS 4 judges some requests differently, so on sites in
+*Block* mode look over the events for false alarms in the first days. For
+7 days **Go back to old version** returns to the previous rules; then
+Ubuntu's rules package is removed (**Remove old version** does it earlier).
+
 ## Scan
 
 Looks for malware and web shells (with ClamAV when installed), files anyone

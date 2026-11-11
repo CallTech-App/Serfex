@@ -145,6 +145,8 @@ func main() {
 	svc.php = php.NewManager(h)
 	svc.components = component.NewManager(h, svc.sites, svc.databases, svc.laravel)
 	svc.components.PHP = svc.php
+	svc.components.DNS = svc.dns
+	svc.components.Mail = svc.mail
 	svc.services = service.NewManager(h)
 	svc.services.Usage = func() map[string]service.Usage {
 		out := map[string]service.Usage{}

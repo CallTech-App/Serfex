@@ -63,8 +63,19 @@
                         <span class="sm:pt-0.5">{{ __('Araçlar') }}</span>
                         <p>
                             @if ($manager['configured'] ?? false)
-                                {{ collect(['phpMyAdmin' => $manager['phpmyadmin'] ?? false, 'Adminer' => $manager['adminer'] ?? false])->filter()->keys()->join(', ') ?: '—' }}
+                                {{ collect([
+                                    ($manager['phpmyadmin'] ?? false) ? 'phpMyAdmin '.(($manager['phpmyadmin_version'] ?? '') ?: '('.__('Ubuntu paketi').')') : null,
+                                    ($manager['adminer'] ?? false) ? 'Adminer '.(($manager['adminer_version'] ?? '') ?: '('.__('Ubuntu paketi').')') : null,
+                                ])->filter()->join(', ') ?: '—' }}
                                 <span class="text-muted">{{ __('· Serfex\'in kendi web sunucusunda, müşteri sitelerinden ayrı') }}</span>
+                                @if (($manager['note'] ?? '') !== '')
+                                    <span class="mt-1.5 block text-2xs text-warn">{{ $manager['note'] }}</span>
+                                @endif
+                                @foreach (['phpmyadmin' => 'phpMyAdmin', 'adminer' => 'Adminer'] as $tool => $toolName)
+                                    @if (($manager[$tool.'_upgrade'] ?? '') !== '')
+                                        <span class="mt-1.5 block text-2xs text-muted"><x-t text=":version sürümüne :link sayfasından yükseltilebilir."><x-slot:version>{{ $toolName }} {{ $manager[$tool.'_upgrade'] }}</x-slot:version><x-slot:link><a href="{{ route('components.index', ['tab' => 'databases']) }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi') }}</a></x-slot:link></x-t></span>
+                                    @endif
+                                @endforeach
                             @else
                                 <span class="text-muted">{{ __('Henüz kurulmadı.') }}</span>
                             @endif

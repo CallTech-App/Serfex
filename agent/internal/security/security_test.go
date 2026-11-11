@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -167,6 +168,30 @@ func TestWAFEvents(t *testing.T) {
 	}
 	if ev, _ := m.WAFEvents(EventsSpec{Since: oldest.Time}); len(ev.Events) != 0 && ev.Events[0].ID == oldest.ID {
 		t.Fatalf("since filter: %+v", ev.Events)
+	}
+}
+
+// CRS 4.25's events (taken from libmodsecurity 3.0.12, Ubuntu 24.04's)
+// read the same: the score as the score, the rules that matched as hits.
+func TestWAFEventsCRS4(t *testing.T) {
+	m, sim := newTest(t)
+	installWAF(t, sim)
+	data, err := os.ReadFile("testdata/audit-crs4.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, sim, component.ModSecurityLog, string(data), 0o600)
+	ev, err := m.WAFEvents(EventsSpec{})
+	if err != nil || len(ev.Events) != 1 {
+		t.Fatalf("%+v %v", ev, err)
+	}
+	e := ev.Events[0]
+	ids := []int{}
+	for _, r := range e.Rules {
+		ids = append(ids, r.ID)
+	}
+	if !e.Blocked || e.Score != 23 || e.Status != 403 || fmt.Sprint(ids) != "[920350 942100 942190 942270 942360]" {
+		t.Fatalf("event = %+v", e)
 	}
 }
 

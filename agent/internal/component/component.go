@@ -21,7 +21,9 @@
 //	/var/lib/serfex/components/runs/<run>.log   operation logs, kept 90 days
 //	/var/lib/serfex/components/latest.json      newest Node.js and Composer versions, from component.check
 //	/var/lib/serfex/backups/components/         configuration archived before a removal
-//	/etc/serfex/components.json                 settings (ModSecurity mode and paranoia level)
+//	/var/lib/serfex/components/crs-kept.json    the ModSecurity rules an upgrade keeps, until when
+//	/etc/serfex/components.json                 settings (ModSecurity mode, paranoia level and rules)
+//	/opt/serfex/crs/<version>/                  OWASP Core Rule Set releases
 package component
 
 import (
@@ -39,10 +41,13 @@ import (
 
 	"github.com/calltech-app/serfex/agent/internal/aptcache"
 	"github.com/calltech-app/serfex/agent/internal/database"
+	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/i18n"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
+	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/php"
+	"github.com/calltech-app/serfex/agent/internal/pinned"
 	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/txn"
 )
@@ -111,6 +116,11 @@ type Manager struct {
 
 	// PHP writes the php.ini defaults of a newly installed PHP version.
 	PHP *php.Manager
+	// DNS is the DNS server, listed as PowerDNS; nil leaves it out.
+	DNS *dns.Manager
+	// Mail is the mail server, whose spam filter is listed as Rspamd;
+	// nil leaves it out.
+	Mail *mail.Manager
 	// Addresses returns the server's own addresses, which Fail2ban never
 	// bans.
 	Addresses func() []string
@@ -118,6 +128,9 @@ type Manager struct {
 	// güvenliği), nil when it never changed them; the sshd jail watches
 	// those ports instead of 22.
 	SSHPorts func() []int
+	// Download fetches a release archive (ModSecurity's rules); nil on
+	// a dry run, which writes stand-ins.
+	Download func(ctx context.Context, url string) ([]byte, error)
 	// Fail, when set, is asked before each step of an operation; an error
 	// makes the step fail (tests and the real-host test's rollback check).
 	Fail func(id, step string) error
@@ -131,6 +144,9 @@ type Manager struct {
 func NewManager(h host.Host, sites *site.Manager, db *database.Manager, l *laravel.Manager) *Manager {
 	_, sim := h.(*host.Simulator)
 	m := &Manager{h: h, sim: sim, sites: sites, db: db, laravel: l, busy: map[string]string{}, now: time.Now}
+	if !sim {
+		m.Download = pinned.Download
+	}
 	m.comps = map[string]*component{}
 	for _, c := range catalog() {
 		m.comps[c.id] = c
@@ -273,9 +289,17 @@ func (m *Manager) List(ctx context.Context) List {
 				s.Upgrade = m.db.Offer(id, s.Version)
 				s.Kept = m.db.KeptVersion(id)
 			}
+			if c.series != nil {
+				s.Kept = c.series.kept(m)
+				if s.Kept == nil {
+					s.Upgrade = c.series.offer(ctx, m, s.Version)
+				}
+			}
 		} else {
 			var cand aptcache.Candidate
 			switch {
+			case c.release != "":
+				cand = aptcache.Candidate{Version: c.release, From: c.from}
 			case c.choices != nil:
 				// Archives apt does not list were read by the last check.
 				s.Choices = c.choices(ctx, m, false)
@@ -315,6 +339,11 @@ func (m *Manager) Check(ctx context.Context) (List, error) {
 	// Old database server versions kept after an upgrade go when their
 	// time is up.
 	m.db.PruneKept(ctx, nil)
+	for _, c := range m.comps {
+		if c.series != nil && c.isInstalled(m) {
+			c.series.prune(ctx, m)
+		}
+	}
 	if _, err := m.h.Run(ctx, host.Command{Name: "apt-get", Args: []string{"update", "-q"}, Env: aptEnv}); err != nil {
 		m.op.Unlock()
 		return List{}, opError(fmt.Errorf("apt-get update failed: %w", err))
@@ -426,6 +455,12 @@ func (m *Manager) RemoveOld(ctx context.Context, spec OpSpec) (Result, error) {
 	return m.operate(ctx, spec, "remove-old")
 }
 
+// Revert goes back to the version an upgrade kept (PowerDNS, Rspamd and
+// ModSecurity's rules).
+func (m *Manager) Revert(ctx context.Context, spec OpSpec) (Result, error) {
+	return m.operate(ctx, spec, "revert")
+}
+
 func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Result, error) {
 	c, err := m.get(spec.ID)
 	if err != nil {
@@ -463,6 +498,8 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		err = o.upgrade()
 	case "remove-old":
 		err = o.removeOld()
+	case "revert":
+		err = o.revert()
 	default:
 		err = o.update()
 	}
@@ -470,7 +507,7 @@ func (m *Manager) operate(ctx context.Context, spec OpSpec, action string) (Resu
 		fmt.Fprintf(w, "✗ %s\n", lastLine(err.Error()))
 		return Result{}, opError(err)
 	}
-	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi", "upgrade": "Yükseltildi", "remove-old": "Eski sürüm kaldırıldı"}[action]))
+	fmt.Fprintln(w, "✓ "+i18n.T(ctx, map[string]string{"install": "Kuruldu", "remove": "Kaldırıldı", "update": "Güncellendi", "upgrade": "Yükseltildi", "remove-old": "Eski sürüm kaldırıldı", "revert": "Eski sürüme dönüldü"}[action]))
 	for _, s := range m.List(ctx).Components {
 		if s.ID == c.id {
 			return Result{Action: action, Status: s}, nil
@@ -563,6 +600,9 @@ type Settings struct {
 	// ModSecurityParanoia is the CRS paranoia level, 1 (few false
 	// positives) to 4.
 	ModSecurityParanoia int `json:"modsecurity_paranoia"`
+	// CRS is the Core Rule Set release in use under /opt/serfex/crs, ""
+	// for Ubuntu's package. Only installs and upgrades change it.
+	CRS string `json:"crs,omitempty"`
 }
 
 func (m *Manager) loadSettings() Settings {

@@ -8,8 +8,10 @@ use App\Jobs\RemoveLaravelApp;
 use App\Jobs\RunComponentOperation;
 use App\Jobs\SetupDatabaseServers;
 use App\Jobs\SetupMailServer;
+use App\Jobs\SyncDnsZone;
 use App\Livewire\Components\ComponentIndex;
 use App\Livewire\Databases\DatabaseIndex;
+use App\Livewire\Dns\DnsSettingsPage;
 use App\Livewire\Laravel\Sections\Environment;
 use App\Livewire\Sites\SiteIndex;
 use App\Livewire\Sites\SitePhp;
@@ -17,6 +19,7 @@ use App\Models\Backup;
 use App\Models\ComponentOperation;
 use App\Models\Customer;
 use App\Models\Database;
+use App\Models\DnsZone;
 use App\Models\LaravelApp;
 use App\Models\LaravelProcess;
 use App\Models\Setting;
@@ -61,6 +64,8 @@ class ComponentsTest extends TestCase
             'mysql' => ['id' => 'mysql', 'installed' => true, 'version' => '8.0.43', 'running' => true, 'units' => ['mysql']],
             'mariadb' => ['id' => 'mariadb', 'installed' => false, 'running' => false],
             'postgresql' => ['id' => 'postgresql', 'installed' => false, 'running' => false],
+            'phpmyadmin' => ['id' => 'phpmyadmin', 'installed' => true, 'version' => '5.2.3', 'running' => true, 'required' => 'the web manager of MySQL and MariaDB'],
+            'adminer' => ['id' => 'adminer', 'installed' => false, 'running' => false, 'candidate' => '6.3.0', 'candidate_from' => 'github.com/vrana/adminer', 'required' => 'the web manager of PostgreSQL'],
             'redis' => ['id' => 'redis', 'installed' => true, 'version' => '7.0.15', 'running' => true],
             'memcached' => ['id' => 'memcached', 'installed' => false, 'running' => false],
             'node24' => ['id' => 'node24', 'installed' => true, 'version' => '24.10.0', 'running' => true, 'default' => true],
@@ -125,7 +130,10 @@ class ComponentsTest extends TestCase
         Livewire::test(ComponentIndex::class)->set('tab', 'databases')
             ->assertSee('MySQL')
             ->assertSee('MySQL kurulu; MariaDB onunla aynı anda kurulamaz.')
-            ->assertSee('phpMyAdmin ve Adminer');
+            ->assertSee('Web veritabanı yöneticisi')
+            ->assertSee('MySQL ve MariaDB için tarayıcıdan yönetim')
+            ->assertSee('Veritabanı sayfalarında')
+            ->assertSee('PostgreSQL kurulduğunda onunla birlikte gelir.');
     }
 
     public function test_install_runs_in_the_background_with_its_log(): void
@@ -272,6 +280,213 @@ class ComponentsTest extends TestCase
         Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
         (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
         $this->assertSame([['id' => 'postgresql', 'run' => $op->run, 'port' => 8443]], $this->agent->called('component.remove-old'));
+    }
+
+    public function test_powerdns_upgrades_with_undo_for_a_week(): void
+    {
+        Setting::put('dns.server', ['state' => 'ready', 'version' => '4.8.3', 'at' => now()->toIso8601String()]);
+        DnsZone::factory()->create(['name' => 'kahveatolyesi.com.tr']);
+        DnsZone::factory()->create(['name' => 'ornek.com.tr']);
+        $this->components['powerdns'] = ['id' => 'powerdns', 'installed' => true, 'version' => '4.8.3-4build3', 'running' => true, 'units' => ['pdns@serfex'],
+            'required' => 'the domains\' DNS server', 'upgrade' => ['from' => '4.8', 'to' => '5.1']];
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('PowerDNS')
+            ->assertSee('2 bölge')
+            ->assertSee('PowerDNS 5.1 sürümüne yükseltilebilir')
+            ->assertSee('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.')
+            ->call('ask', 'powerdns', 'upgrade')
+            ->assertSee('PowerDNS 5.1 sürümüne yükseltilsin mi?')
+            ->assertSee('PowerDNS 4.8.3')
+            ->assertSee('2 bölge kaydedilip denetlenecek')
+            ->assertSee('DNS sunucusu yaklaşık bir dakika yanıt vermez');
+        // The DNS settings page shows the version and the offer.
+        $this->assertSame(['5.1', '4.8.3'], [Setting::get('dns.server')['upgrade'], Setting::get('dns.server')['version']]);
+        // ...also when Software Management has not been opened since.
+        Setting::put('dns.server', ['state' => 'ready', 'version' => '4.8.3', 'at' => now()->toIso8601String()]);
+        Livewire::test(DnsSettingsPage::class)
+            ->assertSee('PowerDNS 4.8.3')
+            ->assertSee('Yazılım Yönetimi');
+        $this->assertSame('5.1', Setting::get('dns.server')['upgrade']);
+
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['powerdns', 'upgrade', '5.1'], [$op->component, $op->action, $op->detail]);
+        // A minute or two: the default queue.
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'powerdns', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+
+        // Upgraded: going back is offered for the week the old version is kept.
+        $this->components['powerdns'] = ['id' => 'powerdns', 'installed' => true, 'version' => '5.1.5-1pdns.noble', 'running' => true, 'units' => ['pdns@serfex'],
+            'required' => 'the domains\' DNS server', 'kept' => ['product' => 'powerdns', 'from' => '4.8.3', 'to' => '5.1.5', 'until' => '2026-11-17T22:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('5.1.5-1pdns.noble')
+            ->assertSee('PowerDNS 4.8.3 17.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Eski sürüme dön')
+            ->assertSee('Eski sürümü kaldır')
+            ->assertDontSee('Sürümü yükselt');
+        $this->assertSame(['5.1.5', null], [Setting::get('dns.server')['version'], Setting::get('dns.server')['upgrade']]);
+        $page->call('ask', 'powerdns', 'revert')
+            ->assertSee('PowerDNS 4.8.3 sürümüne dönülsün mü?')
+            ->assertSee('yükseltmeden sonra yaptığınız değişiklikler korunur')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['powerdns', 'revert', '4.8.3'], [$op->component, $op->action, $op->detail]);
+        $this->agent->answers['component.revert'] = ['action' => 'revert', 'status' => []];
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'powerdns', 'run' => $op->run]], $this->agent->called('component.revert'));
+        // The database from before the upgrade is back: every zone is written again.
+        Queue::assertPushed(SyncDnsZone::class, 2);
+
+        // Database servers do not go back; PowerDNS cannot be removed here.
+        $this->assertSame('Bu bileşen buradan yönetilemiyor.', app(Components::class)->start('mysql', 'revert', null));
+        $this->assertSame('Gerekli. Alan adlarınızın DNS kayıtlarını o yayınlar.', app(Components::class)->start('powerdns', 'remove', null));
+    }
+
+    public function test_rspamd_upgrades_with_undo_for_a_week(): void
+    {
+        // Before the mail server is set up: what its setup brings.
+        $this->components['rspamd'] = ['id' => 'rspamd', 'installed' => false, 'running' => false, 'candidate' => '4.2', 'candidate_from' => 'rspamd.com',
+            'required' => 'the mail server\'s spam filter'];
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('Spam filtresi ve DKIM imzası')
+            ->assertSee('Rspamd deposu (rspamd.com)')
+            ->assertSee('E-posta sunucusu kurulduğunda burada görünür')
+            ->assertSee('E-postaya git');
+        $this->assertSame('E-posta sunucusu kurulduğunda burada görünür; E-posta sayfasından kurulur.', app(Components::class)->start('rspamd', 'install', null));
+
+        $this->components['rspamd'] = ['id' => 'rspamd', 'installed' => true, 'version' => '3.8.1-1ubuntu3', 'running' => true, 'units' => ['rspamd'],
+            'required' => 'the mail server\'s spam filter', 'upgrade' => ['from' => '3.8', 'to' => '4.2']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('Rspamd 4.2 sürümüne yükseltilebilir')
+            ->assertSee('Henüz posta kutusu yok')
+            ->assertSee('E-posta ayarları')
+            ->assertSee('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.')
+            ->call('ask', 'rspamd', 'upgrade')
+            ->assertSee('Rspamd 4.2 sürümüne yükseltilsin mi?')
+            ->assertSee('Rspamd 3.8.1')
+            ->assertSee('/etc/rspamd')
+            ->assertSee('yaklaşık bir dakika boyunca posta spam denetimi ve DKIM imzası olmadan iletilir');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['rspamd', 'upgrade', '4.2'], [$op->component, $op->action, $op->detail]);
+        // A minute or two: the default queue.
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'rspamd', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+
+        // Upgraded: going back is offered for the week the old version is kept.
+        $this->components['rspamd'] = ['id' => 'rspamd', 'installed' => true, 'version' => '4.2.3-1~50bde75~noble', 'running' => true, 'units' => ['rspamd'],
+            'required' => 'the mail server\'s spam filter', 'kept' => ['product' => 'rspamd', 'from' => '3.8.1', 'to' => '4.2.3', 'until' => '2026-11-17T22:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('Rspamd 3.8.1 17.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Eski sürüme dön')
+            ->assertDontSee('Sürümü yükselt')
+            ->call('ask', 'rspamd', 'remove-old')
+            ->assertSee('Rspamd 3.8.1 silinsin mi?')
+            ->assertSee('eski paket ve ayarların kopyası silinir')
+            ->call('ask', 'rspamd', 'revert')
+            ->assertSee('Rspamd 3.8.1 sürümüne dönülsün mü?')
+            ->assertSee('DKIM ve spam ayarları korunur')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['rspamd', 'revert', '3.8.1'], [$op->component, $op->action, $op->detail]);
+        $this->agent->answers['component.revert'] = ['action' => 'revert', 'status' => []];
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'rspamd', 'run' => $op->run]], $this->agent->called('component.revert'));
+        Queue::assertNotPushed(SyncDnsZone::class);
+        $this->assertSame('Gerekli. Posta sunucusu gelen postayı onunla denetler, gideni onunla imzalar.', app(Components::class)->start('rspamd', 'remove', null));
+    }
+
+    public function test_database_tools_upgrade_with_undo_for_a_week(): void
+    {
+        // Servers set up before 0.1.72 serve Ubuntu's phpMyAdmin; Adminer
+        // comes with PostgreSQL.
+        $this->components['phpmyadmin'] = ['id' => 'phpmyadmin', 'installed' => true, 'version' => '4:5.2.1+dfsg-3', 'running' => true,
+            'required' => 'the web manager of MySQL and MariaDB', 'upgrade' => ['from' => '5.2.1', 'to' => '5.2.3']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
+            ->assertSee('phpMyAdmin 5.2.3 sürümüne yükseltilebilir')
+            ->assertSee('Veritabanı sunucusuyla birlikte kurulur ve kaldırılır.')
+            ->assertSee('Adminer sürümü (GitHub)')
+            ->call('ask', 'phpmyadmin', 'upgrade')
+            ->assertSee('phpMyAdmin 5.2.3 sürümüne yükseltilsin mi?')
+            ->assertSee('phpMyAdmin 5.2.1')
+            ->assertSee('SHA-256')
+            ->assertSee('5.2.2\'de kapatılan iki XSS açığı')
+            ->assertSee('panel bir iki saniye yanıt vermeyebilir');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['phpmyadmin', 'upgrade', '5.2.3'], [$op->component, $op->action, $op->detail]);
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'phpmyadmin', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+        foreach ([['phpmyadmin', 'install'], ['phpmyadmin', 'update'], ['phpmyadmin', 'remove'], ['adminer', 'install']] as [$id, $action]) {
+            $this->assertSame('Bu bileşen buradan yönetilemiyor.', app(Components::class)->start($id, $action, null));
+        }
+
+        // Upgraded: going back is offered for the week Ubuntu's package is kept.
+        $this->components['phpmyadmin'] = ['id' => 'phpmyadmin', 'installed' => true, 'version' => '5.2.3', 'running' => true,
+            'required' => 'the web manager of MySQL and MariaDB', 'kept' => ['product' => 'phpmyadmin', 'from' => '5.2.1', 'to' => '5.2.3', 'until' => '2026-11-18T12:00:00Z']];
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'databases')
+            ->assertSee('phpMyAdmin 5.2.1 18.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Eski sürüme dön')
+            ->assertDontSee('Sürümü yükselt')
+            ->call('ask', 'phpmyadmin', 'remove-old')
+            ->assertSee('phpMyAdmin 5.2.1 silinsin mi?')
+            ->assertSee('Yükseltmeden kalan önceki sürüm kaldırılır.')
+            ->call('ask', 'phpmyadmin', 'revert')
+            ->assertSee('phpMyAdmin 5.2.1 sürümüne dönülsün mü?')
+            ->assertSee('Veritabanlarına dokunulmaz.')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['phpmyadmin', 'revert', '5.2.1'], [$op->component, $op->action, $op->detail]);
+        $this->agent->answers['component.revert'] = ['action' => 'revert', 'status' => []];
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'phpmyadmin', 'run' => $op->run]], $this->agent->called('component.revert'));
+    }
+
+    public function test_modsecurity_rules_upgrade_with_undo_for_a_week(): void
+    {
+        // One site meets the server's blocking mode, one has the WAF off.
+        $this->site();
+        Site::factory()->create(['domain' => 'ornek.com.tr', 'status' => 'active', 'waf_mode' => 'off']);
+        $this->components['modsecurity'] = ['id' => 'modsecurity', 'installed' => true, 'version' => '3.3.5-2', 'running' => true,
+            'settings' => ['mode' => 'block', 'paranoia' => 1], 'upgrade' => ['from' => '3.3.5', 'to' => '4.25.0']];
+
+        $page = Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('OWASP CRS 4.25.0 sürümüne yükseltilebilir')
+            ->call('ask', 'modsecurity', 'upgrade')
+            ->assertSee('OWASP CRS 4.25.0 sürümüne yükseltilsin mi?')
+            ->assertSee('OWASP CRS 3.3.5')
+            ->assertSee('SHA-256')
+            ->assertSee('1 site engelleme kipinde')
+            ->assertSee('Kip, seviye ve site istisnaları olduğu gibi kalır');
+        $page->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['modsecurity', 'upgrade', '4.25.0'], [$op->component, $op->action, $op->detail]);
+        Queue::assertPushed(RunComponentOperation::class, fn ($job) => $job->operation->is($op) && $job->connection === null);
+        (new RunComponentOperation($op))->handle($this->agent, app(Components::class));
+        $this->assertSame([['id' => 'modsecurity', 'run' => $op->run]], $this->agent->called('component.upgrade'));
+        $op->delete();
+
+        $this->components['modsecurity'] = ['id' => 'modsecurity', 'installed' => true, 'version' => '4.25.0', 'running' => true,
+            'settings' => ['mode' => 'block', 'paranoia' => 1], 'kept' => ['product' => 'modsecurity', 'from' => '3.3.5', 'to' => '4.25.0', 'until' => '2026-11-17T22:00:00Z']];
+        Livewire::test(ComponentIndex::class)->set('tab', 'other')
+            ->assertSee('OWASP CRS 3.3.5 17.11.2026 tarihine kadar saklanıyor')
+            ->assertSee('Engelleme kipinde · seviye 1')
+            ->call('ask', 'modsecurity', 'remove-old')
+            ->assertSee('OWASP CRS 3.3.5 silinsin mi?')
+            ->assertSee('Yükseltmeden kalan önceki kurallar kaldırılır')
+            ->call('ask', 'modsecurity', 'revert')
+            ->assertSee('OWASP CRS 3.3.5 sürümüne dönülsün mü?')
+            ->assertSee('ModSecurity önceki kurallara döner')
+            ->call('confirm');
+        $op = ComponentOperation::sole();
+        $this->assertSame(['modsecurity', 'revert', '3.3.5'], [$op->component, $op->action, $op->detail]);
     }
 
     public function test_upgrade_waits_for_backups_and_a_running_server(): void
