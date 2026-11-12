@@ -278,6 +278,75 @@ class CustomersTest extends TestCase
         $this->assertFalse($site->fresh()->isSuspended());
     }
 
+    public function test_the_list_deletes_a_selected_customer_after_typing_its_account(): void
+    {
+        $customer = Customer::factory()->withLogin()->create(['company' => 'Çelik Çorap', 'username' => 'celik']);
+        $site = $this->site($customer, 'celikcorap.shop');
+        $customer->update(['suspended_at' => now()]);
+
+        $this->get('/customers')->assertOk()->assertSee('Sil');
+        Livewire::test(CustomerIndex::class)
+            ->set('selected', [$customer->id])
+            ->call('openDeleteSelected')
+            ->assertSet('deletingSelected', true)
+            ->assertSee('Çelik Çorap silinsin mi?')
+            ->assertSee('Onaylamak için')
+            ->set('confirmDelete', 'yanlis')
+            ->call('deleteSelected')
+            ->assertHasErrors('confirmDelete')
+            ->set('confirmDelete', 'celik')
+            ->call('deleteSelected')
+            ->assertHasNoErrors()
+            ->assertSet('deletingSelected', false)
+            ->assertSet('selected', [])
+            ->assertDispatched('toast');
+
+        $this->assertSoftDeleted($customer);
+        $this->assertFalse($customer->fresh()->delete_sites, 'sites stay unless asked');
+        $this->assertTrue($site->fresh()->isSuspended());
+        Queue::assertPushed(PurgeCustomer::class, fn ($job) => $job->customerId === $customer->id);
+        $this->get('/customers')->assertSee('sularında silinecek')->assertSee('Geri al');
+    }
+
+    public function test_the_list_deletes_several_customers_with_their_sites_and_undo_brings_them_back(): void
+    {
+        $a = Customer::factory()->withLogin()->create(['username' => 'birinci']);
+        $b = Customer::factory()->withLogin()->create(['username' => 'ikinci']);
+        $other = Customer::factory()->create(['username' => 'kalan']);
+        $this->site($a, 'birinci.com.tr');
+
+        $test = Livewire::test(CustomerIndex::class)
+            ->set('selected', [$a->id, $b->id])
+            ->call('openDeleteSelected')
+            ->assertSee('2 müşteri silinsin mi?')
+            ->assertSee('birinci')->assertSee('ikinci')
+            ->set('confirmDelete', 'birinci')
+            ->call('deleteSelected')
+            ->assertHasErrors('confirmDelete')
+            ->set('confirmDelete', '2')
+            ->set('deleteSites', true)
+            ->call('deleteSelected')
+            ->assertHasNoErrors();
+
+        $this->assertSoftDeleted($a);
+        $this->assertSoftDeleted($b);
+        $this->assertNotSoftDeleted($other);
+        $this->assertTrue($a->fresh()->delete_sites);
+        Queue::assertPushed(PurgeCustomer::class, 2);
+
+        $test->call('undoDelete', [$a->id, $b->id]);
+        $this->assertNotSoftDeleted($a);
+        $this->assertNotSoftDeleted($b);
+        $this->assertNull($a->fresh()->delete_sites);
+    }
+
+    public function test_the_list_does_not_open_delete_with_nothing_selected(): void
+    {
+        Livewire::test(CustomerIndex::class)
+            ->call('openDeleteSelected')
+            ->assertSet('deletingSelected', false);
+    }
+
     public function test_purge_deletes_the_customer_and_optionally_their_sites(): void
     {
         $keep = Customer::factory()->withLogin()->create(['username' => 'kalan']);

@@ -6239,5 +6239,12 @@
     "phpMyAdmin :version sürümünde 5.2.2'de kapatılan iki XSS açığı var; yükseltme bunları kapatır. Veritabanlarına dokunulmaz.": "phpMyAdmin :version has two XSS issues that were fixed in 5.2.2; the upgrade closes them. Databases are not touched.",
     "Veritabanlarına dokunulmaz; yalnızca yönetim aracı değişir.": "Databases are not touched; only the management tool changes.",
     "Serfex'in web sunucusu önceki sürümle yeniden başlatılır ve açıldığı denetlenir; panel bir iki saniye yanıt vermeyebilir. Veritabanlarına dokunulmaz.": "Serfex's web server restarts with the version before, and it is checked to open; the panel may not answer for a second or two. Databases are not touched.",
-    "Yükseltmeden kalan önceki sürüm kaldırılır. Bundan sonra ona dönülemez.": "The version before, left by the upgrade, is removed. After this you cannot go back to it."
+    "Yükseltmeden kalan önceki sürüm kaldırılır. Bundan sonra ona dönülemez.": "The version before, left by the upgrade, is removed. After this you cannot go back to it.",
+    ":count müşteri silinecek. :undo_seconds dakika içinde listeden geri alabilirsiniz.": ":count customer will be deleted. You can undo it from the list within :undo_seconds minutes.|:count customers will be deleted. You can undo it from the list within :undo_seconds minutes.",
+    ":count müşteri silinsin mi?": "Delete :count customer?|Delete :count customers?",
+    "Müşteriler ve panel girişleri silinir. :undo_seconds dakika içinde müşteri listesinden geri alabilirsiniz; bu sürede siteleri askı sayfası gösterir.": "The customers and their panel sign-ins are deleted. You can undo it from the customer list within :undo_seconds minutes; meanwhile their sites show the suspension page.",
+    "Müşterileri sil": "Delete customers",
+    "Onaylamak için :number yazın": "Type :number to confirm",
+    "Seçili müşteri sayısını yazın.": "Type the number of selected customers.",
+    "Sil:selected": "Delete:selected"
 }
