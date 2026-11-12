@@ -7,6 +7,7 @@ use App\Models\MailDomain;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Mail\MailDomains;
+use App\Services\Mail\WebmailAddresses;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -44,6 +45,7 @@ class DeleteMailDomain implements ShouldQueue
         }
 
         if ($this->purge) {
+            app(WebmailAddresses::class)->forget($domain);
             $domain->delete();
 
             return;

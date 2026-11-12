@@ -77,6 +77,39 @@
         </div>
 
         @if ($tab === 'mailboxes')
+            @if ($address && ! $closed)
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface-2/50 px-5 py-3 text-[13.5px]" x-data>
+                    <x-icon name="inbox" class="hidden text-muted sm:block" />
+                    <div class="min-w-0 flex-1">
+                        <p class="flex flex-wrap items-center gap-2">
+                            <span class="text-muted">{{ __('Web posta adresi') }}</span>
+                            <span class="font-mono font-medium break-all">{{ $address['url'] }}</span>
+                            <button type="button" @click="navigator.clipboard?.writeText(@js($address['url']))" class="text-muted hover:text-fg" aria-label="{{ __('Adresi kopyala') }}"><x-icon name="copy" class="size-3.5" /></button>
+                            <x-status-badge :status="$address['badge']" />
+                        </p>
+                        <p class="mt-0.5 text-2xs text-muted">
+                            @switch($address['state'])
+                                @case('ready')
+                                    {{ __('Posta kutusu kullanıcıları buradan, panele girmeden, e-posta adresi ve parolasıyla girer. Bu adresi onlara verin.') }}
+                                    @break
+                                @case('dns')
+                                    <x-t text=":name henüz bu sunucuyu göstermiyor; DNS kaydı yayılınca sertifika kendiliğinden alınır. Bu arada :webmail çalışır."><x-slot:name><span class="font-mono">webmail.{{ $domain->name }}</span></x-slot:name><x-slot:webmail><span class="font-mono">{{ $webmail }}</span></x-slot:webmail></x-t>
+                                    @break
+                                @case('failed')
+                                    <x-t text="Sertifika alınamadı: :reason Serfex günde bir yeniden dener. Bu arada :webmail çalışır."><x-slot:reason>{{ $address['error'] }}</x-slot:reason><x-slot:webmail><span class="font-mono">{{ $webmail }}</span></x-slot:webmail></x-t>
+                                    @break
+                                @default
+                                    <x-t text="Let's Encrypt sertifikası alınıyor; birkaç dakika sürer. Bu arada :webmail çalışır."><x-slot:webmail><span class="font-mono">{{ $webmail }}</span></x-slot:webmail></x-t>
+                            @endswitch
+                        </p>
+                    </div>
+                    @if ($address['state'] === 'ready')
+                        <a href="{{ $address['url'] }}" target="_blank" rel="noopener" class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[13px] hover:bg-surface-2">
+                            <x-icon name="external-link" class="size-3.5" />{{ __('Aç') }}
+                        </a>
+                    @endif
+                </div>
+            @endif
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
                 <button type="button" wire:click="openCreate" @disabled($closed) class="flex h-9 items-center gap-2 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">
                     <x-icon name="plus" />{{ __('Posta kutusu oluştur') }}
@@ -319,6 +352,9 @@
                 <summary class="cursor-pointer text-[13px] text-accent">{{ __('E-posta istemcisi ayarları') }}</summary>
                 @if ($hostname)
                     <dl class="mt-3 grid max-w-xl grid-cols-[110px_1fr] gap-y-2 text-[13px]">
+                        @if ($address || $webmail)
+                            <dt class="text-muted">{{ __('Web posta') }}</dt><dd class="font-mono break-all">{{ $address && $address['state'] === 'ready' ? $address['url'] : $webmail }}</dd>
+                        @endif
                         <dt class="text-muted">{{ __('Kullanıcı adı') }}</dt><dd><x-t text="Tam e-posta adresi, örneğin :name"><x-slot:name><span class="font-mono">{{ __('bilgi') }}{{ '@'.$domain->name }}</span></x-slot:name></x-t></dd>
                         <dt class="text-muted">{{ __('IMAP') }}</dt><dd class="font-mono">{{ $hostname }} · 993 · SSL/TLS</dd>
                         <dt class="text-muted">{{ __('POP3') }}</dt><dd class="font-mono">{{ $hostname }} · 995 · SSL/TLS</dd>

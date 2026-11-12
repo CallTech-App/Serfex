@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Services\Agent\AgentClient;
 use App\Services\Mail\MailSettings;
 use App\Services\Mail\ReverseDns;
+use App\Services\Mail\WebmailAddresses;
 use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use App\Support\Hostnames;
@@ -38,6 +39,9 @@ class MailSettingsPage extends Component
 
     public bool $auto = true;
 
+    /** Every mail domain gets its own webmail.<domain> address. */
+    public bool $domainWebmail = true;
+
     public function mount(MailSettings $settings, AgentClient $agent): void
     {
         $this->fill([
@@ -46,6 +50,7 @@ class MailSettingsPage extends Component
             'hourlyLimit' => $settings->hourlyLimit(),
             'webmail' => $settings->webmail() ? $settings->webmailApp() : 'off',
             'auto' => $settings->autoEnable(),
+            'domainWebmail' => $settings->domainWebmail(),
         ]);
         $this->refreshServer($agent, $settings);
     }
@@ -77,8 +82,11 @@ class MailSettingsPage extends Component
             'webmail' => $this->webmail !== 'off',
             // Turned off, the application chosen before is kept.
             'webmail_app' => $this->webmail === 'off' ? $settings->webmailApp() : $this->webmail,
+            'domain_webmail' => $this->domainWebmail,
             'auto' => $this->auto,
         ]);
+        // Saved once, the choice is made: no longer offered as new.
+        Setting::put('mail.domain_webmail_offer', false);
         $applied = $this->applyToServer($settings, $previous);
 
         $this->dispatch('toast',
@@ -101,6 +109,24 @@ class MailSettingsPage extends Component
         $this->dispatch('toast', message: __('Değişiklik geri alındı.'));
     }
 
+    /**
+     * "Aç" on the offer shown after the update: turn on the domain
+     * addresses alone, with Undo.
+     */
+    public function enableDomainWebmail(MailSettings $settings): void
+    {
+        $previous = $this->current($settings);
+        $settings->save(['domain_webmail' => true]);
+        Setting::put('mail.domain_webmail_offer', false);
+        $this->applyToServer($settings, $previous);
+        $this->domainWebmail = true;
+        $this->dispatch('toast',
+            message: __('Alan adlarının web posta adresleri açılıyor: DNS kayıtları yazıldı, sertifikalar alınıyor.'),
+            source: $this->getId(),
+            undo: ['method' => 'undoSave', 'args' => [$previous]],
+        );
+    }
+
     public function issueCertificate(MailSettings $settings, Certificates $certificates): void
     {
         $hostname = $settings->hostname();
@@ -119,6 +145,7 @@ class MailSettingsPage extends Component
             'setup' => $settings->server(),
             'quotas' => MailSettings::QUOTAS,
             'reverseDns' => $settings->isSetUp() ? app(ReverseDns::class)->problem() : null,
+            'offerDomainWebmail' => $settings->offerDomainWebmail(),
         ]);
     }
 
@@ -130,6 +157,9 @@ class MailSettingsPage extends Component
     private function applyToServer(MailSettings $settings, array $previous): bool
     {
         $now = $this->current($settings);
+        if (($previous['domain_webmail'] ?? $now['domain_webmail']) !== $now['domain_webmail']) {
+            app(WebmailAddresses::class)->switched($now['domain_webmail']);
+        }
         $changed = $now['hostname'] !== $previous['hostname'] || $now['hourly_limit'] !== $previous['hourly_limit'] || $now['webmail'] !== $previous['webmail']
             || ($now['webmail'] && $now['webmail_app'] !== $previous['webmail_app']);
         if (! $changed || ! $settings->isSetUp() || ($settings->server()['state'] ?? null) === 'installing') {
@@ -143,7 +173,7 @@ class MailSettingsPage extends Component
     }
 
     /**
-     * @return array{hostname: ?string, default_quota_mb: int, hourly_limit: int, webmail: bool, webmail_app: string, auto: bool}
+     * @return array{hostname: ?string, default_quota_mb: int, hourly_limit: int, webmail: bool, webmail_app: string, domain_webmail: bool, auto: bool}
      */
     private function current(MailSettings $settings): array
     {
@@ -153,6 +183,7 @@ class MailSettingsPage extends Component
             'hourly_limit' => $settings->hourlyLimit(),
             'webmail' => $settings->webmail(),
             'webmail_app' => $settings->webmailApp(),
+            'domain_webmail' => $settings->domainWebmail(),
             'auto' => $settings->autoEnable(),
         ];
     }

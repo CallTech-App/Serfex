@@ -6247,5 +6247,19 @@
     "Müşterileri sil": "Delete customers",
     "Onaylamak için :number yazın": "Type :number to confirm",
     "Seçili müşteri sayısını yazın.": "Type the number of selected customers.",
-    "Sil:selected": "Delete:selected"
+    "Sil:selected": "Delete:selected",
+    ":name henüz bu sunucuyu göstermiyor; DNS kaydı yayılınca sertifika kendiliğinden alınır. Bu arada :webmail çalışır.": ":name does not point at this server yet; the certificate is obtained on its own once the DNS record has spread. Meanwhile :webmail works.",
+    "Adresi kopyala": "Copy address",
+    "Alan adlarının web posta adresleri açılıyor: DNS kayıtları yazıldı, sertifikalar alınıyor.": "Turning on the domains' webmail addresses: DNS records written, certificates being obtained.",
+    "Alan adına özel adres": "Address per domain",
+    "Açınca her posta alan adına :name kaydı ve sertifikası eklenir. Bu sunucuda güncellemeyle kendiliğinden açılmadı.": "Turned on, every mail domain gets a :name record and certificate. On this server the update did not turn it on by itself.",
+    "Her alan adına kendi web posta adresini ver :name": "Give every domain its own webmail address :name",
+    "Her posta alan adına :name için DNS kaydı (Cloudflare'de yalnızca DNS) ve Let's Encrypt sertifikası eklenir; kullanıcılar panele girmeden kendi alan adlarının adresinden girer. Panelden tek tıkla giriş ve :hostname adresi aynen çalışır. Kapatınca Serfex'in yazdığı kayıtlar silinir; Geri al ile döner.": "Every mail domain gets a DNS record for :name (DNS only at Cloudflare) and a Let's Encrypt certificate; users sign in at their own domain's address without the panel. One-click sign-in from the panel and the :hostname address keep working. Turned off, the records Serfex wrote are removed; Undo brings them back.",
+    "Let's Encrypt sertifikası alınıyor; birkaç dakika sürer. Bu arada :webmail çalışır.": "The Let's Encrypt certificate is being obtained; this takes a few minutes. Meanwhile :webmail works.",
+    "Posta kutusu kullanıcıları buradan, panele girmeden, e-posta adresi ve parolasıyla girer. Bu adresi onlara verin.": "Mailbox users sign in here with their email address and password, without the panel. Give them this address.",
+    "Sertifika alınamadı: :reason Serfex günde bir yeniden dener. Bu arada :webmail çalışır.": "The certificate could not be obtained: :reason Serfex tries again once a day. Meanwhile :webmail works.",
+    "Web posta adresi": "Webmail address",
+    "Web posta adresi (IPv6)": "Webmail address (IPv6)",
+    "Yeni: her alan adına kendi web posta adresi": "New: each domain's own webmail address",
+    "posta sunucusu": "the mail server"
 }

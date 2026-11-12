@@ -42,6 +42,13 @@ type tmplData struct {
 	MasterUser    string
 	MasterPass    string
 	DESKey        string
+	// WebmailHosts are mail domains' own webmail addresses
+	// (webmail.<domain>) with their certificates.
+	WebmailHosts []webmailVhost
+}
+
+type webmailVhost struct {
+	Name, CertFile, KeyFile string
 }
 
 func render(t *template.Template, d tmplData) []byte {

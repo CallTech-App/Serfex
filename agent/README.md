@@ -42,6 +42,7 @@ lists every method by area.
 | `mail.mailbox.purge` | `domain`, `name` | deletes the stored mail of a removed mailbox |
 | `mail.usage` | `domain` | bytes stored per mailbox |
 | `mail.webmail.login` | `address` | a one-time `url` (valid one minute) that opens the mailbox in webmail |
+| `mail.webmail.hosts` | `hosts` (`name` webmail.<domain>, `certificate`) | serves webmail at those addresses too (each with its certificate, port 80 redirects to it) and at no others; `changed` |
 | `laravel.tools` | `php_version` | installs Composer and Node.js if missing; returns their versions |
 | `laravel.deploy` | target, `run`, `release`, `source`, `build`, `hooks`, `env`, `health`, `rollback`, `keep`, `seed_from` | builds a release, switches `current` to it, checks health and rolls back on failure; returns `release`, `commit`, `laravel`, `health`, `rolled_back`, `problem` |
 | `laravel.rollback` | target, `run`, `release` | switches `current` back to an earlier release |

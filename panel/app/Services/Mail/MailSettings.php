@@ -55,6 +55,26 @@ class MailSettings
         return (int) Setting::get('mail.hourly_limit', 500);
     }
 
+    /**
+     * Whether every mail domain gets its own webmail address,
+     * webmail.<domain> (WebmailAddresses). On for new servers; servers
+     * set up before 0.1.75 start with it off until an administrator
+     * turns it on.
+     */
+    public function domainWebmail(): bool
+    {
+        return (bool) Setting::get('mail.domain_webmail', true);
+    }
+
+    /**
+     * Whether the settings page still offers the domain addresses as new:
+     * a server updated to 0.1.75 until the setting is saved once.
+     */
+    public function offerDomainWebmail(): bool
+    {
+        return (bool) Setting::get('mail.domain_webmail_offer', false) && ! $this->domainWebmail();
+    }
+
     public function webmail(): bool
     {
         return (bool) Setting::get('mail.webmail', true);
@@ -140,7 +160,7 @@ class MailSettings
     }
 
     /**
-     * @param  array{hostname?: ?string, default_quota_mb?: int, hourly_limit?: int, webmail?: bool, webmail_app?: string, auto?: bool}  $values
+     * @param  array{hostname?: ?string, default_quota_mb?: int, hourly_limit?: int, webmail?: bool, webmail_app?: string, domain_webmail?: bool, auto?: bool}  $values
      */
     public function save(array $values): void
     {
