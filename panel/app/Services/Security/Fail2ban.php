@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Fail2ban's bans, shown as IP blocks: Fail2ban bans addresses on its own
- * (SSH, mail and panel logins); the panel copies its bans into the same
+ * (SSH, mail, webmail and panel logins); the panel copies its bans into the same
  * list as Canlı İzleme's blocks (source "fail2ban", kind = jail), where
  * they can be lifted and the lifting undone.
  *
@@ -29,6 +29,7 @@ class Fail2ban
         'serfex-panel' => 'Panel girişi',
         'dovecot' => 'E-posta girişi (IMAP/POP3)',
         'postfix-sasl' => 'E-posta gönderme girişi',
+        'serfex-webmail' => 'Web posta girişi',
         'recidive' => 'Tekrar eden saldırgan',
     ];
 

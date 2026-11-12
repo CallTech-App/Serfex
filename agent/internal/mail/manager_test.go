@@ -125,6 +125,8 @@ func TestSetupInstallsConfiguresAndStarts(t *testing.T) {
 	if target, err := os.Readlink(sim.Path(roundcubeRoot + "/plugins/serfex_sso")); err != nil || target != webmailPlugin {
 		t.Fatalf("plugin link = %q, %v", target, err)
 	}
+	// Failed sign-ins reach Fail2ban with the visitor's address.
+	contains(t, "plugin", read(t, sim, webmailPlugin+"/serfex_sso.php"), "'login_failed'", "openlog('serfex-webmail'", "'Failed webmail login from ' . rcube_utils::remote_ip() . ' for '")
 
 	st := m.Status(ctx)
 	if !st.Installed || !st.Configured || !st.Running || st.Hostname != "mail.example.net" {

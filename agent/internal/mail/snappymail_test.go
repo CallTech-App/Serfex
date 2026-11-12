@@ -39,7 +39,7 @@ func TestSnappyMailSetup(t *testing.T) {
 	}
 	contains(t, "include.php", read(t, sim, root+"/include.php"), "define('APP_DATA_FOLDER_PATH', '/var/lib/serfex/webmail/snappymail/');")
 	contains(t, "application.ini", read(t, sim, snappyMailPrivate+"/configs/application.ini"),
-		"allow_admin_panel = Off", "[plugins]\nenable = On", `path = "/var/log/serfex/webmail/"`, `type = "sqlite"`)
+		"allow_admin_panel = Off", "[plugins]\nenable = On", `path = "/var/log/serfex/webmail/"`, `type = "sqlite"`, "auth_syslog = On")
 	contains(t, "domain", read(t, sim, snappyMailPrivate+"/domains/default.json"), `"port": 587`, `"type": 2`, `"useAuth": true`, `"port": 4190`)
 	if _, err := os.Stat(sim.Path(snappyMailPrivate + "/domains/disabled")); err != nil {
 		t.Error("SnappyMail would add its sample domains")

@@ -188,8 +188,8 @@ func (m *Manager) templateData(s *server, vmail host.User) tmplData {
 	}
 }
 
-// Refresh rewrites Postfix's configuration and maps and the mail
-// server's Nginx vhost (webmail) from the applied setup, so a Serfex
+// Refresh rewrites Postfix's configuration and maps, the mail server's
+// Nginx vhost (webmail) and webmail's own settings from the applied setup, so a Serfex
 // update brings servers set up before it to the new settings. It reports
 // whether anything changed; before mail.setup it does nothing.
 func (m *Manager) Refresh(ctx context.Context) (changed bool, err error) {
@@ -229,12 +229,15 @@ func (m *Manager) Refresh(ctx context.Context) (changed bool, err error) {
 		}
 	}
 
-	// The vhost alone: webmail's files and pools stay as mail.setup
-	// left them.
+	// The vhost and webmail's sign-in logging; webmail's packages,
+	// release and pools stay as mail.setup left them.
 	web, err := changes(t, func() error {
 		return t.WriteFile(mailVhost, render(mailVhostTmpl, m.webmailData(s, data)))
 	})
 	if err != nil {
+		return false, err
+	}
+	if err := m.refreshWebmail(t, s, data); err != nil {
 		return false, err
 	}
 	if web {

@@ -145,6 +145,36 @@ func (m *Manager) writeWebmail(ctx context.Context, t *txn.Tx, s *server, data t
 	})
 }
 
+// refreshWebmail rewrites the webmail files that change nothing but
+// settings: Roundcube's serfex_sso plugin and SnappyMail's application.ini
+// (failed sign-ins logged for Fail2ban came this way). Packages, the
+// SnappyMail release, PHP and the pools are mail.setup's. PHP reads both
+// files on the next request; nothing is reloaded.
+func (m *Manager) refreshWebmail(t *txn.Tx, s *server, data tmplData) error {
+	if !s.Webmail {
+		return nil
+	}
+	data = m.webmailData(s, data)
+	switch data.WebmailApp {
+	case Roundcube:
+		if !m.exists(webmailPlugin + "/serfex_sso.php") {
+			return nil
+		}
+		return t.WriteFile(webmailPlugin+"/serfex_sso.php", ssoPlugin)
+	case SnappyMail:
+		ini := snappyMailPrivate + "/configs/application.ini"
+		if !m.exists(ini) {
+			return nil
+		}
+		acct, err := m.h.LookupUser(WebmailUser)
+		if err != nil {
+			return fmt.Errorf("%s account: %w", WebmailUser, err)
+		}
+		return t.WriteFileMode(ini, render(snappyMailConfigTmpl, data), 0o640, 0, acct.GID)
+	}
+	return nil
+}
+
 // webmailData adds webmail's settings to data.
 func (m *Manager) webmailData(s *server, data tmplData) tmplData {
 	data.Webmail = s.Webmail
