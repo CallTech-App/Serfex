@@ -24,6 +24,7 @@ use App\Services\Backups\BackupSettings;
 use App\Services\Components\Components;
 use App\Services\Dns\Zones;
 use App\Services\Mail\MailSettings;
+use App\Services\Mail\WebmailAddresses;
 use App\Services\Sites\SiteRenames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -279,8 +280,9 @@ class SiteShow extends Component
             'databases' => Database::where('site_id', $site->id)->count(),
             'ftpAccounts' => FtpAccount::where('site_id', $site->id)->count(),
             'cronJobs' => CronJob::where('site_id', $site->id)->count(),
-            'mail' => MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
-            'webmail' => app(MailSettings::class)->webmailUrl(),
+            'mail' => $mail = MailDomain::withCount('mailboxes', 'forwarders')->where('name', $site->domain)->first(),
+            // The domain's own webmail address once it is served.
+            'webmail' => app(WebmailAddresses::class)->urlFor($mail),
             'webmailApp' => MailSettings::WEBMAIL_APPS[app(MailSettings::class)->servedWebmailApp() ?? 'roundcube'],
             'wafInstalled' => app(Components::class)->isInstalled('modsecurity'),
             'openFindings' => SecurityFinding::open()->where('site_id', $site->id)->count(),

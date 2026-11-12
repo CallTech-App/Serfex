@@ -79,5 +79,7 @@ class SyncMailDomain implements ShouldBeUniqueUntilProcessing, ShouldQueue
         if ($fresh->manage_dns) {
             $dns->apply($fresh);
         }
+        // Its own webmail address: certificate requested, served once in place.
+        SyncWebmailAddresses::dispatch();
     }
 }

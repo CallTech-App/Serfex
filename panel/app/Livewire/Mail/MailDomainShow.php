@@ -15,6 +15,7 @@ use App\Services\Mail\MailDomains;
 use App\Services\Mail\MailPassword;
 use App\Services\Mail\MailSettings;
 use App\Services\Mail\MailUsage;
+use App\Services\Mail\WebmailAddresses;
 use App\Services\Stats\MailTraffic;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -493,6 +494,7 @@ class MailDomainShow extends Component
             'zone' => $this->tab === 'settings' ? $dns->zoneFor($domain) : null,
             'hostname' => $settings->hostname(),
             'webmail' => $settings->webmailUrl(),
+            'address' => app(WebmailAddresses::class)->state($domain),
             'quotas' => MailSettings::QUOTAS,
             'traffic' => $this->tab === 'traffic' ? $traffic->days([$domain->name]) : null,
         ])->title(__(':name · E-posta · Serfex', ['name' => $domain->name]));

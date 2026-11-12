@@ -6,7 +6,9 @@ use App\Enums\CertificateStatus;
 use App\Jobs\IssueMailCertificate;
 use App\Jobs\IssuePanelCertificate;
 use App\Models\Certificate;
+use App\Models\MailDomain;
 use App\Models\Site;
+use App\Services\Mail\WebmailAddresses;
 use App\Services\Sites\SiteDomains;
 use App\Services\Ssl\Certificates;
 use Illuminate\Console\Attributes\Description;
@@ -25,7 +27,7 @@ use Illuminate\Database\Eloquent\Builder;
 #[Description("Renew Let's Encrypt certificates and retry pending ones")]
 class RenewCertificates extends Command
 {
-    public function handle(Certificates $certificates, SiteDomains $domains): int
+    public function handle(Certificates $certificates, SiteDomains $domains, WebmailAddresses $webmail): int
     {
         $due = Certificate::query()
             ->where('source', Certificate::LETS_ENCRYPT)
@@ -55,6 +57,12 @@ class RenewCertificates extends Command
             } elseif ($certificate->kind === 'mail') {
                 $certificate->update(['status' => CertificateStatus::Issuing]);
                 IssueMailCertificate::dispatch($certificate);
+            } elseif ($certificate->kind === WebmailAddresses::KIND) {
+                // Only while the domain and its address are still there.
+                $domain = MailDomain::where('name', substr($certificate->name, strlen('webmail-')))->first();
+                if ($domain === null || $webmail->request($domain, force: true) === null) {
+                    continue;
+                }
             } elseif ($certificate->site !== null && ($certificate->users->isNotEmpty() || ! $certificate->isInstalled())) {
                 $certificates->reissue($certificate, auto: true);
             } else {

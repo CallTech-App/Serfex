@@ -6,6 +6,7 @@ use App\Enums\MailDomainStatus;
 use App\Jobs\DeleteMailDomain;
 use App\Jobs\PurgeMailbox;
 use App\Jobs\SyncMailDomain;
+use App\Jobs\SyncWebmailAddresses;
 use App\Models\Mailbox;
 use App\Models\MailDomain;
 use App\Models\MailForwarder;
@@ -75,6 +76,8 @@ class MailDomains
             $this->dns->remove($domain);
         }
         DeleteMailDomain::dispatch($domain, purge: $purgeNow);
+        // Its webmail address is no longer served.
+        SyncWebmailAddresses::dispatch();
     }
 
     /**

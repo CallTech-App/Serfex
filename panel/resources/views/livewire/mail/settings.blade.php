@@ -23,6 +23,18 @@
 
     @include('livewire.mail.server-state')
 
+    @if ($offerDomainWebmail)
+        <div class="relative flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-line bg-surface py-3 pr-4 pl-5 text-[13.5px]">
+            <span class="absolute inset-y-0 left-0 w-1 bg-info"></span>
+            <x-icon name="sparkles" class="text-info" />
+            <div class="min-w-0 flex-1">
+                <p class="font-medium">{{ __('Yeni: her alan adına kendi web posta adresi') }}</p>
+                <p class="mt-0.5 text-[13px] text-muted"><x-t text="Açınca her posta alan adına :name kaydı ve sertifikası eklenir. Bu sunucuda güncellemeyle kendiliğinden açılmadı."><x-slot:name><span class="font-mono">webmail.&lt;{{ __('alan adı') }}&gt;</span></x-slot:name></x-t></p>
+            </div>
+            <button type="button" wire:click="enableDomainWebmail" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110">{{ __('Aç') }}</button>
+        </div>
+    @endif
+
     @if ($reverseDns)
         <p class="flex items-start gap-2 rounded-lg bg-warn-soft p-3 text-[13px]" role="alert"><x-icon name="triangle-alert" class="mt-0.5 shrink-0 text-warn" />{{ $reverseDns }}</p>
     @endif
@@ -77,6 +89,13 @@
                             @endforeach
                         </div>
                         <p class="mt-2 text-2xs text-muted">{{ __('Webmail adresi aynı kalır ve panelden tek tıkla posta kutusuna girilir. Uygulama değişince kişiler ve ayarlar taşınmaz; öncekinin verileri sunucuda kalır. Web posta, sitelerin web sunucusunda kendi PHP havuzuyla çalışır; panelden ayrıdır.') }}</p>
+                    </div>
+                </div>
+                <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">
+                    <span class="sm:pt-0.5">{{ __('Alan adına özel adres') }}</span>
+                    <div>
+                        <label class="flex items-start gap-2.5"><input type="checkbox" wire:model="domainWebmail" class="mt-0.5 size-4 accent-accent"><span><x-t text="Her alan adına kendi web posta adresini ver :name"><x-slot:name><span class="font-mono text-muted">(webmail.&lt;{{ __('alan adı') }}&gt;)</span></x-slot:name></x-t></span></label>
+                        <p class="mt-1 ml-[26px] text-2xs text-muted"><x-t text="Her posta alan adına :name için DNS kaydı (Cloudflare'de yalnızca DNS) ve Let's Encrypt sertifikası eklenir; kullanıcılar panele girmeden kendi alan adlarının adresinden girer. Panelden tek tıkla giriş ve :hostname adresi aynen çalışır. Kapatınca Serfex'in yazdığı kayıtlar silinir; Geri al ile döner."><x-slot:name><span class="font-mono">webmail.&lt;{{ __('alan adı') }}&gt;</span></x-slot:name><x-slot:hostname><span class="font-mono">{{ $savedHostname ?? __('posta sunucusu') }}</span></x-slot:hostname></x-t></p>
                     </div>
                 </div>
                 <div class="grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6">

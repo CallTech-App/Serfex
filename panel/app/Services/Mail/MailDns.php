@@ -26,7 +26,29 @@ class MailDns
         private readonly DnsSettings $dns,
         private readonly MailSettings $settings,
         private readonly PublicDns $public,
+        private readonly WebmailAddresses $webmail,
     ) {}
+
+    /**
+     * The domain's own webmail address (webmail.<domain>), pointing here
+     * like mail.<domain>. On Cloudflare it stays DNS only, like every name
+     * that is not a site's.
+     *
+     * @return list<array{key: string, label: string, name: string, type: string, content: string, priority: ?int, policy: string}>
+     */
+    public function webmailRows(MailDomain $domain): array
+    {
+        $rows = [];
+        $name = WebmailAddresses::name($domain);
+        if ($ip4 = $this->dns->ipv4()) {
+            $rows[] = ['key' => 'webmail-a', 'label' => __('Web posta adresi'), 'name' => $name, 'type' => 'A', 'content' => $ip4, 'priority' => null, 'policy' => 'type'];
+        }
+        if ($ip6 = $this->dns->ipv6()) {
+            $rows[] = ['key' => 'webmail-aaaa', 'label' => __('Web posta adresi (IPv6)'), 'name' => $name, 'type' => 'AAAA', 'content' => $ip6, 'priority' => null, 'policy' => 'type'];
+        }
+
+        return $rows;
+    }
 
     /**
      * The zone on this server that holds the domain: its own or a parent's.
@@ -66,6 +88,9 @@ class MailDns
         }
         if ($ip6) {
             $rows[] = ['key' => 'mail-aaaa', 'label' => __('Posta sunucusu adresi (IPv6)'), 'name' => 'mail.'.$d, 'type' => 'AAAA', 'content' => $ip6, 'priority' => null, 'policy' => 'type'];
+        }
+        if ($this->webmail->enabled()) {
+            array_push($rows, ...$this->webmailRows($domain));
         }
         $rows[] = ['key' => 'spf', 'label' => 'SPF', 'name' => $d, 'type' => 'TXT', 'content' => $spf, 'priority' => null, 'policy' => 'prefix', 'prefix' => 'v=spf1'];
         if ($domain->dkim_record) {
@@ -131,13 +156,30 @@ class MailDns
      */
     public function remove(MailDomain $domain): ?string
     {
+        return $this->removeRows($domain, $this->wanted($domain));
+    }
+
+    /**
+     * Remove only the webmail address records Serfex wrote (the domain
+     * addresses were turned off). Returns the zone's undo token, or null.
+     */
+    public function removeWebmail(MailDomain $domain): ?string
+    {
+        return $this->removeRows($domain, $this->webmailRows($domain));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function removeRows(MailDomain $domain, array $rows): ?string
+    {
         $zone = $this->zoneFor($domain);
         if ($zone === null) {
             return null;
         }
         $records = $zone->records()->get();
         $ids = [];
-        foreach ($this->wanted($domain) as $w) {
+        foreach ($rows as $w) {
             $match = $this->candidates($w, $records, $zone)->first(fn (DnsRecord $r) => $this->equals($w, $r));
             if ($match !== null) {
                 $ids[] = $match->id;
