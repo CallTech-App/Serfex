@@ -190,6 +190,11 @@ func (m *Manager) webmailData(s *server, data tmplData) tmplData {
 	if data.WebmailApp == SnappyMail {
 		data.WebmailRoot = snappyMailRoot(s.SnappyMailVersion)
 	}
+	data.WebmailHosts = nil
+	for _, h := range s.WebmailHosts {
+		certFile, keyFile := cert.Files(h.Certificate)
+		data.WebmailHosts = append(data.WebmailHosts, webmailVhost{Name: h.Name, CertFile: certFile, KeyFile: keyFile})
+	}
 	return data
 }
 
@@ -461,4 +466,113 @@ func (m *Manager) ReloadCertificate(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// WebmailHost serves webmail at a mail domain's own address
+// (webmail.<domain>) with Certificate, a certificate in the store
+// (ssl.issue) that covers it.
+type WebmailHost struct {
+	Name        string `json:"name"`
+	Certificate string `json:"certificate"`
+}
+
+// WebmailHostsSpec is mail.webmail.hosts: every address webmail answers
+// at besides the mail server's own. Names left out are no longer served.
+type WebmailHostsSpec struct {
+	Hosts []WebmailHost `json:"hosts"`
+}
+
+// WebmailHostsResult says whether the vhost changed.
+type WebmailHostsResult struct {
+	Changed bool `json:"changed"`
+}
+
+const maxWebmailHosts = 5000
+
+func (spec *WebmailHostsSpec) normalize() ([]WebmailHost, error) {
+	if len(spec.Hosts) > maxWebmailHosts {
+		return nil, invalid("at most %d webmail addresses", maxWebmailHosts)
+	}
+	seen := map[string]bool{}
+	hosts := make([]WebmailHost, 0, len(spec.Hosts))
+	for _, h := range spec.Hosts {
+		name := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(h.Name), "."))
+		if err := validateDomain(name); err != nil {
+			return nil, err
+		}
+		if !strings.HasPrefix(name, "webmail.") {
+			return nil, invalid("%s: a webmail address starts with webmail.", name)
+		}
+		if err := cert.ValidateName(h.Certificate); err != nil {
+			return nil, invalid("%s", err.Error())
+		}
+		if seen[name] {
+			return nil, invalid("%s is listed twice", name)
+		}
+		seen[name] = true
+		hosts = append(hosts, WebmailHost{Name: name, Certificate: h.Certificate})
+	}
+	sort.Slice(hosts, func(i, j int) bool { return hosts[i].Name < hosts[j].Name })
+	return hosts, nil
+}
+
+// SetWebmailHosts serves webmail at the mail domains' own addresses in
+// spec, each with its certificate, and at no others. Nginx is checked and
+// reloaded; a rejected configuration is rolled back.
+func (m *Manager) SetWebmailHosts(ctx context.Context, spec WebmailHostsSpec) (res WebmailHostsResult, err error) {
+	hosts, err := spec.normalize()
+	if err != nil {
+		return res, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, err := m.loadServer()
+	if err != nil {
+		return res, err
+	}
+	if s.Hostname != "" {
+		for _, h := range hosts {
+			if h.Name == s.Hostname {
+				return res, invalid("%s is the mail server's own address", h.Name)
+			}
+		}
+	}
+	for _, h := range hosts {
+		if certFile, keyFile := cert.Files(h.Certificate); !m.exists(certFile) || !m.exists(keyFile) {
+			return res, invalid("certificate %s is not installed", h.Certificate)
+		}
+	}
+	vmail, err := m.h.LookupUser(VmailUser)
+	if err != nil {
+		return res, fmt.Errorf("%s account: %w", VmailUser, err)
+	}
+	t := txn.New(m.h)
+	defer m.finish(ctx, t, &err)
+
+	s.WebmailHosts = hosts
+	if len(hosts) == 0 {
+		s.WebmailHosts = nil
+	}
+	state, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return res, err
+	}
+	if err := t.WriteOwned(serverState, state, 0o600, 0, 0); err != nil {
+		return res, err
+	}
+	web, err := changes(t, func() error {
+		return t.WriteFile(mailVhost, render(mailVhostTmpl, m.webmailData(s, m.templateData(s, vmail))))
+	})
+	if err != nil {
+		return res, err
+	}
+	if web {
+		if err := m.checkWeb(ctx, ""); err != nil {
+			return res, err
+		}
+		if _, err := m.h.Run(ctx, host.Command{Name: "systemctl", Args: []string{"reload", "nginx"}}); err != nil {
+			return res, err
+		}
+	}
+	return WebmailHostsResult{Changed: web}, nil
 }

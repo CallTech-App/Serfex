@@ -10,13 +10,14 @@ var mailVhostTmpl = template.Must(template.New("vhost").Parse(`# {{.Marker}}. Ma
 # The mail server's own address: certificate validation, settings for
 # mail clients{{if .Webmail}} and webmail ({{if eq .WebmailApp "snappymail"}}SnappyMail{{else}}Roundcube{{end}}){{end}}. Customers' sites have
 # their own vhosts; autoconfig.<domain> and autodiscover.<domain> of every
-# mail domain end up here.
+# mail domain end up here, and so does webmail.<domain>: until its
+# certificate is in place it is sent on to this address.
 server {
     listen 80;
 {{- if .IPv6}}
     listen [::]:80;
 {{- end}}
-    server_name {{.Hostname}} ~^autoconfig\. ~^autodiscover\.;
+    server_name {{.Hostname}} ~^autoconfig\. ~^autodiscover\.{{if .Webmail}} ~^webmail\.{{end}};
 {{template "noindex"}}
 
     location ^~ /.well-known/acme-challenge/ {
@@ -44,7 +45,51 @@ server {
     ssl_certificate {{.CertFile}};
     ssl_certificate_key {{.KeyFile}};
     include {{.TLSConf}};
+{{- template "webmail" .}}
+{{template "clients" .}}
+{{- template "locations" .}}
+}
+{{- range .WebmailHosts}}
 
+# Webmail at a mail domain's own address, with its own certificate.
+server {
+    listen 80;
+{{- if $.IPv6}}
+    listen [::]:80;
+{{- end}}
+    server_name {{.Name}};
+{{template "noindex"}}
+
+    location ^~ /.well-known/acme-challenge/ {
+        root {{$.ACMERoot}};
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+    location / {
+        return 301 https://{{.Name}}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+{{- if $.IPv6}}
+    listen [::]:443 ssl http2;
+{{- end}}
+    server_name {{.Name}};
+    ssl_certificate {{.CertFile}};
+    ssl_certificate_key {{.KeyFile}};
+    include {{$.TLSConf}};
+{{- template "webmail" $}}
+{{- template "locations" $}}
+}
+{{- end}}
+{{- end}}
+`))
+
+func init() {
+	// Webmail's own settings and the files it serves, shared by the mail
+	// server's address and every mail domain's webmail.<domain>.
+	template.Must(mailVhostTmpl.New("webmail").Parse(`
 {{- if eq .WebmailApp "snappymail"}}
     root {{.WebmailRoot}};
 {{- else}}
@@ -54,8 +99,8 @@ server {
     client_max_body_size 26m;
     access_log {{.LogDir}}/access.log;
     error_log {{.LogDir}}/error.log;
-{{template "noindex"}}
-{{template "clients" .}}
+{{template "noindex"}}`))
+	template.Must(mailVhostTmpl.New("locations").Parse(`
     location = /index.php {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
@@ -94,12 +139,7 @@ server {
     }
     location / {
         try_files $uri $uri/ =404;
-    }
-}
-{{- end}}
-`))
-
-func init() {
+    }`))
 	// Search engines never list webmail's sign-in page or the mail
 	// server's address, nor keep a copy or a snippet of them. robots.txt
 	// lets crawlers in on purpose, so they see noindex (see serfex-web).

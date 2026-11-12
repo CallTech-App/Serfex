@@ -394,6 +394,17 @@ func registerMail(srv *rpc.Server, svc services) {
 		}
 		return res, nil
 	})
+	srv.Handle("mail.webmail.hosts", func(ctx context.Context, p json.RawMessage) (any, error) {
+		var spec mail.WebmailHostsSpec
+		if err := decode(p, &spec); err != nil {
+			return nil, err
+		}
+		res, err := svc.mail.SetWebmailHosts(ctx, spec)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		return res, nil
+	})
 	srv.Handle("mail.webmail.login", func(_ context.Context, p json.RawMessage) (any, error) {
 		var q struct {
 			Address string `json:"address"`

@@ -63,6 +63,9 @@ type server struct {
 	PHPVersion     string `json:"php_version,omitempty"`
 	// SnappyMailVersion is the SnappyMail release in use.
 	SnappyMailVersion string `json:"snappymail_version,omitempty"`
+	// WebmailHosts serve webmail at mail domains' own addresses
+	// (mail.webmail.hosts); setups keep them.
+	WebmailHosts []WebmailHost `json:"webmail_hosts,omitempty"`
 }
 
 func (s *SetupSpec) validate() error {
@@ -327,6 +330,7 @@ func (m *Manager) Setup(ctx context.Context, spec SetupSpec) (res SetupResult, e
 	s := &server{SetupSpec: spec, PHPVersion: php, SnappyMailVersion: snappy}
 	if prev != nil {
 		s.MasterPassword, s.DESKey = prev.MasterPassword, prev.DESKey
+		s.WebmailHosts = prev.WebmailHosts
 	}
 	if s.MasterPassword == "" {
 		if s.MasterPassword, err = randomHex(24); err != nil {
