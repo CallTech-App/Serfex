@@ -143,3 +143,45 @@ func TestRefreshKeepsWebmailOutOfSearchEngines(t *testing.T) {
 		t.Errorf("commands: %s", got)
 	}
 }
+
+// Servers set up before webmail logged failed sign-ins get the logging
+// from an update, for Roundcube and SnappyMail, without a reload or a new
+// release.
+func TestRefreshLogsFailedWebmailSignIns(t *testing.T) {
+	ctx := context.Background()
+	for _, app := range []string{Roundcube, SnappyMail} {
+		t.Run(app, func(t *testing.T) {
+			m, sim := newTest(t)
+			if _, err := m.Setup(ctx, SetupSpec{Hostname: "mail.example.net", HourlyLimit: 500, Webmail: true, WebmailApp: app}); err != nil {
+				t.Fatal(err)
+			}
+			file, line := webmailPlugin+"/serfex_sso.php", "$this->add_hook('login_failed', [$this, 'login_failed']);\n"
+			if app == SnappyMail {
+				file, line = snappyMailPrivate+"/configs/application.ini", "auth_syslog = On\n"
+			}
+			current := read(t, sim, file)
+			if !strings.Contains(current, line) {
+				t.Fatalf("%s:\n%s", file, current)
+			}
+			// The file as an older release wrote it.
+			if err := os.WriteFile(sim.Path(file), []byte(strings.Replace(current, line, "", 1)), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			before := len(sim.Commands())
+			if changed, err := m.Refresh(ctx); err != nil || !changed {
+				t.Fatalf("refresh = %v, %v", changed, err)
+			}
+			if read(t, sim, file) != current {
+				t.Errorf("%s was not rewritten", file)
+			}
+			for _, c := range sim.Commands()[before:] {
+				if s := c.String(); strings.Contains(s, "nginx") || strings.Contains(s, "apt-get") || strings.Contains(s, "php") {
+					t.Errorf("refresh ran %s", s)
+				}
+			}
+			if changed, err := m.Refresh(ctx); err != nil || changed {
+				t.Fatalf("second refresh = %v, %v", changed, err)
+			}
+		})
+	}
+}

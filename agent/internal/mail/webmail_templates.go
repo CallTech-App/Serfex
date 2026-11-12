@@ -256,6 +256,7 @@ class serfex_sso extends rcube_plugin
         $this->add_hook('storage_connect', [$this, 'connect']);
         $this->add_hook('managesieve_connect', [$this, 'connect']);
         $this->add_hook('smtp_connect', [$this, 'smtp_connect']);
+        $this->add_hook('login_failed', [$this, 'login_failed']);
     }
 
     public function startup($args)
@@ -300,6 +301,27 @@ class serfex_sso extends rcube_plugin
             $rcmail = rcmail::get_instance();
             $args['user'] = $args['user'] . '*' . $rcmail->config->get('serfex_sso_master');
             $args['pass'] = (string) $rcmail->config->get('serfex_sso_password');
+        }
+
+        return $args;
+    }
+
+    /**
+     * Logs a wrong password (or a sign-in Roundcube's rate limit turned
+     * away) to the journal for Fail2ban's serfex-webmail jail. Webmail signs
+     * in to Dovecot from this server, so Dovecot never sees the visitor's
+     * address. An expired form or a mail server that is down is not logged.
+     */
+    public function login_failed($args)
+    {
+        $code = $args['code'] ?? null;
+        if (!empty($code) && $code != rcmail::ERROR_RATE_LIMIT) {
+            return $args;
+        }
+        $user = substr(preg_replace('/[^\x21-\x7e]/', '?', (string) ($args['user'] ?? '')), 0, 128);
+        if (openlog('serfex-webmail', LOG_PID, LOG_AUTH)) {
+            syslog(LOG_WARNING, 'Failed webmail login from ' . rcube_utils::remote_ip() . ' for ' . $user);
+            closelog();
         }
 
         return $args;
@@ -364,6 +386,8 @@ enabled_list = ""
 
 [logs]
 enable = On
+; Failed sign-ins go to the journal for Fail2ban's serfex-webmail jail.
+auth_syslog = On
 path = "{{.LogDir}}/"
 filename = "snappymail.log"
 level = 4

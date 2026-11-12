@@ -3346,6 +3346,7 @@
     "Web dosyaları": "Web files",
     "Web dosyaları ev klasörünün tamamıdır; site satırları her sitenin kendi klasörünü gösterir. Dosyalar 30 dakikada bir ölçülür.": "Web files are the whole home folder; the site rows show each site's own folder. Files are measured every 30 minutes.",
     "Web posta": "Webmail",
+    "Web posta girişi": "Webmail sign-in",
     "Web posta kapalı. E-posta ayarlarından açabilirsiniz.": "Webmail is off. You can turn it on in Email settings.",
     "Web postaya giriş yapılamadı: :reason": "Could not sign in to webmail: :reason",
     "Web siteleri": "Websites",

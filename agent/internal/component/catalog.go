@@ -548,8 +548,10 @@ func fail2ban() *component {
 			})
 		},
 		unconfigure: func(o *op) error {
-			if err := o.t.RemoveFile(panelFilter); err != nil {
-				return err
+			for _, f := range []string{panelFilter, webmailFilter} {
+				if err := o.t.RemoveFile(f); err != nil {
+					return err
+				}
 			}
 			return o.t.RemoveFile(jailConf)
 		},
@@ -557,8 +559,9 @@ func fail2ban() *component {
 }
 
 const (
-	jailConf    = "/etc/fail2ban/jail.d/serfex.conf"
-	panelFilter = "/etc/fail2ban/filter.d/serfex-panel.conf"
+	jailConf      = "/etc/fail2ban/jail.d/serfex.conf"
+	panelFilter   = "/etc/fail2ban/filter.d/serfex-panel.conf"
+	webmailFilter = "/etc/fail2ban/filter.d/serfex-webmail.conf"
 )
 
 // The panel logs failed logins to the journal as serfex-panel.
@@ -576,6 +579,27 @@ ignoreregex =
 journalmatch = SYSLOG_IDENTIFIER=serfex-panel
 `)
 
+// Webmail signs in to Dovecot from this server, so the dovecot jail never
+// sees the visitor's address. Roundcube (Serfex's serfex_sso plugin) and
+// SnappyMail (auth_syslog) log failed sign-ins to the journal with it.
+// The address comes before the user name the visitor typed, so a name
+// such as "x from 192.0.2.1" cannot get someone else banned.
+var webmailFilterConf = []byte(`# ` + txn.Marker + `. Manual changes are overwritten.
+# Failed webmail sign-ins: Roundcube logs them as serfex-webmail,
+# SnappyMail as snappymail, both to the journal.
+[INCLUDES]
+before = common.conf
+
+[DEFAULT]
+_daemon = (?:serfex-webmail|snappymail)
+
+[Definition]
+failregex = ^%(__prefix_line)sFailed webmail login from <HOST> for
+            ^%(__prefix_line)sAuth failed: ip=<HOST> user=
+ignoreregex =
+journalmatch = SYSLOG_IDENTIFIER=serfex-webmail + SYSLOG_IDENTIFIER=snappymail
+`)
+
 func writeJails(t *txn.Tx, m *Manager) error {
 	for _, d := range []string{"/etc/fail2ban/jail.d", "/etc/fail2ban/filter.d"} {
 		if err := t.RootDir(d, 0o755, 0, 0); err != nil {
@@ -583,6 +607,9 @@ func writeJails(t *txn.Tx, m *Manager) error {
 		}
 	}
 	if err := t.WriteFile(panelFilter, panelFilterConf); err != nil {
+		return err
+	}
+	if err := t.WriteFile(webmailFilter, webmailFilterConf); err != nil {
 		return err
 	}
 	return t.WriteFile(jailConf, renderJails(m))
@@ -651,6 +678,17 @@ enabled = true
 
 [postfix-sasl]
 enabled = true
+
+# Webmail sign-ins (Roundcube and SnappyMail): ten failures in 10 minutes
+# close the web ports to that address for an hour. Roundcube also turns
+# away a mailbox after 3 failures in a minute (login_rate_limit).
+[serfex-webmail]
+enabled = true
+filter = serfex-webmail
+port = http,https
+maxretry = 10
+findtime = 10m
+bantime = 1h
 `)
 	}
 	b.WriteString(`

@@ -68,7 +68,7 @@ func TestFail2banFollowsMailServer(t *testing.T) {
 	if _, err := m.Install(ctx, OpSpec{ID: "fail2ban", Run: "f2b"}); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(read(t, sim, jailConf), "[dovecot]") {
+	if j := read(t, sim, jailConf); strings.Contains(j, "[dovecot]") || strings.Contains(j, "[serfex-webmail]") {
 		t.Fatal("mail jails without a mail server")
 	}
 	for _, f := range []string{"/usr/sbin/postfix", "/usr/sbin/dovecot"} {
@@ -92,8 +92,12 @@ func TestFail2banFollowsMailServer(t *testing.T) {
 		t.Fatalf("sync: %v %v", changed, err)
 	}
 	jails := read(t, sim, jailConf)
-	if !strings.Contains(jails, "[dovecot]") || !strings.Contains(jails, "[postfix-sasl]") {
+	if !strings.Contains(jails, "[dovecot]") || !strings.Contains(jails, "[postfix-sasl]") || !strings.Contains(jails, "[serfex-webmail]\nenabled = true\nfilter = serfex-webmail\nport = http,https\nmaxretry = 10") {
 		t.Fatalf("jails:\n%s", jails)
+	}
+	filter := read(t, sim, webmailFilter)
+	if !strings.Contains(filter, "journalmatch = SYSLOG_IDENTIFIER=serfex-webmail + SYSLOG_IDENTIFIER=snappymail") || !strings.Contains(filter, "Failed webmail login from <HOST> for") {
+		t.Fatalf("webmail filter:\n%s", filter)
 	}
 	if !ran(sim, "systemctl try-reload-or-restart fail2ban") {
 		t.Fatal("Fail2ban not reloaded")
