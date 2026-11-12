@@ -27,6 +27,10 @@
                         class="h-9 rounded-md border border-line bg-surface px-3.5 text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40">
                     {{ __('Askıya al:selected', ['selected' => $selected ? ' ('.count($selected).')' : '']) }}
                 </button>
+                <button type="button" wire:click="openDeleteSelected" @disabled($selected === [])
+                        class="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-[13.5px] text-crit hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40">
+                    <x-icon name="trash-2" class="size-3.5" />{{ __('Sil:selected', ['selected' => $selected ? ' ('.count($selected).')' : '']) }}
+                </button>
                 <label class="relative ml-auto w-full sm:w-64">
                     <span class="sr-only">{{ __('Müşteri ara') }}</span>
                     <x-icon name="search" class="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
@@ -236,6 +240,42 @@
             <div class="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">
                 <button type="button" wire:click="$set('creating', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
                 <button type="submit" wire:loading.attr="disabled" wire:target="create" class="h-9 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40">{{ __('Müşteriyi ekle') }}</button>
+            </div>
+        </form>
+    </x-modal>
+
+    {{-- Seçilenleri sil --}}
+    <x-modal :title="$toDelete->count() > 1 ? __('Müşterileri sil') : __('Müşteriyi sil')" show="deletingSelected" size="max-w-md">
+        <form wire:submit="deleteSelected" class="p-5 text-[13.5px]">
+            @if ($toDelete->count() === 1)
+                <p class="font-semibold">{{ __(':customer silinsin mi?', ['customer' => $toDelete->first()->displayName()]) }}</p>
+            @else
+                <p class="font-semibold">{{ trans_choice(':count müşteri silinsin mi?', $toDelete->count(), ['count' => $toDelete->count()]) }}</p>
+                <ul class="mt-2 max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-line px-3 py-2 text-[13px]">
+                    @foreach ($toDelete as $customer)
+                        <li wire:key="delete-{{ $customer->id }}">{{ $customer->displayName() }} <span class="font-mono text-[12.5px] text-muted">{{ $customer->username }}</span></li>
+                    @endforeach
+                </ul>
+            @endif
+            <p class="mt-2 text-[13px] text-muted">{{ $toDelete->count() > 1
+                ? __('Müşteriler ve panel girişleri silinir. :undo_seconds dakika içinde müşteri listesinden geri alabilirsiniz; bu sürede siteleri askı sayfası gösterir.', ['undo_seconds' => \App\Services\Customers\Customers::UNDO_SECONDS / 60])
+                : __('Müşteri ve panel girişi silinir. :undo_seconds dakika içinde müşteri listesinden geri alabilirsiniz; bu sürede siteleri askı sayfası gösterir.', ['undo_seconds' => \App\Services\Customers\Customers::UNDO_SECONDS / 60]) }}</p>
+            <label class="mt-4 flex items-start gap-2.5">
+                <input type="checkbox" wire:model="deleteSites" class="mt-0.5 size-4 accent-accent">
+                <span>{{ trans_choice('Sitelerini de sil (:count site, posta, DNS ve Laravel uygulamalarıyla)', $toDelete->sum('sites_count')) }}<span class="block text-[12.5px] text-muted">{{ __('İşaretlemezseniz siteler sunucuda kalır ve müşterisiz olarak yayına devam eder.') }}</span></span>
+            </label>
+            <label for="confirmDelete" class="mt-4 mb-1.5 block">
+                @if ($toDelete->count() === 1)
+                    <x-t text="Onaylamak için :username yazın"><x-slot:username><span class="font-mono font-medium">{{ $toDelete->first()->username }}</span></x-slot:username></x-t>
+                @else
+                    <x-t text="Onaylamak için :number yazın"><x-slot:number><span class="font-mono font-medium">{{ $toDelete->count() }}</span></x-slot:number></x-t>
+                @endif
+            </label>
+            <input id="confirmDelete" wire:model="confirmDelete" autocomplete="off" spellcheck="false" class="{{ $field }} font-mono text-[13px] {{ $errors->has('confirmDelete') ? 'border-crit' : 'border-line' }}">
+            @error('confirmDelete') <p class="mt-1.5 text-[13px] text-crit">{{ $message }}</p> @enderror
+            <div class="mt-4 flex justify-end gap-2">
+                <button type="button" wire:click="$set('deletingSelected', false)" class="h-9 rounded-md border border-line px-3.5 text-[13.5px] hover:bg-surface-2">{{ __('Vazgeç') }}</button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="deleteSelected" class="h-9 rounded-md bg-crit px-3.5 text-[13.5px] font-medium text-on-crit disabled:opacity-40">{{ __('Sil') }}</button>
             </div>
         </form>
     </x-modal>

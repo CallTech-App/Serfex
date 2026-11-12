@@ -12,6 +12,7 @@ use App\Services\Customers\Customers;
 use App\Services\Customers\Quotas;
 use App\Support\Hostnames;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -38,6 +39,13 @@ class CustomerIndex extends Component
 
     /** @var list<int> */
     public array $selected = [];
+
+    // Seçilenleri sil
+    public bool $deletingSelected = false;
+
+    public bool $deleteSites = false;
+
+    public string $confirmDelete = '';
 
     // Müşteri ekle
     public bool $creating = false;
@@ -181,7 +189,7 @@ class CustomerIndex extends Component
         $this->selected = [];
         if ($done !== []) {
             $this->dispatch('toast',
-                message: count($done) === 1 ? __('Müşteri askıya alındı.') : __(':done müşteri askıya alındı.', ['done' => count($done)]),
+                message: count($done) === 1 ? __('Müşteri askıya alındı.') : trans_choice(':done müşteri askıya alındı.', count($done), ['done' => count($done)]),
                 source: $this->getId(),
                 undo: ['method' => 'undoSuspend', 'args' => [$done]],
             );
@@ -196,6 +204,64 @@ class CustomerIndex extends Component
         foreach (Customer::whereIn('id', $ids)->get() as $customer) {
             $customers->unsuspend($customer);
         }
+    }
+
+    public function openDeleteSelected(): void
+    {
+        if ($this->selectedCustomers()->isEmpty()) {
+            return;
+        }
+        $this->reset('deleteSites', 'confirmDelete');
+        $this->resetValidation();
+        $this->deletingSelected = true;
+    }
+
+    /**
+     * Deletes the selected customers after the undo window, as the
+     * customer's own page does: one is confirmed by typing its system
+     * user, several by typing how many.
+     */
+    public function deleteSelected(Customers $customers): void
+    {
+        $this->resetValidation();
+        $targets = $this->selectedCustomers();
+        if ($targets->isEmpty()) {
+            $this->deletingSelected = false;
+
+            return;
+        }
+        if (trim($this->confirmDelete) !== $this->deleteConfirmation($targets)) {
+            $this->addError('confirmDelete', $targets->count() === 1
+                ? __('Sistem kullanıcısını tam olarak yazın.')
+                : __('Seçili müşteri sayısını yazın.'));
+
+            return;
+        }
+        foreach ($targets as $customer) {
+            $customers->delete($customer, $this->deleteSites);
+        }
+        Quotas::forget();
+        $this->selected = [];
+        $this->deletingSelected = false;
+        $minutes = Customers::UNDO_SECONDS / 60;
+        $this->dispatch('toast',
+            message: $targets->count() === 1
+                ? __(':name silinecek. :undo_seconds dakika içinde listeden geri alabilirsiniz.', ['name' => $targets->first()->displayName(), 'undo_seconds' => $minutes])
+                : trans_choice(':count müşteri silinecek. :undo_seconds dakika içinde listeden geri alabilirsiniz.', $targets->count(), ['count' => $targets->count(), 'undo_seconds' => $minutes]),
+            source: $this->getId(),
+            undo: ['method' => 'undoDelete', 'args' => [$targets->pluck('id')->all()]],
+        );
+    }
+
+    /**
+     * @param  list<int>  $ids
+     */
+    public function undoDelete(array $ids, Customers $customers): void
+    {
+        foreach (Customer::onlyTrashed()->whereIn('id', $ids)->get() as $customer) {
+            $customers->restore($customer);
+        }
+        Quotas::forget();
     }
 
     public function restore(int $id, Customers $customers): void
@@ -345,7 +411,29 @@ class CustomerIndex extends Component
             'reports' => $reports,
             'packages' => Package::withCount('customers')->orderBy('id')->get(),
             'total' => Customer::count(),
+            'toDelete' => $this->deletingSelected ? $this->selectedCustomers() : collect(),
         ]);
+    }
+
+    /**
+     * The selected customers that are not already being deleted.
+     *
+     * @return Collection<int, Customer>
+     */
+    private function selectedCustomers(): Collection
+    {
+        return Customer::whereIn('id', $this->selected)->withCount('sites')->orderByRaw('lower(coalesce(company, name))')->get();
+    }
+
+    /**
+     * What has to be typed to delete $targets: the system user of a single
+     * customer, otherwise how many there are.
+     *
+     * @param  Collection<int, Customer>  $targets
+     */
+    private function deleteConfirmation(Collection $targets): string
+    {
+        return $targets->count() === 1 ? $targets->first()->username : (string) $targets->count();
     }
 
     /**
