@@ -557,3 +557,24 @@ func TestSetupWritesThePanelUnits(t *testing.T) {
 		t.Errorf("a second setup changed %v", res.Changed)
 	}
 }
+
+// The scheduler and the workers send the panel's mail (a site is down, a
+// backup failed) with sendmail. Postfix queues it with postdrop, which is
+// set-group-ID; under NoNewPrivileges it has no access to the queue and
+// waits forever, and so did every run that had mail to send.
+func TestPanelUnitsLetSendmailQueueMail(t *testing.T) {
+	src := newSource(t)
+	sim, m := installed(t, src)
+	if _, err := m.Setup(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range panel.Units {
+		unit, err := os.ReadFile(sim.Path("/etc/systemd/system/" + name + ".service"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(unit), "NoNewPrivileges") {
+			t.Errorf("%s keeps sendmail from queueing mail:\n%s", name, unit)
+		}
+	}
+}

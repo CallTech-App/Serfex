@@ -138,6 +138,12 @@ type unitSpec struct{ name, description, args, stop string }
 
 // Long jobs (deploys, installs) get a minute to finish when a worker
 // stops; backups have a worker of their own, and updates wait for them.
+//
+// The units do not set NoNewPrivileges: they send the panel's mail with
+// sendmail, and Postfix's set-group-ID postdrop cannot write to the mail
+// queue under it. It waits forever instead of failing, and so did every
+// scheduled run that had mail to send, each holding its database
+// connections until the panel had none left.
 var panelUnits = []unitSpec{
 	{panel.Units[0], "Serfex panel queue worker", "queue:work --sleep=1 --tries=1 --max-time=3600", "60"},
 	{panel.Units[1], "Serfex panel backup worker", "queue:work backups --queue=backups --sleep=3 --tries=1 --max-time=86400", "60"},
@@ -158,7 +164,6 @@ ExecStart={{.PHP}} {{.Artisan}} {{.Args}}
 Restart=always
 RestartSec=3
 TimeoutStopSec={{.Stop}}
-NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target

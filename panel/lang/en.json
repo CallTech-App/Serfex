@@ -3062,6 +3062,7 @@
     "Sunucunun kendi adı (hostname). Panelin ve posta sunucusunun adreslerinden ayrıdır; onlar Genel ve E-posta ayarlarında.": "The server's own name (hostname). It is separate from the panel's and the mail server's addresses; those are in the General and Email settings.",
     "Sunucunun kendi anahtarı ilk testte öğrenilir ve sonraki her bağlantıda denetlenir.": "The server's own key is learned at the first test and checked on every later connection.",
     "Sunucunun kendisine ait yerel adresler engellenemez.": "The server's own local addresses cannot be blocked.",
+    "Sunucunun posta programı (sendmail) :seconds saniye içinde yanıt vermedi ve durduruldu.": "The server's mail program (sendmail) did not answer within :seconds seconds and was stopped.",
     "Sunucunun saat dilimi değiştirilemedi: :reason": "The server's time zone could not be changed: :reason",
     "Sunucunun tamamını yalnızca yöneticiler yedekleyebilir; bir site belirtin.": "Only administrators can back up the whole server; name a site.",
     "Sunucunun tamamını yeniden kurmak için: aynı veritabanı sunucularını kurun, e-postayı ayarlayın, yedeği listeye ekleyin ve sunucuda :part çalıştırın.": "To rebuild the whole server: install the same database servers, set up email, add the backup to the list and run :part on the server.",

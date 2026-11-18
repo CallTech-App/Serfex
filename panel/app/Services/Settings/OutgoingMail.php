@@ -22,6 +22,9 @@ class OutgoingMail
 {
     public const KEY = 'panel.mail';
 
+    /** coreutils' timeout, which stops a sendmail that does not finish. */
+    private const TIMEOUT = '/usr/bin/timeout';
+
     /** Encryption choices: key => name. */
     public const ENCRYPTION = [
         'starttls' => 'STARTTLS (587)',
@@ -74,7 +77,7 @@ class OutgoingMail
             return $s['host'] === '' ? __('SMTP sunucusu girilmedi.') : null;
         }
 
-        return app(MailSettings::class)->isSetUp() || is_executable('/usr/sbin/sendmail')
+        return app(MailSettings::class)->isSetUp() || is_executable((string) config('serfex.mail.sendmail'))
             ? null
             : __('Bu sunucuda posta sunucusu kurulu değil. E-posta bölümünden kurun ya da bir SMTP sunucusu girin.');
     }
@@ -116,14 +119,44 @@ class OutgoingMail
         if ($problem = $this->problem()) {
             return $problem;
         }
+        $started = microtime(true);
         try {
             $mail = (new PanelMail($subject, $body))->from($this->fromAddress(), $this->settings()['from_name'] ?: 'Serfex');
             $this->mailer()->to($to)->send($mail);
         } catch (Throwable $e) {
+            $limit = $this->sendmailTimeout();
+            if ($this->settings()['mode'] !== 'smtp' && $limit !== null && microtime(true) - $started >= $limit) {
+                return __('Sunucunun posta programı (sendmail) :seconds saniye içinde yanıt vermedi ve durduruldu.', ['seconds' => $limit]);
+            }
+
             return Str::limit($e->getMessage(), 300);
         }
 
         return null;
+    }
+
+    /**
+     * sendmail speaking SMTP (-bs), so a refusal comes back as an answer.
+     * It runs under timeout(1): sendmail has no time limit of its own, and
+     * Postfix's waits forever when it cannot write to the mail queue.
+     * timeout stops it and what it started.
+     */
+    public function sendmailCommand(): string
+    {
+        $command = config('serfex.mail.sendmail').' -bs -i';
+        $limit = $this->sendmailTimeout();
+
+        return $limit === null ? $command : self::TIMEOUT.' -k 5 '.$limit.' '.$command;
+    }
+
+    /**
+     * Seconds sendmail gets, or null where it cannot be limited.
+     */
+    private function sendmailTimeout(): ?int
+    {
+        $seconds = (int) config('serfex.mail.sendmail_timeout');
+
+        return $seconds > 0 && is_executable(self::TIMEOUT) ? $seconds : null;
     }
 
     private function mailer(): Mailer
@@ -140,7 +173,7 @@ class OutgoingMail
             'auto_tls' => $s['encryption'] !== 'none',
         ] : [
             'transport' => 'sendmail',
-            'path' => '/usr/sbin/sendmail -bs -i',
+            'path' => $this->sendmailCommand(),
         ];
         config(['mail.mailers.serfex' => $config]);
         Mail::purge('serfex');

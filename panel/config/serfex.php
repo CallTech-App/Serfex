@@ -101,6 +101,12 @@ return [
 
     'mail' => [
         'check_dns' => (bool) env('SERFEX_MAIL_CHECK_DNS', true),
+        // The panel's own mail (notifications, invitations) through this
+        // server's mail server is handed to sendmail. Postfix's sendmail
+        // waits without end when it cannot write to the mail queue, so one
+        // that has not finished after this many seconds is stopped.
+        'sendmail' => env('SERFEX_SENDMAIL', '/usr/sbin/sendmail'),
+        'sendmail_timeout' => (int) env('SERFEX_SENDMAIL_TIMEOUT', 30),
     ],
 
     /*

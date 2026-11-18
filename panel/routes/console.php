@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Application;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -7,6 +8,17 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// A task keeps a lock while it runs, for a day unless said otherwise. The
+// once-a-minute checks below keep theirs for five minutes, so that a run
+// cut short (a reboot, a kill) does not stop them for a day. A run that
+// hangs is then joined by another every five minutes, and each holds its
+// database connections: on a server whose notification mail never left,
+// they used up every connection of the panel's database and its pages
+// answered 500. So these run under timeout(1), which stops a run that is
+// still going after $minutes, together with what it started.
+$stopped = fn (string $command, int $minutes) => (is_executable('/usr/bin/timeout') ? '/usr/bin/timeout -k 10 '.($minutes * 60).' ' : '')
+    .Application::formatCommandString($command);
 
 Schedule::command('serfex:ssl-renew')->hourly()->withoutOverlapping();
 Schedule::command('serfex:mail-usage')->everyThirtyMinutes()->withoutOverlapping();
@@ -34,7 +46,7 @@ Schedule::command('serfex:wordpress-check')->dailyAt('05:20')->withoutOverlappin
 Schedule::command('serfex:tuning-measure')->hourlyAt(7)->withoutOverlapping();
 Schedule::command('serfex:tuning')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:cloudflare-sync')->everyFiveMinutes()->withoutOverlapping();
-Schedule::command('serfex:uptime')->everyMinute()->withoutOverlapping(5);
+Schedule::exec($stopped('serfex:uptime', 15))->everyMinute()->withoutOverlapping(5);
 Schedule::command('serfex:uptime --prune')->dailyAt('04:15')->withoutOverlapping();
-Schedule::command('serfex:laravel-watch')->everyMinute()->withoutOverlapping(5);
+Schedule::exec($stopped('serfex:laravel-watch', 15))->everyMinute()->withoutOverlapping(5);
 Schedule::command('serfex:cloudflare-ips')->weeklyOn(1, '04:50')->withoutOverlapping();
