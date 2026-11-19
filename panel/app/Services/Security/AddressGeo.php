@@ -7,6 +7,7 @@ use App\Models\IpBlock;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Stats\SiteStats;
+use App\Support\ReadOnlyGuard;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -51,9 +52,10 @@ class AddressGeo
         foreach ($missing as $row) {
             $code = strtoupper((string) ($answer['countries'][$row->address] ?? ''));
             $row->country = preg_match('/^[A-Z]{2}$/', $code) === 1 ? $code : self::UNKNOWN;
-            // Learning the country is not a change to the block.
+            // Learning the country is not a change to the block: its time stays, and a
+            // read-only administrator's page stores it like anyone's.
             $row->timestamps = false;
-            $row->save();
+            ReadOnlyGuard::bookkeeping(fn () => $row->save());
             $row->timestamps = true;
         }
     }

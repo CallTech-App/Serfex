@@ -10,6 +10,9 @@ use App\Services\Agent\AgentException;
 use App\Services\Monitor\IpBlocks;
 use App\Services\Monitor\MonitorException;
 use App\Services\Ssl\DnsCheck;
+use App\Support\ReadOnlyGuard;
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +35,9 @@ class IpAllows
 
     /** The server's own addresses, as the agent last reported them. */
     private const OWN_CACHE = 'ip-allows.own';
+
+    /** Held while the list is changed and handed to the agent, so two changes cannot cross. */
+    public const LOCK = 'ip-allows.push';
 
     public function __construct(
         private readonly AgentClient $agent,
@@ -63,7 +69,7 @@ class IpAllows
      * @param  list<array{address: string, note?: ?string}>  $entries
      * @return array{allows: list<int>, lifted: list<int>, skipped: list<array{text: string, message: string}>}
      *
-     * @throws MonitorException when the list would grow past MAX
+     * @throws MonitorException when the list would grow past MAX, or someone else is changing it
      * @throws AgentException
      */
     public function addMany(array $entries, ?User $by = null): array
@@ -90,7 +96,7 @@ class IpAllows
             throw new MonitorException(__('En fazla :n izinli adres olabilir.', ['n' => number_format(self::MAX, 0, ',', '.')]));
         }
         // The rows are kept only when the agent took the list.
-        $ids = DB::transaction(function () use ($new, $by) {
+        $ids = self::alone(fn () => DB::transaction(function () use ($new, $by) {
             $ids = [];
             foreach ($new as $address => $note) {
                 $ids[] = IpAllow::create(['address' => $address, 'note' => $note !== '' ? $note : null, 'user_id' => $by?->id])->id;
@@ -98,7 +104,14 @@ class IpAllows
             $this->push();
 
             return $ids;
-        });
+        }));
+
+        // Fail2ban may have banned one of them a moment ago; the panel reads its bans once a minute.
+        try {
+            app(Fail2ban::class)->sync();
+        } catch (AgentException) {
+            // The bans the panel already knows are still lifted.
+        }
 
         return ['allows' => $ids, 'lifted' => $this->blocks->unblockMany($this->blockedInside(array_keys($new)), $by, 'allowed'), 'skipped' => $skipped];
     }
@@ -111,6 +124,7 @@ class IpAllows
      * @return list<array{address: string, note: ?string}>
      *
      * @throws AgentException when the agent could not apply the list; nothing is removed then
+     * @throws MonitorException when someone else is changing the list
      */
     public function remove(iterable $allows): array
     {
@@ -119,13 +133,13 @@ class IpAllows
             return [];
         }
 
-        return DB::transaction(function () use ($allows) {
+        return self::alone(fn () => DB::transaction(function () use ($allows) {
             $removed = $allows->map(fn (IpAllow $a) => ['address' => $a->address, 'note' => $a->note])->values()->all();
             IpAllow::whereKey($allows->modelKeys())->delete();
             $this->push();
 
             return $removed;
-        });
+        }));
     }
 
     /**
@@ -167,6 +181,8 @@ class IpAllows
      * at most; an empty list while the agent cannot be reached. When the
      * agent's list of allowed addresses differs from the panel's (after a
      * restore, or a move to another server) it is given the panel's.
+     * Not for a read-only administrator, who changes nothing, and not
+     * while someone is changing the list: what they send is the list.
      *
      * @return list<string>
      */
@@ -178,9 +194,17 @@ class IpAllows
         }
         try {
             $answer = (array) $agent->call('firewall.allow.list', [], 15);
-            $wanted = IpAllow::orderBy('id')->pluck('address')->all();
-            if (array_diff($wanted, (array) ($answer['allowed'] ?? [])) !== [] || array_diff((array) ($answer['allowed'] ?? []), $wanted) !== []) {
-                $answer = (array) $agent->call('firewall.allow.apply', ['addresses' => $wanted], config('serfex.agent.job_timeout'));
+            $lock = ReadOnlyGuard::active() ? null : Cache::lock(self::LOCK, 120);
+            if ($lock?->get()) {
+                try {
+                    $wanted = IpAllow::orderBy('id')->pluck('address')->all();
+                    $held = array_map('strval', (array) ($answer['allowed'] ?? []));
+                    if (array_diff($wanted, $held) !== [] || array_diff($held, $wanted) !== []) {
+                        $answer = (array) $agent->call('firewall.allow.apply', ['addresses' => $wanted], config('serfex.agent.job_timeout'));
+                    }
+                } finally {
+                    $lock->release();
+                }
             }
         } catch (AgentException) {
             return [];
@@ -189,6 +213,25 @@ class IpAllows
         Cache::put(self::OWN_CACHE, $own, now()->addMinutes(10));
 
         return $own;
+    }
+
+    /**
+     * Runs a change to the list while no other change runs.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $change
+     * @return T
+     *
+     * @throws MonitorException when another change has not finished after half a minute
+     */
+    private static function alone(Closure $change): mixed
+    {
+        try {
+            return Cache::lock(self::LOCK, 120)->block(30, $change);
+        } catch (LockTimeoutException) {
+            throw new MonitorException(__('İzinli adresler şu anda başka bir işlemle değiştiriliyor; birazdan yeniden deneyin.'));
+        }
     }
 
     /**

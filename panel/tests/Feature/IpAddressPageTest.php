@@ -38,6 +38,7 @@ class IpAddressPageTest extends TestCase
         $this->agent = new FakeAgent([
             'firewall.block.many' => fn ($p) => ['blocked' => array_map(fn ($i) => ['address' => $i['address']], $p['items']), 'skipped' => []],
             'firewall.unblock.many' => fn ($p) => ['removed' => count($p['addresses'])],
+            'fail2ban.status' => FakeAgent::fail2banHoldsItsBans(),
             'firewall.allow.apply' => fn ($p) => ['allowed' => $p['addresses'], 'own' => ['203.0.113.10']],
             'firewall.allow.list' => fn () => ['allowed' => IpAllow::pluck('address')->all(), 'own' => ['203.0.113.10']],
             'geo.lookup' => fn ($p) => ['loaded' => true, 'countries' => array_fill_keys($p['addresses'], 'NL')],
@@ -126,7 +127,9 @@ class IpAddressPageTest extends TestCase
         $page->call('reload')
             ->assertDontSee('Erişim günlükleri okunamadı')
             ->assertSee('4.203')
-            ->assertSee('Günlükler çok büyük olduğu için tamamı okunamadı');
+            ->assertSee('Günlükler çok büyük olduğu için tamamı okunamadı')
+            // The oldest line that was read is not where the logs start.
+            ->assertDontSee('gününden bu yana');
     }
 
     public function test_times_inside_sentences_keep_month_names_and_the_page_says_how_far_back_the_logs_go(): void
@@ -213,6 +216,45 @@ class IpAddressPageTest extends TestCase
             ->assertNotDispatched('toast');
 
         $this->assertSame(0, IpBlock::count());
+    }
+
+    public function test_a_ban_on_the_readers_own_address_does_not_become_a_block_on_the_whole_server(): void
+    {
+        $this->app->rebinding('request', fn ($app, $request) => $request->server->set('REMOTE_ADDR', self::ADDRESS));
+        $ban = IpBlock::create(['address' => self::ADDRESS, 'source' => 'fail2ban', 'kind' => 'sshd', 'expires_at' => now()->addHour()]);
+
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->call('change', 0)
+            ->assertSee('şu anki bağlantınızın adresi')
+            ->assertNotDispatched('toast');
+
+        $this->assertSame([], $this->agent->called('firewall.block.many'));
+        $this->assertSame([$ban->id], IpBlock::active()->pluck('id')->all());
+    }
+
+    public function test_a_read_only_administrator_sees_what_the_address_did(): void
+    {
+        IpBlock::create(['address' => self::ADDRESS, 'source' => 'panel']);
+        $this->actingAs(User::factory()->create(['role' => 'readonly']));
+
+        $this->get('/security/ip-blocks/address/'.self::ADDRESS)->assertOk()->assertSee('Hollanda');
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->call('load')
+            ->assertSee('magazaonline.com.tr')->assertSee('/wp-login.php');
+
+        // Looking is all.
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->call('unblock');
+        $this->assertTrue(IpBlock::sole()->isActive());
+    }
+
+    public function test_a_lookup_that_stopped_early_and_found_nothing_does_not_say_the_address_never_came(): void
+    {
+        $this->agent->answers['logs.address'] = ['address' => self::ADDRESS, 'hostname' => '', 'requests' => 0, 'denied' => 0, 'logins' => 0,
+            'first' => null, 'last' => null, 'sites' => [], 'recent' => [], 'since' => now()->subDays(2)->toIso8601String(), 'truncated' => true];
+
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->call('load')
+            ->assertSee('Günlükler çok büyük olduğu için tamamı okunamadı')
+            ->assertSee('Okunan bölümde bu adres yok')
+            ->assertDontSee('Bu adresten sitelere istek gelmemiş')
+            ->assertDontSee('gününden başlıyor');
     }
 
     public function test_the_address_is_allowed_and_taken_off_the_list_from_its_page(): void

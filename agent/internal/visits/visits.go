@@ -421,9 +421,17 @@ func (s *scan) trim() {
 	}
 }
 
-// lineTime reads the "[18/Nov/2026:10:00:00 +0000]" of a line.
+// lineTime reads the "[18/Nov/2026:10:00:00 +0000]" of a line: the last
+// bracket before the request. The user name of HTTP Basic authentication
+// comes before it and is whatever the visitor sent, brackets included;
+// Nginx writes a double quote in it as \x22, so the first quote on the
+// line opens the request.
 func lineTime(line []byte) (time.Time, bool) {
-	i := bytes.IndexByte(line, '[')
+	head := line
+	if q := bytes.IndexByte(line, '"'); q >= 0 {
+		head = line[:q]
+	}
+	i := bytes.LastIndexByte(head, '[')
 	if i < 0 {
 		return time.Time{}, false
 	}

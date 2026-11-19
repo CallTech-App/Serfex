@@ -37,6 +37,7 @@ class IpBlocksPageTest extends TestCase
             'firewall.block' => fn ($p) => ['address' => $p['address']],
             'firewall.block.many' => fn ($p) => ['blocked' => array_map(fn ($i) => ['address' => $i['address']], $p['items']), 'skipped' => []],
             'firewall.unblock.many' => fn ($p) => ['removed' => count($p['addresses'])],
+            'fail2ban.status' => FakeAgent::fail2banHoldsItsBans(),
             'firewall.allow.apply' => fn ($p) => ['allowed' => $p['addresses'], 'own' => ['203.0.113.10', '2001:db8::10']],
             'firewall.allow.list' => fn () => ['allowed' => IpAllow::pluck('address')->all(), 'own' => ['203.0.113.10', '2001:db8::10']],
             'geo.lookup' => fn ($p) => ['loaded' => true, 'countries' => array_fill_keys($p['addresses'], 'NL')],
@@ -482,6 +483,54 @@ class IpBlocksPageTest extends TestCase
 
         $this->actingAs(User::factory()->member()->create());
         $this->assertNotContains('IP engelleri', array_column($find('engel'), 'label'));
+    }
+
+    public function test_changing_the_duration_of_the_selection_passes_over_a_ban_on_my_own_address(): void
+    {
+        $this->connectFrom('88.230.14.52');
+        // Fail2ban closed the mail port to this address; the panel still answers it.
+        $mine = IpBlock::create(['address' => '88.230.14.52', 'source' => 'fail2ban', 'kind' => 'dovecot', 'expires_at' => now()->addHour()]);
+        $other = IpBlock::create(['address' => '192.0.2.9', 'source' => 'panel', 'expires_at' => now()->addHour()]);
+
+        Livewire::test(IpBlocksIndex::class)->set('selected', [$mine->id, $other->id])->call('changeSelected', 0)
+            ->assertDispatched('toast', message: '1 engelin süresi değiştirildi: Kalıcı.')
+            ->assertSee('88.230.14.52')->assertSee('şu anki bağlantınızın adresi');
+
+        $this->assertSame(['192.0.2.9'], array_column($this->agent->called('firewall.block.many')[0]['items'], 'address'));
+        $this->assertSame('fail2ban', IpBlock::active()->where('address', '88.230.14.52')->sole()->source);
+    }
+
+    public function test_a_read_only_administrator_can_read_the_lists(): void
+    {
+        IpBlock::create(['address' => '192.0.2.1', 'source' => 'panel', 'reason' => 'Tarama']);
+        IpBlock::create(['address' => '192.0.2.2', 'source' => 'panel', 'expires_at' => now()->subDay()]);
+        IpAllow::create(['address' => '78.224.63.12', 'note' => 'Uptime izleme']);
+        // The agent holds another allowed list than the panel; a read-only account does not make the panel send its own.
+        $this->agent->answers['firewall.allow.list'] = ['allowed' => [], 'own' => ['203.0.113.10']];
+        $this->actingAs(User::factory()->create(['role' => 'readonly']));
+
+        $this->get('/security/ip-blocks')->assertOk()->assertSee('192.0.2.1')->assertSee('Hollanda');
+        $this->get('/security/ip-blocks?tab=allowed')->assertOk()->assertSee('78.224.63.12')->assertSee('203.0.113.10');
+        $this->get('/security/ip-blocks?tab=history')->assertOk()->assertSee('192.0.2.2');
+
+        $this->assertSame([], $this->agent->called('firewall.allow.apply'));
+        // The country the page learned is kept, as it is for everyone else.
+        $this->assertSame('NL', IpBlock::where('address', '192.0.2.1')->sole()->country);
+
+        // Looking is all: nothing is unblocked.
+        Livewire::test(IpBlocksIndex::class)->call('unblock', IpBlock::where('address', '192.0.2.1')->sole()->id);
+        $this->assertSame([], $this->agent->called('firewall.unblock.many'));
+        $this->assertTrue(IpBlock::where('address', '192.0.2.1')->sole()->isActive());
+    }
+
+    public function test_a_paste_longer_than_the_page_takes_is_not_checked_on_every_keystroke(): void
+    {
+        IpBlock::create(['address' => '198.51.100.0/24', 'source' => 'panel']);
+
+        $page = Livewire::test(IpBlocksIndex::class)->call('openPaste')->set('paste', str_repeat("198.51.100.9\n", 20_000));
+
+        $this->assertNull($page->viewData('check'));
+        $page->assertSee('Bir kerede en fazla 1.000 adres engellenebilir')->assertDontSee('ile çakışıyor');
     }
 
     /**

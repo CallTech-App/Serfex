@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Security\AddressList;
+use App\Services\Security\AddressRanges;
 use App\Services\Security\IpAllows;
 use App\Services\Ssl\DnsCheck;
 use Illuminate\Database\Eloquent\Collection;
@@ -45,6 +46,9 @@ class IpBlocks
     /** Durations offered in the panel, in minutes; null blocks until removed. */
     public const DURATIONS = [60 => '1 saat', 1440 => '24 saat', 10080 => '7 gün', 43200 => '30 gün', 0 => 'Kalıcı'];
 
+    /** Cloudflare's proxy ranges, read once. */
+    private static ?AddressRanges $cloudflare = null;
+
     public function __construct(private readonly AgentClient $agent) {}
 
     /**
@@ -61,7 +65,7 @@ class IpBlocks
     {
         $address = self::normalize($address);
         $minutes = self::length($minutes, $source);
-        $problem = $this->problem($address, $protect, IpAllow::all(), []);
+        $problem = $this->problem($address, $protect, AddressRanges::of(IpAllow::pluck('address')), []);
         if ($problem !== null) {
             throw new MonitorException(match ($problem[0]) {
                 // Every visitor of a proxied site comes from Cloudflare's addresses.
@@ -148,22 +152,27 @@ class IpBlocks
      */
     public function inspect(string $text, array $protect = []): array
     {
-        $allows = IpAllow::all();
+        $allowed = AddressRanges::of(IpAllow::pluck('address'));
         $own = IpAllows::serverAddresses($this->agent);
-        $active = IpBlock::active()->get();
-        $whole = $active->where('source', '!=', 'fail2ban');
-        $byAddress = $active->groupBy('address');
-        $ranges = $whole->filter(fn (IpBlock $b) => str_contains($b->address, '/'))->pluck('address')->all();
-        $singles = $whole->reject(fn (IpBlock $b) => str_contains($b->address, '/'))->pluck('address')->all();
+        // Only the address and the source of each block in force: there may be tens of thousands.
+        $known = [];
+        $whole = [];
+        foreach (IpBlock::active()->toBase()->get(['address', 'source']) as $row) {
+            $known[$row->address] = true;
+            if ($row->source !== 'fail2ban') {
+                $whole[$row->address] = true;
+            }
+        }
+        $blocked = AddressRanges::of(array_keys($whole));
+        $listed = AddressRanges::of([]);
 
         $new = [];
-        $update = new Collection;
+        $again = [];
         $skipped = [];
-        $taken = [];
-        $takenRanges = [];
+        $taken = 0;
         foreach (AddressList::parse($text) as $entry) {
             $address = $entry['address'];
-            $problem = $address === null ? null : $this->problem($address, $protect, $allows, $own);
+            $problem = $address === null ? null : $this->problem($address, $protect, $allowed, $own);
             $message = match (true) {
                 $address === null => (string) $entry['error'],
                 $problem !== null => self::reason($problem),
@@ -171,11 +180,11 @@ class IpBlocks
             };
             $why = $address === null ? 'invalid' : ($problem[0] ?? null);
             // The firewall holds no two blocks that overlap.
-            if ($message === null && ($other = self::clash($address, $ranges, $singles)) !== null) {
+            if ($message === null && ($other = $blocked->overlapping($address)) !== null) {
                 $message = __('engelli :other ile çakışıyor; önce o engeli kaldırın', ['other' => $other]);
                 $why = 'overlap';
             }
-            if ($message === null && ($other = self::clash($address, $takenRanges, str_contains($address, '/') ? $taken : [])) !== null) {
+            if ($message === null && ($other = $listed->overlapping($address)) !== null) {
                 $message = __('listedeki :other ile çakışıyor', ['other' => $other]);
                 $why = 'overlap';
             }
@@ -184,18 +193,30 @@ class IpBlocks
 
                 continue;
             }
-            $taken[] = $address;
-            if (str_contains($address, '/')) {
-                $takenRanges[] = $address;
+            // A list over the limit is refused whole; what follows needs no comparing with it.
+            if (++$taken <= self::MAX_BATCH) {
+                $listed->add($address);
             }
-            if ($byAddress->has($address)) {
-                $update = $update->concat($byAddress[$address]);
+            if (isset($known[$address])) {
+                $again[] = $address;
             } else {
                 $new[] = $address;
             }
         }
 
-        return ['new' => $new, 'update' => $update, 'skipped' => $skipped, 'over' => count($taken) > self::MAX_BATCH];
+        // The rows of what is blocked already, in the order of the list.
+        $rows = [];
+        foreach (array_chunk($again, 1000) as $chunk) {
+            foreach (IpBlock::active()->whereIn('address', $chunk)->orderBy('id')->get() as $block) {
+                $rows[$block->address][] = $block;
+            }
+        }
+        $update = [];
+        foreach ($again as $address) {
+            array_push($update, ...($rows[$address] ?? []));
+        }
+
+        return ['new' => $new, 'update' => new Collection($update), 'skipped' => $skipped, 'over' => $taken > self::MAX_BATCH];
     }
 
     /**
@@ -273,8 +294,10 @@ class IpBlocks
 
     /**
      * Undoes unblockMany(): each block comes back, as the same row, for
-     * the time it had left. Blocks whose time is over stay over. Returns
-     * how many came back.
+     * the time it had left. Blocks whose time is over stay over, and so
+     * does one whose address was blocked again since (by Serfex AI, by
+     * Fail2ban or by hand): the newer block decides. Returns how many
+     * came back.
      *
      * @param  iterable<IpBlock>  $blocks
      *
@@ -282,11 +305,16 @@ class IpBlocks
      */
     public function reblockMany(iterable $blocks): int
     {
+        $blocks = new Collection($blocks);
         $back = ['removed_at' => null, 'ended' => null, 'removed_by' => null];
         $count = 0;
         $rows = [];
+        // What is blocked now, by address for the whole server and by jail for bans.
+        $now = IpBlock::active()->whereIn('address', $blocks->pluck('address')->unique()->values()->all())->get()
+            ->mapWithKeys(fn (IpBlock $b) => [($b->source === 'fail2ban' ? $b->kind : '').'|'.$b->address => true]);
         foreach ($blocks as $block) {
-            if ($block->removed_at === null || $block->expires_at?->isPast()) {
+            if ($block->removed_at === null || $block->expires_at?->isPast()
+                || $now->has(($block->source === 'fail2ban' ? $block->kind : '').'|'.$block->address)) {
                 continue;
             }
             if ($block->source !== 'fail2ban') {
@@ -325,12 +353,13 @@ class IpBlocks
      *
      * @param  iterable<IpBlock>  $blocks
      * @param  int|null  $minutes  null or 0: until removed
+     * @param  list<string>  $protect  addresses that must stay reachable, such as the caller's own: a ban on one of them stays Fail2ban's
      * @return Outcome
      *
      * @throws MonitorException
      * @throws AgentException
      */
-    public function changeDuration(iterable $blocks, ?int $minutes, ?User $by = null): array
+    public function changeDuration(iterable $blocks, ?int $minutes, ?User $by = null, array $protect = []): array
     {
         $minutes = self::length($minutes, 'panel');
         $items = [];
@@ -341,7 +370,7 @@ class IpBlocks
             }
         }
 
-        return $this->apply($items, $by, 'panel', []);
+        return $this->apply($items, $by, 'panel', $protect);
     }
 
     /**
@@ -428,10 +457,10 @@ class IpBlocks
     private function apply(array $items, ?User $by, string $source, array $protect, array $skipped = []): array
     {
         $out = ['blocks' => new Collection, 'created' => [], 'previous' => [], 'replaced' => [], 'skipped' => $skipped];
-        $allows = IpAllow::all();
+        $allowed = AddressRanges::of(IpAllow::pluck('address'));
         $ok = [];
         foreach ($items as $item) {
-            $problem = $this->problem($item['address'], $protect, $allows, []);
+            $problem = $this->problem($item['address'], $protect, $allowed, []);
             if ($problem !== null) {
                 $out['skipped'][] = ['text' => $item['address'], 'message' => self::reason($problem)];
             } else {
@@ -546,18 +575,15 @@ class IpBlocks
      * allowed list. null when nothing stands in the way.
      *
      * @param  list<string>  $protect
-     * @param  iterable<IpAllow>  $allows
+     * @param  AddressRanges  $allowed  the allowed list
      * @param  list<string>  $own
      * @return array{0: string, 1?: string}|null
      */
-    private function problem(string $address, array $protect, iterable $allows, array $own): ?array
+    private function problem(string $address, array $protect, AddressRanges $allowed, array $own): ?array
     {
-        $base = explode('/', $address)[0];
-        $cloudflare = DnsCheck::isCloudflare($base);
-        foreach (DnsCheck::CLOUDFLARE as $cidr) {
-            $cloudflare = $cloudflare || self::contains($address, explode('/', $cidr)[0]);
-        }
-        if ($cloudflare) {
+        // In one of Cloudflare's ranges, or a prefix that holds one.
+        self::$cloudflare ??= AddressRanges::of(DnsCheck::CLOUDFLARE);
+        if (self::$cloudflare->covering($address) !== null || self::$cloudflare->overlapping($address) !== null) {
             return ['cloudflare'];
         }
         foreach ($protect as $mine) {
@@ -570,9 +596,10 @@ class IpBlocks
                 return ['own'];
             }
         }
-        $allow = IpAllows::match($address, $allows);
+        // A prefix is allowed only by an entry at least as wide.
+        $entry = $allowed->covering($address);
 
-        return $allow !== null ? ['allowed', $allow->address] : null;
+        return $entry !== null ? ['allowed', $entry] : null;
     }
 
     /**
@@ -588,32 +615,6 @@ class IpBlocks
             'own' => __('sunucunun kendi adresi'),
             default => __('izinli adreslerde (:entry)', ['entry' => $problem[1] ?? '']),
         };
-    }
-
-    /**
-     * The first of the ranges $address overlaps, or of the single
-     * addresses it holds; null when it stands clear of them all.
-     *
-     * @param  array<int, string>  $ranges
-     * @param  array<int, string>  $singles
-     */
-    private static function clash(string $address, array $ranges, array $singles): ?string
-    {
-        $base = explode('/', $address)[0];
-        foreach ($ranges as $range) {
-            if ($range !== $address && (self::contains($range, $base) || self::contains($address, explode('/', $range)[0]))) {
-                return $range;
-            }
-        }
-        if (str_contains($address, '/')) {
-            foreach ($singles as $single) {
-                if ($single !== $address && self::contains($address, $single)) {
-                    return $single;
-                }
-            }
-        }
-
-        return null;
     }
 
     /**

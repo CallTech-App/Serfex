@@ -6443,5 +6443,8 @@
     "Sitelerin erişim günlüklerinden.": "From the sites' access logs.",
     "Cloudflare vekili arkasındaki sitelerde ziyaretçinin gerçek adresi sayılır. Reddedilen: engel, WAF ya da site kuralı yüzünden 403 alan istekler.": "On sites behind the Cloudflare proxy the visitor's real address is counted. Rejected: requests answered with 403 because of a block, the WAF or a site rule.",
     ":h sa": ":h h",
-    ":d gün": ":d day|:d days"
+    ":d gün": ":d day|:d days",
+    "Okunan bölümde bu adres yok": "This address is not in the part that was read",
+    "Günlükler çok büyük olduğu için tamamı okunamadı; bu adresin istekleri okunmayan bölümde olabilir. Bir sitenin günlük sayfasında adresi arayabilirsiniz.": "The logs are too large to be read in full; this address's requests may be in the part that was not read. You can search for the address on a site's log page.",
+    "İzinli adresler şu anda başka bir işlemle değiştiriliyor; birazdan yeniden deneyin.": "The allowed addresses are being changed by another action right now; try again in a moment."
 }

@@ -181,6 +181,13 @@
                 <p class="mx-auto mt-1 max-w-xl text-[13px] break-words text-muted">{{ $failed }}</p>
                 <button type="button" wire:click="reload" wire:loading.attr="disabled" class="{{ $btn }} mx-auto mt-3"><x-icon name="rotate-ccw" />{{ __('Yeniden dene') }}</button>
             </div>
+        @elseif ($sites->isEmpty() && $recent->isEmpty() && ($report['truncated'] ?? false))
+            {{-- The read was cut short: the address may be in the part that was not read. --}}
+            <div class="px-5 py-12 text-center text-[13.5px]">
+                <p class="font-medium">{{ __('Okunan bölümde bu adres yok') }}</p>
+                <p class="mx-auto mt-1 max-w-xl text-[13px] text-muted">{{ __('Günlükler çok büyük olduğu için tamamı okunamadı; bu adresin istekleri okunmayan bölümde olabilir. Bir sitenin günlük sayfasında adresi arayabilirsiniz.') }}</p>
+                <button type="button" wire:click="reload" wire:loading.attr="disabled" class="{{ $btn }} mx-auto mt-3"><x-icon name="rotate-ccw" />{{ __('Yeniden dene') }}</button>
+            </div>
         @elseif ($sites->isEmpty() && $recent->isEmpty())
             <div class="px-5 py-12 text-center text-[13.5px]">
                 <p class="font-medium">{{ __('Bu adresten sitelere istek gelmemiş.') }}</p>

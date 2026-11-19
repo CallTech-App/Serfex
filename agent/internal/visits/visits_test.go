@@ -148,6 +148,36 @@ func TestMalformedLinesAreSkipped(t *testing.T) {
 	}
 }
 
+// The user name of HTTP Basic authentication is whatever the visitor
+// sends, and Nginx writes it before the time: brackets, spaces or a made-up
+// time in it must not hide the visitor's requests.
+func TestAUserNameWithBracketsDoesNotHideTheRequest(t *testing.T) {
+	m, sim := newTest(t)
+	const ip = "45.155.205.233"
+	at := day.Add(7 * time.Minute).Format("02/Jan/2006:15:04:05 -0700")
+	put(t, sim, "a.com", "access.log",
+		ip+` - [x [`+at+`] "GET /one HTTP/1.1" 200 5 "-" "x"`,
+		ip+` - a b] [ [`+at+`] "GET /two HTTP/1.1" 403 5 "-" "x"`,
+		ip+` - [01/Jan/2001:00:00:00 +0000] [`+at+`] "GET /three HTTP/1.1" 404 5 "-" "x"`,
+		ip+` - - [`+at+`] "GET /four?a[]=1 HTTP/1.1" 200 5 "http://a.com/[x]" "agent [bot]"`)
+	r, err := m.Address(context.Background(), Spec{Address: ip})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Requests != 4 || len(r.Recent) != 4 {
+		t.Fatalf("requests = %d, recent = %+v", r.Requests, r.Recent)
+	}
+	want := day.Add(7 * time.Minute)
+	for _, v := range r.Recent {
+		if !v.At.Equal(want) {
+			t.Fatalf("%s at %s, want %s", v.Path, v.At, want)
+		}
+	}
+	if r.First == nil || !r.First.Equal(want) || r.Since == nil || !r.Since.Equal(want) {
+		t.Fatalf("first = %v, since = %v", r.First, r.Since)
+	}
+}
+
 func TestRecentIsNewestFirstAndCapped(t *testing.T) {
 	m, sim := newTest(t)
 	const bad = "45.155.205.233"

@@ -171,7 +171,7 @@ class IpAddressShow extends Component
             return;
         }
         try {
-            $result = $blocks->changeDuration($active, $minutes, auth()->user());
+            $result = $blocks->changeDuration($active, $minutes, auth()->user(), $this->mine());
         } catch (MonitorException|AgentException $e) {
             $this->refused = __('Süre değiştirilemedi: :reason', ['reason' => self::why($e)]);
 
@@ -212,7 +212,7 @@ class IpAddressShow extends Component
         }
         try {
             $entries = $allows->remove($rows);
-        } catch (AgentException $e) {
+        } catch (MonitorException|AgentException $e) {
             $this->refused = __('Adres izinlilerden kaldırılamadı: :reason', ['reason' => self::why($e)]);
 
             return;
@@ -273,7 +273,8 @@ class IpAddressShow extends Component
             'first' => self::time($report['first'] ?? null),
             'last' => self::time($report['last'] ?? null),
             // The oldest log line that was read: how far back the numbers go.
-            'since' => self::time($report['since'] ?? null),
+            // After a read that was cut short it is not where the logs start.
+            'since' => ($report['truncated'] ?? false) ? null : self::time($report['since'] ?? null),
             'bans' => IpBlock::where('address', $this->address)->where('source', 'fail2ban')->count(),
         ])->title($this->address.' · Serfex');
     }

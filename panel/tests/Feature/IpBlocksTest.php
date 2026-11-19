@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\IpAllow;
 use App\Models\IpBlock;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
@@ -41,6 +42,7 @@ class IpBlocksTest extends TestCase
             'firewall.block' => fn ($p) => ['address' => $p['address']],
             'firewall.block.many' => fn ($p) => ['blocked' => array_map(fn ($i) => ['address' => $i['address']], $p['items']), 'skipped' => []],
             'firewall.unblock.many' => fn ($p) => ['removed' => count($p['addresses'])],
+            'fail2ban.status' => FakeAgent::fail2banHoldsItsBans(),
             'firewall.allow.apply' => fn ($p) => ['allowed' => $p['addresses'], 'own' => ['203.0.113.10', '2001:db8::10']],
             // The agent holds the list the panel last gave it.
             'firewall.allow.list' => fn () => ['allowed' => IpAllow::pluck('address')->all(), 'own' => ['203.0.113.10', '2001:db8::10']],
@@ -83,6 +85,152 @@ class IpBlocksTest extends TestCase
         $this->assertSame('Sercan Akın', $allow->user->name);
         $this->expectException(UniqueConstraintViolationException::class);
         IpAllow::create(['address' => '88.230.14.52']);
+    }
+
+    public function test_changing_the_duration_leaves_a_ban_on_the_callers_own_address_alone(): void
+    {
+        // Banned on the mail port only (an old password in a mail client): the panel still answers this address.
+        $mine = IpBlock::create(['address' => '88.230.14.52', 'source' => 'fail2ban', 'kind' => 'dovecot', 'expires_at' => now()->addHour()]);
+        $other = IpBlock::create(['address' => '192.0.2.9', 'source' => 'fail2ban', 'kind' => 'sshd', 'expires_at' => now()->addHour()]);
+
+        $result = $this->blocks()->changeDuration([$mine, $other], 0, $this->admin, ['88.230.14.52']);
+
+        $this->assertSame(['192.0.2.9'], array_column($this->agent->called('firewall.block.many')[0]['items'], 'address'));
+        $this->assertSame(['192.0.2.9'], $result['blocks']->pluck('address')->all());
+        $this->assertSame('88.230.14.52', $result['skipped'][0]['text']);
+        $this->assertStringContainsString('şu anki bağlantınızın adresi', $result['skipped'][0]['message']);
+        $this->assertSame('fail2ban', IpBlock::active()->where('address', '88.230.14.52')->sole()->source);
+    }
+
+    public function test_a_long_list_is_checked_quickly_against_thousands_of_blocked_ranges(): void
+    {
+        $now = now();
+        $rows = [];
+        foreach (range(0, 3999) as $i) {
+            $rows[] = ['address' => '11.'.intdiv($i, 250).'.'.($i % 250).'.0/24', 'source' => 'panel', 'created_at' => $now, 'updated_at' => $now];
+        }
+        foreach (array_chunk($rows, 1000) as $chunk) {
+            IpBlock::insert($chunk);
+        }
+        $lines = [];
+        foreach (range(0, 499) as $k) {
+            $lines[] = '11.0.'.($k % 250).'.'.(7 + intdiv($k, 250));   // inside a blocked range
+            $lines[] = '12.0.'.($k % 250).'.'.(7 + intdiv($k, 250));   // free
+        }
+
+        $start = hrtime(true);
+        $check = $this->blocks()->inspect(implode("\n", $lines));
+        $seconds = (hrtime(true) - $start) / 1e9;
+
+        $this->assertCount(500, $check['new']);
+        $this->assertCount(500, $check['skipped']);
+        $this->assertSame('overlap', $check['skipped'][0]['why']);
+        $this->assertStringContainsString('engelli 11.0.0.0/24 ile çakışıyor', $check['skipped'][0]['message']);
+        $this->assertLessThan(1.5, $seconds, 'checking 1,000 addresses against 4,000 blocked ranges took '.round($seconds, 1).' s');
+    }
+
+    public function test_overlaps_are_found_in_both_directions_for_addresses_and_ranges_of_both_families(): void
+    {
+        IpBlock::create(['address' => '198.51.100.0/24', 'source' => 'panel']);
+        IpBlock::create(['address' => '203.0.114.77', 'source' => 'ai']);
+        IpBlock::create(['address' => '2001:db8:5::/48', 'source' => 'panel']);
+        IpBlock::create(['address' => '2001:db8:9::1', 'source' => 'panel']);
+        // Fail2ban's ban is not a block on the whole server: nothing overlaps it.
+        IpBlock::create(['address' => '192.0.2.200', 'source' => 'fail2ban', 'kind' => 'sshd', 'expires_at' => now()->addHour()]);
+
+        $check = $this->blocks()->inspect(implode("\n", [
+            '198.51.100.9',          // inside a blocked range
+            '198.51.0.0/16',         // around a blocked range
+            '198.51.100.128/25',     // inside a blocked range, as a range
+            '203.0.114.0/24',        // around a blocked address
+            '2001:db8:5:1::7',       // inside a blocked IPv6 range
+            '2001:db8:9::/64',       // around a blocked IPv6 address
+            '198.51.100.0/24',       // the blocked range itself: its duration changes
+            '203.0.114.77',          // the blocked address itself
+            '192.0.2.0/24',          // around a Fail2ban ban only
+            '198.51.101.1',          // next to the blocked range
+            '10.9.0.0/16', '10.9.3.3', '10.8.0.5', '10.8.0.0/24', // overlaps inside the list itself
+        ]));
+
+        $why = array_column($check['skipped'], 'message', 'text');
+        $this->assertSame([
+            '198.51.100.9' => 'engelli 198.51.100.0/24 ile çakışıyor; önce o engeli kaldırın',
+            '198.51.0.0/16' => 'engelli 198.51.100.0/24 ile çakışıyor; önce o engeli kaldırın',
+            '198.51.100.128/25' => 'engelli 198.51.100.0/24 ile çakışıyor; önce o engeli kaldırın',
+            '203.0.114.0/24' => 'engelli 203.0.114.77 ile çakışıyor; önce o engeli kaldırın',
+            '2001:db8:5:1::7' => 'engelli 2001:db8:5::/48 ile çakışıyor; önce o engeli kaldırın',
+            '2001:db8:9::/64' => 'engelli 2001:db8:9::1 ile çakışıyor; önce o engeli kaldırın',
+            '10.9.3.3' => 'listedeki 10.9.0.0/16 ile çakışıyor',
+            '10.8.0.0/24' => 'listedeki 10.8.0.5 ile çakışıyor',
+        ], $why);
+        $this->assertSame(['192.0.2.0/24', '198.51.101.1', '10.9.0.0/16', '10.8.0.5'], $check['new']);
+        $this->assertEqualsCanonicalizing(['198.51.100.0/24', '203.0.114.77'], $check['update']->pluck('address')->all());
+    }
+
+    public function test_undoing_an_unblock_leaves_an_address_alone_that_was_blocked_again_meanwhile(): void
+    {
+        $old = IpBlock::create(['address' => '192.0.2.7', 'source' => 'panel', 'expires_at' => now()->addMinutes(30)]);
+        $ban = IpBlock::create(['address' => '192.0.2.8', 'source' => 'fail2ban', 'kind' => 'sshd', 'expires_at' => now()->addMinutes(30)]);
+        $this->blocks()->unblockMany([$old, $ban], $this->admin);
+        // Before "Geri al" is pressed, Serfex AI blocks the first for good and Fail2ban bans the second again.
+        $forever = $this->blocks()->block('192.0.2.7', null, 'Dakikada 900 istek', null, 'ai');
+        $again = IpBlock::create(['address' => '192.0.2.8', 'source' => 'fail2ban', 'kind' => 'sshd', 'expires_at' => now()->addHour()]);
+        $asked = count($this->agent->called('firewall.block.many'));
+
+        $this->assertSame(0, $this->blocks()->reblockMany([$old->fresh(), $ban->fresh()]));
+
+        // The firewall is not given the old remaining time, and each address is in the list once.
+        $this->assertCount($asked, $this->agent->called('firewall.block.many'));
+        $this->assertSame([], $this->agent->called('fail2ban.ban'));
+        $this->assertSame([$forever->id], IpBlock::active()->where('address', '192.0.2.7')->pluck('id')->all());
+        $this->assertSame([$again->id], IpBlock::active()->where('address', '192.0.2.8')->pluck('id')->all());
+        $this->assertFalse($old->fresh()->isActive());
+    }
+
+    public function test_allowing_an_address_lifts_a_ban_fail2ban_made_a_moment_ago(): void
+    {
+        // The panel reads Fail2ban's bans once a minute; this one is not in its list yet.
+        Setting::put('components.installed', ['fail2ban']);
+        $this->agent->answers['fail2ban.status'] = ['installed' => true, 'running' => true, 'jails' => [
+            ['name' => 'sshd', 'banned' => [['address' => '88.230.14.52', 'until' => now()->addMinutes(10)->toIso8601String()]]],
+        ]];
+
+        $result = $this->allows()->add('88.230.14.52', 'Ofis', $this->admin);
+
+        $this->assertSame([['jail' => 'sshd', 'address' => '88.230.14.52']], $this->agent->called('fail2ban.unban'));
+        $this->assertCount(1, $result['lifted']);
+        $this->assertSame('allowed', IpBlock::sole()->ended);
+    }
+
+    public function test_a_read_only_administrator_never_makes_the_panel_send_the_allowed_list(): void
+    {
+        IpAllow::create(['address' => '78.224.63.12']);
+        // The agent holds another list than the panel.
+        $this->agent->answers['firewall.allow.list'] = ['allowed' => [], 'own' => ['203.0.113.10']];
+        $this->actingAs(User::factory()->create(['role' => 'readonly']));
+
+        $this->assertSame(['203.0.113.10'], IpAllows::serverAddresses($this->agent));
+        $this->assertSame([], $this->agent->called('firewall.allow.apply'));
+
+        // The next administrator who can change things does.
+        Cache::flush();
+        $this->actingAs($this->admin);
+        IpAllows::serverAddresses($this->agent);
+        $this->assertSame([['addresses' => ['78.224.63.12']]], $this->agent->called('firewall.allow.apply'));
+    }
+
+    public function test_the_allowed_list_is_not_sent_while_someone_else_is_changing_it(): void
+    {
+        IpAllow::create(['address' => '78.224.63.12']);
+        // Another request has sent a list with a new entry and has not stored its row yet.
+        $this->agent->answers['firewall.allow.list'] = ['allowed' => ['78.224.63.12', '192.0.2.50'], 'own' => ['203.0.113.10']];
+        $busy = Cache::lock(IpAllows::LOCK, 30);
+        $this->assertTrue($busy->get());
+
+        $this->assertSame(['203.0.113.10'], IpAllows::serverAddresses($this->agent));
+        $this->assertSame([], $this->agent->called('firewall.allow.apply'));
+
+        $busy->release();
     }
 
     private function blocks(): IpBlocks
@@ -393,7 +541,6 @@ class IpBlocksTest extends TestCase
         $ban = IpBlock::create(['address' => '88.230.14.52', 'source' => 'fail2ban', 'kind' => 'serfex-panel', 'expires_at' => now()->addHour()]);
         $wide = IpBlock::create(['address' => '88.230.0.0/16', 'source' => 'panel']);
         $other = IpBlock::create(['address' => '192.0.2.1', 'source' => 'panel']);
-
         $result = $this->allows()->add('88.230.14.52', 'Ofis (sabit IP)', $this->admin);
 
         $this->assertSame([['addresses' => ['34.74.90.64/28', '88.230.14.52']]], $this->agent->called('firewall.allow.apply'));

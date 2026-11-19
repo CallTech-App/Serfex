@@ -83,6 +83,13 @@
                         @endif
                     </ul>
                 </div>
+            @elseif ($tooLong)
+                <div class="grid gap-2 sm:grid-cols-[110px_1fr] sm:items-start">
+                    <span class="sm:pt-0.5">{{ __('Denetim') }}</span>
+                    <ul class="space-y-2.5 rounded-lg border border-line px-4 py-3">
+                        <li class="flex items-start gap-2.5"><x-icon name="circle-x" class="mt-0.5 text-crit" /><span>{{ $tooMany }}</span></li>
+                    </ul>
+                </div>
             @endif
 
             <div class="grid gap-2 sm:grid-cols-[110px_1fr] sm:items-center">

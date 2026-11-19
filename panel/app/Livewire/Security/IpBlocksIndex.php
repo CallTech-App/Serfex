@@ -42,6 +42,9 @@ class IpBlocksIndex extends Component
 
     public const PER_PAGE = 25;
 
+    /** The longest text the paste dialog takes, in characters: room for 1,000 addresses with notes. */
+    public const PASTE_MAX = 200_000;
+
     #[Url(except: 'blocked')]
     public string $tab = 'blocked';
 
@@ -140,7 +143,7 @@ class IpBlocksIndex extends Component
     {
         $this->reason = trim($this->reason);
         $this->validate([
-            'paste' => ['required', 'string', 'max:200000'],
+            'paste' => ['required', 'string', 'max:'.self::PASTE_MAX],
             'minutes' => ['required', 'integer', Rule::in(array_keys(IpBlocks::DURATIONS))],
             'reason' => ['nullable', 'string', 'max:200'],
         ], [
@@ -245,7 +248,7 @@ class IpBlocksIndex extends Component
             return;
         }
         try {
-            $result = $blocks->changeDuration($targets, $minutes, auth()->user());
+            $result = $blocks->changeDuration($targets, $minutes, auth()->user(), $this->mine());
         } catch (MonitorException|AgentException $e) {
             $this->refused = __('Süre değiştirilemedi: :reason', ['reason' => self::why($e)]);
 
@@ -348,6 +351,7 @@ class IpBlocksIndex extends Component
             'own' => [],
             'matching' => 0,
             'check' => null,
+            'tooLong' => false,
         ];
         if ($this->tab === 'allowed') {
             $rows = $this->allowedQuery()->with('user')->orderByDesc('id')->paginate(self::PER_PAGE);
@@ -373,7 +377,9 @@ class IpBlocksIndex extends Component
                 ? IpBlocks::normalize($this->search)
                 : null;
             if ($this->pasting && trim($this->paste) !== '') {
-                $data['check'] = $blocks->inspect($this->paste, $this->mine());
+                // A text longer than the dialog takes is not read at every keystroke.
+                $data['tooLong'] = mb_strlen($this->paste) > self::PASTE_MAX;
+                $data['check'] = $data['tooLong'] ? null : $blocks->inspect($this->paste, $this->mine());
             }
         }
         $geo->fill($rows->getCollection());
@@ -419,7 +425,7 @@ class IpBlocksIndex extends Component
         }
         try {
             $entries = $allows->remove($rows);
-        } catch (AgentException $e) {
+        } catch (MonitorException|AgentException $e) {
             $this->refused = __('Adres izinlilerden kaldırılamadı: :reason', ['reason' => self::why($e)]);
 
             return;
