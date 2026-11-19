@@ -26,6 +26,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/site"
 	"github.com/calltech-app/serfex/agent/internal/stats"
 	"github.com/calltech-app/serfex/agent/internal/system"
+	"github.com/calltech-app/serfex/agent/internal/visits"
 )
 
 func TestSiteMethods(t *testing.T) {
@@ -359,7 +360,16 @@ func TestFirewallBatchAndAllowMethods(t *testing.T) {
 	registerMethods(srv, services{
 		sites: sites, dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
 		databases: dbs, components: comps, firewall: fw, edge: edge.NewManager(sim, fw), stats: agg, dryRun: true,
+		visits: visits.NewManager(sim),
 	})
+	logDir := sim.Path("/var/log/serfex/sites/a.com")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(logDir, "access.log"), []byte(
+		`45.155.205.233 - - [18/Nov/2026:10:00:00 +0000] "POST /wp-login.php HTTP/1.1" 403 5 "-" "x"`+"\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
 	sock := filepath.Join(t.TempDir(), "agent.sock")
 	ln, err := net.Listen("unix", sock)
 	if err != nil {
@@ -435,6 +445,20 @@ func TestFirewallBatchAndAllowMethods(t *testing.T) {
 	}
 	if !geo.Loaded || geo.Countries["45.155.205.233"] != "RU" || geo.Countries["88.230.4.0/24"] != "TR" || geo.Countries["10.0.0.1"] != "" || len(geo.Countries) != 3 {
 		t.Fatalf("geo.lookup = %+v", geo)
+	}
+
+	var report struct {
+		Requests, Denied, Logins int
+		Sites                    []struct{ Domain string }
+	}
+	if e := call("logs.address", `{"address":"45.155.205.233"}`, &report); e != nil {
+		t.Fatalf("logs.address: %+v", e)
+	}
+	if report.Requests != 1 || report.Denied != 1 || report.Logins != 1 || len(report.Sites) != 1 || report.Sites[0].Domain != "a.com" {
+		t.Fatalf("logs.address = %+v", report)
+	}
+	if e := call("logs.address", `{"address":"everything"}`, nil); e == nil || e.Code != rpc.CodeInvalidParams {
+		t.Fatalf("logs.address with junk: %+v", e)
 	}
 
 	var removed struct{ Removed int }

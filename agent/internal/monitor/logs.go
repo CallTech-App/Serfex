@@ -30,6 +30,9 @@ var loginPaths = map[string]bool{
 	"/user/login": true, "/administrator/index.php": true, "/admin": true,
 }
 
+// LoginPath tells whether path is a login page bots guess passwords on.
+func LoginPath(path string) bool { return loginPaths[strings.ToLower(path)] }
+
 // access is one parsed Nginx access log line ("combined" format).
 type access struct {
 	IP     string

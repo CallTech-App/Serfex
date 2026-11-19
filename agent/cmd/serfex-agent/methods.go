@@ -37,6 +37,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/terminal"
 	"github.com/calltech-app/serfex/agent/internal/update"
 	"github.com/calltech-app/serfex/agent/internal/version"
+	"github.com/calltech-app/serfex/agent/internal/visits"
 )
 
 // CodeDNSNotSetUp tells the panel to offer DNS server setup.
@@ -108,6 +109,7 @@ type services struct {
 	logs       *logrotate.Manager
 	quotas     *quota.Manager
 	terminal   *terminal.Manager
+	visits     *visits.Manager
 	log        *slog.Logger
 	stats      *stats.Aggregator
 	statsFile  string
@@ -556,7 +558,8 @@ func mapError(err error) error {
 	var qv *quota.ValidationError
 	var tv *terminal.ValidationError
 	var ev *edge.ValidationError
-	if errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var visv *visits.ValidationError
+	if errors.As(err, &visv) || errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -824,6 +827,8 @@ func registerMonitor(srv *rpc.Server, svc services) {
 	// Countries of addresses, from the table the site statistics use. A
 	// prefix is looked up by its first address. "loaded" is false until
 	// the table has been downloaded.
+	// What an address did on the sites, from their access logs.
+	handle(srv, "logs.address", func(ctx context.Context, p visits.Spec) (any, error) { return svc.visits.Address(ctx, p) })
 	handle(srv, "geo.lookup", func(_ context.Context, p addressesParam) (any, error) {
 		if len(p.Addresses) > 2000 {
 			return nil, &rpc.Error{Code: rpc.CodeInvalidParams, Message: "at most 2000 addresses can be looked up at once"}
