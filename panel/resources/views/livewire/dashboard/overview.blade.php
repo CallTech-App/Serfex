@@ -119,7 +119,7 @@
                     @endif
                 </p>
                 @if ($ai['count'] && ! $readOnly)
-                    <a href="{{ route('monitor.index', ['tab' => 'attacks']) }}" wire:navigate class="font-medium text-accent hover:underline">{{ __('Engellere bak') }}</a>
+                    <a href="{{ route('security.blocks', ['source' => 'ai']) }}" wire:navigate class="font-medium text-accent hover:underline">{{ __('Engellere bak') }}</a>
                 @else
                     <x-ask-ai :question="__('Sunucumun şu anki durumunu kısaca özetler misin? Dikkat etmem gereken bir şey var mı?')" :label="__('Durumu özetlet')" class="bg-transparent px-0 hover:bg-transparent hover:underline" />
                 @endif

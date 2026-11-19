@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\QuickSearch;
 use App\Livewire\Security\IpBlocksIndex;
 use App\Models\IpAllow;
 use App\Models\IpBlock;
@@ -458,6 +459,26 @@ class IpBlocksPageTest extends TestCase
         $this->assertMatchesRegularExpression('/Engelli adresler\s*(<!--.*?-->\s*)*<span[^>]*>2</', $html);
         // The server's two own addresses are on the allowed list too.
         $this->assertMatchesRegularExpression('/İzinli adresler\s*(<!--.*?-->\s*)*<span[^>]*>3</u', $html);
+    }
+
+    public function test_the_dashboard_opens_the_blocks_serfex_ai_made(): void
+    {
+        IpBlock::create(['address' => '185.220.101.47', 'source' => 'ai', 'reason' => 'Dakikada 1.240 istek', 'expires_at' => now()->addHours(3)]);
+
+        $this->get('/')->assertOk()->assertSee('Engellere bak')
+            ->assertSee('href="'.e(route('security.blocks', ['source' => 'ai'])).'"', false);
+    }
+
+    public function test_quick_search_finds_the_page_for_administrators_only(): void
+    {
+        $find = fn (string $q) => collect(Livewire::test(QuickSearch::class)->set('q', $q)->instance()->results())->firstWhere('group', 'Sayfalar')['items'] ?? [];
+
+        $item = collect($find('engel'))->firstWhere('label', 'IP engelleri');
+        $this->assertSame(route('security.blocks'), $item['url'] ?? null);
+        $this->assertContains('IP engelleri', array_column($find('izinli adres'), 'label'));
+
+        $this->actingAs(User::factory()->member()->create());
+        $this->assertNotContains('IP engelleri', array_column($find('engel'), 'label'));
     }
 
     /**

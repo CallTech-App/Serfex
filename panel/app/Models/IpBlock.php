@@ -16,6 +16,9 @@ use Illuminate\Support\Carbon;
 #[Fillable(['address', 'country', 'reason', 'site_id', 'kind', 'source', 'user_id', 'expires_at', 'removed_at', 'ended', 'removed_by'])]
 class IpBlock extends Model
 {
+    /** How long Geçmiş keeps a block after it ended. */
+    public const KEEP_DAYS = 90;
+
     protected function casts(): array
     {
         return [
@@ -94,6 +97,7 @@ class IpBlock extends Model
             'allowed' => __('İzinlilere eklendi'),
             'replaced' => __('Süresi değiştirildi'),
             'sync' => __('Fail2ban kaldırdı'),
+            'console' => __('Sunucu konsolundan kaldırıldı'),
             default => $this->remover !== null ? __(':name kaldırdı', ['name' => $this->remover->name]) : __('Kaldırıldı'),
         };
     }

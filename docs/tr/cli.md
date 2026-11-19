@@ -867,6 +867,34 @@ serfex customers packages
 
 Paketleri listeler
 
+### serfex firewall
+
+```
+serfex firewall <komut>
+```
+
+IP engelleri: dışarıda kalan bir adresi yeniden içeri alır
+
+| Komut | |
+| --- | --- |
+| [`unblock`](#serfex-firewall-unblock) | Bir IP adresini dışarıda tutan bütün engelleri kaldırır |
+
+### serfex firewall unblock
+
+```
+serfex firewall unblock <adres>
+```
+
+Adresi dışarıda tutan her engeli kaldırır: adresin kendi engeli, onu içine alan engelli aralık ve Fail2ban engelleri. Kaldırılan engeller panelde Güvenlik → IP engelleri → Geçmiş'te görünür.
+
+Kendi adresiniz engellendiği için panele giremediğinizde kullanın. Sunucunun kendisinde root olarak çalışır; SSH de kapalıysa sağlayıcınızın konsolundan bağlanın.
+
+Örnekler:
+
+```sh
+sudo serfex firewall unblock 203.0.113.77
+```
+
 ## Laravel
 
 ### serfex apps

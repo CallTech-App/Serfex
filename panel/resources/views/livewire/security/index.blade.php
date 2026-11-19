@@ -16,9 +16,15 @@
     $row = 'grid items-start gap-2 py-3.5 sm:grid-cols-[220px_1fr] sm:gap-6';
 @endphp
 <div class="space-y-6">
-    <div>
-        <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Güvenlik') }}</h1>
-        <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Sunucunun hangi portlarda yanıt verdiği, web saldırılarına karşı güvenlik duvarı, sitelerdeki zararlı dosyaların taraması ve panele, SSH\'a nasıl girildiği.') }}</p>
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <h1 class="text-[22px] font-semibold tracking-tight">{{ __('Güvenlik') }}</h1>
+            <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Sunucunun hangi portlarda yanıt verdiği, web saldırılarına karşı güvenlik duvarı, sitelerdeki zararlı dosyaların taraması ve panele, SSH\'a nasıl girildiği.') }}</p>
+        </div>
+        <a href="{{ route('security.blocks') }}" wire:navigate class="{{ $btn }}">
+            <x-icon name="ban" />{{ __('IP engelleri') }}
+            <span class="num rounded-full bg-surface-2 px-1.5 text-2xs leading-5 font-medium text-muted">{{ \App\Support\Num::format($blockCount) }}</span>
+        </a>
     </div>
 
     @if ($refused)
@@ -136,7 +142,8 @@
                 </p>
             @endif
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">
-                <x-t text="Sizin adresiniz :my_ip. Panelin portunu (:panel_port) bu adrese kapatacak bir değişiklik kabul edilmez. Tek tek adresleri engellemek için :link." :with="['panel_port' => $panelPort]"><x-slot:my_ip><span class="font-mono">{{ $myIp }}</span></x-slot:my_ip><x-slot:link><a href="{{ route('monitor.index', ['tab' => 'attacks']) }}" wire:navigate class="text-accent hover:underline">{{ __('Canlı İzleme → Saldırılar') }}</a></x-slot:link></x-t>
+                <x-t text="Sizin adresiniz :my_ip. Panelin portunu (:panel_port) bu adrese kapatacak bir değişiklik kabul edilmez." :with="['panel_port' => $panelPort]"><x-slot:my_ip><span class="font-mono">{{ $myIp }}</span></x-slot:my_ip></x-t>
+                <x-t text="Engelli adresler bu kurallardan önce uygulanır: :link."><x-slot:link><a href="{{ route('security.blocks') }}" wire:navigate class="text-accent hover:underline">{{ trans_choice(':count adres engelli', $blockCount, ['count' => \App\Support\Num::format($blockCount)]) }}</a></x-slot:link></x-t>
             </p>
 
         {{-- WAF --}}
@@ -265,7 +272,7 @@
                                 <x-status-badge :status="($fail2ban['running'] ?? false) ? new Badge(__('Fail2ban çalışıyor'), 'ok') : new Badge(__('Fail2ban çalışmıyor'), 'warn')" />
                                 <span class="ml-1 text-muted">{{ __('15 dakikada 10 hatalı giriş yapan adres panele bir saat ulaşamaz. SSH ve e-posta girişleri de korunuyor.') }}</span>
                             </p>
-                            <p class="text-muted"><x-t text="Şu an :bans Fail2ban tarafından engelli."><x-slot:bans><a href="{{ route('monitor.index', ['tab' => 'attacks']) }}" wire:navigate class="text-accent hover:underline">{{ __(':bans adres', ['bans' => $bans]) }}</a></x-slot:bans></x-t></p>
+                            <p class="text-muted"><x-t text="Şu an :bans Fail2ban tarafından engelli."><x-slot:bans><a href="{{ route('security.blocks', ['source' => 'fail2ban']) }}" wire:navigate class="text-accent hover:underline">{{ __(':bans adres', ['bans' => $bans]) }}</a></x-slot:bans></x-t></p>
                         @else
                             <p class="text-muted"><x-t text="Fail2ban kurulu değil; kurarsanız panel, SSH ve e-posta girişlerine kaba kuvvet saldırısı yapan adresler kendiliğinden engellenir. :link"><x-slot:link><a href="{{ route('components.index', ['tab' => 'other']) }}" wire:navigate class="text-accent hover:underline">{{ __('Yazılım Yönetimi\'nden kur') }}</a></x-slot:link></x-t></p>
                         @endif

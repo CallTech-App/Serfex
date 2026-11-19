@@ -18,10 +18,10 @@ return new class extends Migration
             // country table does not know it, null until it was looked up.
             $table->char('country', 2)->nullable();
             // Set with removed_at. How the block ended: user (lifted by
-            // hand), allowed (the address went on the allowed list),
-            // replaced (a Fail2ban ban turned into a panel block) or sync
-            // (Fail2ban lifted its own ban). A block that simply ran out
-            // has neither.
+            // hand), console (lifted with `serfex firewall unblock`),
+            // allowed (the address went on the allowed list), replaced (a
+            // Fail2ban ban turned into a panel block) or sync (Fail2ban
+            // lifted its own ban). A block that simply ran out has neither.
             $table->string('ended', 16)->nullable();
             $table->foreignId('removed_by')->nullable()->constrained('users')->nullOnDelete();
         });

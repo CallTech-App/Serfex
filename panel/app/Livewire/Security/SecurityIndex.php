@@ -468,7 +468,8 @@ class SecurityIndex extends Component
     public function render(Components $components): View
     {
         $ssh = app(Ssh::class);
-        $data = ['tab' => $this->tab, 'sshPortChange' => $ssh->portChange(), 'sshPortNow' => $ssh->port(), 'sshUser' => $this->sshUser()];
+        $data = ['tab' => $this->tab, 'sshPortChange' => $ssh->portChange(), 'sshPortNow' => $ssh->port(), 'sshUser' => $this->sshUser(),
+            'blockCount' => IpBlock::active()->count()];
         $error = null;
 
         match ($this->tab) {
