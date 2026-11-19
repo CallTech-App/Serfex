@@ -162,3 +162,370 @@ func TestMissingTableIsCreated(t *testing.T) {
 		t.Fatalf("scripts = %q", s)
 	}
 }
+
+func watchChanges(m *Manager) *int {
+	n := 0
+	m.Changed = func(context.Context) { n++ }
+	return &n
+}
+
+func TestBlockManyWritesOneScriptAndSkipsBadItems(t *testing.T) {
+	m, sim, _ := newTest(t)
+	changes := watchChanges(m)
+	res, err := m.BlockMany(context.Background(), []Spec{
+		{Address: "45.155.205.233", Seconds: 3600, Reason: "list"},
+		{Address: "198.51.100.77/24"},
+		{Address: "not-an-ip"},
+		{Address: "127.0.0.1"},
+		{Address: "198.51.100.9"},   // inside the prefix two lines up
+		{Address: "45.155.205.233"}, // listed twice
+		{Address: "2001:DB8:0:0::1", Seconds: 60},
+		{Address: "192.0.2.1", Seconds: -5},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, b := range res.Blocked {
+		got = append(got, b.Address)
+	}
+	if strings.Join(got, " ") != "45.155.205.233 198.51.100.0/24 2001:db8::1" {
+		t.Fatalf("blocked = %v", got)
+	}
+	if res.Blocked[0].Expires == nil || res.Blocked[0].Reason != "list" || res.Blocked[1].Expires != nil {
+		t.Fatalf("blocked = %+v", res.Blocked)
+	}
+	var skipped []string
+	for _, s := range res.Skipped {
+		if s.Error == "" {
+			t.Errorf("skipped %s without a reason", s.Address)
+		}
+		skipped = append(skipped, s.Address)
+	}
+	if strings.Join(skipped, " ") != "not-an-ip 127.0.0.1 198.51.100.9 45.155.205.233 192.0.2.1" {
+		t.Fatalf("skipped = %+v", res.Skipped)
+	}
+	if !strings.Contains(res.Skipped[2].Error, "overlaps 198.51.100.0/24") {
+		t.Errorf("overlap reason = %q", res.Skipped[2].Error)
+	}
+	s := scripts(sim)
+	if len(s) != 1 {
+		t.Fatalf("nft ran %d scripts, want 1: %q", len(s), s)
+	}
+	for _, want := range []string{
+		"add element inet serfex blocked4 { 45.155.205.233 timeout 3600s }",
+		"add element inet serfex blocked4 { 198.51.100.0/24 }\n",
+		"add element inet serfex blocked6 { 2001:db8::1 timeout 60s }",
+	} {
+		if !strings.Contains(s[0], want) {
+			t.Errorf("script lacks %q:\n%s", want, s[0])
+		}
+	}
+	if *changes != 1 {
+		t.Errorf("Changed ran %d times, want 1", *changes)
+	}
+	if list, _ := m.List(); len(list) != 3 {
+		t.Fatalf("list = %+v", list)
+	}
+}
+
+func TestBlockManyUpdatesAStoredAddressAndSkipsOverlapsWithStoredBlocks(t *testing.T) {
+	m, _, _ := newTest(t)
+	ctx := context.Background()
+	if _, err := m.Block(ctx, Spec{Address: "192.0.2.0/24", Seconds: 60, Reason: "old"}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := m.BlockMany(ctx, []Spec{
+		{Address: "192.0.2.0/24", Seconds: 7200, Reason: "longer"},
+		{Address: "192.0.2.9"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Blocked) != 1 || len(res.Skipped) != 1 || !strings.Contains(res.Skipped[0].Error, "overlaps 192.0.2.0/24, which is already blocked") {
+		t.Fatalf("result = %+v", res)
+	}
+	list, _ := m.List()
+	if len(list) != 1 || list[0].Reason != "longer" {
+		t.Fatalf("list = %+v", list)
+	}
+}
+
+func TestBlockManyRefusesMoreThanTheLimit(t *testing.T) {
+	m, sim, _ := newTest(t)
+	specs := make([]Spec, MaxBatch+1)
+	for i := range specs {
+		specs[i] = Spec{Address: netip.AddrFrom4([4]byte{198, 51, byte(i >> 8), byte(i)}).String()}
+	}
+	_, err := m.BlockMany(context.Background(), specs)
+	var v *ValidationError
+	if !errors.As(err, &v) {
+		t.Fatalf("err = %v, want a validation error", err)
+	}
+	if len(scripts(sim)) != 0 {
+		t.Fatal("nft ran")
+	}
+	res, err := m.BlockMany(context.Background(), specs[:MaxBatch])
+	if err != nil || len(res.Blocked) != MaxBatch || len(scripts(sim)) != 1 {
+		t.Fatalf("full batch: %d blocked, %d scripts, %v", len(res.Blocked), len(scripts(sim)), err)
+	}
+}
+
+func TestBlockManyStoresNothingWhenNftFails(t *testing.T) {
+	m, sim, _ := newTest(t)
+	changes := watchChanges(m)
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "-f" {
+			return errors.New("netlink: Error: Could not process rule")
+		}
+		return nil
+	}
+	_, err := m.BlockMany(context.Background(), []Spec{{Address: "192.0.2.1"}, {Address: "192.0.2.2"}})
+	var op *OperationError
+	if !errors.As(err, &op) {
+		t.Fatalf("err = %v, want an operation error", err)
+	}
+	if list, _ := m.List(); len(list) != 0 || *changes != 0 {
+		t.Fatalf("list = %+v, changes = %d", list, *changes)
+	}
+}
+
+func TestBlockManyWithNothingToBlockRunsNothing(t *testing.T) {
+	m, sim, _ := newTest(t)
+	changes := watchChanges(m)
+	res, err := m.BlockMany(context.Background(), []Spec{{Address: "bogus"}})
+	if err != nil || len(res.Blocked) != 0 || len(res.Skipped) != 1 {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+	if len(sim.Commands()) != 0 || *changes != 0 {
+		t.Fatalf("commands = %v, changes = %d", sim.Commands(), *changes)
+	}
+}
+
+func TestUnblockManyRemovesInOneScript(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if _, err := m.BlockMany(ctx, []Spec{{Address: "192.0.2.1"}, {Address: "192.0.2.2"}, {Address: "2001:db8::2"}, {Address: "192.0.2.3"}}); err != nil {
+		t.Fatal(err)
+	}
+	changes := watchChanges(m)
+	before := len(scripts(sim))
+	n, err := m.UnblockMany(ctx, []string{"192.0.2.1", "2001:DB8::2", "192.0.2.200", "junk", "192.0.2.1"})
+	if err != nil || n != 2 {
+		t.Fatalf("removed = %d, %v", n, err)
+	}
+	s := scripts(sim)
+	if len(s) != before+1 {
+		t.Fatalf("nft ran %d scripts, want 1", len(s)-before)
+	}
+	last := s[len(s)-1]
+	if !strings.Contains(last, "delete element inet serfex blocked4 { 192.0.2.1 }") || !strings.Contains(last, "delete element inet serfex blocked6 { 2001:db8::2 }") || strings.Contains(last, "junk") {
+		t.Fatalf("script:\n%s", last)
+	}
+	list, _ := m.List()
+	if len(list) != 2 || *changes != 1 {
+		t.Fatalf("list = %+v, changes = %d", list, *changes)
+	}
+	if n, err := m.UnblockMany(ctx, []string{"192.0.2.200"}); err != nil || n != 0 || *changes != 1 {
+		t.Fatalf("nothing to remove: %d, %v, changes %d", n, err, *changes)
+	}
+}
+
+func TestSetAllowedReplacesTheListNormalisedAndSorted(t *testing.T) {
+	m, sim, _ := newTest(t)
+	changes := watchChanges(m)
+	ctx := context.Background()
+	got, err := m.SetAllowed(ctx, []string{"198.51.100.7", "2001:DB8:1::/48", "192.0.2.50", " 192.0.2.50 ", "::ffff:192.0.2.60", "192.0.2.77/24"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, " ") != "192.0.2.0/24 192.0.2.50 192.0.2.60 198.51.100.7 2001:db8:1::/48" {
+		t.Fatalf("allowed = %v", got)
+	}
+	s := scripts(sim)
+	last := s[len(s)-1]
+	for _, want := range []string{
+		"flush set inet serfex allowed4\n", "flush set inet serfex allowed6\n",
+		"add element inet serfex allowed4 { 192.0.2.0/24, 198.51.100.7 }",
+		"add element inet serfex allowed6 { 2001:db8:1::/48 }",
+	} {
+		if !strings.Contains(last, want) {
+			t.Errorf("script lacks %q:\n%s", want, last)
+		}
+	}
+	if stored, err := m.Allowed(); err != nil || strings.Join(stored, " ") != strings.Join(got, " ") {
+		t.Fatalf("stored = %v, %v", stored, err)
+	}
+	if *changes != 1 {
+		t.Errorf("Changed ran %d times, want 1", *changes)
+	}
+
+	if got, err := m.SetAllowed(ctx, nil); err != nil || len(got) != 0 {
+		t.Fatalf("cleared = %v, %v", got, err)
+	}
+	s = scripts(sim)
+	if last := s[len(s)-1]; !strings.Contains(last, "flush set inet serfex allowed4") || strings.Contains(last, "add element") {
+		t.Fatalf("clearing script:\n%s", last)
+	}
+	if stored, _ := m.Allowed(); len(stored) != 0 {
+		t.Fatalf("stored after clearing = %v", stored)
+	}
+}
+
+func TestSetAllowedRefusesWhatCannotBeAllowed(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	for _, a := range []string{"10.0.0.0/8", "2001:db8::/32", "127.0.0.1", "::1", "0.0.0.0", "224.0.0.1", "nope", "fe80::1%eth0"} {
+		_, err := m.SetAllowed(ctx, []string{"192.0.2.1", a})
+		var v *ValidationError
+		if !errors.As(err, &v) {
+			t.Errorf("%s: err = %v, want a validation error", a, err)
+		}
+	}
+	many := make([]string, MaxBatch+1)
+	for i := range many {
+		many[i] = netip.AddrFrom4([4]byte{198, 51, byte(i >> 8), byte(i)}).String()
+	}
+	if _, err := m.SetAllowed(ctx, many); err == nil {
+		t.Error("a list over the limit was accepted")
+	}
+	if stored, _ := m.Allowed(); len(stored) != 0 || len(scripts(sim)) != 0 {
+		t.Fatalf("stored = %v, scripts = %q", stored, scripts(sim))
+	}
+}
+
+func TestSetAllowedStoresNothingWhenNftFails(t *testing.T) {
+	m, sim, _ := newTest(t)
+	changes := watchChanges(m)
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "-f" {
+			return errors.New("netlink: Error")
+		}
+		return nil
+	}
+	_, err := m.SetAllowed(context.Background(), []string{"192.0.2.1"})
+	var op *OperationError
+	if !errors.As(err, &op) {
+		t.Fatalf("err = %v, want an operation error", err)
+	}
+	if stored, _ := m.Allowed(); len(stored) != 0 || *changes != 0 {
+		t.Fatalf("stored = %v, changes = %d", stored, *changes)
+	}
+}
+
+func TestAnAllowedAddressCannotBeBlockedButAWiderBlockAroundItCan(t *testing.T) {
+	m, _, _ := newTest(t)
+	ctx := context.Background()
+	if _, err := m.SetAllowed(ctx, []string{"192.0.2.50", "198.51.100.0/24"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range []string{"192.0.2.50", "198.51.100.9", "198.51.100.0/24", "198.51.100.128/25"} {
+		_, err := m.Block(ctx, Spec{Address: a})
+		var v *ValidationError
+		if !errors.As(err, &v) || !strings.Contains(err.Error(), "it is in the allowed list (") {
+			t.Errorf("%s: err = %v", a, err)
+		}
+	}
+	if _, err := m.Block(ctx, Spec{Address: "192.0.2.0/24"}); err != nil {
+		t.Fatalf("a prefix around an allowed address: %v", err)
+	}
+	res, err := m.BlockMany(ctx, []Spec{{Address: "198.51.100.200"}, {Address: "198.51.0.0/16"}})
+	if err != nil || len(res.Blocked) != 1 || res.Blocked[0].Address != "198.51.0.0/16" ||
+		len(res.Skipped) != 1 || !strings.Contains(res.Skipped[0].Error, "allowed list (198.51.100.0/24)") {
+		t.Fatalf("batch = %+v, %v", res, err)
+	}
+}
+
+func TestTheTableAcceptsAllowedAddressesBeforeItDrops(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if _, err := m.SetAllowed(ctx, []string{"192.0.2.50", "2001:db8:1::/48"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Block(ctx, Spec{Address: "192.0.2.0/24", Seconds: 3600}); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Restore(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	last := s[len(s)-1]
+	accept, drop := strings.Index(last, "ip saddr @allowed4 accept"), strings.Index(last, "ip saddr @blocked4 counter drop")
+	accept6, drop6 := strings.Index(last, "ip6 saddr @allowed6 accept"), strings.Index(last, "ip6 saddr @blocked6 counter drop")
+	if accept < 0 || drop < accept || accept6 < 0 || drop6 < accept6 {
+		t.Fatalf("accept must come before drop:\n%s", last)
+	}
+	for _, want := range []string{
+		"set allowed4 {", "set allowed6 {",
+		"add element inet serfex allowed4 { 192.0.2.50 }",
+		"add element inet serfex allowed6 { 2001:db8:1::/48 }",
+		"add element inet serfex blocked4 { 192.0.2.0/24 timeout 3600s }",
+	} {
+		if !strings.Contains(last, want) {
+			t.Errorf("restore script lacks %q:\n%s", want, last)
+		}
+	}
+}
+
+func TestRestoreBringsBackAllowedAddressesWhenNothingIsBlocked(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if _, err := m.SetAllowed(ctx, []string{"192.0.2.50"}); err != nil {
+		t.Fatal(err)
+	}
+	before := len(scripts(sim))
+	if err := m.Restore(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	if len(s) != before+1 || !strings.Contains(s[len(s)-1], "add element inet serfex allowed4 { 192.0.2.50 }") {
+		t.Fatalf("restore scripts = %q", s[before:])
+	}
+}
+
+// A table made by an agent from before the allowed sets has no allowed6:
+// the first change rebuilds it, and every stored block comes back.
+func TestATableWithoutAllowedSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
+	m, sim, now := newTest(t)
+	ctx := context.Background()
+	if _, err := m.BlockMany(ctx, []Spec{{Address: "192.0.2.1"}, {Address: "192.0.2.2", Seconds: 3600}, {Address: "2001:db8::9", Seconds: 600}}); err != nil {
+		t.Fatal(err)
+	}
+	*now = now.Add(10 * time.Minute) // the IPv6 block has run out
+	var probes []string
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
+			probes = append(probes, strings.Join(c.Args, " "))
+			if c.Args[len(c.Args)-1] == "allowed6" {
+				return errors.New("Error: No such file or directory")
+			}
+		}
+		return nil
+	}
+	before := len(scripts(sim))
+	if _, err := m.Block(ctx, Spec{Address: "192.0.2.3", Seconds: 60}); err != nil {
+		t.Fatal(err)
+	}
+	if len(probes) == 0 || probes[0] != "list set inet serfex allowed6" {
+		t.Fatalf("probes = %q", probes)
+	}
+	s := scripts(sim)[before:]
+	if len(s) != 2 {
+		t.Fatalf("scripts = %q", s)
+	}
+	for _, want := range []string{
+		"delete table inet serfex", "set allowed6 {",
+		"add element inet serfex blocked4 { 192.0.2.1 }\n",
+		"add element inet serfex blocked4 { 192.0.2.2 timeout 3000s }",
+	} {
+		if !strings.Contains(s[0], want) {
+			t.Errorf("rebuild lacks %q:\n%s", want, s[0])
+		}
+	}
+	if strings.Contains(s[0], "2001:db8::9") {
+		t.Errorf("a block that ran out came back:\n%s", s[0])
+	}
+	if !strings.Contains(s[1], "{ 192.0.2.3 timeout 60s }") {
+		t.Errorf("new block script:\n%s", s[1])
+	}
+}
