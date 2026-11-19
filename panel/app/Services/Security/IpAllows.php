@@ -142,11 +142,9 @@ class IpAllows
      */
     public static function match(string $address, iterable $allows): ?IpAllow
     {
-        [$base, $bits] = array_pad(explode('/', $address, 2), 2, null);
         foreach ($allows as $allow) {
-            $allowBits = explode('/', $allow->address, 2)[1] ?? null;
             // A prefix is covered only by an entry at least as wide.
-            if (($bits === null || ($allowBits !== null && (int) $allowBits <= (int) $bits)) && IpBlocks::contains($allow->address, $base)) {
+            if (IpBlocks::covers($allow->address, $address)) {
                 return $allow;
             }
         }

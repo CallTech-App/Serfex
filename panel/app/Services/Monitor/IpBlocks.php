@@ -708,6 +708,19 @@ class IpBlocks
         return self::mask($a, $bits) === self::mask($b, $bits);
     }
 
+    /**
+     * True when $prefix holds all of $address, itself an address or a
+     * prefix: 192.0.2.0/24 covers 192.0.2.7 and 192.0.2.0/25, not
+     * 192.0.0.0/16.
+     */
+    public static function covers(string $prefix, string $address): bool
+    {
+        [$base, $bits] = array_pad(explode('/', $address, 2), 2, null);
+        $prefixBits = explode('/', $prefix, 2)[1] ?? null;
+
+        return ($bits === null || ($prefixBits !== null && (int) $prefixBits <= (int) $bits)) && self::contains($prefix, $base);
+    }
+
     private static function mask(string $packed, int $bits): string
     {
         $out = '';
