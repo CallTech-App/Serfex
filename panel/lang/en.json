@@ -6315,7 +6315,7 @@
     "Adres engelliyse engeli kalkar. İzinli adres elle, Fail2ban ya da Serfex AI tarafından engellenemez; saldırı bu adresten gelirse de engellenmez.": "If the address is blocked, the block is removed. An allowed address cannot be blocked by hand, by Fail2ban or by Serfex AI, even when an attack comes from it.",
     "Adres izinlilerden kaldırılamadı: :reason": "The address could not be removed from the allowed addresses: :reason",
     "Adres ya da not ara": "Search address or note",
-    "Adres, ülke ya da neden ara": "Search address, country or reason",
+    "Adres, ülke ya da neden ara": "Address, country or reason",
     "Adresi incele": "Look at the address",
     "Adresler": "Addresses",
     "Adresler engellenemedi: :reason": "The addresses could not be blocked: :reason",
