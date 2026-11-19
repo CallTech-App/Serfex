@@ -50,6 +50,8 @@ use App\Livewire\Mail\MailDomainShow;
 use App\Livewire\Mail\MailIndex;
 use App\Livewire\Mail\MailSettingsPage;
 use App\Livewire\Monitor\LiveMonitor;
+use App\Livewire\Security\IpAddressShow;
+use App\Livewire\Security\IpBlocksIndex;
 use App\Livewire\Security\SecurityIndex;
 use App\Livewire\Services\PhpVersionShow;
 use App\Livewire\Services\RedisTuningPage;
@@ -199,6 +201,9 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureTwoFactor::class, R
         Route::livewire('/monitor', LiveMonitor::class)->name('monitor.index');
         Route::livewire('/sites/migrate', SiteMigrate::class)->name('sites.migrate');
         Route::livewire('/security', SecurityIndex::class)->name('security.index');
+        Route::livewire('/security/ip-blocks', IpBlocksIndex::class)->name('security.blocks');
+        // An address may be a prefix (192.0.2.0/24) or IPv6, so it takes the rest of the path.
+        Route::livewire('/security/ip-blocks/address/{address}', IpAddressShow::class)->where('address', '.+')->name('security.blocks.address');
         Route::livewire('/ai', AiAssistant::class)->name('ai.index');
         Route::livewire('/ai/audit', AiAudit::class)->name('ai.audit');
         Route::livewire('/dns/settings', DnsSettingsPage::class)->name('dns.settings');

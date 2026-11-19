@@ -108,6 +108,26 @@ class IpBlock extends Model
     }
 
     /**
+     * What the block closes, for lists: the whole server (shown as the
+     * site it was set for, when there is one), or the one service a
+     * Fail2ban ban covers.
+     */
+    public function reach(): string
+    {
+        if ($this->source === 'fail2ban') {
+            return match ($this->kind) {
+                'sshd' => __('Yalnızca SSH portu'),
+                'serfex-panel' => __('Yalnızca panel portu'),
+                'dovecot', 'postfix-sasl' => __('Yalnızca posta portları'),
+                'serfex-webmail' => __('Yalnızca web portları'),
+                default => __('Bütün sunucu'),
+            };
+        }
+
+        return $this->site->domain ?? __('Bütün sunucu');
+    }
+
+    /**
      * Who blocked it, for lists.
      */
     public function byLabel(): string

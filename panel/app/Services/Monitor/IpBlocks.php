@@ -140,10 +140,11 @@ class IpBlocks
 
     /**
      * Reads a pasted list and says what blocking it would do, without
-     * blocking anything.
+     * blocking anything. A skipped entry says why in words (message) and
+     * as a code (why): invalid, cloudflare, mine, own, allowed or overlap.
      *
      * @param  list<string>  $protect  addresses that must stay reachable, such as the caller's own
-     * @return array{new: list<string>, update: Collection<int, IpBlock>, skipped: list<array{text: string, message: string}>, over: bool}
+     * @return array{new: list<string>, update: Collection<int, IpBlock>, skipped: list<array{text: string, message: string, why: string}>, over: bool}
      */
     public function inspect(string $text, array $protect = []): array
     {
@@ -168,15 +169,18 @@ class IpBlocks
                 $problem !== null => self::reason($problem),
                 default => null,
             };
+            $why = $address === null ? 'invalid' : ($problem[0] ?? null);
             // The firewall holds no two blocks that overlap.
             if ($message === null && ($other = self::clash($address, $ranges, $singles)) !== null) {
                 $message = __('engelli :other ile çakışıyor; önce o engeli kaldırın', ['other' => $other]);
+                $why = 'overlap';
             }
             if ($message === null && ($other = self::clash($address, $takenRanges, str_contains($address, '/') ? $taken : [])) !== null) {
                 $message = __('listedeki :other ile çakışıyor', ['other' => $other]);
+                $why = 'overlap';
             }
             if ($message !== null) {
-                $skipped[] = ['text' => $entry['text'], 'message' => $message];
+                $skipped[] = ['text' => $entry['text'], 'message' => $message, 'why' => (string) $why];
 
                 continue;
             }

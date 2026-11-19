@@ -7,6 +7,7 @@ use App\Models\IpBlock;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Stats\SiteStats;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * The country of blocked and allowed addresses, from the agent's country
@@ -55,6 +56,44 @@ class AddressGeo
             $row->save();
             $row->timestamps = true;
         }
+    }
+
+    /**
+     * The countries of addresses that are not rows, such as the server's
+     * own: address => code, without the ones the table does not know.
+     * Asked from the agent once a day.
+     *
+     * @param  list<string>  $addresses
+     * @return array<string, string>
+     */
+    public function lookup(array $addresses): array
+    {
+        if ($addresses === []) {
+            return [];
+        }
+        $key = 'address-geo:'.md5(implode(',', $addresses));
+        $known = Cache::get($key);
+        if (is_array($known)) {
+            return $known;
+        }
+        try {
+            $answer = (array) $this->agent->call('geo.lookup', ['addresses' => array_values($addresses)], 15);
+        } catch (AgentException) {
+            return [];
+        }
+        if (! ($answer['loaded'] ?? false)) {
+            return [];
+        }
+        $known = [];
+        foreach ($addresses as $address) {
+            $code = strtoupper((string) ($answer['countries'][$address] ?? ''));
+            if (preg_match('/^[A-Z]{2}$/', $code) === 1) {
+                $known[$address] = $code;
+            }
+        }
+        Cache::put($key, $known, now()->addDay());
+
+        return $known;
     }
 
     /**
