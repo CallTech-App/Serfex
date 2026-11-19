@@ -1,7 +1,7 @@
 # Security
 
-**Security** has four tabs for the server; each site has its own security
-tools on its page.
+**Security** has four tabs for the server and the **IP blocks** page; each
+site has its own security tools on its page.
 
 ## Firewall
 
@@ -15,9 +15,98 @@ on; then only the ports of the open rules answer.
 - Add rules for your own ports (for example a Node.js application), limited
   to some addresses if you like, and list addresses that are always refused.
 
-Blocking a single attacker is done from Live Monitor → Attacks or with
-**Block address**: that drops every connection from the address (web, mail,
-SSH) for the time you choose. Blocks lift by themselves when they expire.
+Blocked addresses are refused before these rules are read, whether the
+firewall is on or off; see [IP blocks](#ip-blocks).
+
+## IP blocks
+
+**Security → IP blocks** (the button at the top right of Security, or
+Ctrl+K) is the one list of every address the server refuses, whoever
+blocked it: you, Serfex AI, the API or Fail2ban. A Serfex block drops every
+connection from the address (web, mail, SSH, the panel); a Fail2ban ban
+closes only the port of the service that was attacked, and the list says
+which.
+
+### Blocked addresses
+
+- Filter by who blocked, search by address, reason, site or country, and
+  sort by newest or by ending soonest. Typing an address also finds the
+  blocked range that holds it; for an address that is not blocked the page
+  offers **Look at the address** and **Block**.
+- **Block IP** takes one address or a pasted list: one address or range
+  per line, or separated by commas, spaces or semicolons; anything after
+  `#` on a line is a comment. Before anything is blocked the dialog says how many
+  are new, how many are blocked already (their time is changed) and which
+  are left out and why: not an address, a range wider than /16 (IPv6 /48),
+  your own address, the server's addresses, Cloudflare's addresses, an
+  allowed address, or one that overlaps an existing block. At most 1,000
+  addresses at a time. Durations: 1 hour, 24 hours, 7 days, 30 days or
+  permanent.
+- Tick rows (or the whole page, or **Select all N addresses** of the
+  filtered list) to **Unblock**, **Change duration** or **Add to allowed**
+  in one step. Changing the duration of a Fail2ban ban turns it into a
+  block on the whole server.
+- Every action has **Undo** in its message for 10 minutes: an undone bulk
+  block is lifted and leaves no trace in History, an undone unblock comes
+  back for the time it had left.
+
+### One address
+
+Click an address (here, or a suspect under Live Monitor → Attacks) to see
+what it did on this server:
+
+- **Sites visited**: per site the number of requests, the path asked for
+  most, the answers by status class, refused requests (403) and the last
+  request. The numbers are read from the sites' access logs when the page
+  opens, newest first and as far back as the logs are kept (14 days by
+  default), and are kept for 5 minutes; **Refresh** reads again. On very
+  large logs the reading stops after 20 seconds and the page says the
+  numbers may be incomplete.
+- **Latest requests**: the newest 200 requests, narrowed by site, answer
+  and path.
+- **Block history**: every block and ban the address had, who set it and
+  how it ended.
+- **Block**, **Unblock**, **Change duration** and **Add to allowed** work
+  here as on the list. An address inside a blocked range shows the range.
+
+Requests that reach a site through Cloudflare are counted under the
+visitor's real address.
+
+### Allowed addresses
+
+Addresses and ranges that are **never blocked**: not by hand, not by
+Serfex AI, not by Fail2ban, and not by a wider block that holds them (the
+allowed address still gets through). Use it for your office, a monitoring
+service or a payment provider's callback addresses.
+
+- Adding an address lifts its blocks at once; the entry can carry a note.
+- The server's own addresses are always on the list and cannot be removed.
+  The address you are connected from is marked.
+- The list is written to the firewall (checked before the blocked
+  addresses), to Nginx and to Fail2ban's `ignoreip`.
+
+### History
+
+Blocks that ended, for 90 days: who blocked, why, for how long, and how it
+ended (ran out, lifted by a person, lifted from the server console, moved
+to allowed, replaced by another duration, or lifted by Fail2ban). **Block
+again** blocks an address for as long as before; tick several rows to
+block them again together.
+
+### Locked out
+
+Your own address and the server's addresses cannot be blocked from the
+panel. If you are kept out anyway (your address changed, or Fail2ban
+banned you after wrong passwords), connect to the server by SSH, or from
+your provider's console when SSH is closed to you too, and run:
+
+```sh
+sudo serfex firewall unblock 203.0.113.77
+```
+
+It lifts every block that holds the address: its own block, a blocked
+range around it and Fail2ban's bans. Then add the address under **Allowed
+addresses** so it cannot happen again.
 
 ## Web application firewall (WAF)
 
@@ -70,7 +159,7 @@ setting. Findings can be ignored and reopen if they are seen again.
   hour to an address with 10 failures in 15 minutes.
 - **Fail2ban** also watches SSH and, with the mail server, Dovecot and Postfix
   sign-ins (5 failures in 10 minutes ban for an hour, repeat offenders for a
-  week). Its bans show under Live Monitor → Attacks and can be lifted there.
+  week). Its bans show under Security → IP blocks and can be lifted there.
 - **Panel pages** cannot be shown in a frame on another site (clickjacking):
   the panel sends `X-Frame-Options: DENY` and `frame-ancestors 'none'`.
   Opened by its name with the panel certificate, it also sends HSTS for a

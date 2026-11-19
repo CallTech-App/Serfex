@@ -11,6 +11,8 @@ use App\Models\CloudflareAccount;
 use App\Models\Customer;
 use App\Models\Database;
 use App\Models\DnsZone;
+use App\Models\IpAllow;
+use App\Models\IpBlock;
 use App\Models\LaravelApp;
 use App\Models\MailDomain;
 use App\Models\Setting;
@@ -21,6 +23,7 @@ use App\Models\WordPressOperation;
 use App\Services\Agent\AgentClient;
 use App\Services\Audit\AuditLog;
 use App\Services\Customers\Customers;
+use App\Services\Security\Fail2ban;
 use App\Services\Settings\Notifications;
 use App\Services\Settings\PanelSettings;
 use App\Support\Bytes;
@@ -288,6 +291,27 @@ class LanguagesTest extends TestCase
         foreach (['plugins', 'themes', 'security', 'history'] as $tab) {
             $urls[] = route('sites.wordpress', ['site' => $blog, 'tab' => $tab]);
         }
+        // IP engelleri: a block from each source, every way a block ends, an
+        // allowed range, an address that is not blocked, and one address's page.
+        $this->agent->answers['geo.lookup'] = fn ($p) => ['loaded' => true, 'countries' => array_fill_keys($p['addresses'], 'NL')];
+        $this->agent->answers['firewall.allow.list'] = fn () => ['allowed' => ['88.230.14.0/24'], 'own' => ['203.0.113.10']];
+        IpBlock::create(['address' => '45.155.205.233', 'source' => 'panel', 'user_id' => $admin->id, 'site_id' => $site->id, 'reason' => 'Scanner']);
+        IpBlock::create(['address' => '185.220.101.47', 'source' => 'ai', 'reason' => 'Flood', 'expires_at' => now()->addMinutes(46)]);
+        IpBlock::create(['address' => '185.220.102.0/24', 'source' => 'api', 'expires_at' => now()->addDays(6)]);
+        foreach (array_keys(Fail2ban::JAILS) as $i => $jail) {
+            IpBlock::create(['address' => '103.153.79.'.$i, 'source' => 'fail2ban', 'kind' => $jail, 'expires_at' => now()->addHour()]);
+        }
+        foreach (['user', 'allowed', 'replaced', 'sync', 'console'] as $i => $ended) {
+            IpBlock::create(['address' => '198.51.100.'.$i, 'source' => 'panel', 'removed_at' => now()->subHour(), 'ended' => $ended,
+                'removed_by' => $ended === 'user' ? $admin->id : null, 'expires_at' => $i % 2 ? now()->addDay() : null]);
+        }
+        IpBlock::create(['address' => '45.155.205.233', 'source' => 'ai', 'reason' => 'Flood', 'expires_at' => now()->subDay()]);
+        IpAllow::create(['address' => '88.230.14.0/24', 'note' => 'Office', 'user_id' => $admin->id]);
+        array_push($urls, route('security.blocks'), route('security.blocks', ['source' => 'fail2ban', 'sort' => 'ending']), route('security.blocks', ['q' => '192.0.2.200']),
+            route('security.blocks', ['tab' => 'allowed']), route('security.blocks', ['tab' => 'history']), route('security.blocks', ['tab' => 'history', 'days' => 7, 'q' => 'nothing']),
+            route('security.blocks.address', '45.155.205.233'), route('security.blocks.address', ['address' => '45.155.205.233', 'tab' => 'requests']),
+            route('security.blocks.address', ['address' => '45.155.205.233', 'tab' => 'blocks']), route('security.blocks.address', '88.230.14.7'),
+            route('security.blocks.address', '185.220.102.9'), route('security.index', ['tab' => 'login']), route('monitor.index', ['tab' => 'attacks']));
         foreach ($urls as $url) {
             $this->checkEnglish($url);
         }
