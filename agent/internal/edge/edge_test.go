@@ -163,3 +163,44 @@ func TestNginxRefusalRestoresFiles(t *testing.T) {
 		t.Fatal("ranges file not restored")
 	}
 }
+
+func TestAllowedAddressesComeBeforeTheDenyLines(t *testing.T) {
+	_, fw, sim := newTest(t)
+	ctx := context.Background()
+	if _, err := fw.Block(ctx, firewall.Spec{Address: "192.0.2.0/24"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fw.SetAllowed(ctx, []string{"192.0.2.50", "2001:db8:7::1"}); err != nil {
+		t.Fatal(err)
+	}
+	conf := read(t, sim, BlockedConf)
+	allow, deny := strings.Index(conf, "allow 192.0.2.50;"), strings.Index(conf, "deny 192.0.2.0/24;")
+	if allow < 0 || deny < allow || !strings.Contains(conf, "allow 2001:db8:7::1;") {
+		t.Fatalf("Nginx stops at the first match, so allow must come first:\n%s", conf)
+	}
+	if n := reloads(sim); n != 2 {
+		t.Errorf("Nginx reloaded %d times, want once per change", n)
+	}
+	if _, err := fw.SetAllowed(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if conf := read(t, sim, BlockedConf); strings.Contains(conf, "allow") {
+		t.Fatalf("allow lines stayed after the list was cleared:\n%s", conf)
+	}
+}
+
+// A server without allowed addresses must keep the file it has: an agent
+// update that rewrote it would reload Nginx for nothing.
+func TestWithoutAllowedAddressesTheFileIsWhatItWas(t *testing.T) {
+	want := "# Managed by Serfex. Manual changes are overwritten.\n" +
+		"# Addresses blocked on the Güvenlik page, refused here too when they\n" +
+		"# come through Cloudflare's proxy.\n" +
+		"deny 192.0.2.1;\n"
+	if got := string(BlockedContent(nil, []string{"192.0.2.1"})); got != want {
+		t.Fatalf("content:\n%s\nwant:\n%s", got, want)
+	}
+	// Nothing is denied, so there is nothing to exempt an address from.
+	if got := string(BlockedContent([]string{"192.0.2.50"}, nil)); strings.Contains(got, "allow") {
+		t.Fatalf("allow lines without a deny line:\n%s", got)
+	}
+}

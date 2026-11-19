@@ -196,6 +196,14 @@ func main() {
 	if !*dryRun {
 		svc.firewall.Protected = ownAddresses
 	}
+	// Fail2ban never bans an address on the allowed list.
+	svc.components.Allowed = func() []string {
+		allowed, err := svc.firewall.Allowed()
+		if err != nil {
+			log.Error("reading the allowed addresses", "err", err)
+		}
+		return allowed
+	}
 	svc.edge = edge.NewManager(h, svc.firewall)
 	svc.firewall.Changed = func(ctx context.Context) {
 		if err := svc.edge.Sync(ctx); err != nil {

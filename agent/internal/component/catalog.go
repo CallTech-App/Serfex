@@ -626,6 +626,11 @@ func renderJails(m *Manager) []byte {
 		slices.Sort(own)
 		ignore = append(ignore, slices.Compact(own)...)
 	}
+	if m.Allowed != nil {
+		allowed := slices.Clone(m.Allowed())
+		slices.Sort(allowed)
+		ignore = append(ignore, slices.Compact(allowed)...)
+	}
 	// Cloudflare's proxy: banning one of its addresses would lock out
 	// every visitor of a site behind Cloudflare.
 	for _, r := range cloudflare.Ranges(m.h) {

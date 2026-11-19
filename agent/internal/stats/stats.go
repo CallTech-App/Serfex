@@ -190,6 +190,14 @@ func (a *Aggregator) HasGeo() bool {
 	return a.geo.Size() > 0
 }
 
+// Country returns the country an address was registered in, "" when it
+// is unknown or no table is installed.
+func (a *Aggregator) Country(ip string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.geo.Country(ip)
+}
+
 func (a *Aggregator) acc(domain string, at time.Time) *hourAcc {
 	k := hourKey{domain, at.UTC().Truncate(time.Hour).Unix()}
 	h := a.web[k]

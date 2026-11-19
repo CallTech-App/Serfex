@@ -972,3 +972,27 @@ func TestWebToolsUpgradeAndRevert(t *testing.T) {
 		t.Errorf("adminer: %+v", s)
 	}
 }
+
+func TestFail2banNeverBansAllowedAddresses(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	m.Addresses = func() []string { return []string{"203.0.113.21"} }
+	var allowed []string
+	m.Allowed = func() []string { return allowed }
+	if _, err := m.Install(ctx, OpSpec{ID: "fail2ban", Run: "f"}); err != nil {
+		t.Fatal(err)
+	}
+	if jails := read(t, sim, jailConf); !strings.Contains(jails, "ignoreip = 127.0.0.1/8 ::1 203.0.113.21 103.21.244.0/22") {
+		t.Fatalf("jails without allowed addresses changed:\n%s", jails)
+	}
+	allowed = []string{"198.51.100.7", "192.0.2.0/24", "198.51.100.7"}
+	if st, _ := m.Fail2ban(ctx); st.Current {
+		t.Fatal("jails current although an address was allowed")
+	}
+	if changed, err := m.Fail2banRefresh(ctx); err != nil || !changed {
+		t.Fatalf("refresh = %v, %v", changed, err)
+	}
+	if jails := read(t, sim, jailConf); !strings.Contains(jails, "ignoreip = 127.0.0.1/8 ::1 203.0.113.21 192.0.2.0/24 198.51.100.7 103.21.244.0/22") {
+		t.Fatalf("jails:\n%s", jails)
+	}
+}

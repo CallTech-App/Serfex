@@ -7,7 +7,9 @@
 //	                                       so logs, WAF, limits and PHP see the visitor
 //	/etc/nginx/conf.d/serfex-blocked.conf  the firewall's blocks as "deny" lines: the
 //	                                       firewall drops a blocked visitor's own
-//	                                       connections, Nginx refuses them through Cloudflare
+//	                                       connections, Nginx refuses them through Cloudflare.
+//	                                       Allowed addresses come first as "allow" lines,
+//	                                       so a wider block never refuses them
 //	/etc/serfex/cloudflare-ips.json        the ranges as the panel last sent them
 //
 // A site that sets its own allow/deny rules (IP restrictions, protected
@@ -148,10 +150,13 @@ func (m *Manager) write(ctx context.Context, t *txn.Tx) (Status, error) {
 		return st, nil
 	}
 	st.Nginx = true
-	var denies []string
+	var denies, allows []string
 	if m.fw != nil {
 		blocks, err := m.fw.List()
 		if err != nil {
+			return st, &OperationError{err}
+		}
+		if allows, err = m.fw.Allowed(); err != nil {
 			return st, &OperationError{err}
 		}
 		now := m.Now()
@@ -174,7 +179,7 @@ func (m *Manager) write(ctx context.Context, t *txn.Tx) (Status, error) {
 	if err := t.WriteFile(RealIPConf, RealIPContent(ranges)); err != nil {
 		return st, &OperationError{err}
 	}
-	if err := t.WriteFile(BlockedConf, BlockedContent(denies)); err != nil {
+	if err := t.WriteFile(BlockedConf, BlockedContent(allows, denies)); err != nil {
 		return st, &OperationError{err}
 	}
 	if !t.Changed {
@@ -203,13 +208,21 @@ func RealIPContent(ranges []netip.Prefix) []byte {
 	return []byte(b.String())
 }
 
-// BlockedContent refuses the firewall's blocked addresses.
-func BlockedContent(addresses []string) []byte {
+// BlockedContent refuses the firewall's blocked addresses. Nginx stops at
+// the first rule that matches, so the allowed addresses come first: one
+// inside a blocked prefix still gets through. With nothing denied there is
+// nothing to exempt them from, and the file stays as it always was.
+func BlockedContent(allowed, denied []string) []byte {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s. Manual changes are overwritten.\n", txn.Marker)
 	b.WriteString("# Addresses blocked on the Güvenlik page, refused here too when they\n")
 	b.WriteString("# come through Cloudflare's proxy.\n")
-	for _, a := range addresses {
+	if len(denied) > 0 {
+		for _, a := range allowed {
+			fmt.Fprintf(&b, "allow %s;\n", a)
+		}
+	}
+	for _, a := range denied {
 		fmt.Fprintf(&b, "deny %s;\n", a)
 	}
 	return []byte(b.String())
