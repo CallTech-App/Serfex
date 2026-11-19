@@ -6416,8 +6416,6 @@
     "Hiçbir zaman engellenmez.": "Never blocked.",
     "Hiçbir zaman engellenmez: :note": "Never blocked: :note",
     "Sitelere gelen istekler": "Requests to the sites",
-    "Sitelerin erişim günlüklerinde bu adres yok. Günlükler 14 gün saklanır; SSH, posta ve panel girişleri burada görünmez.": "This address is not in the sites' access logs. Logs are kept for 14 days; SSH, mail and panel sign-ins are not shown here.",
-    "Sitelerin erişim günlüklerinden; günlükler 14 gün saklanır. Cloudflare vekili arkasındaki sitelerde ziyaretçinin gerçek adresi sayılır. Reddedilen: engel, WAF ya da site kuralı yüzünden 403 alan istekler.": "From the sites' access logs, which are kept for 14 days. On sites behind the Cloudflare proxy the visitor's real address is counted. Rejected: requests answered with 403 because of a block, the WAF or a site rule.",
     "Son istek": "Last request",
     "Son istekler": "Latest requests",
     "Süzgece uyan istek yok.": "No request matches the filter.",
@@ -6438,5 +6436,12 @@
     "Sunucu konsolu": "Server console",
     "Sunucu konsolundan kaldırıldı": "Lifted from the server console",
     "ip engel ban yasakla izinli adres beyaz liste kara liste": "ip block ban deny allowed address allow list whitelist blacklist",
-    "Şu an :link. Engeli kaldırmak, toplu engellemek ve izinli adresler için Güvenlik → IP engelleri sayfasını kullanın.": ":link right now. To lift blocks, block in bulk or manage allowed addresses, use Security → IP blocks."
+    "Şu an :link. Engeli kaldırmak, toplu engellemek ve izinli adresler için Güvenlik → IP engelleri sayfasını kullanın.": ":link right now. To lift blocks, block in bulk or manage allowed addresses, use Security → IP blocks.",
+    "Sitelerin erişim günlüklerinde bu adres yok. Günlükler :since gününden başlıyor; SSH, posta ve panel girişleri burada görünmez.": "This address is not in the sites' access logs. The logs start on :since; SSH, mail and panel sign-ins are not shown here.",
+    "Sitelerin erişim günlüklerinde bu adres yok. SSH, posta ve panel girişleri burada görünmez.": "This address is not in the sites' access logs. SSH, mail and panel sign-ins are not shown here.",
+    "Sitelerin erişim günlüklerinden, :since gününden bu yana.": "From the sites' access logs, since :since.",
+    "Sitelerin erişim günlüklerinden.": "From the sites' access logs.",
+    "Cloudflare vekili arkasındaki sitelerde ziyaretçinin gerçek adresi sayılır. Reddedilen: engel, WAF ya da site kuralı yüzünden 403 alan istekler.": "On sites behind the Cloudflare proxy the visitor's real address is counted. Rejected: requests answered with 403 because of a block, the WAF or a site rule.",
+    ":h sa": ":h h",
+    ":d gün": ":d day|:d days"
 }

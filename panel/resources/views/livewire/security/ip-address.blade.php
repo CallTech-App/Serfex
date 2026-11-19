@@ -57,12 +57,12 @@
         <p class="mt-1 max-w-3xl text-[13px] text-muted">
             @if ($block)
                 {{ $block->reason
-                    ? __(':by :when engelledi: :reason', ['by' => $block->byLabel(), 'when' => mb_strtolower(When::withTime($block->created_at)), 'reason' => $block->reason])
-                    : __(':by :when engelledi.', ['by' => $block->byLabel(), 'when' => mb_strtolower(When::withTime($block->created_at))]) }}
+                    ? __(':by :when engelledi: :reason', ['by' => $block->byLabel(), 'when' => When::inSentence($block->created_at), 'reason' => $block->reason])
+                    : __(':by :when engelledi.', ['by' => $block->byLabel(), 'when' => When::inSentence($block->created_at)]) }}
             @elseif ($range)
                 <x-t text=":range aralığıyla engelli."><x-slot:range><a href="{{ route('security.blocks.address', $range->address) }}" wire:navigate class="font-mono text-fg hover:text-accent">{{ $range->address }}</a></x-slot:range></x-t>
             @elseif ($ban)
-                {{ __('Fail2ban :when engelledi: :reason (:reach).', ['when' => mb_strtolower(When::withTime($ban->created_at)), 'reason' => $ban->reason ?: \App\Services\Security\Fail2ban::jailLabel($ban->kind), 'reach' => mb_strtolower($ban->reach())]) }}
+                {{ __('Fail2ban :when engelledi: :reason (:reach).', ['when' => When::inSentence($ban->created_at), 'reason' => $ban->reason ?: \App\Services\Security\Fail2ban::jailLabel($ban->kind), 'reach' => mb_strtolower($ban->reach())]) }}
             @elseif ($allow && $allow->address !== $address)
                 <x-t text=":range aralığıyla izinli."><x-slot:range><span class="font-mono text-fg">{{ $allow->address }}</span></x-slot:range></x-t>
                 <a href="{{ route('security.blocks', ['tab' => 'allowed']) }}" wire:navigate class="text-accent hover:underline">{{ __('İzinli adresler') }}</a>
@@ -122,7 +122,7 @@
                 </div>
                 <p class="mt-0.5 truncate text-2xs text-muted">
                     @if ($first && $last)
-                        {{ __('İlk :first · son :last', ['first' => mb_strtolower(When::withTime($first)), 'last' => mb_strtolower(When::withTime($last))]) }}
+                        {{ __('İlk :first · son :last', ['first' => When::inSentence($first), 'last' => When::inSentence($last)]) }}
                     @else
                         {{ __('Erişim günlüklerinden') }}
                     @endif
@@ -157,7 +157,7 @@
                             <tr wire:key="history-{{ $row->id }}" class="hover:bg-surface-2/60">
                                 <td class="py-3 pr-3 pl-5 whitespace-nowrap">{{ $row->byLabel() }}<span class="num block text-2xs text-muted">{{ When::withTime($row->created_at) }}</span></td>
                                 <td class="px-3 py-3">{{ $row->reason ?: '—' }}<span @class(['block text-2xs text-muted', 'font-mono' => $row->source !== 'fail2ban' && $row->site !== null])>{{ $row->reach() }}</span></td>
-                                <td class="num px-3 py-3 whitespace-nowrap">{{ $row->minutes() === null ? __('Kalıcı') : \App\Support\Load::uptime($row->minutes() * 60) }}</td>
+                                <td class="num px-3 py-3 whitespace-nowrap">{{ $row->durationLabel() }}</td>
                                 <td class="py-3 pr-5 pl-3 whitespace-nowrap">
                                     @if ($row->isActive())
                                         {{ __('Yürürlükte') }}<span class="num block text-2xs text-muted">{{ Load::remaining($row->expires_at) }}</span>
@@ -184,7 +184,7 @@
         @elseif ($sites->isEmpty() && $recent->isEmpty())
             <div class="px-5 py-12 text-center text-[13.5px]">
                 <p class="font-medium">{{ __('Bu adresten sitelere istek gelmemiş.') }}</p>
-                <p class="mx-auto mt-1 max-w-xl text-[13px] text-muted">{{ __('Sitelerin erişim günlüklerinde bu adres yok. Günlükler 14 gün saklanır; SSH, posta ve panel girişleri burada görünmez.') }}</p>
+                <p class="mx-auto mt-1 max-w-xl text-[13px] text-muted">{{ $since ? __('Sitelerin erişim günlüklerinde bu adres yok. Günlükler :since gününden başlıyor; SSH, posta ve panel girişleri burada görünmez.', ['since' => When::dayMonth($since)]) : __('Sitelerin erişim günlüklerinde bu adres yok. SSH, posta ve panel girişleri burada görünmez.') }}</p>
             </div>
         @elseif ($tab === 'requests')
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
@@ -282,7 +282,8 @@
                 </table>
             </div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line px-5 py-3 text-2xs text-muted">
-                <p class="min-w-0 flex-1 basis-full sm:basis-0">{{ __('Sitelerin erişim günlüklerinden; günlükler 14 gün saklanır. Cloudflare vekili arkasındaki sitelerde ziyaretçinin gerçek adresi sayılır. Reddedilen: engel, WAF ya da site kuralı yüzünden 403 alan istekler.') }}
+                <p class="min-w-0 flex-1 basis-full sm:basis-0">{{ $since ? __('Sitelerin erişim günlüklerinden, :since gününden bu yana.', ['since' => When::dayMonth($since)]) : __('Sitelerin erişim günlüklerinden.') }}
+                    {{ __('Cloudflare vekili arkasındaki sitelerde ziyaretçinin gerçek adresi sayılır. Reddedilen: engel, WAF ya da site kuralı yüzünden 403 alan istekler.') }}
                     @if ($report['truncated'] ?? false) {{ __('Günlükler çok büyük olduğu için tamamı okunamadı; sayılar eksik olabilir.') }} @endif</p>
                 <button type="button" wire:click="reload" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 text-[13px] hover:text-fg"><x-icon name="rotate-ccw" class="size-3.5" />{{ __('Yenile') }}</button>
             </div>

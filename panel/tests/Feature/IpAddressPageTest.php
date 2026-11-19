@@ -9,7 +9,9 @@ use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Support\When;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\Support\FakeAgent;
 use Tests\TestCase;
@@ -127,6 +129,24 @@ class IpAddressPageTest extends TestCase
             ->assertSee('Günlükler çok büyük olduğu için tamamı okunamadı');
     }
 
+    public function test_times_inside_sentences_keep_month_names_and_the_page_says_how_far_back_the_logs_go(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-19 12:00:00', config('serfex.timezone')));
+        IpBlock::forceCreate(['address' => self::ADDRESS, 'source' => 'panel', 'user_id' => $this->admin->id, 'reason' => 'Tarama', 'created_at' => now()->subDays(3)]);
+
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->call('load')
+            ->assertSeeText('Sercan Akın 16 Kas 12:00 engelledi: Tarama')
+            ->assertSeeText('İlk 17 Kas 12:00 · son bugün 11:59')
+            // How long logs are kept is a setting: the page says what was read.
+            ->assertSeeText('Sitelerin erişim günlüklerinden, 5 Kas gününden bu yana.')
+            ->assertDontSee('14 gün saklanır');
+
+        $this->admin->forceFill(['locale' => 'en'])->save();
+        app()->setLocale('en');
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->call('load')
+            ->assertSeeText('First Nov 17 12:00 PM · last today 11:59 AM');
+    }
+
     public function test_an_address_that_never_came_says_so(): void
     {
         $this->agent->answers['logs.address'] = ['address' => '198.51.100.9', 'hostname' => '', 'requests' => 0, 'denied' => 0, 'logins' => 0,
@@ -134,6 +154,7 @@ class IpAddressPageTest extends TestCase
 
         Livewire::test(IpAddressShow::class, ['address' => '198.51.100.9'])->call('load')
             ->assertSee('Bu adresten sitelere istek gelmemiş.')
+            ->assertSeeText('Günlükler '.When::dayMonth(now()->subDays(14)).' gününden başlıyor')
             ->set('tab', 'requests')->assertSee('Bu adresten sitelere istek gelmemiş.');
     }
 
@@ -246,6 +267,20 @@ class IpAddressPageTest extends TestCase
         $sorted = $at;
         sort($sorted);
         $this->assertSame($sorted, $at);
+    }
+
+    public function test_the_history_says_how_long_each_block_was_set_for_in_the_panel_s_own_words(): void
+    {
+        $block = fn (?int $minutes) => IpBlock::forceCreate(['address' => self::ADDRESS, 'source' => 'panel', 'created_at' => now()->subYear(), 'updated_at' => now(),
+            'expires_at' => $minutes === null ? null : now()->subYear()->addMinutes($minutes), 'removed_at' => now()->subYear()->addMinute(), 'ended' => 'user']);
+        $labels = [];
+        foreach ([null, 60, 1440, 10080, 43200, 46, 150, 180, 2880, 3000] as $minutes) {
+            $labels[] = $block($minutes)->durationLabel();
+        }
+        $this->assertSame(['Kalıcı', '1 saat', '24 saat', '7 gün', '30 gün', '46 dk', '2 sa 30 dk', '3 sa', '2 gün', '2 gün 2 sa'], $labels);
+
+        Livewire::test(IpAddressShow::class, ['address' => self::ADDRESS])->set('tab', 'blocks')
+            ->assertSee('24 saat')->assertSee('46 dk')->assertDontSee('1 gün 0 sa')->assertDontSee('0 sa 46 dk');
     }
 
     /**

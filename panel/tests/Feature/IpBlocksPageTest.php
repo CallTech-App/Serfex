@@ -459,6 +459,9 @@ class IpBlocksPageTest extends TestCase
         $this->assertMatchesRegularExpression('/Engelli adresler\s*(<!--.*?-->\s*)*<span[^>]*>2</', $html);
         // The server's two own addresses are on the allowed list too.
         $this->assertMatchesRegularExpression('/İzinli adresler\s*(<!--.*?-->\s*)*<span[^>]*>3</u', $html);
+
+        // One page of allowed addresses: no "1–1 / 1" beside three rows.
+        Livewire::test(IpBlocksIndex::class)->set('tab', 'allowed')->assertSee('198.51.100.9')->assertSee('203.0.113.10')->assertDontSee('1–1 / 1');
     }
 
     public function test_the_dashboard_opens_the_blocks_serfex_ai_made(): void

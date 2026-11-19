@@ -80,5 +80,8 @@
 
 <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line px-5 py-3 text-2xs text-muted">
     <p class="min-w-0 flex-1 basis-full sm:basis-0">{{ __('Cloudflare\'in vekil adresleri de her zaman izinlidir ve burada listelenmez. Ev ve mobil bağlantıların adresi değişebilir; sabit IP\'niz yoksa adresinizi eklemek sizi her zaman korumaz.') }}</p>
-    @include('livewire.security.ip-blocks.pager')
+    {{-- The server's own addresses follow the saved ones, so a count of one page would be short of the rows. --}}
+    @if ($rows->hasPages())
+        @include('livewire.security.ip-blocks.pager')
+    @endif
 </div>

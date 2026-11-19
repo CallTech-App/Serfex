@@ -50,6 +50,24 @@ final class When
     }
 
     /**
+     * withTime() for the middle of a sentence: "bugün 23:38", "dün 17:02",
+     * and month names as they are ("14 Eki 22:30", "Oct 14 10:30 PM").
+     */
+    public static function inSentence(?CarbonInterface $at): string
+    {
+        if ($at === null) {
+            return '—';
+        }
+        $text = self::withTime($at);
+        $day = self::local($at);
+        $now = now(config('serfex.timezone'));
+
+        return $day->isSameDay($now) || $day->isSameDay($now->copy()->subDay())
+            ? mb_strtolower(mb_substr($text, 0, 1)).mb_substr($text, 1)
+            : $text;
+    }
+
+    /**
      * 14:05 / 2:05 PM.
      */
     public static function time(?CarbonInterface $at, bool $seconds = false): string

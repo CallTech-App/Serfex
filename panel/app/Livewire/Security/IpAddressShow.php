@@ -272,6 +272,8 @@ class IpAddressShow extends Component
                 && ($needle === '' || str_contains(mb_strtolower($r['path']), $needle)))->values(),
             'first' => self::time($report['first'] ?? null),
             'last' => self::time($report['last'] ?? null),
+            // The oldest log line that was read: how far back the numbers go.
+            'since' => self::time($report['since'] ?? null),
             'bans' => IpBlock::where('address', $this->address)->where('source', 'fail2ban')->count(),
         ])->title($this->address.' · Serfex');
     }

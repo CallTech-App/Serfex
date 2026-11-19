@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\Monitor\IpBlocks;
+use App\Support\Locales;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -109,6 +111,26 @@ class IpBlock extends Model
     public function minutes(): ?int
     {
         return $this->expires_at === null ? null : max(1, (int) round($this->created_at->diffInSeconds($this->expires_at) / 60));
+    }
+
+    /**
+     * How long the block was set for, in the words of the duration
+     * choices where it is one of them: "24 saat", "7 gün", "46 dk",
+     * "Kalıcı".
+     */
+    public function durationLabel(): string
+    {
+        $min = $this->minutes();
+
+        return match (true) {
+            $min === null => __('Kalıcı'),
+            isset(IpBlocks::DURATIONS[$min]) => Locales::label(IpBlocks::DURATIONS[$min]),
+            $min < 60 => __(':m dk', ['m' => $min]),
+            $min < 1440 && $min % 60 > 0 => __(':h sa :m dk', ['h' => intdiv($min, 60), 'm' => $min % 60]),
+            $min < 1440 => __(':h sa', ['h' => intdiv($min, 60)]),
+            $min % 1440 >= 60 => __(':d gün :h sa', ['d' => intdiv($min, 1440), 'h' => intdiv($min % 1440, 60)]),
+            default => __(':d gün', ['d' => intdiv($min, 1440)]),
+        };
     }
 
     /**
