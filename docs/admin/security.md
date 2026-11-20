@@ -25,7 +25,7 @@ Ctrl+K) is the one list of every address the server refuses, whoever
 blocked it: you, Serfex AI, the API or Fail2ban. A Serfex block drops every
 connection from the address (web, mail, SSH, the panel); a Fail2ban ban
 closes only the port of the service that was attacked, and the list says
-which.
+which. The same page refuses whole [countries](#countries).
 
 ### Blocked addresses
 
@@ -75,15 +75,59 @@ visitor's real address.
 ### Allowed addresses
 
 Addresses and ranges that are **never blocked**: not by hand, not by
-Serfex AI, not by Fail2ban, and not by a wider block that holds them (the
-allowed address still gets through). Use it for your office, a monitoring
-service or a payment provider's callback addresses.
+Serfex AI, not by Fail2ban, not by a wider block that holds them (the
+allowed address still gets through), and not by a country block. Use it
+for your office, a monitoring service or a payment provider's callback
+addresses.
 
 - Adding an address lifts its blocks at once; the entry can carry a note.
 - The server's own addresses are always on the list and cannot be removed.
   The address you are connected from is marked.
 - The list is written to the firewall (checked before the blocked
   addresses), to Nginx and to Fail2ban's `ignoreip`.
+
+### Countries
+
+The **Countries** tab lists every country with the requests and visitors
+it sent your sites in the last 30 days and the addresses of it that are
+blocked one by one, so you can see what a block would cost before you set
+it. Blocked countries are on top.
+
+- **Block a country** takes the ticked countries, or countries you type by
+  name or two-letter code. Nothing is blocked until you choose; an update
+  never blocks a country by itself.
+- The **scope** is one choice for all blocked countries:
+  - **Websites only** (the default): every site answers visitors from the
+    country with 403. Mail, SSH, FTP and the panel are not affected, and
+    Let's Encrypt renewals keep working. The refusal is made in Nginx by
+    the visitor's own address, so it also works for sites behind
+    Cloudflare's proxy.
+  - **The whole server**: besides the websites, the firewall drops new
+    connections from the country to everything else: SSH, FTP, the panel,
+    and mail sign-ins (IMAP, POP3, SMTP submission). Incoming mail (port
+    25), DNS (53) and the web ports stay open, so messages from mail
+    servers in those countries are not lost and your domains keep
+    resolving there. The webmail page keeps opening; its sign-in is
+    guarded by Fail2ban as before. Connections the server itself opens to
+    those countries (updates, APIs, outgoing mail) are not affected.
+- **Always let through:** the allowed addresses, the server's own
+  addresses and Cloudflare's proxy addresses.
+- **The country you are connected from cannot be blocked**, so you do not
+  close the panel to yourself. If you travel and find yourself kept out,
+  see [Locked out](#locked-out).
+- The United States get a warning: Google, Bing and most payment,
+  shipping and monitoring services connect from there. Add the ones you
+  need to the allowed addresses.
+- Blocking, unblocking and a change of scope have **Undo** in their
+  message for 10 minutes.
+
+A country here is where an address is **registered**, from the lists the
+five regional internet registries publish (the same table as the site
+statistics; downloaded once a month, no account or licence needed). It is
+not a location service: a VPN, a cloud provider or a mobile network can
+put a visitor under another country, so treat a country block as a way to
+cut noise, not as access control. A newly installed server downloads the
+table in its first minutes; until then no country can be blocked.
 
 ### History
 
@@ -107,6 +151,15 @@ sudo serfex firewall unblock 203.0.113.77
 It lifts every block that holds the address: its own block, a blocked
 range around it and Fail2ban's bans. Then add the address under **Allowed
 addresses** so it cannot happen again.
+
+If the country you are in is blocked, lift the country blocks:
+
+```sh
+sudo serfex firewall countries off
+```
+
+Every country is unblocked at once; the scope is kept for the next block,
+and addresses blocked one by one are not touched.
 
 ## Web application firewall (WAF)
 

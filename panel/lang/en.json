@@ -6499,5 +6499,12 @@
     "Ülkeler engellenemedi: :reason": "The countries could not be blocked: :reason",
     "İstek (30 gün)": "Requests (30 days)",
     "İzinli adresler ülke engelinden etkilenmez.": "Allowed addresses are not affected by a country block.",
-    "Şu an buradan bağlısınız": "You are connected from here now"
+    "Şu an buradan bağlısınız": "You are connected from here now",
+    ":count ülkenin engeli sunucu konsolundan kaldırıldı: :countries.": "The block on :count country was lifted from the server console: :countries.|The blocks on :count countries were lifted from the server console: :countries.",
+    "Adresin kendisi engelli değil, ama ülkesi engelli (:country): sunucu bu adrese web, DNS ve gelen posta dışında yanıt vermez.": "The address itself is not blocked, but its country is (:country): the server answers this address only for web, DNS and incoming mail.",
+    "Adresin kendisi engelli değil, ama ülkesi engelli (:country): web siteleri bu adrese 403 sayfası gösterir.": "The address itself is not blocked, but its country is (:country): websites show this address a 403 page.",
+    "Engelli adresler ve ülkeler bu kurallardan önce uygulanır: :link, :countries.": "Blocked addresses and countries are applied before these rules: :link, :countries.",
+    "Engelli ülke yok.": "No country is blocked.",
+    "Ülke engelleri kaldırılamadı: :reason": "The country blocks could not be lifted: :reason",
+    "Ülkesi (:country) engelli; izinli olduğu için ülke engelinden geçer.": "Its country (:country) is blocked; being allowed, the address passes the country block."
 }

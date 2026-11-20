@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Security;
 
+use App\Models\CountryBlock;
 use App\Models\IpBlock;
 use App\Models\SecurityFinding;
 use App\Models\SecurityScan;
@@ -469,7 +470,7 @@ class SecurityIndex extends Component
     {
         $ssh = app(Ssh::class);
         $data = ['tab' => $this->tab, 'sshPortChange' => $ssh->portChange(), 'sshPortNow' => $ssh->port(), 'sshUser' => $this->sshUser(),
-            'blockCount' => IpBlock::active()->count()];
+            'blockCount' => IpBlock::active()->count(), 'countryCount' => CountryBlock::count()];
         $error = null;
 
         match ($this->tab) {

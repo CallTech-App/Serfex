@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\AuditEntry;
+use App\Models\CountryBlock;
 use App\Models\IpBlock;
 use App\Models\Setting;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
+use App\Services\Security\CountryBlocks;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +48,48 @@ class IpBlockCommandsTest extends TestCase
         $status = Artisan::call('serfex:unblock', ['address' => $address, '--json' => true]);
 
         return [$status, json_decode(trim(Artisan::output()), true) ?? []];
+    }
+
+    public function test_countries_off_lifts_every_country_block_from_the_console(): void
+    {
+        CountryBlock::create(['code' => 'RU']);
+        CountryBlock::create(['code' => 'CN']);
+        Setting::put(CountryBlocks::SCOPE_KEY, 'server');
+        $this->agent->answers['firewall.countries.apply'] = fn ($p) => ['countries' => $p['countries'], 'scope' => $p['scope'], 'ranges' => [], 'loaded' => true];
+
+        $status = Artisan::call('serfex:countries-off', ['--json' => true]);
+
+        $this->assertSame(0, $status);
+        $this->assertSame(['lifted' => ['CN', 'RU'], 'names' => ['Çin', 'Rusya']], json_decode(trim(Artisan::output()), true));
+        $this->assertSame([['countries' => [], 'scope' => 'server']], $this->agent->called('firewall.countries.apply'));
+        $this->assertSame(0, CountryBlock::count());
+        $entry = AuditEntry::sole();
+        $this->assertSame(['Sunucu konsolu', 'system', '2 ülkenin engeli sunucu konsolundan kaldırıldı: Çin, Rusya.'], [$entry->actor, $entry->via, $entry->message]);
+        $this->assertStringContainsString('tab=countries', $entry->url);
+    }
+
+    public function test_countries_off_with_nothing_blocked_is_not_a_failure(): void
+    {
+        $this->agent->answers['firewall.countries.apply'] = fn ($p) => ['countries' => [], 'scope' => $p['scope'], 'ranges' => [], 'loaded' => true];
+
+        $this->assertSame(0, Artisan::call('serfex:countries-off', ['--json' => true]));
+        $this->assertSame(['lifted' => [], 'names' => []], json_decode(trim(Artisan::output()), true));
+        // The agent is told all the same: it may hold a list the panel lost.
+        $this->assertCount(1, $this->agent->called('firewall.countries.apply'));
+        $this->assertSame(0, AuditEntry::count());
+
+        $this->assertSame(0, Artisan::call('serfex:countries-off'));
+        $this->assertStringContainsString('Engelli ülke yok.', Artisan::output());
+    }
+
+    public function test_countries_off_fails_when_the_agent_cannot_lift_them(): void
+    {
+        CountryBlock::create(['code' => 'RU']);
+        $this->agent->answers['firewall.countries.apply'] = new AgentUnavailableException('connection refused');
+
+        $this->assertSame(1, Artisan::call('serfex:countries-off', ['--json' => true]));
+        $this->assertStringContainsString('Sunucu ajanına ulaşılamıyor', json_decode(trim(Artisan::output()), true)['error']);
+        $this->assertSame(1, CountryBlock::count());
     }
 
     public function test_the_console_lifts_the_block_and_the_bans_of_an_address(): void

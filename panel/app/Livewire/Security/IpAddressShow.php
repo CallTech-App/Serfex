@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Security;
 
+use App\Models\CountryBlock;
 use App\Models\IpAllow;
 use App\Models\IpBlock;
 use App\Models\Site;
@@ -10,6 +11,7 @@ use App\Services\Monitor\IpBlocks;
 use App\Services\Monitor\MonitorException;
 use App\Services\Security\AddressGeo;
 use App\Services\Security\AddressVisits;
+use App\Services\Security\CountryBlocks;
 use App\Services\Security\IpAllows;
 use App\Support\Badge;
 use App\Support\Load;
@@ -260,7 +262,10 @@ class IpAddressShow extends Component
             'allow' => $allow,
             'range' => $range,
             'badge' => $this->badge($block, $ban, $allow, $range),
-            'country' => $this->country($history, $allow, $geo),
+            'country' => $country = $this->country($history, $allow, $geo),
+            // Its country may be refused although the address itself is not blocked.
+            'countryBlocked' => $country !== null && CountryBlock::where('code', $country)->exists(),
+            'countryScope' => app(CountryBlocks::class)->scope(),
             'isMine' => in_array($this->address, $this->mine(), true),
             'report' => $report,
             'failed' => $failed,

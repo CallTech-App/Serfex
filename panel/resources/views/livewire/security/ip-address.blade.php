@@ -68,8 +68,16 @@
                 <a href="{{ route('security.blocks', ['tab' => 'allowed']) }}" wire:navigate class="text-accent hover:underline">{{ __('İzinli adresler') }}</a>
             @elseif ($allow)
                 {{ $allow->note ? __('Hiçbir zaman engellenmez: :note', ['note' => $allow->note]) : __('Hiçbir zaman engellenmez.') }}
+            @elseif ($countryBlocked)
+                {{ $countryScope === 'server'
+                    ? __('Adresin kendisi engelli değil, ama ülkesi engelli (:country): sunucu bu adrese web, DNS ve gelen posta dışında yanıt vermez.', ['country' => \App\Support\Countries::name($country)])
+                    : __('Adresin kendisi engelli değil, ama ülkesi engelli (:country): web siteleri bu adrese 403 sayfası gösterir.', ['country' => \App\Support\Countries::name($country)]) }}
+                <a href="{{ route('security.blocks', ['tab' => 'countries']) }}" wire:navigate class="text-accent hover:underline">{{ __('Ülkeler') }}</a>
             @else
                 {{ __('Bu adresten gelen bağlantılar kabul ediliyor.') }}
+            @endif
+            @if ($countryBlocked && $allow)
+                {{ __('Ülkesi (:country) engelli; izinli olduğu için ülke engelinden geçer.', ['country' => \App\Support\Countries::name($country)]) }}
             @endif
         </p>
     </div>

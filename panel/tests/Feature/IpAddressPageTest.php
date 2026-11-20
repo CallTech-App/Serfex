@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Livewire\Security\IpAddressShow;
+use App\Models\CountryBlock;
 use App\Models\IpAllow;
 use App\Models\IpBlock;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\User;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
+use App\Services\Security\CountryBlocks;
 use App\Support\When;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -45,6 +48,31 @@ class IpAddressPageTest extends TestCase
             'logs.address' => fn ($p) => $this->report($p['address']),
         ]);
         $this->app->instance(AgentClient::class, $this->agent);
+    }
+
+    public function test_the_address_page_says_when_the_country_is_blocked(): void
+    {
+        // Every address is in the Netherlands here.
+        $this->get('/security/ip-blocks/address/'.self::ADDRESS)->assertOk()
+            ->assertSee('Bu adresten gelen bağlantılar kabul ediliyor.')
+            ->assertDontSee('ülkesi engelli');
+
+        CountryBlock::create(['code' => 'NL']);
+        $this->get('/security/ip-blocks/address/'.self::ADDRESS)->assertOk()
+            ->assertSee('Adresin kendisi engelli değil, ama ülkesi engelli (Hollanda): web siteleri bu adrese 403 sayfası gösterir.')
+            ->assertDontSee('Bu adresten gelen bağlantılar kabul ediliyor.')
+            ->assertSee('href="'.e(route('security.blocks', ['tab' => 'countries'])).'"', false);
+
+        Setting::put(CountryBlocks::SCOPE_KEY, 'server');
+        $this->get('/security/ip-blocks/address/'.self::ADDRESS)->assertOk()
+            ->assertSee('Adresin kendisi engelli değil, ama ülkesi engelli (Hollanda): sunucu bu adrese web, DNS ve gelen posta dışında yanıt vermez.');
+
+        // An allowed address passes the country block.
+        IpAllow::create(['address' => self::ADDRESS, 'note' => 'Ofis']);
+        $this->get('/security/ip-blocks/address/'.self::ADDRESS)->assertOk()
+            ->assertSee('Hiçbir zaman engellenmez: Ofis')
+            ->assertSee('Ülkesi (Hollanda) engelli; izinli olduğu için ülke engelinden geçer.')
+            ->assertDontSee('ama ülkesi engelli');
     }
 
     public function test_the_page_is_for_administrators_and_takes_addresses_and_ranges(): void
