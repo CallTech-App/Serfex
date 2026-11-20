@@ -4,9 +4,16 @@
 // iptables-nft, a hand-written ruleset) stays untouched:
 //
 //	table inet serfex
+//	  set allowed4, allowed6   addresses and prefixes that are never dropped here
 //	  set blocked4, blocked6   addresses and prefixes, each with its own timeout
-//	  chain input              drops everything from those sets, before other filters
-//	/etc/serfex/firewall/blocks.json   the blocks as last applied, root 0600
+//	  chain input              accepts the allowed sets, then drops the blocked
+//	                           ones, before other filters
+//	/etc/serfex/firewall/blocks.json    the blocks as last applied, root 0600
+//	/etc/serfex/firewall/allowed.json   the allowed addresses, root 0600
+//
+// "accept" ends this chain only: the port filter and Fail2ban's own table
+// still see the packet, so an allowed address is exempt from Serfex's
+// blocks, not from closed ports.
 //
 // A block is time-boxed by the kernel itself (the set element's timeout),
 // so it ends on time even while the agent or the panel is down. The state
@@ -30,14 +37,19 @@ import (
 )
 
 const (
-	stateDir  = "/etc/serfex/firewall"
-	stateFile = stateDir + "/blocks.json"
+	stateDir    = "/etc/serfex/firewall"
+	stateFile   = stateDir + "/blocks.json"
+	allowedFile = stateDir + "/allowed.json"
 
 	// Table is the nftables table Serfex owns.
 	Table = "serfex"
 
 	// MaxSeconds is the longest timed block; longer ones are permanent.
 	MaxSeconds = 365 * 24 * 3600
+
+	// MaxBatch is how many addresses one BlockMany, UnblockMany or
+	// SetAllowed call takes.
+	MaxBatch = 1000
 )
 
 // ruleset creates the table from scratch. "add table" before "delete
@@ -45,6 +57,16 @@ const (
 const ruleset = `add table inet serfex
 delete table inet serfex
 table inet serfex {
+	set allowed4 {
+		type ipv4_addr
+		flags interval
+		auto-merge
+	}
+	set allowed6 {
+		type ipv6_addr
+		flags interval
+		auto-merge
+	}
 	set blocked4 {
 		type ipv4_addr
 		flags interval, timeout
@@ -55,6 +77,8 @@ table inet serfex {
 	}
 	chain input {
 		type filter hook input priority filter - 10; policy accept;
+		ip saddr @allowed4 accept
+		ip6 saddr @allowed6 accept
 		ip saddr @blocked4 counter drop
 		ip6 saddr @blocked6 counter drop
 	}
@@ -145,10 +169,13 @@ func format(p netip.Prefix) string {
 	return p.String()
 }
 
-func (m *Manager) check(p netip.Prefix) error {
+// shape refuses a prefix that may be neither blocked nor allowed: one that
+// is too wide, or a loopback, unspecified or multicast address. verb is
+// "block" or "allow".
+func shape(p netip.Prefix, verb string) error {
 	a := p.Addr()
 	if a.Is4() && p.Bits() < 16 || a.Is6() && p.Bits() < 48 {
-		return invalid("%s is too wide; block at most a /16 (IPv4) or /48 (IPv6)", format(p))
+		return invalid("%s is too wide; %s at most a /16 (IPv4) or /48 (IPv6)", format(p), verb)
 	}
 	for _, bad := range []netip.Prefix{
 		netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128"),
@@ -156,22 +183,88 @@ func (m *Manager) check(p netip.Prefix) error {
 		netip.MustParsePrefix("224.0.0.0/4"), netip.MustParsePrefix("ff00::/8"),
 	} {
 		if bad.Overlaps(p) {
-			return invalid("%s cannot be blocked: it is a loopback, unspecified or multicast address", format(p))
-		}
-	}
-	// Visitors behind Cloudflare's proxy reach this server from
-	// Cloudflare's addresses: blocking one would block them all.
-	if r, ok := cloudflare.Overlaps(cloudflare.Ranges(m.h), p); ok {
-		return invalid("%s cannot be blocked: it is in Cloudflare's proxy range %s, which visitors of sites behind Cloudflare come from", format(p), r)
-	}
-	if m.Protected != nil {
-		for _, own := range m.Protected() {
-			if p.Contains(own.Unmap()) {
-				return invalid("%s cannot be blocked: it is this server's own address %s", format(p), own)
-			}
+			return invalid("%s cannot be %sed: it is a loopback, unspecified or multicast address", format(p), verb)
 		}
 	}
 	return nil
+}
+
+// guard is what a block is checked against, read once per call.
+type guard struct {
+	cloudflare []netip.Prefix
+	own        []netip.Addr
+	allowed    []netip.Prefix
+}
+
+func (m *Manager) guard(allowed []netip.Prefix) guard {
+	g := guard{cloudflare: cloudflare.Ranges(m.h), allowed: allowed}
+	if m.Protected != nil {
+		g.own = m.Protected()
+	}
+	return g
+}
+
+func (g guard) check(p netip.Prefix) error {
+	if err := shape(p, "block"); err != nil {
+		return err
+	}
+	// Visitors behind Cloudflare's proxy reach this server from
+	// Cloudflare's addresses: blocking one would block them all.
+	if r, ok := cloudflare.Overlaps(g.cloudflare, p); ok {
+		return invalid("%s cannot be blocked: it is in Cloudflare's proxy range %s, which visitors of sites behind Cloudflare come from", format(p), r)
+	}
+	for _, own := range g.own {
+		if p.Contains(own.Unmap()) {
+			return invalid("%s cannot be blocked: it is this server's own address %s", format(p), own)
+		}
+	}
+	// A block inside an allowed entry would never match. A wider block
+	// around one is fine: the allowed addresses in it stay reachable.
+	for _, a := range g.allowed {
+		if a.Bits() <= p.Bits() && a.Overlaps(p) {
+			return invalid("%s cannot be blocked: it is in the allowed list (%s)", format(p), format(a))
+		}
+	}
+	return nil
+}
+
+// checkSpec refuses a duration or reason that cannot be stored.
+func checkSpec(spec Spec) error {
+	if spec.Seconds < 0 || spec.Seconds > MaxSeconds {
+		return invalid("seconds must be between 0 (until removed) and %d", MaxSeconds)
+	}
+	if len(spec.Reason) > 200 {
+		return invalid("reason is longer than 200 characters")
+	}
+	return nil
+}
+
+// newBlock is the block spec asks for, starting now.
+func newBlock(p netip.Prefix, spec Spec, now time.Time) Block {
+	b := Block{Address: format(p), Reason: strings.TrimSpace(spec.Reason), Created: now}
+	if spec.Seconds > 0 {
+		exp := now.Add(time.Duration(spec.Seconds) * time.Second)
+		b.Expires = &exp
+	}
+	return b
+}
+
+// replaceElement puts b into its set whether or not the address was there:
+// add + delete + add, in one transaction, so the new timeout always applies.
+func replaceElement(p netip.Prefix, b Block, now time.Time) string {
+	return fmt.Sprintf("add element inet %[1]s %[2]s { %[3]s }\ndelete element inet %[1]s %[2]s { %[3]s }\nadd element inet %[1]s %[2]s { %[3]s%[4]s }\n",
+		Table, setFor(p), b.Address, timeout(b, now))
+}
+
+// removeElement takes an address out of its set. The kernel may have
+// dropped the element already; add-then-delete removes it either way.
+func removeElement(p netip.Prefix) string {
+	return fmt.Sprintf("add element inet %[1]s %[2]s { %[3]s }\ndelete element inet %[1]s %[2]s { %[3]s }\n", Table, setFor(p), format(p))
+}
+
+func (m *Manager) nft(ctx context.Context, script string) error {
+	_, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"-f", "-"}, Stdin: []byte(script)})
+	return err
 }
 
 // Block blocks an address, or changes the duration and reason of an
@@ -181,23 +274,20 @@ func (m *Manager) Block(ctx context.Context, spec Spec) (Block, error) {
 	if err != nil {
 		return Block{}, err
 	}
-	if err := m.check(p); err != nil {
+	if err := checkSpec(spec); err != nil {
 		return Block{}, err
-	}
-	if spec.Seconds < 0 || spec.Seconds > MaxSeconds {
-		return Block{}, invalid("seconds must be between 0 (until removed) and %d", MaxSeconds)
-	}
-	if len(spec.Reason) > 200 {
-		return Block{}, invalid("reason is longer than 200 characters")
 	}
 	changed := false
 	defer m.notify(ctx, &changed) // runs after the lock is released
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	blocks, err := m.load()
+	blocks, allowed, err := m.state()
 	if err != nil {
 		return Block{}, &OperationError{err}
+	}
+	if err := m.guard(allowed).check(p); err != nil {
+		return Block{}, err
 	}
 	addr := format(p)
 	for _, b := range blocks {
@@ -206,22 +296,13 @@ func (m *Manager) Block(ctx context.Context, spec Spec) (Block, error) {
 			return Block{}, invalid("%s overlaps %s, which is already blocked; remove that block first", addr, b.Address)
 		}
 	}
-	if err := m.ensure(ctx, blocks); err != nil {
+	if err := m.ensure(ctx, blocks, allowed); err != nil {
 		return Block{}, &OperationError{err}
 	}
 
 	now := m.Now().UTC().Truncate(time.Second)
-	b := Block{Address: addr, Reason: strings.TrimSpace(spec.Reason), Created: now}
-	if spec.Seconds > 0 {
-		exp := now.Add(time.Duration(spec.Seconds) * time.Second)
-		b.Expires = &exp
-	}
-	set := setFor(p)
-	// add + delete + add replaces the element whether or not it existed,
-	// in one transaction, so the new timeout always applies.
-	script := fmt.Sprintf("add element inet %[1]s %[2]s { %[3]s }\ndelete element inet %[1]s %[2]s { %[3]s }\nadd element inet %[1]s %[2]s { %[3]s%[4]s }\n",
-		Table, set, addr, timeout(b, now))
-	if _, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"-f", "-"}, Stdin: []byte(script)}); err != nil {
+	b := newBlock(p, spec, now)
+	if err := m.nft(ctx, replaceElement(p, b, now)); err != nil {
 		return Block{}, &OperationError{err}
 	}
 
@@ -238,6 +319,114 @@ func (m *Manager) Block(ctx context.Context, spec Spec) (Block, error) {
 	return b, nil
 }
 
+// Skipped is an item of a batch that was left out, and why.
+type Skipped struct {
+	// Address is the item as it was given.
+	Address string `json:"address"`
+	Error   string `json:"error"`
+}
+
+// BatchResult is what BlockMany did.
+type BatchResult struct {
+	Blocked []Block   `json:"blocked"`
+	Skipped []Skipped `json:"skipped"`
+}
+
+// BlockMany blocks up to MaxBatch addresses in one nftables transaction,
+// so the firewall changes once and Changed runs once. An item that cannot
+// be blocked (not an address, protected, overlapping a block or an earlier
+// item) is skipped with its reason; the others are still blocked. An
+// address already blocked gets the new duration and reason. When nftables
+// refuses the transaction nothing is blocked and nothing is stored.
+func (m *Manager) BlockMany(ctx context.Context, specs []Spec) (BatchResult, error) {
+	res := BatchResult{Blocked: []Block{}, Skipped: []Skipped{}}
+	if len(specs) > MaxBatch {
+		return res, invalid("at most %d addresses can be blocked at once", MaxBatch)
+	}
+	changed := false
+	defer m.notify(ctx, &changed) // runs after the lock is released
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	blocks, allowed, err := m.state()
+	if err != nil {
+		return res, &OperationError{err}
+	}
+	stored := make([]netip.Prefix, 0, len(blocks))
+	for _, b := range blocks {
+		bp, _ := Normalize(b.Address)
+		stored = append(stored, bp)
+	}
+	g := m.guard(allowed)
+	now := m.Now().UTC().Truncate(time.Second)
+	var script strings.Builder
+	var taken []netip.Prefix
+	replaced := map[string]bool{}
+	for _, spec := range specs {
+		skip := func(err error) {
+			res.Skipped = append(res.Skipped, Skipped{Address: strings.TrimSpace(spec.Address), Error: err.Error()})
+		}
+		p, err := Normalize(spec.Address)
+		if err == nil {
+			err = checkSpec(spec)
+		}
+		if err == nil {
+			err = g.check(p)
+		}
+		if err == nil {
+			err = overlap(p, stored, taken)
+		}
+		if err != nil {
+			skip(err)
+			continue
+		}
+		b := newBlock(p, spec, now)
+		script.WriteString(replaceElement(p, b, now))
+		taken = append(taken, p)
+		replaced[b.Address] = true
+		res.Blocked = append(res.Blocked, b)
+	}
+	if len(res.Blocked) == 0 {
+		return res, nil
+	}
+	if err := m.ensure(ctx, blocks, allowed); err != nil {
+		return BatchResult{Blocked: []Block{}, Skipped: res.Skipped}, &OperationError{err}
+	}
+	if err := m.nft(ctx, script.String()); err != nil {
+		return BatchResult{Blocked: []Block{}, Skipped: res.Skipped}, &OperationError{err}
+	}
+	kept := make([]Block, 0, len(blocks)+len(res.Blocked))
+	for _, old := range blocks {
+		if !replaced[old.Address] {
+			kept = append(kept, old)
+		}
+	}
+	if err := m.save(append(kept, res.Blocked...)); err != nil {
+		return BatchResult{Blocked: []Block{}, Skipped: res.Skipped}, &OperationError{err}
+	}
+	changed = true
+	return res, nil
+}
+
+// overlap refuses p when it overlaps a stored block other than itself, or
+// an item taken earlier from the same batch.
+func overlap(p netip.Prefix, stored, taken []netip.Prefix) error {
+	for _, sp := range stored {
+		if sp != p && sp.Overlaps(p) {
+			return invalid("%s overlaps %s, which is already blocked; remove that block first", format(p), format(sp))
+		}
+	}
+	for _, t := range taken {
+		if t == p {
+			return invalid("%s is listed more than once", format(p))
+		}
+		if t.Overlaps(p) {
+			return invalid("%s overlaps %s, which is in the same list", format(p), format(t))
+		}
+	}
+	return nil
+}
+
 // notify runs Changed when *changed is set.
 func (m *Manager) notify(ctx context.Context, changed *bool) {
 	if *changed && m.Changed != nil {
@@ -249,11 +438,33 @@ func (m *Manager) notify(ctx context.Context, changed *bool) {
 // whose block ran out) is not an error. It reports whether a block was
 // removed.
 func (m *Manager) Unblock(ctx context.Context, address string) (bool, error) {
-	p, err := Normalize(address)
-	if err != nil {
+	if _, err := Normalize(address); err != nil {
 		return false, err
 	}
-	addr := format(p)
+	n, err := m.UnblockMany(ctx, []string{address})
+	return n > 0, err
+}
+
+// UnblockMany removes up to MaxBatch blocks in one nftables transaction
+// and reports how many were in force. Addresses that are not blocked, or
+// are not addresses at all, are passed over.
+func (m *Manager) UnblockMany(ctx context.Context, addresses []string) (int, error) {
+	if len(addresses) > MaxBatch {
+		return 0, invalid("at most %d addresses can be unblocked at once", MaxBatch)
+	}
+	remove := map[string]bool{}
+	var script strings.Builder
+	for _, a := range addresses {
+		p, err := Normalize(a)
+		if err != nil || remove[format(p)] {
+			continue
+		}
+		remove[format(p)] = true
+		script.WriteString(removeElement(p))
+	}
+	if len(remove) == 0 {
+		return 0, nil
+	}
 	changed := false
 	defer m.notify(ctx, &changed) // runs after the lock is released
 	m.mu.Lock()
@@ -261,31 +472,130 @@ func (m *Manager) Unblock(ctx context.Context, address string) (bool, error) {
 
 	blocks, err := m.load()
 	if err != nil {
-		return false, &OperationError{err}
+		return 0, &OperationError{err}
 	}
-	found := false
+	found := 0
 	kept := blocks[:0]
 	for _, b := range blocks {
-		if b.Address == addr {
-			found = true
+		if remove[b.Address] {
+			found++
 			continue
 		}
 		kept = append(kept, b)
 	}
-	// The kernel may have dropped the element already; add-then-delete
-	// removes it either way.
-	script := fmt.Sprintf("add element inet %[1]s %[2]s { %[3]s }\ndelete element inet %[1]s %[2]s { %[3]s }\n", Table, setFor(p), addr)
-	if _, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"-f", "-"}, Stdin: []byte(script)}); err != nil {
+	if err := m.nft(ctx, script.String()); err != nil {
 		// No table means nothing is blocked.
 		if _, lerr := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "table", "inet", Table}}); lerr == nil {
-			return false, &OperationError{err}
+			return 0, &OperationError{err}
 		}
 	}
 	if err := m.save(kept); err != nil {
-		return false, &OperationError{err}
+		return 0, &OperationError{err}
 	}
-	changed = found
+	changed = found > 0
 	return found, nil
+}
+
+// Allowed returns the allowed addresses and prefixes, sorted.
+func (m *Manager) Allowed() ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	allowed, err := m.loadAllowed()
+	if err != nil {
+		return nil, &OperationError{err}
+	}
+	return formatAll(allowed), nil
+}
+
+// SetAllowed replaces the allowed list: addresses and prefixes that
+// Serfex's blocks never drop, even inside a wider block. The list comes
+// back normalised and sorted. One entry that cannot be allowed refuses
+// the whole list, because the caller sends the list it wants in force.
+func (m *Manager) SetAllowed(ctx context.Context, addresses []string) ([]string, error) {
+	if len(addresses) > MaxBatch {
+		return nil, invalid("at most %d addresses can be allowed", MaxBatch)
+	}
+	seen := map[netip.Prefix]bool{}
+	list := []netip.Prefix{}
+	for _, a := range addresses {
+		p, err := Normalize(a)
+		if err != nil {
+			return nil, err
+		}
+		if err := shape(p, "allow"); err != nil {
+			return nil, err
+		}
+		if !seen[p] {
+			seen[p] = true
+			list = append(list, p)
+		}
+	}
+	sortPrefixes(list)
+
+	changed := false
+	defer m.notify(ctx, &changed) // runs after the lock is released
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	blocks, current, err := m.state()
+	if err != nil {
+		return nil, &OperationError{err}
+	}
+	if err := m.ensure(ctx, blocks, current); err != nil {
+		return nil, &OperationError{err}
+	}
+	script := fmt.Sprintf("flush set inet %[1]s allowed4\nflush set inet %[1]s allowed6\n", Table) + allowedElements(list)
+	if err := m.nft(ctx, script); err != nil {
+		return nil, &OperationError{err}
+	}
+	if err := m.saveAllowed(list); err != nil {
+		return nil, &OperationError{err}
+	}
+	changed = strings.Join(formatAll(current), " ") != strings.Join(formatAll(list), " ")
+	return formatAll(list), nil
+}
+
+// allowedElements fills the allowed sets. An entry inside another one is
+// left out: the wider entry already covers it.
+func allowedElements(allowed []netip.Prefix) string {
+	sets := map[string][]string{}
+	for _, p := range allowed {
+		covered := false
+		for _, o := range allowed {
+			covered = covered || o != p && o.Bits() <= p.Bits() && o.Overlaps(p)
+		}
+		if !covered {
+			set := "allowed4"
+			if p.Addr().Is6() {
+				set = "allowed6"
+			}
+			sets[set] = append(sets[set], format(p))
+		}
+	}
+	var b strings.Builder
+	for _, set := range []string{"allowed4", "allowed6"} {
+		if len(sets[set]) > 0 {
+			fmt.Fprintf(&b, "add element inet %s %s { %s }\n", Table, set, strings.Join(sets[set], ", "))
+		}
+	}
+	return b.String()
+}
+
+func sortPrefixes(list []netip.Prefix) {
+	sort.Slice(list, func(i, j int) bool {
+		if c := list[i].Addr().Compare(list[j].Addr()); c != 0 {
+			return c < 0
+		}
+		return list[i].Bits() < list[j].Bits()
+	})
+}
+
+func formatAll(list []netip.Prefix) []string {
+	out := make([]string, 0, len(list))
+	for _, p := range list {
+		out = append(out, format(p))
+	}
+	return out
 }
 
 // List returns the blocks in force, newest first.
@@ -300,33 +610,37 @@ func (m *Manager) List() ([]Block, error) {
 	return blocks, nil
 }
 
-// Restore recreates the table with the blocks still in force; the agent
-// calls it when it starts, so blocks survive a reboot.
+// Restore recreates the table with the blocks still in force and the
+// allowed addresses; the agent calls it when it starts, so both survive a
+// reboot.
 func (m *Manager) Restore(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	blocks, err := m.load()
+	blocks, allowed, err := m.state()
 	if err != nil {
 		return err
 	}
-	if len(blocks) == 0 {
+	if len(blocks) == 0 && len(allowed) == 0 {
 		return nil
 	}
-	return m.create(ctx, blocks)
+	return m.create(ctx, blocks, allowed)
 }
 
-// ensure creates the table, with every stored block, when it is missing
-// (first use, or someone flushed the ruleset).
-func (m *Manager) ensure(ctx context.Context, blocks []Block) error {
-	if _, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "set", "inet", Table, "blocked6"}}); err == nil {
+// ensure creates the table, with every stored block and allowed address,
+// when it is missing or incomplete: first use, someone flushed the
+// ruleset, or the table was made by an agent from before the allowed sets
+// (allowed6 is the last set that was added to it).
+func (m *Manager) ensure(ctx context.Context, blocks []Block, allowed []netip.Prefix) error {
+	if _, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "set", "inet", Table, "allowed6"}}); err == nil {
 		return nil
 	}
-	return m.create(ctx, blocks)
+	return m.create(ctx, blocks, allowed)
 }
 
-func (m *Manager) create(ctx context.Context, blocks []Block) error {
+func (m *Manager) create(ctx context.Context, blocks []Block, allowed []netip.Prefix) error {
 	var b strings.Builder
 	b.WriteString(ruleset)
+	b.WriteString(allowedElements(allowed))
 	now := m.Now()
 	for _, bl := range blocks {
 		p, err := Normalize(bl.Address)
@@ -335,7 +649,7 @@ func (m *Manager) create(ctx context.Context, blocks []Block) error {
 		}
 		fmt.Fprintf(&b, "add element inet %s %s { %s%s }\n", Table, setFor(p), bl.Address, timeout(bl, now))
 	}
-	if _, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"-f", "-"}, Stdin: []byte(b.String())}); err != nil {
+	if err := m.nft(ctx, b.String()); err != nil {
 		return fmt.Errorf("creating the nftables table: %w", err)
 	}
 	return nil
@@ -357,6 +671,43 @@ func timeout(b Block, now time.Time) string {
 		s = 1
 	}
 	return fmt.Sprintf(" timeout %ds", s)
+}
+
+// state reads both state files.
+func (m *Manager) state() ([]Block, []netip.Prefix, error) {
+	blocks, err := m.load()
+	if err != nil {
+		return nil, nil, err
+	}
+	allowed, err := m.loadAllowed()
+	return blocks, allowed, err
+}
+
+// loadAllowed reads the allowed list, sorted.
+func (m *Manager) loadAllowed() ([]netip.Prefix, error) {
+	data, err := os.ReadFile(m.h.Path(allowedFile))
+	if errors.Is(err, os.ErrNotExist) {
+		return []netip.Prefix{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var all []string
+	if err := json.Unmarshal(data, &all); err != nil {
+		return nil, fmt.Errorf("%s: %w", allowedFile, err)
+	}
+	list := []netip.Prefix{}
+	for _, a := range all {
+		if p, err := Normalize(a); err == nil {
+			list = append(list, p)
+		}
+	}
+	sortPrefixes(list)
+	return list, nil
+}
+
+func (m *Manager) saveAllowed(list []netip.Prefix) error {
+	return m.write(allowedFile, formatAll(list))
 }
 
 // load reads the state file, dropping blocks that have run out.
@@ -383,16 +734,21 @@ func (m *Manager) load() ([]Block, error) {
 }
 
 func (m *Manager) save(blocks []Block) error {
+	return m.write(stateFile, blocks)
+}
+
+// write replaces a state file in one step.
+func (m *Manager) write(file string, v any) error {
 	if err := os.MkdirAll(m.h.Path(stateDir), 0o700); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(blocks, "", "  ")
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := m.h.Path(stateFile + ".tmp")
+	tmp := m.h.Path(file + ".tmp")
 	if err := os.WriteFile(tmp, append(data, '\n'), 0o600); err != nil {
 		return err
 	}
-	return os.Rename(tmp, m.h.Path(stateFile))
+	return os.Rename(tmp, m.h.Path(file))
 }

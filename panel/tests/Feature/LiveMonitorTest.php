@@ -118,17 +118,23 @@ class LiveMonitorTest extends TestCase
         $this->get('/monitor')->assertOk()->assertSee('Sunucu ajanına ulaşılamıyor');
     }
 
-    public function test_attacks_tab_merges_rules_per_address_and_shows_blocks(): void
+    public function test_attacks_tab_merges_rules_per_address_and_links_to_the_ip_blocks(): void
     {
         IpBlock::create(['address' => '198.51.100.0/24', 'reason' => 'Tarama', 'source' => 'panel', 'expires_at' => now()->addMinutes(30)]);
+        IpBlock::create(['address' => '198.51.100.9', 'source' => 'panel', 'removed_at' => now()]);
 
         Livewire::test(LiveMonitor::class)
             ->call('setTab', 'attacks')
             ->assertSee('İstek seli, Giriş denemesi · /wp-login.php')
             ->assertSee('Posta girişi denemesi · IMAP')
             ->assertSee('88')
-            ->assertSee('198.51.100.0/24')
-            ->assertSee('30 dk kaldı');
+            // The blocks have their own page: one line with their number.
+            ->assertSeeText('Şu an 1 adres engelli.')
+            ->assertSeeHtml('href="'.route('security.blocks').'"')
+            ->assertDontSee('198.51.100.0/24')
+            // A suspect's address opens what it did on the sites.
+            ->assertSeeHtml('href="'.route('security.blocks.address', '45.155.205.233').'"')
+            ->assertSeeHtml('href="'.route('security.blocks.address', '203.0.113.77').'"');
     }
 
     public function test_blocking_an_address_from_the_dialog_and_undoing_it(): void

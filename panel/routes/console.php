@@ -48,5 +48,6 @@ Schedule::command('serfex:tuning')->everyMinute()->withoutOverlapping();
 Schedule::command('serfex:cloudflare-sync')->everyFiveMinutes()->withoutOverlapping();
 Schedule::exec($stopped('serfex:uptime', 15))->everyMinute()->withoutOverlapping(5);
 Schedule::command('serfex:uptime --prune')->dailyAt('04:15')->withoutOverlapping();
+Schedule::command('serfex:blocks-prune')->dailyAt('04:20')->withoutOverlapping();
 Schedule::exec($stopped('serfex:laravel-watch', 15))->everyMinute()->withoutOverlapping(5);
 Schedule::command('serfex:cloudflare-ips')->weeklyOn(1, '04:50')->withoutOverlapping();

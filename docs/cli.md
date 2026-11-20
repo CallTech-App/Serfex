@@ -867,6 +867,34 @@ serfex customers packages
 
 Lists the packages
 
+### serfex firewall
+
+```
+serfex firewall <command>
+```
+
+IP blocks: lets an address that is kept out in again
+
+| Command | |
+| --- | --- |
+| [`unblock`](#serfex-firewall-unblock) | Lifts every block that keeps an IP address out |
+
+### serfex firewall unblock
+
+```
+serfex firewall unblock <address>
+```
+
+Lifts every block that keeps the address out: its own block, a blocked range that holds it and Fail2ban's bans. The lifted blocks show in the panel under Security → IP blocks → History.
+
+Use it when you cannot open the panel because your own address is blocked. Runs on the server itself as root; if SSH is closed to you too, connect from your provider's console.
+
+Examples:
+
+```sh
+sudo serfex firewall unblock 203.0.113.77
+```
+
 ## Laravel
 
 ### serfex apps

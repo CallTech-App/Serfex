@@ -270,3 +270,17 @@ func TestSaveAndLoad(t *testing.T) {
 func itoa(n int) string { return strconv.Itoa(n) }
 
 func writeFile(file string, data []byte) error { return os.WriteFile(file, data, 0o644) }
+
+func TestAggregatorCountry(t *testing.T) {
+	a := New()
+	if got := a.Country("88.230.1.1"); got != "" {
+		t.Fatalf("country without a table = %q", got)
+	}
+	a.SetGeo(DemoGeo())
+	if got := a.Country("88.230.1.1"); got != "TR" {
+		t.Fatalf("country = %q, want TR", got)
+	}
+	if got := a.Country("not-an-ip"); got != "" {
+		t.Fatalf("country of junk = %q", got)
+	}
+}

@@ -95,7 +95,8 @@ class Fail2ban
         $gone = 0;
         foreach (IpBlock::active()->where('source', 'fail2ban')->get() as $block) {
             if (! in_array($block->kind.'|'.$block->address, $seen, true)) {
-                $block->update(['removed_at' => now()]);
+                // Before its time: Fail2ban, or someone at its command line, lifted it.
+                $block->update(['removed_at' => now(), 'ended' => 'sync']);
                 $gone++;
             }
         }

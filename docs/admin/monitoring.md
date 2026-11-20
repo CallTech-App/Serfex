@@ -64,9 +64,10 @@ address, 20 tries a minute on a sign-in page, 60 missing pages a minute, or
 after they go quiet. **Nothing is blocked automatically by these rules**; you
 block with one click, for a time you choose.
 
-**Blocked addresses** lists the blocks in force, from you, Serfex AI and
-Fail2ban. A Serfex block drops every connection from the address (web, mail,
-SSH); a Fail2ban block closes only the attacked service's port.
+Click an address to see which sites it went to and what it asked for. The
+line under the table says how many addresses are blocked now and opens
+[Security → IP blocks](security.md#ip-blocks), where blocks are lifted,
+addresses are blocked in bulk and allowed addresses are kept.
 
 ### Mail queue
 

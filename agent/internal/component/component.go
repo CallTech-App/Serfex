@@ -124,6 +124,10 @@ type Manager struct {
 	// Addresses returns the server's own addresses, which Fail2ban never
 	// bans.
 	Addresses func() []string
+	// Allowed returns the addresses and prefixes on the firewall's allowed
+	// list (Güvenlik > IP engelleri), which Fail2ban never bans either;
+	// nil or an empty list leaves the jails as they always were.
+	Allowed func() []string
 	// SSHPorts returns the ports Serfex set for SSH (Güvenlik > Giriş
 	// güvenliği), nil when it never changed them; the sshd jail watches
 	// those ports instead of 22.

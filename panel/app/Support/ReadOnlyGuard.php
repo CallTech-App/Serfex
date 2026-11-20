@@ -25,7 +25,7 @@ final class ReadOnlyGuard
     private const LOOKING = '/^(\$refresh|\$set|\$toggle|\$sync|\$commit|\$parent|open|close|show|hide|cancel|select|view|search|filter|sort|load|refresh|poll|tab|go|next|previous|setPage|resetPage|gotoPage|preview|watch|expand|collapse|more|back|clear|toggleDetail|switchTab)/';
 
     /** Agent methods that only read. */
-    private const READING = '/(^|\.)(status|list|get|info|logs|log|live|ping|versions|addresses|events|rules|health|usage|runs|timezones|check|scan|search|stat|read|queue|limits|inspect)$/';
+    private const READING = '/(^|\.)(status|list|get|info|logs|log|live|ping|versions|addresses|events|rules|health|usage|runs|timezones|check|scan|search|stat|read|queue|limits|inspect|lookup)$|^logs\.address$/';
 
     /** Tables the sign-in itself, the log and the person's own command line keys write to. */
     private const BOOKKEEPING = ['sessions', 'cache', 'cache_locks', 'users', 'audit_entries', 'api_keys', 'cli_logins', 'password_reset_tokens'];

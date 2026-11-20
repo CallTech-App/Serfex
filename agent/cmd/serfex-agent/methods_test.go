@@ -16,13 +16,17 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/cron"
 	"github.com/calltech-app/serfex/agent/internal/database"
 	"github.com/calltech-app/serfex/agent/internal/dns"
+	"github.com/calltech-app/serfex/agent/internal/edge"
+	"github.com/calltech-app/serfex/agent/internal/firewall"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/logrotate"
 	"github.com/calltech-app/serfex/agent/internal/mail"
 	"github.com/calltech-app/serfex/agent/internal/rpc"
 	"github.com/calltech-app/serfex/agent/internal/site"
+	"github.com/calltech-app/serfex/agent/internal/stats"
 	"github.com/calltech-app/serfex/agent/internal/system"
+	"github.com/calltech-app/serfex/agent/internal/visits"
 )
 
 func TestSiteMethods(t *testing.T) {
@@ -330,5 +334,135 @@ func TestMapErrorMarksUnreachableCA(t *testing.T) {
 	rpcErr, ok := mapError(err).(*rpc.Error)
 	if !ok || rpcErr.Code != CodeCAUnreachable {
 		t.Fatalf("mapError = %#v", mapError(err))
+	}
+}
+
+// The batch and allow-list methods, as the panel's IP engelleri page
+// calls them.
+func TestFirewallBatchAndAllowMethods(t *testing.T) {
+	sim, err := host.NewSimulator(t.TempDir(), "8.4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	sites := site.NewManager(sim, "www-data")
+	dbs := database.NewSimulated(sim)
+	comps := component.NewManager(sim, sites, dbs, laravel.NewManager(sim))
+	fw := firewall.NewManager(sim)
+	comps.Allowed = func() []string { a, _ := fw.Allowed(); return a }
+	if _, err := comps.Install(ctx, component.OpSpec{ID: "fail2ban", Run: "f2b"}); err != nil {
+		t.Fatal(err)
+	}
+	agg := stats.New()
+	agg.SetGeo(stats.DemoGeo())
+	srv := rpc.NewServer(nil)
+	dnsm := dns.NewSimulatedManager(sim, dns.NewMemory())
+	registerMethods(srv, services{
+		sites: sites, dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
+		databases: dbs, components: comps, firewall: fw, edge: edge.NewManager(sim, fw), stats: agg, dryRun: true,
+		visits: visits.NewManager(sim),
+	})
+	logDir := sim.Path("/var/log/serfex/sites/a.com")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(logDir, "access.log"), []byte(
+		`45.155.205.233 - - [18/Nov/2026:10:00:00 +0000] "POST /wp-login.php HTTP/1.1" 403 5 "-" "x"`+"\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	sock := filepath.Join(t.TempDir(), "agent.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); _ = srv.Serve(sctx, ln) }()
+	t.Cleanup(func() { cancel(); <-done })
+
+	call := func(method, params string, into any) *rpc.Error {
+		t.Helper()
+		conn, err := net.Dial("unix", sock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		fmt.Fprintf(conn, `{"jsonrpc":"2.0","id":1,"method":%q,"params":%s}`+"\n", method, params)
+		line, err := bufio.NewReader(conn).ReadBytes('\n')
+		if err != nil {
+			t.Fatal(err)
+		}
+		var resp rpc.Response
+		if err := json.Unmarshal(line, &resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp.Error == nil && into != nil {
+			raw, _ := json.Marshal(resp.Result)
+			if err := json.Unmarshal(raw, into); err != nil {
+				t.Fatalf("%s: %s: %v", method, raw, err)
+			}
+		}
+		return resp.Error
+	}
+
+	var batch struct {
+		Blocked []struct{ Address string }
+		Skipped []struct{ Address, Error string }
+	}
+	if e := call("firewall.block.many", `{"items":[{"address":"45.155.205.233","seconds":3600,"reason":"list"},{"address":"bogus"},{"address":"88.230.4.0/24"}]}`, &batch); e != nil {
+		t.Fatalf("block.many: %+v", e)
+	}
+	if len(batch.Blocked) != 2 || len(batch.Skipped) != 1 || batch.Skipped[0].Address != "bogus" || batch.Skipped[0].Error == "" {
+		t.Fatalf("block.many = %+v", batch)
+	}
+
+	var allow struct{ Allowed, Own []string }
+	if e := call("firewall.allow.apply", `{"addresses":["192.0.2.50"]}`, &allow); e != nil {
+		t.Fatalf("allow.apply: %+v", e)
+	}
+	if strings.Join(allow.Allowed, " ") != "192.0.2.50" || strings.Join(allow.Own, " ") != "203.0.113.10 2001:db8::10" {
+		t.Fatalf("allow.apply = %+v", allow)
+	}
+	// Fail2ban learns the address at once, not a minute later.
+	jails, err := os.ReadFile(sim.Path("/etc/fail2ban/jail.d/serfex.conf"))
+	if err != nil || !strings.Contains(string(jails), " 192.0.2.50 ") {
+		t.Fatalf("jails after allow.apply (%v):\n%s", err, jails)
+	}
+	allow.Allowed, allow.Own = nil, nil
+	if e := call("firewall.allow.list", `{}`, &allow); e != nil || len(allow.Allowed) != 1 || len(allow.Own) != 2 {
+		t.Fatalf("allow.list = %+v, %+v", allow, e)
+	}
+	if e := call("firewall.allow.apply", `{"addresses":["10.0.0.0/8"]}`, nil); e == nil || e.Code != rpc.CodeInvalidParams {
+		t.Fatalf("a /8 in the allowed list: %+v", e)
+	}
+
+	var geo struct {
+		Loaded    bool
+		Countries map[string]string
+	}
+	if e := call("geo.lookup", `{"addresses":["45.155.205.233","88.230.4.0/24","10.0.0.1"]}`, &geo); e != nil {
+		t.Fatalf("geo.lookup: %+v", e)
+	}
+	if !geo.Loaded || geo.Countries["45.155.205.233"] != "RU" || geo.Countries["88.230.4.0/24"] != "TR" || geo.Countries["10.0.0.1"] != "" || len(geo.Countries) != 3 {
+		t.Fatalf("geo.lookup = %+v", geo)
+	}
+
+	var report struct {
+		Requests, Denied, Logins int
+		Sites                    []struct{ Domain string }
+	}
+	if e := call("logs.address", `{"address":"45.155.205.233"}`, &report); e != nil {
+		t.Fatalf("logs.address: %+v", e)
+	}
+	if report.Requests != 1 || report.Denied != 1 || report.Logins != 1 || len(report.Sites) != 1 || report.Sites[0].Domain != "a.com" {
+		t.Fatalf("logs.address = %+v", report)
+	}
+	if e := call("logs.address", `{"address":"everything"}`, nil); e == nil || e.Code != rpc.CodeInvalidParams {
+		t.Fatalf("logs.address with junk: %+v", e)
+	}
+
+	var removed struct{ Removed int }
+	if e := call("firewall.unblock.many", `{"addresses":["45.155.205.233","88.230.4.0/24","192.0.2.99"]}`, &removed); e != nil || removed.Removed != 2 {
+		t.Fatalf("unblock.many = %+v, %+v", removed, e)
 	}
 }

@@ -15,7 +15,7 @@ func tree() *Command {
 	}
 	root.Subs = append(root.Subs, accountCommands()...)
 	root.Subs = append(root.Subs, siteCommands(), domainCommands(), dnsCommands(), sslCommands(), mailCommands(), dbCommands(), backupCommands())
-	root.Subs = append(root.Subs, serviceCommands(), customerCommands())
+	root.Subs = append(root.Subs, serviceCommands(), customerCommands(), firewallCommands())
 	root.Subs = append(root.Subs, laravelCommands()...)
 	root.Subs = append(root.Subs, completionCommand(), versionCommand(), completeCommand())
 	return root

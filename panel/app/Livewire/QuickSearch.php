@@ -56,6 +56,7 @@ class QuickSearch extends Component
             [__('SSL ayarları'), 'ssl.settings', [], 'shield-check', __('otomatik ssl yenileme'), 'admin'],
             [__('Müşteriler ve Paketler'), 'customers.index', [], 'users', __('müşteri paket kota'), 'admin'],
             [__('Güvenlik'), 'security.index', [], 'shield-alert', __('güvenlik duvarı waf tarama fail2ban ssh 2fa'), 'admin'],
+            [__('IP engelleri'), 'security.blocks', [], 'ban', __('ip engel ban yasakla izinli adres beyaz liste kara liste'), 'admin'],
             [__('Yedekler'), 'backups.index', [], 'archive', __('yedek geri yükleme backup s3 sftp'), 'backups'],
             [__('Hizmetler'), 'services.index', [], 'server-cog', __('servis nginx mysql postfix yeniden başlat'), 'admin'],
             [__('PHP sürümleri'), 'services.index', ['tab' => 'php'], 'code', __('php ini eklenti'), 'admin'],

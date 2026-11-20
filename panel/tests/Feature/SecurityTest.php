@@ -563,6 +563,26 @@ class SecurityTest extends TestCase
         $this->assertFalse($block->fresh()->isActive());
     }
 
+    public function test_the_page_leads_to_the_ip_blocks(): void
+    {
+        IpBlock::create(['address' => '45.155.205.233', 'source' => 'panel']);
+        IpBlock::create(['address' => '103.153.79.6', 'source' => 'fail2ban', 'kind' => 'sshd', 'expires_at' => now()->addHour()]);
+        IpBlock::create(['address' => '198.51.100.2', 'source' => 'panel', 'removed_at' => now()]);
+
+        // The header button counts the blocks in force; the firewall's
+        // footer says they come before its rules.
+        $page = Livewire::test(SecurityIndex::class)
+            ->assertSeeHtml('href="'.route('security.blocks').'"')
+            ->assertSeeText('Engelli adresler bu kurallardan önce uygulanır: 2 adres engelli.')
+            ->assertDontSee('Canlı İzleme → Saldırılar');
+        $this->assertMatchesRegularExpression('/IP engelleri\s*(<!--.*?-->\s*)*<span[^>]*>2</u', $page->html());
+
+        // Fail2ban's count opens the list narrowed to its bans.
+        Livewire::test(SecurityIndex::class, ['tab' => 'login'])
+            ->assertSeeText('Şu an 1 adres Fail2ban tarafından engelli.')
+            ->assertSeeHtml('href="'.e(route('security.blocks', ['source' => 'fail2ban'])).'"');
+    }
+
     public function test_fail2ban_jails_follow_the_server_without_a_reinstall(): void
     {
         $this->agent->answers['fail2ban.status'] = ['installed' => true, 'running' => true, 'current' => true, 'jails' => []];

@@ -2,6 +2,7 @@
 
 namespace Tests\Support;
 
+use App\Models\IpBlock;
 use App\Services\Agent\AgentClient;
 use App\Services\Agent\AgentException;
 use App\Support\ReadOnlyGuard;
@@ -42,6 +43,18 @@ class FakeAgent extends AgentClient
     public function ping(): bool
     {
         return true;
+    }
+
+    /**
+     * An answer for fail2ban.status: Fail2ban runs and holds exactly the
+     * bans the panel lists as in force.
+     */
+    public static function fail2banHoldsItsBans(): Closure
+    {
+        return fn () => ['installed' => true, 'running' => true, 'jails' => IpBlock::active()->where('source', 'fail2ban')->get()
+            ->groupBy('kind')
+            ->map(fn ($bans, $jail) => ['name' => (string) $jail, 'banned' => $bans->map(fn (IpBlock $b) => ['address' => $b->address, 'until' => $b->expires_at?->toIso8601String()])->values()->all()])
+            ->values()->all()];
     }
 
     /**

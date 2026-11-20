@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/netip"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/calltech-app/serfex/agent/internal/backup"
@@ -36,6 +37,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/terminal"
 	"github.com/calltech-app/serfex/agent/internal/update"
 	"github.com/calltech-app/serfex/agent/internal/version"
+	"github.com/calltech-app/serfex/agent/internal/visits"
 )
 
 // CodeDNSNotSetUp tells the panel to offer DNS server setup.
@@ -107,6 +109,7 @@ type services struct {
 	logs       *logrotate.Manager
 	quotas     *quota.Manager
 	terminal   *terminal.Manager
+	visits     *visits.Manager
 	log        *slog.Logger
 	stats      *stats.Aggregator
 	statsFile  string
@@ -555,7 +558,8 @@ func mapError(err error) error {
 	var qv *quota.ValidationError
 	var tv *terminal.ValidationError
 	var ev *edge.ValidationError
-	if errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var visv *visits.ValidationError
+	if errors.As(err, &visv) || errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -594,6 +598,11 @@ func syncLogRotation(ctx context.Context, svc services) {
 }
 
 // handle registers a method whose params decode into P.
+// addressesParam is a list of addresses or prefixes.
+type addressesParam struct {
+	Addresses []string `json:"addresses"`
+}
+
 func handle[P any](srv *rpc.Server, method string, f func(context.Context, P) (any, error)) {
 	srv.Handle(method, func(ctx context.Context, raw json.RawMessage) (any, error) {
 		var p P
@@ -772,6 +781,65 @@ func registerMonitor(srv *rpc.Server, svc services) {
 		return map[string]bool{"removed": removed}, err
 	})
 	handle(srv, "firewall.list", func(context.Context, struct{}) (any, error) { return fw.List() })
+	// Up to 1,000 addresses in one nftables transaction and one Nginx
+	// reload (Güvenlik > IP engelleri).
+	handle(srv, "firewall.block.many", func(ctx context.Context, p struct {
+		Items []firewall.Spec `json:"items"`
+	}) (any, error) {
+		return fw.BlockMany(ctx, p.Items)
+	})
+	handle(srv, "firewall.unblock.many", func(ctx context.Context, p addressesParam) (any, error) {
+		removed, err := fw.UnblockMany(ctx, p.Addresses)
+		return map[string]int{"removed": removed}, err
+	})
+	// The allowed list: never dropped by a block here, never refused by
+	// Nginx, never banned by Fail2ban. "own" are the server's addresses,
+	// which the panel shows next to the list.
+	allowedList := func(allowed []string) (any, error) {
+		own, err := addresses(svc.dryRun)
+		if err != nil {
+			return nil, err
+		}
+		return map[string][]string{"allowed": allowed, "own": append(own["ipv4"], own["ipv6"]...)}, nil
+	}
+	handle(srv, "firewall.allow.apply", func(ctx context.Context, p addressesParam) (any, error) {
+		allowed, err := fw.SetAllowed(ctx, p.Addresses)
+		if err != nil {
+			return nil, err
+		}
+		// Fail2ban's jails list the allowed addresses. When this cannot
+		// run now (a software operation holds the lock), the panel's
+		// minute check rewrites the jails.
+		if svc.components != nil {
+			if _, err := svc.components.Fail2banSync(ctx); err != nil && svc.log != nil {
+				svc.log.Warn("rewriting Fail2ban's jails for the allowed addresses", "err", err)
+			}
+		}
+		return allowedList(allowed)
+	})
+	handle(srv, "firewall.allow.list", func(context.Context, struct{}) (any, error) {
+		allowed, err := fw.Allowed()
+		if err != nil {
+			return nil, err
+		}
+		return allowedList(allowed)
+	})
+	// Countries of addresses, from the table the site statistics use. A
+	// prefix is looked up by its first address. "loaded" is false until
+	// the table has been downloaded.
+	// What an address did on the sites, from their access logs.
+	handle(srv, "logs.address", func(ctx context.Context, p visits.Spec) (any, error) { return svc.visits.Address(ctx, p) })
+	handle(srv, "geo.lookup", func(_ context.Context, p addressesParam) (any, error) {
+		if len(p.Addresses) > 2000 {
+			return nil, &rpc.Error{Code: rpc.CodeInvalidParams, Message: "at most 2000 addresses can be looked up at once"}
+		}
+		countries := make(map[string]string, len(p.Addresses))
+		for _, a := range p.Addresses {
+			ip, _, _ := strings.Cut(a, "/")
+			countries[a] = svc.stats.Country(strings.TrimSpace(ip))
+		}
+		return map[string]any{"loaded": svc.stats.HasGeo(), "countries": countries}, nil
+	})
 	// Cloudflare's ranges (visitors' own addresses in Nginx) and the
 	// blocks as Nginx deny lines.
 	handle(srv, "web.edge.apply", func(ctx context.Context, p edge.Spec) (any, error) { return svc.edge.Apply(ctx, p) })

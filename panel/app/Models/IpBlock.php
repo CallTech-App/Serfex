@@ -2,18 +2,25 @@
 
 namespace App\Models;
 
+use App\Services\Monitor\IpBlocks;
+use App\Support\Locales;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * An address the server drops all traffic from. The agent ends a timed
- * block by itself; removed_at is set when someone lifts it early.
+ * block by itself; removed_at is set when someone lifts it early, with
+ * "ended" saying how (see the migration) and removed_by who did it.
  */
-#[Fillable(['address', 'reason', 'site_id', 'kind', 'source', 'user_id', 'expires_at', 'removed_at'])]
+#[Fillable(['address', 'country', 'reason', 'site_id', 'kind', 'source', 'user_id', 'expires_at', 'removed_at', 'ended', 'removed_by'])]
 class IpBlock extends Model
 {
+    /** How long Geçmiş keeps a block after it ended. */
+    public const KEEP_DAYS = 90;
+
     protected function casts(): array
     {
         return [
@@ -30,6 +37,16 @@ class IpBlock extends Model
     public function scopeActive(Builder $query): void
     {
         $query->whereNull('removed_at')->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+    }
+
+    /**
+     * Blocks that are over: lifted, or run out (Geçmiş).
+     *
+     * @param  Builder<IpBlock>  $query
+     */
+    public function scopeEnded(Builder $query): void
+    {
+        $query->where(fn ($q) => $q->whereNotNull('removed_at')->orWhere('expires_at', '<=', now()));
     }
 
     public function isActive(): bool
@@ -51,6 +68,89 @@ class IpBlock extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function remover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'removed_by');
+    }
+
+    /**
+     * When the block stopped being in force; null while it is.
+     */
+    public function endedAt(): ?Carbon
+    {
+        return $this->removed_at ?? ($this->expires_at?->isPast() ? $this->expires_at : null);
+    }
+
+    /**
+     * How the block ended, for Geçmiş.
+     */
+    public function endedLabel(): string
+    {
+        if ($this->removed_at === null) {
+            return __('Süresi doldu');
+        }
+
+        return match ($this->ended) {
+            'allowed' => __('İzinlilere eklendi'),
+            'replaced' => __('Süresi değiştirildi'),
+            'sync' => __('Fail2ban kaldırdı'),
+            'console' => __('Sunucu konsolundan kaldırıldı'),
+            default => $this->remover !== null ? __(':name kaldırdı', ['name' => $this->remover->name]) : __('Kaldırıldı'),
+        };
+    }
+
+    /**
+     * How long the block was set for, in minutes; null for one without
+     * an end. "Yeniden engelle" blocks for this long again.
+     */
+    public function minutes(): ?int
+    {
+        return $this->expires_at === null ? null : max(1, (int) round($this->created_at->diffInSeconds($this->expires_at) / 60));
+    }
+
+    /**
+     * How long the block was set for, in the words of the duration
+     * choices where it is one of them: "24 saat", "7 gün", "46 dk",
+     * "Kalıcı".
+     */
+    public function durationLabel(): string
+    {
+        $min = $this->minutes();
+
+        return match (true) {
+            $min === null => __('Kalıcı'),
+            isset(IpBlocks::DURATIONS[$min]) => Locales::label(IpBlocks::DURATIONS[$min]),
+            $min < 60 => __(':m dk', ['m' => $min]),
+            $min < 1440 && $min % 60 > 0 => __(':h sa :m dk', ['h' => intdiv($min, 60), 'm' => $min % 60]),
+            $min < 1440 => __(':h sa', ['h' => intdiv($min, 60)]),
+            $min % 1440 >= 60 => __(':d gün :h sa', ['d' => intdiv($min, 1440), 'h' => intdiv($min % 1440, 60)]),
+            default => __(':d gün', ['d' => intdiv($min, 1440)]),
+        };
+    }
+
+    /**
+     * What the block closes, for lists: the whole server (shown as the
+     * site it was set for, when there is one), or the one service a
+     * Fail2ban ban covers.
+     */
+    public function reach(): string
+    {
+        if ($this->source === 'fail2ban') {
+            return match ($this->kind) {
+                'sshd' => __('Yalnızca SSH portu'),
+                'serfex-panel' => __('Yalnızca panel portu'),
+                'dovecot', 'postfix-sasl' => __('Yalnızca posta portları'),
+                'serfex-webmail' => __('Yalnızca web portları'),
+                default => __('Bütün sunucu'),
+            };
+        }
+
+        return $this->site->domain ?? __('Bütün sunucu');
     }
 
     /**

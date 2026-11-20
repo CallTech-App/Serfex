@@ -240,7 +240,7 @@
                                 $perTen = in_array($s['kind'], ['mail', 'ssh'], true);
                             @endphp
                             <tr wire:key="suspect-{{ $s['ip'] }}-{{ $s['target'] }}-{{ $s['kind'] }}" class="hover:bg-surface-2/60">
-                                <td class="py-3 pr-3 pl-5 font-mono text-[13px] font-medium">{{ $s['ip'] }}</td>
+                                <td class="py-3 pr-3 pl-5 font-mono text-[13px] font-medium"><a href="{{ route('security.blocks.address', $s['ip']) }}" wire:navigate class="hover:text-accent" title="{{ __('Adresin girdiği siteleri gör') }}">{{ $s['ip'] }}</a></td>
                                 <td class="px-3 py-3 font-mono text-[13px]">
                                     @if ($target)
                                         <button type="button" wire:click="open({{ $target->id }})" class="hover:text-accent">{{ $s['target'] }}</button>
@@ -283,45 +283,9 @@
 
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Kurallar: bir adresten dakikada 300 istek, giriş sayfasına dakikada 20 deneme, dakikada 60 bulunamayan sayfa ya da 10 dakikada 10 başarısız posta veya SSH girişi.') }}</p>
 
-            <div class="border-t border-line">
-                <h2 class="px-5 pt-4 pb-2 text-[14px] font-semibold">{{ __('Engellenen adresler') }}</h2>
-                <div class="relative overflow-x-auto">
-                    <table class="w-full min-w-[760px] text-[13.5px]">
-                        <thead>
-                            <tr class="border-y border-line text-left text-2xs tracking-[.06em] text-muted uppercase">
-                                <th class="py-2.5 pr-3 pl-5 font-medium">{{ __('Adres') }}</th>
-                                <th class="px-3 py-2.5 font-medium">{{ __('Neden') }}</th>
-                                <th class="px-3 py-2.5 font-medium">{{ __('Engelleyen') }}</th>
-                                <th class="px-3 py-2.5 font-medium">{{ __('Süre') }}</th>
-                                <th class="w-28 py-2.5 pr-5 pl-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-line">
-                            @forelse ($blocks as $b)
-                                <tr wire:key="block-{{ $b->id }}" class="hover:bg-surface-2/60">
-                                    <td class="py-3 pr-3 pl-5 font-mono text-[13px] font-medium">{{ $b->address }}</td>
-                                    <td class="px-3 py-3">
-                                        {{ $b->reason !== '' && $b->reason !== null ? $b->reason : ($b->source === 'fail2ban' ? \App\Services\Security\Fail2ban::jailLabel($b->kind) : '—') }}
-                                        @if ($b->site)
-                                            <span class="block font-mono text-2xs text-muted">{{ $b->site->domain }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-3 text-muted">{{ $b->byLabel() }} · <span class="num">{{ \App\Support\When::day($b->created_at) }} {{ \App\Support\When::time($b->created_at) }}</span></td>
-                                    <td class="num px-3 py-3 whitespace-nowrap">{{ Load::remaining($b->expires_at) }}</td>
-                                    <td class="py-3 pr-5 pl-3 text-right">
-                                        <button type="button" wire:click="unblock({{ $b->id }})" class="text-[13px] text-muted hover:text-fg">{{ __('Engeli kaldır') }}</button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-5 py-8 text-center text-[13px] text-muted">{{ __('Engellenen adres yok.') }}</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                <p class="border-t border-line px-5 py-3 text-2xs text-muted">{{ __('Engel bütün sunucuyu kapsar: adresten gelen hiçbir bağlantı (web, posta, SSH) kabul edilmez. Fail2ban engelleri yalnızca saldırılan hizmetin portunu kapatır. Süresi dolan engel kendiliğinden kalkar.') }}</p>
-            </div>
+            <p class="border-t border-line px-5 py-3 text-[13px] text-muted">
+                <x-t text="Şu an :link. Engeli kaldırmak, toplu engellemek ve izinli adresler için Güvenlik → IP engelleri sayfasını kullanın."><x-slot:link><a href="{{ route('security.blocks') }}" wire:navigate class="text-accent hover:underline">{{ trans_choice(':count adres engelli', $blocks->count(), ['count' => \App\Support\Num::format($blocks->count())]) }}</a></x-slot:link></x-t>
+            </p>
 
         {{-- Posta kuyruğu --}}
         @elseif ($tab === 'mail')

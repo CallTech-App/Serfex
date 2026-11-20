@@ -936,3 +936,57 @@ func packagesList(c *Ctx) error {
 		return nil
 	})
 }
+
+// --- Güvenlik duvarı ---------------------------------------------------
+
+func firewallCommands() *Command {
+	return &Command{
+		Name: "firewall", Group: T("Sunucu"),
+		Short: T("IP engelleri: dışarıda kalan bir adresi yeniden içeri alır"),
+		Subs: []*Command{
+			{
+				Name: "unblock", Args: T("<adres>"), MinArgs: 1, MaxArgs: 1,
+				Short: T("Bir IP adresini dışarıda tutan bütün engelleri kaldırır"),
+				Long: T("Adresi dışarıda tutan her engeli kaldırır: adresin kendi engeli, onu içine alan engelli aralık ve Fail2ban engelleri. Kaldırılan engeller panelde Güvenlik → IP engelleri → Geçmiş'te görünür.\n\n" +
+					"Kendi adresiniz engellendiği için panele giremediğinizde kullanın. Sunucunun kendisinde root olarak çalışır; SSH de kapalıysa sağlayıcınızın konsolundan bağlanın."),
+				Examples: []string{"sudo serfex firewall unblock 203.0.113.77"},
+				Run:      firewallUnblock,
+			},
+		},
+	}
+}
+
+// firewallUnblock lifts every block that holds an address: the way back
+// in for an administrator the firewall keeps out of the panel.
+func firewallUnblock(c *Ctx) error {
+	if c.env.Geteuid() != 0 {
+		return fmt.Errorf("%s", T("serfex firewall unblock sunucunun kendisinde root olarak çalışır: sudo serfex firewall unblock <adres>"))
+	}
+	out, err := localArtisan(c, "serfex:unblock", "--json", "--", c.Args[0])
+	var res struct {
+		Address string   `json:"address"`
+		Lifted  []string `json:"lifted"`
+		Error   string   `json:"error"`
+	}
+	if jerr := json.Unmarshal(lastLine(out), &res); jerr != nil {
+		if err != nil {
+			return fmt.Errorf("%s", T("Panel engeli kaldıramadı: %s", err))
+		}
+		return fmt.Errorf("%s", T("Panelin yanıtı anlaşılamadı."))
+	}
+	if res.Error != "" {
+		return fmt.Errorf("%s", res.Error)
+	}
+	if c.json {
+		return c.printJSON(lastLine(out))
+	}
+	if len(res.Lifted) == 0 {
+		c.println(T("%s engelli değil.", res.Address))
+		return nil
+	}
+	c.println(c.green("✓") + " " + T("%s adresinin engeli kaldırıldı:", res.Address))
+	for _, l := range res.Lifted {
+		c.println("  " + l)
+	}
+	return nil
+}

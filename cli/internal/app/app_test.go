@@ -653,6 +653,70 @@ func TestResetPasswordPrintsTheLink(t *testing.T) {
 	}
 }
 
+func TestFirewallUnblockLetsAnAddressInAgain(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "panel.json")
+	os.WriteFile(cfg, []byte(`{"php":"8.5"}`), 0o644)
+	var out, errOut bytes.Buffer
+	var ran []string
+	answer := `{"address":"203.0.113.77","removed":2,"lifted":["203.0.113.77","203.0.113.77 (Fail2ban: Panel girişi)"]}`
+	env := &Env{
+		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
+		Getenv: func(k string) string {
+			return map[string]string{"SERFEX_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
+		},
+		Geteuid:  func() int { return 0 },
+		Hostname: func() (string, error) { return "srv1", nil },
+		ReadFile: func(p string) ([]byte, error) {
+			if p == panelConfig {
+				return os.ReadFile(cfg)
+			}
+			return os.ReadFile(p)
+		},
+		Command: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			ran = append([]string{name}, args...)
+			return []byte(answer + "\n"), nil
+		},
+	}
+	if code := Main([]string{"firewall", "unblock", "203.0.113.77"}, env); code != 0 {
+		t.Fatalf("firewall unblock: %d %s", code, errOut.String())
+	}
+	// The address goes after "--", so artisan never reads it as an option.
+	if got := strings.Join(ran, " "); got != "runuser -u serfex -- env -C /opt/serfex/current/panel php8.5 artisan serfex:unblock --json -- 203.0.113.77" {
+		t.Errorf("ran %q", got)
+	}
+	if got := out.String(); !strings.Contains(got, "203.0.113.77 adresinin engeli kaldırıldı") || !strings.Contains(got, "203.0.113.77 (Fail2ban: Panel girişi)\n") {
+		t.Errorf("stdout %q", got)
+	}
+
+	// Nothing held the address: said so, and not a failure.
+	answer = `{"address":"203.0.113.77","removed":0,"lifted":[]}`
+	out.Reset()
+	if code := Main([]string{"firewall", "unblock", "203.0.113.77"}, env); code != 0 || !strings.Contains(out.String(), "203.0.113.77 engelli değil") {
+		t.Errorf("not blocked: %d %q", code, out.String())
+	}
+
+	out.Reset()
+	if code := Main([]string{"firewall", "unblock", "203.0.113.77", "--json"}, env); code != 0 || !strings.Contains(out.String(), `"removed": 0`) {
+		t.Errorf("--json: %d %q", code, out.String())
+	}
+
+	answer = `{"error":"\"example.com\" bir IP adresi değil."}`
+	errOut.Reset()
+	if code := Main([]string{"firewall", "unblock", "example.com"}, env); code == 0 || !strings.Contains(errOut.String(), "bir IP adresi değil") {
+		t.Errorf("not an address: %d %q", code, errOut.String())
+	}
+
+	if code := Main([]string{"firewall", "unblock"}, env); code == 0 {
+		t.Error("ran without an address")
+	}
+	env.Geteuid = func() int { return 1000 }
+	errOut.Reset()
+	if code := Main([]string{"firewall", "unblock", "203.0.113.77"}, env); code == 0 || !strings.Contains(errOut.String(), "sudo serfex firewall unblock") {
+		t.Errorf("ran without root: %d %q", code, errOut.String())
+	}
+}
+
 func TestChangeEmailChangesItOnTheServer(t *testing.T) {
 	dir := t.TempDir()
 	cfg := filepath.Join(dir, "panel.json")
