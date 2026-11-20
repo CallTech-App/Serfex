@@ -370,8 +370,14 @@ func DownloadGeo(ctx context.Context, client *http.Client, urls []string, file s
 	}
 	g := &Geo{}
 	for _, u := range urls {
+		before := len(g.v4)
 		if err := fetchRegistry(ctx, client, u, g); err != nil {
 			return nil, err
+		}
+		if len(g.v4) == before {
+			// Its part of the world would have no country, and a country
+			// blocked there would be open; the old table stays.
+			return nil, fmt.Errorf("%s listed no addresses", u)
 		}
 	}
 	if len(g.v4) == 0 {

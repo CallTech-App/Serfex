@@ -38,6 +38,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/files"
 	"github.com/calltech-app/serfex/agent/internal/firewall"
 	"github.com/calltech-app/serfex/agent/internal/ftp"
+	"github.com/calltech-app/serfex/agent/internal/geoblock"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/logrotate"
@@ -211,6 +212,33 @@ func main() {
 			log.Error("writing blocked addresses for Nginx", "err", err)
 		}
 	}
+	// Blocked countries: Nginx refuses them on the sites; at the scope
+	// "server" the firewall drops their new connections too. The server's
+	// own addresses always pass.
+	svc.geoblock = geoblock.NewManager(h, svc.firewall)
+	svc.geoblock.Geo = svc.stats.Geo
+	started := time.Now()
+	svc.geoblock.Updated = func() time.Time {
+		if svc.geoFile == "" {
+			return started // a dry run's table is built in
+		}
+		fi, err := os.Stat(svc.geoFile)
+		if err != nil {
+			return time.Time{}
+		}
+		return fi.ModTime()
+	}
+	svc.geoblock.Own = func() []string {
+		if *dryRun {
+			own, _ := addresses(true)
+			return append(own["ipv4"], own["ipv6"]...)
+		}
+		return ownAddressStrings()
+	}
+	// A newer table moves the blocked countries' ranges with it. After a
+	// start this is also what fills the firewall's sets again: the table
+	// is read from disk a moment after the agent listens.
+	svc.stats.OnGeo = func() { syncCountries(context.Background(), svc) }
 	svc.visits = visits.NewManager(h)
 	if *dryRun {
 		// A dry run has no resolver to ask; its made-up visitors get a
@@ -350,6 +378,9 @@ func run(socket, group string, svc services, log *slog.Logger) error {
 	if err := svc.firewall.RestoreRules(ctx); err != nil {
 		log.Error("restoring the port filter", "err", err)
 	}
+	// Blocked countries come back with the country table (OnGeo); a dry
+	// run has its table already.
+	syncCountries(ctx, svc)
 	// Crontab lines name the agent's path, which an update changes.
 	if err := svc.cron.Reconcile(ctx); err != nil {
 		log.Error("restoring scheduled tasks", "err", err)
