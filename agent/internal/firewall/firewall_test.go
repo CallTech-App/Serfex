@@ -484,8 +484,8 @@ func TestRestoreBringsBackAllowedAddressesWhenNothingIsBlocked(t *testing.T) {
 }
 
 // A table made by an agent from before the allowed and country sets has
-// no country6: the first change rebuilds it, and every stored block comes
-// back.
+// no "country" chain: the first change rebuilds it, and every stored block
+// comes back.
 func TestATableWithoutTheNewestSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	m, sim, now := newTest(t)
 	ctx := context.Background()
@@ -497,7 +497,7 @@ func TestATableWithoutTheNewestSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	sim.Fail = func(c host.Command) error {
 		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
 			probes = append(probes, strings.Join(c.Args, " "))
-			if c.Args[len(c.Args)-1] == "country6" {
+			if c.Args[len(c.Args)-1] == "country" {
 				return errors.New("Error: No such file or directory")
 			}
 		}
@@ -507,7 +507,7 @@ func TestATableWithoutTheNewestSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	if _, err := m.Block(ctx, Spec{Address: "192.0.2.3", Seconds: 60}); err != nil {
 		t.Fatal(err)
 	}
-	if len(probes) == 0 || probes[0] != "list set inet serfex country6" {
+	if len(probes) == 0 || probes[0] != "list chain inet serfex country" {
 		t.Fatalf("probes = %q", probes)
 	}
 	s := scripts(sim)[before:]
@@ -542,7 +542,7 @@ func prefixes(list ...string) []netip.Prefix {
 func TestSetCountriesFillsBothSetsInOneTransaction(t *testing.T) {
 	m, sim, _ := newTest(t)
 	changes := watchChanges(m)
-	if err := m.SetCountries(context.Background(), prefixes("1.0.1.0/24", "1.0.2.0/23"), prefixes("2001:db8::/31")); err != nil {
+	if err := m.SetCountries(context.Background(), prefixes("1.0.1.0/24", "1.0.2.0/23"), prefixes("2001:db8::/31"), nil); err != nil {
 		t.Fatal(err)
 	}
 	s := scripts(sim)
@@ -572,7 +572,7 @@ func TestSetCountriesWithNothingAndNoTableRunsNothing(t *testing.T) {
 		}
 		return nil
 	}
-	if err := m.SetCountries(context.Background(), nil, nil); err != nil {
+	if err := m.SetCountries(context.Background(), nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if s := scripts(sim); len(s) != 0 {
@@ -583,10 +583,10 @@ func TestSetCountriesWithNothingAndNoTableRunsNothing(t *testing.T) {
 func TestSetCountriesEmptiesTheSets(t *testing.T) {
 	m, sim, _ := newTest(t)
 	ctx := context.Background()
-	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32")); err != nil {
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32"), nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.SetCountries(ctx, nil, nil); err != nil {
+	if err := m.SetCountries(ctx, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	s := scripts(sim)
@@ -594,12 +594,16 @@ func TestSetCountriesEmptiesTheSets(t *testing.T) {
 	if !strings.Contains(last, "flush set inet serfex country4\n") || !strings.Contains(last, "flush set inet serfex country6\n") || strings.Contains(last, "add element") {
 		t.Fatalf("emptying script:\n%s", last)
 	}
+	// The rules go with the last country, and connection tracking with them.
+	if !strings.Contains(last, "flush chain inet serfex country\n") || strings.Contains(last, "add rule") {
+		t.Fatalf("the country rules stayed:\n%s", last)
+	}
 }
 
 func TestCountrySetsComeBackWhenTheTableIsRebuilt(t *testing.T) {
 	m, sim, _ := newTest(t)
 	ctx := context.Background()
-	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32")); err != nil {
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32"), nil); err != nil {
 		t.Fatal(err)
 	}
 	// Someone flushed the ruleset: the next change finds no table.
@@ -617,6 +621,7 @@ func TestCountrySetsComeBackWhenTheTableIsRebuilt(t *testing.T) {
 	for _, want := range []string{
 		"add element inet serfex country4 { 1.0.1.0/24 }\n",
 		"add element inet serfex country6 { 2001:db8::/32 }\n",
+		"add rule inet serfex country ip saddr @country4 ct state new tcp dport != { 25, 53, 80, 443 } counter drop\n",
 	} {
 		if !strings.Contains(rebuilt, want) {
 			t.Errorf("rebuilt table lacks %q:\n%s", want, rebuilt)
@@ -640,38 +645,112 @@ func TestCountryRulesLeaveWebMailAndDNSOpenAndOnlyStopNewConnections(t *testing.
 		}
 		return nil
 	}
-	if err := m.SetCountries(context.Background(), prefixes("1.0.1.0/24"), nil); err != nil {
+	if err := m.SetCountries(context.Background(), prefixes("1.0.1.0/24"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	table := scripts(sim)[0]
-	order := []string{
+	s := scripts(sim)
+	if len(s) != 2 {
+		t.Fatalf("scripts = %q", s)
+	}
+	inOrder(t, s[0], []string{
 		// The server talking to itself is never judged.
 		`iifname "lo" accept`,
 		"ip saddr @allowed4 accept",
 		"ip6 saddr @allowed6 accept",
 		"ip saddr @blocked4 counter drop",
 		"ip6 saddr @blocked6 counter drop",
+		"jump country",
+	})
+	for _, want := range []string{"set country4 {", "set country6 {", "set countrypass4 {", "set countrypass6 {", "chain country {"} {
+		if !strings.Contains(s[0], want) {
+			t.Errorf("table lacks %q", want)
+		}
+	}
+	inOrder(t, s[1], []string{
+		"flush chain inet serfex country\n",
+		"add element inet serfex country4 { 1.0.1.0/24 }\n",
 		// Web sites are refused by Nginx (403, also behind Cloudflare, and
 		// Let's Encrypt still gets through); incoming mail and DNS stay
 		// open. Only new connections are stopped: answers to what the
 		// server itself asked for come back.
-		"ip saddr @country4 ct state new tcp dport != { 25, 53, 80, 443 } counter drop",
-		"ip saddr @country4 ct state new udp dport != 53 counter drop",
-		"ip6 saddr @country6 ct state new tcp dport != { 25, 53, 80, 443 } counter drop",
-		"ip6 saddr @country6 ct state new udp dport != 53 counter drop",
+		"add rule inet serfex country ip saddr @country4 ct state new tcp dport != { 25, 53, 80, 443 } counter drop\n",
+		"add rule inet serfex country ip saddr @country4 ct state new udp dport != 53 counter drop\n",
+		"add rule inet serfex country ip6 saddr @country6 ct state new tcp dport != { 25, 53, 80, 443 } counter drop\n",
+		"add rule inet serfex country ip6 saddr @country6 ct state new udp dport != 53 counter drop\n",
+	})
+}
+
+// A rule that reads the connection's state makes the kernel track every
+// connection of the server. A server that blocks no country must not pay
+// for that, nor change at all because the agent was updated.
+func TestATableWithoutCountriesTracksNoConnections(t *testing.T) {
+	m, sim, _ := newTest(t)
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
+			return errors.New("No such file or directory")
+		}
+		return nil
 	}
+	if _, err := m.Block(context.Background(), Spec{Address: "192.0.2.1", Seconds: 60}); err != nil {
+		t.Fatal(err)
+	}
+	for _, script := range scripts(sim) {
+		if strings.Contains(script, "ct state") || strings.Contains(script, "add rule") {
+			t.Fatalf("a server that blocks no country got the country rules:\n%s", script)
+		}
+	}
+}
+
+// Cloudflare's proxy ranges and the server's own addresses are let
+// through before the country is judged, on every port.
+func TestPassAddressesAreLetThroughBeforeTheCountryRules(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32"), prefixes("173.245.48.0/20", "2400:cb00::/32", "203.0.113.10/32")); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	inOrder(t, s[len(s)-1], []string{
+		"flush set inet serfex countrypass4\n",
+		"flush set inet serfex countrypass6\n",
+		"add element inet serfex countrypass4 { 173.245.48.0/20, 203.0.113.10/32 }\n",
+		"add element inet serfex countrypass6 { 2400:cb00::/32 }\n",
+		"add rule inet serfex country ip saddr @countrypass4 return\n",
+		"add rule inet serfex country ip6 saddr @countrypass6 return\n",
+		"add rule inet serfex country ip saddr @country4 ct state new tcp dport",
+	})
+	// With no country left the pass sets are emptied as well.
+	if err := m.SetCountries(ctx, nil, nil, prefixes("173.245.48.0/20")); err != nil {
+		t.Fatal(err)
+	}
+	s = scripts(sim)
+	if last := s[len(s)-1]; strings.Contains(last, "add element") || strings.Contains(last, "add rule") {
+		t.Fatalf("pass addresses stayed without a country:\n%s", last)
+	}
+	// A rebuilt table lets them through again.
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), nil, prefixes("173.245.48.0/20")); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Restore(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s = scripts(sim)
+	inOrder(t, s[len(s)-1], []string{
+		"add element inet serfex countrypass4 { 173.245.48.0/20 }\n",
+		"add rule inet serfex country ip saddr @countrypass4 return\n",
+		"add rule inet serfex country ip saddr @country4 ct state new tcp dport",
+	})
+}
+
+func inOrder(t *testing.T, script string, order []string) {
+	t.Helper()
 	at := -1
-	for _, rule := range order {
-		i := strings.Index(table, rule)
+	for _, want := range order {
+		i := strings.Index(script, want)
 		if i < 0 || i < at {
-			t.Fatalf("rule %q is missing or out of order:\n%s", rule, table)
+			t.Fatalf("%q is missing or out of order:\n%s", want, script)
 		}
 		at = i
-	}
-	for _, set := range []string{"set country4 {", "set country6 {"} {
-		if !strings.Contains(table, set) {
-			t.Errorf("table lacks %q", set)
-		}
 	}
 }
 
@@ -681,7 +760,7 @@ func TestManyCountryPrefixesAreSplitIntoStatements(t *testing.T) {
 	for i := 0; i < 5000; i++ {
 		list = append(list, netip.PrefixFrom(netip.AddrFrom4([4]byte{11, byte(i >> 8), byte(i), 0}), 32))
 	}
-	if err := m.SetCountries(context.Background(), list, nil); err != nil {
+	if err := m.SetCountries(context.Background(), list, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	s := scripts(sim)
@@ -699,7 +778,7 @@ func TestManyCountryPrefixesAreSplitIntoStatements(t *testing.T) {
 func TestSetCountriesKeepsTheOldSetsWhenNftFails(t *testing.T) {
 	m, sim, _ := newTest(t)
 	ctx := context.Background()
-	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), nil); err != nil {
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	sim.Fail = func(c host.Command) error {
@@ -708,7 +787,7 @@ func TestSetCountriesKeepsTheOldSetsWhenNftFails(t *testing.T) {
 		}
 		return nil
 	}
-	err := m.SetCountries(ctx, prefixes("9.9.9.0/24"), nil)
+	err := m.SetCountries(ctx, prefixes("9.9.9.0/24"), nil, nil)
 	var op *OperationError
 	if !errors.As(err, &op) {
 		t.Fatalf("err = %v, want an operation error", err)

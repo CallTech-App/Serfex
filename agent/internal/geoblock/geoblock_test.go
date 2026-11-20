@@ -256,6 +256,78 @@ func TestScopeServerFillsTheFirewallSetsAndScopeWebEmptiesThem(t *testing.T) {
 	}
 }
 
+// The dialog promises that Cloudflare's proxy and the server's own
+// addresses always pass. At scope "server" the firewall must keep that
+// promise on every port (a panel behind Cloudflare's proxy is reached on
+// 8443 from Cloudflare's addresses), not only Nginx.
+func TestCloudflareAndOwnAddressesPassTheFirewallToo(t *testing.T) {
+	b := newTest(t, "kahve.example")
+	ctx := context.Background()
+	if _, err := b.m.Apply(ctx, Spec{Countries: []string{"CN"}, Scope: ScopeServer}); err != nil {
+		t.Fatal(err)
+	}
+	s := b.nft()
+	last := s[len(s)-1]
+	for _, want := range []string{
+		"add element inet serfex countrypass4 { ",
+		cloudflare.Builtin[0],
+		"203.0.113.10/32",
+		"add element inet serfex countrypass6 { ",
+		"2001:db8:ffff::10/128",
+		"add rule inet serfex country ip saddr @countrypass4 return\n",
+	} {
+		if !strings.Contains(last, want) {
+			t.Errorf("nft lacks %q:\n%s", want, last)
+		}
+	}
+	// A changed list of Cloudflare ranges or own addresses is applied by
+	// the next Sync, though the country's prefixes did not change.
+	runs := len(b.nft())
+	if err := b.m.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.nft()) != runs {
+		t.Fatal("an idle Sync ran nft")
+	}
+	b.m.Own = func() []string { return []string{"198.51.100.7"} }
+	if err := b.m.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s = b.nft()
+	if len(s) != runs+1 || !strings.Contains(s[len(s)-1], "198.51.100.7/32") {
+		t.Fatalf("the new own address did not reach the firewall: %q", s[runs:])
+	}
+}
+
+// The agent can die between removing the http-level file and the sites'
+// snippets. A snippet without the file names a variable Nginx does not
+// know, and every later reload would fail: the next Sync clears it up.
+func TestSyncRemovesSnippetsLeftWithoutTheFile(t *testing.T) {
+	b := newTest(t, "kahve.example", "atolye.example")
+	ctx := context.Background()
+	if _, err := b.m.Apply(ctx, Spec{Countries: []string{"CN"}, Scope: ScopeWeb}); err != nil {
+		t.Fatal(err)
+	}
+	left := string(SiteContent())
+	if _, err := b.m.Apply(ctx, Spec{}); err != nil {
+		t.Fatal(err)
+	}
+	// What a crash in the middle of that would have left behind.
+	if err := os.WriteFile(b.sim.Path(snippet("atolye.example")), []byte(left), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reloads := b.reloads()
+	if err := b.m.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if b.exists(snippet("atolye.example")) {
+		t.Fatal("the leftover snippet is still there")
+	}
+	if b.reloads() != reloads+1 {
+		t.Fatalf("%d reloads after clearing up", b.reloads()-reloads)
+	}
+}
+
 func TestAnEmptyListRemovesEveryFileAndReloadsOnce(t *testing.T) {
 	b := newTest(t, "kahve.example", "atolye.example")
 	ctx := context.Background()

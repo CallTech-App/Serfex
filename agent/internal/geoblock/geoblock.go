@@ -209,11 +209,24 @@ func (m *Manager) Sync(ctx context.Context) error {
 	if err != nil {
 		return &OperationError{err}
 	}
-	if len(st.Countries) == 0 && !m.exists(Conf) {
+	if len(st.Countries) == 0 && !m.exists(Conf) && !m.leftover() {
 		// Nothing is blocked and nothing was left behind.
 		return nil
 	}
 	return typed(m.sync(ctx, st))
+}
+
+// leftover tells whether a site still holds a snippet: an agent that
+// died while lifting the last country leaves some behind, and without
+// the http-level file they keep Nginx from loading its configuration.
+func (m *Manager) leftover() bool {
+	dirs, _ := os.ReadDir(m.h.Path(site.ExtraRoot))
+	for _, d := range dirs {
+		if m.exists(site.ExtraRoot + "/" + d.Name() + "/" + Snippet) {
+			return true
+		}
+	}
+	return false
 }
 
 // Status says what is in force.
@@ -283,12 +296,15 @@ func (m *Manager) sync(ctx context.Context, st state) error {
 		_ = t.Rollback(context.WithoutCancel(ctx))
 		return err
 	}
+	var pass []netip.Prefix
 	if st.Scope != ScopeServer {
 		v4, v6 = nil, nil
+	} else if len(v4)+len(v6) > 0 {
+		pass = m.passes()
 	}
-	mark := fingerprint(v4, v6)
+	mark := fingerprint(v4, v6, pass)
 	if mark != m.applied {
-		if err := m.fw.SetCountries(ctx, v4, v6); err != nil {
+		if err := m.fw.SetCountries(ctx, v4, v6, pass); err != nil {
 			back := context.WithoutCancel(ctx)
 			rerr := t.Rollback(back)
 			if rerr == nil && reloaded {
@@ -387,6 +403,30 @@ func (m *Manager) exempt() []string {
 	return out
 }
 
+// passes lists who the firewall's country rules never stop: the server's
+// own addresses and Cloudflare's ranges, each once. The allowed addresses
+// are not among them: the firewall accepts those before any block.
+func (m *Manager) passes() []netip.Prefix {
+	var list []string
+	if m.Own != nil {
+		list = append(list, m.Own()...)
+	}
+	for _, r := range cloudflare.Ranges(m.h) {
+		list = append(list, r.String())
+	}
+	seen := map[netip.Prefix]bool{}
+	out := make([]netip.Prefix, 0, len(list))
+	for _, a := range list {
+		p, err := firewall.Normalize(a)
+		if err != nil || seen[p] {
+			continue
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	return out
+}
+
 // Content is the http-level file: who is listed, who is exempt, and the
 // variable the sites test.
 func Content(countries []string, listed []netip.Prefix, exempt []string) []byte {
@@ -425,16 +465,17 @@ func SiteContent() []byte {
 	return []byte(b.String())
 }
 
-func fingerprint(v4, v6 []netip.Prefix) string {
+func fingerprint(v4, v6, pass []netip.Prefix) string {
 	var b strings.Builder
-	b.WriteString("sets:")
-	for _, p := range v4 {
-		b.WriteString(p.String())
-		b.WriteByte(' ')
-	}
-	for _, p := range v6 {
-		b.WriteString(p.String())
-		b.WriteByte(' ')
+	for _, part := range []struct {
+		name string
+		list []netip.Prefix
+	}{{"v4", v4}, {"v6", v6}, {"pass", pass}} {
+		b.WriteString(part.name + ":")
+		for _, p := range part.list {
+			b.WriteString(p.String())
+			b.WriteByte(' ')
+		}
 	}
 	return b.String()
 }

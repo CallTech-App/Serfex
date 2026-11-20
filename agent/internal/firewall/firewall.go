@@ -8,8 +8,13 @@
 //	  set blocked4, blocked6   addresses and prefixes, each with its own timeout
 //	  set country4, country6   the prefixes of blocked countries, when the
 //	                           country block covers the whole server
+//	  set countrypass4, countrypass6
+//	                           who the country block never stops: Cloudflare's
+//	                           proxy ranges and the server's own addresses
 //	  chain input              accepts the allowed sets, then drops the blocked
-//	                           ones, before other filters
+//	                           ones, before other filters; then asks "country"
+//	  chain country            empty until a country is blocked for the whole
+//	                           server
 //	/etc/serfex/firewall/blocks.json    the blocks as last applied, root 0600
 //	/etc/serfex/firewall/allowed.json   the allowed addresses, root 0600
 //
@@ -26,6 +31,13 @@
 // names hosted here still resolve for them. The country sets are filled by
 // the geoblock package and are not stored here: they are worked out again
 // from the country table.
+//
+// The country rules read the connection's state, and one such rule makes
+// the kernel track every connection of the server. So they are not part
+// of the table as it is created: they are put into the "country" chain
+// together with the first prefixes and taken out with the last, and a
+// server that blocks no country for the whole server tracks nothing on
+// Serfex's account.
 //
 // A block is time-boxed by the kernel itself (the set element's timeout),
 // so it ends on time even while the agent or the panel is down. The state
@@ -105,6 +117,18 @@ table inet serfex {
 		flags interval
 		auto-merge
 	}
+	set countrypass4 {
+		type ipv4_addr
+		flags interval
+		auto-merge
+	}
+	set countrypass6 {
+		type ipv6_addr
+		flags interval
+		auto-merge
+	}
+	chain country {
+	}
 	chain input {
 		type filter hook input priority filter - 10; policy accept;
 		iifname "lo" accept
@@ -112,13 +136,22 @@ table inet serfex {
 		ip6 saddr @allowed6 accept
 		ip saddr @blocked4 counter drop
 		ip6 saddr @blocked6 counter drop
-		ip saddr @country4 ct state new tcp dport != { ` + OpenPorts + ` } counter drop
-		ip saddr @country4 ct state new udp dport != 53 counter drop
-		ip6 saddr @country6 ct state new tcp dport != { ` + OpenPorts + ` } counter drop
-		ip6 saddr @country6 ct state new udp dport != 53 counter drop
+		jump country
 	}
 }
 `
+
+// countryRules fill the "country" chain while a country is blocked for
+// the whole server. "return" hands the packet back to the input chain,
+// which accepts it for this table.
+var countryRules = []string{
+	"ip saddr @countrypass4 return",
+	"ip6 saddr @countrypass6 return",
+	"ip saddr @country4 ct state new tcp dport != { " + OpenPorts + " } counter drop",
+	"ip saddr @country4 ct state new udp dport != 53 counter drop",
+	"ip6 saddr @country6 ct state new tcp dport != { " + OpenPorts + " } counter drop",
+	"ip6 saddr @country6 ct state new udp dport != 53 counter drop",
+}
 
 // ValidationError reports a request that can never succeed as given.
 type ValidationError struct{ msg string }
@@ -169,6 +202,8 @@ type Manager struct {
 	// The country sets as last applied: they refill the table whenever
 	// it is rebuilt.
 	country4, country6 []netip.Prefix
+	// Who passes the country rules, as last applied.
+	countryPass []netip.Prefix
 }
 
 // NewManager returns a Manager acting on h.
@@ -638,16 +673,18 @@ func formatAll(list []netip.Prefix) []string {
 }
 
 // SetCountries replaces the prefixes of the blocked countries (see the
-// package comment for what is dropped) in one nftables transaction. Empty
-// lists empty the sets; a server that blocks no country and has no table
-// does not get one for it. When nftables refuses, the sets stay as they
-// were.
-func (m *Manager) SetCountries(ctx context.Context, v4, v6 []netip.Prefix) error {
+// package comment for what is dropped) and the addresses the country
+// block never stops, in one nftables transaction. Empty lists empty the
+// sets and take the rules out; a server that blocks no country and has no
+// table does not get one for it. When nftables refuses, everything stays
+// as it was.
+func (m *Manager) SetCountries(ctx context.Context, v4, v6, pass []netip.Prefix) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if len(v4)+len(v6) == 0 {
+		pass = nil
 		if !m.complete(ctx) {
-			m.country4, m.country6 = nil, nil
+			m.country4, m.country6, m.countryPass = nil, nil, nil
 			return nil
 		}
 	} else {
@@ -659,17 +696,26 @@ func (m *Manager) SetCountries(ctx context.Context, v4, v6 []netip.Prefix) error
 			return &OperationError{err}
 		}
 	}
-	script := fmt.Sprintf("flush set inet %[1]s country4\nflush set inet %[1]s country6\n", Table) + countryElements(v4, v6)
-	if err := m.nft(ctx, script); err != nil {
+	var b strings.Builder
+	fmt.Fprintf(&b, "flush chain inet %s country\n", Table)
+	for _, set := range []string{"country4", "country6", "countrypass4", "countrypass6"} {
+		fmt.Fprintf(&b, "flush set inet %s %s\n", Table, set)
+	}
+	b.WriteString(countryScript(v4, v6, pass))
+	if err := m.nft(ctx, b.String()); err != nil {
 		return &OperationError{err}
 	}
-	m.country4, m.country6 = v4, v6
+	m.country4, m.country6, m.countryPass = v4, v6, pass
 	return nil
 }
 
-// countryElements fills the country sets, a few thousand prefixes to a
-// statement so no line grows without bound.
-func countryElements(v4, v6 []netip.Prefix) string {
+// countryScript fills the country sets, a few thousand prefixes to a
+// statement so no line grows without bound, and adds the rules that read
+// them. With no prefix it is empty: no rule, no connection tracking.
+func countryScript(v4, v6, pass []netip.Prefix) string {
+	if len(v4)+len(v6) == 0 {
+		return ""
+	}
 	var b strings.Builder
 	fill := func(set string, list []netip.Prefix) {
 		for len(list) > 0 {
@@ -687,6 +733,19 @@ func countryElements(v4, v6 []netip.Prefix) string {
 	}
 	fill("country4", v4)
 	fill("country6", v6)
+	var pass4, pass6 []netip.Prefix
+	for _, p := range pass {
+		if p.Addr().Is4() {
+			pass4 = append(pass4, p)
+		} else {
+			pass6 = append(pass6, p)
+		}
+	}
+	fill("countrypass4", pass4)
+	fill("countrypass6", pass6)
+	for _, rule := range countryRules {
+		fmt.Fprintf(&b, "add rule inet %s country %s\n", Table, rule)
+	}
 	return b.String()
 }
 
@@ -720,8 +779,8 @@ func (m *Manager) Restore(ctx context.Context) error {
 
 // ensure creates the table, with every stored block and allowed address,
 // when it is missing or incomplete: first use, someone flushed the
-// ruleset, or the table was made by an agent from before the allowed and
-// country sets.
+// ruleset, or the table was made by an agent from before the allowed
+// sets and the country chain.
 func (m *Manager) ensure(ctx context.Context, blocks []Block, allowed []netip.Prefix) error {
 	if m.complete(ctx) {
 		return nil
@@ -729,10 +788,10 @@ func (m *Manager) ensure(ctx context.Context, blocks []Block, allowed []netip.Pr
 	return m.create(ctx, blocks, allowed)
 }
 
-// complete tells whether the table is there with all its sets (country6
-// is the last set that was added to it).
+// complete tells whether the table is there with all its parts (the
+// "country" chain is the last one that was added to it).
 func (m *Manager) complete(ctx context.Context) bool {
-	_, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "set", "inet", Table, "country6"}})
+	_, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "chain", "inet", Table, "country"}})
 	return err == nil
 }
 
@@ -740,7 +799,7 @@ func (m *Manager) create(ctx context.Context, blocks []Block, allowed []netip.Pr
 	var b strings.Builder
 	b.WriteString(ruleset)
 	b.WriteString(allowedElements(allowed))
-	b.WriteString(countryElements(m.country4, m.country6))
+	b.WriteString(countryScript(m.country4, m.country6, m.countryPass))
 	now := m.Now()
 	for _, bl := range blocks {
 		p, err := Normalize(bl.Address)
