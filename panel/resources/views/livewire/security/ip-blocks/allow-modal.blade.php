@@ -28,7 +28,7 @@
                 <p class="mt-1.5 text-2xs text-muted">{{ __('Bu adresin kime ait olduğunu yazın; örneğin "Ofis (sabit IP)".') }}</p>
             </div>
         </div>
-        <p class="border-t border-line px-5 py-3 text-[13px] text-muted">{{ __('Adres engelliyse engeli kalkar. İzinli adres elle, Fail2ban ya da Serfex AI tarafından engellenemez; saldırı bu adresten gelirse de engellenmez.') }}</p>
+        <p class="border-t border-line px-5 py-3 text-[13px] text-muted">{{ __('Adres engelliyse engeli kalkar. İzinli adres elle, Fail2ban ya da Serfex AI tarafından engellenemez, ülke engeli de onu durdurmaz; saldırı bu adresten gelirse de engellenmez.') }}</p>
         <div class="flex justify-end gap-2 border-t border-line px-5 py-3">
             <button type="button" wire:click="$set('allowing', false)" class="{{ $btn }}">{{ __('Vazgeç') }}</button>
             <button type="submit" wire:loading.attr="disabled" wire:target="saveAllow" class="{{ $primary }}">{{ __('İzinlilere ekle') }}</button>

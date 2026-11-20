@@ -9,7 +9,7 @@
     <button type="button" wire:click="removeAllows" wire:loading.attr="disabled" @disabled($n === 0) class="{{ $btn }}">
         {{ __('Kaldır') }}@if ($n > 0) <span class="num">({{ Num::format($n) }})</span>@endif
     </button>
-    <p class="min-w-0 flex-1 basis-full text-[13px] text-muted sm:ml-2 sm:basis-0">{{ __('Bu adresler hiçbir zaman engellenmez: elle, Fail2ban ya da Serfex AI ile.') }}</p>
+    <p class="min-w-0 flex-1 basis-full text-[13px] text-muted sm:ml-2 sm:basis-0">{{ __('Bu adresler hiçbir zaman engellenmez: elle, Fail2ban, Serfex AI ya da ülke engeli ile.') }}</p>
     <label class="relative w-full sm:w-56">
         <span class="sr-only">{{ __('Adres ya da not ara') }}</span>
         <x-icon name="search" class="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />

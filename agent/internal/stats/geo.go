@@ -456,6 +456,11 @@ demo|FR|ipv4|2.224.0.0|1048576|20100101|allocated
 demo|RU|ipv4|45.155.205.0|256|20200101|allocated
 demo|SC|ipv4|193.42.33.0|256|20200101|allocated
 demo|VN|ipv4|103.153.79.0|256|20200101|allocated
+demo|CN|ipv4|36.96.0.0|2097152|20100101|allocated
+demo|CN|ipv6|240e::|20|20100101|allocated
+demo|KP|ipv4|175.45.176.0|1024|20091221|allocated
+demo|BR|ipv4|177.0.0.0|1048576|20100101|allocated
+demo|IN|ipv4|49.32.0.0|1048576|20100101|allocated
 `
 
 // DemoGeo is the dry run's country table.
