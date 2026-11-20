@@ -143,7 +143,14 @@
             @endif
             <p class="border-t border-line px-5 py-3 text-2xs text-muted">
                 <x-t text="Sizin adresiniz :my_ip. Panelin portunu (:panel_port) bu adrese kapatacak bir değişiklik kabul edilmez." :with="['panel_port' => $panelPort]"><x-slot:my_ip><span class="font-mono">{{ $myIp }}</span></x-slot:my_ip></x-t>
-                <x-t text="Engelli adresler bu kurallardan önce uygulanır: :link."><x-slot:link><a href="{{ route('security.blocks') }}" wire:navigate class="text-accent hover:underline">{{ trans_choice(':count adres engelli', $blockCount, ['count' => \App\Support\Num::format($blockCount)]) }}</a></x-slot:link></x-t>
+                @if ($countryCount > 0)
+                    <x-t text="Engelli adresler ve ülkeler bu kurallardan önce uygulanır: :link, :countries.">
+                        <x-slot:link><a href="{{ route('security.blocks') }}" wire:navigate class="text-accent hover:underline">{{ trans_choice(':count adres engelli', $blockCount, ['count' => \App\Support\Num::format($blockCount)]) }}</a></x-slot:link>
+                        <x-slot:countries><a href="{{ route('security.blocks', ['tab' => 'countries']) }}" wire:navigate class="text-accent hover:underline">{{ trans_choice(':count ülke engelli', $countryCount, ['count' => \App\Support\Num::format($countryCount)]) }}</a></x-slot:countries>
+                    </x-t>
+                @else
+                    <x-t text="Engelli adresler bu kurallardan önce uygulanır: :link."><x-slot:link><a href="{{ route('security.blocks') }}" wire:navigate class="text-accent hover:underline">{{ trans_choice(':count adres engelli', $blockCount, ['count' => \App\Support\Num::format($blockCount)]) }}</a></x-slot:link></x-t>
+                @endif
             </p>
 
         {{-- WAF --}}

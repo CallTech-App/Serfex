@@ -717,6 +717,69 @@ func TestFirewallUnblockLetsAnAddressInAgain(t *testing.T) {
 	}
 }
 
+func TestFirewallCountriesOff(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "panel.json")
+	os.WriteFile(cfg, []byte(`{"php":"8.5"}`), 0o644)
+	var out, errOut bytes.Buffer
+	var ran []string
+	answer := `{"lifted":["CN","RU"],"names":["Çin","Rusya"]}`
+	env := &Env{
+		Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader(""),
+		Getenv: func(k string) string {
+			return map[string]string{"SERFEX_CONFIG": filepath.Join(dir, "c.json"), "LANG": "tr_TR.UTF-8"}[k]
+		},
+		Geteuid:  func() int { return 0 },
+		Hostname: func() (string, error) { return "srv1", nil },
+		ReadFile: func(p string) ([]byte, error) {
+			if p == panelConfig {
+				return os.ReadFile(cfg)
+			}
+			return os.ReadFile(p)
+		},
+		Command: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			ran = append([]string{name}, args...)
+			return []byte(answer + "\n"), nil
+		},
+	}
+	if code := Main([]string{"firewall", "countries", "off"}, env); code != 0 {
+		t.Fatalf("firewall countries off: %d %s", code, errOut.String())
+	}
+	if got := strings.Join(ran, " "); got != "runuser -u serfex -- env -C /opt/serfex/current/panel php8.5 artisan serfex:countries-off --json" {
+		t.Errorf("ran %q", got)
+	}
+	if got := out.String(); !strings.Contains(got, "2 ülkenin engeli kaldırıldı") || !strings.Contains(got, "Çin, Rusya") {
+		t.Errorf("stdout %q", got)
+	}
+
+	// No country was blocked: said so, and not a failure.
+	answer = `{"lifted":[],"names":[]}`
+	out.Reset()
+	if code := Main([]string{"firewall", "countries", "off"}, env); code != 0 || !strings.Contains(out.String(), "Engelli ülke yok") {
+		t.Errorf("nothing blocked: %d %q", code, out.String())
+	}
+
+	out.Reset()
+	if code := Main([]string{"firewall", "countries", "off", "--json"}, env); code != 0 || !strings.Contains(out.String(), `"lifted": []`) {
+		t.Errorf("--json: %d %q", code, out.String())
+	}
+
+	answer = `{"error":"Sunucu ajanına ulaşılamıyor."}`
+	errOut.Reset()
+	if code := Main([]string{"firewall", "countries", "off"}, env); code == 0 || !strings.Contains(errOut.String(), "Sunucu ajanına ulaşılamıyor") {
+		t.Errorf("agent away: %d %q", code, errOut.String())
+	}
+
+	if code := Main([]string{"firewall", "countries", "off", "RU"}, env); code == 0 {
+		t.Error("ran with an argument it does not take")
+	}
+	env.Geteuid = func() int { return 1000 }
+	errOut.Reset()
+	if code := Main([]string{"firewall", "countries", "off"}, env); code == 0 || !strings.Contains(errOut.String(), "sudo serfex firewall countries off") {
+		t.Errorf("ran without root: %d %q", code, errOut.String())
+	}
+}
+
 func TestChangeEmailChangesItOnTheServer(t *testing.T) {
 	dir := t.TempDir()
 	cfg := filepath.Join(dir, "panel.json")

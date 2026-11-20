@@ -2,13 +2,16 @@
 
 namespace App\Livewire\Security;
 
+use App\Models\CountryBlock;
 use App\Models\IpAllow;
 use App\Models\IpBlock;
 use App\Services\Agent\AgentException;
 use App\Services\Monitor\IpBlocks;
 use App\Services\Monitor\MonitorException;
 use App\Services\Security\AddressGeo;
+use App\Services\Security\CountryBlocks;
 use App\Services\Security\IpAllows;
+use App\Support\Countries;
 use App\Support\Num;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,17 +26,18 @@ use Livewire\WithPagination;
 /**
  * Güvenlik > IP engelleri: every address the server does not answer, in
  * one list (blocked by hand, by Fail2ban, by Serfex AI or through the
- * API), the addresses that are never blocked, and the blocks that are
- * over. Addresses are blocked from a pasted list and lifted, allowed or
- * given another duration many at a time; every action can be undone.
+ * API), the addresses that are never blocked, the countries that are
+ * refused, and the blocks that are over. Addresses are blocked from a
+ * pasted list and lifted, allowed or given another duration many at a
+ * time; every action can be undone.
  */
 #[Layout('components.layouts.app')]
 #[Title('IP engelleri · Serfex')]
 class IpBlocksIndex extends Component
 {
-    use UndoesBlocks, WithPagination;
+    use ManagesCountries, UndoesBlocks, WithPagination;
 
-    public const TABS = ['blocked' => 'Engelli adresler', 'allowed' => 'İzinli adresler', 'history' => 'Geçmiş'];
+    public const TABS = ['blocked' => 'Engelli adresler', 'allowed' => 'İzinli adresler', 'countries' => 'Ülkeler', 'history' => 'Geçmiş'];
 
     public const SOURCES = ['panel' => 'Elle', 'fail2ban' => 'Fail2ban', 'ai' => 'Serfex AI', 'api' => 'API'];
 
@@ -61,7 +65,7 @@ class IpBlocksIndex extends Component
     #[Url(except: 30)]
     public int $days = 30;
 
-    /** @var list<int|string> ids of the rows ticked on this tab */
+    /** @var list<int|string> ids of the rows ticked on this tab; on Ülkeler, country codes */
     public array $selected = [];
 
     /** Every address of the filtered list is selected, not only the ticked ones. */
@@ -341,11 +345,11 @@ class IpBlocksIndex extends Component
         $this->refused = self::leftOut($result['skipped']);
     }
 
-    public function render(IpBlocks $blocks, IpAllows $allows, AddressGeo $geo): View
+    public function render(IpBlocks $blocks, IpAllows $allows, AddressGeo $geo, CountryBlocks $countries): View
     {
         $own = $allows->own();
         $data = [
-            'counts' => ['blocked' => IpBlock::active()->count(), 'allowed' => IpAllow::count() + count($own)],
+            'counts' => ['blocked' => IpBlock::active()->count(), 'allowed' => IpAllow::count() + count($own), 'countries' => CountryBlock::count()],
             'mine' => $this->mine()[0] ?? '',
             'server' => $own,
             'own' => [],
@@ -353,6 +357,10 @@ class IpBlocksIndex extends Component
             'check' => null,
             'tooLong' => false,
         ];
+        if ($this->tab === 'countries') {
+            // Countries are not rows of a table: nothing to look up for them.
+            return view('livewire.security.ip-blocks', $this->countryData($countries) + $data + ['tooMany' => self::tooMany()]);
+        }
         if ($this->tab === 'allowed') {
             $rows = $this->allowedQuery()->with('user')->orderByDesc('id')->paginate(self::PER_PAGE);
             // The server's own addresses close the list.
@@ -528,7 +536,7 @@ class IpBlocksIndex extends Component
     private function countries(Builder $query, string $term): array
     {
         return $query->whereNotNull('country')->toBase()->distinct()->pluck('country')
-            ->filter(fn (string $code) => mb_strtolower($code) === $term || str_contains(mb_strtolower(AddressGeo::name($code)), $term))
+            ->filter(fn (string $code) => mb_strtolower($code) === $term || str_contains(Countries::fold(AddressGeo::name($code)), Countries::fold($term)))
             ->values()->all();
     }
 
@@ -541,12 +549,16 @@ class IpBlocksIndex extends Component
     }
 
     /**
-     * The ids of the rows on the page that is shown.
+     * The ids of the rows on the page that is shown; on Ülkeler, the
+     * codes of its countries.
      *
-     * @return list<int>
+     * @return list<int|string>
      */
     private function pageIds(): array
     {
+        if ($this->tab === 'countries') {
+            return $this->countryPageCodes();
+        }
         $query = match ($this->tab) {
             'allowed' => $this->allowedQuery()->orderByDesc('id'),
             'history' => $this->historyQuery()->orderByRaw('coalesce(removed_at, expires_at) desc')->orderByDesc('id'),

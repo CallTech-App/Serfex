@@ -201,6 +201,35 @@ func ExtraDir(domain string) string { return ExtraRoot + "/" + domain }
 // ExtraRoot holds every site's ExtraDir.
 const ExtraRoot = "/etc/serfex/nginx/sites"
 
+// Domains lists the sites on the server, by the vhosts this package
+// wrote: /etc/nginx/sites-available/<domain>.conf whose second line names
+// the same domain. Other vhosts there (the default site, webmail, ones
+// written by hand) are not sites.
+func Domains(h host.Host) []string {
+	dir := h.Path("/etc/nginx/sites-available")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range entries {
+		domain, ok := strings.CutSuffix(e.Name(), ".conf")
+		if !ok || e.IsDir() || ValidateDomain(domain) != nil {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil || !txn.HasMarker(data) {
+			continue
+		}
+		_, rest, _ := strings.Cut(string(data), "\n")
+		if strings.HasPrefix(rest, "# Site: "+domain+" ") {
+			out = append(out, domain)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // AccessLog is the Nginx access log of a site.
 func AccessLog(domain string) string { return "/var/log/serfex/sites/" + domain + "/access.log" }
 

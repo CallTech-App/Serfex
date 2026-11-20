@@ -873,11 +873,40 @@ Paketleri listeler
 serfex firewall <komut>
 ```
 
-IP engelleri: dışarıda kalan bir adresi yeniden içeri alır
+IP engelleri: dışarıda kalan bir adresi yeniden içeri alır, ülke engellerini kaldırır
 
 | Komut | |
 | --- | --- |
+| [`countries`](#serfex-firewall-countries) | Ülke engelleri |
 | [`unblock`](#serfex-firewall-unblock) | Bir IP adresini dışarıda tutan bütün engelleri kaldırır |
+
+### serfex firewall countries
+
+```
+serfex firewall countries <komut>
+```
+
+Ülke engelleri
+
+| Komut | |
+| --- | --- |
+| [`off`](#serfex-firewall-countries-off) | Bütün ülke engellerini kaldırır |
+
+### serfex firewall countries off
+
+```
+serfex firewall countries off
+```
+
+Panelde Güvenlik → IP engelleri → Ülkeler'de engellenen bütün ülkelerin engelini kaldırır. Kapsam seçimi (yalnızca web siteleri ya da bütün sunucu) bir sonraki engel için saklanır; tek tek engellenen adresler ve izinli adresler değişmez.
+
+Bulunduğunuz ülke engellendiği için panele ya da sitelere ulaşamadığınızda kullanın. Sunucunun kendisinde root olarak çalışır; SSH de kapalıysa sağlayıcınızın konsolundan bağlanın.
+
+Örnekler:
+
+```sh
+sudo serfex firewall countries off
+```
 
 ### serfex firewall unblock
 

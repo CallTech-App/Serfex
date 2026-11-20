@@ -942,8 +942,22 @@ func packagesList(c *Ctx) error {
 func firewallCommands() *Command {
 	return &Command{
 		Name: "firewall", Group: T("Sunucu"),
-		Short: T("IP engelleri: dışarıda kalan bir adresi yeniden içeri alır"),
+		Short: T("IP engelleri: dışarıda kalan bir adresi yeniden içeri alır, ülke engellerini kaldırır"),
 		Subs: []*Command{
+			{
+				Name:  "countries",
+				Short: T("Ülke engelleri"),
+				Subs: []*Command{
+					{
+						Name:  "off",
+						Short: T("Bütün ülke engellerini kaldırır"),
+						Long: T("Panelde Güvenlik → IP engelleri → Ülkeler'de engellenen bütün ülkelerin engelini kaldırır. Kapsam seçimi (yalnızca web siteleri ya da bütün sunucu) bir sonraki engel için saklanır; tek tek engellenen adresler ve izinli adresler değişmez.\n\n" +
+							"Bulunduğunuz ülke engellendiği için panele ya da sitelere ulaşamadığınızda kullanın. Sunucunun kendisinde root olarak çalışır; SSH de kapalıysa sağlayıcınızın konsolundan bağlanın."),
+						Examples: []string{"sudo serfex firewall countries off"},
+						Run:      firewallCountriesOff,
+					},
+				},
+			},
 			{
 				Name: "unblock", Args: T("<adres>"), MinArgs: 1, MaxArgs: 1,
 				Short: T("Bir IP adresini dışarıda tutan bütün engelleri kaldırır"),
@@ -954,6 +968,42 @@ func firewallCommands() *Command {
 			},
 		},
 	}
+}
+
+// firewallCountriesOff lifts every country block: the way back in for an
+// administrator who is in a blocked country.
+func firewallCountriesOff(c *Ctx) error {
+	if c.env.Geteuid() != 0 {
+		return fmt.Errorf("%s", T("serfex firewall countries off sunucunun kendisinde root olarak çalışır: sudo serfex firewall countries off"))
+	}
+	out, err := localArtisan(c, "serfex:countries-off", "--json")
+	var res struct {
+		Lifted []string `json:"lifted"`
+		Names  []string `json:"names"`
+		Error  string   `json:"error"`
+	}
+	if jerr := json.Unmarshal(lastLine(out), &res); jerr != nil {
+		if err != nil {
+			return fmt.Errorf("%s", T("Panel ülke engellerini kaldıramadı: %s", err))
+		}
+		return fmt.Errorf("%s", T("Panelin yanıtı anlaşılamadı."))
+	}
+	if res.Error != "" {
+		return fmt.Errorf("%s", res.Error)
+	}
+	if c.json {
+		return c.printJSON(lastLine(out))
+	}
+	if len(res.Lifted) == 0 {
+		c.println(T("Engelli ülke yok."))
+		return nil
+	}
+	names := res.Names
+	if len(names) != len(res.Lifted) {
+		names = res.Lifted
+	}
+	c.println(c.green("✓") + " " + T("%d ülkenin engeli kaldırıldı: %s", len(res.Lifted), strings.Join(names, ", ")))
+	return nil
 }
 
 // firewallUnblock lifts every block that holds an address: the way back

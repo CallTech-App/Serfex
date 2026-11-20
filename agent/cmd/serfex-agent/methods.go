@@ -22,6 +22,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/files"
 	"github.com/calltech-app/serfex/agent/internal/firewall"
 	"github.com/calltech-app/serfex/agent/internal/ftp"
+	"github.com/calltech-app/serfex/agent/internal/geoblock"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/logrotate"
 	"github.com/calltech-app/serfex/agent/internal/mail"
@@ -95,6 +96,7 @@ type services struct {
 	monitor    *monitor.Monitor
 	firewall   *firewall.Manager
 	edge       *edge.Manager
+	geoblock   *geoblock.Manager
 	databases  *database.Manager
 	components *component.Manager
 	backups    *backup.Manager
@@ -147,6 +149,7 @@ func registerMethods(srv *rpc.Server, svc services) {
 			return nil, mapError(err)
 		}
 		syncLogRotation(ctx, svc)
+		syncCountries(ctx, svc)
 		return res, nil
 	})
 	srv.Handle("site.delete", func(ctx context.Context, p json.RawMessage) (any, error) {
@@ -559,7 +562,8 @@ func mapError(err error) error {
 	var tv *terminal.ValidationError
 	var ev *edge.ValidationError
 	var visv *visits.ValidationError
-	if errors.As(err, &visv) || errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
+	var gv *geoblock.ValidationError
+	if errors.As(err, &gv) || errors.As(err, &visv) || errors.As(err, &ev) || errors.As(err, &tv) || errors.As(err, &qv) || errors.As(err, &logv) || errors.As(err, &cronv) || errors.As(err, &sysv) || errors.As(err, &svcv) || errors.As(err, &phpv) || errors.As(err, &secv) || errors.As(err, &ftpv) || errors.As(err, &uv) || errors.As(err, &v) || errors.As(err, &dv) || errors.As(err, &cv) || errors.As(err, &mv) || errors.As(err, &lv) || errors.As(err, &fv) || errors.As(err, &monv) || errors.As(err, &dbv) || errors.As(err, &compv) || errors.As(err, &bv) {
 		return &rpc.Error{Code: rpc.CodeInvalidParams, Message: err.Error()}
 	}
 	var op *site.OperationError
@@ -583,7 +587,8 @@ func mapError(err error) error {
 	var qop *quota.OperationError
 	var top *terminal.OperationError
 	var eop *edge.OperationError
-	if errors.As(err, &eop) || errors.As(err, &top) || errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
+	var gop *geoblock.OperationError
+	if errors.As(err, &gop) || errors.As(err, &eop) || errors.As(err, &top) || errors.As(err, &qop) || errors.As(err, &logop) || errors.As(err, &cronop) || errors.As(err, &sysop) || errors.As(err, &svcop) || errors.As(err, &phpop) || errors.As(err, &secop) || errors.As(err, &ftpop) || errors.As(err, &uop) || errors.As(err, &op) || errors.As(err, &dop) || errors.As(err, &cop) || errors.As(err, &mop) || errors.As(err, &lop) || errors.As(err, &fop) || errors.As(err, &monop) || errors.As(err, &dbop) || errors.As(err, &compop) || errors.As(err, &bop) {
 		return &rpc.Error{Code: rpc.CodeOperationFailed, Message: err.Error()}
 	}
 	return err
@@ -594,6 +599,20 @@ func mapError(err error) error {
 func syncLogRotation(ctx context.Context, svc services) {
 	if err := svc.logs.Sync(context.WithoutCancel(ctx)); err != nil && svc.log != nil {
 		svc.log.Error("writing log rotation rules", "err", err)
+	}
+}
+
+// syncCountries writes the country rules again after something they are
+// made of changed: a site was added or renamed, the allowed addresses or
+// Cloudflare's ranges changed. The change that led here stands even if
+// this fails. Without blocked countries it does nothing.
+func syncCountries(ctx context.Context, svc services) {
+	if svc.geoblock == nil {
+		return
+	}
+	err := svc.geoblock.Sync(context.WithoutCancel(ctx))
+	if err != nil && !errors.Is(err, geoblock.ErrNoTable) && svc.log != nil {
+		svc.log.Error("writing the country rules", "err", err)
 	}
 }
 
@@ -815,6 +834,8 @@ func registerMonitor(srv *rpc.Server, svc services) {
 				svc.log.Warn("rewriting Fail2ban's jails for the allowed addresses", "err", err)
 			}
 		}
+		// An allowed address passes a country block too.
+		syncCountries(ctx, svc)
 		return allowedList(allowed)
 	})
 	handle(srv, "firewall.allow.list", func(context.Context, struct{}) (any, error) {
@@ -842,7 +863,23 @@ func registerMonitor(srv *rpc.Server, svc services) {
 	})
 	// Cloudflare's ranges (visitors' own addresses in Nginx) and the
 	// blocks as Nginx deny lines.
-	handle(srv, "web.edge.apply", func(ctx context.Context, p edge.Spec) (any, error) { return svc.edge.Apply(ctx, p) })
+	handle(srv, "web.edge.apply", func(ctx context.Context, p edge.Spec) (any, error) {
+		res, err := svc.edge.Apply(ctx, p)
+		if err == nil {
+			// Cloudflare's ranges pass a country block: behind them the
+			// visitor's own address is the one that counts.
+			syncCountries(ctx, svc)
+		}
+		return res, err
+	})
+	// Blocked countries (Güvenlik > IP engelleri > Ülkeler): the whole
+	// list and its scope in one call. "web" refuses the sites' visitors
+	// in Nginx; "server" also drops new connections in the firewall,
+	// except to mail (25), DNS (53) and the web ports.
+	handle(srv, "firewall.countries.apply", func(ctx context.Context, p geoblock.Spec) (any, error) {
+		return svc.geoblock.Apply(context.WithoutCancel(ctx), p)
+	})
+	handle(srv, "firewall.countries.list", func(context.Context, struct{}) (any, error) { return svc.geoblock.Status() })
 
 	handle(srv, "mail.queue", func(ctx context.Context, _ struct{}) (any, error) { return svc.mail.Queue(ctx) })
 	handle(srv, "mail.queue.flush", func(ctx context.Context, _ struct{}) (any, error) {
@@ -1013,6 +1050,7 @@ func registerBackups(srv *rpc.Server, svc services) {
 		res, err := b.Rename(ctx, p)
 		if err == nil {
 			syncLogRotation(ctx, svc)
+			syncCountries(ctx, svc)
 		}
 		return res, err
 	})

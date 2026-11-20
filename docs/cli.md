@@ -873,11 +873,40 @@ Lists the packages
 serfex firewall <command>
 ```
 
-IP blocks: lets an address that is kept out in again
+IP blocks: lets an address that is kept out in again, lifts the country blocks
 
 | Command | |
 | --- | --- |
+| [`countries`](#serfex-firewall-countries) | Country blocks |
 | [`unblock`](#serfex-firewall-unblock) | Lifts every block that keeps an IP address out |
+
+### serfex firewall countries
+
+```
+serfex firewall countries <command>
+```
+
+Country blocks
+
+| Command | |
+| --- | --- |
+| [`off`](#serfex-firewall-countries-off) | Lifts every country block |
+
+### serfex firewall countries off
+
+```
+serfex firewall countries off
+```
+
+Lifts the block on every country blocked in the panel under Security → IP blocks → Countries. The scope (websites only, or the whole server) is kept for the next block; addresses blocked one by one and the allowed addresses do not change.
+
+Use it when the country you are in was blocked and you cannot reach the panel or the sites. Runs on the server itself as root; if SSH is closed too, connect from your provider's console.
+
+Examples:
+
+```sh
+sudo serfex firewall countries off
+```
 
 ### serfex firewall unblock
 

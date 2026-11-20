@@ -433,3 +433,35 @@ func TestSetMaxChildren(t *testing.T) {
 		t.Fatalf("pool:\n%s", p)
 	}
 }
+
+func TestDomainsListsSiteVhostsOnly(t *testing.T) {
+	m, sim := newTest(t)
+	ctx := context.Background()
+	if got := Domains(sim); len(got) != 0 {
+		t.Fatalf("a server without Nginx has sites: %v", got)
+	}
+	if _, err := m.Apply(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	other := spec
+	other.Domain, other.Aliases = "atolye.example.com", nil
+	if _, err := m.Apply(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	// Vhosts that are not sites: the default site, webmail, one written by hand.
+	if _, err := m.EnsureDefaultSite(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{
+		"serfex-webmail.conf": "# Managed by Serfex. Manual changes are overwritten.\n# Webmail\nserver {}\n",
+		"elle.example.conf":   "server { server_name elle.example; }\n",
+		"sahte.example.conf":  "# Managed by Serfex. Manual changes are overwritten.\n# Site: baska.example (user x, PHP 8.4)\n",
+	} {
+		if err := os.WriteFile(sim.Path("/etc/nginx/sites-available/"+name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := strings.Join(Domains(sim), " "); got != "atolye.example.com kahveatolyesi.com.tr" {
+		t.Fatalf("domains = %q", got)
+	}
+}

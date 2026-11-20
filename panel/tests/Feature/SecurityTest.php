@@ -11,6 +11,7 @@ use App\Livewire\Sites\SiteProtect;
 use App\Livewire\Sites\SiteScan;
 use App\Livewire\Sites\SiteWaf;
 use App\Models\AiConversation;
+use App\Models\CountryBlock;
 use App\Models\Customer;
 use App\Models\IpBlock;
 use App\Models\ProtectedDirectory;
@@ -561,6 +562,22 @@ class SecurityTest extends TestCase
         $this->agent->answers['fail2ban.status']['jails'] = [];
         app(Fail2ban::class)->sync();
         $this->assertFalse($block->fresh()->isActive());
+    }
+
+    public function test_the_firewall_tab_counts_blocked_countries(): void
+    {
+        IpBlock::create(['address' => '45.155.205.233', 'source' => 'panel']);
+
+        // No country is blocked: the sentence is as it was.
+        Livewire::test(SecurityIndex::class)
+            ->assertSeeText('Engelli adresler bu kurallardan önce uygulanır: 1 adres engelli.')
+            ->assertDontSeeText('ülke engelli');
+
+        CountryBlock::create(['code' => 'RU']);
+        CountryBlock::create(['code' => 'CN']);
+        Livewire::test(SecurityIndex::class)
+            ->assertSeeText('Engelli adresler ve ülkeler bu kurallardan önce uygulanır: 1 adres engelli, 2 ülke engelli.')
+            ->assertSeeHtml('href="'.e(route('security.blocks', ['tab' => 'countries'])).'"');
     }
 
     public function test_the_page_leads_to_the_ip_blocks(): void

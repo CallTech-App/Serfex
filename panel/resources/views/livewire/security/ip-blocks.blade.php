@@ -19,7 +19,7 @@
             <span class="text-fg">{{ __('IP engelleri') }}</span>
         </nav>
         <h1 class="mt-2 text-[22px] font-semibold tracking-tight">{{ __('IP engelleri') }}</h1>
-        <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Sunucunun yanıt vermediği adresler. Elle engellediklerinizi, Fail2ban\'ın ve Serfex AI\'ın engellediklerini tek listeden yönetin.') }}</p>
+        <p class="mt-1 max-w-3xl text-[13px] text-muted">{{ __('Sunucunun yanıt vermediği adresler ve ülkeler. Elle engellediklerinizi, Fail2ban\'ın ve Serfex AI\'ın engellediklerini tek listeden yönetin.') }}</p>
     </div>
 
     @if ($refused)
@@ -48,5 +48,7 @@
         @include('livewire.security.ip-blocks.paste-modal', $styles)
     @elseif ($tab === 'allowed')
         @include('livewire.security.ip-blocks.allow-modal', $styles)
+    @elseif ($tab === 'countries')
+        @include('livewire.security.ip-blocks.country-modal', $styles)
     @endif
 </div>

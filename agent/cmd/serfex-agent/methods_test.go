@@ -18,6 +18,7 @@ import (
 	"github.com/calltech-app/serfex/agent/internal/dns"
 	"github.com/calltech-app/serfex/agent/internal/edge"
 	"github.com/calltech-app/serfex/agent/internal/firewall"
+	"github.com/calltech-app/serfex/agent/internal/geoblock"
 	"github.com/calltech-app/serfex/agent/internal/host"
 	"github.com/calltech-app/serfex/agent/internal/laravel"
 	"github.com/calltech-app/serfex/agent/internal/logrotate"
@@ -464,5 +465,146 @@ func TestFirewallBatchAndAllowMethods(t *testing.T) {
 	var removed struct{ Removed int }
 	if e := call("firewall.unblock.many", `{"addresses":["45.155.205.233","88.230.4.0/24","192.0.2.99"]}`, &removed); e != nil || removed.Removed != 2 {
 		t.Fatalf("unblock.many = %+v, %+v", removed, e)
+	}
+}
+
+// countryBed is an agent with the demo country table and a country
+// manager, as a dry run starts one.
+func countryBed(t *testing.T) (*host.Simulator, func(method, params string, into any) *rpc.Error) {
+	t.Helper()
+	sim, err := host.NewSimulator(t.TempDir(), "8.4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sites := site.NewManager(sim, "www-data")
+	fw := firewall.NewManager(sim)
+	agg := stats.New()
+	agg.SetGeo(stats.DemoGeo())
+	gb := geoblock.NewManager(sim, fw)
+	gb.Geo = agg.Geo
+	gb.Own = func() []string { return []string{"203.0.113.10"} }
+	srv := rpc.NewServer(nil)
+	dnsm := dns.NewSimulatedManager(sim, dns.NewMemory())
+	registerMethods(srv, services{
+		sites: sites, dns: dnsm, certs: cert.NewManager(sim, dnsm, &cert.Simulated{}),
+		firewall: fw, edge: edge.NewManager(sim, fw), stats: agg, geoblock: gb, dryRun: true,
+		visits: visits.NewManager(sim),
+	})
+	sock := filepath.Join(t.TempDir(), "agent.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { defer close(done); _ = srv.Serve(ctx, ln) }()
+	t.Cleanup(func() { cancel(); <-done })
+	return sim, func(method, params string, into any) *rpc.Error {
+		t.Helper()
+		conn, err := net.Dial("unix", sock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		fmt.Fprintf(conn, `{"jsonrpc":"2.0","id":1,"method":%q,"params":%s}`+"\n", method, params)
+		line, err := bufio.NewReader(conn).ReadBytes('\n')
+		if err != nil {
+			t.Fatal(err)
+		}
+		var resp rpc.Response
+		if err := json.Unmarshal(line, &resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp.Error == nil && into != nil {
+			raw, _ := json.Marshal(resp.Result)
+			if err := json.Unmarshal(raw, into); err != nil {
+				t.Fatalf("%s: %s: %v", method, raw, err)
+			}
+		}
+		return resp.Error
+	}
+}
+
+func TestCountriesApplyAndList(t *testing.T) {
+	sim, call := countryBed(t)
+	var st geoblock.Status
+	if e := call("firewall.countries.apply", `{"countries":["ru"],"scope":"server"}`, &st); e != nil {
+		t.Fatalf("apply: %+v", e)
+	}
+	if strings.Join(st.Countries, " ") != "RU" || st.Scope != "server" || !st.Loaded || st.Ranges["RU"] < 1 {
+		t.Fatalf("apply = %+v", st)
+	}
+	conf, err := os.ReadFile(sim.Path(geoblock.Conf))
+	if err != nil || !strings.Contains(string(conf), "45.155.205.0/24 1;") {
+		t.Fatalf("Nginx list: %v\n%s", err, conf)
+	}
+	var listed geoblock.Status
+	if e := call("firewall.countries.list", `{}`, &listed); e != nil {
+		t.Fatalf("list: %+v", e)
+	}
+	if strings.Join(listed.Countries, " ") != "RU" || listed.Scope != "server" || listed.Ranges["RU"] != st.Ranges["RU"] {
+		t.Fatalf("list = %+v", listed)
+	}
+	if e := call("firewall.countries.apply", `{"countries":[],"scope":"server"}`, &st); e != nil {
+		t.Fatalf("lifting: %+v", e)
+	}
+	if _, err := os.Stat(sim.Path(geoblock.Conf)); !os.IsNotExist(err) {
+		t.Fatalf("the list stays in Nginx after every block was lifted: %v", err)
+	}
+}
+
+func TestCountriesApplyRefusesBadCodes(t *testing.T) {
+	sim, call := countryBed(t)
+	for _, params := range []string{
+		`{"countries":["RUS"],"scope":"web"}`,
+		`{"countries":["RU"],"scope":"planet"}`,
+		`{"countries":["R1"]}`,
+		`{"country":"RU"}`,
+	} {
+		if e := call("firewall.countries.apply", params, nil); e == nil || e.Code != rpc.CodeInvalidParams {
+			t.Fatalf("%s: %+v", params, e)
+		}
+	}
+	if _, err := os.Stat(sim.Path(geoblock.Conf)); !os.IsNotExist(err) {
+		t.Fatalf("a refused list was written: %v", err)
+	}
+}
+
+// A site made after the block gets the rule in the same call; a site
+// that waits for the next change would answer blocked countries.
+func TestASiteAppliedAfterACountryWasBlockedRefusesItToo(t *testing.T) {
+	sim, call := countryBed(t)
+	if e := call("firewall.countries.apply", `{"countries":["RU"]}`, nil); e != nil {
+		t.Fatalf("apply: %+v", e)
+	}
+	if e := call("site.apply", `{"domain":"a.com","user":"a","php_version":"8.4","aliases":[]}`, nil); e != nil {
+		t.Fatalf("site: %+v", e)
+	}
+	rule, err := os.ReadFile(sim.Path(site.ExtraDir("a.com") + "/" + geoblock.Snippet))
+	if err != nil || !strings.Contains(string(rule), "return 403;") {
+		t.Fatalf("the new site's rule: %v\n%s", err, rule)
+	}
+}
+
+// Allowed addresses and Cloudflare's ranges pass a country block; the
+// list in Nginx follows them when they change.
+func TestAllowedAddressesAndCloudflareRangesReachTheCountryList(t *testing.T) {
+	sim, call := countryBed(t)
+	if e := call("firewall.countries.apply", `{"countries":["RU"]}`, nil); e != nil {
+		t.Fatalf("apply: %+v", e)
+	}
+	if e := call("firewall.allow.apply", `{"addresses":["45.155.205.7"]}`, nil); e != nil {
+		t.Fatalf("allow: %+v", e)
+	}
+	conf, _ := os.ReadFile(sim.Path(geoblock.Conf))
+	if !strings.Contains(string(conf), "45.155.205.7 1;") {
+		t.Fatalf("the allowed address is not exempt:\n%s", conf)
+	}
+	if e := call("web.edge.apply", `{"ranges":["198.51.100.0/24"]}`, nil); e != nil {
+		t.Fatalf("edge: %+v", e)
+	}
+	conf, _ = os.ReadFile(sim.Path(geoblock.Conf))
+	if !strings.Contains(string(conf), "198.51.100.0/24 1;") {
+		t.Fatalf("Cloudflare's range is not exempt:\n%s", conf)
 	}
 }

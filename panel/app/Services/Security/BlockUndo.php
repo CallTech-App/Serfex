@@ -7,6 +7,7 @@ use App\Models\IpBlock;
 use App\Models\User;
 use App\Services\Agent\AgentException;
 use App\Services\Monitor\IpBlocks;
+use App\Services\Monitor\MonitorException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -21,10 +22,15 @@ use Illuminate\Support\Str;
  *  - restore: blocks the action changed, as IpBlocks returned them
  *  - reblock: ids of blocks the action ended; they come back
  *  - allow:   entries the action removed from the allowed list
+ *  - uncountry: codes of countries the action blocked; their block is
+ *             lifted
+ *  - country: blocked countries the action lifted, as CountryBlocks
+ *             returned them; they come back
+ *  - scope:   the scope of the country blocks before the action
  *
  * @phpstan-import-type Snapshot from IpBlocks
  *
- * @phpstan-type Steps array{unallow?: list<int>, forget?: list<int>, restore?: array<int, Snapshot>, reblock?: list<int>, allow?: list<array{address: string, note?: ?string}>}
+ * @phpstan-type Steps array{unallow?: list<int>, forget?: list<int>, restore?: array<int, Snapshot>, reblock?: list<int>, allow?: list<array{address: string, note?: ?string}>, uncountry?: list<string>, country?: list<array{code: string, user_id?: ?int, at?: ?string}>, scope?: ?string}
  */
 class BlockUndo
 {
@@ -33,6 +39,7 @@ class BlockUndo
     public function __construct(
         private readonly IpBlocks $blocks,
         private readonly IpAllows $allows,
+        private readonly CountryBlocks $countries,
     ) {}
 
     /**
@@ -53,6 +60,7 @@ class BlockUndo
      * undo: the token is unknown, used, too old or someone else's.
      *
      * @throws AgentException
+     * @throws MonitorException
      */
     public function run(string $token, User $by): bool
     {
@@ -77,6 +85,12 @@ class BlockUndo
         }
         if (! empty($steps['allow'])) {
             $this->allows->addMany($steps['allow'], $by);
+        }
+        if (! empty($steps['uncountry'])) {
+            $this->countries->unblock($steps['uncountry']);
+        }
+        if (! empty($steps['country']) || ! empty($steps['scope'])) {
+            $this->countries->restore($steps['country'] ?? [], $steps['scope'] ?? null);
         }
 
         return true;
