@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"math/big"
+	"math/bits"
 	"net/http"
 	"net/netip"
 	"os"
@@ -94,6 +95,126 @@ func (g *Geo) Size() int {
 		return 0
 	}
 	return len(g.v4) + len(g.v6)
+}
+
+// Blocks is how many of the table's address blocks belong to a country.
+func (g *Geo) Blocks(code string) int {
+	if g == nil || len(code) != 2 {
+		return 0
+	}
+	cc := [2]byte{upper(code[0]), upper(code[1])}
+	n := 0
+	for _, r := range g.v4 {
+		if r.cc == cc {
+			n++
+		}
+	}
+	for _, r := range g.v6 {
+		if r.cc == cc {
+			n++
+		}
+	}
+	return n
+}
+
+// Prefixes returns every address registered in one of the countries (ISO
+// codes, in either case) as prefixes in ascending order: blocks that
+// touch are joined first, then each run is written with the fewest
+// prefixes that cover exactly it. A firewall set and Nginx's geo block
+// both take the result as it is.
+func (g *Geo) Prefixes(codes []string) (v4, v6 []netip.Prefix) {
+	if g == nil {
+		return nil, nil
+	}
+	want := map[[2]byte]bool{}
+	for _, c := range codes {
+		if len(c) == 2 {
+			want[[2]byte{upper(c[0]), upper(c[1])}] = true
+		}
+	}
+	if len(want) == 0 {
+		return nil, nil
+	}
+	addr4 := func(n uint64) netip.Addr {
+		var b [4]byte
+		binary.BigEndian.PutUint32(b[:], uint32(n))
+		return netip.AddrFrom4(b)
+	}
+	addr6 := func(n uint64) netip.Addr {
+		var b [16]byte
+		binary.BigEndian.PutUint64(b[:8], n)
+		return netip.AddrFrom16(b)
+	}
+	// The blocks are in order and never overlap, so two wanted blocks
+	// touch exactly when nothing lies between them.
+	var start, end uint64
+	open := false
+	for _, r := range g.v4 {
+		if !want[r.cc] {
+			continue
+		}
+		if open && uint64(r.start) == end+1 {
+			end = uint64(r.end)
+			continue
+		}
+		if open {
+			v4 = appendRange(v4, start, end, 32, addr4)
+		}
+		start, end, open = uint64(r.start), uint64(r.end), true
+	}
+	if open {
+		v4 = appendRange(v4, start, end, 32, addr4)
+	}
+	open = false
+	for _, r := range g.v6 {
+		if !want[r.cc] {
+			continue
+		}
+		if open && end != ^uint64(0) && r.start == end+1 {
+			end = r.end
+			continue
+		}
+		if open {
+			v6 = appendRange(v6, start, end, 64, addr6)
+		}
+		start, end, open = r.start, r.end, true
+	}
+	if open {
+		v6 = appendRange(v6, start, end, 64, addr6)
+	}
+	return v4, v6
+}
+
+// appendRange writes the run start..end as prefixes: at each step the
+// largest block that begins at start and does not pass end. width is how
+// many bits the numbers have (32 for IPv4, 64 for the upper half of an
+// IPv6 address).
+func appendRange(out []netip.Prefix, start, end uint64, width int, addr func(uint64) netip.Addr) []netip.Prefix {
+	for {
+		k := bits.TrailingZeros64(start) // 64 for zero
+		if k > width {
+			k = width
+		}
+		last := lastOf(start, k)
+		for k > 0 && last > end {
+			k--
+			last = lastOf(start, k)
+		}
+		out = append(out, netip.PrefixFrom(addr(start), width-k))
+		if last >= end {
+			return out
+		}
+		start = last + 1
+	}
+}
+
+// lastOf is the last number of the block of 2^k numbers that begins at
+// start (which is a multiple of 2^k).
+func lastOf(start uint64, k int) uint64 {
+	if k >= 64 {
+		return ^uint64(0)
+	}
+	return start + (uint64(1)<<k - 1)
 }
 
 // ParseRegistry adds the blocks of one delegated file to g; BuildGeo

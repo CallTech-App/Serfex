@@ -157,6 +157,9 @@ type Aggregator struct {
 	// MailDomains returns the server's mail domains; only they are
 	// counted.
 	MailDomains func() map[string]bool
+	// OnGeo, when set, runs after a country table was installed (the
+	// country blocks are worked out from it again).
+	OnGeo func()
 }
 
 // New returns an empty aggregator.
@@ -181,6 +184,16 @@ func (a *Aggregator) SetGeo(g *Geo) {
 	a.mu.Lock()
 	a.geo = g
 	a.mu.Unlock()
+	if a.OnGeo != nil {
+		a.OnGeo()
+	}
+}
+
+// Geo returns the country table, nil until one is installed.
+func (a *Aggregator) Geo() *Geo {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.geo
 }
 
 // HasGeo tells whether a country table is installed.
