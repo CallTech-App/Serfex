@@ -6,6 +6,8 @@
 //	table inet serfex
 //	  set allowed4, allowed6   addresses and prefixes that are never dropped here
 //	  set blocked4, blocked6   addresses and prefixes, each with its own timeout
+//	  set country4, country6   the prefixes of blocked countries, when the
+//	                           country block covers the whole server
 //	  chain input              accepts the allowed sets, then drops the blocked
 //	                           ones, before other filters
 //	/etc/serfex/firewall/blocks.json    the blocks as last applied, root 0600
@@ -14,6 +16,16 @@
 // "accept" ends this chain only: the port filter and Fail2ban's own table
 // still see the packet, so an allowed address is exempt from Serfex's
 // blocks, not from closed ports.
+//
+// A blocked country is treated more gently than a blocked address. Only
+// new connections are dropped, so answers to what the server itself asked
+// for still arrive, and four ports stay open: 80 and 443, where Nginx
+// refuses the country's visitors itself (it also sees them behind
+// Cloudflare's proxy, and lets Let's Encrypt's validation through), 25,
+// so mail from the country's mail servers is not lost, and 53, so the
+// names hosted here still resolve for them. The country sets are filled by
+// the geoblock package and are not stored here: they are worked out again
+// from the country table.
 //
 // A block is time-boxed by the kernel itself (the set element's timeout),
 // so it ends on time even while the agent or the panel is down. The state
@@ -50,6 +62,14 @@ const (
 	// MaxBatch is how many addresses one BlockMany, UnblockMany or
 	// SetAllowed call takes.
 	MaxBatch = 1000
+
+	// OpenPorts are the TCP ports a blocked country still reaches when
+	// its block covers the whole server.
+	OpenPorts = "25, 53, 80, 443"
+
+	// countryChunk is how many prefixes one "add element" statement of a
+	// country set holds.
+	countryChunk = 2000
 )
 
 // ruleset creates the table from scratch. "add table" before "delete
@@ -75,12 +95,27 @@ table inet serfex {
 		type ipv6_addr
 		flags interval, timeout
 	}
+	set country4 {
+		type ipv4_addr
+		flags interval
+		auto-merge
+	}
+	set country6 {
+		type ipv6_addr
+		flags interval
+		auto-merge
+	}
 	chain input {
 		type filter hook input priority filter - 10; policy accept;
+		iifname "lo" accept
 		ip saddr @allowed4 accept
 		ip6 saddr @allowed6 accept
 		ip saddr @blocked4 counter drop
 		ip6 saddr @blocked6 counter drop
+		ip saddr @country4 ct state new tcp dport != { ` + OpenPorts + ` } counter drop
+		ip saddr @country4 ct state new udp dport != 53 counter drop
+		ip6 saddr @country6 ct state new tcp dport != { ` + OpenPorts + ` } counter drop
+		ip6 saddr @country6 ct state new udp dport != 53 counter drop
 	}
 }
 `
@@ -130,6 +165,10 @@ type Manager struct {
 	// mirrors them into Nginx for visitors behind Cloudflare). Its
 	// failure does not undo the block.
 	Changed func(ctx context.Context)
+
+	// The country sets as last applied: they refill the table whenever
+	// it is rebuilt.
+	country4, country6 []netip.Prefix
 }
 
 // NewManager returns a Manager acting on h.
@@ -598,6 +637,59 @@ func formatAll(list []netip.Prefix) []string {
 	return out
 }
 
+// SetCountries replaces the prefixes of the blocked countries (see the
+// package comment for what is dropped) in one nftables transaction. Empty
+// lists empty the sets; a server that blocks no country and has no table
+// does not get one for it. When nftables refuses, the sets stay as they
+// were.
+func (m *Manager) SetCountries(ctx context.Context, v4, v6 []netip.Prefix) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(v4)+len(v6) == 0 {
+		if !m.complete(ctx) {
+			m.country4, m.country6 = nil, nil
+			return nil
+		}
+	} else {
+		blocks, allowed, err := m.state()
+		if err != nil {
+			return &OperationError{err}
+		}
+		if err := m.ensure(ctx, blocks, allowed); err != nil {
+			return &OperationError{err}
+		}
+	}
+	script := fmt.Sprintf("flush set inet %[1]s country4\nflush set inet %[1]s country6\n", Table) + countryElements(v4, v6)
+	if err := m.nft(ctx, script); err != nil {
+		return &OperationError{err}
+	}
+	m.country4, m.country6 = v4, v6
+	return nil
+}
+
+// countryElements fills the country sets, a few thousand prefixes to a
+// statement so no line grows without bound.
+func countryElements(v4, v6 []netip.Prefix) string {
+	var b strings.Builder
+	fill := func(set string, list []netip.Prefix) {
+		for len(list) > 0 {
+			n := min(len(list), countryChunk)
+			fmt.Fprintf(&b, "add element inet %s %s { ", Table, set)
+			for i, p := range list[:n] {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(p.String())
+			}
+			b.WriteString(" }\n")
+			list = list[n:]
+		}
+	}
+	fill("country4", v4)
+	fill("country6", v6)
+	return b.String()
+}
+
 // List returns the blocks in force, newest first.
 func (m *Manager) List() ([]Block, error) {
 	m.mu.Lock()
@@ -620,7 +712,7 @@ func (m *Manager) Restore(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if len(blocks) == 0 && len(allowed) == 0 {
+	if len(blocks) == 0 && len(allowed) == 0 && len(m.country4)+len(m.country6) == 0 {
 		return nil
 	}
 	return m.create(ctx, blocks, allowed)
@@ -628,19 +720,27 @@ func (m *Manager) Restore(ctx context.Context) error {
 
 // ensure creates the table, with every stored block and allowed address,
 // when it is missing or incomplete: first use, someone flushed the
-// ruleset, or the table was made by an agent from before the allowed sets
-// (allowed6 is the last set that was added to it).
+// ruleset, or the table was made by an agent from before the allowed and
+// country sets.
 func (m *Manager) ensure(ctx context.Context, blocks []Block, allowed []netip.Prefix) error {
-	if _, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "set", "inet", Table, "allowed6"}}); err == nil {
+	if m.complete(ctx) {
 		return nil
 	}
 	return m.create(ctx, blocks, allowed)
+}
+
+// complete tells whether the table is there with all its sets (country6
+// is the last set that was added to it).
+func (m *Manager) complete(ctx context.Context) bool {
+	_, err := m.h.Run(ctx, host.Command{Name: "nft", Args: []string{"list", "set", "inet", Table, "country6"}})
+	return err == nil
 }
 
 func (m *Manager) create(ctx context.Context, blocks []Block, allowed []netip.Prefix) error {
 	var b strings.Builder
 	b.WriteString(ruleset)
 	b.WriteString(allowedElements(allowed))
+	b.WriteString(countryElements(m.country4, m.country6))
 	now := m.Now()
 	for _, bl := range blocks {
 		p, err := Normalize(bl.Address)

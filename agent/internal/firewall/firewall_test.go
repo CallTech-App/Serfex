@@ -483,9 +483,10 @@ func TestRestoreBringsBackAllowedAddressesWhenNothingIsBlocked(t *testing.T) {
 	}
 }
 
-// A table made by an agent from before the allowed sets has no allowed6:
-// the first change rebuilds it, and every stored block comes back.
-func TestATableWithoutAllowedSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
+// A table made by an agent from before the allowed and country sets has
+// no country6: the first change rebuilds it, and every stored block comes
+// back.
+func TestATableWithoutTheNewestSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	m, sim, now := newTest(t)
 	ctx := context.Background()
 	if _, err := m.BlockMany(ctx, []Spec{{Address: "192.0.2.1"}, {Address: "192.0.2.2", Seconds: 3600}, {Address: "2001:db8::9", Seconds: 600}}); err != nil {
@@ -496,7 +497,7 @@ func TestATableWithoutAllowedSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	sim.Fail = func(c host.Command) error {
 		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
 			probes = append(probes, strings.Join(c.Args, " "))
-			if c.Args[len(c.Args)-1] == "allowed6" {
+			if c.Args[len(c.Args)-1] == "country6" {
 				return errors.New("Error: No such file or directory")
 			}
 		}
@@ -506,7 +507,7 @@ func TestATableWithoutAllowedSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	if _, err := m.Block(ctx, Spec{Address: "192.0.2.3", Seconds: 60}); err != nil {
 		t.Fatal(err)
 	}
-	if len(probes) == 0 || probes[0] != "list set inet serfex allowed6" {
+	if len(probes) == 0 || probes[0] != "list set inet serfex country6" {
 		t.Fatalf("probes = %q", probes)
 	}
 	s := scripts(sim)[before:]
@@ -514,7 +515,7 @@ func TestATableWithoutAllowedSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 		t.Fatalf("scripts = %q", s)
 	}
 	for _, want := range []string{
-		"delete table inet serfex", "set allowed6 {",
+		"delete table inet serfex", "set allowed6 {", "set country6 {",
 		"add element inet serfex blocked4 { 192.0.2.1 }\n",
 		"add element inet serfex blocked4 { 192.0.2.2 timeout 3000s }",
 	} {
@@ -527,5 +528,198 @@ func TestATableWithoutAllowedSetsIsRebuiltWithEveryStoredBlock(t *testing.T) {
 	}
 	if !strings.Contains(s[1], "{ 192.0.2.3 timeout 60s }") {
 		t.Errorf("new block script:\n%s", s[1])
+	}
+}
+
+func prefixes(list ...string) []netip.Prefix {
+	out := make([]netip.Prefix, len(list))
+	for i, p := range list {
+		out[i] = netip.MustParsePrefix(p)
+	}
+	return out
+}
+
+func TestSetCountriesFillsBothSetsInOneTransaction(t *testing.T) {
+	m, sim, _ := newTest(t)
+	changes := watchChanges(m)
+	if err := m.SetCountries(context.Background(), prefixes("1.0.1.0/24", "1.0.2.0/23"), prefixes("2001:db8::/31")); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	if len(s) != 1 {
+		t.Fatalf("scripts = %q", s)
+	}
+	for _, want := range []string{
+		"flush set inet serfex country4\n", "flush set inet serfex country6\n",
+		"add element inet serfex country4 { 1.0.1.0/24, 1.0.2.0/23 }\n",
+		"add element inet serfex country6 { 2001:db8::/31 }\n",
+	} {
+		if !strings.Contains(s[0], want) {
+			t.Errorf("script lacks %q:\n%s", want, s[0])
+		}
+	}
+	// The blocked addresses did not change: Nginx's deny lines stay.
+	if *changes != 0 {
+		t.Fatalf("Changed ran %d times", *changes)
+	}
+}
+
+func TestSetCountriesWithNothingAndNoTableRunsNothing(t *testing.T) {
+	m, sim, _ := newTest(t)
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
+			return errors.New("No such file or directory")
+		}
+		return nil
+	}
+	if err := m.SetCountries(context.Background(), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if s := scripts(sim); len(s) != 0 {
+		t.Fatalf("a server that blocks no country got a table: %q", s)
+	}
+}
+
+func TestSetCountriesEmptiesTheSets(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32")); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.SetCountries(ctx, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	last := s[len(s)-1]
+	if !strings.Contains(last, "flush set inet serfex country4\n") || !strings.Contains(last, "flush set inet serfex country6\n") || strings.Contains(last, "add element") {
+		t.Fatalf("emptying script:\n%s", last)
+	}
+}
+
+func TestCountrySetsComeBackWhenTheTableIsRebuilt(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), prefixes("2001:db8::/32")); err != nil {
+		t.Fatal(err)
+	}
+	// Someone flushed the ruleset: the next change finds no table.
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
+			return errors.New("No such file or directory")
+		}
+		return nil
+	}
+	before := len(scripts(sim))
+	if _, err := m.Block(ctx, Spec{Address: "192.0.2.1", Seconds: 60}); err != nil {
+		t.Fatal(err)
+	}
+	rebuilt := scripts(sim)[before]
+	for _, want := range []string{
+		"add element inet serfex country4 { 1.0.1.0/24 }\n",
+		"add element inet serfex country6 { 2001:db8::/32 }\n",
+	} {
+		if !strings.Contains(rebuilt, want) {
+			t.Errorf("rebuilt table lacks %q:\n%s", want, rebuilt)
+		}
+	}
+	// Restore, when the agent starts, brings them back too.
+	if err := m.Restore(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	if !strings.Contains(s[len(s)-1], "add element inet serfex country4 { 1.0.1.0/24 }\n") {
+		t.Errorf("restore lacks the country set:\n%s", s[len(s)-1])
+	}
+}
+
+func TestCountryRulesLeaveWebMailAndDNSOpenAndOnlyStopNewConnections(t *testing.T) {
+	m, sim, _ := newTest(t)
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) > 0 && c.Args[0] == "list" {
+			return errors.New("No such file or directory")
+		}
+		return nil
+	}
+	if err := m.SetCountries(context.Background(), prefixes("1.0.1.0/24"), nil); err != nil {
+		t.Fatal(err)
+	}
+	table := scripts(sim)[0]
+	order := []string{
+		// The server talking to itself is never judged.
+		`iifname "lo" accept`,
+		"ip saddr @allowed4 accept",
+		"ip6 saddr @allowed6 accept",
+		"ip saddr @blocked4 counter drop",
+		"ip6 saddr @blocked6 counter drop",
+		// Web sites are refused by Nginx (403, also behind Cloudflare, and
+		// Let's Encrypt still gets through); incoming mail and DNS stay
+		// open. Only new connections are stopped: answers to what the
+		// server itself asked for come back.
+		"ip saddr @country4 ct state new tcp dport != { 25, 53, 80, 443 } counter drop",
+		"ip saddr @country4 ct state new udp dport != 53 counter drop",
+		"ip6 saddr @country6 ct state new tcp dport != { 25, 53, 80, 443 } counter drop",
+		"ip6 saddr @country6 ct state new udp dport != 53 counter drop",
+	}
+	at := -1
+	for _, rule := range order {
+		i := strings.Index(table, rule)
+		if i < 0 || i < at {
+			t.Fatalf("rule %q is missing or out of order:\n%s", rule, table)
+		}
+		at = i
+	}
+	for _, set := range []string{"set country4 {", "set country6 {"} {
+		if !strings.Contains(table, set) {
+			t.Errorf("table lacks %q", set)
+		}
+	}
+}
+
+func TestManyCountryPrefixesAreSplitIntoStatements(t *testing.T) {
+	m, sim, _ := newTest(t)
+	list := make([]netip.Prefix, 0, 5000)
+	for i := 0; i < 5000; i++ {
+		list = append(list, netip.PrefixFrom(netip.AddrFrom4([4]byte{11, byte(i >> 8), byte(i), 0}), 32))
+	}
+	if err := m.SetCountries(context.Background(), list, nil); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	if len(s) != 1 {
+		t.Fatalf("%d nft runs, want one transaction", len(s))
+	}
+	if n := strings.Count(s[0], "add element inet serfex country4 {"); n != 3 {
+		t.Fatalf("%d statements for 5,000 prefixes, want 3", n)
+	}
+	if n := strings.Count(s[0], "/32"); n != 5000 {
+		t.Fatalf("%d prefixes in the script", n)
+	}
+}
+
+func TestSetCountriesKeepsTheOldSetsWhenNftFails(t *testing.T) {
+	m, sim, _ := newTest(t)
+	ctx := context.Background()
+	if err := m.SetCountries(ctx, prefixes("1.0.1.0/24"), nil); err != nil {
+		t.Fatal(err)
+	}
+	sim.Fail = func(c host.Command) error {
+		if c.Name == "nft" && len(c.Args) == 2 && c.Args[0] == "-f" && strings.Contains(string(c.Stdin), "9.9.9.0/24") {
+			return errors.New("Error: Could not process rule")
+		}
+		return nil
+	}
+	err := m.SetCountries(ctx, prefixes("9.9.9.0/24"), nil)
+	var op *OperationError
+	if !errors.As(err, &op) {
+		t.Fatalf("err = %v, want an operation error", err)
+	}
+	// A rebuild still holds what is in force, not what was refused.
+	sim.Fail = nil
+	if err := m.Restore(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s := scripts(sim)
+	if last := s[len(s)-1]; strings.Contains(last, "9.9.9.0/24") {
+		t.Fatalf("a refused set came back:\n%s", last)
 	}
 }
