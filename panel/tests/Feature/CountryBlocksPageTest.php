@@ -320,6 +320,46 @@ class CountryBlocksPageTest extends TestCase
         $this->assertCount($calls, $this->agent->called('firewall.countries.apply'));
     }
 
+    public function test_the_scope_cannot_cover_the_whole_server_while_my_country_is_blocked(): void
+    {
+        // Blocked by a colleague elsewhere, for the web sites.
+        $this->countries()->block(['TR', 'RU']);
+
+        $page = $this->tab()->call('openScope')
+            ->set('countryScope', 'server')
+            ->call('saveCountries')
+            ->assertHasErrors('countryScope')
+            ->assertSet('blockingCountries', true)
+            ->assertSee('Bağlı olduğunuz ülke (Türkiye) engelli')
+            ->assertNotDispatched('toast');
+        $this->assertSame('web', $this->countries()->scope());
+
+        // Blocking one more country with the whole server as scope is the same change.
+        $this->tab()->call('openCountries', 'CN')
+            ->set('countryScope', 'server')
+            ->call('saveCountries')
+            ->assertHasErrors('countryScope')
+            ->assertSet('blockingCountries', true)
+            ->assertSee('Bağlı olduğunuz ülke (Türkiye) engelli');
+        $this->assertSame('web', $this->countries()->scope());
+        $this->assertSame(['RU', 'TR'], $this->countries()->codes());
+    }
+
+    public function test_my_own_blocked_country_says_so_and_can_be_ticked_and_unblocked(): void
+    {
+        $this->countries()->block(['TR']);
+
+        $page = $this->tab();
+        $this->assertInOrder(['Türkiye', 'Engelli', 'Şu an buradan bağlısınız'], $page->html());
+        // No row button on a phone: the box must be there to tick.
+        $page->assertSeeHtml('value="TR"');
+
+        $page->call('selectPage', true);
+        $this->assertContains('TR', $page->get('selected'));
+        $page->call('unblockCountries')->assertDispatched('toast', message: 'Türkiye engeli kaldırıldı.');
+        $this->assertSame([], $this->countries()->codes());
+    }
+
     public function test_ticked_countries_fill_the_dialog(): void
     {
         $this->countries()->block(['RU']);

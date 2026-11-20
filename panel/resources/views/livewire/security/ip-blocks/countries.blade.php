@@ -66,7 +66,7 @@
                 @php $on = in_array($row->code, $codes, true); @endphp
                 <tr wire:key="country-{{ $row->code }}" @class(['bg-accent-soft/40' => $on, 'hover:bg-surface-2/60' => ! $on])>
                     <td class="py-3 pl-5 align-top sm:align-middle">
-                        @if ($row->home)
+                        @if ($row->home && ! $row->block)
                             <input type="checkbox" disabled class="size-4 opacity-40" aria-label="{{ __(':country seç', ['country' => $row->name]) }}">
                         @else
                             <input type="checkbox" wire:model.live="selected" value="{{ $row->code }}" class="size-4 accent-accent" aria-label="{{ __(':country seç', ['country' => $row->name]) }}">
@@ -85,6 +85,9 @@
                                 <x-status-badge :status="new Badge(__('Engelli'), 'info')" />
                                 <span class="num hidden text-2xs whitespace-nowrap text-muted sm:inline">{{ When::short($row->block->created_at) }}@if ($row->block->user) · {{ $row->block->user->name }}@endif</span>
                             </span>
+                            @if ($row->home)
+                                <span class="mt-1 flex items-center justify-end gap-1.5 text-2xs text-warn sm:justify-start"><x-icon name="triangle-alert" class="size-3.5 shrink-0" />{{ __('Şu an buradan bağlısınız') }}</span>
+                            @endif
                             @if ($row->ranges === 0)
                                 <span class="mt-1 block text-2xs text-muted">{{ __('Tabloda bu ülkeye kayıtlı adres yok') }}</span>
                             @endif

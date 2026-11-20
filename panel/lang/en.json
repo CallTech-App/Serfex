@@ -6506,5 +6506,6 @@
     "Engelli adresler ve ülkeler bu kurallardan önce uygulanır: :link, :countries.": "Blocked addresses and countries are applied before these rules: :link, :countries.",
     "Engelli ülke yok.": "No country is blocked.",
     "Ülke engelleri kaldırılamadı: :reason": "The country blocks could not be lifted: :reason",
-    "Ülkesi (:country) engelli; izinli olduğu için ülke engelinden geçer.": "Its country (:country) is blocked; being allowed, the address passes the country block."
+    "Ülkesi (:country) engelli; izinli olduğu için ülke engelinden geçer.": "Its country (:country) is blocked; being allowed, the address passes the country block.",
+    "Bağlı olduğunuz ülke (:country) engelli. Kapsam bütün sunucu olursa panele ve SSH'a siz de giremezsiniz; önce bu ülkenin engelini kaldırın ya da adresinizi İzinli adresler'e ekleyin.": "The country you are connected from (:country) is blocked. With the whole server as scope you could not reach the panel or SSH either; unblock this country first, or add your address to Allowed addresses."
 }

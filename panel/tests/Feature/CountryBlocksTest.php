@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Exceptions\ReadOnlyAccount;
 use App\Models\CountryBlock;
+use App\Models\IpAllow;
 use App\Models\IpBlock;
 use App\Models\Setting;
 use App\Models\Site;
@@ -14,6 +15,7 @@ use App\Services\Agent\AgentException;
 use App\Services\Agent\AgentUnavailableException;
 use App\Services\Monitor\MonitorException;
 use App\Services\Security\CountryBlocks;
+use App\Services\Security\ScopeRefused;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\Support\FakeAgent;
@@ -203,6 +205,53 @@ class CountryBlocksTest extends TestCase
         } catch (AgentException) {
         }
         $this->assertSame('web', $this->countries()->scope());
+    }
+
+    public function test_the_whole_server_is_refused_while_the_callers_country_is_blocked(): void
+    {
+        // A colleague elsewhere blocked Türkiye for the web sites; the
+        // panel stays open, so I can still sign in from there.
+        $this->countries()->block(['TR', 'RU'], 'web');
+        $calls = count($this->agent->called('firewall.countries.apply'));
+
+        try {
+            $this->countries()->setScope('server', ['88.230.4.10']);
+            $this->fail('the scope was widened over the caller');
+        } catch (ScopeRefused $e) {
+            $this->assertStringContainsString('Bağlı olduğunuz ülke (Türkiye) engelli', $e->getMessage());
+        }
+        try {
+            $this->countries()->block(['CN'], 'server', $this->admin, ['88.230.4.10']);
+            $this->fail('a block widened the scope over the caller');
+        } catch (ScopeRefused $e) {
+            $this->assertStringContainsString('Bağlı olduğunuz ülke (Türkiye) engelli', $e->getMessage());
+        }
+
+        $this->assertSame('web', $this->countries()->scope());
+        $this->assertSame(['RU', 'TR'], $this->countries()->codes());
+        $this->assertCount($calls, $this->agent->called('firewall.countries.apply'));
+
+        // For the web sites another country can still be blocked.
+        $this->assertSame(['CN'], $this->countries()->block(['CN'], 'web', $this->admin, ['88.230.4.10'])['blocked']);
+    }
+
+    public function test_an_allowed_caller_may_widen_the_scope_over_the_own_country(): void
+    {
+        $this->countries()->block(['TR'], 'web');
+        // The firewall accepts allowed addresses before it judges a country.
+        IpAllow::create(['address' => '88.230.4.0/24']);
+
+        $this->assertSame('web', $this->countries()->setScope('server', ['88.230.4.10']));
+        $this->assertSame('server', $this->countries()->scope());
+    }
+
+    public function test_the_scope_is_not_guarded_where_it_is_already_the_whole_server(): void
+    {
+        // Already in force: blocking one more country changes nothing for the caller.
+        $this->countries()->block(['TR'], 'server');
+
+        $this->assertSame(['CN'], $this->countries()->block(['CN'], 'server', $this->admin, ['88.230.4.10'])['blocked']);
+        $this->assertSame('server', $this->countries()->setScope('server', ['88.230.4.10']));
     }
 
     public function test_restore_puts_rows_and_scope_back(): void

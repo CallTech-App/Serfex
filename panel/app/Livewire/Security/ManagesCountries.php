@@ -7,6 +7,7 @@ use App\Models\IpAllow;
 use App\Services\Agent\AgentException;
 use App\Services\Monitor\MonitorException;
 use App\Services\Security\CountryBlocks;
+use App\Services\Security\ScopeRefused;
 use App\Support\Countries;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -105,6 +106,10 @@ trait ManagesCountries
         }
         try {
             $result = $countries->block($codes, $this->countryScope, auth()->user(), $this->mine());
+        } catch (ScopeRefused $e) {
+            $this->addError('countryScope', $e->getMessage());
+
+            return;
         } catch (MonitorException|AgentException $e) {
             // Nothing was blocked and nothing was stored.
             $this->addError('countryCodes', $e instanceof MonitorException ? $e->getMessage() : __('Ülkeler engellenemedi: :reason', ['reason' => self::why($e)]));
@@ -179,7 +184,8 @@ trait ManagesCountries
 
     /**
      * The codes of the countries on the page that is shown, without the
-     * one the reader is connected from.
+     * one the reader is connected from (unless it is blocked: then it can
+     * be ticked to lift the block).
      *
      * @return list<string>
      */
@@ -188,7 +194,7 @@ trait ManagesCountries
         $countries = app(CountryBlocks::class);
         $rows = $this->countryRows($countries, CountryBlock::all()->keyBy('code')->all(), $countries->traffic(), [], $countries->home($this->mine()));
 
-        return array_values(array_map(fn (object $r) => $r->code, array_filter($rows->items(), fn (object $r) => ! $r->home)));
+        return array_values(array_map(fn (object $r) => $r->code, array_filter($rows->items(), fn (object $r) => ! $r->home || $r->block !== null)));
     }
 
     public static function scopeName(string $scope): string
@@ -238,7 +244,7 @@ trait ManagesCountries
     private function saveScope(CountryBlocks $countries): void
     {
         try {
-            $before = $countries->setScope($this->countryScope);
+            $before = $countries->setScope($this->countryScope, $this->mine());
         } catch (MonitorException|AgentException $e) {
             $this->addError('countryScope', $e instanceof MonitorException ? $e->getMessage() : __('Kapsam değiştirilemedi: :reason', ['reason' => self::why($e)]));
 

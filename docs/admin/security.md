@@ -113,8 +113,11 @@ it. Blocked countries are on top.
 - **Always let through:** the allowed addresses, the server's own
   addresses and Cloudflare's proxy addresses.
 - **The country you are connected from cannot be blocked**, so you do not
-  close the panel to yourself. If you travel and find yourself kept out,
-  see [Locked out](#locked-out).
+  close the panel to yourself. If it is blocked already (by a colleague
+  elsewhere, for the websites), the panel refuses to widen the scope to
+  the whole server from there, unless your address is on the allowed
+  list. If you travel and find yourself kept out, see
+  [Locked out](#locked-out).
 - The United States get a warning: Google, Bing and most payment,
   shipping and monitoring services connect from there. Add the ones you
   need to the allowed addresses.

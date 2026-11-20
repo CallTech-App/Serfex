@@ -3,6 +3,7 @@
 namespace App\Services\Security;
 
 use App\Models\CountryBlock;
+use App\Models\IpAllow;
 use App\Models\IpBlock;
 use App\Models\Setting;
 use App\Models\SiteStatItem;
@@ -79,6 +80,7 @@ class CountryBlocks
      * @param  list<string>  $mine  the caller's addresses
      * @return array{blocked: list<string>, skipped: list<array{text: string, message: string}>, scope: string} "scope" is the scope before the call
      *
+     * @throws ScopeRefused when the scope would become the whole server while the caller's own country is blocked
      * @throws MonitorException when the country table is not there yet, the scope is not one, or someone else is changing the list
      * @throws AgentException when the agent could not apply the list; nothing is stored then
      */
@@ -108,6 +110,9 @@ class CountryBlocks
         }
         if ($new === []) {
             return ['blocked' => [], 'skipped' => $skipped, 'scope' => $before];
+        }
+        if ($scope !== $before) {
+            $this->guardCaller($scope, $home, $mine);
         }
         $status = $this->status(fresh: true);
         if ($status['reachable'] && ! $status['loaded']) {
@@ -161,22 +166,51 @@ class CountryBlocks
      * Sets the scope for every blocked country. Returns the scope before
      * the call.
      *
+     * @param  list<string>  $mine  the caller's addresses
+     *
+     * @throws ScopeRefused when it is the whole server while the caller's own country is blocked
      * @throws MonitorException when it is not a scope, or someone else is changing the list
      * @throws AgentException when the agent could not apply it; the scope stays then
      */
-    public function setScope(string $scope): string
+    public function setScope(string $scope, array $mine = []): string
     {
         $scope = self::checked($scope);
         $before = $this->scope();
         if ($scope === $before) {
             return $before;
         }
+        $this->guardCaller($scope, $this->home($mine), $mine);
         self::alone(fn () => DB::transaction(function () use ($scope) {
             Setting::put(self::SCOPE_KEY, $scope);
             $this->push();
         }));
 
         return $before;
+    }
+
+    /**
+     * A country blocked for the web sites leaves the panel open, so its
+     * own administrators still sign in. The whole server as scope would
+     * shut the caller out of the panel and SSH: refused, unless the
+     * caller's address is allowed (the firewall accepts those before it
+     * judges a country).
+     *
+     * @param  list<string>  $mine
+     *
+     * @throws ScopeRefused
+     */
+    private function guardCaller(string $scope, ?string $home, array $mine): void
+    {
+        if ($scope !== 'server' || $home === null || ! in_array($home, $this->codes(), true)) {
+            return;
+        }
+        $allows = IpAllow::all();
+        foreach ($mine as $address) {
+            if (IpAllows::match((string) $address, $allows) !== null) {
+                return;
+            }
+        }
+        throw new ScopeRefused(__('Bağlı olduğunuz ülke (:country) engelli. Kapsam bütün sunucu olursa panele ve SSH\'a siz de giremezsiniz; önce bu ülkenin engelini kaldırın ya da adresinizi İzinli adresler\'e ekleyin.', ['country' => Countries::name($home)]));
     }
 
     /**
